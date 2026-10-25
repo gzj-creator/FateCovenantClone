@@ -1,0 +1,22 @@
+# Unity generated state and local toolchain.
+personal-server/node_modules/
+analysis/tools/protocol/node_modules/
+.toolchain/
+unity/**/Library/
+unity/**/Temp/
+unity/**/Obj/
+unity/**/Logs/
+unity/**/UserSettings/
+unity/**/*.csproj
+unity/**/*.sln
+unity/**/*.slnx
+unity/**/.vs/
+builds/
+analysis/test-runs/**/*.exe
+analysis/test-runs/**/*.pdb
+analysis/test-runs/**/*.dll
+
+# Decrypted local configuration and credentials.
+**/*.local-only.*
+# Raw app backups can contain stored account sessions.
+analysis/experiments/private-server-*/p0/backup/

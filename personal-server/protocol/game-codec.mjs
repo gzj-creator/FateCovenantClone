@@ -1,0 +1,45 @@
+import fs from 'node:fs';
+import protobuf from 'protobufjs';
+import erlang from '../../analysis/tools/protocol/node_modules/erlang_js/Erlang.js';
+
+export const E = erlang.Erlang;
+function prepareEtf(value) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value))) throw new RangeError('ETF number must be finite and exactly representable');
+    if (!Number.isInteger(value) || value < -2147483648 || value > 2147483647) {
+      // The bundled library truncates big integers and writes floats in host byte order.
+      // NEW_FLOAT_EXT uses network byte order and is supported by the client codec.
+      const bytes = Buffer.alloc(8); bytes.writeDoubleBE(value);
+      return new E.OtpErlangFunction(70, bytes);
+    }
+  }
+  if (Array.isArray(value)) return value.map(prepareEtf);
+  if (value instanceof E.OtpErlangList) return new E.OtpErlangList(value.value.map(prepareEtf), value.improper);
+  return value;
+}
+export const encodeEtf = value => new Promise((resolve, reject) => E.term_to_binary(prepareEtf(value), (error, result) => error ? reject(error) : resolve(Buffer.from(result))));
+export const decodeEtf = bytes => new Promise((resolve, reject) => E.binary_to_term(bytes, (error, result) => error ? reject(error) : resolve(result)));
+export const binary = value => new E.OtpErlangBinary(Buffer.from(value));
+export const rawBinary = object => Buffer.from(object.value.data);
+export const serializedBinary = value => ({ value: Buffer.from(value).toJSON(), bits: 8 });
+export function revive(value) {
+  if (Array.isArray(value)) return value.map(revive);
+  if (value && typeof value === 'object') {
+    if (value.bits === 8 && value.value?.type === 'Buffer') return binary(value.value.data);
+    if (Array.isArray(value.value) && typeof value.improper === 'boolean') return new E.OtpErlangList(value.value.map(revive), value.improper);
+    throw new Error('Unsupported serialized ETF value');
+  }
+  return value;
+}
+export function loadGameSchemas() {
+  const root = new protobuf.Root();
+  const directory = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__protobuf.bundle/textassets/', import.meta.url);
+  for (const name of fs.readdirSync(directory).filter(name => name.endsWith('.proto.bin'))) protobuf.parse(fs.readFileSync(new URL(name, directory), 'utf8'), root, { keepCase: true });
+  return root.resolveAll();
+}
+export function createGameCodec(root = loadGameSchemas()) {
+  return { root,
+    pack(name, object) { const type = root.lookupType(name); return Buffer.from(type.encode(type.fromObject(object)).finish()); },
+    unpack(name, bytes) { const type = root.lookupType(name); return type.toObject(type.decode(bytes), { longs: String, bytes: String, arrays: true }); }
+  };
+}
