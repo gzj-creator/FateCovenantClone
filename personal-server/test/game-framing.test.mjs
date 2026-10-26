@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_MAX_PAYLOAD_BYTES, GAME_HEADER_BYTES, GameFrameDecoder, GameFramingError, encodeGameFrame, encodeServerChallenge, isInitialVerifyPayload, parseServerChallenge } from './game-framing.mjs';
+import { DEFAULT_MAX_PAYLOAD_BYTES, GAME_HEADER_BYTES, GameFrameDecoder, GameFramingError, encodeGameFrame, encodeServerChallenge, isInitialVerifyPayload, parseServerChallenge } from '../game-framing.mjs';
 
 const fixtureToken = Buffer.from('verify', 'utf8');
 const frame = value => encodeGameFrame(Buffer.from(value));

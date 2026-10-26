@@ -9,15 +9,15 @@ import { DatabaseSync } from 'node:sqlite';
 import { createGameCodec, decodeEtf, encodeEtf, rawBinary, binary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
-import { createHeroProgression } from './hero-progression.mjs';
-import { createLineupService } from './lineup-service.mjs';
-import { createFeatureService } from './feature-service.mjs';
+import { createHeroProgression } from '../game/hero-progression.mjs';
+import { createLineupService } from '../game/lineup-service.mjs';
+import { createFeatureService } from '../game/feature-service.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
 const codec = createGameCodec(), tables = readHeroTables();
-const capturePath = new URL('../../analysis/captures/protocol-2026-10-25-r2a/decoded.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 function fixture() {
   const modules = structuredClone(capture.privateFlows.find(flow => flow.messageId === 'game:tcp-69:s2c:103').decoded[2]);

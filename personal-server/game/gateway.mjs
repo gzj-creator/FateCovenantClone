@@ -12,6 +12,9 @@ import { readHeroTables } from '../config/hero-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from './wallet-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
+import { createItemBoxService } from './item-box-service.mjs';
+import { createMissionFightService } from './mission-fight-service.mjs';
+import { createActivityReadService } from './activity-read-service.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -39,6 +42,8 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const wallet=localWallet?createWalletService({store,codec,tables,publish,logger}):undefined;
   const sprint=createSprintService({store,codec,tables});
+  const itemBox=createItemBoxService({store,codec,tables,logger});
+  const activityRead=createActivityReadService({codec,logger});
   async function loginPayload() {
     const state = store.state();
     const list = revive(state.modules);
@@ -61,6 +66,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     let phase = 'verify', challenge, chain = Promise.resolve();
     const push=(type,data)=>{if(!socket.destroyed)socket.write(encodeGameFrame(pack('pb_s2c',{type,data})));};
     const log = event => logger({ connection: id, ...event });
+    const fight = createMissionFightService({ store, codec, logger: log });
     socket.setNoDelay(true); socket.setTimeout(180000);
     socket.on('timeout', () => socket.destroy());
     socket.on('error', error => log({ event: 'socket_error', code: error.code }));
@@ -90,6 +96,47 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         send(seq, await loginPayload()); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
+      if (itemBox.supports(type)) {
+        try {
+          let entries;
+          if (type === 159) entries = unpack('pb_one_key_use', request.data).use;
+          else if (type === 157) {
+            const batch = unpack('pb_batch_use_box_req', request.data);
+            if ((batch.lottery_list ?? []).length) throw new GameError(5, 'Lottery box list is not implemented');
+            entries = batch.box_list;
+          } else entries = [unpack('simple_use', request.data)];
+          const result = itemBox.open(entries);
+          send(seq, result.data); log({ event: 'item_box_committed', type, seq, changes: result.value.changes.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'item_box_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (fight.supports(type)) {
+        try {
+          const result = fight.execute(type, request.data);
+          if (result.data.length) send(seq, result.data); else send(seq);
+          log({ event: 'fight_handled', type, seq, missionId: result.value?.mission?.mission_id });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'fight_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (activityRead.supports(type)) {
+        try {
+          const result = activityRead.execute(type, request.data);
+          send(seq, result.data); log({ event: 'activity_read_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'activity_read_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if(sprint.supports(type)||wallet&&type===16003){
         try{
           if(type===16003){const decoded=await decodeEtf(request.data);const value=decoded?.value??decoded;const bytes=Buffer.isBuffer(value)?value:Array.isArray(value)?Buffer.from(value):null;wallet.acknowledge(bytes?bytes.toString():value);send(seq);}
@@ -152,7 +199,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]], [10507, ['pb_msg_range_list_with_role_info', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
       if ([53001, 102801, 10503].includes(type)) { send(seq); return; }
-      log({ event: 'unsupported_command', type, seq });
+      log({ event: 'unsupported_command', type, seq, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
       send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'LOCAL_NOT_IMPLEMENTED:' + type });
     }
     socket.on('data', chunk => {

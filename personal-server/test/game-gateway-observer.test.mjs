@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import test from 'node:test';
-import { encodeGameFrame } from './game-framing.mjs';
-import { createGameGatewayObserver } from './game-gateway-observer.mjs';
+import { encodeGameFrame } from '../game-framing.mjs';
+import { createGameGatewayObserver } from '../game-gateway-observer.mjs';
 
 async function connect(address, payload) {
   return new Promise((resolve, reject) => {

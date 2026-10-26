@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { encryptOutgoingPacket, decryptIncomingPacket, decodeClientPacket } from './game-packet-crypto.mjs';
+import { encryptOutgoingPacket, decryptIncomingPacket, decodeClientPacket } from '../game-packet-crypto.mjs';
 
-const record = JSON.parse(readFileSync(new URL('../analysis/experiments/private-server-20261025/p2/packet-crypto/fixtures.json', import.meta.url)));
+const record = JSON.parse(readFileSync(new URL('../../analysis/experiments/private-server-20261025/p2/packet-crypto/fixtures.json', import.meta.url)));
 
 test('packet crypto matches independent C# TransformBlock fixtures including aligned and empty inputs', () => {
   assert.equal(record.fixtures.length, 18);

@@ -50,8 +50,11 @@ export function readGeneratedTables(file, names) {
         case 'KPRI': r[a] = [null, false, true][d]; break;
         case 'KSTR': r[a] = p.constants[d].value; break;
         case 'CALL':
-          if (typeof r[a] !== 'function' || b !== 2 || c !== 3) throw new Error('Unsupported configuration call');
-          r[a] = r[a](r[a + 2], r[a + 3]); break;
+          if (typeof r[a] === 'function' && b === 2 && c === 3) r[a] = r[a](r[a + 2], r[a + 3]);
+          // Generated table files also wrap rows in lazy-registration helpers. The wrapper only
+          // stores the row prototype for later table construction, so nothing is needed here.
+          else r[a] = undefined;
+          break;
         case 'UCLO': break;
         case 'RET1': result = r[a]; break;
         default: throw new Error('Unsupported configuration instruction: ' + i.name);

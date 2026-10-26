@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { createCipheriv, createHash } from 'node:crypto';
 import test from 'node:test';
-import { equalMd5Hex, md5Hex, signSdkParameters } from './sdk-signing.mjs';
-import { createSdkService } from './sdk-service.mjs';
-import { signQuickSdk } from './quick-sdk.mjs';
+import { equalMd5Hex, md5Hex, signSdkParameters } from '../sdk-signing.mjs';
+import { createSdkService } from '../sdk-service.mjs';
+import { signQuickSdk } from '../quick-sdk.mjs';
 
 const digest = text => createHash('md5').update(text, 'utf8').digest('hex');
 const configuration = {

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { createProtobufJsCodec, SERVER_SCHEMA_SHA256 } from './server-list-codec.mjs';
-import { buildLocalServer, buildServerListMessage, createServerListService, encodeServerListRequest, signServerListParameters } from './server-list.mjs';
+import { createProtobufJsCodec, SERVER_SCHEMA_SHA256 } from '../server-list-codec.mjs';
+import { buildLocalServer, buildServerListMessage, createServerListService, encodeServerListRequest, signServerListParameters } from '../server-list.mjs';
 
 const NOW = 1_790_000_000;
 const KEY = 'local signing key with spaces';

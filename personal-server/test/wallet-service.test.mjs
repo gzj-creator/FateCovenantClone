@@ -6,13 +6,13 @@ import path from 'node:path';
 import {createGameCodec,rawBinary,decodeEtf} from '../protocol/game-codec.mjs';
 import {createGameStore} from '../storage/game-store.mjs';
 import {readGameTables} from '../config/game-tables.mjs';
-import {createWalletService} from './wallet-service.mjs';
-import {createSprintService} from './sprint-service.mjs';
+import {createWalletService} from '../game/wallet-service.mjs';
+import {createSprintService} from '../game/sprint-service.mjs';
 import {createAdminService} from '../admin/server.mjs';
 import {createSdkService} from '../sdk-service.mjs';
 import {signSdkParameters} from '../sdk-signing.mjs';
 const codec=createGameCodec(),tables=readGameTables();
-const capture=JSON.parse(fs.readFileSync(new URL('../../analysis/captures/protocol-2026-10-25-r2a/decoded.local-only.json',import.meta.url)));
+const capture=JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json',import.meta.url)));
 function setup(t){
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'fc-wallet-')),file=path.join(dir,'game.sqlite');
   const seed=()=>({version:1,roleId:100001,serverId:1,createdAt:1700000000,modules:structuredClone(capture.privateFlows.find(x=>x.messageId==='game:tcp-69:s2c:103').decoded[2]),rolePb:codec.pack('to_client_role_info',{level:9,nick_name:Buffer.from('Local Test')}).toString('base64'),guides:{},lineups:null});

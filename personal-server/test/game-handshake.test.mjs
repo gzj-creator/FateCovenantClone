@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { createDecipheriv } from 'node:crypto';
 import fs from 'node:fs';
 import test from 'node:test';
-import { parseServerChallenge } from './game-framing.mjs';
-import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, createServerHandshakeChallenge, localAesBeforeFinal, localAesFinalized } from './game-handshake.mjs';
+import { parseServerChallenge } from '../game-framing.mjs';
+import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, createServerHandshakeChallenge, localAesBeforeFinal, localAesFinalized } from '../game-handshake.mjs';
 
-const fixtures = JSON.parse(fs.readFileSync(new URL('../analysis/reports/private-client-16448/handshake-aes-harness/fixtures.json', import.meta.url), 'utf8'));
+const fixtures = JSON.parse(fs.readFileSync(new URL('../../analysis/reports/private-client-16448/handshake-aes-harness/fixtures.json', import.meta.url), 'utf8'));
 const profile = LOCAL_AES_PROFILE;
 const flags = { encryptC2S: false, encryptS2C: false, signature: false };
 const expectedApplicationVersion = '1.55.090365';

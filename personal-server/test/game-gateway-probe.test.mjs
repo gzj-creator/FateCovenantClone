@@ -6,9 +6,9 @@ import { once } from 'node:events';
 import { setImmediate as nextTick } from 'node:timers/promises';
 import protobuf from 'protobufjs';
 import test from 'node:test';
-import { GameFrameDecoder, encodeGameFrame } from './game-framing.mjs';
-import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE } from './game-handshake.mjs';
-import { createGameGatewayProbe } from './game-gateway-probe.mjs';
+import { GameFrameDecoder, encodeGameFrame } from '../game-framing.mjs';
+import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
+import { createGameGatewayProbe } from '../game-gateway-probe.mjs';
 
 const profile = LOCAL_AES_PROFILE;
 const expectedApplicationVersion = '1.55.090365';
@@ -16,7 +16,7 @@ const flags = { encryptC2S: false, encryptS2C: false, signature: false };
 const config = { profile, expectedApplicationVersion, flags };
 const testRoot = new protobuf.Root();
 for (const name of ['channel_push.db.proto', 'login.net.proto', 'net.net.proto']) {
-  protobuf.parse(fs.readFileSync(new URL('../analysis/reports/private-client-16448/lua-bundles/login-protos/' + name, import.meta.url), 'utf8'), testRoot, { keepCase: true });
+  protobuf.parse(fs.readFileSync(new URL('../../analysis/reports/private-client-16448/lua-bundles/login-protos/' + name, import.meta.url), 'utf8'), testRoot, { keepCase: true });
 }
 testRoot.resolveAll();
 

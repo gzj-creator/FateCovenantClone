@@ -22,7 +22,7 @@ const sdk = createSdkService({ localTestOtp: true, platform: { appId: platformFi
 const key = JSON.parse(fs.readFileSync('analysis/experiments/private-server-20261025/p3/server-key.local-only.json')).key;
 const list = createServerListService({ signingKey: key, server: { id: 1, name: 'Local Server', extranetIp: '127.0.0.1:19090' }, codec: createProtobufJsCodec(), logger });
 const startup = createStartupService({ appVersion: '1.55.090365', assetVersion: 364110, logger });
-const game = createLocalGame({ databasePath: path.join(directory, 'game.local-only.sqlite'), statePath: path.join(directory, 'state.local-only.json'), capturePath: 'analysis/captures/protocol-2026-10-25-r2a/decoded.local-only.json', verifySession: sdk.verifySession, sprintPreview: true, localWallet:true, logger });
+const game = createLocalGame({ databasePath: path.join(directory, 'game.local-only.sqlite'), statePath: path.join(directory, 'state.local-only.json'), capturePath: 'personal-server/fixtures/login-modules.local-only.json', verifySession: sdk.verifySession, sprintPreview: true, localWallet:true, logger });
 sdk.attachWallet(game.wallet);
 const tokenPath=path.join(directory,'admin-key.local-only.txt');
 const admin=createAdminService({wallet:game.wallet,...(fs.existsSync(tokenPath)?{token:fs.readFileSync(tokenPath,'utf8').trim()}:{})});

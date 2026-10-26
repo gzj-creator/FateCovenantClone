@@ -6,7 +6,7 @@
     "node": ">=26"
   },
   "scripts": {
-    "test": "node --test sdk-service.test.mjs server-list.test.mjs game-framing.test.mjs game-gateway-observer.test.mjs game-handshake.test.mjs game-gateway-probe.test.mjs startup-service.test.mjs game-packet-crypto.test.mjs game/hero-progression.test.mjs game/rank-service.test.mjs protocol/game-codec.test.mjs game/wallet-service.test.mjs"
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "protobufjs": "8.8.1"

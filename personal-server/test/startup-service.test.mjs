@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStartupService } from './startup-service.mjs';
+import { createStartupService } from '../startup-service.mjs';
 
 test('startup serves confirmed version schema over loopback and leaves unknown contracts unimplemented', async () => {
   const events = [];

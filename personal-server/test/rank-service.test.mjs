@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { E, createGameCodec } from '../protocol/game-codec.mjs';
-import { createRankService } from './rank-service.mjs';
+import { createRankService } from '../game/rank-service.mjs';
 
 const codec = createGameCodec(), service = createRankService({ codec });
 

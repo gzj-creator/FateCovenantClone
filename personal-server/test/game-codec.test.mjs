@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { E, binary, encodeEtf, decodeEtf } from './game-codec.mjs';
+import { E, binary, encodeEtf, decodeEtf } from '../protocol/game-codec.mjs';
 
 test('ETF preserves current Unix milliseconds and signed numeric boundaries', async () => {
   for (const value of [0, 255, 256, -2147483648, 2147483647, 2147483648, -2147483649, 4294967296, Date.now(), -Date.now(), Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, 0.1, -12.75]) {

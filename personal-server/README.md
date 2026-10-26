@@ -1,5 +1,7 @@
 # 本机客户端兼容组件原型
 
+2026-10-26 更新：新增旅途普通关卡战斗（201/202/203/204/207/213，确定性结算并推进 module 8 主线进度）、配置化随机宝箱开启（151/157/159，仅 `Random_Box`+`DrawTable` 权重且无保底）、活动读取（110308/110303/116004）。选择/付费/重复宝箱、垂钓与助力升超凡的业务命令、魔灵养成/投放均明确拒绝而非伪造。统一测试 102/102 通过；逐项证据与边界见 [修复记录](../agent/workflow/fixes/README.md)。服务与客户端未重启，运行库未写入测试数据。
+
 2026-10-25 23:44最新：[余额与Web管理](../agent/workflow/wallet-admin/implementation.md)已部署，地址http://127.0.0.1:18883/，管理密钥在runtime.local-only.data/admin-key.local-only.txt。后台加余额，普通支持商品从余额扣款并发游戏资源，订单/流水/领取均SQLite持久化。91/91测试通过，管理页桌面/手机实测通过，v8b隔离APK已安装重开。真实游戏充值和冲榜79104领奖待用户验证；[活动记录](../agent/workflow/activity-ranking/implementation.md)。服务五端口保持运行，原有存档逐表无变化。以下未实现榜单/活动为历史，复杂商品和战斗/招募仍有缺口。
 
 2026-10-25 22:14最新：用户已确认“小队能进，升级升星正常”。新增小队208/209/218，修正module9嵌套登录结构并迁移SQLite v2，完整保留养成数据；75/75组件测试通过。真实APK命令与SQLite已核对：英雄升到9级、两个英雄各升3段进度、经验和碎片同步扣除。服务与客户端保持运行。实现/迁移/验收证据见[玩法状态](../agent/workflow/gameplay-state/implementation.md)。后文待验和小队未实现均为旧状态；突破、满6段进星目前仅组件测试，战斗/招募/后续试炼仍待做。
@@ -53,7 +55,7 @@ node .\personal-server\server-list.mjs
 配置服的 `state=0`、`show_state=1`、维护时间为 0，显示/开放时间早于当前时间；角色列表为空，`limit_login=false`。这些是符合静态可见性谓词的本地设计值，不是原服务端事实。未知区服、错误签名、非法字段或未知操作明确报错。日志只记录固定操作名和状态，不记录请求身份、签名或原始 URL。
 
 ```powershell
-node --test .\personal-server\server-list.test.mjs
+node --test .\personal-server\test\server-list.test.mjs
 ```
 
 测试通过真实本机 HTTP 验证列表、首选列表和单服二进制回包，再由 protobufjs 反向解码核对类型、字段与地址，同时覆盖坏签名、非法区服 ID、未知操作、缺失 codec 和关闭行为。所有 listener 在测试结束时关闭。
@@ -69,7 +71,7 @@ node --test .\personal-server\server-list.test.mjs
 在项目根目录执行：
 
 ```powershell
-node --test .\personal-server\sdk-service.test.mjs
+node --test .\personal-server\test\sdk-service.test.mjs
 ```
 
 测试通过真实本机 HTTP 请求验证登录、续登、错误签名、错误密码、未知账号、伪造 token、错误用户、过期、空 banner、未知路由、输入限制和日志脱敏。测试使用端口 `0` 自动分配端口，并在结束时关闭全部 listener；过期测试使用可注入时钟，无需等待。

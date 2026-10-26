@@ -67,4 +67,27 @@
 
 ## 当前状态
 
-本计划刚建立。G1 的 type 201 已在当前运行事件日志中标记 `unsupported_command`，其余四项尚未取得这次错误对应的真实命令证据；钱包已有旧组件/页面验证，但运行账户余额仍为 0、真实游戏购买仍待用户操作。尚未执行任何客户端或服务重启。本轮因 agent 任务派发失败，没有可直接审阅的子任务代码；后续必须按本计划单项推进并在每个节点先测试、审阅、提交。
+阶段 0 基线已核对：handoff SQLite 备份 `integrity_check=ok`，账户余额 0、订单 0、既有活动领取 3 条；实时运行数据未被写入或复制。`npm test --prefix personal-server` 当前 93/93 通过。全部个人服务器测试现统一位于 `personal-server/test/`，登录初始化测试数据已迁移为 `personal-server/fixtures/login-modules.local-only.json`，测试启动命令为 `node --test test/*.test.mjs`。
+
+清理复刻客户端产物尚未完成：引用审计确认私服仍依赖 `analysis/reports/private-client-16448/lua-bundles/` 的协议/配置、两份加密 fixture、`analysis/tools/protocol/node_modules/erlang_js/Erlang.js`；这些不能删除。清理大文件目录的递归命令被执行策略拒绝，因此 APK、IL2CPP 提取物、抓包和隔离 APK 构建副本仍在原处，尚未删除。实时服务、游戏、SQLite、管理员密钥和端口均未触碰，也未发生重启。
+
+G1 的 type 201 已在运行事件日志标记 `unsupported_command`，其余四项尚未取得对应真实请求证据；余额仍为 0、真实游戏购买待用户操作。本轮此前派发的 agent 没有可审阅修复产出；功能工作仍需按本计划逐项推进、测试、审阅。
+
+## 2026-10-26 阶段 1-3 进展（待用户批准后进入阶段 4）
+
+本轮按项目分工完成证据核对与实现，逐项记录在 `agent/workflow/fixes/`（索引见 `agent/workflow/fixes/README.md`）：
+
+| 编号 | 结果 | 验收级别 |
+|---|---|---|
+| W1 | 未发现新缺陷；SDK 金额/商品/角色/区服校验、扣款幂等、订单与流水事务已有测试覆盖 | 组件 + 临时集成；真实购买待用户 |
+| G1 | 新增 `game/mission-fight-service.mjs`：普通主线 201 开始、202 退出、207 结算、203/204/213 战报；确定性胜利并在事务内推进 module 8 `pb_mission.mission_id` | 组件 + 临时 TCP；无动作回放、无奖励 |
+| G2 | 新增 `game/item-box-service.mjs`：仅执行 `Random_Box`+`DrawTable` 权重且无保底的配置化宝箱；选择/付费/重复/指定箱明确拒绝 | 组件 + 临时 TCP |
+| G3 | 新增 110308/110303 空记录读取；垂钓与全部奖励命令明确拒绝 | 组件 + 临时 TCP；活动开启逻辑未实现 |
+| G4 | 新增 116004 助力次数读取；116001-116003 明确拒绝；入口映射仍无真实请求证据 | 组件 + 临时 TCP；入口未验证 |
+| G5 | 未确认失败命令，未实现业务；`unsupported_command` 事件新增 `payloadHead` 便于定位 | 无 |
+
+统一测试 `npm test --prefix personal-server` = **102/102 通过**（新增 `item-box-service`、`mission-fight-service`、`activity-read-service`、`gameplay-gateway` 共 9 项）。真实网关测试使用临时端口 + 从 `p3/wallet-admin-20261025/handoff-game.local-only.sqlite` 复制的临时库；运行服务 PID 与运行库、事件日志未被测试写入。
+
+新增配置依赖：`analysis/reports/private-client-16448/lua-bundles/.../bytecode/DrawTable.data.lua.json`（由 `analysis/tools/dump-lua-file.mjs` 从同一 bundle 的 `DrawTable.data.lua.bin` 生成）。
+
+未触碰：原版 `com.jzyx.my`、ADB reverse/UID 隔离、运行服务与客户端进程；本轮未重启、未点击、未加款。
