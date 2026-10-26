@@ -41,16 +41,19 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
 
   // Journey fight: settle through the real gateway framing and persist the mission module.
   let response = await request(201, 2, codec.pack('pb_fight_request', {
-    fight_tid: 20152, stm_type: 1,
-    req: codec.pack('mission_fight_req', { chapter_tid: 202, section_idx: 6, mission_id: 20206 }),
-    loc: [{ team_id: 1, loc: [{ hero_id: '2020601', loc: 1 }] }]
+    fight_tid: 301, stm_type: 1,
+    req: codec.pack('mission_fight_req', { mission_id: 30201 }),
+    loc: [{ team_id: 1, loc: [{ hero_id: '2020601', loc: 5 }] }]
   }));
   assert.equal(response.seq, 2);
   assert.equal(response.err, undefined);
   const fight = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
   assert.equal(fight.report.finish, true);
-  assert.equal(codec.unpack('mission_to_client', Buffer.from(fight.stm.stm_data, 'base64')).mission.mission_id, '20206');
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '20206');
+  assert.equal(fight.report.battle_list.length, 1);
+  assert.equal(fight.report.battle_list[0].fighter_list.length, 3);
+  assert.equal(fight.report.battle_list[0].action_list.length, 3);
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(fight.stm.stm_data, 'base64')).mission.mission_id, '30201');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
   response = await request(207, 3, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64')).stm.result, 1);
 
@@ -85,11 +88,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
 
   // The real MissionUIMgr encoder omits chapter_tid/section_idx; mission_id alone must settle.
   response = await request(201, 11, codec.pack('pb_fight_request', {
-    fight_tid: 20152, stm_type: 0,
-    req: codec.pack('mission_fight_req', { mission_id: 20207, is_assistant: true })
+    fight_tid: 302, stm_type: 0,
+    req: codec.pack('mission_fight_req', { mission_id: 30202, is_assistant: true })
   }));
   assert.equal(response.err, undefined);
   const missionOnly = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
   assert.equal(missionOnly.report.finish, true);
-  assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '20207');
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30202');
 });

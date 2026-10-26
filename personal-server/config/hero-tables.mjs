@@ -1,10 +1,13 @@
 import fs from 'node:fs';
 
 const defaultPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/HeroTable.data.lua.json', import.meta.url);
+let defaultCache;
 
 // Interpret generated, straight-line table constructors without executing Lua.
 export function readHeroTables(file = defaultPath) {
-  return readGeneratedTables(file, ['Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star', 'DevelopConst']);
+  const names = ['Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star', 'DevelopConst', 'Ability', 'Npc', 'Npc_Ability'];
+  if (file === defaultPath) return defaultCache ??= readGeneratedTables(file, names);
+  return readGeneratedTables(file, names);
 }
 
 export function readGeneratedTables(file, names) {

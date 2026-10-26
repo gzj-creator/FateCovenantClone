@@ -1,13 +1,108 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
+import { missionBattleConfig } from '../config/mission-tables.mjs';
 
 // Ordinary journey (mission) fights.
 // Evidence: FightCmd.fight_start sends pb_fight_request.req = Codec.EncodePB('mission_fight_req');
 // FightMgr handles pb_fight_response.report/stm and MissionUIMgr.AttackResult decodes stm.stm_data
-// as 'mission_to_client'. The original server battle engine produced report action bytes, so this
-// local service settles deterministically instead of replaying moves.
+// as 'mission_to_client'. The local service derives the configured enemy team and emits the
+// smallest evidenced round/battle action stream that the client can replay before settlement.
 const MISSION_MODULE = 8;
 const RESULT_WIN = 1;
+const ACTION_BATTLE_OVER = 104;
+const ACTION_ROUND_READY = 107;
+const ACTION_ROUND_OVER = 112;
+
+function action(codec, proto, schema, value) {
+  return codec.pack('pb_generic', { proto, bin: codec.pack(schema, value) });
+}
+
+function unitConfig(tables, role, roleType) {
+  const hero = tables.heroes.Hero.get(Number(role));
+  if (!hero) throw new GameError(5, 'Mission fighter configuration missing');
+  const ability = roleType === 1 ? tables.heroes.Ability.get(Number(role)) : tables.heroes.Npc_Ability.get(Number(role));
+  return { hero, abilities: ability?.ability ?? [] };
+}
+
+function requestedMembers(model, request) {
+  const wireTeam = (request.loc ?? []).find(team => (team.loc ?? []).length > 0);
+  if (wireTeam) {
+    return {
+      teamIndex: 0,
+      members: wireTeam.loc.map(entry => ({ heroId: String(entry.hero_id), loc: Number(entry.loc) }))
+    };
+  }
+  const lineup = model.playLineups.find(value => value.type === 1)?.team_list?.[0];
+  if (!lineup) throw new GameError(5, 'Journey lineup is missing');
+  return {
+    teamIndex: 0,
+    members: (lineup.fighter_list ?? []).map(entry => ({ heroId: String(entry.hero_id), loc: Number(entry.loc) }))
+  };
+}
+
+function reportBattle(codec, model, mission, request) {
+  const config = missionBattleConfig(mission.missionId);
+  if (!config) throw new GameError(5, 'Mission enemy configuration missing');
+  const selected = requestedMembers(model, request);
+  if (!selected.members.length || selected.members.length > 6) throw new GameError(5, 'Journey lineup size is invalid');
+  if (selected.members.some(entry => !Number.isSafeInteger(entry.loc) || entry.loc < 1 || entry.loc > 7)) {
+    throw new GameError(5, 'Journey lineup location is invalid');
+  }
+  const seenLocations = new Set();
+  const attackers = selected.members.map((entry, index) => {
+    if (seenLocations.has(entry.loc)) throw new GameError(5, 'Journey lineup location is duplicated');
+    seenLocations.add(entry.loc);
+    const hero = model.heroInfo.hero_list.find(value => String(value.uid) === entry.heroId);
+    if (!hero) throw new GameError(5, 'Journey lineup hero is missing');
+    const role = Number(hero.tid), cfg = unitConfig(config.tables, role, 1);
+    const level = Number(hero.level ?? 1), quality = Number(hero.quality ?? cfg.hero.quality ?? 1);
+    const maxHp = 1000 + level * 100 + quality * 10;
+    return {
+      id: 101 + index, tid: role, role_type: 1, uid: String(hero.uid), role,
+      team: 1, team_index: selected.teamIndex, loc: entry.loc,
+      star: Number(hero.star ?? 0), level, quality, hp: maxHp, max_hp: maxHp,
+      enable: true, final_hp: maxHp, style: Number(cfg.hero.style ?? role),
+      ability_list: cfg.abilities.slice(0, 8).map(Number)
+    };
+  });
+  const attackerLevel = Math.max(...attackers.map(unit => unit.level));
+  const defenders = config.enemies.map((role, index) => {
+    const cfg = unitConfig(config.tables, role, 2);
+    const level = Math.max(1, attackerLevel), quality = Number(cfg.hero.quality ?? 1);
+    const maxHp = 1000 + level * 100 + quality * 10;
+    return {
+      id: 201 + index, tid: role, role_type: 2, uid: '0', role,
+      team: 2, team_index: 0, loc: index + 1,
+      star: Number(cfg.hero.star ?? 0), level, quality, hp: maxHp, max_hp: maxHp,
+      enable: true, final_hp: 0, style: Number(cfg.hero.style ?? role),
+      ability_list: cfg.abilities.slice(0, 8).map(Number)
+    };
+  });
+  const fighters = [...attackers, ...defenders];
+  const brief = (team, members) => ({ team_list: [{
+    team_index: team,
+    fighter_list: members.map(unit => ({ tid: unit.role, is_mutant: false }))
+  }] });
+  const actionList = [
+    action(codec, ACTION_ROUND_READY, 'pb_fat_round_ready', { round: 1 }),
+    action(codec, ACTION_ROUND_OVER, 'pb_fat_round_over', { round: 1 }),
+    action(codec, ACTION_BATTLE_OVER, 'pb_fat_battle_over', { why: RESULT_WIN })
+  ];
+  return {
+    atk_team_index: selected.teamIndex,
+    def_team_index: 0,
+    fighter_list: fighters,
+    action_list: actionList,
+    over_reason: RESULT_WIN,
+    over_round: 1,
+    result: RESULT_WIN,
+    is_add_battle: false,
+    atk_power: String(attackers.reduce((sum, unit) => sum + unit.max_hp, 0)),
+    def_power: String(defenders.reduce((sum, unit) => sum + unit.max_hp, 0)),
+    atk_brief_lineup: brief(selected.teamIndex, attackers),
+    def_brief_lineup: brief(0, defenders)
+  };
+}
 
 export function createMissionFightService({ store, codec, logger = () => {}, playbackEnabled = false }) {
   const log = event => { try { logger(event); } catch {} };
@@ -30,8 +125,9 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
     return { chapter, section, missionId, bossTid: Number(request.boss_tid ?? 0), isAssistant: Boolean(request.is_assistant) };
   }
 
-  function settle(mission) {
+  function settle(mission, request) {
     return store.transaction(model => {
+      const battle = reportBattle(codec, model, mission, request);
       const modules = new Map(model.state.modules.value);
       const module = modules.get(MISSION_MODULE);
       if (!module || !Array.isArray(module.value)) throw new Error('Mission login module missing');
@@ -50,7 +146,8 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
         is_boss: mission.bossTid > 0,
         boss_tid: mission.bossTid
       };
-      return { value, data: codec.pack('mission_to_client', value), previousMissionId: previous };
+      const stm = { result: RESULT_WIN, stm_data: codec.pack('mission_to_client', value), exception: false };
+      return { value, battle, stm, previousMissionId: previous };
     });
   }
 
@@ -62,24 +159,25 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
     if (!playbackEnabled) throw new GameError(5, 'Mission fight playback is not implemented yet');
     const mission = missionRequest(request.req);
     if (!mission) throw new GameError(5, 'Only ordinary mission fights are implemented');
-    const settled = settle(mission);
+    const settled = settle(mission, request);
+    const fightTid = Number(request.fight_tid ?? 0) || Number(missionBattleConfig(mission.missionId)?.mission.fight ?? 0);
     const report = {
       id: String(++fightIds),
-      tid: String(request.fight_tid ?? 0),
+      tid: String(fightTid),
       type: 0,
       atk_role_id: String(store.read().state.roleId),
       def_role_id: '0',
-      battle_list: [],
+      battle_list: [settled.battle],
       time: String(Math.floor(Date.now() / 1000)),
       final_result: RESULT_WIN,
       finish: true,
       req: request.req,
       team_count: 101
     };
-    const stm = { result: RESULT_WIN, stm_data: settled.data, exception: false };
+    const stm = settled.stm;
     pending = { stm, report, mission };
     lastReport = report;
-    log({ event: 'mission_fight_settled', missionId: mission.missionId, previousMissionId: settled.previousMissionId, settleType: request.stm_type, isAssistant: mission.isAssistant, bossTid: mission.bossTid });
+    log({ event: 'mission_fight_settled', missionId: mission.missionId, fightTid, previousMissionId: settled.previousMissionId, settleType: request.stm_type, isAssistant: mission.isAssistant, bossTid: mission.bossTid, attackerCount: settled.battle.atk_brief_lineup.team_list[0].fighter_list.length, defenderCount: settled.battle.def_brief_lineup.team_list[0].fighter_list.length, actionCount: settled.battle.action_list.length });
     return { value: { stm, mission: settled.value }, data: codec.pack('pb_fight_response', { report, rsp: {}, stm }) };
   }
 

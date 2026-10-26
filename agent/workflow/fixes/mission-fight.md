@@ -1,6 +1,6 @@
 # G1 旅途（主线关卡）战斗服务器错误
 
-状态：组件测试 + 临时 TCP 集成通过；**APK 实测与视觉验收未完成**。
+状态：最小配置化战斗回放已实现，组件测试 + 临时 TCP 集成通过；**APK 实测与视觉验收未完成**。
 
 ## 证据（真实请求）
 
@@ -55,3 +55,14 @@ node --test personal-server/test/gameplay-gateway.test.mjs
 - 原服战报实测结构（capture-workflow/battle-and-lineup.md）：`battle_list=1`、攻方简要阵容3人、整场 fighter_list 11 个实体、`action_list` 71-74 条；动作项格式为 `pb_generic{proto=<动作枚举>, bin=<pb_fat_* 消息>}`（FightParseCtxMgr proto9 的 `Codec.DecodePB('pb_generic')` → `ProtobufKey` → `Codec.DecodePB(name, bin)`）。
 - 结论：本机服务没有战斗引擎与动作流生成器，无法用空战报或伪造动作满足客户端；已加 `playbackEnabled` 开关，默认关闭时 201 返回业务错误5（“配置出错了”提示），不再进入卡死场景。
 - 后续实现条件：需生成至少包含攻守双方 `fighter_list`、`atk/def_brief_lineup` 与 `pb_generic` 动作序列（round_ready/harm/battle_over 等）的最小战报，或找到客户端支持的同步结算开关；在此之前该关卡不可玩，状态为未验收。
+
+## 2026-10-26 22:05 最小可播放战报
+
+- `MissionTable.Section` 按请求 `mission_id` 提供真实敌人列表：`30201` 的 `fight=301`、`enemy=[9002100,9002600]`；敌人表为空的主线节点（如 `20205`）继续以业务错误 5 拒绝，不伪造 BOSS。
+- 攻方优先取自 201 请求的 `loc`，缺省时取服务端当前旅程编队（`playLineups type=1`）。英雄、NPC、技能配置从现有 Lua 表适配器读取；英雄等级、星级、品质及技能 ID 使用 SQLite 中当前存档，不写回或扣资源。
+- 战报包含一项 `battle_list`、攻守双方 `fighter_list` 与 brief lineup。敌方最终 HP 为 0，攻方保留 HP；不伪造伤害、奖励或技能结算。
+- `action_list` 使用客户端 `FightParseCtxMgr` 已确认的 `pb_generic` 容器，按顺序编码 `107 pb_fat_round_ready{round=1}`、`112 pb_fat_round_over{round=1}`、`104 pb_fat_battle_over{why=1}`。这三个动作分别产生 `RoundReadyStep`、回合结束步骤和 `FightOverStep`，使 `_PlayBattle` 创建 `unscaledStepScheduler` 并完成回放。
+- `30201` 的测试战报为 4 名攻方、2 名守方、3 个动作；三个内部消息与 `pb_generic` 外层均通过 codec 正反向解码。缺失敌方配置时事务不推进 module 8。
+- 新增 `config/mission-tables.mjs`，扩展 `config/hero-tables.mjs` 读取 `Ability`、`Npc`、`Npc_Ability`。配置源为同版本候选 bundle 生成的 `MissionTable.data.lua.json`；该生成证据仍按项目约定留在 `analysis/`，不提交。
+- `missionFightPlayback:true` 已在本地运行入口开启。定向 `mission-fight-service.test.mjs` 5/5、`gameplay-gateway.test.mjs` 1/1，全套 **104/104** 通过。
+- 当前验收级别仍为组件 + 临时 TCP；下一步必须在隔离 APK 由用户自行点击主线战斗，确认角色出现、动作步骤结束、胜利结算及 207 回执，之后才能记为 APK/可玩验收。
