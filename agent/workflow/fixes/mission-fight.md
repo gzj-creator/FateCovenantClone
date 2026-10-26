@@ -46,3 +46,12 @@ node --test personal-server/test/gameplay-gateway.test.mjs
 - 修复：`mission_id > 0` 即按普通关卡处理，`chapter_tid`/`section_idx` 允许缺省（负数或非整数仍拒绝）；BOSS+小助手组合继续拒绝；结算日志新增 `isAssistant`/`bossTid`。
 - 测试：`mission-fight-service.test.mjs` 新增“real MissionUIMgr encoder only sends mission_id”用例（含 `is_assistant=true` 接受、BOSS+助手拒绝）；`gameplay-gateway.test.mjs` 新增真实 TCP 的 mission_id-only 201 结算。全套 **103/103**。
 - 边界不变：确定性即时结算，无动作回放、无关卡奖励/任务推进；本条仍需用户重启后 APK 复测与视觉确认。
+
+## 2026-10-26 09:02 APK 实测：进入战斗卡住（回放缺口确认）
+
+- 现象：201 已被接受并结算（日志 `mission_fight_settled missionId=30201 previousMissionId=20205`），客户端进入 FightScene 后无角色、画面卡住。
+- 客户端日志：`input\FightSceneFightState.lua.txt:192: attempt to index field 'unscaledStepScheduler' (a nil value)` 每帧重复；该字段由 `_PlayBattle` 在处理战报后创建，空 `battle_list` 时根本不会执行到那里。
+- `FightMgr` 响应处理（proto12, lines201-235）：只有 `stmType == FightTable.STM_TYPE_SYNC` 才走 `FightSettlementMgr.ImmediateSettlement`；普通主线由 MissionUIMgr 设为 `PLAY_TYPE.NORMAL`，必然进入 `FightScene.StaticOpenToFight` 播放战报。`stm.exception` 分支会直接 `StaticOutFightScene` 退出，不产生结算界面。
+- 原服战报实测结构（capture-workflow/battle-and-lineup.md）：`battle_list=1`、攻方简要阵容3人、整场 fighter_list 11 个实体、`action_list` 71-74 条；动作项格式为 `pb_generic{proto=<动作枚举>, bin=<pb_fat_* 消息>}`（FightParseCtxMgr proto9 的 `Codec.DecodePB('pb_generic')` → `ProtobufKey` → `Codec.DecodePB(name, bin)`）。
+- 结论：本机服务没有战斗引擎与动作流生成器，无法用空战报或伪造动作满足客户端；已加 `playbackEnabled` 开关，默认关闭时 201 返回业务错误5（“配置出错了”提示），不再进入卡死场景。
+- 后续实现条件：需生成至少包含攻守双方 `fighter_list`、`atk/def_brief_lineup` 与 `pb_generic` 动作序列（round_ready/harm/battle_over 等）的最小战报，或找到客户端支持的同步结算开关；在此之前该关卡不可玩，状态为未验收。

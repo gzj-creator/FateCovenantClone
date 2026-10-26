@@ -9,7 +9,7 @@ import { GameError } from './hero-progression.mjs';
 const MISSION_MODULE = 8;
 const RESULT_WIN = 1;
 
-export function createMissionFightService({ store, codec, logger = () => {} }) {
+export function createMissionFightService({ store, codec, logger = () => {}, playbackEnabled = false }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, fightIds = 0;
 
@@ -56,6 +56,10 @@ export function createMissionFightService({ store, codec, logger = () => {} }) {
 
   function start(bytes) {
     const request = codec.unpack('pb_fight_request', bytes);
+    // The client always opens FightScene for ordinary missions (MissionUIMgr sets PLAY_TYPE.NORMAL),
+    // then plays report.battle_list[].action_list (pb_generic -> pb_fat_*). Without a real action
+    // stream the scene stalls on a nil FightStepScheduler, so refuse until report playback exists.
+    if (!playbackEnabled) throw new GameError(5, 'Mission fight playback is not implemented yet');
     const mission = missionRequest(request.req);
     if (!mission) throw new GameError(5, 'Only ordinary mission fights are implemented');
     const settled = settle(mission);

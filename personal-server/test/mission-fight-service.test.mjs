@@ -18,7 +18,8 @@ function setup(t) {
   let store = createGameStore({ databasePath: file, codec });
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
-    get store() { return store; }, service: createMissionFightService({ store, codec }),
+    get store() { return store; }, service: createMissionFightService({ store, codec, playbackEnabled: true }),
+    playbackDisabled: () => createMissionFightService({ store, codec }),
     reopen() { store.close(); store = createGameStore({ databasePath: file, codec }); }
   };
 }
@@ -90,4 +91,16 @@ test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)
   const result = env.service.execute(201, wire({ is_assistant: true }));
   assert.equal(codec.unpack('pb_fight_response', result.data).report.finish, true);
   assert.equal(missionModule(env.store).mission_id, String(next));
+});
+
+test('mission fight playback stays disabled until a real action stream exists', t => {
+  const env = setup(t);
+  const before = env.store.state();
+  const next = Number(missionModule(env.store).mission_id) + 1;
+  const wire = codec.pack('pb_fight_request', {
+    fight_tid: 20152, stm_type: 0,
+    req: codec.pack('mission_fight_req', { mission_id: next })
+  });
+  assert.throws(() => env.playbackDisabled().execute(201, wire), error => error.code === 5);
+  assert.deepEqual(env.store.state(), before);
 });

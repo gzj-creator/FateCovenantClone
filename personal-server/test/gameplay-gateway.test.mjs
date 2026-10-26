@@ -19,7 +19,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-gameplay-'));
   const databasePath = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, databasePath);
-  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
+  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, missionFightPlayback: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const address = await game.listen(0);

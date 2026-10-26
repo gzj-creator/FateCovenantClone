@@ -19,7 +19,7 @@ import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../ga
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
-export function createLocalGame({ databasePath, statePath, capturePath, verifySession, sprintPreview = false, localWallet = false, logger = () => {} }) {
+export function createLocalGame({ databasePath, statePath, capturePath, verifySession, sprintPreview = false, localWallet = false, missionFightPlayback = false, logger = () => {} }) {
   const codec = createGameCodec(), { root, pack, unpack } = codec;
   function seed() {
     const capture = JSON.parse(fs.readFileSync(capturePath));
@@ -66,7 +66,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     let phase = 'verify', challenge, chain = Promise.resolve();
     const push=(type,data)=>{if(!socket.destroyed)socket.write(encodeGameFrame(pack('pb_s2c',{type,data})));};
     const log = event => logger({ connection: id, ...event });
-    const fight = createMissionFightService({ store, codec, logger: log });
+    const fight = createMissionFightService({ store, codec, logger: log, playbackEnabled: missionFightPlayback });
     socket.setNoDelay(true); socket.setTimeout(180000);
     socket.on('timeout', () => socket.destroy());
     socket.on('error', error => log({ event: 'socket_error', code: error.code }));
