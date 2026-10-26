@@ -1,5 +1,7 @@
 # 本机客户端兼容组件原型
 
+2026-10-26 部署后复修：用户实测“点击摆脱追兵显示配置出错了”“进入大厅显示服务器错误”。证据确认客户端 `Err.CONFIG_ERROR=5`（即该文案），且 `MissionUIMgr` 普通关卡只编码 `mission_fight_req{mission_id,is_assistant}`，`chapter_tid/section_idx` 不上线；201 校验已改为 `mission_id>0` 即普通关卡。大厅 1202 `req_shops_info` 按请求 shop id 返回空商品组，53002 活动阶段同步与 53001 一致返回空变更，消除进入大厅的未实现错误。统一测试 **103/103** 通过；证据、边界与未验收状态见[修复记录](../agent/workflow/fixes/mission-fight.md)与[hall-entry](../agent/workflow/fixes/hall-entry.md)。商店购买、真实活动阶段推进仍未实现。
+
 2026-10-26 更新：新增旅途普通关卡战斗（201/202/203/204/207/213，确定性结算并推进 module 8 主线进度）、配置化随机宝箱开启（151/157/159，仅 `Random_Box`+`DrawTable` 权重且无保底）、活动读取（110308/110303/116004）。选择/付费/重复宝箱、垂钓与助力升超凡的业务命令、魔灵养成/投放均明确拒绝而非伪造。统一测试 102/102 通过；逐项证据与边界见 [修复记录](../agent/workflow/fixes/README.md)。服务与客户端未重启，运行库未写入测试数据。
 
 2026-10-25 23:44最新：[余额与Web管理](../agent/workflow/wallet-admin/implementation.md)已部署，地址http://127.0.0.1:18883/，管理密钥在runtime.local-only.data/admin-key.local-only.txt。后台加余额，普通支持商品从余额扣款并发游戏资源，订单/流水/领取均SQLite持久化。91/91测试通过，管理页桌面/手机实测通过，v8b隔离APK已安装重开。真实游戏充值和冲榜79104领奖待用户验证；[活动记录](../agent/workflow/activity-ranking/implementation.md)。服务五端口保持运行，原有存档逐表无变化。以下未实现榜单/活动为历史，复杂商品和战斗/招募仍有缺口。

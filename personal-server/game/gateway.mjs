@@ -122,7 +122,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'fight_rejected', type, seq, code, message: error.message });
+          log({ event: 'fight_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
         }
         return;
       }
@@ -196,9 +196,28 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         const responseType = root.lookupType('pb_req_save_process_back');
         send(seq, pack(responseType.name, { process_list: requestData.req_list })); return;
       }
+      if (type === 1202) {
+        // Hall entry asks for shop ids. Answer the requested ids with empty local groups; local shop
+        // purchases stay unimplemented instead of inventing goods or prices.
+        let shopIds = [];
+        try {
+          const decoded = await decodeEtf(request.data);
+          const value = decoded?.value ?? decoded;
+          if (Array.isArray(value)) shopIds = value.filter(id => Number.isSafeInteger(id) && id > 0).slice(0, 32);
+        } catch {}
+        const shops = shopIds.map(id => ({ id, version: 0, items_groups: [] }));
+        send(seq, pack('pb_query_shops_back', { shops }));
+        log({ event: 'shop_info_sent', type, seq, shopCount: shops.length }); return;
+      }
       const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]], [10507, ['pb_msg_range_list_with_role_info', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
-      if ([53001, 102801, 10503].includes(type)) { send(seq); return; }
+      if ([53001, 53002, 102801, 10503].includes(type)) {
+        // Activity state/stage sync (53001/53002) uses an empty change_list meaning no server-side
+        // stage transition for this local account; real stage advancement stays unimplemented.
+        send(seq);
+        if (type === 53001 || type === 53002) log({ event: 'activity_stage_sync_acknowledged', type, seq });
+        return;
+      }
       log({ event: 'unsupported_command', type, seq, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
       send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'LOCAL_NOT_IMPLEMENTED:' + type });
     }

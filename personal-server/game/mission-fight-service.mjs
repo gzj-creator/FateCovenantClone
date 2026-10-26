@@ -20,9 +20,14 @@ export function createMissionFightService({ store, codec, logger = () => {} }) {
     try { request = codec.unpack('mission_fight_req', bytes); } catch { return null; }
     const chapter = Number(request.chapter_tid ?? 0), section = Number(request.section_idx ?? 0), missionId = Number(request.mission_id ?? 0);
     if (!Number.isSafeInteger(chapter) || !Number.isSafeInteger(section) || !Number.isSafeInteger(missionId)) return null;
-    if (!(chapter > 0) || !(section > 0) || !(missionId > 0)) return null;
+    if (chapter < 0 || section < 0) return null;
+    // Evidence: MissionUIMgr's ordinary section attack encodes
+    // EncodePB('mission_fight_req', { mission_id = ..., is_assistant = AutoFightMgr.IsAutoState() })
+    // (LuaJIT constants of MissionUIMgr proto 99). chapter_tid/section_idx stay at their
+    // protobuf defaults and never reach the wire, so mission_id is the only required field.
+    if (!(missionId > 0)) return null;
     if (Number(request.boss_tid ?? 0) > 0 && request.is_assistant) return null;
-    return { chapter, section, missionId, bossTid: Number(request.boss_tid ?? 0) };
+    return { chapter, section, missionId, bossTid: Number(request.boss_tid ?? 0), isAssistant: Boolean(request.is_assistant) };
   }
 
   function settle(mission) {
@@ -70,7 +75,7 @@ export function createMissionFightService({ store, codec, logger = () => {} }) {
     const stm = { result: RESULT_WIN, stm_data: settled.data, exception: false };
     pending = { stm, report, mission };
     lastReport = report;
-    log({ event: 'mission_fight_settled', missionId: mission.missionId, previousMissionId: settled.previousMissionId, settleType: request.stm_type });
+    log({ event: 'mission_fight_settled', missionId: mission.missionId, previousMissionId: settled.previousMissionId, settleType: request.stm_type, isAssistant: mission.isAssistant, bossTid: mission.bossTid });
     return { value: { stm, mission: settled.value }, data: codec.pack('pb_fight_response', { report, rsp: {}, stm }) };
   }
 

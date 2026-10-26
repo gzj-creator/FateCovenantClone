@@ -35,3 +35,14 @@ node --test personal-server/test/gameplay-gateway.test.mjs
 ```
 
 测试使用从 `p3/wallet-admin-20261025/handoff-game.local-only.sqlite` 复制出的临时库与临时端口，验证：结算一次生效、207 重放同一 `stm`、进度不回退、重启后仍持久、非主线请求不改状态、编码失败回滚。
+
+## 2026-10-26 08:46 部署后反馈复修
+
+- 实测：用户进入大厅后点击主线“摆脱追兵”（第 3 章第 5 关），客户端显示“配置出错了”。
+- 证据：`events.jsonl` 2026-10-26T00:46:09.885Z `fight_rejected type=201 seq=22 code=5`，`message="Only ordinary mission fights are implemented"`，请求体 45 字节。
+- 文案来源：`assets__Android__script__lua__64_lua_core` 的 `Err.lua.bin` 规范化错误表给出 `CONFIG_ERROR=5`、`SERVER_ERR=2`、`RESERVE_SERVER_BUSY=-1`，因此 code 5 即客户端“配置出错了”。
+- 请求形状证据：`MissionUIMgr.lua.bin`（lua_project，proto 99 常量池）普通关卡攻击路径为 `FightDefCustomObj.SetRequest(Codec.EncodePB('mission_fight_req', { mission_id = ..., is_assistant = AutoFightMgr.IsAutoState() }))`，`chapter_tid`/`section_idx` 不上线，保持 protobuf 默认 0。
+- 根因：旧校验要求 `chapter_tid > 0` 且 `section_idx > 0`，与真实客户端编码不一致，所有普通关卡请求都被判成“非普通主线”。
+- 修复：`mission_id > 0` 即按普通关卡处理，`chapter_tid`/`section_idx` 允许缺省（负数或非整数仍拒绝）；BOSS+小助手组合继续拒绝；结算日志新增 `isAssistant`/`bossTid`。
+- 测试：`mission-fight-service.test.mjs` 新增“real MissionUIMgr encoder only sends mission_id”用例（含 `is_assistant=true` 接受、BOSS+助手拒绝）；`gameplay-gateway.test.mjs` 新增真实 TCP 的 mission_id-only 201 结算。全套 **103/103**。
+- 边界不变：确定性即时结算，无动作回放、无关卡奖励/任务推进；本条仍需用户重启后 APK 复测与视觉确认。

@@ -77,3 +77,17 @@ test('non-mission fights are refused without touching saved state', t => {
   assert.throws(() => env.service.execute(207, Buffer.alloc(0)), error => error.code === 1);
   assert.deepEqual(env.store.state(), before);
 });
+
+test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)', t => {
+  const env = setup(t);
+  const next = Number(missionModule(env.store).mission_id) + 1;
+  // Wire shape produced by MissionUIMgr: chapter_tid/section_idx stay at protobuf defaults.
+  const wire = (extra = {}) => codec.pack('pb_fight_request', {
+    fight_tid: 20152, stm_type: 0,
+    req: codec.pack('mission_fight_req', { mission_id: next, ...extra })
+  });
+  assert.throws(() => env.service.execute(201, wire({ is_assistant: true, boss_tid: 5 })), error => error.code === 5);
+  const result = env.service.execute(201, wire({ is_assistant: true }));
+  assert.equal(codec.unpack('pb_fight_response', result.data).report.finish, true);
+  assert.equal(missionModule(env.store).mission_id, String(next));
+});

@@ -91,3 +91,14 @@ G1 的 type 201 已在运行事件日志标记 `unsupported_command`，其余四
 新增配置依赖：`analysis/reports/private-client-16448/lua-bundles/.../bytecode/DrawTable.data.lua.json`（由 `analysis/tools/dump-lua-file.mjs` 从同一 bundle 的 `DrawTable.data.lua.bin` 生成）。
 
 未触碰：原版 `com.jzyx.my`、ADB reverse/UID 隔离、运行服务与客户端进程；本轮未重启、未点击、未加款。
+
+## 2026-10-26 部署后复修（大厅错误与主线战斗“配置出错”）
+
+用户实测两处失败：进入大厅弹“服务器错误”，点击主线“摆脱追兵”弹“配置出错了”。
+
+| 问题 | 证据 | 处理 |
+|---|---|---|
+| 主线 201 被拒（code 5） | `Err.lua.bin` 错误表 `CONFIG_ERROR=5`；`MissionUIMgr` proto 99 常量池显示普通关卡只编码 `mission_fight_req{mission_id,is_assistant}`，`chapter_tid/section_idx` 保持默认 0 | 201 改为 `mission_id>0` 即普通关卡；`is_assistant` 作为自动战斗标记放行，BOSS+助手仍拒绝；拒绝日志新增 `payloadHead` |
+| 大厅 1202/53002 未实现（err -1） | 事件日志 ETF 解码：1202 请求 `[207,206,201,203,204,218]`（商店 id），53002 请求 `[1004012]`（活动 id），均紧邻登录序列 | 1202 按请求 id 返回空商品组 `pb_query_shops_back`；53002 与 53001 一致返回空 `change_list` |
+
+统一测试 `npm test --prefix personal-server` = **103/103 通过**。新增用例覆盖“mission_id-only 的真实客户端编码”“1202 按 id 回包”“53002 空回执”。商店购买（1201/1203/16005）与真实活动阶段推进仍未实现并明确返回错误。两处修复仍需用户重启后 APK 复测与视觉确认，未记为已验收。

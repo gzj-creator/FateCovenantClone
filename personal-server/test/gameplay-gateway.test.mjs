@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf, rawBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -71,4 +71,25 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(Number(codec.unpack('pb_help_up_get_times_rsp', Buffer.from(response.data ?? '', 'base64')).times ?? 0), 0);
   response = await request(116001, 8, codec.pack('pb_help_up_task_reward_req', { act_id: 92144, task_id_list: [1] }));
   assert.equal(response.err.err, 5);
+
+  // Hall entry asks for shop ids: answer the requested ids with empty local groups.
+  response = await request(1202, 9, await encodeEtf([207, 206]));
+  assert.equal(response.err, undefined);
+  const shops = codec.unpack('pb_query_shops_back', Buffer.from(response.data ?? '', 'base64')).shops;
+  assert.deepEqual(shops.map(shop => shop.id), [207, 206]);
+  assert.deepEqual(shops.map(shop => shop.items_groups.length), [0, 0]);
+
+  // Activity stage sync is acknowledged with the empty change list instead of an error.
+  response = await request(53002, 10, await encodeEtf([1004012]));
+  assert.equal(response.err, undefined);
+
+  // The real MissionUIMgr encoder omits chapter_tid/section_idx; mission_id alone must settle.
+  response = await request(201, 11, codec.pack('pb_fight_request', {
+    fight_tid: 20152, stm_type: 0,
+    req: codec.pack('mission_fight_req', { mission_id: 20207, is_assistant: true })
+  }));
+  assert.equal(response.err, undefined);
+  const missionOnly = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
+  assert.equal(missionOnly.report.finish, true);
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '20207');
 });
