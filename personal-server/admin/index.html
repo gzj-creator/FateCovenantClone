@@ -1,13 +1,103 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>命运圣契 · 本机管理</title><link rel="stylesheet" href="/admin.css"><script src="/admin.js" defer></script></head>
-<body><header><div class="brand"><span class="mark">F</span><strong>命运圣契</strong><span class="divider"></span><span>本机管理</span></div><div class="connection"><span class="dot"></span><span id="connection">正在连接</span><button id="refresh" class="icon" title="刷新" aria-label="刷新">↻</button></div></header>
-<main><div class="page-title"><div><p class="eyebrow">SERVER OPERATIONS</p><h1>账户与余额</h1></div><span class="env">LOCAL SERVER</span></div>
-<form id="auth" hidden><label>管理密钥<input id="key" type="password" autocomplete="off" required></label><button type="submit">连接</button></form>
-<div class="metrics"><div><span>账户余额</span><strong id="balance">¥ 0.00</strong></div><div><span>累计加款</span><strong id="credited">¥ 0.00</strong></div><div><span>已完成订单</span><strong id="order-count">0</strong></div></div>
-<nav><button id="wallet-tab" class="tab active">账户管理</button><button id="orders-tab" class="tab">充值订单</button><button id="ledger-tab" class="tab">余额流水</button></nav>
-<section id="wallet-view"><div class="section-title"><h2>当前账户</h2><span class="muted">人民币 · CNY</span></div><div class="account-row"><div class="avatar" aria-hidden="true">L</div><div><strong id="nickname">Local Adventurer</strong><p id="account-meta">local-1 · 19900000000</p></div><span class="pill">可用</span></div>
-<div class="forms"><form id="credit-form"><h2>增加账户余额</h2><label>账户<select id="credit-account"></select></label><label>加款金额（元）<input id="amount" type="number" inputmode="decimal" min="0.01" max="1000000" step="0.01" value="100.00" required></label><div class="presets"><button type="button" data-amount="100">¥100</button><button type="button" data-amount="500">¥500</button><button type="button" data-amount="1000">¥1,000</button></div><label>备注<input id="note" maxlength="200" placeholder="测试加款"></label><button type="submit" class="primary">增加余额</button></form>
-<form id="purchase-form"><h2>余额购买</h2><label>商品<select id="product"></select></label><div class="product-detail"><span>商品价格</span><strong id="price">¥ 0.00</strong><span>到账资源</span><p id="rewards">—</p></div><button type="submit" class="secondary">使用余额购买</button></form></div></section>
-<section id="orders-view" hidden><div class="section-title"><h2>充值订单</h2><span class="muted">最近 100 笔</span></div><div class="table-scroll"><table><thead><tr><th>时间</th><th>订单</th><th>商品</th><th>金额</th><th>状态</th></tr></thead><tbody id="orders"></tbody></table></div></section>
-<section id="ledger-view" hidden><div class="section-title"><h2>余额流水</h2><span class="muted">最近 100 笔</span></div><div class="table-scroll"><table><thead><tr><th>时间</th><th>类型</th><th>变动</th><th>余额</th><th>备注</th></tr></thead><tbody id="ledger"></tbody></table></div></section>
-<p id="status" role="status" aria-live="polite"></p><footer>Fate Covenant · Personal Server</footer></main></body></html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>命运圣契 · 本机管理</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="mark">F</span><strong>命运圣契</strong><span class="divider"></span><span>本机管理</span></div>
+    <div class="connection"><span class="dot"></span><span id="connection">正在连接</span><button id="refresh" class="icon" title="刷新" aria-label="刷新">↻</button></div>
+  </header>
+  <main>
+    <div class="page-title"><div><p class="eyebrow">SERVER OPERATIONS</p><h1>账户与代金券</h1></div><span class="env">LOCAL SERVER</span></div>
+    <form id="auth" hidden><label>管理密钥<input id="key" type="password" autocomplete="off" required></label><button type="submit">连接</button></form>
+
+    <div class="metrics">
+      <div><span>账户余额</span><strong id="balance">¥ 0.00</strong><small id="account-short">—</small></div>
+      <div><span>可用代金券</span><strong id="voucher-available">¥ 0.00</strong><small id="voucher-count">0 张</small></div>
+      <div><span>待领取</span><strong id="voucher-pending">¥ 0.00</strong><small id="voucher-pending-count">0 封邮件</small></div>
+      <div><span>累计加款</span><strong id="credited">¥ 0.00</strong><small id="order-count">0 笔订单</small></div>
+    </div>
+
+    <nav aria-label="管理页面">
+      <button id="wallet-tab" class="tab active" type="button">账户管理</button>
+      <button id="vouchers-tab" class="tab" type="button">代金券</button>
+      <button id="orders-tab" class="tab" type="button">充值订单</button>
+      <button id="ledger-tab" class="tab" type="button">余额流水</button>
+    </nav>
+
+    <section id="wallet-view">
+      <div class="section-title"><h2>当前账户</h2><span class="muted">人民币 · CNY</span></div>
+      <div class="account-row"><div class="avatar" aria-hidden="true">L</div><div><strong id="nickname">Local Adventurer</strong><p id="account-meta">local-1 · 19900000000</p></div><span class="pill">可用</span></div>
+      <div class="forms">
+        <form id="credit-form">
+          <h2>增加账户余额</h2>
+          <label>账户<select id="credit-account"></select></label>
+          <label>加款金额（元）<input id="amount" type="number" inputmode="decimal" min="0.01" max="1000000" step="0.01" value="100.00" required></label>
+          <div class="presets"><button type="button" data-amount="100">¥100</button><button type="button" data-amount="500">¥500</button><button type="button" data-amount="1000">¥1,000</button></div>
+          <label>备注<input id="note" maxlength="200" placeholder="测试加款"></label>
+          <button type="submit" class="primary">增加余额</button>
+        </form>
+        <form id="purchase-form">
+          <h2>余额购买</h2>
+          <label>商品<select id="product"></select></label>
+          <div class="product-detail">
+            <span>商品价格</span><strong id="price">¥ 0.00</strong>
+            <span>到账资源</span><p id="rewards">—</p>
+            <span>代金券余额</span><p id="purchase-voucher-balance">0 张</p>
+            <label class="deduction-label" for="voucher-deduction">代金券抵扣（元）</label>
+            <div class="deduction-row"><input id="voucher-deduction" type="number" inputmode="decimal" min="0" step="0.01" value="0.00"><button id="use-max-voucher" type="button">最大</button></div>
+            <span>余额需支付</span><strong id="balance-pay">¥ 0.00</strong>
+          </div>
+          <p id="purchase-quote" class="quote">本次不使用代金券</p>
+          <button type="submit" class="secondary" id="purchase-submit">使用余额购买</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="vouchers-view" hidden>
+      <div class="section-title"><h2>代金券发放</h2><span class="muted">1 张 = ¥0.01 · 通过游戏邮件发放</span></div>
+      <div class="voucher-layout">
+        <form id="voucher-form" class="voucher-form">
+          <h2>发送到游戏邮件</h2>
+          <label>账户<select id="voucher-account"></select></label>
+          <div class="form-row">
+            <label>发放面额（元）<input id="voucher-amount" type="number" inputmode="decimal" min="0.01" max="1000000" step="0.01" value="1.00" required></label>
+            <label>有效天数<input id="voucher-days" type="number" inputmode="numeric" min="0" max="3650" step="1" value="30" required></label>
+          </div>
+          <label>邮件标题<input id="voucher-title" maxlength="80" placeholder="代金券到账"></label>
+          <label>备注（邮件正文）<textarea id="voucher-content" maxlength="1000" rows="3" placeholder="例如：活动补偿"></textarea></label>
+          <div class="issue-preview"><span>发放数量</span><strong id="voucher-preview">100 张</strong></div>
+          <button type="submit" class="primary">发送代金券邮件</button>
+        </form>
+        <aside class="voucher-note">
+          <p class="eyebrow">PAYMENT NOTE</p>
+          <h2>领取与抵扣</h2>
+          <p>管理端只创建邮件和发放记录，代金券不会直接进入背包。</p>
+          <p>玩家登录游戏后，在邮件中领取，代金券作为道具进入背包；付款时由客户端按面值抵扣。</p>
+          <p>原生客户端按 <code>价格 ÷ score_token_rate</code> 计算张数，因此本机按 1 张 = 1 分钱记账。</p>
+        </aside>
+      </div>
+      <div class="section-title table-title"><h2>发放记录</h2><span class="muted">最近 100 条</span></div>
+      <div class="table-scroll"><table><thead><tr><th>时间</th><th>邮件</th><th>面额</th><th>状态</th><th>领取时间</th><th>备注</th></tr></thead><tbody id="vouchers"></tbody></table></div>
+    </section>
+
+    <section id="orders-view" hidden>
+      <div class="section-title"><h2>充值订单</h2><span class="muted">最近 100 笔</span></div>
+      <div class="table-scroll"><table><thead><tr><th>时间</th><th>订单</th><th>商品</th><th>原价</th><th>代金券</th><th>余额支付</th><th>状态</th></tr></thead><tbody id="orders"></tbody></table></div>
+    </section>
+
+    <section id="ledger-view" hidden>
+      <div class="section-title"><h2>余额流水</h2><span class="muted">最近 100 笔</span></div>
+      <div class="table-scroll"><table><thead><tr><th>时间</th><th>类型</th><th>变动</th><th>余额</th><th>备注</th></tr></thead><tbody id="ledger"></tbody></table></div>
+    </section>
+
+    <p id="status" role="status" aria-live="polite"></p>
+    <footer>Fate Covenant · Personal Server</footer>
+  </main>
+</body>
+</html>

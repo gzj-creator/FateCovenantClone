@@ -1,5 +1,7 @@
 # 本机客户端兼容组件原型
 
+2026-10-28 更新：新增代金券机制（分支 `feature/voucher-mail`）。管理端可通过游戏邮件发放代金券，玩家在游戏内领取后道具 `701500` 进入背包；原生 `16004 req_recharge_by_token` 按 `price / score_token_rate` 自动计算张数并抵扣，管理端 `/api/purchase` 支持按金额部分抵扣。SQLite schema v3 新增 `voucher_skus`、`game_mails`、`voucher_grants`、`voucher_redemptions`；组件测试 **112/112** 通过。真实 APK 的邮件领取与 16004 支付尚未验收。方案、协议证据、接口与限制见[代金券邮件与抵扣实现](../agent/workflow/voucher-mail/implementation.md)。
+
 2026-10-26 部署后复修：用户实测“点击摆脱追兵显示配置出错了”“进入大厅显示服务器错误”。证据确认客户端 `Err.CONFIG_ERROR=5`（即该文案），且 `MissionUIMgr` 普通关卡只编码 `mission_fight_req{mission_id,is_assistant}`，`chapter_tid/section_idx` 不上线；201 校验已改为 `mission_id>0` 即普通关卡。大厅 1202 `req_shops_info` 按请求 shop id 返回空商品组，53002 活动阶段同步与 53001 一致返回空变更，消除进入大厅的未实现错误。统一测试 **103/103** 通过；证据、边界与未验收状态见[修复记录](../agent/workflow/fixes/mission-fight.md)与[hall-entry](../agent/workflow/fixes/hall-entry.md)。商店购买、真实活动阶段推进仍未实现。
 
 2026-10-26 更新：新增旅途普通关卡战斗（201/202/203/204/207/213，确定性结算并推进 module 8 主线进度）、配置化随机宝箱开启（151/157/159，仅 `Random_Box`+`DrawTable` 权重且无保底）、活动读取（110308/110303/116004）。选择/付费/重复宝箱、垂钓与助力升超凡的业务命令、魔灵养成/投放均明确拒绝而非伪造。统一测试 102/102 通过；逐项证据与边界见 [修复记录](../agent/workflow/fixes/README.md)。服务与客户端未重启，运行库未写入测试数据。
