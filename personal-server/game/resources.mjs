@@ -11,7 +11,10 @@ export function grantResources(model, awards, tables) {
     let item = model.resources.get(id);
     if (!item) {
       const type = tables.Type.get(tables.Item.get(Number(id)).type)?.res_type;
-      if (![2, 1000, 1500, 1800, 1900, 3300].includes(type)) throw new GameError(5, 'Reward resource requires its own gameplay handler');
+      // 1200 is the inventory item-box/shard family (for example 7-day-login
+      // hero-shard boxes). It is a normal stackable inventory entry, not a
+      // currency that needs a separate server-side wallet.
+      if (![2, 1000, 1200, 1500, 1800, 1900, 3300].includes(type)) throw new GameError(5, 'Reward resource requires its own gameplay handler');
       let location;
       if (type === 1500) {
         const occupied = [...model.resources.values()].filter(x => x.location[0] === 5).map(x => x.location[2]);

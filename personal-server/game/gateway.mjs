@@ -11,6 +11,7 @@ import { createFeatureService } from './feature-service.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from './wallet-service.mjs';
+import { createWelfareService } from './welfare-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
@@ -45,6 +46,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger}):undefined;
+  const welfare=createWelfareService({store,codec,tables,wallet,logger});
   const sprint=createSprintService({store,codec,tables});
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,logger});
@@ -218,6 +220,18 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'activity_read_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (welfare.supports(type)) {
+        try {
+          const result = await welfare.execute(type, request.data, { connection: id, seq });
+          send(seq, result.data);
+          log({ event: 'welfare_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'welfare_rejected', type, seq, code, message: error.message });
         }
         return;
       }

@@ -172,6 +172,47 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     }
     const { notification, ...publicResult } = result; return publicResult;
   }
+  // RechargeTable type 46 is the in-game gift family. Its rewards are ordinary inventory items
+  // (not only diamonds), and its limit is counted from local orders instead of a recharge SDK
+  // notification. Free gifts (pay_type 2, price 0) use the same order table so their one-time
+  // limit survives restarts.
+  function purchaseGift({ account_id = accountId, product_id, request_id, buy_num = 1 }) {
+    if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id) || buy_num !== 1) throw new GameError(1, 'Invalid local gift purchase');
+    const product = tables.Recharge.get(product_id);
+    if (!product || product.type !== 46) throw new GameError(5, 'This gift needs an additional gameplay handler');
+    const free = product.pay_type === 2;
+    if (free ? product.price !== 0 : !(product.pay_type === 0 && Number.isSafeInteger(product.price) && product.price > 0)) throw new GameError(5, 'Unsupported gift price');
+    if (!Array.isArray(product.reward_tid) || !product.reward_tid.length || !Array.isArray(product.reward_count) || product.reward_tid.length !== product.reward_count.length) throw new GameError(5, 'Gift has no configured rewards');
+    const result = store.transaction((model, db) => {
+      const old = db.prepare('SELECT * FROM recharge_orders WHERE account_id=? AND request_id=?').get(account_id, request_id);
+      if (old) {
+        if (old.product_id !== product_id) throw new GameError(1, 'Purchase request ID already used');
+        return { ...JSON.parse(old.payload_json), duplicate: true };
+      }
+      const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
+      if (!free && balance < product.price) throw new GameError(301, 'Account balance is insufficient');
+      if (product.can_buy_times > 0 && db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id, product_id).n >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
+      const order = 'local-' + randomUUID(), now = Math.floor(Date.now() / 1000);
+      db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)').run(order, account_id, request_id, product_id, product.price, '{}', new Date().toISOString());
+      const res = grantResources(model, product.reward_tid.map((tid, i) => [tid, product.reward_count[i]]), tables);
+      const modules = new Map(model.state.modules.value);
+      const login = modules.has(19) ? codec.unpack('res_recharge_login', rawBinary(modules.get(19))) : {};
+      const giftRecord = login.buy_gift_record ? codec.unpack('pb_buy_gift_record_list', Buffer.from(login.buy_gift_record, 'base64')) : { record_list: [] };
+      giftRecord.record_list.push({ recharge_tid: product_id, buy_time: now });
+      if (giftRecord.record_list.length > 200) giftRecord.record_list = giftRecord.record_list.slice(-200);
+      login.buy_gift_record = codec.pack('pb_buy_gift_record_list', giftRecord).toString('base64');
+      modules.set(19, serializedBinary(codec.pack('res_recharge_login', login)));
+      model.state.modules.value = [...modules];
+      const balanceAfter = free ? balance : balance - product.price;
+      if (!free) db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter, account_id);
+      const value = { order_id: order, product_id, price_cents: product.price, balance_cents: balanceAfter, time: now, res };
+      db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(value), order);
+      db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order, account_id, 'gift_purchase', -product.price, balanceAfter, new Date().toISOString(), JSON.stringify({ product_id, order_id: order }));
+      return { ...value, duplicate: false };
+    });
+    if (!result.duplicate) log({ event: 'wallet_gift_purchase_committed', productId: product_id, orderId: result.order_id, free });
+    return result;
+  }
   function acknowledge(order) {
     if (typeof order !== 'string' || order.length > 120) throw new GameError(1,'Invalid order acknowledgement');
     store.transaction((model,db) => {
@@ -183,5 +224,5 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       db.prepare('UPDATE recharge_orders SET acknowledged=1 WHERE order_id=?').run(order);
     });
   }
-  return { snapshot, credit, buy, acknowledge, accountId };
+  return { snapshot, credit, buy, purchaseGift, acknowledge, accountId };
 }

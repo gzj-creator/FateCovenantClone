@@ -13,6 +13,12 @@ export function readGameTables() {
     // binds a product to the activity version that owns its pay_list entry.
     ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle']), { Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle' }),
     ...pick(readGeneratedTables(new URL('ActFrameTable.data.lua.json', base), ['Act', 'ActType']), { Act: 'ActFrameAct', ActType: 'ActFrameType' }),
+    // Welfare activities expose their configuration through these generated tables.
+    Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,
+    ...readGeneratedTables(new URL('MultiLoginTable.data.lua.json', base), ['Const', 'MultiLogin']),
+    ...readGeneratedTables(new URL('PrincessTable.data.lua.json', base), ['EnergyAward', 'Gift', 'LoginAward', 'HolidayAward']),
+    // Daily-discount rotation maps its short row ids (1..6) to real RechargeTable ids.
+    ...pick(readGeneratedTables(new URL('DailyDiscountTable.data.lua.json', base), ['Recharge', 'Select', 'DailyGiftAward']), { Recharge: 'DailyDiscountRecharge', Select: 'DailyDiscountSelect', DailyGiftAward: 'DailyDiscountAward' }),
     TaskType: readGeneratedTables(new URL('TaskTable.data.lua.json', base), ['Type']).Type
   };
 }

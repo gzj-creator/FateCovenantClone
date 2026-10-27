@@ -10,7 +10,11 @@ const reads = new Map([
   // FishingActCmd.req_fishing_act_get_fish_top: per-fish high score list.
   [110303, ['pb_fishing_act_get_top_rsp', { high_score_list: [] }]],
   // HelpUpActCmd.req_help_up_get_times: current help-up attempt count.
-  [116004, ['pb_help_up_get_times_rsp', { times: 0 }]]
+  [116004, ['pb_help_up_get_times_rsp', { times: 0 }]],
+  // HundredDrawActCmd.req_hundred_draw_act_marquee: opening the welfare
+  // activity asks for marquee records. An empty record set is valid before
+  // the local account has drawn.
+  [117005, ['pb_hundred_draw_act_marquee_rsp', { data: {} }]]
 ]);
 
 const refused = new Map([
