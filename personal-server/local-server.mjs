@@ -25,7 +25,7 @@ const startup = createStartupService({ appVersion: '1.55.090365', assetVersion: 
 const game = createLocalGame({ databasePath: path.join(directory, 'game.local-only.sqlite'), statePath: path.join(directory, 'state.local-only.json'), capturePath: 'personal-server/fixtures/login-modules.local-only.json', verifySession: sdk.verifySession, sprintPreview: true, localWallet:true, missionFightPlayback:true, logger });
 sdk.attachWallet(game.wallet);
 const tokenPath=path.join(directory,'admin-key.local-only.txt');
-const admin=createAdminService({wallet:game.wallet,...(fs.existsSync(tokenPath)?{token:fs.readFileSync(tokenPath,'utf8').trim()}:{})});
+const admin=createAdminService({wallet:game.wallet,mail:game.mail,voucher:game.voucher,...(fs.existsSync(tokenPath)?{token:fs.readFileSync(tokenPath,'utf8').trim()}:{})});
 if(!fs.existsSync(tokenPath))fs.writeFileSync(tokenPath,admin.token,{mode:0o600});
 fs.writeFileSync(path.join(directory,'admin-url.local-only.txt'),'http://127.0.0.1:18883/#key='+admin.token);
 const services = [admin,sdk, list, startup, game];

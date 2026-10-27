@@ -7,7 +7,7 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('ItemTable.data.lua.json', base), ['Item', 'Type', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box']),
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
     ...pick(readGeneratedTables(new URL('DrawTable.data.lua.json', base), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
-    ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), ['Recharge'])).map(([k,v]) => [k,v])),
+    ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), ['Recharge', 'Param'])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
     ...readGeneratedTables(new URL('OpenServerSprintTable.data.lua.json', base), ['SprintRankTask', 'SprintType']),
     TaskType: readGeneratedTables(new URL('TaskTable.data.lua.json', base), ['Type']).Type
   };

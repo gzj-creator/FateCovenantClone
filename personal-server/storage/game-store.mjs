@@ -63,8 +63,8 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
-  const version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 2) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  let version = db.prepare('PRAGMA user_version').get().user_version;
+  if (version > 3) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -79,6 +79,12 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
     CREATE TABLE IF NOT EXISTS wallet_ledger (entry_id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES local_wallets(account_id), kind TEXT NOT NULL, delta_cents INTEGER NOT NULL, balance_cents INTEGER NOT NULL, created_at TEXT NOT NULL, details_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS recharge_orders (order_id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES local_wallets(account_id), request_id TEXT NOT NULL, product_id INTEGER NOT NULL, price_cents INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged INTEGER NOT NULL DEFAULT 0, UNIQUE(account_id,request_id));
     CREATE TABLE IF NOT EXISTS activity_claims (role_id INTEGER NOT NULL REFERENCES roles(role_id), act_id INTEGER NOT NULL, task_id INTEGER NOT NULL, period TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(role_id,act_id,task_id,period));
+    CREATE TABLE IF NOT EXISTS voucher_skus (sku_id TEXT PRIMARY KEY, item_tid INTEGER NOT NULL UNIQUE, face_value_cents INTEGER NOT NULL CHECK(face_value_cents>0), title TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS game_mails (mail_id INTEGER PRIMARY KEY AUTOINCREMENT, role_id INTEGER NOT NULL REFERENCES roles(role_id), request_id TEXT NOT NULL, tid INTEGER NOT NULL DEFAULT 0, send_name TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, send_time INTEGER NOT NULL, expire_at INTEGER NOT NULL DEFAULT 0, read INTEGER NOT NULL DEFAULT 0, received INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0, award_json TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(role_id,request_id));
+    CREATE TABLE IF NOT EXISTS voucher_grants (grant_id TEXT PRIMARY KEY, mail_id INTEGER NOT NULL UNIQUE REFERENCES game_mails(mail_id), role_id INTEGER NOT NULL REFERENCES roles(role_id), sku_id TEXT NOT NULL REFERENCES voucher_skus(sku_id), item_tid INTEGER NOT NULL, face_value_cents INTEGER NOT NULL CHECK(face_value_cents>0), quantity INTEGER NOT NULL CHECK(quantity>0), claimed_at TEXT, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS voucher_redemptions (order_id TEXT PRIMARY KEY REFERENCES recharge_orders(order_id), role_id INTEGER NOT NULL REFERENCES roles(role_id), sku_id TEXT NOT NULL REFERENCES voucher_skus(sku_id), item_tid INTEGER NOT NULL, quantity INTEGER NOT NULL CHECK(quantity>0), amount_cents INTEGER NOT NULL CHECK(amount_cents>0), created_at TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS game_mails_role_idx ON game_mails(role_id,deleted,send_time);
+    CREATE INDEX IF NOT EXISTS voucher_grants_role_idx ON voucher_grants(role_id,claimed_at);
   `);
   const writeModel = model => {
     const { state, role, heroInfo, resources, lineups, playLineups } = model;
@@ -128,6 +134,14 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
         }
         db.prepare('INSERT INTO migrations VALUES (?,?,?)').run('lineup-envelope-v2', 'preserved-login-module-9', new Date().toISOString());
         db.exec('PRAGMA user_version=2; COMMIT');
+        version = 2;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 3) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('voucher-mail-v3', 'add-mail-and-voucher-ledger', new Date().toISOString());
+        db.exec('PRAGMA user_version=3; COMMIT');
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

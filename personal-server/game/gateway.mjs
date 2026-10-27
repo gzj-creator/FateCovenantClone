@@ -15,6 +15,8 @@ import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
+import { createVoucherService } from './voucher-service.mjs';
+import { createMailService } from './mail-service.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -40,7 +42,9 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const features = createFeatureService({ store, codec, sprintPreview });
   const tables=readGameTables(), subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
-  const wallet=localWallet?createWalletService({store,codec,tables,publish,logger}):undefined;
+  const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
+  const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
+  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger}):undefined;
   const sprint=createSprintService({store,codec,tables});
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,logger});
@@ -55,7 +59,19 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
+    if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
     return encodeEtf([1, [Date.now(), 28800, 1], new E.OtpErlangList([...modules], false), false]);
+  }
+  async function mailArgument(data) {
+    const decoded = await decodeEtf(data);
+    const value = decoded?.value ?? decoded;
+    if (Array.isArray(value)) {
+      if (value.length === 1 && (typeof value[0] === 'number' || typeof value[0] === 'string')) return value[0];
+      return value.map(item => typeof item === 'object' && item !== null ? item.mailid ?? item.mail_id ?? item.id : item);
+    }
+    if (typeof value === 'number' || typeof value === 'string') return value;
+    if (value && typeof value === 'object') return value.mailid ?? value.mail_id ?? value.id;
+    throw new GameError(1, 'Invalid mail command payload');
   }
   const sockets = new Set();
   const server = net.createServer(socket => {
@@ -96,6 +112,30 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         send(seq, await loginPayload()); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
+      if (mail && mail.supports(type)) {
+        try {
+          let result;
+          if (type === 3000 || type === 3001 || type === 3002) {
+            let ids = [];
+            if (request.data?.length) {
+              const value = await mailArgument(request.data);
+              ids = Array.isArray(value) ? value : value === undefined ? [] : [value];
+            }
+            result = type === 3000 ? mail.deleteOneKey(ids) : type === 3001 ? mail.readOneKey(ids) : mail.claimOneKey(ids);
+          } else {
+            const mailId = await mailArgument(request.data);
+            result = type === 3003 ? mail.read(mailId) : type === 3004 ? mail.claim(mailId) : type === 3005 ? mail.delete(mailId) : mail.detail(mailId);
+          }
+          if (Buffer.isBuffer(result)) send(seq, result);
+          else send(seq, result?.data ?? Buffer.alloc(0));
+          log({ event: 'mail_command_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'mail_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (itemBox.supports(type)) {
         try {
           let entries;
@@ -143,6 +183,24 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           else{const claim=unpack('pb_sprint_rank_task_receive_req',request.data);log({event:'sprint_claim_requested',actId:claim.act_id,taskIds:claim.task_tid_list});const result=await sprint.execute(claim);send(seq,result.data);}
           log({event:type===16003?'recharge_acknowledged':'sprint_reward_committed',type,seq});
         }catch(error){const code=error instanceof GameError?error.code:2;send(seq,Buffer.alloc(0),{err:code});log({event:'gameplay_rejected',type,seq,code,message:error.message});}
+        return;
+      }
+      if (wallet && type === 16004) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const value = decoded?.value ?? decoded;
+          const args = Array.isArray(value) ? value : [value];
+          if (args.length < 3) throw new GameError(1, 'Invalid voucher recharge payload');
+          const productId = Number(args[0]);
+          const itemTid = Number(args[2]);
+          const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_item_tid: itemTid });
+          send(seq);
+          log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message });
+        }
         return;
       }
       if (features.supports(type)) {
@@ -229,7 +287,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet,
+    root, loginPayload, store, wallet, mail, voucher,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
