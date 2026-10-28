@@ -150,3 +150,29 @@ test('voucher payment of an ordinary product still counts the full product price
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
   assert.deepEqual(extraParams.value, [600]);
 });
+
+test('voucher payment of a month-card product grants mixed rewards and counts full price as cumulative recharge', async t => {
+  const e = setup(t);
+  const issued = e.mail.issueVoucher(voucherRequest({ amount_cents: 10000 }));
+  e.mail.claim(issued.mail_id);
+  assert.ok(e.wallet.snapshot().products.some(product => product.id === 140001));
+  const before = rechargeTotal(e.store);
+
+  const result = e.wallet.buy({ product_id: 140001, request_id: 'month-card-voucher', voucher_item_tid: 701500 });
+  assert.equal(result.voucher_quantity, 3000);
+  assert.equal(result.voucher_amount_cents, 3000);
+  assert.equal(result.balance_paid_cents, 0);
+  assert.equal(e.voucher.balance().quantity, 7000);
+  assert.equal(rechargeTotal(e.store), before + 3000);
+  assert.equal(e.store.read().resources.get('101500').num, '1000');
+  assert.equal(e.store.read().resources.get('2002').num, '10');
+
+  const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
+  assert.equal(Number(push.recharge_id), 140001);
+  assert.equal(push.get_token, true);
+  assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-3000');
+  assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 101500)?.diff_num, '1000');
+  assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 2002)?.diff_num, '10');
+  const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
+  assert.deepEqual(extraParams.value, [3000]);
+});
