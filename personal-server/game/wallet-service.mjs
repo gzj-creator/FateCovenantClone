@@ -28,8 +28,8 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
   // Direct-purchase rows can mix currency with ordinary inventory items (for
   // example a month card grants diamonds plus its activation item). Only rows
   // whose rewards can be granted by resources.mjs are eligible here.
-  const resourceProduct = row => [1,43,47,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => tables.Item.has(tid) && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0);
-  const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && row.sync_handle === 0 && (row.type === 130 ? permits.supports(row) : resourceProduct(row));
+  const resourceProduct = row => [1,43,46,47,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => tables.Item.has(tid) && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0);
+  const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && (row.sync_handle ?? 0) === 0 && (row.type === 130 ? permits.supports(row) : resourceProduct(row));
   const products = [...tables.Recharge.values()].filter(supported);
   function snapshot() {
     return store.inspect(db => ({
@@ -89,7 +89,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       }
       const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
       if (balance < quote.balance_cents) throw new GameError(301, 'Account balance is insufficient');
-      if (product.can_buy_times > 0 && product.buy_cycle_limit !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
+      if (product.can_buy_times > 0 && (product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
       if (product.can_buy_times > 0 && db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id,product_id).n >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
       const order = 'local-' + randomUUID(), now = Math.floor(Date.now()/1000);
       db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)').run(order,account_id,request_id,product_id,product.price,'{}',new Date().toISOString());
