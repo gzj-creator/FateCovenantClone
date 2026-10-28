@@ -24,7 +24,47 @@ function etfIntList(values) {
 export function createWalletService({ store, codec, tables, voucher, monthPermit, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
-  store.transaction((model, db) => db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(accountId, model.state.roleId));
+  const GIFT_BUY_RECORD_HANDLE = 73;
+  const buyGiftRecords = login => {
+    const bytes = login.buy_gift_record ? Buffer.from(login.buy_gift_record, 'base64') : Buffer.alloc(0);
+    return bytes.length ? codec.unpack('pb_buy_gift_record_list', bytes).record_list ?? [] : [];
+  };
+  const setBuyGiftRecords = (login, records) => {
+    login.buy_gift_record = records.length ? codec.pack('pb_buy_gift_record_list', { record_list: records }) : Buffer.alloc(0);
+  };
+  const addBuyGiftRecord = (login, rechargeTid, buyTime) => {
+    const records = buyGiftRecords(login);
+    records.push({ recharge_tid: rechargeTid, buy_time: buyTime });
+    setBuyGiftRecords(login, records);
+  };
+  store.transaction((model, db) => {
+    db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(accountId, model.state.roleId);
+    // Rebuild the client's gift purchase history from orders so purchase limits
+    // remain visible after a server restart or a fresh client login.
+    const rows = db.prepare('SELECT product_id,created_at FROM recharge_orders ORDER BY rowid').all();
+    const loginRaw = new Map(model.state.modules.value).get(19);
+    if (!rows.length || !loginRaw) return;
+    const login = codec.unpack('res_recharge_login', rawBinary(loginRaw));
+    const records = buyGiftRecords(login);
+    const seen = new Set(records.map(record => String(record.recharge_tid) + ':' + String(record.buy_time)));
+    let changed = false;
+    for (const row of rows) {
+      const product = tables.Recharge.get(row.product_id);
+      if (!product || !(product.can_buy_times > 0)) continue;
+      const parsed = Math.floor(Date.parse(row.created_at) / 1000);
+      const buyTime = Number.isSafeInteger(parsed) ? parsed : Math.floor(Date.now() / 1000);
+      const key = String(row.product_id) + ':' + String(buyTime);
+      if (seen.has(key)) continue;
+      records.push({ recharge_tid: row.product_id, buy_time: buyTime });
+      seen.add(key); changed = true;
+    }
+    if (changed) {
+      setBuyGiftRecords(login, records);
+      const modules = new Map(model.state.modules.value);
+      modules.set(19, serializedBinary(codec.pack('res_recharge_login', login)));
+      model.state.modules.value = [...modules];
+    }
+  });
   // Direct-purchase rows can mix currency with ordinary inventory items (for
   // example a month card grants diamonds plus its activation item). Only rows
   // whose rewards can be granted by resources.mjs are eligible here.
@@ -108,7 +148,11 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       if (!daily) { daily = { day_index: day, recharge_ids: [], amount: 0 }; login.recharge_record.recent_record.push(daily); login.recharge_record.total_day = (login.recharge_record.total_day ?? 0) + 1; }
       daily.recharge_ids.push(product_id); daily.amount = (daily.amount ?? 0) + product.price;
       if (!login.max_record || daily.amount >= (login.max_record.amount ?? 0)) login.max_record = structuredClone(daily);
-      const value = { recharge_id: product_id, time: now, order, get_token: quote.quantity > 0, extra_params: quote.quantity > 0 ? etfIntList([product.price]) : Buffer.alloc(0), package_is_full: false, res, extra_ret_list: permit?.extraRetList ?? [], is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
+      const giftRecord = product.can_buy_times > 0 ? codec.pack('pb_buy_gift_record', { recharge_tid: product_id, buy_time: now }) : null;
+      if (giftRecord) addBuyGiftRecord(login, product_id, now);
+      const extraRetList = [...(permit?.extraRetList ?? [])];
+      if (giftRecord) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord });
+      const value = { recharge_id: product_id, time: now, order, get_token: quote.quantity > 0, extra_params: quote.quantity > 0 ? etfIntList([product.price]) : Buffer.alloc(0), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
       login.tmp_recharge_record.tmp_record_list.push({ recharge_id: product_id, recharge_time: now, order_no: order });
