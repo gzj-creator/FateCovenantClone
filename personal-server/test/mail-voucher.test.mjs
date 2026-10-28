@@ -81,6 +81,7 @@ test('voucher mail issue is idempotent and appears in login module 93', t => {
   assert.equal(login.mail_list.length, 1);
   const brief = login.mail_list[0];
   assert.equal(Number(brief.id), issued.mail_id);
+  assert.equal(Number(brief.tid), 11400);
   assert.equal(brief.title, '活动补偿');
   assert.ok(!brief.read);
   assert.ok(!brief.received);

@@ -2,6 +2,10 @@ import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 
 const MAIL_COMMANDS = new Set([3000, 3001, 3002, 3003, 3004, 3005, 3006]);
+// MailTable.data row 11400 is the first ordinary (type=1) system mail. tid=0 is
+// not a valid config and makes the native client throw at Mail.lua:173, which
+// drops the whole module 93 mail list (observed 2026-10-28).
+const MAIL_CONFIG_TID = 11400;
 const fail = (code, message) => { throw new GameError(code, message); };
 const integer = (value, min, max, message) => {
   if (!Number.isSafeInteger(value) || value < min || value > max) fail(1, message);
@@ -96,7 +100,7 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
       }
       const sendTime = now();
       const row = db.prepare('INSERT INTO game_mails(role_id,request_id,tid,send_name,title,content,send_time,expire_at,read,received,deleted,award_json,created_at) VALUES (?,?,?,?,?,?,?,?,0,0,0,?,?)')
-        .run(roleId, request_id, 0, send_name, title, content, sendTime, expireAt, JSON.stringify(normalizedAwards), new Date().toISOString());
+        .run(roleId, request_id, MAIL_CONFIG_TID, send_name, title, content, sendTime, expireAt, JSON.stringify(normalizedAwards), new Date().toISOString());
       const mailId = Number(row.lastInsertRowid);
       if (voucherGrant) voucher.recordGrant({ db, mailId, roleId, quantity: voucherGrant.quantity });
       return { mail_id: mailId, duplicate: false, quantity: voucherGrant?.quantity ?? 0, amount_cents: (voucherGrant?.quantity ?? 0) * (voucherGrant?.face_value_cents ?? 0) };
