@@ -267,6 +267,24 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         send(seq, pack('pb_query_shops_back', { shops }));
         log({ event: 'shop_info_sent', type, seq, shopCount: shops.length }); return;
       }
+      if (type === 85901) {
+        try {
+          const actives = unpack('pb_recommend_gift_active_req', request.data).actives ?? [];
+          // buy_times drives the client's remaining-purchase badge. Mirror the
+          // same recharge_orders count that wallet purchase limits enforce.
+          const buyCounts = store.inspect(db => new Map(db.prepare('SELECT product_id, count(*) AS n FROM recharge_orders GROUP BY product_id').all().map(row => [Number(row.product_id), Number(row.n)])));
+          const gift_list = actives.map(active => ({
+            act_tid: active.act_tid,
+            buy_list: (active.gift_id ?? []).map(rechargeTid => ({ recharge_tid: rechargeTid, buy_times: buyCounts.get(Number(rechargeTid)) ?? 0 }))
+          }));
+          send(seq, pack('pb_recommend_gift_active_rsp', { gift_list }));
+          log({ event: 'recommend_gift_active_sent', type, seq, giftCount: gift_list.length, buyCount: gift_list.reduce((sum, gift) => sum + gift.buy_list.length, 0), boughtCount: gift_list.reduce((sum, gift) => sum + gift.buy_list.filter(buy => buy.buy_times > 0).length, 0) });
+        } catch (error) {
+          send(seq, Buffer.alloc(0), { err: 1 });
+          log({ event: 'recommend_gift_active_rejected', type, seq, message: error.message });
+        }
+        return;
+      }
       const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]], [10507, ['pb_msg_range_list_with_role_info', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
       if ([108, 53001, 53002, 102801, 10503].includes(type)) {
