@@ -208,5 +208,7 @@ test('voucher payment of a type-46 diamond recharge grants rewards and counts fu
   const recordList = codec.unpack('pb_buy_gift_record_list', Buffer.from(loginAfterPurchase.buy_gift_record, 'base64')).record_list;
   assert.deepEqual(recordList.map(record => Number(record.recharge_tid)), [40008]);
   e.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'type46-limit-fund' });
-  assert.throws(() => e.wallet.buy({ product_id: 40008, request_id: 'type46-second' }), error => error.code === 307);
+  const additional = e.wallet.buy({ product_id: 40008, request_id: 'type46-second', voucher_item_tid: 701500 });
+  assert.equal(additional.daily_discount_additional, true);
+  assert.equal(e.voucher.balance().quantity, 4000);
 });

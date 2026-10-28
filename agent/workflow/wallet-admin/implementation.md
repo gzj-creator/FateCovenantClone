@@ -42,3 +42,18 @@ isolated-local-v8b/com.jzyx.ps.signed.apk基于原APK独立修改副本，复用
 - 等用户实际加款、游戏内购买、1900到账/16003确认及重登结果。
 - 目前单账户；复杂商品须分别实现对应玩法和额外奖励。
 - 管理页面为本机测试运维入口，不涉及真实支付网关。
+
+## 2026-10-28 购买后报错与限购状态修复
+
+- 根因1：购买成功后客户端必发 `type=108 req_remove_operate_display`，旧网关按未知命令回 `errCode -1 LOCAL_NOT_IMPLEMENTED:108`，客户端因此弹“服务器错误”和错误的日志id。现 108 作为 UI-only 空成功应答并记录 `operate_display_removed`（commit `2bb3217`）。
+- 根因2：限购状态依赖 `res_recharge_login.buy_gift_record`（模块19）与 85901 `pb_recommend_gift_active_rsp.buy_times`，此前两者为空/恒为0，所以买完仍可点击。现购买成功写 flag 73 + 模块19，服务启动时按 `recharge_orders` 回填；85901 按 `recharge_orders` 统计返回 `buy_times`（commits `5bf9643`、`d526f39`）。
+- 实测：05:40:49Z 产品 40010（1200 券）购买成功，同一连接的 108 请求返回 `operate_display_removed`，不再出现 `unsupported_command:108`。订单 46003(900)、40008(3000)、40010(1200)；代金券余额 4900；模块19 `buy_gift_record` 三条齐全。
+- 测试：`node --test test/*.test.mjs` 129/129 通过；新增 `personal-server/test/recommend-gift-count.test.mjs`，经真实 TCP 握手+登录后断言 85901 返回 40008=1、46003=0（commit `6713e6d`）。
+- 服务：PID 以 `runtime.local-only.data/server.local-only.json` 实时为准（本轮 34692，2026-10-28T14:15:51Z 启动），五端口均 loopback；客户端未重启，自动断线重连并重新登录。待用户重开“超值精选”确认已购卡片显示与剩余次数。
+
+## 2026-10-29 每日特惠补买修复
+
+- 根因：`buy_times` 达到 `can_buy_times` 后，钱包服务直接返回 307，没有使用模块108每行 `buy_additionally`；同时 ETF 的第二个参数解码为 `OtpErlangBinary`，旧解析器没有读取 `[isExtraBuy, period, day]`，日志无法确认客户端补买标记。
+- 修复：首次购买只增加 `buy_times`；首次次数耗尽后，若该行仍有 `buy_additionally`，则扣减并完成补买，继续通过 1900 推送 `pb_daily_discount_all`（flag 40）。订单和钱包流水记录 `daily_discount_additional` 与 `requested_extra_buy`；重启回填只把普通订单计入 `buy_times`，补买订单不消耗首次限购。
+- 验证：`npm test --prefix personal-server` 为 137/137 通过；真实 TCP 用例覆盖 `40010` 首次购买后以 `isExtraBuy=true` 补买、推送、模块108从6降到5及订单 payload 标记，另覆盖补买耗尽、重启保持和旧限购应答。`46003` 配置本身 `is_buy_additionally=false`，不能作为补买商品。
+- 部署核对：修改前进程 PID32312 启动于2026-10-28T16:46:16Z，包含 `3e1efea` 的已提交每日特惠同步，但不包含本次补买改动。提交 `da42286` 后已备份 SQLite 并重启服务端为 PID17888（2026-10-28T17:09:38Z），五端口仅 loopback；客户端未重启，17:09:47Z 自动握手并完成145模块登录。备份与部署证据在 `analysis/experiments/private-server-20261025/p3/daily-discount-additional-20261029-010915/`。

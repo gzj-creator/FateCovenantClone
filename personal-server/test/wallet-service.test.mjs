@@ -88,7 +88,7 @@ test('committed wallet purchase remains successful when immediate notification f
 });
 
 test('daily discount purchases publish and persist the refreshed protobuf with a next-day reset',t=>{
-  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'daily-fund'});
+  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:100000,request_id:'daily-fund'});
   const result=e.wallet.buy({product_id:40008,request_id:'daily-first'});assert.equal(result.balance_paid_cents,3000);
   const push=codec.unpack('res_recharge_success',e.pushes[0].data);
   const extra=push.extra_ret_list.find(entry=>entry.flag===40);assert.ok(extra);
@@ -96,19 +96,43 @@ test('daily discount purchases publish and persist the refreshed protobuf with a
   assert.equal(pushed.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
   const persisted=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
   assert.equal(persisted.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
-  assert.throws(()=>e.wallet.buy({product_id:40008,request_id:'daily-repeat'}),error=>error.code===307);
+  const additional=e.wallet.buy({product_id:40008,request_id:'daily-repeat',extra_buy:true});assert.equal(additional.daily_discount_additional,true);
+  const additionalPush=codec.unpack('res_recharge_success',e.pushes[1].data);
+  const additionalInfo=codec.unpack('pb_daily_discount_all',Buffer.from(additionalPush.extra_ret_list.find(entry=>entry.flag===40).data,'base64'));
+  const additionalRow=additionalInfo.daily_discount_list.find(row=>row.recharge_tid===4);
+  assert.equal(additionalRow.buy_times,1);assert.equal(additionalRow.buy_additionally,5);
 
   const purchasedAt=Math.floor(Date.parse(e.wallet.snapshot().orders[0].created_at)/1000);
   const nextDay=createWalletService({store:e.store,codec,tables,now:()=>purchasedAt+86400});
-  const second=nextDay.buy({product_id:40008,request_id:'daily-next-day'});assert.equal(second.balance_paid_cents,3000);
+  const nextDayPurchase=nextDay.buy({product_id:40008,request_id:'daily-next-day'});assert.equal(nextDayPurchase.balance_paid_cents,3000);
   const refreshed=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
   assert.equal(refreshed.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
 });
 
+test('daily discount additional purchases are finite and survive restart',t=>{
+  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'daily-extra-fund'});
+  const results=[];
+  for(let i=0;i<7;i++)results.push(e.wallet.buy({product_id:40009,request_id:'daily-extra-'+i,extra_buy:i>0}));
+  assert.deepEqual(results.map(result=>result.daily_discount_additional),[false,true,true,true,true,true,true]);
+  const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  const row=info.daily_discount_list.find(value=>value.recharge_tid===2);
+  assert.equal(row.buy_times,1);assert.equal(row.buy_additionally ?? 0,0);
+  assert.throws(()=>e.wallet.buy({product_id:40009,request_id:'daily-extra-exhausted',extra_buy:true}),error=>error.code===307);
+  e.reopen();
+  const reopened=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  const reopenedRow=reopened.daily_discount_list.find(value=>value.recharge_tid===2);
+  assert.equal(reopenedRow.buy_times,1);assert.equal(reopenedRow.buy_additionally ?? 0,0);
+  assert.equal(e.wallet.snapshot().orders.length,7);
+});
+
 test('daily discount purchase counts are rebuilt from orders on restart',t=>{
   const e=setup(t),now=Date.UTC(2026,9,28,12)/1000;
-  e.store.transaction((model,db)=>db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
-    .run('daily-backfill','local-1','daily-backfill-request',40008,3000,'{}',new Date(now*1000).toISOString(),1));
+  e.store.transaction((model,db)=>{
+    db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
+      .run('daily-backfill','local-1','daily-backfill-request',40008,3000,'{"daily_discount_additional":false}',new Date(now*1000).toISOString(),1);
+    db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
+      .run('daily-backfill-extra','local-1','daily-backfill-extra-request',40008,3000,'{"daily_discount_additional":true}',new Date(now*1000).toISOString(),1);
+  });
   createWalletService({store:e.store,codec,tables,now:()=>now});
   const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
   assert.equal(info.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);

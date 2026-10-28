@@ -57,9 +57,9 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     modules.set(DAILY_DISCOUNT_MODULE, serializedBinary(data));
     return data;
   };
-  const recordDailyDiscountPurchase = (modules, productId, seconds) => {
-    const rechargeTid = DAILY_DISCOUNT_VALUE_INDEX.get(Number(productId));
-    if (!rechargeTid) return null;
+  const planDailyDiscountPurchase = (modules, product, seconds) => {
+    const rechargeTid = DAILY_DISCOUNT_VALUE_INDEX.get(Number(product.tid));
+    if (!rechargeTid) throw new GameError(5, 'Daily discount product is not mapped');
     const info = dailyDiscountInfo(modules);
     normalizeDailyDiscount(info, seconds);
     let row = info.daily_discount_list.find(value => Number(value.recharge_tid) === rechargeTid);
@@ -67,8 +67,19 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       row = { recharge_tid: rechargeTid, buy_times: 0, refresh_time: info.refresh_time, buy_additionally: 0 };
       info.daily_discount_list.push(row);
     }
-    row.buy_times = Number(row.buy_times ?? 0) + 1;
-    return setDailyDiscountInfo(modules, info);
+    row.buy_times = Math.max(0, Number(row.buy_times ?? 0));
+    row.buy_additionally = Math.max(0, Number(row.buy_additionally ?? 0));
+    row.refresh_time ??= info.refresh_time;
+    const regularRemaining = Math.max(0, Number(product.can_buy_times ?? 0) - row.buy_times);
+    if (regularRemaining > 0) {
+      row.buy_times += 1;
+      return { info, additional: false };
+    }
+    if (row.buy_additionally > 0) {
+      row.buy_additionally -= 1;
+      return { info, additional: true };
+    }
+    return null;
   };
   const buyGiftRecords = login => {
     const bytes = login.buy_gift_record ? Buffer.from(login.buy_gift_record, 'base64') : Buffer.alloc(0);
@@ -86,7 +97,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(accountId, model.state.roleId);
     // Rebuild the client's gift purchase history from orders so purchase limits
     // remain visible after a server restart or a fresh client login.
-    const rows = db.prepare('SELECT product_id,created_at FROM recharge_orders ORDER BY rowid').all();
+    const rows = db.prepare('SELECT product_id,created_at,payload_json FROM recharge_orders ORDER BY rowid').all();
     const modules = new Map(model.state.modules.value);
     let changed = false;
     const loginRaw = modules.get(19);
@@ -116,14 +127,20 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     if (modules.has(DAILY_DISCOUNT_MODULE) || hasDailyOrders) {
       const info = dailyDiscountInfo(modules), today = dailyDay(currentSeconds);
       let dailyChanged = normalizeDailyDiscount(info, currentSeconds);
-      const counts = new Map();
+      const counts = new Map(), limits = new Map();
       for (const row of rows) {
         const product = tables.Recharge.get(row.product_id);
         const rechargeTid = DAILY_DISCOUNT_VALUE_INDEX.get(Number(row.product_id));
         if (product?.type !== DAILY_DISCOUNT_RECHARGE || !rechargeTid) continue;
         const parsed = Math.floor(Date.parse(row.created_at) / 1000);
         if (!Number.isSafeInteger(parsed) || dailyDay(parsed) !== today) continue;
+        let payload = {};
+        try { payload = JSON.parse(row.payload_json ?? '{}'); } catch {}
+        // Additional buys share the daily row but do not consume its normal
+        // `can_buy_times` allowance.
+        if (payload.daily_discount_additional === true) continue;
         counts.set(rechargeTid, (counts.get(rechargeTid) ?? 0) + 1);
+        limits.set(rechargeTid, Number(product.can_buy_times ?? 1));
       }
       for (const [rechargeTid, count] of counts) {
         let daily = info.daily_discount_list.find(row => Number(row.recharge_tid) === rechargeTid);
@@ -131,7 +148,8 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
           daily = { recharge_tid: rechargeTid, buy_times: 0, refresh_time: info.refresh_time, buy_additionally: 0 };
           info.daily_discount_list.push(daily);
         }
-        if ((daily.buy_times ?? 0) !== count) { daily.buy_times = count; dailyChanged = true; }
+        const normalized = Math.min(limits.get(rechargeTid) ?? count, count);
+        if ((daily.buy_times ?? 0) !== normalized) { daily.buy_times = normalized; dailyChanged = true; }
       }
       if (dailyChanged) { setDailyDiscountInfo(modules, info); changed = true; }
     }
@@ -172,7 +190,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       return { balance_cents: balance, duplicate: false };
     });
   }
-  function buy({ account_id = accountId, product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid }) {
+  function buy({ account_id = accountId, product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false }) {
     if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)) throw new GameError(1, 'Invalid local purchase');
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
@@ -204,16 +222,16 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
       if (balance < quote.balance_cents) throw new GameError(301, 'Account balance is insufficient');
       if (product.can_buy_times > 0 && (product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
+      const modules = new Map(model.state.modules.value);
+      let dailyPlan = null;
       if (product.can_buy_times > 0) {
-        let purchaseCount;
         if (product.type === DAILY_DISCOUNT_RECHARGE) {
-          const dayStart = dailyDay(purchasedAt) * 86400 - DAILY_RESET_OFFSET_SECONDS;
-          purchaseCount = db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=? AND created_at>=? AND created_at<?')
-            .get(account_id, product_id, new Date(dayStart * 1000).toISOString(), new Date((dayStart + 86400) * 1000).toISOString()).n;
+          dailyPlan = planDailyDiscountPurchase(modules, product, purchasedAt);
+          if (!dailyPlan) throw new GameError(307, 'Product purchase limit reached');
         } else {
-          purchaseCount = db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id, product_id).n;
+          const purchaseCount = db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id, product_id).n;
+          if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
         }
-        if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
       }
       const order = 'local-' + randomUUID();
       const createdAt = new Date(purchasedAt * 1000).toISOString();
@@ -223,7 +241,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       changes.push(...grantResources(model, product.reward_tid.map((tid,i) => [tid,product.reward_count[i]]), tables).changes);
       const permit = product.type === 130 ? permits.purchase({ model, product }) : null;
       const res = { changes, is_overflow: false };
-      const modules = new Map(model.state.modules.value), login = codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
+      const login = codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
       const total = (login.total_amount ?? 0) + product.price;
       if (total > 2147483647) throw new GameError(1, 'Recharge total limit reached');
       login.total_amount = total;
@@ -237,7 +255,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       if (giftRecord) addBuyGiftRecord(login, product_id, purchasedAt);
       const extraRetList = [...(permit?.extraRetList ?? [])];
       if (giftRecord) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord });
-      const dailyDiscount = product.type === DAILY_DISCOUNT_RECHARGE ? recordDailyDiscountPurchase(modules, product_id, purchasedAt) : null;
+      const dailyDiscount = dailyPlan ? setDailyDiscountInfo(modules, dailyPlan.info) : null;
       if (dailyDiscount) extraRetList.push({ flag: DAILY_DISCOUNT_HANDLE, data: dailyDiscount });
       const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: quote.quantity > 0 ? etfIntList([product.price]) : Buffer.alloc(0), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
@@ -246,9 +264,9 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       modules.set(19,serializedBinary(codec.pack('res_recharge_login',login))); model.state.modules.value = [...modules];
       const balanceAfter = balance - quote.balance_cents;
       db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter,account_id);
-      const result = { order_id: order, product_id, price_cents: product.price, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, balance_paid_cents: quote.balance_cents, balance_cents: balanceAfter, notification: data.toString('base64') };
+      const result = { order_id: order, product_id, price_cents: product.price, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, balance_paid_cents: quote.balance_cents, balance_cents: balanceAfter, notification: data.toString('base64'), daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(result),order);
-      db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order,account_id,'purchase',-quote.balance_cents,balanceAfter,createdAt,JSON.stringify({ product_id, order_id: order, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents }));
+      db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order,account_id,'purchase',-quote.balance_cents,balanceAfter,createdAt,JSON.stringify({ product_id, order_id: order, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true }));
       return { ...result, duplicate: false };
     });
     if (!result.duplicate) {

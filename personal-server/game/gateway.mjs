@@ -73,6 +73,25 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     if (value && typeof value === 'object') return value.mailid ?? value.mail_id ?? value.id;
     throw new GameError(1, 'Invalid mail command payload');
   }
+  function rechargeOptions(value) {
+    let bytes = null;
+    if (Buffer.isBuffer(value)) bytes = value;
+    else if (value?.value?.type === 'Buffer' && Array.isArray(value.value.data)) bytes = Buffer.from(value.value.data);
+    // ETF binary values decode to OtpErlangBinary, whose payload is a Buffer.
+    // The client sends the optional purchase tuple in this field.
+    else if (value?.value instanceof Uint8Array) bytes = Buffer.from(value.value);
+    else if (Array.isArray(value?.value)) bytes = Buffer.from(value.value);
+    if (!bytes?.length) return {};
+    try {
+      const parsed = JSON.parse(bytes.toString('utf8'));
+      const tuple = Array.isArray(parsed) && Array.isArray(parsed[1]) ? parsed[1] : [];
+      return {
+        is_extra_buy: tuple[0] === true,
+        period: Number.isSafeInteger(Number(tuple[1])) ? Number(tuple[1]) : null,
+        day_index: Number.isSafeInteger(Number(tuple[2])) ? Number(tuple[2]) : null
+      };
+    } catch { return {}; }
+  }
   async function storyMissionArgument(data) {
     const decoded = await decodeEtf(data);
     const value = decoded?.value ?? decoded;
@@ -237,10 +256,11 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           const args = Array.isArray(value) ? value : [value];
           if (args.length < 3) throw new GameError(1, 'Invalid voucher recharge payload');
           productId = Number(args[0]);
+          const options = rechargeOptions(args[1]);
           const itemTid = Number(args[2]);
-          const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_item_tid: itemTid });
+          const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_item_tid: itemTid, extra_buy: options.is_extra_buy });
           send(seq);
-          log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity });
+          log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           // The client renders every 16004 error as a generic server-fault popup.
