@@ -87,6 +87,33 @@ test('committed wallet purchase remains successful when immediate notification f
   assert.equal(codec.unpack('res_recharge_login',rawBinary(new Map(e.store.state().modules.value).get(19))).tmp_recharge_record.tmp_record_list[0].order_no,result.order_id);
 });
 
+test('daily discount purchases publish and persist the refreshed protobuf with a next-day reset',t=>{
+  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'daily-fund'});
+  const result=e.wallet.buy({product_id:40008,request_id:'daily-first'});assert.equal(result.balance_paid_cents,3000);
+  const push=codec.unpack('res_recharge_success',e.pushes[0].data);
+  const extra=push.extra_ret_list.find(entry=>entry.flag===40);assert.ok(extra);
+  const pushed=codec.unpack('pb_daily_discount_all',Buffer.from(extra.data,'base64'));
+  assert.equal(pushed.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
+  const persisted=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.equal(persisted.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
+  assert.throws(()=>e.wallet.buy({product_id:40008,request_id:'daily-repeat'}),error=>error.code===307);
+
+  const purchasedAt=Math.floor(Date.parse(e.wallet.snapshot().orders[0].created_at)/1000);
+  const nextDay=createWalletService({store:e.store,codec,tables,now:()=>purchasedAt+86400});
+  const second=nextDay.buy({product_id:40008,request_id:'daily-next-day'});assert.equal(second.balance_paid_cents,3000);
+  const refreshed=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.equal(refreshed.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
+});
+
+test('daily discount purchase counts are rebuilt from orders on restart',t=>{
+  const e=setup(t),now=Date.UTC(2026,9,28,12)/1000;
+  e.store.transaction((model,db)=>db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
+    .run('daily-backfill','local-1','daily-backfill-request',40008,3000,'{}',new Date(now*1000).toISOString(),1));
+  createWalletService({store:e.store,codec,tables,now:()=>now});
+  const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.equal(info.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
+});
+
 test('wallet logging failures cannot reject committed credits or purchases',t=>{
   const e=setup(t);
   const wallet=createWalletService({store:e.store,codec,tables,publish(){throw Error('disconnected');},logger(){throw Error('log write failed');}});

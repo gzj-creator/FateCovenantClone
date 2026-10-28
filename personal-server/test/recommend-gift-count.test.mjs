@@ -5,12 +5,15 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf, encodeEtf, binary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, binary, rawBinary } from '../protocol/game-codec.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
+import { readGameTables } from '../config/game-tables.mjs';
+import { grantResources } from '../game/resources.mjs';
 
 const codec = createGameCodec();
+const tables = readGameTables();
 const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
 const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
 
@@ -85,4 +88,41 @@ test('repeat voucher purchase at the limit is acknowledged without a client erro
     const count = db.prepare("SELECT count(*) n FROM recharge_orders WHERE product_id=40008").get().n;
     assert.equal(count, 1);
   });
+});
+
+test('type-46 purchase pushes the daily-discount protobuf and persists its purchase count', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-daily-discount-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  fs.copyFileSync(backup, databasePath);
+  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  game.store.transaction(model => grantResources(model, [[701500, 1000]], tables));
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  send(codec.pack('pb_c2s', { type: 16004, seq: 2, data: await encodeEtf([46003, binary(Buffer.from('[]')), 701500]) }));
+  const frames = [codec.unpack('pb_s2c', await next()), codec.unpack('pb_s2c', await next())];
+  const notification = frames.find(frame => frame.type === 1900);
+  assert.ok(notification);
+  const push = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
+  const extra = push.extra_ret_list.find(entry => entry.flag === 40);
+  assert.ok(extra);
+  const info = codec.unpack('pb_daily_discount_all', Buffer.from(extra.data, 'base64'));
+  assert.equal(info.daily_discount_list.find(row => row.recharge_tid === 6).buy_times, 1);
+  assert.equal(codec.unpack('pb_daily_discount_all', rawBinary(new Map(game.store.state().modules.value).get(108))).daily_discount_list.find(row => row.recharge_tid === 6).buy_times, 1);
 });
