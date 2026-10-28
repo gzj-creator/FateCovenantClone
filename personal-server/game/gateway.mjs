@@ -269,11 +269,13 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       }
       const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]], [10507, ['pb_msg_range_list_with_role_info', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
-      if ([53001, 53002, 102801, 10503].includes(type)) {
+      if ([108, 53001, 53002, 102801, 10503].includes(type)) {
         // Activity state/stage sync (53001/53002) uses an empty change_list meaning no server-side
         // stage transition for this local account; real stage advancement stays unimplemented.
+        // 108 (req_remove_operate_display) is a UI-only acknowledgement after a purchase.
         send(seq);
         if (type === 53001 || type === 53002) log({ event: 'activity_stage_sync_acknowledged', type, seq });
+        if (type === 108) log({ event: 'operate_display_removed', type, seq });
         return;
       }
       log({ event: 'unsupported_command', type, seq, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
