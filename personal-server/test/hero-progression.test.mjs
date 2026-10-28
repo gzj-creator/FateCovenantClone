@@ -244,7 +244,8 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-gateway-test-'));
   const legacyStatePath = path.join(directory, 'legacy.json');
   fs.writeFileSync(legacyStatePath, JSON.stringify(fixture()));
-  const game = createLocalGame({ databasePath: path.join(directory, 'game.sqlite'), statePath: legacyStatePath, capturePath, localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
+  const events = [];
+  const game = createLocalGame({ databasePath: path.join(directory, 'game.sqlite'), statePath: legacyStatePath, capturePath, localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session', logger: event => events.push(event) });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const address = await game.listen(0);
@@ -288,11 +289,15 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
   response = await request(636, 21, codec.pack('pb_hero_up_lv_req', { hero_uid: '2020601', cell_index: 4, up_lv_count: 1 }));
   assert.equal(response.seq, 21); assert.equal(response.err, undefined);
   assert.equal(codec.unpack('pb_hero_up_lv_ret', Buffer.from(response.data, 'base64')).new_lv, 9);
+  const upgradeEvent = events.find(event => event.event === 'hero_progression_committed' && event.type === 636);
+  assert.deepEqual(upgradeEvent.changedHeroes, [{ uid: '2020601', level: 9 }]);
+  assert.equal(upgradeEvent.newLv, 9);
+  assert.match(upgradeEvent.responseSha256, /^[0-9a-f]{64}$/);
   response = await request(639, 22, await encodeEtf([2020601, 3]));
   assert.equal(codec.unpack('pb_hero_up_star_ret', Buffer.from(response.data, 'base64')).new_hero.star_progress, 3);
   response = await request(639, 23, await encodeEtf([2020601, 1]));
   assert.equal(response.err.err, 3006);
-  response = await request(-1, 24, Buffer.alloc(0)); assert.equal(response.seq, undefined);
+  send(codec.pack('pb_c2s', { type: -1, seq: 24, data: Buffer.alloc(0) }));
   const login = await decodeEtf(await game.loginPayload());
   assert.ok(Math.abs(login[1][0] - Date.now()) < 5000);
   assert.deepEqual(Buffer.from(new Map(login[2].value).get(92).value), activityBefore);

@@ -73,7 +73,16 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     if (value && typeof value === 'object') return value.mailid ?? value.mail_id ?? value.id;
     throw new GameError(1, 'Invalid mail command payload');
   }
+  async function storyMissionArgument(data) {
+    const decoded = await decodeEtf(data);
+    const value = decoded?.value ?? decoded;
+    const candidate = Array.isArray(value) ? value.length === 1 ? value[0] : undefined : value;
+    const sectionTid = Number(candidate);
+    if (!Number.isSafeInteger(sectionTid) || sectionTid <= 0) throw new GameError(1, 'Invalid story mission payload');
+    return sectionTid;
+  }
   const sockets = new Set();
+  const wireDumpDirectory = process.env.FATE_COVENANT_WIRE_DUMP_DIR;
   const server = net.createServer(socket => {
     if (sockets.size >= 8) { socket.destroy(); return; }
     sockets.add(socket);
@@ -87,7 +96,27 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     socket.on('timeout', () => socket.destroy());
     socket.on('error', error => log({ event: 'socket_error', code: error.code }));
     socket.on('close', () => { subscribers.delete(push); sockets.delete(socket); log({ event: 'game_closed' }); });
-    const send = (seq, data = Buffer.alloc(0), err) => socket.write(encodeGameFrame(pack('pb_s2c', { seq, ...(data.length ? { data } : {}), ...(err ? { err } : {}) })));
+    const send = (seq, data = Buffer.alloc(0), err) => {
+      const payload = pack('pb_s2c', { seq, ...(data.length ? { data } : {}), ...(err ? { err } : {}) });
+      const frame = encodeGameFrame(payload);
+      const diagnostics = {
+        event: 's2c_frame_sent',
+        seq,
+        errCode: err?.err,
+        payloadBytes: payload.length,
+        frameBytes: frame.length,
+        header: frame.subarray(0, 4).toString('hex'),
+        frameSha256: crypto.createHash('sha256').update(frame).digest('hex')
+      };
+      if (wireDumpDirectory && payload.length >= 1024) {
+        fs.mkdirSync(wireDumpDirectory, { recursive: true });
+        const filename = 's2c-' + String(seq) + '-' + Date.now() + '-' + diagnostics.frameSha256.slice(0, 12) + '.bin';
+        fs.writeFileSync(path.join(wireDumpDirectory, filename), frame, { mode: 0o600 });
+        diagnostics.dumpFile = filename;
+      }
+      log(diagnostics);
+      return socket.write(frame);
+    };
     async function handle(payload) {
       if (phase === 'verify') {
         if (!isInitialVerifyPayload(payload, Buffer.from('verify'))) throw new Error('Invalid verify');
@@ -101,7 +130,9 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       const request = root.lookupType('pb_c2s').decode(payload);
       const { type, seq } = request;
       log({ event: 'command', type, seq, bytes: request.data?.length ?? 0 });
-      if (type === -1) { send(0); return; }
+      // Heartbeat is one-way. A zero-length S2C frame leaves the client's
+      // TcpConnectionWorker receive stream at offset 4 and corrupts the next frame.
+      if (type === -1) return;
       if (type === 909103) {
         const state = store.state();
         const login = root.lookupType('login').decode(request.data);
@@ -151,6 +182,19 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'item_box_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (type === 508) {
+        try {
+          const sectionTid = await storyMissionArgument(request.data);
+          const result = fight.passStory(sectionTid);
+          send(seq, result.data);
+          log({ event: 'story_mission_passed', type, seq, sectionTid, previousMissionId: result.value.previousMissionId, missionId: result.value.mission.mission_id });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'story_mission_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
         }
         return;
       }
@@ -207,7 +251,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
             return;
           }
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message });
+          log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 160).toString('base64') });
         }
         return;
       }
@@ -247,7 +291,17 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         try {
           const input = type === 636 ? unpack('pb_hero_up_lv_req', request.data) : await decodeEtf(request.data);
           const result = progression.execute(type, input?.value ?? input);
-          send(seq, result.data); log({ event: 'hero_progression_committed', type, seq });
+          send(seq, result.data);
+          const diagnostics = type === 636 ? {
+            heroUid: String(input.hero_uid),
+            cellIndex: input.cell_index,
+            upLvCount: input.up_lv_count,
+            newLv: result.value.new_lv,
+            changedHeroes: result.value.change_hero_list.map(hero => ({ uid: String(hero.uid), level: hero.level })),
+            responseBytes: result.data.length,
+            responseSha256: crypto.createHash('sha256').update(result.data).digest('hex')
+          } : {};
+          log({ event: 'hero_progression_committed', type, seq, ...diagnostics });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });

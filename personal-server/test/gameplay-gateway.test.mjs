@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -39,23 +39,39 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
+  // Heartbeat is one-way. If it receives an empty frame, the client's receive
+  // stream is left at offset 4 and decodes the next frame header as protobuf.
+  send(codec.pack('pb_c2s', { type: -1, seq: 1, data: Buffer.alloc(0) }));
+
   // Journey fight: settle through the real gateway framing and persist the mission module.
   let response = await request(201, 2, codec.pack('pb_fight_request', {
     fight_tid: 301, stm_type: 1,
     req: codec.pack('mission_fight_req', { mission_id: 30201 }),
-    loc: [{ team_id: 1, loc: [{ hero_id: '2020601', loc: 5 }] }]
+    loc: [{ team_id: 1, loc: [
+      { hero_id: '2010101', loc: 6 },
+      { hero_id: '2010201', loc: 4 },
+      { hero_id: '1020601', loc: 2 },
+      { hero_id: '2020601', loc: 5 }
+    ] }]
   }));
   assert.equal(response.seq, 2);
   assert.equal(response.err, undefined);
   const fight = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
   assert.equal(fight.report.finish, true);
+  assert.equal(fight.report.type, 1);
   assert.equal(fight.report.battle_list.length, 1);
-  assert.equal(fight.report.battle_list[0].fighter_list.length, 3);
-  assert.equal(fight.report.battle_list[0].action_list.length, 3);
+  assert.equal(fight.report.battle_list[0].fighter_list.length, 7);
+  assert.equal(fight.report.battle_list[0].fighter_list.filter(unit => unit.role_type === 3).length, 1);
+  const fightActions = fight.report.battle_list[0].action_list.map(bytes => codec.unpack('pb_generic', Buffer.from(bytes, 'base64')).proto);
+  assert.deepEqual(fightActions.slice(0, 4), [107, 101, 106, 116]);
+  assert.deepEqual(fightActions.slice(-2), [112, 104]);
+  assert.ok(fightActions.every(type => [101, 102, 104, 105, 106, 107, 109, 112, 114, 116].includes(type)));
+  assert.ok(fightActions.includes(109));
   assert.equal(codec.unpack('mission_to_client', Buffer.from(fight.stm.stm_data, 'base64')).mission.mission_id, '30201');
   assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
   response = await request(207, 3, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64')).stm.result, 1);
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
 
   // Backpack box: the configured draw library replaces the previously unsupported command.
   response = await request(159, 4, codec.pack('pb_one_key_use', { use: [{ tid: 2261200, num: 1 }] }));
@@ -95,4 +111,34 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const missionOnly = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
   assert.equal(missionOnly.report.finish, true);
   assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30202');
+
+  // 508 req_mission_custom continues the chapter-3 story node. The client sends
+  // an ETF single-element list carrying sectionTid, then expects pb_mission_rsp.
+  game.store.transaction(model => {
+    const module = new Map(model.state.modules.value).get(8);
+    const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    mission.mission_id = '30204';
+    module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+    const modules = new Map(model.state.modules.value);
+    modules.set(8, module);
+    model.state.modules.value = [...modules];
+  });
+  response = await request(508, 12, await encodeEtf([30205]));
+  assert.equal(response.err, undefined);
+  const story = codec.unpack('pb_mission_rsp', Buffer.from(response.data ?? '', 'base64'));
+  assert.equal(story.mission.mission_id, '30205');
+  assert.equal(story.res_change.changes.length, 0);
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30205');
+  response = await request(508, 13, await encodeEtf(['not-a-section']));
+  assert.equal(response.err.err, 1);
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30205');
+
+  // Chapter completion asks which recommended gifts are active. Echo the
+  // observed request as zero-purchase counts instead of failing the callback.
+  response = await request(85901, 14, codec.pack('pb_recommend_gift_active_req', { actives: [{ act_tid: 61070, gift_id: [2811, 2812, 2813] }] }));
+  assert.equal(response.err, undefined);
+  const gift = codec.unpack('pb_recommend_gift_active_rsp', Buffer.from(response.data, 'base64')).gift_list[0];
+  assert.equal(gift.act_tid, 61070);
+  assert.deepEqual(gift.buy_list.map(entry => entry.recharge_tid), [2811, 2812, 2813]);
+  assert.ok(gift.buy_list.every(entry => !entry.buy_times));
 });
