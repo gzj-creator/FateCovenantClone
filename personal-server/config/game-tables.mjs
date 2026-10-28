@@ -9,6 +9,10 @@ export function readGameTables() {
     ...pick(readGeneratedTables(new URL('DrawTable.data.lua.json', base), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
     ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), ['Recharge', 'Param'])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
     ...readGeneratedTables(new URL('OpenServerSprintTable.data.lua.json', base), ['SprintRankTask', 'SprintType']),
+    // Monthly pass products are RechargeTable type=130 rows; the matching Gear row
+    // binds a product to the activity version that owns its pay_list entry.
+    ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle']), { Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle' }),
+    ...pick(readGeneratedTables(new URL('ActFrameTable.data.lua.json', base), ['Act', 'ActType']), { Act: 'ActFrameAct', ActType: 'ActFrameType' }),
     TaskType: readGeneratedTables(new URL('TaskTable.data.lua.json', base), ['Type']).Type
   };
 }

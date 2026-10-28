@@ -2,11 +2,31 @@ import { randomUUID } from 'node:crypto';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { grantResources } from './resources.mjs';
 import { GameError } from './hero-progression.mjs';
+import { createMonthPermitService } from './month-permit-service.mjs';
 const key = value => typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,120}$/.test(value);
-export function createWalletService({ store, codec, tables, voucher, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {} }) {
+// ETF INTEGER_EXT list [price]. The client's RechargeMgr uses extra_params[1]
+// to add voucher payments to the cumulative recharge amount.
+function etfIntList(values) {
+  const parts = [Buffer.from([0x83, 0x6c]), Buffer.alloc(4)];
+  parts[1].writeUInt32BE(values.length, 0);
+  for (const value of values) {
+    if (Number.isInteger(value) && value >= 0 && value <= 255) parts.push(Buffer.from([0x61, value]));
+    else {
+      const bytes = Buffer.alloc(5);
+      bytes[0] = 0x62;
+      bytes.writeInt32BE(value, 1);
+      parts.push(bytes);
+    }
+  }
+  parts.push(Buffer.from([0x6a]));
+  return Buffer.concat(parts);
+}
+export function createWalletService({ store, codec, tables, voucher, monthPermit, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
+  const permits = monthPermit ?? createMonthPermitService({ codec, tables });
   store.transaction((model, db) => db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(accountId, model.state.roleId));
-  const supported = row => [1,43,81].includes(row.type) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && row.sync_handle === 0 && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => { const item = tables.Item.get(tid); return item && tables.Type.get(item.type)?.res_type===1500 && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0; });
+  const resourceProduct = row => [1,43,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => { const item = tables.Item.get(tid); return item && tables.Type.get(item.type)?.res_type===1500 && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0; });
+  const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && row.sync_handle === 0 && (row.type === 130 ? permits.supports(row) : resourceProduct(row));
   const products = [...tables.Recharge.values()].filter(supported);
   function snapshot() {
     return store.inspect(db => ({
@@ -73,6 +93,7 @@ export function createWalletService({ store, codec, tables, voucher, accountId =
       const changes = [];
       if (quote.quantity > 0) changes.push(voucher.consume({ model, db, orderId: order, roleId: model.state.roleId, quantity: quote.quantity, amountCents: quote.amount_cents }));
       changes.push(...grantResources(model, product.reward_tid.map((tid,i) => [tid,product.reward_count[i]]), tables).changes);
+      const permit = product.type === 130 ? permits.purchase({ model, product }) : null;
       const res = { changes, is_overflow: false };
       const modules = new Map(model.state.modules.value), login = codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
       const total = (login.total_amount ?? 0) + product.price;
@@ -84,7 +105,7 @@ export function createWalletService({ store, codec, tables, voucher, accountId =
       if (!daily) { daily = { day_index: day, recharge_ids: [], amount: 0 }; login.recharge_record.recent_record.push(daily); login.recharge_record.total_day = (login.recharge_record.total_day ?? 0) + 1; }
       daily.recharge_ids.push(product_id); daily.amount = (daily.amount ?? 0) + product.price;
       if (!login.max_record || daily.amount >= (login.max_record.amount ?? 0)) login.max_record = structuredClone(daily);
-      const value = { recharge_id: product_id, time: now, order, get_token: false, extra_params: Buffer.alloc(0), package_is_full: false, res, extra_ret_list: [], is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
+      const value = { recharge_id: product_id, time: now, order, get_token: quote.quantity > 0, extra_params: quote.quantity > 0 ? etfIntList([product.price]) : Buffer.alloc(0), package_is_full: false, res, extra_ret_list: permit?.extraRetList ?? [], is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
       login.tmp_recharge_record.tmp_record_list.push({ recharge_id: product_id, recharge_time: now, order_no: order });
