@@ -186,18 +186,26 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         return;
       }
       if (wallet && type === 16004) {
+        let productId;
         try {
           const decoded = await decodeEtf(request.data);
           const value = decoded?.value ?? decoded;
           const args = Array.isArray(value) ? value : [value];
           if (args.length < 3) throw new GameError(1, 'Invalid voucher recharge payload');
-          const productId = Number(args[0]);
+          productId = Number(args[0]);
           const itemTid = Number(args[2]);
           const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_item_tid: itemTid });
           send(seq);
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
+          // The client renders every 16004 error as a generic server-fault popup.
+          // A repeat purchase is a no-op, so acknowledge it instead of alarming the player.
+          if (code === 307) {
+            send(seq);
+            log({ event: 'voucher_recharge_already_owned', type, seq, productId, message: error.message });
+            return;
+          }
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message });
         }
