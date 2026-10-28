@@ -25,7 +25,10 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
   const log = event => { try { logger(event); } catch {} };
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
   store.transaction((model, db) => db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(accountId, model.state.roleId));
-  const resourceProduct = row => [1,43,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => { const item = tables.Item.get(tid); return item && tables.Type.get(item.type)?.res_type===1500 && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0; });
+  // Direct-purchase rows can mix currency with ordinary inventory items (for
+  // example a month card grants diamonds plus its activation item). Only rows
+  // whose rewards can be granted by resources.mjs are eligible here.
+  const resourceProduct = row => [1,43,47,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => tables.Item.has(tid) && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0);
   const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && row.sync_handle === 0 && (row.type === 130 ? permits.supports(row) : resourceProduct(row));
   const products = [...tables.Recharge.values()].filter(supported);
   function snapshot() {
