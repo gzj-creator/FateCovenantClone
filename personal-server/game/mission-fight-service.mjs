@@ -1,7 +1,10 @@
-import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { missionBattleConfig, readMissionTables } from '../config/mission-tables.mjs';
+import { readGameTables } from '../config/game-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
+import { grantResources } from './resources.mjs';
+import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 
 // Ordinary journey (mission) fights.
 // Evidence: FightCmd.fight_start sends pb_fight_request.req = Codec.EncodePB('mission_fight_req');
@@ -295,7 +298,37 @@ function reportBattle(codec, model, mission, request) {
   };
 }
 
-export function createMissionFightService({ store, codec, logger = () => {}, playbackEnabled = false }) {
+function configuredAwards(section) {
+  const ids = Array.isArray(section?.award) ? section.award : [];
+  const counts = Array.isArray(section?.award_n) ? section.award_n : [];
+  if (ids.length !== counts.length) throw new GameError(5, 'Mission reward configuration is invalid');
+  return ids.map((id, index) => [Number(id), Number(counts[index])]);
+}
+
+function firstClearReward(model, db, section, gameTables, now) {
+  const awards = configuredAwards(section);
+  if (!awards.length) return { changes: [], is_overflow: false };
+  if (awards.some(([id, count]) => !Number.isSafeInteger(id) || !Number.isSafeInteger(count) || count < 0)) throw new GameError(5, 'Mission reward configuration is invalid');
+  const claimKey = String(section.tid);
+  if (db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'mission_first_clear', claimKey)) return { changes: [], is_overflow: false };
+  db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'mission_first_clear', claimKey, new Date(now()).toISOString());
+  const res = grantResources(model, awards.filter(([, count]) => count > 0), gameTables);
+  return { changes: res.changes, is_overflow: false };
+}
+
+function configuredBoxAwards(box) {
+  const awards = Array.isArray(box?.award) ? box.award : [];
+  const result = awards.map(pair => {
+    if (!Array.isArray(pair) || pair.length !== 2) throw new GameError(5, 'Mission box reward configuration is invalid');
+    const tid = Number(pair[0]), count = Number(pair[1]);
+    if (!Number.isSafeInteger(tid) || !Number.isSafeInteger(count) || count <= 0) throw new GameError(5, 'Mission box reward configuration is invalid');
+    return [tid, count];
+  });
+  if (!result.length) throw new GameError(5, 'Mission box has no configured rewards');
+  return result;
+}
+
+export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), now = Date.now, logger = () => {}, playbackEnabled = false }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, lastSettlement = null, fightIds = 0;
 
@@ -322,9 +355,9 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
     return { module, value: codec.unpack('pb_mission', rawBinary(module.value[0])) };
   }
 
-  function missionValue(current, mission, fightResult) {
+  function missionValue(current, mission, fightResult, res) {
     return {
-      res: { changes: [], is_overflow: false },
+      res,
       fight_result: fightResult,
       mission: { mission_id: String(current.mission_id ?? 0), pass_count: current.pass_count },
       is_boss: mission.bossTid > 0,
@@ -333,9 +366,10 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
   }
 
   function commitSettlement() {
-    return store.transaction(model => {
+    return store.transaction((model, db) => {
       const { module, value: current } = currentMission(model);
       const previous = Number(current.mission_id ?? 0);
+      let res = { changes: [], is_overflow: false };
       if (pending.result === RESULT_WIN) {
         const completed = pending.mission.missionId;
         if (completed > previous) {
@@ -345,13 +379,15 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
           current.mission_id = String(completed);
           if (!current.pass_count) current.pass_count = { flush_time: 0, count: 0 };
           current.pass_count.count = Number(current.pass_count.count ?? 0) + 1;
+          const section = missionTables.sections.get(completed);
+          res = firstClearReward(model, db, section, gameTables, now);
         }
         module.value[0] = serializedBinary(codec.pack('pb_mission', current));
         const modules = new Map(model.state.modules.value);
         modules.set(MISSION_MODULE, module);
         model.state.modules.value = [...modules];
       }
-      const value = missionValue(current, pending.mission, pending.result);
+      const value = missionValue(current, pending.mission, pending.result, res);
       return { value, stm: { result: pending.result, stm_data: codec.pack('mission_to_client', value), exception: false }, previousMissionId: previous };
     });
   }
@@ -424,6 +460,70 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
     return { value: {}, data: Buffer.alloc(0) };
   }
 
+  async function claimBoxAwards(bytes) {
+    const decoded = await decodeEtf(bytes);
+    const value = decoded?.value ?? decoded;
+    if (!Array.isArray(value) || value.length === 0 || value.length > 2048) throw new GameError(1, 'Invalid mission box request');
+    const boxTids = value.map(Number);
+    if (boxTids.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(boxTids).size !== boxTids.length) {
+      throw new GameError(1, 'Invalid mission box id');
+    }
+
+    const state = store.state();
+    const modules = new Map(state.modules.value);
+    const module = modules.get(MISSION_MODULE);
+    if (!module || !Array.isArray(module.value)) throw new GameError(5, 'Mission login module is missing');
+    const current = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    const currentSection = missionTables.sections.get(Number(current.mission_id));
+    if (!currentSection) throw new GameError(5, 'Current mission configuration is missing');
+    const currentChapter = Number(currentSection.belong_chapter);
+    const boxes = boxTids.map(id => {
+      const box = missionTables.boxes.get(id);
+      if (!box) throw new GameError(1, 'Mission box configuration is missing');
+      return box;
+    });
+    const chapterPasses = chapter => {
+      if (chapter > currentChapter) return 0;
+      const rows = [...missionTables.sections.values()].filter(section => Number(section.belong_chapter) === chapter);
+      if (chapter < currentChapter) return rows.length;
+      return rows.filter(section => Number(section.index) <= Number(currentSection.index)).length;
+    };
+    for (const box of boxes) {
+      if (chapterPasses(Number(box.belong_chapter)) < Number(box.need_pass)) throw new GameError(5, 'Mission box is not unlocked');
+    }
+
+    const bits = await decodeBitBlock(Buffer.from(current.box_award ?? '', 'base64'));
+    if (boxes.some(box => hasBit(bits, Number(box.tid)))) throw new GameError(310, 'Mission box reward already claimed');
+    const requiredBytes = Math.floor(Math.max(...boxes.map(box => Number(box.tid))) / 8) + 1;
+    const nextBits = Buffer.alloc(Math.max(bits.length, requiredBytes));
+    bits.copy(nextBits);
+    for (const box of boxes) setBit(nextBits, Number(box.tid));
+    const nextMission = { ...current, box_award: (await encodeBitBlock(nextBits)).toString('base64') };
+    const moduleBytes = serializedBinary(codec.pack('pb_mission', nextMission));
+    const expectedModule = JSON.stringify(module);
+    const awards = boxes.flatMap(configuredBoxAwards);
+
+    return store.transaction((model, db) => {
+      const fresh = new Map(model.state.modules.value);
+      if (JSON.stringify(fresh.get(MISSION_MODULE)) !== expectedModule) throw new GameError(1, 'Mission data changed; retry box claim');
+      for (const id of boxTids) {
+        if (db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'mission_box', String(id))) {
+          throw new GameError(310, 'Mission box reward already claimed');
+        }
+      }
+      for (const id of boxTids) {
+        db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'mission_box', String(id), new Date(now()).toISOString());
+      }
+      const reward = grantResources(model, awards, gameTables);
+      const updated = new Map(model.state.modules.value);
+      updated.set(MISSION_MODULE, { ...module, value: [moduleBytes] });
+      model.state.modules.value = [...updated];
+      const res = { changes: reward.changes, is_overflow: false };
+      const result = { mission: nextMission, res_change: res };
+      return { value: result, data: codec.pack('pb_mission_rsp', result) };
+    });
+  }
+
   // MissionUIMgr opens CatoonListForm for section rows with story > 0. Its
   // continue callback calls MissionMgr.ReqStoryAward(sectionTid), which sends
   // ETF [sectionTid] as type 508 req_mission_custom. The response is the same
@@ -432,17 +532,21 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
   function passStory(sectionTid) {
     const id = Number(sectionTid);
     if (!Number.isSafeInteger(id) || id <= 0) throw new GameError(1, 'Invalid story mission id');
-    const sections = readMissionTables().sections;
+    const sections = missionTables.sections;
     const section = sections.get(id);
     if (!section) throw new GameError(5, 'Story mission configuration missing');
     if (!(Number(section.story) > 0)) throw new GameError(5, 'Mission is not a story mission');
-    return store.transaction(model => {
+    return store.transaction((model, db) => {
       const { module, value: current } = currentMission(model);
       const previous = Number(current.mission_id ?? 0);
       const order = [...sections.keys()].sort((a, b) => a - b);
       const previousIndex = order.indexOf(previous), requestedIndex = order.indexOf(id);
       if (previous > 0 && requestedIndex > previousIndex + 1) throw new GameError(5, 'Story mission is not unlocked');
-      if (id > previous) current.mission_id = String(id);
+      let res = { changes: [], is_overflow: false };
+      if (id > previous) {
+        current.mission_id = String(id);
+        res = firstClearReward(model, db, section, gameTables, now);
+      }
       module.value[0] = serializedBinary(codec.pack('pb_mission', current));
       const modules = new Map(model.state.modules.value);
       modules.set(MISSION_MODULE, module);
@@ -451,7 +555,7 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
         value: { mission: current, previousMissionId: previous, requestedSectionTid: id },
         data: codec.pack('pb_mission_rsp', {
           mission: { mission_id: String(current.mission_id ?? 0), pass_count: current.pass_count },
-          res_change: { changes: [], is_overflow: false }
+          res_change: res
         })
       };
     });
@@ -464,9 +568,10 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
   }
 
   return {
-    supports: type => [201, 202, 203, 204, 207, 213].includes(type),
+    supports: type => [201, 202, 203, 204, 207, 213, 506].includes(type),
     passStory,
     execute(type, bytes) {
+      if (type === 506) return claimBoxAwards(bytes);
       if (type === 201) return start(bytes);
       if (type === 202) return exit(bytes);
       if (type === 207) return settlement();

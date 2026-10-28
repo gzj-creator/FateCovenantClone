@@ -12,6 +12,7 @@ import { readHeroTables } from '../config/hero-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from './wallet-service.mjs';
 import { createWelfareService } from './welfare-service.mjs';
+import { createTaskService } from './task-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
@@ -47,6 +48,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger}):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,logger});
+  const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables});
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,logger});
@@ -75,14 +77,15 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     if (value && typeof value === 'object') return value.mailid ?? value.mail_id ?? value.id;
     throw new GameError(1, 'Invalid mail command payload');
   }
-  async function storyMissionArgument(data) {
+  async function singleIdArgument(data, message) {
     const decoded = await decodeEtf(data);
     const value = decoded?.value ?? decoded;
     const candidate = Array.isArray(value) ? value.length === 1 ? value[0] : undefined : value;
-    const sectionTid = Number(candidate);
-    if (!Number.isSafeInteger(sectionTid) || sectionTid <= 0) throw new GameError(1, 'Invalid story mission payload');
-    return sectionTid;
+    const id = Number(candidate);
+    if (!Number.isSafeInteger(id) || id <= 0) throw new GameError(1, message);
+    return id;
   }
+  const storyMissionArgument = data => singleIdArgument(data, 'Invalid story mission payload');
   const sockets = new Set();
   const wireDumpDirectory = process.env.FATE_COVENANT_WIRE_DUMP_DIR;
   const server = net.createServer(socket => {
@@ -202,13 +205,26 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       }
       if (fight.supports(type)) {
         try {
-          const result = fight.execute(type, request.data);
+          const result = await fight.execute(type, request.data);
           if (result.data.length) send(seq, result.data); else send(seq);
           log({ event: 'fight_handled', type, seq, missionId: result.value?.mission?.mission_id });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'fight_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+        }
+        return;
+      }
+      if (tasks.supports(type)) {
+        try {
+          const taskId = await singleIdArgument(request.data, 'Invalid linear task payload');
+          const result = tasks.execute(type, taskId);
+          send(seq, result.data);
+          log({ event: 'linear_task_committed', type, seq, taskId, changes: result.value.res_change.changes.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'linear_task_rejected', type, seq, code, message: error.message });
         }
         return;
       }

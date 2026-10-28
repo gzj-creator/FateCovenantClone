@@ -1,37 +1,14 @@
-import { decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
+import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 
 // All activity day counters use the same 04:00 UTC+8 reset as the existing sprint service.
 const dayIndex = now => Math.floor((now / 1000 + 10800) / 86400);
 
-// pb_act_login.module_login_data is an ETF binary term (BINARY_EXT), not raw protobuf.
-// These values are always whole-byte bit blocks, so the six-byte envelope is sufficient;
-// the unit tests compare it with encodeEtf(binary(bytes)).
-function etfBinary(bytes) {
-  const out = Buffer.alloc(6 + bytes.length);
-  out[0] = 131; // ETF version
-  out[1] = 109; // BINARY_EXT
-  out.writeUInt32BE(bytes.length, 2);
-  bytes.copy(out, 6);
-  return out;
-}
-
 async function readEtfBinary(raw) {
-  if (!raw?.length) return Buffer.alloc(0);
-  const decoded = await decodeEtf(Buffer.from(raw));
-  if (!Buffer.isBuffer(decoded?.value)) throw new GameError(5, 'Unsupported activity login payload');
-  return Buffer.from(decoded.value);
-}
-
-function setBit(bits, bit) {
-  const index = Math.floor(bit / 8);
-  bits[index] |= 0x80 >> (bit % 8);
-}
-
-function hasBit(bits, bit) {
-  const index = Math.floor(bit / 8);
-  return index < bits.length && (bits[index] & (0x80 >> (bit % 8))) !== 0;
+  try { return await decodeBitBlock(raw); }
+  catch { throw new GameError(5, 'Unsupported activity login payload'); }
 }
 
 const resToClient = res => ({ changes: res.changes, is_overflow: false });
@@ -86,7 +63,7 @@ export function createWelfareService({ store, codec, tables, wallet, now = Date.
     const nextBits = Buffer.alloc(Math.max(bits.length, Math.floor(Math.max(...days) / 8) + 1));
     bits.copy(nextBits);
     for (const day of days) setBit(nextBits, day);
-    entry.module_login_data = etfBinary(nextBits).toString('base64');
+    entry.module_login_data = (await encodeBitBlock(nextBits)).toString('base64');
     const moduleBytes = serializedBinary(codec.pack('pb_act_login', activity));
 
     return store.transaction((model, db) => {

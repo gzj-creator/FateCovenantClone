@@ -133,9 +133,35 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(response.err.err, 1);
   assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30205');
 
+  // Chapter 3's final node unlocks box 1. The client sends the visible box ids
+  // as an ETF list and expects pb_mission_rsp with the updated BitBlock.
+  const boxDiamonds = BigInt(game.store.read().resources.get('101500').num);
+  response = await request(506, 14, await encodeEtf([1]));
+  assert.equal(response.err, undefined);
+  const boxClaim = codec.unpack('pb_mission_rsp', Buffer.from(response.data, 'base64'));
+  assert.deepEqual([...(await decodeEtf(Buffer.from(boxClaim.mission.box_award, 'base64'))).value], [0x40]);
+  assert.equal(boxClaim.res_change.changes.find(change => change.tid === '101500').diff_num, '30');
+  assert.equal(BigInt(game.store.read().resources.get('101500').num), boxDiamonds + 30n);
+  response = await request(506, 15, await encodeEtf([1]));
+  assert.equal(response.err.err, 310);
+
+  // Linear task 10001 completes at journey mission 30204. The story request
+  // above advances past that milestone, so claim it through the real ETF shape.
+  const taskDiamonds = BigInt(game.store.read().resources.get('101500').num);
+  response = await request(9010, 16, await encodeEtf([10001]));
+  assert.equal(response.err, undefined);
+  const taskClaim = codec.unpack('pb_linear_task_receive_back', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(taskClaim.task, { type: 1, receive_tid: 10001, snapshot_val: '30205' });
+  assert.equal(taskClaim.res_change.changes.find(change => change.tid === '101500').diff_num, '50');
+  assert.equal(BigInt(game.store.read().resources.get('101500').num), taskDiamonds + 50n);
+  const taskModule = codec.unpack('pb_linear_task_data', rawBinary(new Map(game.store.state().modules.value).get(90).value[0]));
+  assert.equal(taskModule.task_list.find(task => task.type === 1).receive_tid, 10001);
+  response = await request(9010, 17, await encodeEtf([10001]));
+  assert.equal(response.err.err, 310);
+
   // Chapter completion asks which recommended gifts are active. Echo the
   // observed request as zero-purchase counts instead of failing the callback.
-  response = await request(85901, 14, codec.pack('pb_recommend_gift_active_req', { actives: [{ act_tid: 61070, gift_id: [2811, 2812, 2813] }] }));
+  response = await request(85901, 18, codec.pack('pb_recommend_gift_active_req', { actives: [{ act_tid: 61070, gift_id: [2811, 2812, 2813] }] }));
   assert.equal(response.err, undefined);
   const gift = codec.unpack('pb_recommend_gift_active_rsp', Buffer.from(response.data, 'base64')).gift_list[0];
   assert.equal(gift.act_tid, 61070);

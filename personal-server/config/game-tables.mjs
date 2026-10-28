@@ -19,7 +19,11 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('PrincessTable.data.lua.json', base), ['EnergyAward', 'Gift', 'LoginAward', 'HolidayAward']),
     // Daily-discount rotation maps its short row ids (1..6) to real RechargeTable ids.
     ...pick(readGeneratedTables(new URL('DailyDiscountTable.data.lua.json', base), ['Recharge', 'Select', 'DailyGiftAward']), { Recharge: 'DailyDiscountRecharge', Select: 'DailyDiscountSelect', DailyGiftAward: 'DailyDiscountAward' }),
-    TaskType: readGeneratedTables(new URL('TaskTable.data.lua.json', base), ['Type']).Type
+    ...pick(readGeneratedTables(new URL('TaskTable.data.lua.json', base), ['Type', 'LinearTask', 'CommonTaskGlobal']), {
+      Type: 'TaskType',
+      LinearTask: 'LinearTask',
+      CommonTaskGlobal: 'CommonTaskGlobal'
+    })
   };
 }
 function pick(tables, names) { return Object.fromEntries(Object.entries(names).map(([from, to]) => [to, tables[from]])); }

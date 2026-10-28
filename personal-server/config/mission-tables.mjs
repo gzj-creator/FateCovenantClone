@@ -13,8 +13,8 @@ const LOCAL_ENEMY_FALLBACKS = new Map([
 
 export function readMissionTables(file = defaultPath) {
   if (file === defaultPath && defaultCache) return defaultCache;
-  const sections = readGeneratedTables(file, ['Section']).Section;
-  const result = { sections, heroes: readHeroTables() };
+  const tables = readGeneratedTables(file, ['Section', 'Box']);
+  const result = { sections: tables.Section, boxes: tables.Box, heroes: readHeroTables() };
   if (file === defaultPath) defaultCache = result;
   return result;
 }
