@@ -49,22 +49,41 @@ For the current team, the relevant rows are:
 - APK visual acceptance for active skill, combination assist, and victory
   advancement remains pending user confirmation.
 
-## 2026-10-29 victory cursor and Calamus follow-up
+## 2026-10-29 next-node cursor correction and Calamus follow-up
 
-- `MissionMgr.sectionTid` is the last cleared mission. Ordinary victory now
-  writes that mission id to `pb_mission.mission_id`; it no longer advances to
-  `nextMissionId`. This removes the extra-section cursor that made 40208 appear
-  cleared while the client continued requesting 40208.
-- Replaying a mission at or behind the saved cursor no longer increments
-  `pass_count`. Story sections still advance through type 508.
-- Regression coverage reproduces `40207 + victory(40208) -> 40208`, then
-  verifies the next request is 40209. Gateway tests use the same last-cleared
-  semantics.
+- APK feedback after clearing 40209 showed that the previous last-cleared
+  cursor interpretation was wrong. `MissionMgr.ParseData` assigns
+  `pb_mission.mission_id` to its in-memory `sectionTid` and fires
+  `REFRESH_MISSION_INFO` only when that value changes. Returning the same
+  40209 therefore left the journey UI on 4-9.
+- Ordinary victory now writes the next non-discard `MissionTable.Section` row,
+  ordered by `Section.index`, to both the persisted mission module and the
+  settlement response. The concrete transition is
+  `victory(40208) -> 40209`, then `victory(40209) -> 40210`.
+- Replaying a mission behind the saved cursor no longer increments
+  `pass_count`. Story type 508 also advances to the next node; passing 30205
+  returns 40201.
+- Regression coverage verifies the 4-8 and 4-9 transitions, duplicate-clear
+  idempotency, story advancement, persistence, and real gateway framing.
 - `TID_CALAMUS=2020601` now uses the `shadow-calamus` behavior. Ability
   `2202060113` selects one target; after a lethal hit it emits a new action
   id and attacks the next low-health living enemy. A non-lethal hit stops the
   chain.
 - Battle tests cover single-target selection, three consecutive kills, action
   id uniqueness, and stopping after a non-lethal hit.
-- Full personal-server suite: 133/133 passed. `node --check` passed for the
-  changed battle and settlement services.
+- Full personal-server suite: 136/136 passed. Targeted mission tests are 9/9
+  and the real TCP gateway test is 1/1. `node --check` and `git diff --check`
+  passed for the changed service and tests.
+- Live SQLite was backed up to
+  `analysis/experiments/private-server-20261025/p3/mission-cursor-next-20261029/`.
+  Before migration: module 8 `mission_id=40209`, SHA-256
+  `35ECC94167098CB29D7B20137381FA3C9554890F2F1F4ED1976E791FC05AF274`.
+  After migration: `mission_id=40210`, SHA-256
+  `F58917EC9170943323C64BF56A7A4B9FF7563459F29DC2CB6FD375CD2669E730`.
+  Both backups report `PRAGMA integrity_check=ok`; schema version remains 3.
+- Service PID `32312` listens on 18880, 18881, 18882, 18883 and 19090 only at
+  `127.0.0.1`. The isolated client reconnected, completed its handshake and
+  login with all 145 modules at 2026-10-28T16:46:18Z through 16:46:18.509Z.
+- APK visual confirmation that 4-10 is now shown remains pending. The 4-10
+  boss battle itself is outside this cursor fix; this change unlocks the boss
+  node without replaying 4-9.

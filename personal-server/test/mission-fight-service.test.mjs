@@ -126,7 +126,7 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   assert.equal(response.stm.result, 1);
   assert.notEqual(response.stm.exception, true);
   const settlement = codec.unpack('mission_to_client', Buffer.from(response.stm.stm_data, 'base64'));
-  const advanced = 30201;
+  const advanced = 30202;
   assert.equal(settlement.mission.mission_id, String(advanced));
   assert.equal(settlement.fight_result, '1');
   assert.equal(settlement.res.changes.length, 0);
@@ -161,9 +161,9 @@ test('fight exit acknowledges, report read returns the settled report and progre
 test('mission progress committed at start survives the confirmation exit', t => {
   const env = setup(t);
   env.service.execute(201, fightRequest(30201));
-  assert.equal(Number(missionModule(env.store).mission_id), 30201);
+  assert.equal(Number(missionModule(env.store).mission_id), 30202);
   assert.equal(env.service.execute(202, codec.pack('pb_fight_exit', { fight_type: 1, is_force: false })).data.length, 0);
-  assert.equal(Number(missionModule(env.store).mission_id), 30201);
+  assert.equal(Number(missionModule(env.store).mission_id), 30202);
 });
 
 test('non-mission fights are refused without touching saved state', t => {
@@ -188,9 +188,9 @@ test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)
   assert.throws(() => env.service.execute(201, wire({ is_assistant: true, boss_tid: 5 })), error => error.code === 5);
   const result = env.service.execute(201, wire({ is_assistant: true }));
   assert.equal(codec.unpack('pb_fight_response', result.data).report.finish, true);
-  assert.equal(missionModule(env.store).mission_id, '30201');
+  assert.equal(missionModule(env.store).mission_id, '30202');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
-  assert.equal(missionModule(env.store).mission_id, '30201');
+  assert.equal(missionModule(env.store).mission_id, '30202');
 });
 
 test('30204 uses the documented local pursuer fallback and commits on start', t => {
@@ -199,9 +199,9 @@ test('30204 uses the documented local pursuer fallback and commits on start', t 
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '304');
   assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9002600', '9002600']);
-  assert.equal(missionModule(env.store).mission_id, '30204');
+  assert.equal(missionModule(env.store).mission_id, '30205');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
-  assert.equal(missionModule(env.store).mission_id, '30204');
+  assert.equal(missionModule(env.store).mission_id, '30205');
 });
 
 test('mission fight playback stays disabled until a real action stream exists', t => {
@@ -224,20 +224,20 @@ test('story mission 30205 advances the mission module through req_mission_custom
     env.service.execute(201, fightRequest(mission, { fight_tid: 300 + (mission % 100) }));
     env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   }
-  assert.equal(missionModule(env.store).mission_id, '30204');
+  assert.equal(missionModule(env.store).mission_id, '30205');
   const passCount = Number(missionModule(env.store).pass_count?.count ?? 0);
   const result = env.service.passStory(30205);
   const response = codec.unpack('pb_mission_rsp', result.data);
-  assert.equal(response.mission.mission_id, '30205');
+  assert.equal(response.mission.mission_id, '40201');
   assert.equal(Number(response.mission.pass_count.count), passCount);
   assert.equal(response.res_change.changes.length, 0);
   assert.ok(!response.res_change.is_overflow);
-  assert.equal(missionModule(env.store).mission_id, '30205');
+  assert.equal(missionModule(env.store).mission_id, '40201');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount);
 
   // Replaying the same story node must not regress or duplicate progress.
   const duplicate = env.service.passStory(30205);
-  assert.equal(codec.unpack('pb_mission_rsp', duplicate.data).mission.mission_id, '30205');
+  assert.equal(codec.unpack('pb_mission_rsp', duplicate.data).mission.mission_id, '40201');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount);
 
   // Battle sections and unknown sections are not story passes.
@@ -248,10 +248,10 @@ test('story mission 30205 advances the mission module through req_mission_custom
   // chapter-3 story node is passed.
   const nextBattle = env.service.execute(201, fightRequest(40201, { fight_tid: 401 }));
   assert.equal(codec.unpack('pb_fight_response', nextBattle.data).report.finish, true);
-  assert.equal(missionModule(env.store).mission_id, '40201');
+  assert.equal(missionModule(env.store).mission_id, '40202');
 });
 
-test('a cleared ordinary mission remains the last-passed id so the client can request the next node', t => {
+test('ordinary victory advances the saved and returned cursor to the next journey node', t => {
   const env = setup(t);
   env.store.transaction(model => {
     const module = new Map(model.state.modules.value).get(8);
@@ -267,19 +267,21 @@ test('a cleared ordinary mission remains the last-passed id so the client can re
   const result = env.service.execute(201, fightRequest(40208, { fight_tid: 408 }));
   const response = codec.unpack('pb_fight_response', result.data);
   const settlement = codec.unpack('mission_to_client', Buffer.from(response.stm.stm_data, 'base64'));
-  assert.equal(settlement.mission.mission_id, '40208');
-  assert.equal(missionModule(env.store).mission_id, '40208');
+  assert.equal(settlement.mission.mission_id, '40209');
+  assert.equal(missionModule(env.store).mission_id, '40209');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
 
   // Re-entering the same battle must not count another clear.
   const repeated = env.service.execute(201, fightRequest(40208, { fight_tid: 408 }));
   const repeatedResponse = codec.unpack('pb_fight_response', repeated.data);
   const repeatedSettlement = codec.unpack('mission_to_client', Buffer.from(repeatedResponse.stm.stm_data, 'base64'));
-  assert.equal(repeatedSettlement.mission.mission_id, '40208');
+  assert.equal(repeatedSettlement.mission.mission_id, '40209');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
 
   const next = env.service.execute(201, fightRequest(40209, { fight_tid: 409 }));
   const nextResponse = codec.unpack('pb_fight_response', next.data);
   const nextSettlement = codec.unpack('mission_to_client', Buffer.from(nextResponse.stm.stm_data, 'base64'));
-  assert.equal(nextSettlement.mission.mission_id, '40209');
+  assert.equal(nextSettlement.mission.mission_id, '40210');
+  assert.equal(missionModule(env.store).mission_id, '40210');
+  assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 2);
 });

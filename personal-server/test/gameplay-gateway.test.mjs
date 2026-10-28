@@ -67,11 +67,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.deepEqual(fightActions.slice(-2), [112, 104]);
   assert.ok(fightActions.every(type => [101, 102, 104, 105, 106, 107, 109, 112, 114, 116].includes(type)));
   assert.ok(fightActions.includes(109));
-  assert.equal(codec.unpack('mission_to_client', Buffer.from(fight.stm.stm_data, 'base64')).mission.mission_id, '30201');
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(fight.stm.stm_data, 'base64')).mission.mission_id, '30202');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30202');
   response = await request(207, 3, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64')).stm.result, 1);
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30202');
 
   // Backpack box: the configured draw library replaces the previously unsupported command.
   response = await request(159, 4, codec.pack('pb_one_key_use', { use: [{ tid: 2261200, num: 1 }] }));
@@ -110,7 +110,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(response.err, undefined);
   const missionOnly = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
   assert.equal(missionOnly.report.finish, true);
-  assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30202');
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30203');
 
   // 508 req_mission_custom continues the chapter-3 story node. The client sends
   // an ETF single-element list carrying sectionTid, then expects pb_mission_rsp.
@@ -126,12 +126,12 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(508, 12, await encodeEtf([30205]));
   assert.equal(response.err, undefined);
   const story = codec.unpack('pb_mission_rsp', Buffer.from(response.data ?? '', 'base64'));
-  assert.equal(story.mission.mission_id, '30205');
+  assert.equal(story.mission.mission_id, '40201');
   assert.equal(story.res_change.changes.length, 0);
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30205');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '40201');
   response = await request(508, 13, await encodeEtf(['not-a-section']));
   assert.equal(response.err.err, 1);
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30205');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '40201');
 
   // Chapter completion asks which recommended gifts are active. Echo the
   // observed request as zero-purchase counts instead of failing the callback.

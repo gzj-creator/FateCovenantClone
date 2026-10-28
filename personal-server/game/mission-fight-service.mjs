@@ -31,6 +31,27 @@ const ACTION_ROUND_OVER = 112;
 const ACTION_FIGHTER_RELIVE = 114;
 const ACTION_FAT_ATTR_SYNC = 116;
 
+let missionOrderCache = null;
+
+function missionOrder(sections) {
+  if (!missionOrderCache || missionOrderCache.sections !== sections) {
+    const entries = [...sections.entries()]
+      .filter(([, section]) => !section?.is_discard)
+      .sort((left, right) => Number(left[1]?.index ?? left[0]) - Number(right[1]?.index ?? right[0]) || Number(left[0]) - Number(right[0]));
+    missionOrderCache = { sections, entries };
+  }
+  return missionOrderCache.entries;
+}
+
+function missionPosition(sections, missionId) {
+  return missionOrder(sections).findIndex(([id]) => Number(id) === Number(missionId));
+}
+
+function nextMissionId(sections, missionId) {
+  const order = missionOrder(sections), position = missionPosition(sections, missionId);
+  return position >= 0 && position + 1 < order.length ? Number(order[position + 1][0]) : Number(missionId);
+}
+
 function action(codec, proto, schema, value) {
   return codec.pack('pb_generic', { proto, bin: codec.pack(schema, value) });
 }
@@ -338,11 +359,14 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
       const previous = Number(current.mission_id ?? 0);
       if (pending.result === RESULT_WIN) {
         const completed = pending.mission.missionId;
-        if (completed > previous) {
-          // MissionMgr.sectionTid is the last cleared mission, not the next
-          // fight. Advancing here would make victory mark one extra section
-          // as passed while the client still asks to fight that section.
-          current.mission_id = String(completed);
+        const sections = readMissionTables().sections;
+        const previousPosition = missionPosition(sections, previous), completedPosition = missionPosition(sections, completed);
+        if (completedPosition >= 0 && (previousPosition < 0 || completedPosition >= previousPosition)) {
+          // MissionMgr.ParseData assigns pb_mission.mission_id to sectionTid and
+          // only refreshes the journey UI when the value changes. After a win,
+          // this field must therefore be the next fight rather than the node
+          // that was just cleared.
+          current.mission_id = String(nextMissionId(sections, completed));
           if (!current.pass_count) current.pass_count = { flush_time: 0, count: 0 };
           current.pass_count.count = Number(current.pass_count.count ?? 0) + 1;
         }
@@ -439,10 +463,9 @@ export function createMissionFightService({ store, codec, logger = () => {}, pla
     return store.transaction(model => {
       const { module, value: current } = currentMission(model);
       const previous = Number(current.mission_id ?? 0);
-      const order = [...sections.keys()].sort((a, b) => a - b);
-      const previousIndex = order.indexOf(previous), requestedIndex = order.indexOf(id);
+      const previousIndex = missionPosition(sections, previous), requestedIndex = missionPosition(sections, id);
       if (previous > 0 && requestedIndex > previousIndex + 1) throw new GameError(5, 'Story mission is not unlocked');
-      if (id > previous) current.mission_id = String(id);
+      if (requestedIndex >= previousIndex) current.mission_id = String(nextMissionId(sections, id));
       module.value[0] = serializedBinary(codec.pack('pb_mission', current));
       const modules = new Map(model.state.modules.value);
       modules.set(MISSION_MODULE, module);
