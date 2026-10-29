@@ -22,6 +22,8 @@
 
 新英雄仍通过客户端既有的 `ItemTable.Chip[award.tid] + award.extra` 路径识别。`extra` 是 ETF 编码的英雄 TID，不是 protobuf 英雄对象。英雄本体、碎片和招募计数均在同一个 SQLite 事务内写入；重复英雄按 `Quality.convert_piece_new` 转换为碎片。
 
+> 2026-10-30 修复：新英雄也必须按 `Quality.convert_piece_new` 发放碎片包，不能只发 1 个碎片；否则 `HeroDrawUILogic.FilterAwards` 的 `floor(num / convert_piece_new)` 为 0，结果页会以 `executeCount = 0` 崩溃。详见 [fixes/recruit-result-no-card.md](../fixes/recruit-result-no-card.md)。
+
 ## 持久化与限制
 
 - 招募信息保存在 module 10 的 `pb_hero_draw_info`；普通/高级购票信息分别保存在 module 10 的索引 9 和 10。

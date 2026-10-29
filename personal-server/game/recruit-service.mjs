@@ -300,7 +300,12 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
       const result = drawOne(model, info, lib, config);
       results.push(result);
       const owned = model.heroInfo.hero_list.some(hero => Number(hero.tid) === result.tid);
-      const amount = owned ? Number(heroTables.Quality.get(result.quality)?.convert_piece_new ?? 0) : 1;
+      // The client's HeroDrawUILogic.FilterAwards splits one chip award into
+      // floor(num / Quality.convert_piece_new) result cards. Every drawn hero,
+      // including a newly unlocked one, must therefore arrive as one full
+      // convert_piece_new chip bundle; a single chip renders zero cards and
+      // makes HeroDrawResultShowForm.Repeat fail with executeCount = 0.
+      const amount = Number(heroTables.Quality.get(result.quality)?.convert_piece_new ?? 0);
       if (amount <= 0) fail(5, 'Hero conversion configuration is missing');
       const granted = grantResources(model, [[result.chip, amount]], tables);
       const change = granted.changes[0];
@@ -327,7 +332,9 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
       value: {
         res: { changes },
         recruit_info: info,
-        decompose_args: results.filter(result => model.heroInfo.hero_list.filter(hero => Number(hero.tid) === result.tid).length > 1).map(result => ({ tid: result.chip, num: Number(heroTables.Quality.get(result.quality)?.convert_piece_new ?? 0) })),
+        // The shipped 601 response carries only res/recruit_info; the chip bundle
+        // in res.changes already produces the result card on the client.
+        decompose_args: [],
         pre_args: []
       },
       valueForLog: { lib, count, newHeroes: newHeroes.map(hero => hero.tid), results: results.map(result => ({ tid: result.tid, quality: result.quality, guaranteed: result.guaranteed })) }

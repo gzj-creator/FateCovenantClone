@@ -122,7 +122,12 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   const before = env.store.read().heroInfo.hero_list.length;
   const first = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
   const newChange = first.res.changes.find(change => change.tid === '21100104');
-  assert.equal(newChange.diff_num, '1');
+  const quality = Number(heroTables.Hero.get(1010101).quality);
+  const convertCount = Number(heroTables.Quality.get(quality).convert_piece_new);
+  assert.equal(newChange.diff_num, String(convertCount));
+  // HeroDrawUILogic.FilterAwards renders floor(diff_num / convert_piece_new) cards.
+  assert.equal(Number(newChange.diff_num) / convertCount, 1);
+  assert.deepEqual(first.decompose_args, []);
   assert.equal(await decodeEtf(Buffer.from(newChange.extra, 'base64')), 1010101);
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
   const loginHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.state().modules.value).get(10).value[0]));
@@ -130,7 +135,8 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   env.reopen();
   const second = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
   const duplicate = second.res.changes.find(change => change.tid === '21100104');
-  assert.equal(duplicate.diff_num, '10');
+  assert.equal(duplicate.diff_num, String(convertCount));
+  assert.deepEqual(second.decompose_args, []);
   assert.equal(duplicate.extra, undefined);
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
 });
