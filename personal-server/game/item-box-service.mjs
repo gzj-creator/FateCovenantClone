@@ -3,30 +3,60 @@ import { grantResources } from './resources.mjs';
 
 // Backpack boxes. Only rules fully described by shipped configuration are executed:
 // ItemTable.Random_Box -> DrawTable lib (weighted group + weighted award) without guarantee state.
-// Selection, pay, repeat and lottery boxes stay unsupported on purpose.
+// ItemTable.OptionalBox -> the player's selected range entries (type 152 use_selected_box).
+// Pay, repeat and lottery boxes stay unsupported on purpose.
 const MAX_USE = 999;
 
 export function createItemBoxService({ store, codec, tables, random = Math.random, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
 
-  function rule(tid) {
+  function boxItem(tid) {
     const item = tables.Item.get(tid);
     if (!item) throw new GameError(5, 'Unknown item');
     const type = tables.Type.get(item.type);
     const objectClass = type?.obj_class?.reference ?? '';
     if (objectClass !== 'ItemBox' && objectClass !== 'ItemSuitBox') throw new GameError(5, 'This item is not an openable box');
+    return item;
+  }
+
+  function randomRule(tid) {
     const draw = tables.Random_Box.get(tid);
-    if (draw) {
-      const lib = tables.DrawLibWeight.get(draw.draw_lib);
-      if (!lib) throw new GameError(5, 'Box draw library is missing from configuration');
-      const guarantees = (lib.guaranteed_weight?.length ?? 0) > 0 || (lib.guaranteed_group?.length ?? 0) > 0
-        || (lib.counter_guaranteed_group?.length ?? 0) > 0 || (lib.against_guaranteed_group_num ?? 0) > 0;
-      if (guarantees) throw new GameError(5, 'Box draw guarantee state is not implemented');
-      const groups = [...(lib.weight_group ?? [])].map(([weight, groupId]) => ({ weight, group: tables.DrawGroup.get(groupId) }));
-      if (!groups.length || groups.some(entry => !entry.group)) throw new GameError(5, 'Box draw groups are missing from configuration');
-      return { kind: 'random', groups };
-    }
-    if (tables.OptionalBox.get(tid)) throw new GameError(5, 'Optional box selection is not implemented');
+    if (!draw) return null;
+    const lib = tables.DrawLibWeight.get(draw.draw_lib);
+    if (!lib) throw new GameError(5, 'Box draw library is missing from configuration');
+    const guarantees = (lib.guaranteed_weight?.length ?? 0) > 0 || (lib.guaranteed_group?.length ?? 0) > 0
+      || (lib.counter_guaranteed_group?.length ?? 0) > 0 || (lib.against_guaranteed_group_num ?? 0) > 0;
+    if (guarantees) throw new GameError(5, 'Box draw guarantee state is not implemented');
+    const groups = [...(lib.weight_group ?? [])].map(([weight, groupId]) => ({ weight, group: tables.DrawGroup.get(groupId) }));
+    if (!groups.length || groups.some(entry => !entry.group)) throw new GameError(5, 'Box draw groups are missing from configuration');
+    return { kind: 'random', groups };
+  }
+
+  function optionalRule(tid) {
+    const optional = tables.OptionalBox.get(tid);
+    if (!optional) return null;
+    const optionalNum = Number(optional.optional_num);
+    const range = Array.isArray(optional.range) ? optional.range : [];
+    if (!Number.isSafeInteger(optionalNum) || optionalNum <= 0 || !range.length) throw new GameError(5, 'Optional box configuration is invalid');
+    const options = range.map(entry => {
+      if (!Array.isArray(entry) || entry.length < 2) throw new GameError(5, 'Optional box award is invalid');
+      const rewardTid = Number(entry[0]), rewardNum = Number(entry[1]);
+      if (!Number.isSafeInteger(rewardTid) || !Number.isSafeInteger(rewardNum) || rewardNum <= 0 || !tables.Item.has(rewardTid)) {
+        // A few selectors award whole heroes rather than inventory items; those need a
+        // hero-creation handler and must not be half-applied as an empty resource.
+        throw new GameError(5, 'Optional box award is not an inventory item');
+      }
+      return [rewardTid, rewardNum];
+    });
+    return { kind: 'optional', optionalNum, options };
+  }
+
+  function rule(tid) {
+    boxItem(tid);
+    const random = randomRule(tid);
+    if (random) return random;
+    const optional = optionalRule(tid);
+    if (optional) return optional;
     if (tables.Designated_Box.get(tid)) throw new GameError(5, 'Designated box rule is not implemented');
     if (tables.Pay_Box.get(tid)) throw new GameError(5, 'Paid box requires a recharge handler');
     if (tables.BoxRepeat.get(tid)) throw new GameError(5, 'Repeatable box state is not implemented');
@@ -50,6 +80,16 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
     return [tid, num];
   }
 
+  function mergeChanges(changes) {
+    const merged = new Map();
+    for (const change of changes) {
+      const existing = merged.get(change.tid);
+      if (existing) { existing.new_num = change.new_num; existing.diff_num = String(BigInt(existing.diff_num) + BigInt(change.diff_num)); }
+      else merged.set(change.tid, { ...change });
+    }
+    return [...merged.values()];
+  }
+
   function open(entries) {
     if (!Array.isArray(entries) || !entries.length || entries.length > 20) throw new GameError(1, 'Invalid box request');
     const requests = entries.map(entry => {
@@ -57,6 +97,9 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
       if (!Number.isSafeInteger(tid) || !Number.isSafeInteger(num) || num <= 0 || num > MAX_USE) throw new GameError(1, 'Invalid box request');
       return { tid, num, rule: rule(tid) };
     });
+    // Type 151/157/159 are the non-selective use paths. Never consume an OptionalBox
+    // without a selection: that would silently discard the box and award nothing.
+    if (requests.some(request => request.rule.kind !== 'random')) throw new GameError(5, 'Optional box requires a selection request');
     const result = store.transaction(model => {
       const consumed = new Map(), awards = [];
       for (const request of requests) {
@@ -73,18 +116,52 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
         changes.push({ tid: String(tid), new_num: held.num, diff_num: String(-num) });
       }
       changes.push(...grantResources(model, awards, tables).changes);
-      const merged = new Map();
-      for (const change of changes) {
-        const existing = merged.get(change.tid);
-        if (existing) { existing.new_num = change.new_num; existing.diff_num = String(BigInt(existing.diff_num) + BigInt(change.diff_num)); }
-        else merged.set(change.tid, { ...change });
-      }
-      const value = { changes: [...merged.values()], is_overflow: false };
+      const value = { changes: mergeChanges(changes), is_overflow: false };
       return { value, data: codec.pack('pb_res_to_client', value) };
     });
     log({ event: 'item_box_opened', boxes: requests.map(request => request.tid), changes: result.value.changes.length });
     return result;
   }
 
-  return { supports: type => [151, 157, 159].includes(type), open, rule };
+  function openSelected(request) {
+    if (!request || typeof request !== 'object' || Array.isArray(request)) throw new GameError(1, 'Invalid box request');
+    const tid = Number(request.tid), num = Number(request.num ?? 1);
+    if (!Number.isSafeInteger(tid) || !Number.isSafeInteger(num) || num <= 0 || num > MAX_USE) throw new GameError(1, 'Invalid box request');
+    const boxRule = rule(tid);
+    if (boxRule.kind !== 'optional') throw new GameError(5, 'This box does not accept a selection');
+    const selected = request.selected;
+    if (!Array.isArray(selected) || !selected.length || selected.length > MAX_USE) throw new GameError(1, 'Invalid box selection');
+    const counts = new Map();
+    let total = 0;
+    for (const choice of selected) {
+      const index = Number(choice?.index), count = Number(choice?.num ?? 1);
+      if (!Number.isSafeInteger(index) || index < 1 || index > boxRule.options.length) throw new GameError(1, 'Invalid box selection');
+      if (!Number.isSafeInteger(count) || count <= 0 || count > MAX_USE) throw new GameError(1, 'Invalid box selection');
+      total += count;
+      if (!Number.isSafeInteger(total) || total > MAX_USE * MAX_USE) throw new GameError(1, 'Invalid box selection');
+      counts.set(index, (counts.get(index) ?? 0) + count);
+    }
+    const expected = boxRule.optionalNum * num;
+    if (!Number.isSafeInteger(expected) || total !== expected) throw new GameError(1, 'Box selection count does not match');
+    const result = store.transaction(model => {
+      const held = model.resources.get(String(tid));
+      if (!held || BigInt(held.num) < BigInt(num)) throw new GameError(1, 'Not enough boxes');
+      const awards = [];
+      for (const [index, count] of counts) {
+        const [rewardTid, rewardNum] = boxRule.options[index - 1];
+        const amount = rewardNum * count;
+        if (!Number.isSafeInteger(amount) || amount <= 0) throw new GameError(5, 'Optional box award is invalid');
+        awards.push([rewardTid, amount]);
+      }
+      held.num = String(BigInt(held.num) - BigInt(num));
+      const changes = [{ tid: String(tid), new_num: held.num, diff_num: String(-num) }];
+      changes.push(...grantResources(model, awards, tables).changes);
+      const value = { changes: mergeChanges(changes), is_overflow: false };
+      return { value, data: codec.pack('pb_res_to_client', value) };
+    });
+    log({ event: 'item_box_opened', boxes: [tid], selected: [...counts.entries()], changes: result.value.changes.length });
+    return result;
+  }
+
+  return { supports: type => [151, 152, 157, 159].includes(type), open, openSelected, rule };
 }

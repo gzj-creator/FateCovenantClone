@@ -197,14 +197,19 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       }
       if (itemBox.supports(type)) {
         try {
-          let entries;
-          if (type === 159) entries = unpack('pb_one_key_use', request.data).use;
-          else if (type === 157) {
-            const batch = unpack('pb_batch_use_box_req', request.data);
-            if ((batch.lottery_list ?? []).length) throw new GameError(5, 'Lottery box list is not implemented');
-            entries = batch.box_list;
-          } else entries = [unpack('simple_use', request.data)];
-          const result = itemBox.open(entries);
+          let result;
+          if (type === 152) {
+            result = itemBox.openSelected(unpack('selected_use', request.data));
+          } else {
+            let entries;
+            if (type === 159) entries = unpack('pb_one_key_use', request.data).use;
+            else if (type === 157) {
+              const batch = unpack('pb_batch_use_box_req', request.data);
+              if ((batch.lottery_list ?? []).length) throw new GameError(5, 'Lottery box list is not implemented');
+              entries = batch.box_list;
+            } else entries = [unpack('simple_use', request.data)];
+            result = itemBox.open(entries);
+          }
           send(seq, result.data); log({ event: 'item_box_committed', type, seq, changes: result.value.changes.length });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;

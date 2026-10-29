@@ -15,6 +15,16 @@ const codec = createGameCodec();
 const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
 const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
 
+function addResource(store, tid, num, group = 1) {
+  store.transaction(model => {
+    const groups = new Map(model.state.modules.value).get(6).value;
+    while (groups.length <= group) groups.push({ value: [], improper: false });
+    const entry = groups[group].value.length;
+    groups[group].value.push(serializedBinary(Buffer.alloc(0)));
+    model.resources.set(String(tid), { tid, num: String(num), location: [6, group, entry] });
+  });
+}
+
 test('gateway serves mission fights, box opening and activity reads on a temporary port', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-gameplay-'));
   const databasePath = path.join(directory, 'game.sqlite');
@@ -81,6 +91,17 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   // An unverified box rule is refused with a business error instead of a fake success.
   response = await request(159, 5, codec.pack('pb_one_key_use', { use: [{ tid: 11200, num: 1 }] }));
   assert.equal(response.err.err, 5);
+
+  // Type 152 selection box: the whole command must commit instead of falling
+  // through to unsupported_command / the generic client error.
+  addResource(game.store, 71200, 1);
+  response = await request(152, 50, codec.pack('selected_use', { tid: 71200, num: 1, selected: [{ index: 1, num: 1 }] }));
+  assert.equal(response.err, undefined);
+  const selectedChanges = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(selectedChanges.find(change => change.tid === '71200').diff_num, '-1');
+  assert.equal(selectedChanges.find(change => change.tid === '21300104').diff_num, '1');
+  assert.equal(game.store.read().resources.get('71200').num, '0');
+  assert.equal(game.store.read().resources.get('21300104').num, '1');
 
   // Activity reads answer, activity mutations stay refused.
   response = await request(110308, 6, Buffer.alloc(0));
