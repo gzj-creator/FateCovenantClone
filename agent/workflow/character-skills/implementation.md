@@ -8,7 +8,7 @@
 
 基线：`6713e6d test(personal-server): cover recommend gift purchase counts`
 
-状态：实现与本地验证完成，等待用户批准后才能部署或合并。
+状态：实现与本地验证完成，已合并到 `main`；部署仍等待用户批准。
 
 ## 目标和边界
 
