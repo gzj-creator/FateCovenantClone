@@ -1,0 +1,6 @@
+{
+  "name": "FateCovenant.Presentation",
+  "rootNamespace": "FateCovenant.Presentation",
+  "references": ["FateCovenant.Battle", "FateCovenant.Game", "UnityEngine.UI"],
+  "autoReferenced": true
+}

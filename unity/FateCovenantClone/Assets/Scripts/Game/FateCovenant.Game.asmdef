@@ -1,0 +1,5 @@
+{
+  "name": "FateCovenant.Game",
+  "references": ["FateCovenant.Battle"],
+  "noEngineReferences": true
+}
