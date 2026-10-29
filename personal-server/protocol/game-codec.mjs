@@ -19,6 +19,13 @@ function prepareEtf(value) {
 }
 export const encodeEtf = value => new Promise((resolve, reject) => E.term_to_binary(prepareEtf(value), (error, result) => error ? reject(error) : resolve(Buffer.from(result))));
 export const decodeEtf = bytes => new Promise((resolve, reject) => E.binary_to_term(bytes, (error, result) => error ? reject(error) : resolve(result)));
+export function encodeEtfInteger(value) {
+  if (!Number.isSafeInteger(value) || value < -2147483648 || value > 2147483647) throw new RangeError('ETF integer must be an exact signed 32-bit value');
+  if (value >= 0 && value <= 255) return Buffer.from([131, 97, value]);
+  const bytes = Buffer.alloc(6);
+  bytes[0] = 131; bytes[1] = 98; bytes.writeInt32BE(value, 2);
+  return bytes;
+}
 export const binary = value => new E.OtpErlangBinary(Buffer.from(value));
 export const rawBinary = object => Buffer.from(object.value.data);
 export const serializedBinary = value => ({ value: Buffer.from(value).toJSON(), bits: 8 });

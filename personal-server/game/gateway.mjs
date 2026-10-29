@@ -17,6 +17,7 @@ import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
+import { createRecruitService } from './recruit-service.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -36,11 +37,13 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       modules: template[2], rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
   }
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec });
-  const progression = createHeroProgression({ store, codec, tables: readHeroTables() });
+  const heroTables = readHeroTables(), tables = readGameTables();
+  const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const ranks = createRankService({ codec });
   const features = createFeatureService({ store, codec, sprintPreview });
-  const tables=readGameTables(), subscribers=new Set();
+  const recruit = createRecruitService({ store, codec, tables, heroTables });
+  const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
@@ -49,6 +52,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,logger});
   async function loginPayload() {
+    recruit.ensureLoginState();
     const state = store.state();
     const list = revive(state.modules);
     const modules = new Map(list.value);
@@ -284,6 +288,26 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'lineup_rejected', type, seq, code, errorName: error.name });
+        }
+        return;
+      }
+      if (recruit.supports(type)) {
+        try {
+          let input;
+          if ([601, 642, 657, 673].includes(type)) {
+            const schema = type === 601 ? 'pb_draw_hero' : type === 673 ? 'pb_draw_marquee_req' : 'pb_draw_choose_wish_req';
+            input = request.data?.length ? unpack(schema, request.data) : {};
+          } else if (request.data?.length) {
+            const decoded = await decodeEtf(request.data), value = decoded?.value ?? decoded;
+            input = Array.isArray(value) && value.length === 1 ? value[0] : value;
+          }
+          const result = recruit.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'recruit_committed', type, seq, responseBytes: result.data.length, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'recruit_rejected', type, seq, code, message: error.message });
         }
         return;
       }

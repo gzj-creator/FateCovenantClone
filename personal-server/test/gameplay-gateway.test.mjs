@@ -102,6 +102,21 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(53002, 10, await encodeEtf([1004012]));
   assert.equal(response.err, undefined);
 
+  // Recruitment uses ETF quantities for ticket purchase and protobuf for the draw itself.
+  const ticketsBeforeRecruitment = Number(game.store.read().resources.get('2002')?.num ?? 0);
+  game.store.transaction(model => { model.resources.get('101500').num = '1000'; });
+  response = await request(600, 15, await encodeEtf([2]));
+  assert.equal(response.err, undefined);
+  const purchase = codec.unpack('pb_draw_normal_buy_ret', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(purchase.res.changes.map(change => [change.tid, change.diff_num]), [['101500', '-500'], ['2002', '2']]);
+  response = await request(601, 16, codec.pack('pb_draw_hero', { draw_lib: 1, point_draw_num: 2 }));
+  assert.equal(response.err, undefined);
+  const draw = codec.unpack('hero_draw_back', Buffer.from(response.data, 'base64'));
+  assert.equal(draw.recruit_info.draw_lib, '1');
+  assert.equal(draw.recruit_info.draw_count, 3);
+  assert.ok(draw.res.changes.some(change => change.tid === '2002' && change.diff_num === '-2'));
+  assert.equal(game.store.read().resources.get('2002').num, String(ticketsBeforeRecruitment));
+
   // The real MissionUIMgr encoder omits chapter_tid/section_idx; mission_id alone must settle.
   response = await request(201, 11, codec.pack('pb_fight_request', {
     fight_tid: 302, stm_type: 0,
