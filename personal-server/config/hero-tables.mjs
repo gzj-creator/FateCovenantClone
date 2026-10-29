@@ -5,7 +5,7 @@ let defaultCache;
 
 // Interpret generated, straight-line table constructors without executing Lua.
 export function readHeroTables(file = defaultPath) {
-  const names = ['Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star', 'DevelopConst', 'Ability', 'Npc', 'Npc_Ability'];
+  const names = ['Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star', 'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst', 'DrawNumLimit', 'Guaranteed', 'Quality'];
   if (file === defaultPath) return defaultCache ??= readGeneratedTables(file, names);
   return readGeneratedTables(file, names);
 }
