@@ -49,6 +49,12 @@ input\HeroGetDisplayForm.lua.txt:287: in function '_Close'
 - `npm test --prefix .\personal-server`：worktree 内 **157/157 通过**。
 - `personal-server/test/gameplay-gateway.test.mjs` 的真实 loopback `600 -> 601` 流程通过；该流程只校验抽卡响应可解码和资源扣除，不校验碎片 bundle 大小。
 
+## 部署
+
+- `feature/recruit-hero-grant` 以 `8112198` fast-forward 合入 `main`；主工作树完整测试 **161/161 通过**（包含当时主工作树内其他未提交修复的测试）。
+- 个人服务已重启并通过 `server.local-only.json` 确认五端口 `18880/18881/18882/18883/19090` 均在 `127.0.0.1` 监听；客户端心跳在重启后恢复。
+- 未修改 APK、客户端进程、ADB reverse 或 UID 隔离。
+
 ## 边界与待验
 
 - 修复只改变“每次抽到英雄时发放给客户端的碎片 bundle 大小”，不改变抽卡概率、保底、英雄品质或已有存档。
