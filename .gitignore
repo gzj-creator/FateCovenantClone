@@ -16,6 +16,16 @@ analysis/test-runs/**/*.exe
 analysis/test-runs/**/*.pdb
 analysis/test-runs/**/*.dll
 
+# Local decoded-language and table-inspection scratch used by catalog tools.
+.tmp-language/
+.tmp-language-sub/
+analysis-tools/
+fighttable-details.jsonl
+.tmp-hero-tables.jsonl
+.tmp-fight-skills.jsonl
+.tmp-catalog-build-report.json
+.tmp-hero-ability-protos.jsonl
+
 # Decrypted local configuration and credentials.
 **/*.local-only.*
 # Raw app backups can contain stored account sessions.
