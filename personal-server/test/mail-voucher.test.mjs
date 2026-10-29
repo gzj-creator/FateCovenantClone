@@ -263,10 +263,11 @@ test('voucher mail, grant and order state survive reopening the database', t => 
   assert.equal(codec.unpack('pb_rev_login_mail_info', e.mail.loginPayload()).mail_list[0].received, true);
 
   const db = new DatabaseSync(e.databasePath, { readOnly: true });
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
   const names = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
-  for (const name of ['voucher_skus', 'game_mails', 'voucher_grants', 'voucher_redemptions']) assert.ok(names.includes(name));
+  for (const name of ['voucher_skus', 'game_mails', 'voucher_grants', 'voucher_redemptions', 'reward_claims']) assert.ok(names.includes(name));
   assert.ok(db.prepare('SELECT name FROM migrations WHERE name=?').get('voucher-mail-v3'));
+  assert.ok(db.prepare('SELECT name FROM migrations WHERE name=?').get('reward-claims-v4'));
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
   db.close();
 });

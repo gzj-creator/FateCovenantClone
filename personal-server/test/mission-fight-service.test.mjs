@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { createMissionFightService } from '../game/mission-fight-service.mjs';
 
@@ -16,15 +16,30 @@ function setup(t) {
   const file = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, file);
   let store = createGameStore({ databasePath: file, codec });
+  let service = createMissionFightService({ store, codec, playbackEnabled: true });
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
-    get store() { return store; }, service: createMissionFightService({ store, codec, playbackEnabled: true }),
+    get store() { return store; },
+    get service() { return service; },
     playbackDisabled: () => createMissionFightService({ store, codec }),
-    reopen() { store.close(); store = createGameStore({ databasePath: file, codec }); }
+    reopen() {
+      store.close();
+      store = createGameStore({ databasePath: file, codec });
+      service = createMissionFightService({ store, codec, playbackEnabled: true });
+    }
   };
 }
 
 const missionModule = store => codec.unpack('pb_mission', rawBinary(new Map(store.state().modules.value).get(8).value[0]));
+const setMission = (store, missionId) => store.transaction(model => {
+  const module = new Map(model.state.modules.value).get(8);
+  const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+  mission.mission_id = String(missionId);
+  module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+  const modules = new Map(model.state.modules.value);
+  modules.set(8, module);
+  model.state.modules.value = [...modules];
+});
 const fightRequest = (mission, extra = {}) => codec.pack('pb_fight_request', {
   fight_tid: 301, stm_type: 1,
   req: codec.pack('mission_fight_req', { mission_id: mission }),
@@ -43,6 +58,7 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   const env = setup(t);
   assert.equal(missionModule(env.store).mission_id, '20205');
   const passCount = Number(missionModule(env.store).pass_count?.count ?? 0);
+  const beforeRewards = Object.fromEntries(['122802', '201500', '101800'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
   const next = 30201;
   const result = env.service.execute(201, fightRequest(next));
   const response = codec.unpack('pb_fight_response', result.data);
@@ -129,7 +145,15 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   const advanced = 30202;
   assert.equal(settlement.mission.mission_id, String(advanced));
   assert.equal(settlement.fight_result, '1');
-  assert.equal(settlement.res.changes.length, 0);
+  assert.deepEqual(settlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
+    { tid: '122802', diff_num: '2' },
+    { tid: '201500', diff_num: '190' },
+    { tid: '101800', diff_num: '100' }
+  ]);
+  assert.equal(BigInt(env.store.read().resources.get('122802').num), beforeRewards['122802'] + 2n);
+  assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
+  assert.equal(BigInt(env.store.read().resources.get('101800').num), beforeRewards['101800'] + 100n);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_first_clear' AND claim_key='30201'").get().n), 1);
   assert.equal(missionModule(env.store).mission_id, String(advanced));
   assert.equal(Number(missionModule(env.store).pass_count?.count ?? 0), passCount + 1);
   const replay = env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
@@ -144,6 +168,14 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
   env.reopen();
   assert.equal(missionModule(env.store).mission_id, String(advanced));
+  assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
+  assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
+  // Replaying the node that was already cleared must not grant its first-clear
+  // reward again. `advanced` is the next fight under the merged cursor model.
+  const repeatedAfterRestart = env.service.execute(201, fightRequest(next));
+  const restartedSettlement = codec.unpack('mission_to_client', Buffer.from(codec.unpack('pb_fight_response', repeatedAfterRestart.data).stm.stm_data, 'base64'));
+  assert.deepEqual(restartedSettlement.res.changes, []);
+  assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
 });
 
@@ -202,6 +234,58 @@ test('30204 uses the documented local pursuer fallback and commits on start', t 
   assert.equal(missionModule(env.store).mission_id, '30205');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '30205');
+});
+
+test('mission chapter box grants configured rewards once and persists its BitBlock', async t => {
+  const env = setup(t);
+  setMission(env.store, 30205);
+  const before = Object.fromEntries(['25002', '101500', '201500'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
+  const claim = async id => env.service.execute(506, await encodeEtf([id]));
+  await assert.rejects(() => claim(2), error => error.code === 5);
+  await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 2])), error => error.code === 5);
+  assert.equal(missionModule(env.store).box_award ?? '', '');
+  for (const tid of ['25002', '101500', '201500']) assert.equal(BigInt(env.store.read().resources.get(tid).num), before[tid]);
+  await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 1])), error => error.code === 1);
+
+  const result = await claim(1);
+  const response = codec.unpack('pb_mission_rsp', result.data);
+  assert.equal(response.mission.mission_id, '30205');
+  assert.deepEqual(response.res_change.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
+    { tid: '25002', diff_num: '1' },
+    { tid: '101500', diff_num: '30' },
+    { tid: '201500', diff_num: '50000' }
+  ]);
+  assert.deepEqual([...(await decodeEtf(Buffer.from(response.mission.box_award, 'base64'))).value], [0x40]);
+  assert.equal(BigInt(env.store.read().resources.get('25002').num), before['25002'] + 1n);
+  assert.equal(BigInt(env.store.read().resources.get('101500').num), before['101500'] + 30n);
+  assert.equal(BigInt(env.store.read().resources.get('201500').num), before['201500'] + 50000n);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_box'").get().n), 1);
+
+  await assert.rejects(() => claim(1), error => error.code === 310);
+  env.reopen();
+  await assert.rejects(() => claim(1), error => error.code === 310);
+  assert.equal(BigInt(env.store.read().resources.get('101500').num), before['101500'] + 30n);
+});
+
+test('mission chapter box claims the observed multiple-box ETF request atomically', async t => {
+  const env = setup(t);
+  setMission(env.store, 40210);
+  const before = Object.fromEntries(['25002', '101500', '201500'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
+
+  const result = await env.service.execute(506, await encodeEtf([1, 2, 3, 4]));
+  const response = codec.unpack('pb_mission_rsp', result.data);
+  assert.deepEqual(response.res_change.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
+    { tid: '25002', diff_num: '5' },
+    { tid: '101500', diff_num: '190' },
+    { tid: '201500', diff_num: '200000' }
+  ]);
+  assert.deepEqual([...(await decodeEtf(Buffer.from(response.mission.box_award, 'base64'))).value], [0x78]);
+  assert.equal(BigInt(env.store.read().resources.get('25002').num), before['25002'] + 5n);
+  assert.equal(BigInt(env.store.read().resources.get('101500').num), before['101500'] + 190n);
+  assert.equal(BigInt(env.store.read().resources.get('201500').num), before['201500'] + 200000n);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_box'").get().n), 4);
+
+  await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 2, 3, 4])), error => error.code === 310);
 });
 
 test('mission fight playback stays disabled until a real action stream exists', t => {
