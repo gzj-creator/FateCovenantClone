@@ -9,6 +9,7 @@ import { createGameCodec, decodeEtf, rawBinary, serializedBinary } from '../prot
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createAccRechargeService } from '../game/acc-recharge-service.mjs';
+import { hasBit } from '../game/bit-block.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -24,6 +25,17 @@ function setRechargeTotal(store, total) {
     const login = raw.length ? codec.unpack('res_recharge_login', raw) : {};
     login.total_amount = total;
     modules.set(19, serializedBinary(codec.pack('res_recharge_login', login)));
+    model.state.modules.value = [...modules];
+  });
+}
+
+function setAwardState(store, actId, bytes) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const data = codec.unpack('pb_acc_recharge_list', rawBinary(modules.get(106)));
+    const row = data.list.find(entry => Number(entry.act_id) === actId);
+    row.award_state = bytes.toString('base64');
+    modules.set(106, serializedBinary(codec.pack('pb_acc_recharge_list', data)));
     model.state.modules.value = [...modules];
   });
 }
@@ -72,7 +84,11 @@ test('cumulative recharge claims persist award slots and grant configured reward
   let module = codec.unpack('pb_acc_recharge_list', rawBinary(new Map(e.store.state().modules.value).get(106)));
   let row = module.list.find(x => Number(x.act_id) === 106036);
   let state = Buffer.from(row.award_state, 'base64');
-  assert.deepEqual([...state.subarray(0, 4)], [1, 1, 1, 0]);
+  assert.deepEqual([...state.subarray(0, 4)], [0x70, 0, 0, 0]);
+  assert.equal(hasBit(state, 1), true);
+  assert.equal(hasBit(state, 2), true);
+  assert.equal(hasBit(state, 3), true);
+  assert.equal(hasBit(state, 4), false);
   assert.equal(state.length, 100);
   assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM activity_claims').get().n), 3);
 
@@ -80,7 +96,31 @@ test('cumulative recharge claims persist award slots and grant configured reward
   assert.throws(() => claim(e.service, 36001101), x => x.code === 310);
   module = codec.unpack('pb_acc_recharge_list', rawBinary(new Map(e.store.state().modules.value).get(106)));
   row = module.list.find(x => Number(x.act_id) === 106036);
-  assert.equal(Buffer.from(row.award_state, 'base64')[2], 1);
+  assert.equal(hasBit(Buffer.from(row.award_state, 'base64'), 3), true);
+});
+
+test('repairs legacy byte-index award states from persisted claims', t => {
+  const e = setup(t);
+  e.setRechargeTotal(20400);
+  claim(e.service, 36001101);
+  claim(e.service, 36001102);
+  claim(e.service, 36001103);
+
+  const legacy = Buffer.alloc(100);
+  legacy[0] = 1;
+  legacy[1] = 1;
+  legacy[2] = 1;
+  setAwardState(e.store, 106036, legacy);
+
+  e.reopen();
+  const module = codec.unpack('pb_acc_recharge_list', rawBinary(new Map(e.store.state().modules.value).get(106)));
+  const row = module.list.find(x => Number(x.act_id) === 106036);
+  const state = Buffer.from(row.award_state, 'base64');
+  assert.deepEqual([...state.subarray(0, 4)], [0x70, 0, 0, 0]);
+  assert.equal(hasBit(state, 1), true);
+  assert.equal(hasBit(state, 2), true);
+  assert.equal(hasBit(state, 3), true);
+  assert.throws(() => claim(e.service, 36001101), x => x.code === 310);
 });
 
 test('real gateway routes 98620 instead of returning LOCAL_NOT_IMPLEMENTED', async t => {

@@ -19,7 +19,7 @@
 | 36001103 | 19800 | 807002 x15 |
 | 36001104 | 32800 | 807002 x15、101500 x500、472002 x1 |
 
-客户端 `AccRechargeActCmd` 编码 `pb_acc_recharge_award_req`；`AccRechargeActMgr` 的成功回调按 `pb_res_to_client` 解码并交给 `AwardKit.Parse`。领取状态从登录模块 106 的 `pb_acc_recharge_list.list[]` 读取，每项按 `act_id` 对应一条 100 字节 `award_state`，字节位置 `award_tid % 100`（1-based）为 1 表示该档已领取。
+客户端 `AccRechargeActCmd` 编码 `pb_acc_recharge_award_req`；`AccRechargeActMgr` 的成功回调按 `pb_res_to_client` 解码并交给 `AwardKit.Parse`。领取状态从登录模块 106 的 `pb_acc_recharge_list.list[]` 读取，每项按 `act_id` 对应一条 100 字节 `award_state`。客户端通过 `Core.BitBlock` 读取该状态，位索引为 `award_tid % 100`（0-based、每字节 MSB-first）；2026-10-31 已修正首版把它当作逐档字节数组的实现，见下节。
 
 ## 实现
 
@@ -93,3 +93,31 @@
 ## 合并回 main
 
 将 worktree 中 4 个实际变化文件同步回主工作树 `main`：`personal-server/config/game-tables.mjs`、`personal-server/game/gateway.mjs`、`personal-server/game/hundred-acc-service.mjs`、`personal-server/test/hundred-acc-service.test.mjs`。四份文件与已部署 worktree 的 SHA256 逐项一致；主目录重新执行 `node --test test/hundred-acc-service.test.mjs` 为 2/2，通过 `npm test` 为 170/170。主工作树原有未提交改动保留，未做 Git 提交或清理。
+
+## 2026-10-31 累充领取状态位误读修复
+
+用户反馈累充活动档位仍显示可领取，点击后却显示“未解锁”。本轮在独立 worktree `F:\projects\FateCovenantClone\.worktree\acc-recharge-unlock-fix`（分支 `feature/acc-recharge-unlock-fix`，基线 `b1650fc`）调查并修复。未修改或重启当前运行中的服务。
+
+### 根因
+
+客户端 `AccRechargeActData` 通过 `FAward:GetAwardState(idx)` 读取模块 106 的 `award_state`，`FAward` 再调用 `Core.BitBlock:Get(idx)`。`idx` 为配置的 `award_tid % CONFIG_TID_INTERVAL`，工程反编译证据显示 `CONFIG_TID_INTERVAL = 100`；BitBlock 的下标从 0 开始，并在每字节内按 MSB-first 排列。因此前三档 `award_tid=36001101/36001102/36001103` 对应位 `1/2/3`，正确的前四字节应为 `70 00 00 00`。
+
+2026-10-30 首版实现把 `award_state` 当成“一档一个字节”，写入 `awardState[slot - 1] = 1`。前三档因此写成 `01 01 01 00`。客户端按 BitBlock 读取时，这些字节设置的是无关的位 7/15/23，位 1/2/3 仍未设置，所以界面继续显示可领取。点击后服务端又按同一错误字节数组判断重复领取，返回业务错误 `310 Reward already claimed`；客户端将这次服务端拒绝显示为用户看到的“未解锁”。
+
+运行日志 `events.jsonl` 在 2026-10-30 16:30-16:32 多次记录 `acc_recharge_rejected`，`code:310`、`message:"Reward already claimed"`；故障是已领取状态位没被客户端读懂，不是累计充值额度不足（311）或活动时间未开放。
+
+当前运行库的模块 106 已确认与该症状一致：活动 `106036` 与 `106037` 各有 3 条 `activity_claims`（任务分别为 `36001101-3`、`37001101-3`，period 分别为 `v36`、`v37`），两条 `award_state` 的前四字节都是 `01 01 01 00`。
+
+### 修复
+
+- `personal-server/game/acc-recharge-service.mjs` 改用现有的 `hasBit` / `setBit`，按 BitBlock 的 0-based、MSB-first 规则判断和写入领取位。
+- 服务构造时调用幂等的 `repairAwardStates()`：从 `activity_claims` 中按活动当前 `v<version>` period 恢复位状态；只有重建结果与旧状态不一致时才在事务内更新模块 106。旧运行库中的 `106036`、`106037` 会在部署后的服务启动时自动修复，无需手工改库。
+- `personal-server/test/acc-recharge-service.test.mjs` 断言前三档为 `70 00 00 00`，并新增“旧字节下标状态在重开时从 claims 修复”的回归测试。
+
+### 验证
+
+- `node --test test/acc-recharge-service.test.mjs`：3/3 通过。
+- `npm test`：176/176 通过。
+- 用 SQLite `-readonly` 备份当前运行库到临时副本后直接实例化修复后的服务：修复前两条状态均为 `01010100`，位 1/2/3 全为 false；修复日志只记录 `106036`、`106037` 两个活动，修复后均为 `70000000`，位 1/2/3 全为 true。运行中的原库未改动（`activity_claims` 仍为 6 条，模块 106 仍由真实服务持有）。
+
+当前服务 PID 24124 及五个 loopback 端口保持运行，未部署、未重启。实际生效需要在用户结束当前游玩后从本 worktree 重启一次服务，并让客户端重新登录以刷新模块 106；启动时的修复会自动纠正现有活动状态。修复只涉及服务端，不修改 APK。
