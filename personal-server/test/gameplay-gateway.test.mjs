@@ -187,7 +187,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(9010, 16, await encodeEtf([10001]));
   assert.equal(response.err, undefined);
   const taskClaim = codec.unpack('pb_linear_task_receive_back', Buffer.from(response.data, 'base64'));
-  assert.deepEqual(taskClaim.task, { type: 1, receive_tid: 10001, snapshot_val: '40201' });
+  assert.deepEqual(taskClaim.task, { type: 1, receive_tid: 10001 });
   assert.equal(taskClaim.res_change.changes.find(change => change.tid === '101500').diff_num, '50');
   assert.equal(BigInt(game.store.read().resources.get('101500').num), taskDiamonds + 50n);
   const taskModule = codec.unpack('pb_linear_task_data', rawBinary(new Map(game.store.state().modules.value).get(90).value[0]));

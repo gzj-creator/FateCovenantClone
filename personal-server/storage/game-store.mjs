@@ -64,7 +64,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 4) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 5) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -151,6 +151,35 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
         db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('reward-claims-v4', 'add-generic-reward-idempotency', new Date().toISOString());
         db.exec('PRAGMA user_version=4; COMMIT');
         version = 4;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 5) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        // v4 stored a claimed linear task's progress as snapshot_val. Because
+        // all LinearTask rows share one taskMap entry per type, that mission-id
+        // baseline was later subtracted from unrelated statistic counters and
+        // produced values such as 40 - 40210 = -40170. A claimed task does not
+        // need a baseline; clear legacy values so the client falls back to the
+        // live statistics total.
+        for (const row of db.prepare('SELECT role_id,payload_json FROM login_modules WHERE module_id=90').all()) {
+          const module = JSON.parse(row.payload_json);
+          let changed = false;
+          for (let index = 0; index < (module.value?.length ?? 0); index++) {
+            const bytes = rawBinary(module.value[index]);
+            if (!bytes.length) continue;
+            const data = codec.unpack('pb_linear_task_data', bytes);
+            let slotChanged = false;
+            for (const task of data.task_list ?? []) {
+              if (Number(task.snapshot_val ?? 0) !== 0) { task.snapshot_val = 0; slotChanged = true; }
+            }
+            if (slotChanged) { module.value[index] = serializedBinary(codec.pack('pb_linear_task_data', data)); changed = true; }
+          }
+          if (changed) db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=90').run(JSON.stringify(module), row.role_id);
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('linear-task-snapshot-v5', 'clear-stale-linear-task-baselines', new Date().toISOString());
+        db.exec('PRAGMA user_version=5; COMMIT');
+        version = 5;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

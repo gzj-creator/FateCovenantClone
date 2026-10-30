@@ -91,7 +91,7 @@ test('migrates once into relational SQLite tables, backs up JSON, and preserves 
   env.reopen();
   assert.equal(env.store.state().guides[55], 66);
   const db = new DatabaseSync(env.databasePath, { readOnly: true });
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 4);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 5);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reward_claims'").get());
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
   db.close();

@@ -48,7 +48,12 @@ export function createTaskService({ store, codec, tables, now = Date.now, logger
       if (!module || !Array.isArray(module.value) || !module.value[moduleIndex]) throw new GameError(5, 'Linear task login data is missing');
       const taskData = codec.unpack('pb_linear_task_data', rawBinary(module.value[moduleIndex]));
       taskData.task_list ??= [];
-      const task = { type: Number(config.type), receive_tid: id, snapshot_val: progress };
+      // snapshot_val belongs to the task that is currently active and needs
+      // activation. A claimed task must not leave its progress as a baseline:
+      // LinearTask groups share one taskMap entry, so a mission-id baseline
+      // would otherwise be subtracted from unrelated statistic counters (for
+      // example stamina consumption) and produce negative UI progress.
+      const task = { type: Number(config.type), receive_tid: id, snapshot_val: 0 };
       const existing = taskData.task_list.find(row => Number(row.type) === Number(config.type));
       if (Number(existing?.receive_tid) === id) throw new GameError(310, 'Linear task reward already claimed');
       if (existing) Object.assign(existing, task); else taskData.task_list.push(task);

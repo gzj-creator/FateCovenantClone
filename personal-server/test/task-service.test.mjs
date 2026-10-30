@@ -68,16 +68,16 @@ test('claims a completed main linear task into the backpack and persists its hig
 
   const result = env.service.execute(9010, 10001);
   const response = codec.unpack('pb_linear_task_receive_back', result.data);
-  assert.deepEqual(response.task, { type: 1, receive_tid: 10001, snapshot_val: '30204' });
+  assert.deepEqual(response.task, { type: 1, receive_tid: 10001 });
   assert.deepEqual(response.res_change.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
     { tid: '101500', diff_num: '50' }
   ]);
   assert.equal(BigInt(env.store.read().resources.get('101500').num), before + 50n);
-  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001, snapshot_val: '30204' }]);
+  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001 }]);
   assert.equal(claimCount(env.store), 1);
 
   env.reopen();
-  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001, snapshot_val: '30204' }]);
+  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001 }]);
   assert.equal(BigInt(env.store.read().resources.get('101500').num), before + 50n);
   assert.throws(() => env.service.execute(9010, 10001), error => error.code === 310);
   assert.equal(claimCount(env.store), 1);
@@ -102,6 +102,42 @@ test('rejects a task already marked received in legacy login data without reward
   assert.throws(() => env.service.execute(9010, 10001), error => error.code === 310);
   assert.deepEqual(env.store.state(), before);
   assert.equal(claimCount(env.store), 0);
+});
+
+test('claiming a mission task leaves no baseline for the stamina task', t => {
+  const env = setup(t);
+  setMission(env.store, 40210);
+  env.service.execute(9010, 10001);
+
+  const stamina = tables.LinearTask.get(10183);
+  assert.equal(stamina.task_type, 1002);
+  assert.equal(stamina.need_active, true);
+  assert.equal(stamina.target_count, 10);
+
+  const task = taskModule(env.store).task_list.find(row => Number(row.type) === Number(stamina.type));
+  assert.equal(Number(task.snapshot_val ?? 0), 0);
+
+  const stat = new Map(env.store.state().modules.value).get(21).value
+    .map(slot => rawBinary(slot))
+    .filter(bytes => bytes.length)
+    .map(bytes => codec.unpack('pb_count_statics_data', bytes).list)
+    .flat()
+    .find(row => row.id === '10001290000');
+  assert.equal(stat.total, '40');
+  assert.equal(Number(stat.total) - Number(task.snapshot_val ?? 0), 40);
+});
+
+test('v5 migration clears stale linear-task progress baselines', t => {
+  const env = setup(t);
+  setLinearTask(env.store, { type: 1, receive_tid: 10001, snapshot_val: '40210' });
+  env.store.inspect(db => {
+    db.exec("DELETE FROM migrations WHERE name='linear-task-snapshot-v5'; PRAGMA user_version=4;");
+  });
+
+  env.reopen();
+
+  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001 }]);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 5);
 });
 
 test('rolls back the claim marker and reward on encoding or SQLite failure', t => {
