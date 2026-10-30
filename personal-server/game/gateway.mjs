@@ -54,7 +54,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables});
   const itemBox=createItemBoxService({store,codec,tables,logger});
-  const activityRead=createActivityReadService({codec,logger});
+  const activityRead=createActivityReadService({codec,store,tables,logger});
   async function loginPayload() {
     recruit.ensureLoginState();
     const state = store.state();
@@ -260,7 +260,8 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       if (activityRead.supports(type)) {
         try {
           const result = activityRead.execute(type, request.data);
-          send(seq, result.data); log({ event: 'activity_read_committed', type, seq });
+          send(seq, result.data);
+          log({ event: type === 110305 ? 'fishing_map_unlock_committed' : 'activity_read_committed', type, seq, ...result.valueForLog });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });

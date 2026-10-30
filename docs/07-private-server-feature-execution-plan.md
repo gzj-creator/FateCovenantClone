@@ -113,3 +113,17 @@ G1 的 type 201 已在运行事件日志标记 `unsupported_command`，其余四
 | 结算边界 | 只推进现有主线 module 与 207 重放，不伪造资源奖励、伤害或技能效果 | 组件 + 临时 TCP |
 
 `missionFightPlayback:true` 已开启，定向测试 5/5 与 1/1 通过，统一测试 **104/104** 通过。下一步需要在隔离 APK 由用户自行点击当前主线：成功标准是战斗场景出现双方角色并进入胜利界面，207 不报错；尚不能把组件测试或协议可解码等同于 APK/视觉验收。
+
+## 2026-10-30 活动修复检查点（worktree `feature/activity-fixes`，基线 `5aa0a21`）
+
+用户实测海岛垂钓进入岛屿后点击挑战提示“配置出错”。日志确认对应命令是 110305 `req_fishing_act_unlock_map`，旧服务固定返回业务错误 5。该命令不是副本战斗，而是按 `act_id + map_id` 解锁当前钓鱼版本岛屿。
+
+G3 现已实现：
+
+- `1074001-1074011` 活动版本映射到 `FishingActTable.Version.island_version`，再校验 `FishingActTable.Island.belonging_version`。
+- 用活动积分和 `FishingActTable.Level` 计算钓鱼等级；首解锁校验等级阈值、发配置奖励并写入 SQLite `fishing_activity_state`，重复请求幂等。
+- 返回完整 `pb_fishing_act_data_res`，包括地图列表、三个状态 BitBlock、默认空鱼获/天气/鱼竿字段和资源变化。
+- schema 升至 v6，迁移 `fishing-activity-state-v6`；现有角色、英雄、编队、资源与活动领取位不改写。
+- 组件测试、临时 TCP 和 SQLite 重开通过；尚未部署，APK 请求和用户视觉验收未完成。
+
+其他活动已按 module 92 当前快照逐项登记在 `docs/08-activity-fix-checklist.md`，每完成一项再勾选。仍保持明确拒绝的范围包括 110301/110302/110311 垂钓、110304/110306/110307/110309/110310 奖励，以及 HelpUp 116001-116003。未重启实时服务、未点击客户端、未改动运行 SQLite/ADB reverse。

@@ -64,7 +64,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 5) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 6) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -84,6 +84,17 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
     CREATE TABLE IF NOT EXISTS game_mails (mail_id INTEGER PRIMARY KEY AUTOINCREMENT, role_id INTEGER NOT NULL REFERENCES roles(role_id), request_id TEXT NOT NULL, tid INTEGER NOT NULL DEFAULT 0, send_name TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, send_time INTEGER NOT NULL, expire_at INTEGER NOT NULL DEFAULT 0, read INTEGER NOT NULL DEFAULT 0, received INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0, award_json TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(role_id,request_id));
     CREATE TABLE IF NOT EXISTS voucher_grants (grant_id TEXT PRIMARY KEY, mail_id INTEGER NOT NULL UNIQUE REFERENCES game_mails(mail_id), role_id INTEGER NOT NULL REFERENCES roles(role_id), sku_id TEXT NOT NULL REFERENCES voucher_skus(sku_id), item_tid INTEGER NOT NULL, face_value_cents INTEGER NOT NULL CHECK(face_value_cents>0), quantity INTEGER NOT NULL CHECK(quantity>0), claimed_at TEXT, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS voucher_redemptions (order_id TEXT PRIMARY KEY REFERENCES recharge_orders(order_id), role_id INTEGER NOT NULL REFERENCES roles(role_id), sku_id TEXT NOT NULL REFERENCES voucher_skus(sku_id), item_tid INTEGER NOT NULL, quantity INTEGER NOT NULL CHECK(quantity>0), amount_cents INTEGER NOT NULL CHECK(amount_cents>0), created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS fishing_activity_state (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), act_id INTEGER NOT NULL,
+      get_num TEXT NOT NULL DEFAULT '0', high_size_list_json TEXT NOT NULL DEFAULT '[]',
+      score TEXT NOT NULL DEFAULT '0', base_score TEXT NOT NULL DEFAULT '0',
+      high_size TEXT NOT NULL DEFAULT '0', rod TEXT NOT NULL DEFAULT '0',
+      weather_list_json TEXT NOT NULL DEFAULT '[]', book_state TEXT NOT NULL DEFAULT 'AA==',
+      unlock_map_list_json TEXT NOT NULL DEFAULT '[]', level_state TEXT NOT NULL DEFAULT 'AA==',
+      go_rank_reward INTEGER NOT NULL DEFAULT 0, have_rod_list_json TEXT NOT NULL DEFAULT '[]',
+      get_money_num TEXT NOT NULL DEFAULT '0', wait_fish_json TEXT NOT NULL DEFAULT '{}',
+      buy_limit_info_json TEXT NOT NULL DEFAULT '{}', progress_state TEXT NOT NULL DEFAULT 'AA==',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,act_id));
     CREATE INDEX IF NOT EXISTS game_mails_role_idx ON game_mails(role_id,deleted,send_time);
     CREATE INDEX IF NOT EXISTS voucher_grants_role_idx ON voucher_grants(role_id,claimed_at);
   `);
@@ -180,6 +191,14 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
         db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('linear-task-snapshot-v5', 'clear-stale-linear-task-baselines', new Date().toISOString());
         db.exec('PRAGMA user_version=5; COMMIT');
         version = 5;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 6) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('fishing-activity-state-v6', 'add-persistent-fishing-island-state', new Date().toISOString());
+        db.exec('PRAGMA user_version=6; COMMIT');
+        version = 6;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

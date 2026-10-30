@@ -13,6 +13,13 @@ export function readGameTables() {
     // binds a product to the activity version that owns its pay_list entry.
     ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle']), { Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle' }),
     ...pick(readGeneratedTables(new URL('ActFrameTable.data.lua.json', base), ['Act', 'ActType']), { Act: 'ActFrameAct', ActType: 'ActFrameType' }),
+    // Fishing activity versions bind an ActFrame row to one island/level/rules
+    // generation. Keep these names separate from generic activity tables.
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/FishingActTable.data.lua.json', import.meta.url), ['Island', 'Version', 'Level']), {
+      Island: 'FishingIsland',
+      Version: 'FishingVersion',
+      Level: 'FishingLevel'
+    }),
     // Welfare activities expose their configuration through these generated tables.
     Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,
     ...readGeneratedTables(new URL('MultiLoginTable.data.lua.json', base), ['Const', 'MultiLogin']),
