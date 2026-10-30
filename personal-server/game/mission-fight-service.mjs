@@ -1,4 +1,4 @@
-import { decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { decodeEtf, encodeEtfIntegerTuple, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { missionBattleConfig, readMissionTables } from '../config/mission-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
@@ -326,6 +326,34 @@ function configuredAwards(section) {
   return ids.map((id, index) => [Number(id), Number(counts[index])]);
 }
 
+function grantMissionExperience(model, gameTables) {
+  const level = Number(model.role.level ?? 1);
+  const exp = Number(model.role.exp ?? 0);
+  if (!Number.isSafeInteger(level) || level < 1 || !Number.isSafeInteger(exp) || exp < 0) throw new GameError(5, 'Role experience is invalid');
+  const levelConfig = gameTables.RoleLevel.get(level);
+  const amount = Number(levelConfig?.mission_award_num);
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new GameError(5, 'Role mission experience configuration is missing');
+  let nextLevel = level, nextExp = exp + amount;
+  if (!Number.isSafeInteger(nextExp)) throw new GameError(1, 'Role experience limit reached');
+  const configuredMax = Number(gameTables.RoleLevelSetting.get(1)?.max_level ?? 0);
+  const maxLevel = configuredMax > 0 ? configuredMax : Math.max(...gameTables.RoleLevel.keys());
+  while (nextLevel < maxLevel) {
+    const reachExp = Number(gameTables.RoleLevel.get(nextLevel)?.reach_exp);
+    if (!Number.isSafeInteger(reachExp) || reachExp <= 0) throw new GameError(5, 'Role level experience configuration is missing');
+    if (nextExp < reachExp) break;
+    nextExp -= reachExp;
+    nextLevel++;
+  }
+  model.role.level = nextLevel;
+  model.role.exp = nextExp;
+  return {
+    tid: '140000',
+    new_num: String(nextExp),
+    diff_num: String(amount),
+    extra: encodeEtfIntegerTuple([nextLevel, nextExp]).toString('base64')
+  };
+}
+
 function firstClearReward(model, db, section, gameTables, now) {
   const awards = configuredAwards(section);
   if (!awards.length) return { changes: [], is_overflow: false };
@@ -406,6 +434,11 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
           const section = missionTables.sections.get(completed);
           res = firstClearReward(model, db, section, gameTables, now);
         }
+        // A successful journey battle always grants role experience. Replaying
+        // an already cleared section does not repeat its first-clear rewards,
+        // but still consumes stamina and must grant the current level's
+        // RoleTable.Level.mission_award_num.
+        res.changes.push(grantMissionExperience(model, gameTables));
         module.value[0] = serializedBinary(codec.pack('pb_mission', current));
         const modules = new Map(model.state.modules.value);
         modules.set(MISSION_MODULE, module);

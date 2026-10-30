@@ -31,6 +31,12 @@ export function readGameTables() {
       Type: 'TaskType',
       LinearTask: 'LinearTask',
       CommonTaskGlobal: 'CommonTaskGlobal'
+    }),
+    // RoleTable.Level is the authoritative role experience curve consumed by
+    // RoleMgr.CalcLvAndExp and the post-battle RoleExpUpForm.
+    ...pick(readGeneratedTables(new URL('RoleTable.data.lua.json', base), ['Level', 'LevelSetting']), {
+      Level: 'RoleLevel',
+      LevelSetting: 'RoleLevelSetting'
     })
   };
 }

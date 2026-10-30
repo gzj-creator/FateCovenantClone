@@ -3,12 +3,14 @@ import { readGeneratedTables, readHeroTables } from './hero-tables.mjs';
 const defaultPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/MissionTable.data.lua.json', import.meta.url);
 let defaultCache;
 
-// FightTable.304 is not shipped in the client's lua project bundle. Mission 30204 is
-// still the first playable node after 30203, so keep its local battle deterministic by
-// reusing the pursuers from the immediately preceding section until server-side fight
-// tables become available. This fallback is exposed to the battle service for logging.
+// These fight rows are not shipped in the client's lua project bundle. Missions 30204
+// and 40210 are still playable journey nodes, so keep their local battles deterministic
+// by reusing the immediately preceding section until the missing fight tables become
+// available. Fallbacks are exposed to the battle service for logging and must remain
+// labelled as local compatibility data, not as original server facts.
 const LOCAL_ENEMY_FALLBACKS = new Map([
-  [30204, { sourceMissionId: 30203 }]
+  [30204, { sourceMissionId: 30203 }],
+  [40210, { sourceMissionId: 40209 }]
 ]);
 
 export function readMissionTables(file = defaultPath) {

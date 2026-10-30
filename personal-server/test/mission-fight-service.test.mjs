@@ -54,7 +54,7 @@ const fightRequest = (mission, extra = {}) => codec.pack('pb_fight_request', {
 
 const actions = report => report.battle_list[0].action_list.map(bytes => codec.unpack('pb_generic', Buffer.from(bytes, 'base64')));
 
-test('ordinary mission fight commits at start and 207 replays without duplicate progress', t => {
+test('ordinary mission fight commits at start and 207 replays without duplicate progress', async t => {
   const env = setup(t);
   assert.equal(missionModule(env.store).mission_id, '20205');
   const passCount = Number(missionModule(env.store).pass_count?.count ?? 0);
@@ -148,8 +148,10 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   assert.deepEqual(settlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
     { tid: '122802', diff_num: '2' },
     { tid: '201500', diff_num: '190' },
-    { tid: '101800', diff_num: '100' }
+    { tid: '101800', diff_num: '100' },
+    { tid: '140000', diff_num: '45' }
   ]);
+  assert.deepEqual(await decodeEtf(Buffer.from(settlement.res.changes.at(-1).extra, 'base64')), [9, 45]);
   assert.equal(BigInt(env.store.read().resources.get('122802').num), beforeRewards['122802'] + 2n);
   assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
   assert.equal(BigInt(env.store.read().resources.get('101800').num), beforeRewards['101800'] + 100n);
@@ -174,9 +176,17 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   // reward again. `advanced` is the next fight under the merged cursor model.
   const repeatedAfterRestart = env.service.execute(201, fightRequest(next));
   const restartedSettlement = codec.unpack('mission_to_client', Buffer.from(codec.unpack('pb_fight_response', repeatedAfterRestart.data).stm.stm_data, 'base64'));
-  assert.deepEqual(restartedSettlement.res.changes, []);
+  assert.deepEqual(restartedSettlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
+    { tid: '140000', diff_num: '45' }
+  ]);
+  assert.deepEqual(await decodeEtf(Buffer.from(restartedSettlement.res.changes[0].extra, 'base64')), [10, 0]);
   assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
+  assert.equal(Number(env.store.read().role.level), 10);
+  assert.equal(Number(env.store.read().role.exp), 0);
+  env.reopen();
+  assert.equal(Number(env.store.read().role.level), 10);
+  assert.equal(Number(env.store.read().role.exp), 0);
 });
 
 test('fight exit acknowledges, report read returns the settled report and progress never regresses', t => {
@@ -234,6 +244,16 @@ test('30204 uses the documented local pursuer fallback and commits on start', t 
   assert.equal(missionModule(env.store).mission_id, '30205');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '30205');
+});
+
+test('40210 uses the documented local chapter-boss fallback and advances to chapter five', t => {
+  const env = setup(t);
+  setMission(env.store, 40209);
+  const result = env.service.execute(201, fightRequest(40210, { fight_tid: 410 }));
+  const response = codec.unpack('pb_fight_response', result.data);
+  assert.equal(response.report.tid, '410');
+  assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['1030401', '9002400']);
+  assert.equal(missionModule(env.store).mission_id, '50201');
 });
 
 test('mission chapter box grants configured rewards once and persists its BitBlock', async t => {

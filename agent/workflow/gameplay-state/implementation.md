@@ -1,5 +1,15 @@
 # 本机养成状态与 SQLite（2026-10-25）
 
+## 2026-10-30 旅途经验与第 6 上阵位
+
+用户反馈旅途下一关需要 6 名伙伴，而第 6 格要求团长 10 级；当前存档团长只有 9 级，无法继续。客户端门槛本身正常：`FunOpenTable` 的 1102/1103 都以上阵位图标和 `tip_params=[[10]]` 开放第 6 格。问题在本机服没有结算旅途胜利的团长经验，先前战斗胜负和伤害模拟没有导致等级异常。
+
+`RoleTable.Level` 证据：9 级 `reach_exp=90`、`mission_award_num=45`；10 级 `reach_exp=50`、`mission_award_num=50`，`LevelSetting.max_level=300`。`RoleExpUpForm` 把 `pb_res_change.extra` 按 ETF 二元组 `[等级, 当前经验]` 解码，`RoleExpRes` 再刷新等级和经验。修改前 SQLite 的 role 为 `level=9` 且没有 `exp` 字段，等效经验 0；旅途模块当前指向 `40210`。
+
+本轮修改：`config/game-tables.mjs` 加载 `RoleTable.Level/LevelSetting`；`protocol/game-codec.mjs` 增加 ETF 整数二元组编码；`game/mission-fight-service.mjs` 每次旅途胜利按战前等级发放 `RoleTable.Level.mission_award_num`，递归扣除 `reach_exp` 并更新 `model.role.level/exp`，返回 `tid=140000` 的 `pb_res_change`，`extra=[newLevel,newExp]`。重复刷已通关关卡仍发经验，但不重复发首通奖励。另为本机缺少 `FightTable.Fight.410` 的 40210 章节 Boss 增加 40209 敌人兜底，日志会记录 `enemyFallback`；这是本机兼容数据，不是原服事实。
+
+组件验证：`mission-fight-service.test.mjs` 12/12、全量 `npm test` 168/168 通过；新增覆盖首场 +45、经验持久化、9→10 级、重复刷经验、40210 兜底及章节 5 游标。尚未部署到正在运行的服务（本轮读取 PID 38688，端口 18880/18881/18882/18883/19090），也未做真实 APK 验收。部署后从 9 级 0 经验开始，刷两次已通关旅途各得 45 经验即可升到 10 级。
+
 23:44新增[余额/订单与管理页](../wallet-admin/implementation.md)和[冲榜任务领奖](../activity-ranking/implementation.md)，SQLite四新表幂等创建，原九类表部署前后完全一致，保留所有养成/编队。91/91组件通过；v8b安装并重开，充值与领奖APK验收待用户操作。以下排行榜未实现描述为旧状态：2000/2008/2011已有空榜读接口、79104任务领奖已部署，最终榜单结算尚无。
 
 ## 22:14 用户验收与小队修复（覆盖后文待验状态）

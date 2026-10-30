@@ -26,6 +26,12 @@ export function encodeEtfInteger(value) {
   bytes[0] = 131; bytes[1] = 98; bytes.writeInt32BE(value, 2);
   return bytes;
 }
+export function encodeEtfIntegerTuple(values) {
+  if (!Array.isArray(values) || values.length > 255) throw new RangeError('ETF integer tuple must contain at most 255 values');
+  const header = Buffer.alloc(3);
+  header[0] = 131; header[1] = 104; header[2] = values.length;
+  return Buffer.concat([header, ...values.map(value => encodeEtfInteger(value).subarray(1))]);
+}
 export const binary = value => new E.OtpErlangBinary(Buffer.from(value));
 export const rawBinary = object => Buffer.from(object.value.data);
 export const serializedBinary = value => ({ value: Buffer.from(value).toJSON(), bits: 8 });
