@@ -244,15 +244,16 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         return;
       }
       if (tasks.supports(type)) {
+        let taskId;
         try {
-          const taskId = await singleIdArgument(request.data, 'Invalid linear task payload');
+          taskId = await singleIdArgument(request.data, 'Invalid linear task payload');
           const result = tasks.execute(type, taskId);
           send(seq, result.data);
           log({ event: 'linear_task_committed', type, seq, taskId, changes: result.value.res_change.changes.length });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'linear_task_rejected', type, seq, code, message: error.message });
+          log({ event: 'linear_task_rejected', type, seq, taskId, code, message: error.message });
         }
         return;
       }

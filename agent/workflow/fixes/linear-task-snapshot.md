@@ -70,3 +70,38 @@
 - 仍需用户打开任务页做视觉确认；此前不能标记为“显示已验收”。
 - 任务激活/快照重建的完整服务器语义仍未实现；本次只消除已领取任务遗留
   快照造成的错误显示，不伪造激活进度。
+
+## 点击领取“配置出错了”修复（9010）
+
+负数显示恢复后，用户点击“今日累计消耗体”任务，客户端发送 9010
+`req_finish_linear_task`，服务返回 `errCode=5`，日志为
+`Linear task group is not configured`。
+
+根因有两层：旧服务按 `LinearTask.task_type` 去 `CommonTaskGlobal` 中查找
+module 90 分组，但客户端按 `LinearTask.type` 存取任务组；当前 536 条线性
+任务均为 `type=1`，应使用 module 90 的 slot 0。任务进度也不能只处理主线
+`1201`：`progress_type=2` 要先由 `TaskType.data` 找到
+`CountStatisticsTable.CountStatistics` 分组，再从登录 module 21 对应槽位
+汇总 `stat_expand` 指定 id 的 `total`。module 21 的 slot 0 是最大长度前缀，
+角色统计行从 slot 1 起按非 custom、`type=0` 的行排序。
+
+当前可点击的 `10002` 为 `task_type=8301`、`target_count=10`、奖励
+`101800 x1000`；真实存档统计为 `40/10`。另一个常见体力任务 `10183`
+（`task_type=1002`）当前约 `1/10`，服务应返回“任务未完成”，不能发奖。
+
+验证结果：
+
+- worktree 全量测试 `157/157` 通过。新增 `10002` 统计组领取、奖励、登录
+  数据、SQLite 领取位、重开后防重，以及 `10183` 进度不足用例。
+- 修复前运行库一致备份在
+  `analysis/experiments/private-server-20261025/p3/stamina-task-fix-20261030/game-before-statistics-fix.local-only.sqlite`，
+  `integrity_check=ok`、`user_version=5`，SHA256
+  `485a1aca4a14939f54208170949f0e9a7259b5c8431d6f1a83757d5e5d970a48`。
+- 在该备份副本上领取 `10002` 成功：资源 `101800` 由 5440 增至 6440，
+  module 90 写入 `receive_tid=10002`，领取表新增 `claim_key=10002`；重开后
+  再领返回 `310`，库完整性仍为 `ok`。证据见同目录
+  `statistics-fix-acceptance.local-only.json` 与
+  `accepted-statistics-fix.local-only.sqlite`。
+
+真实客户端视觉验收仍待用户重新打开任务页并点击领取；在该证据出现前，
+只记为组件测试和真实存档副本验收通过。

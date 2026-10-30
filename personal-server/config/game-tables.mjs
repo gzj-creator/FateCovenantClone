@@ -19,6 +19,11 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('PrincessTable.data.lua.json', base), ['EnergyAward', 'Gift', 'LoginAward', 'HolidayAward']),
     // Daily-discount rotation maps its short row ids (1..6) to real RechargeTable ids.
     ...pick(readGeneratedTables(new URL('DailyDiscountTable.data.lua.json', base), ['Recharge', 'Select', 'DailyGiftAward']), { Recharge: 'DailyDiscountRecharge', Select: 'DailyDiscountSelect', DailyGiftAward: 'DailyDiscountAward' }),
+    // Task progress uses these rows to map TaskType.data back to the compact
+    // role-statistics payload stored in login module 21.
+    ...pick(readGeneratedTables(new URL('CountStatisticsTable.data.lua.json', base), ['CountStatistics']), {
+      CountStatistics: 'CountStatistics'
+    }),
     ...pick(readGeneratedTables(new URL('TaskTable.data.lua.json', base), ['Type', 'LinearTask', 'CommonTaskGlobal']), {
       Type: 'TaskType',
       LinearTask: 'LinearTask',

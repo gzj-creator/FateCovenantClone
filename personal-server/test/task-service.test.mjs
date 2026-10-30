@@ -127,6 +127,37 @@ test('claiming a mission task leaves no baseline for the stamina task', t => {
   assert.equal(Number(stat.total) - Number(task.snapshot_val ?? 0), 40);
 });
 
+test('claims a completed stamina task from its configured statistic group', t => {
+  const env = setup(t);
+  const stamina = tables.LinearTask.get(10002);
+  assert.equal(stamina.task_type, 8301);
+  assert.equal(stamina.target_count, 10);
+
+  const before = BigInt(env.store.read().resources.get('101800').num);
+  const result = env.service.execute(9010, 10002);
+  const response = codec.unpack('pb_linear_task_receive_back', result.data);
+  assert.equal(response.task.type, 1);
+  assert.equal(response.task.receive_tid, 10002);
+  assert.equal(response.res_change.changes.find(change => change.tid === '101800').diff_num, '1000');
+  assert.equal(BigInt(env.store.read().resources.get('101800').num), before + 1000n);
+  assert.equal(taskModule(env.store).task_list.find(task => task.type === 1).receive_tid, 10002);
+  assert.equal(claimCount(env.store), 1);
+  assert.throws(() => env.service.execute(9010, 10002), error => error.code === 310);
+});
+
+test('reports insufficient progress for another role statistic task', t => {
+  const env = setup(t);
+  const otherStaminaTask = tables.LinearTask.get(10183);
+  assert.equal(otherStaminaTask.task_type, 1002);
+  assert.equal(otherStaminaTask.target_count, 10);
+
+  assert.throws(
+    () => env.service.execute(9010, 10183),
+    error => error.code === 5 && error.message === 'Linear task is not complete'
+  );
+  assert.equal(claimCount(env.store), 0);
+});
+
 test('v5 migration clears stale linear-task progress baselines', t => {
   const env = setup(t);
   setLinearTask(env.store, { type: 1, receive_tid: 10001, snapshot_val: '40210' });

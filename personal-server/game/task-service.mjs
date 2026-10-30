@@ -4,21 +4,59 @@ import { grantResources } from './resources.mjs';
 
 const TASK_MODULE = 90;
 const MISSION_MODULE = 8;
+const STATISTICS_MODULE = 21;
+const ROLE_STATISTICS_TYPE = 0;
 const MAIN_LINEAR_TASK_PROGRESS = 1201;
 
-function taskGroupIndex(tables, taskType) {
-  const rows = [...tables.CommonTaskGlobal.entries()].sort(([left], [right]) => left - right);
-  const index = rows.findIndex(([, row]) => Number(row.type) === Number(taskType));
-  if (index < 0) throw new GameError(5, 'Linear task group is not configured');
-  return index;
+function taskGroupIndex(config) {
+  const groupType = Number(config.type);
+  if (!Number.isSafeInteger(groupType) || groupType <= 0) throw new GameError(5, 'Linear task group is not configured');
+  return groupType - 1;
 }
 
-function currentProgress(model, config, codec) {
-  if (Number(config.task_type) !== MAIN_LINEAR_TASK_PROGRESS) throw new GameError(5, 'Linear task progress is not implemented');
-  const module = new Map(model.state.modules.value).get(MISSION_MODULE);
-  if (!module || !Array.isArray(module.value)) throw new GameError(5, 'Mission login module is missing');
-  const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
-  return Number(mission.mission_id ?? 0);
+function totalStatisticProgress(model, config, codec, tables) {
+  const typeConfig = tables.TaskType.get(Number(config.task_type));
+  if (!typeConfig || !Array.isArray(typeConfig.stat_expand)) throw new GameError(5, 'Linear task statistics are not configured');
+
+  const statisticsType = Number(typeConfig.data);
+  const roleStatistics = [...tables.CountStatistics.values()]
+    .filter(row => !row.custom_login && Number(row.type) === ROLE_STATISTICS_TYPE);
+  const statisticsIndex = roleStatistics.findIndex(row => Number(row.tid) === statisticsType);
+  if (statisticsIndex < 0) throw new GameError(5, 'Linear task statistics are not configured');
+
+  const module = new Map(model.state.modules.value).get(STATISTICS_MODULE);
+  if (!module || !Array.isArray(module.value)) throw new GameError(5, 'Statistics login module is missing');
+  const payload = module.value[statisticsIndex + 1];
+  if (payload == null) return 0;
+
+  let data;
+  try {
+    data = codec.unpack('pb_count_statics_data', rawBinary(payload));
+  } catch {
+    throw new GameError(5, 'Linear task statistics are invalid');
+  }
+  const ids = new Set(typeConfig.stat_expand.map(String));
+  let total = 0n;
+  for (const row of data.list ?? []) {
+    if (!ids.has(String(row.id))) continue;
+    const value = BigInt(row.total ?? 0);
+    if (value < 0n) throw new GameError(5, 'Linear task statistics are invalid');
+    total += value;
+  }
+  if (total > BigInt(Number.MAX_SAFE_INTEGER)) throw new GameError(5, 'Linear task statistics are invalid');
+  return Number(total);
+}
+
+function currentProgress(model, config, codec, tables) {
+  const taskType = Number(config.task_type);
+  if (taskType === MAIN_LINEAR_TASK_PROGRESS) {
+    const module = new Map(model.state.modules.value).get(MISSION_MODULE);
+    if (!module || !Array.isArray(module.value)) throw new GameError(5, 'Mission login module is missing');
+    const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    return Number(mission.mission_id ?? 0);
+  }
+  if (tables.TaskType.get(taskType)?.progress_type === 2) return totalStatisticProgress(model, config, codec, tables);
+  throw new GameError(5, 'Linear task progress is not implemented');
 }
 
 function configuredAwards(config) {
@@ -35,13 +73,15 @@ export function createTaskService({ store, codec, tables, now = Date.now, logger
   function claimLinearTask(taskId) {
     const id = Number(taskId), config = tables.LinearTask.get(id);
     if (!Number.isSafeInteger(id) || !config) throw new GameError(1, 'Invalid linear task id');
-    const moduleIndex = taskGroupIndex(tables, config.task_type);
+    // MainLinearTaskMgr stores task rows by LinearTask.type. All current
+    // linear tasks use type 1, whose one-based group maps to module slot 0.
+    const moduleIndex = taskGroupIndex(config);
     const awards = configuredAwards(config);
     if (awards.some(([tid, count]) => !Number.isSafeInteger(tid) || !Number.isSafeInteger(count) || count <= 0)) throw new GameError(5, 'Linear task reward configuration is invalid');
 
     return store.transaction((model, db) => {
       if (db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'linear_task', String(id))) throw new GameError(310, 'Linear task reward already claimed');
-      const progress = currentProgress(model, config, codec);
+      const progress = currentProgress(model, config, codec, tables);
       if (progress < Number(config.target_count)) throw new GameError(5, 'Linear task is not complete');
 
       const module = new Map(model.state.modules.value).get(TASK_MODULE);
