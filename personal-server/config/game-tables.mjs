@@ -13,6 +13,9 @@ export function readGameTables() {
     // binds a product to the activity version that owns its pay_list entry.
     ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle']), { Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle' }),
     ...pick(readGeneratedTables(new URL('ActFrameTable.data.lua.json', base), ['Act', 'ActType']), { Act: 'ActFrameAct', ActType: 'ActFrameType' }),
+    // Cumulative-recharge awards are keyed by award tid; version links each row
+    // to the ActFrame type that owns the claim state.
+    AccRechargeAward: readGeneratedTables(new URL('AccRechargeActTable.data.lua.json', base), ['Award']).Award,
     // Welfare activities expose their configuration through these generated tables.
     Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,
     ...readGeneratedTables(new URL('MultiLoginTable.data.lua.json', base), ['Const', 'MultiLogin']),

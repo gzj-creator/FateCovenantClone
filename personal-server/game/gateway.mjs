@@ -17,6 +17,7 @@ import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
+import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
@@ -55,6 +56,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const sprint=createSprintService({store,codec,tables});
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,logger});
+  const accRecharge=createAccRechargeService({store,codec,tables,logger});
   async function loginPayload() {
     recruit.ensureLoginState();
     const state = store.state();
@@ -265,6 +267,18 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'activity_read_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (accRecharge.supports(type)) {
+        try {
+          const result=accRecharge.execute(request.data);
+          send(seq,result.data);
+          log({event:'acc_recharge_committed',type,seq});
+        }catch(error){
+          const code=error instanceof GameError?error.code:2;
+          send(seq,Buffer.alloc(0),{err:code});
+          log({event:'acc_recharge_rejected',type,seq,code,message:error.message,payloadHead:(request.data??Buffer.alloc(0)).subarray(0,64).toString('base64')});
         }
         return;
       }
