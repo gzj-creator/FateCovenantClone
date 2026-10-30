@@ -49,9 +49,10 @@ export function parseLuaJit(buffer) {
     proto.instructions = [];
     for (let i = 0; i < instructionCount; i++) {
       need(4);
+      const instructionOffset = position;
       const raw = buffer.readUInt32LE(position);
       position += 4;
-      proto.instructions.push({ name: names[raw & 255], a: (raw >>> 8) & 255, b: raw >>> 24, c: (raw >>> 16) & 255, d: raw >>> 16 });
+      proto.instructions.push({ pc: i, offset: instructionOffset, raw, name: names[raw & 255], a: (raw >>> 8) & 255, b: raw >>> 24, c: (raw >>> 16) & 255, d: raw >>> 16 });
     }
 
     const constantsStart = position;
