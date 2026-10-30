@@ -342,20 +342,28 @@ internal static class Program
         byte[] output = (byte[])original.Clone();
         byte[] replacement = { 0x1a, 0x00, 0xd9, 0x4f, 0x11, 0x00 };
         Array.Copy(replacement, 0, output, offset, replacement.Length);
-        if (Environment.GetEnvironmentVariable("FC_LOCAL_BALANCE_PAY") == "1")
-        {
-            // Preserve OrderInfo construction; route the isolated SDK directly to the local order endpoint.
-            int pay = 0x44ffdc;
-            byte[] oldPay = { 0x6e, 0x30, 0x6d, 0x8b, 0x87, 0x00 };
-            Require(original.Skip(pay).Take(6).SequenceEqual(oldPay), "SDK recharge instruction mismatch.");
-            byte[] localPay = { 0x6e, 0x30, 0x78, 0x8b, 0x07, 0x02 };
-            Array.Copy(localPay, 0, output, pay, localPay.Length);
-            // Fulfilment is delivered as game push 1900; suppress the external payment picker callback.
-            int callback = 0x44ec30 + 16;
-            Require(U16(original, callback) == 0x001a || U16(original, callback) == 0x0222 || U16(original, callback) == 0x0022, "SDK payment callback entry mismatch.");
-            byte[] localResult = { 0x71, 0x10, 0x23, 0x8d, 0x09, 0x00, 0x0e, 0x00, 0x00, 0x00 };
-            Array.Copy(localResult, 0, output, callback, localResult.Length);
-        }
+        // JZRechargeService$d has already parsed order_no from the successful
+        // /pay/recharge/order response at 0x488388. Complete the SDK callback
+        // locally instead of trying to launch Alipay/WeChat with the empty local
+        // credential. v0 is order_no, v1 is the anonymous listener, v3 is the
+        // JZRechargeService instance, and the activity field is @0x535d.
+        int completion = 0x488388;
+        byte[] oldCompletion = {
+            0x71, 0x20, 0x08, 0x8b, 0x03, 0x00, 0x0c, 0x03, 0x54, 0x10,
+            0x5e, 0x53, 0x71, 0x10, 0x07, 0x8b, 0x00, 0x00, 0x0c, 0x00,
+            0x6e, 0x20, 0x3a, 0x88, 0x03, 0x00, 0x1a, 0x03, 0x9a, 0x51
+        };
+        Require(original.Skip(completion).Take(oldCompletion.Length).SequenceEqual(oldCompletion), "SDK local completion instructions mismatch.");
+        byte[] localCompletion = {
+            0x07, 0x20,                                     // move-object v2, v0 (order_no)
+            0x54, 0x10, 0x5d, 0x53,                         // iget-object v0, v1, $d.a (Activity)
+            0x6e, 0x10, 0x58, 0x00, 0x00, 0x00,           // Activity.finish()
+            0x71, 0x10, 0x09, 0x8b, 0x03, 0x00,           // access$200(v3) -> v0
+            0x62, 0x01, 0xc4, 0x4d,                         // Constants.JZYX_PAYRESULT_SUCCESS -> v1
+            0x72, 0x30, 0x41, 0x81, 0x02, 0x01,           // onResult(v0, v1, v2)
+            0x0e, 0x00                                      // return-void
+        };
+        Array.Copy(localCompletion, 0, output, completion, localCompletion.Length);
         using (SHA1 sha = SHA1.Create()) Array.Copy(sha.ComputeHash(output, 32, output.Length - 32), 0, output, 12, 20);
         Adler32 checksum = new Adler32();
         checksum.Update(output.Skip(12).ToArray());
