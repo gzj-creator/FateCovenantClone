@@ -22,6 +22,13 @@ export function readGameTables() {
       Group: 'HundredAccGroup',
       Reward: 'HundredAccReward'
     }),
+    // Fishing activity versions bind an ActFrame row to one island/level/rules
+    // generation. Keep these names separate from generic activity tables.
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/FishingActTable.data.lua.json', import.meta.url), ['Island', 'Version', 'Level']), {
+      Island: 'FishingIsland',
+      Version: 'FishingVersion',
+      Level: 'FishingLevel'
+    }),
     // Welfare activities expose their configuration through these generated tables.
     Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,
     ...readGeneratedTables(new URL('MultiLoginTable.data.lua.json', base), ['Const', 'MultiLogin']),

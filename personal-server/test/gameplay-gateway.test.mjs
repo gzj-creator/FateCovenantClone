@@ -107,6 +107,15 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(110308, 6, Buffer.alloc(0));
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_fishing_act_get_record_rsp', Buffer.from(response.data ?? '', 'base64')).record_list, []);
+  response = await request(110305, 55, codec.pack('pb_fishing_act_common_req', { act_id: 1074001, value: 1 }));
+  assert.equal(response.err, undefined);
+  const fishingUnlock = codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64'));
+  assert.equal(fishingUnlock.data.act_id, '1074001');
+  assert.deepEqual(fishingUnlock.data.unlock_map_list, ['1']);
+  assert.equal(fishingUnlock.res.changes.length, 2);
+  response = await request(110305, 56, codec.pack('pb_fishing_act_common_req', { act_id: 1074001, value: 1 }));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64')).res.changes, []);
   response = await request(116004, 7, codec.pack('pb_help_up_get_times_req', { act_id: 92144 }));
   assert.equal(Number(codec.unpack('pb_help_up_get_times_rsp', Buffer.from(response.data ?? '', 'base64')).times ?? 0), 0);
   response = await request(116001, 8, codec.pack('pb_help_up_task_reward_req', { act_id: 92144, task_id_list: [1] }));
