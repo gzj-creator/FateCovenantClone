@@ -16,6 +16,12 @@ export function readGameTables() {
     // Cumulative-recharge awards are keyed by award tid; version links each row
     // to the ActFrame type that owns the claim state.
     AccRechargeAward: readGeneratedTables(new URL('AccRechargeActTable.data.lua.json', base), ['Award']).Award,
+    // The hundred-yuan cumulative-recharge panel keeps its tier and award tables
+    // separate from ActFrame-based activities.
+    ...pick(readGeneratedTables(new URL('HundredAccTable.data.lua.json', base), ['Group', 'Reward']), {
+      Group: 'HundredAccGroup',
+      Reward: 'HundredAccReward'
+    }),
     // Welfare activities expose their configuration through these generated tables.
     Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,
     ...readGeneratedTables(new URL('MultiLoginTable.data.lua.json', base), ['Const', 'MultiLogin']),

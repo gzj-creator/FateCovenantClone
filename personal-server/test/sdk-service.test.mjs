@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { createCipheriv, createHash } from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import { equalMd5Hex, md5Hex, signSdkParameters } from '../sdk-signing.mjs';
 import { createSdkService } from '../sdk-service.mjs';
@@ -191,6 +194,27 @@ test('factory closes listener and invalidates sessions; a new service does not s
   assert.equal((await second.verify(login.body.result)).status, 401);
 });
 
+test('file-backed SDK sessions survive restart, store only hashes, and expire normally', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-sdk-sessions-'));
+  const sessionPath = path.join(directory, 'sessions.json');
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const first = await fixture(t, { sessionPath });
+  const login = await first.login();
+  assert.equal(login.status, 200);
+  const token = login.body.result.token;
+  await first.service.close();
+  assert.equal(fs.readFileSync(sessionPath, 'utf8').includes(token), false);
+
+  const second = await fixture(t, { sessionPath });
+  assert.equal((await second.verify(login.body.result)).status, 200);
+  second.setTime(login.body.result.expire_time + 1);
+  assert.equal((await second.verify(login.body.result)).status, 401);
+  await second.service.close();
+
+  const third = await fixture(t, { sessionPath });
+  assert.equal((await third.verify(login.body.result)).status, 401);
+});
+
 test('factory fails closed for missing config, bad MD5, TTL, clock, and invalid port', async () => {
   assert.throws(() => createSdkService(), /appId/);
   assert.throws(() => createSdkService({ ...configuration, account: { ...configuration.account, passwordMd5: 'plaintext' } }), /passwordMd5/);
@@ -260,6 +284,134 @@ test('secondary SDK validates signed DES carrier against issued session and reje
   assert.equal((await check({}, false, true)).status, 401);
   f.setTime(login.body.result.expire_time + 1);
   assert.equal((await check()).status, 401);
+});
+
+test('QuickSDK order payment validates its carrier, product, role and amount before buying', async t => {
+  const quickSdk = { productCode: 'fc-local', productKey: 'fclocal1' };
+  const f = await fixture(t, { localTestOtp: true, quickSdk });
+  const orders = new Map();
+  const calls = [];
+  const wallet = {
+    snapshot: () => ({
+      accounts: [{ account_id: configuration.account.userId, role_id: 100001 }],
+      products: [{ id: 40009, price_cents: 600, type: 46 }]
+    }),
+    buy: input => {
+      calls.push(input);
+      if (input.product_id !== 40009) throw Object.assign(new Error('Unsupported product'), { code: 5 });
+      let order = orders.get(input.request_id);
+      if (!order) { order = { order_id: 'local-order-40009', duplicate: false }; orders.set(input.request_id, order); }
+      return order;
+    }
+  };
+  f.service.attachWallet(wallet);
+  const login = await f.post('/user/phoneLogin', { appid: configuration.appId, phone: '19900000000', verifyCode: '1234' });
+  const basePayment = {
+    uid: configuration.account.userId, user_name: configuration.account.nickname, token: login.body.result.token,
+    goods_id: 40009, goods_name: 'Value stamina', goods_desc: 'Local test product',
+    cp_order_id: '100001179328161371540009', price: 6, count: 1, amount: 6,
+    callback_url: 'http://127.0.0.1:18880/callback', extras_params: JSON.stringify({ roleID: 100001, goodsID: 40009, storeProductId: 'com.woobest.mysq_6', productID: 40009 }),
+    external_params: '', pay_params: '',
+    game_role_info: Buffer.from(JSON.stringify({ server_id: '1', game_role_id: '100001' })).toString('base64')
+  };
+  async function pay(overrides = {}, options = {}) {
+    const key = Buffer.from(quickSdk.productKey);
+    const cipher = createCipheriv('des-ede3', Buffer.concat([key, key, key]), null);
+    const json_data = Buffer.concat([cipher.update(JSON.stringify({ ...basePayment, ...overrides }), 'utf8'), cipher.final()]).toString('base64');
+    const fields = new Map([['product_code', options.productCode ?? quickSdk.productCode], ['json_data', json_data]]);
+    const sign = options.badSign ? '0'.repeat(32) : signQuickSdk(fields, quickSdk.productKey);
+    return f.raw('/v1/order/orderpay', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: new URLSearchParams([...fields, ['sign', sign]]).toString() });
+  }
+
+  const accepted = await pay();
+  assert.equal(accepted.status, 200);
+  assert.equal(accepted.body.result, true);
+  assert.deepEqual(accepted.body.error, {});
+  assert.deepEqual(accepted.body.data, { order_id: 'local-order-40009', channel_order_id: 'local-order-40009', channel_params: '' });
+  assert.deepEqual(calls[0], { account_id: configuration.account.userId, product_id: 40009, request_id: '100001179328161371540009' });
+  assert.equal((await pay()).body.data.order_id, 'local-order-40009');
+  assert.equal(orders.size, 1);
+
+  for (const [overrides, code] of [
+    [{ token: 'a'.repeat(64) }, 1003],
+    [{ uid: 'different-user' }, 1003],
+    [{ goods_id: 40010 }, 400],
+    [{ count: 2 }, 400],
+    [{ price: 5 }, 400],
+    [{ amount: 5 }, 400],
+    [{ game_role_info: Buffer.from(JSON.stringify({ server_id: '2', game_role_id: '100001' })).toString('base64') }, 400]
+  ]) {
+    const rejected = await pay(overrides);
+    assert.equal(rejected.status, 200);
+    assert.equal(rejected.body.result, false);
+    assert.equal(rejected.body.error.code, code);
+  }
+  assert.equal((await pay({}, { badSign: true })).body.error.code, 1001);
+  assert.equal((await pay({}, { productCode: 'other-product' })).body.error.code, 1001);
+  const serialized = JSON.stringify(f.events);
+  assert.equal(serialized.includes(login.body.result.token), false);
+  assert.equal(serialized.includes('json_data'), false);
+});
+
+test('local payment tips require an active signed SDK session and advertise payment methods', async t => {
+  const f = await fixture(t, { localTestOtp: true });
+  f.service.attachWallet({ snapshot: () => ({ accounts: [], products: [] }) });
+  const request = fields => f.raw('/pay/recharge/paytips', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: new URLSearchParams(fields).toString()
+  });
+  const unsigned = { appid: configuration.appId, userid: configuration.account.userId };
+  assert.equal((await request({ ...unsigned, sign: '0'.repeat(32) })).status, 401);
+  const login = await f.login();
+  const signed = await request({ ...unsigned, sign: signSdkParameters(unsigned, configuration.appKey) });
+  assert.equal(signed.status, 200);
+  assert.deepEqual(signed.body, {
+    rcode: 0,
+    rdesc: 'ok',
+    result: {
+      alipay: { status: 1, tips: '' },
+      weixin: { status: 1, tips: '' }
+    }
+  });
+  const forged = await request({ ...unsigned, userid: 'other-user', sign: signSdkParameters({ ...unsigned, userid: 'other-user' }, configuration.appKey) });
+  assert.equal(forged.status, 401);
+  f.setTime(login.body.result.expire_time + 1);
+  assert.equal((await request({ ...unsigned, sign: signSdkParameters(unsigned, configuration.appKey) })).status, 401);
+});
+
+test('QuickSDK order payment maps wallet failures to an ApiResult error', async t => {
+  const quickSdk = { productCode: 'fc-local', productKey: 'fclocal1' };
+  const f = await fixture(t, { localTestOtp: true, quickSdk });
+  let failure = Object.assign(new Error('Account balance is insufficient'), { code: 301 });
+  f.service.attachWallet({
+    snapshot: () => ({
+      accounts: [{ account_id: configuration.account.userId, role_id: 100001 }],
+      products: [{ id: 40009, price_cents: 600, type: 46 }]
+    }),
+    buy: () => { throw failure; }
+  });
+  const login = await f.post('/user/phoneLogin', { appid: configuration.appId, phone: '19900000000', verifyCode: '1234' });
+  const key = Buffer.from(quickSdk.productKey);
+  async function pay(cpOrderId) {
+    const payment = {
+      uid: configuration.account.userId, token: login.body.result.token, goods_id: 40009,
+      cp_order_id: cpOrderId, price: 6, amount: 6, count: 1,
+      extras_params: JSON.stringify({ goodsID: 40009, productID: 40009 }),
+      game_role_info: Buffer.from(JSON.stringify({ server_id: '1', game_role_id: '100001' })).toString('base64')
+    };
+    const cipher = createCipheriv('des-ede3', Buffer.concat([key, key, key]), null);
+    const json_data = Buffer.concat([cipher.update(JSON.stringify(payment), 'utf8'), cipher.final()]).toString('base64');
+    const fields = new Map([['product_code', quickSdk.productCode], ['json_data', json_data]]);
+    return f.raw('/v1/order/orderpay', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: new URLSearchParams([...fields, ['sign', signQuickSdk(fields, quickSdk.productKey)]]).toString() });
+  }
+  const response = await pay('quick-pay-insufficient');
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { result: false, error: { code: 301, id: '80000', message: '\u4f59\u989d\u4e0d\u8db3\uff0c\u8bf7\u5148\u5145\u503c' }, data: {} });
+  failure = Object.assign(new Error('Product purchase limit reached'), { code: 307 });
+  const limited = await pay('quick-pay-limit');
+  assert.equal(limited.status, 200);
+  assert.deepEqual(limited.body, { result: false, error: { code: 307, id: '80001', message: '\u8be5\u5546\u54c1\u4eca\u65e5\u8d2d\u4e70\u6b21\u6570\u5df2\u7528\u5b8c' }, data: {} });
 });
 
 test('local platform status validates its own signature, identity, active session and fixture shape', async t => {

@@ -18,6 +18,7 @@ import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
+import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
@@ -57,6 +58,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,logger});
   const accRecharge=createAccRechargeService({store,codec,tables,logger});
+  const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     recruit.ensureLoginState();
     const state = store.state();
@@ -282,6 +284,20 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         }
         return;
       }
+      if (hundredAcc.supports(type)) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const groups = decoded?.value ?? decoded;
+          const result = hundredAcc.execute(groups);
+          send(seq, result.data);
+          log({ event: 'hundred_acc_committed', type, seq, groups: result.value.groups });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hundred_acc_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+        }
+        return;
+      }
       if (welfare.supports(type)) {
         try {
           const result = await welfare.execute(type, request.data, { connection: id, seq });
@@ -312,9 +328,20 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           productId = Number(args[0]);
           const options = rechargeOptions(args[1]);
           const itemTid = Number(args[2]);
-          const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_item_tid: itemTid, extra_buy: options.is_extra_buy });
+          const product = wallet.snapshot().products.find(value => value.id === productId);
+          if (!product) throw new GameError(5, 'Unsupported voucher recharge product');
+          const sku = voucher.sku();
+          if (itemTid !== sku.item_tid) throw new GameError(5, 'Unsupported voucher item');
+          // Native 16004 carries the item id but no count. The client validation
+          // only runs when it can cover the whole price, so use every available
+          // voucher up to the order maximum and charge the remainder to balance.
+          const available = voucher.balance().quantity;
+          const maximum = voucher.autoCount(product.price_cents);
+          const voucherCount = Math.min(available, maximum);
+          if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
+          const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy });
           send(seq);
-          log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
+          log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           // The client renders every 16004 error as a generic server-fault popup.
@@ -411,17 +438,28 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         send(seq, pack(responseType.name, { process_list: requestData.req_list })); return;
       }
       if (type === 1202) {
-        // Hall entry asks for shop ids. Answer the requested ids with empty local groups; local shop
-        // purchases stay unimplemented instead of inventing goods or prices.
+        // Hall entry asks for shop ids. Auto-refresh shops require one decodable group even when
+        // their stock starts empty; the client dereferences group_data_bin during LoginFinish.
         let shopIds = [];
         try {
           const decoded = await decodeEtf(request.data);
           const value = decoded?.value ?? decoded;
           if (Array.isArray(value)) shopIds = value.filter(id => Number.isSafeInteger(id) && id > 0).slice(0, 32);
         } catch {}
-        const shops = shopIds.map(id => ({ id, version: 0, items_groups: [] }));
+        const autoRefreshIds = new Set([201, 202, 203, 204, 205, 206, 207]);
+        const now = Math.floor(Date.now() / 1000);
+        const autoRefresh = pack('pb_shop_auto_refresh', {
+          next_refresh_time: now + 86400,
+          limit_bought_count: 0,
+          items_history_bought: []
+        });
+        const shops = shopIds.map(id => ({
+          id,
+          version: 0,
+          items_groups: autoRefreshIds.has(id) ? [{ item_list: [], group_data_bin: autoRefresh }] : []
+        }));
         send(seq, pack('pb_query_shops_back', { shops }));
-        log({ event: 'shop_info_sent', type, seq, shopCount: shops.length }); return;
+        log({ event: 'shop_info_sent', type, seq, shopIds, autoRefreshIds: shopIds.filter(id => autoRefreshIds.has(id)) }); return;
       }
       if (type === 85901) {
         try {

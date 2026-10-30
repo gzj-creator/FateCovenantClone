@@ -64,6 +64,16 @@ function rechargeTotal(store) {
   return codec.unpack('res_recharge_login', rawBinary(new Map(store.state().modules.value).get(19))).total_amount ?? 0;
 }
 
+function assertRechargeExtra(extraParams, extraBuy = false) {
+  assert.equal(extraParams.value.length, 1);
+  const tuple = extraParams.value[0];
+  assert.ok(tuple && Array.isArray(tuple.value));
+  assert.equal(tuple.value.length, 3);
+  assert.equal(tuple.value[0], extraBuy);
+  assert.equal(tuple.value[1], 0);
+  assert.ok(Number.isSafeInteger(tuple.value[2]) && tuple.value[2] > 0);
+}
+
 const voucherRequest = (overrides = {}) => ({
   account_id: 'local-1',
   request_id: 'permit-voucher-1',
@@ -92,7 +102,7 @@ test('month permit purchase with vouchers stores pay_list, returns flag 116 and 
   assert.equal(push.is_use_token, true);
   assert.equal(Number(push.use_item_tid), 701500);
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
-  assert.deepEqual(extraParams.value, [6800]);
+  assertRechargeExtra(extraParams);
   assert.equal(push.extra_ret_list.length, 1);
   assert.equal(push.extra_ret_list[0].flag, 116);
   const info = codec.unpack('pb_month_permit_info', Buffer.from(push.extra_ret_list[0].data, 'base64'));
@@ -105,7 +115,25 @@ test('month permit purchase with vouchers stores pay_list, returns flag 116 and 
   assert.equal(rechargeTotal(e.store), before + 6800);
 });
 
-test('month permit purchase with balance also records pay_list and returns the activity handoff', t => {
+test('wallet uses all available vouchers and charges the remainder for a partially covered order', async t => {
+  const e = setup(t);
+  const issued = e.mail.issueVoucher(voucherRequest({ request_id: 'partial-voucher-mail', amount_cents: 400, content: 'partial voucher' }));
+  e.mail.claim(issued.mail_id);
+  e.wallet.credit({ account_id: 'local-1', amount_cents: 200, request_id: 'partial-balance' });
+  const product = tables.Recharge.get(40009);
+  assert.equal(product.price, 600);
+  const result = e.wallet.buy({ product_id: 40009, request_id: 'partial-voucher-order', voucher_count: 400 });
+  assert.equal(result.price_cents, 600);
+  assert.equal(result.voucher_quantity, 400);
+  assert.equal(result.voucher_amount_cents, 400);
+  assert.equal(result.balance_paid_cents, 200);
+  assert.equal(result.balance_cents, 0);
+  assert.equal(e.voucher.balance().quantity, 0);
+  assert.equal(e.wallet.snapshot().orders[0].voucher_quantity, 400);
+  assert.equal(e.wallet.snapshot().orders[0].balance_paid_cents, 200);
+});
+
+test('month permit purchase with balance also records pay_list and returns the activity handoff', async t => {
   const e = setup(t);
   e.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'permit-fund' });
   const before = rechargeTotal(e.store);
@@ -114,7 +142,8 @@ test('month permit purchase with balance also records pay_list and returns the a
   assert.equal(rechargeTotal(e.store), before + 6800);
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
   assert.equal(Boolean(push.get_token), false);
-  assert.equal(Buffer.from(push.extra_params ?? Buffer.alloc(0), 'base64').length, 0);
+  const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
+  assertRechargeExtra(extraParams);
   assert.equal(push.extra_ret_list.length, 1);
   assert.equal(push.extra_ret_list[0].flag, 116);
   assert.deepEqual(permitInfoFromLogin(e.store).pay_list.map(Number), [PERMIT_PRODUCT]);
@@ -148,7 +177,7 @@ test('voucher payment of an ordinary product still counts the full product price
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
   assert.equal(push.get_token, true);
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
-  assert.deepEqual(extraParams.value, [600]);
+  assertRechargeExtra(extraParams);
 });
 
 test('voucher payment of a month-card product grants mixed rewards and counts full price as cumulative recharge', async t => {
@@ -174,7 +203,7 @@ test('voucher payment of a month-card product grants mixed rewards and counts fu
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 101500)?.diff_num, '1000');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 2002)?.diff_num, '10');
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
-  assert.deepEqual(extraParams.value, [3000]);
+  assertRechargeExtra(extraParams);
 });
 
 test('voucher payment of a type-46 diamond recharge grants rewards and counts full price as cumulative recharge', async t => {
@@ -198,7 +227,7 @@ test('voucher payment of a type-46 diamond recharge grants rewards and counts fu
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-3000');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 101500)?.diff_num, '300');
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
-  assert.deepEqual(extraParams.value, [3000]);
+  assertRechargeExtra(extraParams);
   const giftRecord = push.extra_ret_list.find(entry => entry.flag === 73);
   assert.ok(giftRecord);
   const giftRecordValue = codec.unpack('pb_buy_gift_record', Buffer.from(giftRecord.data, 'base64'));

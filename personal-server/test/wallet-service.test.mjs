@@ -21,13 +21,14 @@ function setup(t){
   t.after(()=>{store.close();fs.rmSync(dir,{recursive:true,force:true});});
   return{get store(){return store;},get wallet(){return wallet;},pushes,reopen(){store.close();store=createGameStore({databasePath:file,seed,codec});wallet=make();}};
 }
-test('wallet credits and purchases are atomic, idempotent and persistent, including new currency login',t=>{
+test('wallet credits and purchases are atomic, idempotent and persistent, including new currency login',async t=>{
   const e=setup(t),credit={account_id:'local-1',amount_cents:10000,request_id:'credit-1',note:'test'};
   assert.equal(e.wallet.credit(credit).balance_cents,10000);assert.equal(e.wallet.credit(credit).duplicate,true);
   assert.throws(()=>e.wallet.credit({...credit,amount_cents:20000}));
   const product=tables.Recharge.get(11);assert.equal(product.price,600);
   const buy={product_id:11,request_id:'purchase-1'};const result=e.wallet.buy(buy);assert.equal(result.balance_cents,9400);assert.equal(e.wallet.buy(buy).order_id,result.order_id);assert.equal(e.pushes.length,1);
   const push=codec.unpack('res_recharge_success',e.pushes[0].data);assert.equal(push.recharge_id,11);assert.equal(push.res.changes[0].diff_num,'60');
+  const extraParams=await decodeEtf(Buffer.from(push.extra_params,'base64'));assert.equal(extraParams.value.length,1);assert.ok(Array.isArray(extraParams.value[0].value));assert.deepEqual(extraParams.value[0].value.slice(0,2),[false,0]);assert.ok(Number.isSafeInteger(extraParams.value[0].value[2]));
   assert.equal(e.store.read().resources.get('101500').num,'60');const modules=new Map(e.store.state().modules.value);assert.equal(codec.unpack('pb_currency_data',rawBinary(modules.get(5))).res_list.find(x=>x.tid==='101500').num,'60');
   e.reopen();assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9400);assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().totals.credited_cents,10000);
   const login=codec.unpack('res_recharge_login',rawBinary(new Map(e.store.state().modules.value).get(19)));assert.equal(login.total_amount,600);assert.equal(login.tmp_recharge_record.tmp_record_list[0].order_no,result.order_id);
@@ -65,8 +66,8 @@ test('SDK balance payment authenticates signed local sessions and debits SQLite 
   const e=setup(t);let now=1790000000;
   const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',platform:{appId:'test-platform',appKey:'platform-key'},account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},nowSeconds:()=>now,sessionTtlSeconds:60});
   sdk.attachWallet(e.wallet);const address=await sdk.listen(0);t.after(()=>sdk.close());
-  const post=async(route,fields,key='test-key',override={})=>{const form=new URLSearchParams({...fields,sign:signSdkParameters(fields,key),...override});const r=await fetch(address.url+route,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});return{status:r.status,body:await r.json()};};
-  const input={appid:'test-sdk',userid:'local-1',server:'1',role_id:'100001',product_id:'11',cp_order:'sdk-order',amount:'6.00',extra_params:''};
+  const post=async(route,fields,key='test-key',override={})=>{const signed={...fields};if(route==='/pay/recharge/order'&&(signed.channel===undefined||signed.channel===''))signed.channel='null';const form=new URLSearchParams({...fields,sign:signSdkParameters(signed,key),...override});const r=await fetch(address.url+route,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});return{status:r.status,body:await r.json()};};
+  const input={appid:'test-sdk',userid:'local-1',server:'1',role_id:'100001',product_id:'11',cp_order:'sdk-order',amount:'6.00',channel:'',extra_params:''};
   assert.equal((await post('/pay/recharge/order',input)).status,401);
   assert.equal((await post('/user/phoneLogin',{appid:'test-sdk',phone:'19900000000',verifyCode:'1234'})).status,200);
   assert.equal((await post('/pay/recharge/order',input,'test-key',{sign:'0'.repeat(32)})).status,401);
@@ -80,6 +81,23 @@ test('SDK balance payment authenticates signed local sessions and debits SQLite 
   e.reopen();assert.equal(e.wallet.snapshot().accounts[0].balance_cents,3800);assert.equal(e.wallet.snapshot().orders.length,2);
 });
 
+test('wallet order confirms an existing QuickSDK order without buying or notifying twice',async t=>{
+  const e=setup(t),now=1790000000;
+  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',platform:{appId:'test-platform',appKey:'platform-key'},account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},nowSeconds:()=>now,sessionTtlSeconds:60});
+  sdk.attachWallet(e.wallet);const address=await sdk.listen(0);t.after(()=>sdk.close());
+  const post=async(route,fields,key='test-key',override={})=>{const signed={...fields};if(route==='/pay/recharge/order'&&(signed.channel===undefined||signed.channel===''))signed.channel='null';const form=new URLSearchParams({...fields,sign:signSdkParameters(signed,key),...override});const r=await fetch(address.url+route,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});return{status:r.status,body:await r.json()};};
+  await post('/user/phoneLogin',{appid:'test-sdk',phone:'19900000000',verifyCode:'1234'});
+  e.wallet.credit({account_id:'local-1',amount_cents:5000,request_id:'confirm-credit'});
+  const bought=e.wallet.buy({product_id:11,request_id:'quick-sdk-request'});
+  const before={orders:e.wallet.snapshot().orders.length,balance:e.wallet.snapshot().accounts[0].balance_cents,pushes:e.pushes.length};
+  const input={appid:'test-sdk',userid:'local-1',server:'1',role_id:'100001',product_id:'11',cp_order:bought.order_id,amount:'6.00',channel:'',game:'6',title:'test',recharge_source:'android',third_product_id:'0',extra_params:'',package:'com.jzyx.ps'};
+  const confirmed=await post('/pay/recharge/order',input);
+  assert.equal(confirmed.status,200);assert.equal(confirmed.body.result.order_no,bought.order_id);assert.equal(confirmed.body.result.balance_cents,before.balance);
+  assert.equal(e.wallet.snapshot().orders.length,before.orders);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,before.balance);assert.equal(e.pushes.length,before.pushes);
+  const wrongProduct=await post('/pay/recharge/order',{...input,product_id:'40009',amount:'6.00',cp_order:bought.order_id});
+  assert.equal(wrongProduct.status,400);
+});
+
 test('committed wallet purchase remains successful when immediate notification fails',t=>{
   const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:1000,request_id:'fund'});
   const wallet=createWalletService({store:e.store,codec,tables,publish(){throw Error('client disconnected');}});
@@ -87,10 +105,11 @@ test('committed wallet purchase remains successful when immediate notification f
   assert.equal(codec.unpack('res_recharge_login',rawBinary(new Map(e.store.state().modules.value).get(19))).tmp_recharge_record.tmp_record_list[0].order_no,result.order_id);
 });
 
-test('daily discount purchases publish and persist the refreshed protobuf with a next-day reset',t=>{
+test('daily discount purchases publish and persist the refreshed protobuf with a next-day reset',async t=>{
   const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:100000,request_id:'daily-fund'});
   const result=e.wallet.buy({product_id:40008,request_id:'daily-first'});assert.equal(result.balance_paid_cents,3000);
   const push=codec.unpack('res_recharge_success',e.pushes[0].data);
+  const extraParams=await decodeEtf(Buffer.from(push.extra_params,'base64'));assert.equal(extraParams.value.length,1);assert.ok(Array.isArray(extraParams.value[0].value));assert.equal(extraParams.value[0].value[0],false);assert.equal(extraParams.value[0].value[1],0);assert.ok(Number.isSafeInteger(extraParams.value[0].value[2]));
   const extra=push.extra_ret_list.find(entry=>entry.flag===40);assert.ok(extra);
   const pushed=codec.unpack('pb_daily_discount_all',Buffer.from(extra.data,'base64'));
   assert.equal(pushed.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
@@ -98,6 +117,7 @@ test('daily discount purchases publish and persist the refreshed protobuf with a
   assert.equal(persisted.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
   const additional=e.wallet.buy({product_id:40008,request_id:'daily-repeat',extra_buy:true});assert.equal(additional.daily_discount_additional,true);
   const additionalPush=codec.unpack('res_recharge_success',e.pushes[1].data);
+  const additionalParams=await decodeEtf(Buffer.from(additionalPush.extra_params,'base64'));assert.equal(additionalParams.value[0].value[0],true);
   const additionalInfo=codec.unpack('pb_daily_discount_all',Buffer.from(additionalPush.extra_ret_list.find(entry=>entry.flag===40).data,'base64'));
   const additionalRow=additionalInfo.daily_discount_list.find(row=>row.recharge_tid===4);
   assert.equal(additionalRow.buy_times,1);assert.equal(additionalRow.buy_additionally,5);

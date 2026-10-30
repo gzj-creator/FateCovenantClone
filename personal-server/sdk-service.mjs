@@ -1,4 +1,6 @@
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 import { equalMd5Hex, signSdkParameters } from './sdk-signing.mjs';
@@ -8,6 +10,7 @@ const HOST = '127.0.0.1';
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_SESSIONS = 1024;
 const MAX_UNIX_SECONDS = 2_147_483_647;
+const SESSION_STORE_VERSION = 1;
 
 class RequestError extends Error {
   constructor(statusCode, rcode, message) {
@@ -72,6 +75,15 @@ function tokenKey(token) {
   return createHash('sha256').update(token, 'utf8').digest('hex');
 }
 
+function quickSdkFailure(code, message) {
+  // QuickSDK Connect$2 copies error.id into PayNotifier.onFailed's trace.
+  // Payment$1 only renders built-in feedback for 80000 (Toast) and 80001 (dialog).
+  const displayMessage = code === 301 ? '\u4f59\u989d\u4e0d\u8db3\uff0c\u8bf7\u5148\u5145\u503c'
+    : code === 307 ? '\u8be5\u5546\u54c1\u4eca\u65e5\u8d2d\u4e70\u6b21\u6570\u5df2\u7528\u5b8c'
+      : message;
+  return { result: false, error: { code, id: code === 307 ? '80001' : '80000', message: displayMessage }, data: {} };
+}
+
 export function createSdkService(options = {}) {
   const localTestOtp = options.localTestOtp === true;
   const quickSdk = options.quickSdk;
@@ -95,6 +107,8 @@ export function createSdkService(options = {}) {
   const nowSeconds = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
   if (typeof nowSeconds !== 'function') throw new TypeError('nowSeconds must be a function');
   if (options.logger !== undefined && typeof options.logger !== 'function') throw new TypeError('logger must be a function');
+  const sessionPath = options.sessionPath;
+  if (sessionPath !== undefined && (typeof sessionPath !== 'string' || sessionPath.trim().length === 0)) throw new TypeError('sessionPath must be a nonempty string');
   const sessions = new Map();
   let wallet;
   const log = event => {
@@ -106,6 +120,35 @@ export function createSdkService(options = {}) {
     return value;
   };
   currentTime();
+  function persistSessions() {
+    if (!sessionPath) return;
+    const entries = [...sessions].map(([tokenHash, session]) => ({ tokenHash, userId: session.userId, expiresAt: session.expiresAt }))
+      .sort((a, b) => a.tokenHash.localeCompare(b.tokenHash));
+    const temporary = sessionPath + '.' + process.pid + '.tmp';
+    fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
+    try {
+      fs.writeFileSync(temporary, JSON.stringify({ version: SESSION_STORE_VERSION, sessions: entries }, null, 2) + String.fromCharCode(10), { mode: 0o600 });
+      fs.renameSync(temporary, sessionPath);
+    } finally {
+      if (fs.existsSync(temporary)) fs.rmSync(temporary, { force: true });
+    }
+  }
+  if (sessionPath && fs.existsSync(sessionPath)) {
+    let stored;
+    try { stored = JSON.parse(fs.readFileSync(sessionPath, 'utf8')); }
+    catch { throw new Error('Local SDK session store is not valid JSON'); }
+    if (stored?.version !== SESSION_STORE_VERSION || !Array.isArray(stored.sessions)) throw new Error('Local SDK session store has an unsupported shape');
+    for (const entry of stored.sessions) {
+      if (!entry || !/^[0-9a-f]{64}$/.test(entry.tokenHash) || entry.userId !== account.userId || !Number.isSafeInteger(entry.expiresAt) || entry.expiresAt < 0 || entry.expiresAt > MAX_UNIX_SECONDS || sessions.has(entry.tokenHash)) {
+        throw new Error('Local SDK session store contains an invalid entry');
+      }
+      sessions.set(entry.tokenHash, { userId: entry.userId, expiresAt: entry.expiresAt });
+    }
+    const now = currentTime();
+    let removed = false;
+    for (const [key, session] of sessions) if (now > session.expiresAt) { sessions.delete(key); removed = true; }
+    if (removed) persistSessions();
+  }
   function resultFor(token, expiresAt) {
     return {
       account_type: 'local', enthralment: 0, expire_time: expiresAt, face_url: '',
@@ -139,8 +182,10 @@ export function createSdkService(options = {}) {
       const otpRoutes = { '/user/phoneAccountCheck': 'phoneAccountCheck', '/sms/send': 'localSms', '/user/phoneLogin': 'localPhoneLogin', '/user/loginReg': 'localPhoneLogin', '/user/phoneRegist': 'localPhoneRegister' };
       if (localTestOtp && Object.hasOwn(otpRoutes, url.pathname)) route = otpRoutes[url.pathname];
       if (quickSdk && url.pathname === '/v2/users/checkLogin') route = 'quickLogin';
+      if (localTestOtp && quickSdk && wallet && url.pathname === '/v1/order/orderpay') route = 'quickOrderPay';
       if (quickSdk && url.pathname === `/${quickSdk.productCode}-1088.html`) route = 'quickServers';
       if (localTestOtp && platform && url.pathname === '/user/userStatus') route = 'userStatus';
+      if(localTestOtp && wallet && url.pathname==='/pay/recharge/paytips')route='walletPaytips';
       if(localTestOtp && wallet && url.pathname==='/pay/recharge/order')route='walletOrder';
       if (route === 'unknown') log({ event: 'unimplemented_route', method: request.method, pathSha256: createHash('sha256').update(url.pathname).digest('hex') });
       if (route === 'unknown') throw new RequestError(404, 404, 'Route not implemented');
@@ -148,14 +193,42 @@ export function createSdkService(options = {}) {
       if (request.method !== (['banner', 'quickServers'].includes(route) ? 'GET' : 'POST')) throw new RequestError(405, 405, 'Method not allowed');
       if (route === 'banner') { send(200, {}); return; }
       if (route === 'quickServers') { send(200, ['http://127.0.0.1:18880']); return; }
+      if(route==='walletPaytips'){
+        const fields=await readForm(request,['appid','userid','sign']);
+        const signature=fields.get('sign');fields.delete('sign');
+        const validKey=fields.get('appid')===appId?appKey:platform&&fields.get('appid')===platform.appId?platform.appKey:null;
+        const expected=validKey?signSdkParameters(fields,validKey):null;
+        if(!validKey||!equalMd5Hex(expected,signature))throw new RequestError(401,1001,'Invalid local payment tips signature');
+        if(fields.get('userid')!==account.userId||![...sessions.values()].some(s=>s.userId===account.userId&&currentTime()<=s.expiresAt))throw new RequestError(401,1003,'Local SDK session required');
+        // PayActivity only enables payment methods represented by a non-null bean.
+        // Local test mode presents the two common methods; the isolated client
+        // resolves their success without opening an external payment app.
+        send(200,{rcode:0,rdesc:'ok',result:{alipay:{status:1,tips:''},weixin:{status:1,tips:''}}});return;
+      }
       if(route==='walletOrder'){
         const fields=await readForm(request,['appid','userid','server','role_id','product_id','cp_order','amount','sign'],['channel','game','title','recharge_source','third_product_id','extra_params','package']);
         const signature=fields.get('sign');fields.delete('sign');
         const validKey=fields.get('appid')===appId?appKey:platform&&fields.get('appid')===platform.appId?platform.appKey:null;
-        if(!validKey||!equalMd5Hex(signSdkParameters(fields,validKey),signature))throw new RequestError(401,1001,'Invalid local payment signature');
+        // JZService.recharge signs a HashMap whose null channel is the literal
+        // "null", while the HTTP form encodes it as an empty value.
+        const signedFields=new Map(fields);
+        if(!signedFields.has('channel')||signedFields.get('channel')==='')signedFields.set('channel','null');
+        const expected=validKey?signSdkParameters(signedFields,validKey):null;
+        if(!validKey||!equalMd5Hex(expected,signature)){
+          log({event:'wallet_order_signature_rejected',appid:fields.get('appid'),userid:fields.get('userid'),server:fields.get('server'),role_id:fields.get('role_id'),product_id:fields.get('product_id'),cp_order:fields.get('cp_order'),amount:fields.get('amount'),channel:fields.get('channel'),game:fields.get('game'),title:fields.get('title'),recharge_source:fields.get('recharge_source'),third_product_id:fields.get('third_product_id'),extra_params:fields.get('extra_params'),package:fields.get('package'),received:signature,expected,validKeyPresent:Boolean(validKey),activeSession:[...sessions.values()].some(s=>s.userId===account.userId&&currentTime()<=s.expiresAt)});
+          throw new RequestError(401,1001,'Invalid local payment signature');
+        }
         if(fields.get('userid')!==account.userId||![...sessions.values()].some(s=>s.userId===account.userId&&currentTime()<=s.expiresAt))throw new RequestError(401,1003,'Local SDK session required');
         const state=wallet.snapshot(),owner=state.accounts.find(x=>x.account_id===account.userId),product=state.products.find(x=>String(x.id)===fields.get('product_id'));
         if(!owner||!product||fields.get('server')!=='1'||fields.get('role_id')!==String(owner.role_id)||!/^\d+(?:[.]\d{1,2})?$/.test(fields.get('amount'))||Math.round(Number(fields.get('amount'))*100)!==product.price_cents)throw new RequestError(400,400,'Invalid local product, role or amount');
+        // quickOrderPay already committed this order and published its reward.
+        // cp_order is that order_id, so confirmation must not buy a second one.
+        const existing=wallet.findOrder(fields.get('cp_order'));
+        if(existing){
+          if(existing.account_id!==account.userId||existing.product_id!==product.id||existing.price_cents!==product.price_cents)throw new RequestError(400,400,'Local payment order does not match');
+          send(200,{rcode:0,rdesc:'Local balance purchase confirmed',result:{order_no:existing.order_id,status:1,balance_cents:existing.balance_cents}});
+          log({event:'wallet_order_confirmed',productId:product.id,orderId:existing.order_id});return;
+        }
         let order;try{order=wallet.buy({account_id:account.userId,product_id:product.id,request_id:fields.get('cp_order')});}catch(error){throw new RequestError(400,error.code??400,error.message);}
         send(200,{rcode:0,rdesc:'Local balance purchase completed',result:{order_no:order.order_id,status:1,balance_cents:order.balance_cents}});return;
       }
@@ -193,6 +266,52 @@ export function createSdkService(options = {}) {
         send(200, { result: true, error: {}, data: { uid: account.userId, user_name: account.nickname, user_token: login.token, token: login.token, platform_uid: account.userId, platform_username: account.nickname, platform_password: '', platform_status: '1', stopCreateRole: false, stopCreateTime: '' } });
         return;
       }
+      if (route === 'quickOrderPay') {
+        const fields = await readForm(request, ['product_code', 'json_data', 'sign']);
+        const signature = fields.get('sign');
+        fields.delete('sign');
+        if (fields.get('product_code') !== quickSdk.productCode || !/^[0-9A-F]{32}$/.test(signature) || !equalMd5Hex(signQuickSdk(fields, quickSdk.productKey).toLowerCase(), signature.toLowerCase())) {
+          throw new RequestError(401, 1001, 'Invalid local product or payment signature');
+        }
+        let payment;
+        try { payment = decodeQuickSdkCarrier(fields.get('json_data'), quickSdk.productKey); }
+        catch { throw new RequestError(400, 400, 'Invalid local payment carrier'); }
+        const session = typeof payment.token === 'string' && /^[0-9a-f]{64}$/.test(payment.token) ? sessions.get(tokenKey(payment.token)) : undefined;
+        if (!session || session.userId !== payment.uid || currentTime() > session.expiresAt) throw new RequestError(401, 1003, 'Local SDK session required');
+        let extras;
+        try { extras = JSON.parse(payment.extras_params); }
+        catch { throw new RequestError(400, 400, 'Invalid local payment extras'); }
+        if (!extras || typeof extras !== 'object' || Array.isArray(extras)) throw new RequestError(400, 400, 'Invalid local payment extras');
+        const productId = Number(payment.goods_id);
+        if (!Number.isSafeInteger(productId) || String(extras.goodsID) !== String(productId) || String(extras.productID) !== String(productId)) {
+          throw new RequestError(400, 400, 'Local payment product identifiers do not match');
+        }
+        if (!/^[A-Za-z0-9_.:-]{1,120}$/.test(payment.cp_order_id) || payment.count !== 1) throw new RequestError(400, 400, 'Invalid local payment order');
+        const state = wallet.snapshot();
+        const owner = state.accounts.find(value => value.account_id === account.userId);
+        const product = state.products.find(value => value.id === productId);
+        if (!owner || !product) throw new RequestError(400, 400, 'Unsupported local payment product');
+        const priceCents = Math.round(Number(payment.price) * 100);
+        const amountCents = Math.round(Number(payment.amount) * 100);
+        if (!Number.isFinite(payment.price) || !Number.isFinite(payment.amount) || priceCents !== product.price_cents || amountCents !== product.price_cents) {
+          throw new RequestError(400, 400, 'Local payment amount does not match the product');
+        }
+        let roleInfo;
+        try { roleInfo = JSON.parse(Buffer.from(payment.game_role_info, 'base64').toString('utf8')); }
+        catch { throw new RequestError(400, 400, 'Invalid local payment role'); }
+        if (String(roleInfo.server_id) !== '1' || String(roleInfo.game_role_id) !== String(owner.role_id)) throw new RequestError(400, 400, 'Local payment role does not match the account');
+        let order;
+        try { order = wallet.buy({ account_id: account.userId, product_id: productId, request_id: payment.cp_order_id }); }
+        catch (error) {
+          const code = Number.isSafeInteger(error?.code) ? error.code : 400;
+          send(200, quickSdkFailure(code, error?.message || 'Local payment failed'));
+          log({ event: 'quick_order_pay_rejected', productId, code });
+          return;
+        }
+        send(200, { result: true, error: {}, data: { order_id: order.order_id, channel_order_id: order.order_id, channel_params: '' } });
+        log({ event: 'quick_order_pay_committed', productId, duplicate: Boolean(order.duplicate) });
+        return;
+      }
       const otpFields = { phoneAccountCheck: ['appid', 'phone', 'sign'], localSms: ['appid', 'phone', 'type', 'size', 'sign'], localPhoneLogin: ['appid', 'phone', 'verifyCode', 'sign'], localPhoneRegister: ['appid', 'phone', 'password', 'verifyCode', 'sign'] };
       const fields = await readForm(request, otpFields[route] ?? (route === 'login' ? ['loginCode', 'password', 'appid', 'sign'] : ['access_token', 'appid', 'userid', 'sign']));
       authenticateForm(fields);
@@ -201,7 +320,9 @@ export function createSdkService(options = {}) {
       if (route === 'localSms') { send(200, { rcode: 0, rdesc: 'Local test mode: no SMS sent', result: { wait_time: 1 } }); return; }
       if (['localPhoneLogin','localPhoneRegister'].includes(route) && !/^[0-9]{4}$/.test(fields.get('verifyCode'))) throw new RequestError(400, 400, 'Use a four-digit local test code');
       const now = currentTime();
-      for (const [key, session] of sessions) if (now > session.expiresAt) sessions.delete(key);
+      let removedExpired = false;
+      for (const [key, session] of sessions) if (now > session.expiresAt) { sessions.delete(key); removedExpired = true; }
+      if (removedExpired) persistSessions();
       if (route === 'login' || route === 'localPhoneLogin' || route === 'localPhoneRegister') {
         // The isolated SDK's registration screen also signs a password field.
         // It signs into the existing test identity without changing its credentials or save.
@@ -209,7 +330,10 @@ export function createSdkService(options = {}) {
         if (sessions.size >= MAX_SESSIONS) throw new RequestError(503, 1004, 'Session limit reached');
         const token = randomBytes(32).toString('hex');
         const expiresAt = now + sessionTtlSeconds;
-        sessions.set(tokenKey(token), { userId: account.userId, expiresAt });
+        const hash = tokenKey(token);
+        sessions.set(hash, { userId: account.userId, expiresAt });
+        try { persistSessions(); }
+        catch (error) { sessions.delete(hash); throw error; }
         send(200, { rcode: 0, rdesc: 'ok', result: resultFor(token, expiresAt) });
         return;
       }
@@ -221,6 +345,10 @@ export function createSdkService(options = {}) {
       const known = error instanceof RequestError;
       if (route === 'quickLogin') {
         send(known ? error.statusCode : 500, { result: false, error: { code: known ? error.rcode : 500, message: known ? error.message : 'Internal service error' }, data: {} });
+        return;
+      }
+      if (route === 'quickOrderPay') {
+        send(200, quickSdkFailure(known ? error.rcode : 500, known ? error.message : 'Internal service error'));
         return;
       }
       send(known ? error.statusCode : 500, { rcode: known ? error.rcode : 500, rdesc: known ? error.message : 'Internal service error', result: {} });

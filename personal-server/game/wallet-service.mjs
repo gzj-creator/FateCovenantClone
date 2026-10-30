@@ -11,22 +11,30 @@ const DAILY_RESET_OFFSET_SECONDS = 10800;
 // that pb_daily_discount_data stores on the wire.
 const DAILY_DISCOUNT_VALUE_INDEX = new Map([[40008,4],[40006,1],[46002,5],[46003,6],[40010,3],[40009,2]]);
 const key = value => typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,120}$/.test(value);
-// ETF INTEGER_EXT list [price]. The client's RechargeMgr uses extra_params[1]
-// to add voucher payments to the cumulative recharge amount.
-function etfIntList(values) {
-  const parts = [Buffer.from([0x83, 0x6c]), Buffer.alloc(4)];
-  parts[1].writeUInt32BE(values.length, 0);
-  for (const value of values) {
-    if (Number.isInteger(value) && value >= 0 && value <= 255) parts.push(Buffer.from([0x61, value]));
-    else {
-      const bytes = Buffer.alloc(5);
-      bytes[0] = 0x62;
-      bytes.writeInt32BE(value, 1);
-      parts.push(bytes);
-    }
+// res_recharge_success.extra_params is an ETF argument list. RechargeMgr takes
+// its first element and passes it to the recharge event as extraParams; the
+// WishTree and WeekHunt handlers index that value as [isExtraBuy, period, day].
+function etfTerm(value) {
+  if (Array.isArray(value)) {
+    const parts = [Buffer.from([0x6c]), Buffer.alloc(4)];
+    parts[1].writeUInt32BE(value.length, 0);
+    for (const item of value) parts.push(etfTerm(item));
+    parts.push(Buffer.from([0x6a]));
+    return Buffer.concat(parts);
   }
-  parts.push(Buffer.from([0x6a]));
-  return Buffer.concat(parts);
+  if (typeof value === 'boolean') {
+    const atom = Buffer.from(value ? 'true' : 'false');
+    return Buffer.concat([Buffer.from([0x77, atom.length]), atom]);
+  }
+  if (!Number.isInteger(value) || value < -2147483648 || value > 2147483647) throw new TypeError('Unsupported ETF value');
+  if (value >= 0 && value <= 255) return Buffer.from([0x61, value]);
+  const bytes = Buffer.alloc(5);
+  bytes[0] = 0x62;
+  bytes.writeInt32BE(value, 1);
+  return bytes;
+}
+function etfList(values) {
+  return Buffer.concat([Buffer.from([0x83]), etfTerm(values)]);
 }
 export function createWalletService({ store, codec, tables, voucher, monthPermit, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
   const log = event => { try { logger(event); } catch {} };
@@ -257,7 +265,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       if (giftRecord) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord });
       const dailyDiscount = dailyPlan ? setDailyDiscountInfo(modules, dailyPlan.info) : null;
       if (dailyDiscount) extraRetList.push({ flag: DAILY_DISCOUNT_HANDLE, data: dailyDiscount });
-      const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: quote.quantity > 0 ? etfIntList([product.price]) : Buffer.alloc(0), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
+      const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: etfList([[dailyPlan?.additional === true, 0, day]]), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
       login.tmp_recharge_record.tmp_record_list.push({ recharge_id: product_id, recharge_time: purchasedAt, order_no: order });
@@ -329,5 +337,18 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       db.prepare('UPDATE recharge_orders SET acknowledged=1 WHERE order_id=?').run(order);
     });
   }
-  return { snapshot, credit, buy, purchaseGift, acknowledge, accountId };
+  // /pay/recharge/order sends the QuickSDK order_id as cp_order. Look it up
+  // before buying so a confirmed payment can never create a second order.
+  function findOrder(order_id) {
+    if (!key(order_id)) return null;
+    return store.inspect(db => {
+      const row = db.prepare('SELECT order_id,account_id,product_id,price_cents,created_at,acknowledged,payload_json FROM recharge_orders WHERE order_id=?').get(order_id);
+      if (!row) return null;
+      let payload = {};
+      try { payload = JSON.parse(row.payload_json); } catch {}
+      const wallet = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(row.account_id);
+      return { order_id: row.order_id, account_id: row.account_id, product_id: row.product_id, price_cents: row.price_cents, created_at: row.created_at, acknowledged: Boolean(row.acknowledged), balance_cents: wallet?.balance_cents ?? payload.balance_cents ?? 0 };
+    });
+  }
+  return { snapshot, credit, buy, purchaseGift, acknowledge, findOrder, accountId };
 }

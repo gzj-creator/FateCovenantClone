@@ -18,7 +18,7 @@ const platformRow = platformPrototype?.constants.find(c => c.type === 'table' &&
 const platformValues = platformPrototype?.constants.find(c => c.type === 'table' && typeof c.array[2] === 'string');
 if (!platformRow || !platformValues) throw new Error('Local client platform contract not found');
 const platformFields = Object.fromEntries(platformRow.hash.map(([key, index]) => [key, platformValues.array[index]]));
-const sdk = createSdkService({ localTestOtp: true, platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform }, quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' }, appId: 'fc-local', appKey: 'fc-local-development-key', account: { loginCode: 'localtest', passwordMd5: createHash('md5').update('Local2026!').digest('hex'), userId: 'local-1', nickname: 'Local Adventurer' }, logger });
+  const sdk = createSdkService({ localTestOtp: true, sessionTtlSeconds: 604800, sessionPath: path.join(directory, 'sdk-sessions.local-only.json'), platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform }, quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' }, appId: 'fc-local', appKey: 'fc-local-development-key', account: { loginCode: 'localtest', passwordMd5: createHash('md5').update('Local2026!').digest('hex'), userId: 'local-1', nickname: 'Local Adventurer' }, logger });
 const key = JSON.parse(fs.readFileSync('analysis/experiments/private-server-20261025/p3/server-key.local-only.json')).key;
 const list = createServerListService({ signingKey: key, server: { id: 1, name: 'Local Server', extranetIp: '127.0.0.1:19090' }, codec: createProtobufJsCodec(), logger });
 const startup = createStartupService({ appVersion: '1.55.090365', assetVersion: 364110, logger });

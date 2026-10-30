@@ -112,12 +112,16 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(116001, 8, codec.pack('pb_help_up_task_reward_req', { act_id: 92144, task_id_list: [1] }));
   assert.equal(response.err.err, 5);
 
-  // Hall entry asks for shop ids: answer the requested ids with empty local groups.
-  response = await request(1202, 9, await encodeEtf([207, 206]));
+  // Auto-refresh shops need a decodable group even while their inventory is empty.
+  response = await request(1202, 9, await encodeEtf([207, 206, 402]));
   assert.equal(response.err, undefined);
   const shops = codec.unpack('pb_query_shops_back', Buffer.from(response.data ?? '', 'base64')).shops;
-  assert.deepEqual(shops.map(shop => shop.id), [207, 206]);
-  assert.deepEqual(shops.map(shop => shop.items_groups.length), [0, 0]);
+  assert.deepEqual(shops.map(shop => shop.id), [207, 206, 402]);
+  assert.deepEqual(shops.map(shop => shop.items_groups.length), [1, 1, 0]);
+  const autoRefresh = codec.unpack('pb_shop_auto_refresh', Buffer.from(shops[0].items_groups[0].group_data_bin, 'base64'));
+  assert.ok(Number(autoRefresh.next_refresh_time) > Math.floor(Date.now() / 1000));
+  assert.equal(Number(autoRefresh.limit_bought_count ?? 0), 0);
+  assert.deepEqual(autoRefresh.items_history_bought ?? [], []);
 
   // Activity stage sync is acknowledged with the empty change list instead of an error.
   response = await request(53002, 10, await encodeEtf([1004012]));
