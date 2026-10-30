@@ -1,0 +1,15 @@
+# Project-local REA MCP server.
+# REA's skill is installed at .agents/skills/reverse-engineer-anything.
+# JADX is added to this environment table after the pinned JAR is installed.
+
+[mcp_servers.rea]
+type = "stdio"
+command = "cmd.exe"
+args = ["/d", "/c", "npx", "-y", "rea-agents@6.7.0", "mcp"]
+startup_timeout_sec = 30
+tool_timeout_sec = 450
+
+[mcp_servers.rea.env]
+REA_MCP_INPUT_SCHEMA_PROFILE = "compact"
+REA_ADB_PATH = "C:\\Users\\gzj\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe"
+JAVA_HOME = "C:\\Program Files\\Microsoft\\jdk-21.0.12.101-hotspot"

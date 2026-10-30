@@ -1,0 +1,3821 @@
+{
+  "generatedAtUtc": "2026-10-25T10:39:56.825Z",
+  "schemaVersion": 1,
+  "scope": "Candidate APK shipped static declarations only; no runtime coverage imported.",
+  "apkIdentity": {
+    "apk": "analysis/apk/device-pull-16448/com.jzyx.my/base.apk",
+    "apkSha256": "b724dfbaa5687ebbfc9ce1b930e9bd88ca74f9b6afc3838d1e20acf66cd8ba5e",
+    "package": "com.jzyx.my",
+    "versionName": "1.55.090365",
+    "versionCode": 362155,
+    "dex": "classes6.dex",
+    "dexSha256": "96cbab3e1b7f792cf8f2845381c518d1f7cf8dbe547e739c8e87759a249a3f49"
+  },
+  "parser": {
+    "path": "analysis/tools/inspect-lua-bytecode.mjs",
+    "bytes": 8806,
+    "sha256": "b9290b5d19de322fbb2cce296ac4b9414a989f81febda9c78d306c3744cff358"
+  },
+  "schemas": {
+    "parser": "protobufjs 8.8.1",
+    "keepCase": true
+  },
+  "requestTracing": "Bounded symbolic register/upvalue tracking of explicit command returns and Codec.EncodePB/EncodeErl calls; never executes target Lua.",
+  "statistics": {
+    "c2sDeclarations": 1407,
+    "pushDeclarations": 307,
+    "httpDeclarations": 28,
+    "c2sUniqueWireTypes": 1407,
+    "pushUniqueWireTypes": 307,
+    "c2sExplicitResponseSchemas": 1189,
+    "pushExplicitSchemas": 262,
+    "c2sResolvedResponseSchemas": 1184,
+    "pushResolvedSchemas": 253,
+    "unresolvedDeclaredSchemas": 14,
+    "requestEncodingRecovered": 1405,
+    "requestProtobufRecovered": 569,
+    "requestEtfRecovered": 836,
+    "requestUnknown": 2,
+    "pushHandlersLinked": 297,
+    "requestControlFlowUnresolved": 0,
+    "commandModules": 303,
+    "parsedCommandModules": 303,
+    "schemaTextAssets": 656,
+    "schemaTypes": 3633,
+    "schemaParseErrors": 0,
+    "observed": 0,
+    "decoded": 0,
+    "actionVerified": 0
+  },
+  "moduleReports": [
+    {
+      "module": "ChannelPushCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_general.bundle/textassets/15958655604468089000-ChannelPushCmd.lua.bin",
+        "bytes": 391,
+        "sha256": "77aa635dbf98f05a7af5e3f7fbe511d059a7099b9887b8a5e29b380a90775ba0"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "LoginCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_general.bundle/textassets/4356658961645663700-LoginCmd.lua.bin",
+        "bytes": 913,
+        "sha256": "ab9e9f58721e39c55edb15b840c27d29cd0fba22f7e7a5bc60d548e07fd1b71c"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "RedDotCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_general.bundle/textassets/4990088992710213000-RedDotCmd.lua.bin",
+        "bytes": 376,
+        "sha256": "20da1a245914b1628550a040e846c09154e17007b038bc6f27ec2b6e7b96bbd5"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "RaffleTicketCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10017429215818710000-RaffleTicketCmd.lua.bin",
+        "bytes": 313,
+        "sha256": "65a72b9d21efbb710fe4e890697559b54fb5b58a67729a3335a7d9b69a5143d4"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GrowthTargetCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10038892796414941000-GrowthTargetCmd.lua.bin",
+        "bytes": 670,
+        "sha256": "e502886e49bff6e3f165e5402994b97c986bce3beed71e1f67f647e682cde600"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "DivineEmbryoCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10057364440793324000-DivineEmbryoCmd.lua.bin",
+        "bytes": 303,
+        "sha256": "2c2c6df6fb3ad13e46df900a0445c87947039fd5b40e55f5a8970b10774fca9c"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "TopArenaCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10115179607457286000-TopArenaCmd.lua.bin",
+        "bytes": 3505,
+        "sha256": "0e6ee5cf3bf58346fb0e955bfd5c75c6f6baf97bd80904097e616b5f4108a0bf"
+      },
+      "parsed": true,
+      "prototypes": 19,
+      "exports": 18,
+      "matchedCommands": 18
+    },
+    {
+      "module": "TowerDefenseCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10158394822899137000-TowerDefenseCmd.lua.bin",
+        "bytes": 1008,
+        "sha256": "22c72cbe467b59ca87cb2e62bb6b5a17196f461c3ca9a5edb158f7f8c7a44cf7"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "NewHeroExclusiveCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10190101094397501000-NewHeroExclusiveCmd.lua.bin",
+        "bytes": 681,
+        "sha256": "3d49859b89547ace287d00ecbf81fcd93cd83be497388640d212da2f9763892b"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "TacticsCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10269142406655711000-TacticsCmd.lua.bin",
+        "bytes": 417,
+        "sha256": "1596e517614eabafe920cd85cfbed806cd5579030d9285d6585f8cdb021a4175"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "CmsCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10357926680205871000-CmsCmd.lua.bin",
+        "bytes": 271,
+        "sha256": "4cc9d3ecbfe2de441efff47e94cc91dd2b4bfda54bf2ec3701bf26b630fbfd5f"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "EveryTaskCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10535311564433304000-EveryTaskCmd.lua.bin",
+        "bytes": 1167,
+        "sha256": "c383bbc3b852ad21920de448aa8b89174f12121edd3a15a1d4460ec38f9bbedc"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "FunOpenCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10646300321176177000-FunOpenCmd.lua.bin",
+        "bytes": 269,
+        "sha256": "028856ca5feacc30fe51df4bbc46d7da3154bbc0b712237fc7ada83435677a43"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "RecycleActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10674557087980605000-RecycleActCmd.lua.bin",
+        "bytes": 395,
+        "sha256": "d33b13336e319b2cbfbca480f81f8db5dd5c75225c6b9c812c4c21e22720f863"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "TeamSuggestCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10732553770041820000-TeamSuggestCmd.lua.bin",
+        "bytes": 666,
+        "sha256": "7f6a0b3863068e92a73b9b6e35ce4f286a614c22385fd0c03b614c83c5c5616b"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "MagicDrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10744615941380542000-MagicDrawCmd.lua.bin",
+        "bytes": 613,
+        "sha256": "6e2c7af85ae2ccd5e769942bce38bd557f22d4fbe7634bacf8ce4f02993009eb"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "ExpGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10823156269718546000-ExpGiftCmd.lua.bin",
+        "bytes": 285,
+        "sha256": "eb4d07d41e7af249b6395aa7f0de89aac89b034f25ebba9184dfe6be88913b2a"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 0
+    },
+    {
+      "module": "RechargeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10839082743145677000-RechargeCmd.lua.bin",
+        "bytes": 1127,
+        "sha256": "306ca48f21efc450d9f1ea65f28dbe2817c53f33afdd0a6d7c0dcb9aefb81579"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "DailySelectionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10839194900471994000-DailySelectionCmd.lua.bin",
+        "bytes": 309,
+        "sha256": "d5e79a748aa5080edf703b3421b161cc654d6dd0dda9b9aca53c77b571db1191"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 0
+    },
+    {
+      "module": "CommonCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1086675694655996800-CommonCmd.lua.bin",
+        "bytes": 269,
+        "sha256": "a2df009c9a4ee14559506f809ad8773a575911ae73852966a13169753aaeba4d"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "UpStarGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1086730739918066200-UpStarGiftCmd.lua.bin",
+        "bytes": 495,
+        "sha256": "5abd182fe773a35f546b085dbfc136b94d0f362099c651f0185f32464e958de2"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "WeekendBonusCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1093949615264287700-WeekendBonusCmd.lua.bin",
+        "bytes": 443,
+        "sha256": "81b129921c4f4120d030e58d8f1d996346d7a32c21631cf2fc5a0be65a0263b6"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "VipCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10968636115148747000-VipCmd.lua.bin",
+        "bytes": 559,
+        "sha256": "1cfd0614d9acdab8408358367e30b15eb278cbb554ae9a340120c619a0b2a1ab"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "TripleMatchCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10970159028461593000-TripleMatchCmd.lua.bin",
+        "bytes": 1445,
+        "sha256": "b55beefc3fa4fcbaa87296bf040da2b237b9becb496fab600037a1ca4673eb7f"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "ChessCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11045007806182552000-ChessCmd.lua.bin",
+        "bytes": 1299,
+        "sha256": "68e698e5789b682efb7daa75ec5f5f369f59dbf3bba32d090fe33a2855d923cb"
+      },
+      "parsed": true,
+      "prototypes": 7,
+      "exports": 6,
+      "matchedCommands": 6
+    },
+    {
+      "module": "FantasyEquipCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11062877606602310000-FantasyEquipCmd.lua.bin",
+        "bytes": 3905,
+        "sha256": "5ad2ba590edb7a90b97849c2a3127892d11f42bf6288dbb1d115e8c141835434"
+      },
+      "parsed": true,
+      "prototypes": 17,
+      "exports": 16,
+      "matchedCommands": 16
+    },
+    {
+      "module": "LinearLevelCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11116357962324165000-LinearLevelCmd.lua.bin",
+        "bytes": 390,
+        "sha256": "2e8b4d5c7e2c8ac924f8a1fdbf7be56e9c3dbecfa078acca9ec238c0d936eeb1"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "TournamentCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11354730174244491000-TournamentCmd.lua.bin",
+        "bytes": 1889,
+        "sha256": "543a6f5928fbd00525c6ddd43bec0600f3d2dc5535a6265839a17c863a184d6a"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "HouseAssistantCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11401743494663922000-HouseAssistantCmd.lua.bin",
+        "bytes": 1095,
+        "sha256": "5fb17e1b160e380e53be50fec552a2e2a1985f4e9e14642d22876038d1f47e26"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "HoardWheelActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11570395063648926000-HoardWheelActCmd.lua.bin",
+        "bytes": 884,
+        "sha256": "2dbc141ee1eb977602fa4288bce7d8b7b6de11cfb0d99f45388a670d090063b9"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "LineupCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11603215270183664000-LineupCmd.lua.bin",
+        "bytes": 1737,
+        "sha256": "d1589045e374fe717ed3685ec3a08e7b8a9f31226e0a31c89a383a52d603281c"
+      },
+      "parsed": true,
+      "prototypes": 9,
+      "exports": 8,
+      "matchedCommands": 8
+    },
+    {
+      "module": "OnesRewardCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11663873953367517000-OnesRewardCmd.lua.bin",
+        "bytes": 289,
+        "sha256": "a173b4cf6ac1ddb47cd6d6ebbc6f4b483bbb08d3bde0e2517572956f7cdaeb60"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "SkinCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11688972982279000000-SkinCmd.lua.bin",
+        "bytes": 1266,
+        "sha256": "1936588695c51aaa1d96190f4f9b38f3a5ccabfd17c967a55f8fd876f33b9609"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "FavourIntimacyCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11826477187783168000-FavourIntimacyCmd.lua.bin",
+        "bytes": 827,
+        "sha256": "bc9644081170e0fa30b2bc3166d46a229eaafbf309ccf8b0a08aa23e78c6cf7d"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "VoteActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11863841593384470000-VoteActCmd.lua.bin",
+        "bytes": 1389,
+        "sha256": "3ae5285422f2251ab118e4357f34facd6a934db6ef9095b1fb84eab621188c5b"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "MartialClubActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11890606674098401000-MartialClubActCmd.lua.bin",
+        "bytes": 475,
+        "sha256": "65a7e83b2974523df1ce6d0397484774eeae4b79de1830d2d13eef825cd7c305"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "PlayerDataCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1189361418196851000-PlayerDataCmd.lua.bin",
+        "bytes": 389,
+        "sha256": "088968090395108d18eae596891a0a4da22f38a2a5f0478e97de45156876227b"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PrincessCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/11933278345076775000-PrincessCmd.lua.bin",
+        "bytes": 649,
+        "sha256": "fa496d1b248e8e45c391c66e77ce4bc0ec9be23ada07cd8bf91c65ab83e5ef46"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "HeroLegendCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1198345591248219000-HeroLegendCmd.lua.bin",
+        "bytes": 807,
+        "sha256": "46bfb0a1190d0be504ae7b955c2e9bb7d02f1ba82d2f636852887ad77613aef0"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "ThreeAdmonitionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1215423565488043300-ThreeAdmonitionCmd.lua.bin",
+        "bytes": 803,
+        "sha256": "dc7bace6e0bb1ec9ead4e481c120cbc9171bc2eca71db9ee95778b546c8a7b26"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "CakeActivityCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1225513744677876500-CakeActivityCmd.lua.bin",
+        "bytes": 732,
+        "sha256": "93fa7d4b65599da71c27a8518c9deb4709e91314ca7a10b915fd3f76d1ce8b9b"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "TreasureHuntCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12316972552546073000-TreasureHuntCmd.lua.bin",
+        "bytes": 1418,
+        "sha256": "f9e84341fef0100afbcd1cd77a002f3c1fe1f0de7db6ca0382a3e2a16992d5ad"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "CommonMapCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12322053589959280000-CommonMapCmd.lua.bin",
+        "bytes": 696,
+        "sha256": "e29603a3e782f2e433eb61854244eeeb3f12d60eb940dcf2cec88041aa9817e7"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "QuestionActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12404658210344450000-QuestionActCmd.lua.bin",
+        "bytes": 940,
+        "sha256": "8acfede415cbf08a96c18dda63b4e13ef5723909bd98794076153f5cca5ed0bf"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "ChannelEntryCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12428808687813143000-ChannelEntryCmd.lua.bin",
+        "bytes": 289,
+        "sha256": "cf13962b3f87c5ebf4a434402aabaf39c9b6e3ea6a37601a3eb21bb1721a6945"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "MagicalJourneyCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12456254107740152000-MagicalJourneyCmd.lua.bin",
+        "bytes": 3648,
+        "sha256": "fd3d387001d73c4f0df1976a9a27a9dc50408ff242c2ca8120733396d3d6f3d6"
+      },
+      "parsed": true,
+      "prototypes": 18,
+      "exports": 17,
+      "matchedCommands": 17
+    },
+    {
+      "module": "DiamondBankActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12473940592705022000-DiamondBankActCmd.lua.bin",
+        "bytes": 689,
+        "sha256": "43d71a3348422e30dcee33f8538151933aab138d30c1d393c9a1f8144c4569e2"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "BattleTriMatchEquipCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12477988553395284000-BattleTriMatchEquipCmd.lua.bin",
+        "bytes": 1077,
+        "sha256": "3a2a87c3b54c8ef2ad2d94cca92f8b3e86775e8d4e2c841b78d183671c16f18d"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "TowerActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12485965060780892000-TowerActCmd.lua.bin",
+        "bytes": 796,
+        "sha256": "71cdb0ef3067b04ebb4d1578f468b958a88de3f2dcf6fc4f39c400d59d616b39"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "HeroDrawActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12538270531358500000-HeroDrawActCmd.lua.bin",
+        "bytes": 479,
+        "sha256": "ad25595ae13662a47c2f1ddd6b90b0b28b0486462e99863978f4b7851e85783e"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "HookCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12570167248035471000-HookCmd.lua.bin",
+        "bytes": 1217,
+        "sha256": "a40c8461fc94f091920b015f855c90965cac309e6ef4340d4b74c5666db69e2c"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "SpiritCourtyardCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12572251441458043000-SpiritCourtyardCmd.lua.bin",
+        "bytes": 3696,
+        "sha256": "73d407f0058223f2a81b82c85d0bb2aef0f6f64a1c75a5cc7fcb0ccfba564d07"
+      },
+      "parsed": true,
+      "prototypes": 17,
+      "exports": 16,
+      "matchedCommands": 16
+    },
+    {
+      "module": "SlgMapCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1259709200749503200-SlgMapCmd.lua.bin",
+        "bytes": 646,
+        "sha256": "a10f79f51e947145d401ba8a18e1b552cdd9a8edff2ba7e8c01c31934e0bf135"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "GopherActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12672660150778489000-GopherActCmd.lua.bin",
+        "bytes": 279,
+        "sha256": "1ea26ec020ac27c296ba37b0508ed17b7036995b09c78dced26d89514f2b7663"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GuildAuctionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12791623487734000000-GuildAuctionCmd.lua.bin",
+        "bytes": 801,
+        "sha256": "b05bec39e0bbf9b3ed051205294638fb7060b30b838bd995b71d8d83c1a805bb"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "MonopolyActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12814447813192315000-MonopolyActCmd.lua.bin",
+        "bytes": 2751,
+        "sha256": "efe3055393924ad376f6c6b75a2a4e14e58bba4da7a80ab4395ab2c8dcb5aca0"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "RoleShareCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12816584404686832000-RoleShareCmd.lua.bin",
+        "bytes": 289,
+        "sha256": "bf67a6546459a6fc47de46c50f042d67f785db9d229d6afcb382f86d8b8e0c5f"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "ArtifactDrawActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12833391057378787000-ArtifactDrawActCmd.lua.bin",
+        "bytes": 1661,
+        "sha256": "931a23264bfd2da8980b470a78984851136a56429cc855fd5452e01979857701"
+      },
+      "parsed": true,
+      "prototypes": 7,
+      "exports": 6,
+      "matchedCommands": 6
+    },
+    {
+      "module": "BonusDrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12861612014262098000-BonusDrawCmd.lua.bin",
+        "bytes": 722,
+        "sha256": "fda36e53996a17eb761470cec4e4db4687f8ccb3831e5b16994d6f2722becf29"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "EliteMissionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/12876087089238757000-EliteMissionCmd.lua.bin",
+        "bytes": 737,
+        "sha256": "17163420b10bd6d491edabd1fd07d32867d69805987a25fb85bfc497ca78ffa0"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "GuildBossCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1300436341741234200-GuildBossCmd.lua.bin",
+        "bytes": 2323,
+        "sha256": "92cdcc5a79e2e5911338b1f5a6a02a973ed6b44aeef77c5c6bfe9e4b316f487f"
+      },
+      "parsed": true,
+      "prototypes": 13,
+      "exports": 12,
+      "matchedCommands": 12
+    },
+    {
+      "module": "HundredBonusCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1311460049967712000-HundredBonusCmd.lua.bin",
+        "bytes": 587,
+        "sha256": "008710944c4a5b0c679034b5335b1a414a52f5c00e6cdfaf81711c09d5389add"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "DrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13166981914472428000-DrawCmd.lua.bin",
+        "bytes": 369,
+        "sha256": "5a02b5f1ee52b53f451b16c7d5549df0eb0c05a02b65dcf2cdf8f737bb1f0c70"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "TreasureCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13400707259664374000-TreasureCmd.lua.bin",
+        "bytes": 1136,
+        "sha256": "4eea47e7b553978c58cddf63fd67dfd0ab57e8aef790ec657e683ec18a9adeb4"
+      },
+      "parsed": true,
+      "prototypes": 7,
+      "exports": 6,
+      "matchedCommands": 6
+    },
+    {
+      "module": "FightCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13504459777583070000-FightCmd.lua.bin",
+        "bytes": 1488,
+        "sha256": "482692f51d6872e454529bd2fb2f79b5923e5747b28eba4e5799484363f53ed0"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "TripleMatchFightCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13519542147665440000-TripleMatchFightCmd.lua.bin",
+        "bytes": 1293,
+        "sha256": "f57c27618b01cd90f3a5a364e7e564593799054a81f85f8c63f39b8e681965bc"
+      },
+      "parsed": true,
+      "prototypes": 7,
+      "exports": 6,
+      "matchedCommands": 6
+    },
+    {
+      "module": "ThemeTreasureCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13555813913116250000-ThemeTreasureCmd.lua.bin",
+        "bytes": 2496,
+        "sha256": "d90602d075b72733865b1ca259bb468d9168464cdf5c65aea09b3e1e59aea24b"
+      },
+      "parsed": true,
+      "prototypes": 13,
+      "exports": 12,
+      "matchedCommands": 12
+    },
+    {
+      "module": "HeroCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13568180666481977000-HeroCmd.lua.bin",
+        "bytes": 8082,
+        "sha256": "a4f06a508683f1af9399e9fa553c7b9ab9f0502694340386fee9731fb1c2a4d2"
+      },
+      "parsed": true,
+      "prototypes": 42,
+      "exports": 41,
+      "matchedCommands": 41
+    },
+    {
+      "module": "OverallMatchCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13572489009490498000-OverallMatchCmd.lua.bin",
+        "bytes": 387,
+        "sha256": "00d9e25bdd8837e8f3415f768973854a6cb54038017a81b8608cb9471d6974d4"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "ElvesBeadCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13660919190100079000-ElvesBeadCmd.lua.bin",
+        "bytes": 1153,
+        "sha256": "637f541c9306acdb5ed98464bfaa0fe91fd7897981a4ac688ec9562d44e3533b"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "SummerMissionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13710094449558260000-SummerMissionCmd.lua.bin",
+        "bytes": 636,
+        "sha256": "4faef4517334141e527de2854b2712dba6b3bd9673b25742569b4d3033b6244a"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "LinkGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/13734884311239967000-LinkGiftCmd.lua.bin",
+        "bytes": 301,
+        "sha256": "03d3e1635f47437ee7292cc927b31146c343508a48c3f527e1245e95c2a8ced4"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "OpenServerBoxCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14137594870250586000-OpenServerBoxCmd.lua.bin",
+        "bytes": 461,
+        "sha256": "cc50273999a037a5e32336c84f179454ade10e4720f34b3146cbc2832835e7c5"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "MasteryCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1414185985316839700-MasteryCmd.lua.bin",
+        "bytes": 437,
+        "sha256": "eb642d341581e9335d96f4e69fa7f3959143d3b872c2eefe51594a415f9fd664"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GuildCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14166663918499963000-GuildCmd.lua.bin",
+        "bytes": 4421,
+        "sha256": "0df77b7185dfa94be657ea888bf40f8ccbef037c73166838989d28ac95184544"
+      },
+      "parsed": true,
+      "prototypes": 29,
+      "exports": 28,
+      "matchedCommands": 28
+    },
+    {
+      "module": "FantasyHandbookCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14209892513565317000-FantasyHandbookCmd.lua.bin",
+        "bytes": 376,
+        "sha256": "993aa74614f87ffaf008bdfc5cf98ec39c6b49b335d27e58076966a766a58e84"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "IntelliCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14244636527708246000-IntelliCmd.lua.bin",
+        "bytes": 635,
+        "sha256": "408fff360b5aa4867d93be24fbab7f795521202f7b3b1f3d8d044f0d854e03fa"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "HomelandActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14260986135784888000-HomelandActCmd.lua.bin",
+        "bytes": 1155,
+        "sha256": "cf0f5ae4e5392e3c3502e58d83fada1c58b84f950dbcdfbb2dba26557b614b62"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "ClientLogCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14267282475710654000-ClientLogCmd.lua.bin",
+        "bytes": 275,
+        "sha256": "5aa6f0815cfbb5b3be4c60782de5fd89804ce8928c6ab1d6408576abf484b41b"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "FunctionManualCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14284034790127770000-FunctionManualCmd.lua.bin",
+        "bytes": 309,
+        "sha256": "0063e078c2399d4c8a6dfa4d19fc4a8af80547c20a4fa37a60e834dde11d7877"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PinBallCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14318376810132732000-PinBallCmd.lua.bin",
+        "bytes": 305,
+        "sha256": "ed81e1bd8174be985e9623840086437ee3595284fd8403cf7dbea6cd6505a5de"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "FlipCardCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14335122779212550000-FlipCardCmd.lua.bin",
+        "bytes": 525,
+        "sha256": "09b756eb1efb7b84a612ab50148ca8dcfeb1389a51ab1fab20fea482f51eb233"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GuildExploreCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14457810904924041000-GuildExploreCmd.lua.bin",
+        "bytes": 5109,
+        "sha256": "f3c8d2065be8c3f29d968e11dad6863276d8db6f975fd954132fe95b4ee8508f"
+      },
+      "parsed": true,
+      "prototypes": 29,
+      "exports": 28,
+      "matchedCommands": 28
+    },
+    {
+      "module": "RechargeRebateResetCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14548724741765319000-RechargeRebateResetCmd.lua.bin",
+        "bytes": 331,
+        "sha256": "ec9647cd991c33a12b92352bc91cfa36ea11ab1a650c4298ee7d05ab19ffd185"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "CountStatisticsCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14558719037055328000-CountStatisticsCmd.lua.bin",
+        "bytes": 321,
+        "sha256": "98ce4dbe1b01d8b557c92ccbd97dbe13e32e4d6e00e14dc5a1cd7c88d4078b0c"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "CdkeyCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14581048444317729000-CdkeyCmd.lua.bin",
+        "bytes": 271,
+        "sha256": "2ac19ec604d35f1be65b36bbf78ce4ee276a95b6bd0b988f112c590ca34ea2cd"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PrayActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1460653445981649200-PrayActCmd.lua.bin",
+        "bytes": 627,
+        "sha256": "aaeb249367248b5704012cc0db085674f0e3944a748e61563f08f2e27a0f8a49"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "ChessRevertCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14647897320006416000-ChessRevertCmd.lua.bin",
+        "bytes": 899,
+        "sha256": "adc94a061fa8c846b575b2e40cbb840d72c9d41b4f162bf4d5ebeb92d87f743c"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "FruitDrawActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14674959919519750000-FruitDrawActCmd.lua.bin",
+        "bytes": 417,
+        "sha256": "6688bd96350e03594bcee584c5649ac4373d41b03bde6e08c4ec61a75fc695f1"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "MailCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14815775329732608000-MailCmd.lua.bin",
+        "bytes": 1023,
+        "sha256": "b239dead0d34b1a7087d0b782ddbd88fb8afd6efdca4fbed96c5d7e879a6c99c"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "DiamondVeinActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14849085568040714000-DiamondVeinActCmd.lua.bin",
+        "bytes": 2128,
+        "sha256": "81be4072d7895a213587de089c5c5be4071cca7cc56ef00d6e485ebeeb0dd7e6"
+      },
+      "parsed": true,
+      "prototypes": 10,
+      "exports": 9,
+      "matchedCommands": 9
+    },
+    {
+      "module": "PetActivityCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14856839158516700000-PetActivityCmd.lua.bin",
+        "bytes": 1691,
+        "sha256": "b42d573689440d4f0d5534490ddd3893d91a21d0327a8bdfa74f3315e081759b"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "CommonTaskCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14858904959227329000-CommonTaskCmd.lua.bin",
+        "bytes": 437,
+        "sha256": "088f391087dcfccb06df759fdce11577c0a37519953ec608426ab9ea18e78c34"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GrowthRoadCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14907265979640260000-GrowthRoadCmd.lua.bin",
+        "bytes": 461,
+        "sha256": "7e6da2102f9818aec844a3d54120162de4c2479e3cd97b0626dac0f7ec2378ab"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "BattleTriMatchLineupCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14916498168993774000-BattleTriMatchLineupCmd.lua.bin",
+        "bytes": 1387,
+        "sha256": "c6423bc6d6a95f88d3a56b2b9c94a33579ee613f296ce98bb3ac99626712ec9c"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "DailyDiscountCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/14929279873006918000-DailyDiscountCmd.lua.bin",
+        "bytes": 440,
+        "sha256": "98466ecc506b15ccaa9903c9802ca3ffb11b3c13284383cc7c6b2bacbed4c6db"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "HunterArenaCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15126395514149362000-HunterArenaCmd.lua.bin",
+        "bytes": 1940,
+        "sha256": "9b3d7dd04265a4fcca8d3871b66711c1e8d3bd41b07ee1834a9c0b54762c75a1"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "TurntableActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15218383326294070000-TurntableActCmd.lua.bin",
+        "bytes": 295,
+        "sha256": "4379267ab7b33ed812604ec13ef19fcb7a175caecc997a82769645939fdd618b"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "WorldBossCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15226432364591448000-WorldBossCmd.lua.bin",
+        "bytes": 976,
+        "sha256": "e5e98afd919b04bf7b2a5f3603b1e3bf52bb498e80979af06179193070be569a"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "ElvesCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15365319863557060000-ElvesCmd.lua.bin",
+        "bytes": 1575,
+        "sha256": "9d13a811386462b246390efac89fa64a74e1601690b69d39835bd049a9136c88"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "FundActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15439243721592270000-FundActCmd.lua.bin",
+        "bytes": 281,
+        "sha256": "d6665cb884dc11a769e8215cf44f41d4f9721d12fa02070e8ecf75e153bf6134"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "RelationshipCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15521932615676054000-RelationshipCmd.lua.bin",
+        "bytes": 776,
+        "sha256": "e1139f730a6639f66de54006fa392584e500f739353ec76884a5b0a9771cef33"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "RankAchieveCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15524743163559870000-RankAchieveCmd.lua.bin",
+        "bytes": 363,
+        "sha256": "9c01c467bd665616bced6b1ed75abe0d6528c620e4f8023b2e96d3ecd3467875"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GuildHuntCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15584117015747574000-GuildHuntCmd.lua.bin",
+        "bytes": 583,
+        "sha256": "aeeefb51b1d4886a65606504b0ee8f91270d6fe32bb2e78dbeb4c2929e6a772d"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "DreamTrialActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15588738135170363000-DreamTrialActCmd.lua.bin",
+        "bytes": 608,
+        "sha256": "bd50c264899827afc823b287dc7df219a729615eda9687636160484109ddfcf2"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "ActFrameCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15663014363452832000-ActFrameCmd.lua.bin",
+        "bytes": 859,
+        "sha256": "6f58f3ba9e7920a340d79351c72d134b84680e0f463b2d31df2b71558c8cb5d3"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "ItemCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15687479523091480000-ItemCmd.lua.bin",
+        "bytes": 1730,
+        "sha256": "972941d60a14177748efe2463e8b09ba2857b2d7ca7e2c60cae950b8fd72ec3b"
+      },
+      "parsed": true,
+      "prototypes": 10,
+      "exports": 9,
+      "matchedCommands": 9
+    },
+    {
+      "module": "MuseumCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15785901880633192000-MuseumCmd.lua.bin",
+        "bytes": 519,
+        "sha256": "64961def0721a76c83e9595a4692df5840a9a2edc4db52a208e4bd5c1774bdf3"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "CommentCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15871857055892046000-CommentCmd.lua.bin",
+        "bytes": 1113,
+        "sha256": "26a5f5f98c29b9834f914216da3fa5cdb733365180ae95aae7ee58b139f579ee"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "TaskGroupCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15908317204917991000-TaskGroupCmd.lua.bin",
+        "bytes": 588,
+        "sha256": "49b627cede1c6c151f839da7c4e64e840cd4ace9016b49e7ab7873012c1c6cd9"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "MonthlyCardCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15963729721367267000-MonthlyCardCmd.lua.bin",
+        "bytes": 349,
+        "sha256": "78f91ba5b9a2b5913bae4ddbfc7ec0636010141d82d612f48c85ed9dfc09f0d7"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "TeamGenreCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16000899820643211000-TeamGenreCmd.lua.bin",
+        "bytes": 670,
+        "sha256": "c6a4becd5ee96d4242dc2024b005b2282b48a2d6e54739f7aa631bebaf9a2467"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "RoleCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16174692769131400000-RoleCmd.lua.bin",
+        "bytes": 3459,
+        "sha256": "58da88d9a04c95f381b813cf5f5a14bf9941988284111d69aead89838e786668"
+      },
+      "parsed": true,
+      "prototypes": 25,
+      "exports": 24,
+      "matchedCommands": 24
+    },
+    {
+      "module": "GuildCrusadeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16174917269540120000-GuildCrusadeCmd.lua.bin",
+        "bytes": 307,
+        "sha256": "34a1890e020f5fa8a70de42ff8784476b41c6e0c33d8663fb1996f7c889c45b4"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "VipCityCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16227988253331157000-VipCityCmd.lua.bin",
+        "bytes": 285,
+        "sha256": "844a76ee1707abf30d379f3f1607ca6ea180a07797cfcdd9498dcf6a42fd803f"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "TriMatchPvpCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16233542519157991000-TriMatchPvpCmd.lua.bin",
+        "bytes": 1047,
+        "sha256": "69eb8c8c06e3fcd07c23abfd100ff63ee02ac4885dadba93e05de2fe6942abe9"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "ElvesActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16350478208683586000-ElvesActCmd.lua.bin",
+        "bytes": 656,
+        "sha256": "02aafb5a4f89dd72406f4db6828bc017b62142aea0e8b2a596326f5248315968"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "PetPlayCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16440065154906368000-PetPlayCmd.lua.bin",
+        "bytes": 443,
+        "sha256": "c83d70aadb39358c658f00908fdf941946fa3489814737832e9c0f47c9355e23"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GroupBuyActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16483745337933228000-GroupBuyActCmd.lua.bin",
+        "bytes": 563,
+        "sha256": "e73038c2b2628f964439f3f3f3275aba1f3c8ace60c27f2fe532ac478389d195"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "SubscriptionActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16541371882922162000-SubscriptionActCmd.lua.bin",
+        "bytes": 827,
+        "sha256": "ac44b3b1ddd0fcd00b734527c3f31ccccbb8c8d40a85960ecca9f39143cc96e8"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "SummerActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16561339846338816000-SummerActCmd.lua.bin",
+        "bytes": 3111,
+        "sha256": "04fa326921b49f90af97a0d3eb50b6e6b232a34c1bfa8b3748cdd7b6805bd4d3"
+      },
+      "parsed": true,
+      "prototypes": 16,
+      "exports": 15,
+      "matchedCommands": 15
+    },
+    {
+      "module": "TileSwapCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16580669536340746000-TileSwapCmd.lua.bin",
+        "bytes": 293,
+        "sha256": "86d2c876bb2938de1586ee98c3e85bf0dfc4d165c331bcb619241d3a95fade51"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "ValentineDayActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16647811321765513000-ValentineDayActCmd.lua.bin",
+        "bytes": 666,
+        "sha256": "c8207fa6a06bfb7b4558309577b92006dbfcea9c30a8dcfcd4787bc93e2d736c"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "AccRechargeActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1670592319079263500-AccRechargeActCmd.lua.bin",
+        "bytes": 408,
+        "sha256": "27f411cec415fac186680bae0798e74637f64f7b8b08f8de76f940ccb6f008ea"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GuildJointCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16727538189255162000-GuildJointCmd.lua.bin",
+        "bytes": 4086,
+        "sha256": "30f98bbfee94ac4a10575bae5e6b3a764c45867045f5928cd24b3953fb373ea9"
+      },
+      "parsed": true,
+      "prototypes": 26,
+      "exports": 25,
+      "matchedCommands": 25
+    },
+    {
+      "module": "DivineRealmActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16880834517351905000-DivineRealmActCmd.lua.bin",
+        "bytes": 424,
+        "sha256": "ce90cd0684a7a020880e5dacc9d7dd4d7ae74957cafc792a29de21496f27e22c"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "HeroBlazonDrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16952286934883731000-HeroBlazonDrawCmd.lua.bin",
+        "bytes": 423,
+        "sha256": "540d91f8d6b4c2660887d2c121e59f674f61b41c6813fe66ed59f259aa55a5cb"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "NotifyGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16954994756483183000-NotifyGiftCmd.lua.bin",
+        "bytes": 299,
+        "sha256": "68114d941852b1263b53483953932749420ae0afd09340a205ac02c588ef2051"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "OnlineGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1699138149807668700-OnlineGiftCmd.lua.bin",
+        "bytes": 293,
+        "sha256": "791571ec1b52f8ab0ff0f80b6c1ae52d983226e3b860a326889eb9da8c26f5e0"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PermitCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/16995684238626902000-PermitCmd.lua.bin",
+        "bytes": 1952,
+        "sha256": "45e1f832891b5a92fff643fc6af2cd39ba763552ebc4ed3cf3b036ffcbfab98a"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "GuideCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17060815871588934000-GuideCmd.lua.bin",
+        "bytes": 581,
+        "sha256": "31d5a839d37660de79e038a661241fae18435a79b273d55b6d2a5efeb7b10535"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "HomePuzzleActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17123700088384868000-HomePuzzleActCmd.lua.bin",
+        "bytes": 2594,
+        "sha256": "10880ba269f4b452cf32c415fc7de8c6bec771234a2ac566638ffbb585df3d9d"
+      },
+      "parsed": true,
+      "prototypes": 10,
+      "exports": 9,
+      "matchedCommands": 9
+    },
+    {
+      "module": "GuildTrialCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17142541860905430000-GuildTrialCmd.lua.bin",
+        "bytes": 2151,
+        "sha256": "0c47118a4661970a875b899056571cc952d8300b59c1201818d9c96c6e4073b1"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "CampHaloCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17146415638492380000-CampHaloCmd.lua.bin",
+        "bytes": 291,
+        "sha256": "7bbe1d7e7ba2e5ef69a182b7524ac6b22d0245b95dff382095afcf991c32d278"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "CrossCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17146773394361238000-CrossCmd.lua.bin",
+        "bytes": 617,
+        "sha256": "08a916452be08098482450af5c2f8ccab397121a99cd5c7e6476f6a524533147"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "FestivalSignActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1721852246448510000-FestivalSignActCmd.lua.bin",
+        "bytes": 397,
+        "sha256": "c176f4a6740d83b6b5c6cbdac3b66b2c2e2f3433adaca57f2e90b61de075a9db"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "ChildPuzzleActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17257952469786790000-ChildPuzzleActCmd.lua.bin",
+        "bytes": 1012,
+        "sha256": "ac251a06f6dc236e74471f17d66b52422be9fcaf1793b539cf72db3ffd85bd8a"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "StockUpActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17274844216807610000-StockUpActCmd.lua.bin",
+        "bytes": 461,
+        "sha256": "9f795a9208b7fdf09003882111080721db95fb61ae584ddbda6d491b1e34eed9"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "QiXiActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17286276740827476000-QiXiActCmd.lua.bin",
+        "bytes": 541,
+        "sha256": "85f09db49e3c8bdfe7f398035cae767cb3de0401385bbb2c397fc4388a545202"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "RankCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17344310769524111000-RankCmd.lua.bin",
+        "bytes": 1831,
+        "sha256": "9ad613368d75d824d68f917e5e70012eee917d616da1d291a730d80776186ff1"
+      },
+      "parsed": true,
+      "prototypes": 13,
+      "exports": 12,
+      "matchedCommands": 12
+    },
+    {
+      "module": "SpringFestivalActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1751073967519605000-SpringFestivalActCmd.lua.bin",
+        "bytes": 641,
+        "sha256": "9d26bbf2a66df7b4047a8dc937e70b729d7b5f42a1997c98ec47ca93f50263f2"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "FashionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17632949684898656000-FashionCmd.lua.bin",
+        "bytes": 531,
+        "sha256": "1e8d107bd428c3348d438ceae7697718bc197d57b8bfae59e662889c57002de6"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "MagicCircleCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17657337050072640000-MagicCircleCmd.lua.bin",
+        "bytes": 1067,
+        "sha256": "aa5e43f7cbf3e492acaa8fa5b703001295d93fe7f0d1a052463cd4db00b0c982"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "CampsiteCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17660280547921504000-CampsiteCmd.lua.bin",
+        "bytes": 467,
+        "sha256": "7c31706d21a8ee751266df6d073730a15a241fd4c859a21fe826c9424a291f17"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "MultiLoginCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17755644279659358000-MultiLoginCmd.lua.bin",
+        "bytes": 389,
+        "sha256": "b6ee084334415acbe6d677ea3a7630d311e50138882422fb5ff916c16e32cecc"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GuildRacingCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17784843488524286000-GuildRacingCmd.lua.bin",
+        "bytes": 1539,
+        "sha256": "0f5ee1be462e3bb744a136601a25ba5b758035638f7778d3c7f0625f9bac238c"
+      },
+      "parsed": true,
+      "prototypes": 10,
+      "exports": 9,
+      "matchedCommands": 9
+    },
+    {
+      "module": "CollectExchangeActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17798156942863470000-CollectExchangeActCmd.lua.bin",
+        "bytes": 416,
+        "sha256": "3b169f15a97e0353113a610bf795fe622ef77b8210fb477534407cb262521b7b"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "LeaserStarUpCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17833497912044511000-LeaserStarUpCmd.lua.bin",
+        "bytes": 593,
+        "sha256": "030dbbf6cb5de32dbb5ee26d6bcd145db451b53d593bdadd80be7bea529251d5"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "HeroLeaseCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17990404595480816000-HeroLeaseCmd.lua.bin",
+        "bytes": 1333,
+        "sha256": "da0c6350c0ae9a5a54b8c6c30b66c20db8bd2c722da614bbc51ffbb5856333d7"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "OverallPvpCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18026411376499538000-OverallPvpCmd.lua.bin",
+        "bytes": 5258,
+        "sha256": "93e875765537d475182b8257cbbdf0d555972e09deb4252f56e31debbc166822"
+      },
+      "parsed": true,
+      "prototypes": 31,
+      "exports": 30,
+      "matchedCommands": 30
+    },
+    {
+      "module": "StarMissionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18104108858295468000-StarMissionCmd.lua.bin",
+        "bytes": 1035,
+        "sha256": "236f0644fbd297effb06551cc40d2b66b0f60ee3b76169725aaf623e3e03f813"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "SourcePointCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18267442704297767000-SourcePointCmd.lua.bin",
+        "bytes": 826,
+        "sha256": "00a48f5bc3d492f924087eb7858d685ad08c468ee1b8f7b65d67aa6513316dc8"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "ChoiceStoryCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18309287390197930000-ChoiceStoryCmd.lua.bin",
+        "bytes": 392,
+        "sha256": "018e984c7db4d2aee9676670a5a3d4e73fcab3563d0845ac893382460ff43341"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GuildDuelCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18357519068202183000-GuildDuelCmd.lua.bin",
+        "bytes": 1203,
+        "sha256": "ad0343314ae21a8f4b72482ef3f2c6968b812fe865019081c48e6db056e8e5e6"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "WeekHuntCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18371295835822720000-WeekHuntCmd.lua.bin",
+        "bytes": 832,
+        "sha256": "33ef33e4c5f0671f6cfd349330d32214726b03180f9dc90156050428fd433224"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "EnjoyBlessingActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1838427978220813800-EnjoyBlessingActCmd.lua.bin",
+        "bytes": 319,
+        "sha256": "4e20688535872f950f32da516cd726e1e32be9dca1f67c2e46f8b4f72c47698c"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "LotteryActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18386199835037825000-LotteryActCmd.lua.bin",
+        "bytes": 439,
+        "sha256": "122ea9cb3792655c612a33508f5a972be8be656cf044152803077f1ccdb08703"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "ExperienceActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/18444352604780687000-ExperienceActCmd.lua.bin",
+        "bytes": 616,
+        "sha256": "2d847f4a040c3346e286a198c6a565d7621c860260ce68c92b50e5ddfc3f6617"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "CommonSignCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1944136421479111400-CommonSignCmd.lua.bin",
+        "bytes": 381,
+        "sha256": "28b5cdbac776e1e64f2010bf0e24da3201a152e241870b2c54c09af08f969b27"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "ReportCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1976400357902880300-ReportCmd.lua.bin",
+        "bytes": 631,
+        "sha256": "be683cc7b3268ae50e47c9da683ebb1259a7872c6c43be129f8b69baa91a65f1"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GrandTourerCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/1982760028804195600-GrandTourerCmd.lua.bin",
+        "bytes": 923,
+        "sha256": "eda0484a443dbbc2bd278edcf697aa9568b9d992ecb64270b4e2f920fc16c31e"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "QuadrupleCrossCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2090813654547722800-QuadrupleCrossCmd.lua.bin",
+        "bytes": 637,
+        "sha256": "d3957050db8c592a5b3bb6c56d73218db443bc34f4857258baf1f3d0f7862e34"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "GuildGVGCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2251149837584020000-GuildGVGCmd.lua.bin",
+        "bytes": 3704,
+        "sha256": "55a428e6e5fae8a749718e8e7a5b30ccf6e0bbadb8d067d74c6b0017482c6ec8"
+      },
+      "parsed": true,
+      "prototypes": 19,
+      "exports": 18,
+      "matchedCommands": 18
+    },
+    {
+      "module": "AppearanceReleaseActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2284672841199310300-AppearanceReleaseActCmd.lua.bin",
+        "bytes": 464,
+        "sha256": "c0cefe9985993c407c54bf8f6cd1247faffc9b9ba98e3f522e9973f2b8ac63d3"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "HelpUpActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2331732224907870700-HelpUpActCmd.lua.bin",
+        "bytes": 1041,
+        "sha256": "01fe0a0dc99ff691c36b744f7be0e6733bdf6830001e7d681167f556a53c1423"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "NorseRuneCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2416762769473137700-NorseRuneCmd.lua.bin",
+        "bytes": 737,
+        "sha256": "e0619864cbcb83ad24e4c75956ae2d4a5a16242d3f6c2da7b4adb386bccc3651"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "DreamCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2436106690830515000-DreamCmd.lua.bin",
+        "bytes": 1643,
+        "sha256": "03d0b1d7446172c403bba2715f06f25847bd14fe08921fe23de55a4651697f84"
+      },
+      "parsed": true,
+      "prototypes": 11,
+      "exports": 10,
+      "matchedCommands": 10
+    },
+    {
+      "module": "HeatGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2445907380210908700-HeatGiftCmd.lua.bin",
+        "bytes": 437,
+        "sha256": "073c6967f853416369e9446610e5e347326215acd98e3fe599cbfd448c644d2d"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "EquipCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2449396919742808000-EquipCmd.lua.bin",
+        "bytes": 1906,
+        "sha256": "b84ddb8d165e4592729aa41753c4450c15ca6a272492be92df527c36c69120dc"
+      },
+      "parsed": true,
+      "prototypes": 10,
+      "exports": 9,
+      "matchedCommands": 9
+    },
+    {
+      "module": "BakingActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2588005792025995300-BakingActCmd.lua.bin",
+        "bytes": 3598,
+        "sha256": "ff68cba1b4e9355521e3db8c02aff051a4ed01f1c76cabd5543066a442a53fe6"
+      },
+      "parsed": true,
+      "prototypes": 16,
+      "exports": 15,
+      "matchedCommands": 15
+    },
+    {
+      "module": "GuildDataCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2597173407130256400-GuildDataCmd.lua.bin",
+        "bytes": 385,
+        "sha256": "165de0df01c96a8f0dd3223d7fd49cd3333c9e0e833e77307515bb4ec6b9712d"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GuildWarCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2607010497692136000-GuildWarCmd.lua.bin",
+        "bytes": 2518,
+        "sha256": "2c59224654c03ec8ac2395125efefa3b5d1486720212310e3bd7c4eb173ec101"
+      },
+      "parsed": true,
+      "prototypes": 15,
+      "exports": 14,
+      "matchedCommands": 14
+    },
+    {
+      "module": "FirstWeekGoalCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2646784956263177700-FirstWeekGoalCmd.lua.bin",
+        "bytes": 483,
+        "sha256": "059b134c518604d6e801bba2243acaf223532b420098d0343f5412fd7aa787f8"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "TriggerGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2677207242176142300-TriggerGiftCmd.lua.bin",
+        "bytes": 439,
+        "sha256": "555c6f99b88dd422ca271bc09764a18653a3e91cebcdd0c240e3e67a2839380e"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "ArtifactCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2733690216377744400-ArtifactCmd.lua.bin",
+        "bytes": 2006,
+        "sha256": "4a8c5f1fde5e81e3ab42c1714d0c4f61777c2d2d3f6ad64fa8eac809e2875147"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "RoleBackCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2817911795043195000-RoleBackCmd.lua.bin",
+        "bytes": 901,
+        "sha256": "03efedeee8205f1bb372d86be5133d9c144f805fa40701f9678dcc3e92502e3a"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "PitLordCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/289827545538349500-PitLordCmd.lua.bin",
+        "bytes": 753,
+        "sha256": "70bfc9b068feeb4db21096bb7cdb668fd5a64a14c8526ecaa090e7bceafe3445"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "HeroBlazonCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2917647250512952000-HeroBlazonCmd.lua.bin",
+        "bytes": 1126,
+        "sha256": "d720d9c7d1ec1c3546ca904630f28bb2d121d105167fc5d9e9597df0631b60a4"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "GeneralDungeonCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/2931729942199162400-GeneralDungeonCmd.lua.bin",
+        "bytes": 1592,
+        "sha256": "b18be165bd637313d7e8e382293b10958f34d069d9dfa9426798d91c63a94ffc"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "ActShopCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3070701776785483000-ActShopCmd.lua.bin",
+        "bytes": 830,
+        "sha256": "a1e0cb9dd0c6417f2577c5e475fd3d569d490cabc53a556db66fdcfd8151f972"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "PermanentCardCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3075620410931728000-PermanentCardCmd.lua.bin",
+        "bytes": 305,
+        "sha256": "0b5e9bbe1d645ba92b1cd58be0b988bbf0c4be931779d20c1ed13f8aa5fc1475"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "FriendCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3144043079512003000-FriendCmd.lua.bin",
+        "bytes": 1995,
+        "sha256": "cfac61a76cf2e5f98be0ad0bb02cbde0e55a3f5620b91714a50159b6ecb768cb"
+      },
+      "parsed": true,
+      "prototypes": 14,
+      "exports": 13,
+      "matchedCommands": 13
+    },
+    {
+      "module": "MiniGameCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3174466750547025400-MiniGameCmd.lua.bin",
+        "bytes": 951,
+        "sha256": "95af17153283b57ca533436bf4dfde4f3b599a3b8cd77cc8c97084bf9cc9ef8f"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "FameHallCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3227224454607835600-FameHallCmd.lua.bin",
+        "bytes": 2157,
+        "sha256": "ed3c2e24cf5c7d1c5219d7c92165f7125ba2afbec15f026c8e98eca4a47cb46f"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "SlotGameActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3272910490410140700-SlotGameActCmd.lua.bin",
+        "bytes": 633,
+        "sha256": "0aacf22741fc4cd45c328f50ff63e2b1002b2106e5e1c14806305ff9672d9ecd"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "DragonLandActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3349911044871947000-DragonLandActCmd.lua.bin",
+        "bytes": 866,
+        "sha256": "8b917b400347aa225c81394e4f9b02b28ea2b5a6b45ebec211b4d7e41b0c53ea"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "PyramidCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3409797480908169700-PyramidCmd.lua.bin",
+        "bytes": 407,
+        "sha256": "2ecd084ffd12cd9d027de293a8af036f9cffa2531119fbb41c786d2727160d0a"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GuildActiveCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3518357048361366500-GuildActiveCmd.lua.bin",
+        "bytes": 1197,
+        "sha256": "0915e43a8a8b3fb6d78d22b9a4fea07bfe76e81775039cfe4275b8a7f05993af"
+      },
+      "parsed": true,
+      "prototypes": 7,
+      "exports": 6,
+      "matchedCommands": 6
+    },
+    {
+      "module": "TaskActivityCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/352235793634288450-TaskActivityCmd.lua.bin",
+        "bytes": 552,
+        "sha256": "6bb230ed49f95bf9f09448659aac62472addeb94005e6e8f565b1c958232ae9a"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "TimeTempleCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3651244919936714000-TimeTempleCmd.lua.bin",
+        "bytes": 1440,
+        "sha256": "e66f7daae1a4e048afb3442aef158c1454a047d911fc84cee8aa2e09e69576bf"
+      },
+      "parsed": true,
+      "prototypes": 9,
+      "exports": 8,
+      "matchedCommands": 0
+    },
+    {
+      "module": "TicketDrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3652138785107178000-TicketDrawCmd.lua.bin",
+        "bytes": 457,
+        "sha256": "47fa405eba15e615455201714a1d7161c804a66eb62920f57ad56c41a2eaa808"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "CashbackDrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3701487166251153400-CashbackDrawCmd.lua.bin",
+        "bytes": 1169,
+        "sha256": "665ca8a114b2a2a31003cec1d6b9eb7662456b56e941f5ab89800a6cd9044795"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "MissionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3745159341195459000-MissionCmd.lua.bin",
+        "bytes": 1575,
+        "sha256": "e155fda387c7d3eb0d9cea2c1528df85353a2ece7915c9e50326666f4373a101"
+      },
+      "parsed": true,
+      "prototypes": 10,
+      "exports": 9,
+      "matchedCommands": 9
+    },
+    {
+      "module": "FantasyEquipActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3798157032841756700-FantasyEquipActCmd.lua.bin",
+        "bytes": 2268,
+        "sha256": "35cf251ec64320e16eb6e189c3f55e70ff2e8621c163e4da0a899f47f839264a"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "BonusShopCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/391655521529606300-BonusShopCmd.lua.bin",
+        "bytes": 362,
+        "sha256": "2478ea819e4621597a43ee9d590bfbdd47e1fca62a53fcc60ff47178d087350f"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "BeatGopherActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3995601009148459500-BeatGopherActCmd.lua.bin",
+        "bytes": 363,
+        "sha256": "8e091f4bb89d1089452472532b543036f870ebf940442b33136648563670cd84"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "HomelandCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4056249438178956000-HomelandCmd.lua.bin",
+        "bytes": 1343,
+        "sha256": "9b631969a436c9a6f434daf8e3452772945be77d1dc452db8cfc0e1baaf8ef98"
+      },
+      "parsed": true,
+      "prototypes": 9,
+      "exports": 8,
+      "matchedCommands": 8
+    },
+    {
+      "module": "SoulTrialCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/407047490726978200-SoulTrialCmd.lua.bin",
+        "bytes": 455,
+        "sha256": "e5b7fd3950ff554856c67cdc8b4eab2ae0fbe4a85feb2fcc1c4fd6dda662e114"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "RecommendGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4137873409541342000-RecommendGiftCmd.lua.bin",
+        "bytes": 374,
+        "sha256": "4bbce0b949c53fe87abb5b91b4ead4a11e2c1394ce3ac643a30fff526cf79fb8"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "DiamondFundCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4207668650188150300-DiamondFundCmd.lua.bin",
+        "bytes": 417,
+        "sha256": "6badbe61767b81d22cb295db6cddb0aab0fd7c0cb6d2f6dada7f31330f290397"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "RelicCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4230099636492977000-RelicCmd.lua.bin",
+        "bytes": 2073,
+        "sha256": "0359cdb87d199e01bec9b3d1253b99f6d7d178fe3af006e784dee86528ee5d67"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "BattleTriMatchHeroCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4310465233535268000-BattleTriMatchHeroCmd.lua.bin",
+        "bytes": 676,
+        "sha256": "e29236d75e0d2e1ad34ea0e59ae3b446fbb970752909a28cab741710e8f0e6f1"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "PeakTowerCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4452029927658203600-PeakTowerCmd.lua.bin",
+        "bytes": 1079,
+        "sha256": "b3492d0ff3b924b0e8c2d890f2a4133785c48706b91194deda35abbe17958368"
+      },
+      "parsed": true,
+      "prototypes": 7,
+      "exports": 6,
+      "matchedCommands": 6
+    },
+    {
+      "module": "SummerPveCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/449684696465982400-SummerPveCmd.lua.bin",
+        "bytes": 1058,
+        "sha256": "361c0bb0154784675d7f53f53ec687e6f05a81d324c685a87721b05ccb2e742b"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "DestinyCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4656944530960691000-DestinyCmd.lua.bin",
+        "bytes": 273,
+        "sha256": "faec2bae4874ac9e03c2febf30f939173e63a9f2d3ff0570aa1f85d7152d020a"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "SummerPvpCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4764026484338886000-SummerPvpCmd.lua.bin",
+        "bytes": 2753,
+        "sha256": "ac36b322b8a1ed2f674a09d13adbcf50f42e7c62dceb684248c4692a852cd762"
+      },
+      "parsed": true,
+      "prototypes": 14,
+      "exports": 13,
+      "matchedCommands": 13
+    },
+    {
+      "module": "CareerLifeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/477410389685197200-CareerLifeCmd.lua.bin",
+        "bytes": 305,
+        "sha256": "55b3f90f1f4f3482b348f8132d08583db5cb15cbdaf40814423275a2aedd3dcc"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "ActivityCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/487022658191175940-ActivityCmd.lua.bin",
+        "bytes": 297,
+        "sha256": "0f38b8e2bf05ef167601208e0d3d39a2081cb2e58df6723ff55676fc6796e9cc"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "BadgeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4897386354623051000-BadgeCmd.lua.bin",
+        "bytes": 333,
+        "sha256": "569ea7a248b5e97354958f7c029b9ae2af015cef9fd3ac73d0a2a60dd9ec0e7b"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "RedCliffCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4939830339199210000-RedCliffCmd.lua.bin",
+        "bytes": 691,
+        "sha256": "527330409ca413227fb9e5224c3d04c14dc0f8f236092451d7d256b196aefa0f"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "DanmakuCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4946368268324881000-DanmakuCmd.lua.bin",
+        "bytes": 364,
+        "sha256": "4de4304809cf492fe978a03beab95777d1f69051e91fc4fbbf241697c628143b"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "ResRollbackCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4991355890736158000-ResRollbackCmd.lua.bin",
+        "bytes": 649,
+        "sha256": "754f173922b934bd502bcd3b5422b9954ca21a3ce77d319722c82ed3d60725af"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "CapsuleToyCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4993102716319278000-CapsuleToyCmd.lua.bin",
+        "bytes": 859,
+        "sha256": "3558e721185dd37715c7c3fa1e3596e51f55e64f17da0a194a58b1bf0aebbe40"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "NewPermitActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5056723079673669000-NewPermitActCmd.lua.bin",
+        "bytes": 388,
+        "sha256": "ff7ed6ab436bef77ee5990340715dacf59c750978a47c42837f8184491ce2f28"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "HundredDrawActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5153964900330721000-HundredDrawActCmd.lua.bin",
+        "bytes": 1466,
+        "sha256": "8dc592b22cc7380b465ab30091fb849c7a95a24504e17211eed71d30ac0f37d7"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "PeriodTaskCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5194976522471325000-PeriodTaskCmd.lua.bin",
+        "bytes": 577,
+        "sha256": "05189b444aa00a6b9adfaecce3a94441707608efb5ce706fd3d962173a24a546"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "VipGiftCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5206619306885088000-VipGiftCmd.lua.bin",
+        "bytes": 273,
+        "sha256": "b8b696ec6f85c54d25910e7be5ac438cce3e5198ff1bce432db12d97a36534e4"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "HundredAccCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/535148655844808000-HundredAccCmd.lua.bin",
+        "bytes": 281,
+        "sha256": "c1f12d6d1d3a978c6953a7b25cde2866eeb9fce419a92468714bc2325cc2ab0b"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "MysteryWishCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5491439937751979000-MysteryWishCmd.lua.bin",
+        "bytes": 303,
+        "sha256": "390b8b88bad3094c017cf53591a48288b51ecc7a6224146b1233c0ba94c09551"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "WishTreeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/551019780538558900-WishTreeCmd.lua.bin",
+        "bytes": 833,
+        "sha256": "e27e5dd0febf15010691fa35a1b5282c14db2574dced623ea2a6c395a5e8e9c5"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "StrategyCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5576711918216079000-StrategyCmd.lua.bin",
+        "bytes": 293,
+        "sha256": "cada5ca4369630789d0d7d0aa24b221bb3015d37484a58cc7856d29476e4d094"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "VipLinkCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5656199436299451000-VipLinkCmd.lua.bin",
+        "bytes": 251,
+        "sha256": "9686ab8e10eb5e3d92749b90a2fffe10d6531e3d8ed9ec2db5138c9d625cbdda"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "HeroSignActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5686134022289730000-HeroSignActCmd.lua.bin",
+        "bytes": 381,
+        "sha256": "ba2d0558760a6c613115aad845db1604ac5c41643e3af17f0613bc526dc4dd7d"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PuzzleActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5706077904702753000-PuzzleActCmd.lua.bin",
+        "bytes": 595,
+        "sha256": "df6e356d72207eb06aa2e9b1533ddcb1f5ff11eb35e99f357287fc796d30150a"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "MsgCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/572226851350052900-MsgCmd.lua.bin",
+        "bytes": 1773,
+        "sha256": "b47f8f9fdf91e4e94ad38915813d62a9d06680767818648c2aaa1a78af71c9c9"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "LotteryCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5894210593314234000-LotteryCmd.lua.bin",
+        "bytes": 457,
+        "sha256": "1618f9bcc0ef1980219a837dbcc6244df872a9c1cbb5bf8a815efb17efb8f959"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "AuctionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5918213753868916000-AuctionCmd.lua.bin",
+        "bytes": 1074,
+        "sha256": "b1fc2fafb281ffdd6fe908ab2f2acf9b882dc5b7133acef9125ff362421d99c4"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "SkinCrystalCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/5984469999564105000-SkinCrystalCmd.lua.bin",
+        "bytes": 293,
+        "sha256": "52e6d35b22d9d135d02225d04c337b710d30969d4165d90d87598dff76a78dc9"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "RebateShopActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6022465947979517000-RebateShopActCmd.lua.bin",
+        "bytes": 307,
+        "sha256": "f0d11f1405f01e8d59011d73f796facba27a28c2396e7eba8e3f31c2456d2226"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PrebookCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6164439193019776000-PrebookCmd.lua.bin",
+        "bytes": 433,
+        "sha256": "c4dd1cd609ef3cf561d9da876ac6534392fcb4af130b32c2b0dcb4c67f4fe12c"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "FlashSaleCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6179138606617375000-FlashSaleCmd.lua.bin",
+        "bytes": 429,
+        "sha256": "f8f5d4e775a23ea9cbb304923a6821e02092abf4a94abc607016d8e6a4c0edc2"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "MatchingGameActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6184883837703161000-MatchingGameActCmd.lua.bin",
+        "bytes": 800,
+        "sha256": "d3159a40e295478ca74528231231e6afe6f8e0c47987dfdcd9e3933d4c5a9c4a"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "SignActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6384785149345558000-SignActCmd.lua.bin",
+        "bytes": 348,
+        "sha256": "57abe1dd18ad57a73f227866b7ddd88e1a989ccb5f528d266f2d779e472763ba"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "FestivalMonsterActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6432736631223525000-FestivalMonsterActCmd.lua.bin",
+        "bytes": 313,
+        "sha256": "3aef712c08c39b19f7368f233014659a992da170c71d1b2fd208cc4e19b895b2"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "InviteActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6450768587044887000-InviteActCmd.lua.bin",
+        "bytes": 592,
+        "sha256": "db36be7a1c7c93b3a09d39e771c63a81b6a464a9b6ca80d0bff5ac2cf0bc157a"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "FishingActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6505598951172773000-FishingActCmd.lua.bin",
+        "bytes": 2538,
+        "sha256": "f4c6c945f62a8c227e4a7205b7f3f2247a123316b1e42ac7ef23544be750fcea"
+      },
+      "parsed": true,
+      "prototypes": 12,
+      "exports": 11,
+      "matchedCommands": 11
+    },
+    {
+      "module": "MonthPermitCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6525768193435331000-MonthPermitCmd.lua.bin",
+        "bytes": 1041,
+        "sha256": "94bfd261eeacac1ed1bef81557c226f26d9c60ebe29b456b37e69845764be7b5"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "WishTreasureCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6547312839152620000-WishTreasureCmd.lua.bin",
+        "bytes": 297,
+        "sha256": "15b6b4ae98ca093291c5983bae368a5543dbe90581349d42284b344ba7986289"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "SwapArenaCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6733570215575455000-SwapArenaCmd.lua.bin",
+        "bytes": 1778,
+        "sha256": "9c00adc74499c4e473a8f005cad73da1818c82ec7b59f538b8f8f21c2efe395e"
+      },
+      "parsed": true,
+      "prototypes": 11,
+      "exports": 10,
+      "matchedCommands": 10
+    },
+    {
+      "module": "GuildExpeditionCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6827973063546142000-GuildExpeditionCmd.lua.bin",
+        "bytes": 2751,
+        "sha256": "bdf16f08532960286585e230a0a34ee12adee887c5a6b48c169cada6372b268f"
+      },
+      "parsed": true,
+      "prototypes": 16,
+      "exports": 15,
+      "matchedCommands": 15
+    },
+    {
+      "module": "ThousandDrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6834875170562391000-ThousandDrawCmd.lua.bin",
+        "bytes": 538,
+        "sha256": "0c8496f2046ca9c07ee0ac8aa17eb92a5d9d729d2d3e9f787205f459d2a18b2e"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "FreePrivilegeActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6917838327310698000-FreePrivilegeActCmd.lua.bin",
+        "bytes": 497,
+        "sha256": "5e435f84dfe9d72775af728914736015e5d4c999955acea1d54e9c9ffdf1f6c4"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "ResCompleteCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7117618683940413000-ResCompleteCmd.lua.bin",
+        "bytes": 297,
+        "sha256": "8b97f04fca218c82fbfa1439ba65e1b333ba84390c7a091507e7d93aa32e4e94"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "LoginRewardActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/718380954217599000-LoginRewardActCmd.lua.bin",
+        "bytes": 311,
+        "sha256": "4787b306d917a14938b27ae5ac1baef5fcd7067127a9df2fc711c2be3b431a17"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "MushroomMonsterCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/72851810108976290-MushroomMonsterCmd.lua.bin",
+        "bytes": 561,
+        "sha256": "a565afee2c073854f5e408c44aec818e5bd7998cb4745f622051ed6920d44a39"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "CombatPowerCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7297757585950040000-CombatPowerCmd.lua.bin",
+        "bytes": 423,
+        "sha256": "dfe7e55873b2b6d76d87cc870cc92e1a252c75f308f230ca50f19f0e6005a33c"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "MartialClubCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7330658857931933000-MartialClubCmd.lua.bin",
+        "bytes": 4351,
+        "sha256": "70bc0f9d6932da27d1ceae8b26f4c0c4a55d0e9052bc1008e0a1a9495fe81f16"
+      },
+      "parsed": true,
+      "prototypes": 25,
+      "exports": 24,
+      "matchedCommands": 24
+    },
+    {
+      "module": "ComActDrawAwardCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7371403664086975000-ComActDrawAwardCmd.lua.bin",
+        "bytes": 402,
+        "sha256": "b314fb1886f45b76524b541f18dbaeb4daeb46c9a5fc81d75a54b661bdab6f03"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "LineupSnapshotCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/741419067300874000-LineupSnapshotCmd.lua.bin",
+        "bytes": 521,
+        "sha256": "0ed651a3bb5d9707d71c13a2292ba9d88168ceffca4f462c1717b94418c3f10c"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "AnniversaryGameActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7453979339391243000-AnniversaryGameActCmd.lua.bin",
+        "bytes": 451,
+        "sha256": "f524cdd476a37eb3cbcd9a42f26a3a9580b1d074f981e8d35e9be21ef3eb7569"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "StoryCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7470006734587655000-StoryCmd.lua.bin",
+        "bytes": 385,
+        "sha256": "a4b5b64efefd70c68f83b96f23123833c48ce7ffec666a5a9bda9cc0d974f12f"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "FirecarckerActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/752625049373988400-FirecarckerActCmd.lua.bin",
+        "bytes": 1458,
+        "sha256": "f8e098b2a63da3f1129ace80394caad9027d00465240a15f6e919df6a1d54a13"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "LineFirstRechargeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7527395404372449000-LineFirstRechargeCmd.lua.bin",
+        "bytes": 477,
+        "sha256": "d65893282df3bf58cdc6b839a70635c3e30dad4dcdd7f08d047dcb7f2a9eb969"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "BuySkinActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/753103972670091000-BuySkinActCmd.lua.bin",
+        "bytes": 377,
+        "sha256": "68db95409e0f66af75a24e440df101b8c42ea11ff452556117e1c3e055805db6"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "TriMatchDrawCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7534930419363641000-TriMatchDrawCmd.lua.bin",
+        "bytes": 386,
+        "sha256": "1e69e453384f8c219c27443086ddaf7bb4f881630174d04126c9893f9daa5ef9"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 0
+    },
+    {
+      "module": "GuildExploreTrialCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7632300734944854000-GuildExploreTrialCmd.lua.bin",
+        "bytes": 485,
+        "sha256": "11f3f3ae51b9c1b0e2e3a870131e7a53aa4fd425f2bf56184cb58619e4540944"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "QuestionnaireCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7764713236441784000-QuestionnaireCmd.lua.bin",
+        "bytes": 436,
+        "sha256": "16686af7cfeb2dba7fb054c442424f0e8b79ed67e5d4d92d7dca6cfe6b824b48"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PetCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7828348308415260000-PetCmd.lua.bin",
+        "bytes": 3012,
+        "sha256": "98ba51d073f9841d93220f6cf49196d6d9b3b7d69745f809edcfd5a7dee4bc29"
+      },
+      "parsed": true,
+      "prototypes": 18,
+      "exports": 17,
+      "matchedCommands": 17
+    },
+    {
+      "module": "GuildVoteCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7856814339249470000-GuildVoteCmd.lua.bin",
+        "bytes": 492,
+        "sha256": "09bf820d1330fe2cbf7244b57b2dd988a5d491ff4c4e3102ab2daa7805b9dafc"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GuildRuneStoneCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/7867452023311757000-GuildRuneStoneCmd.lua.bin",
+        "bytes": 913,
+        "sha256": "53010c052767af75316961966534a0c31b8433fe6b38233ef2364b886e2ed07d"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "ChristmasActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8009882213423136000-ChristmasActCmd.lua.bin",
+        "bytes": 857,
+        "sha256": "55cc17665ee50c8dfc9f75d13470d6e6c46b1ed42ef863386264053c071dcb02"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "ScarletTrialCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8077161939701050000-ScarletTrialCmd.lua.bin",
+        "bytes": 445,
+        "sha256": "07476106fab984b1af503da595880ce068cc39b57c95ee43b0f4f6d648ad4f17"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "EnergyBurstCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8117455507814144000-EnergyBurstCmd.lua.bin",
+        "bytes": 297,
+        "sha256": "0880d99965ec215452a0bf78ed88aeb888c77b4cf136be9a47e50e1830e93b95"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "RadishFarmCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/822224825607350400-RadishFarmCmd.lua.bin",
+        "bytes": 1360,
+        "sha256": "120e45dc0683f38d88366e36d99c7f2722459f6d5d9b638875d7b417fb926abe"
+      },
+      "parsed": true,
+      "prototypes": 7,
+      "exports": 6,
+      "matchedCommands": 6
+    },
+    {
+      "module": "DemigodActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8230782815395806000-DemigodActCmd.lua.bin",
+        "bytes": 1643,
+        "sha256": "4b96ab2dc75334642ced897f9c95dde8c3b9f06f260b613d481c8b76df0bd173"
+      },
+      "parsed": true,
+      "prototypes": 9,
+      "exports": 8,
+      "matchedCommands": 8
+    },
+    {
+      "module": "ArenaContestCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8280942329098747000-ArenaContestCmd.lua.bin",
+        "bytes": 2697,
+        "sha256": "32318a689e226b07a84c37b10a46b29312c0ab6ecb9407c006cf4a3d0f29ecbf"
+      },
+      "parsed": true,
+      "prototypes": 16,
+      "exports": 15,
+      "matchedCommands": 15
+    },
+    {
+      "module": "RedEnvelopeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/838164954835091500-RedEnvelopeCmd.lua.bin",
+        "bytes": 597,
+        "sha256": "9c4fc428d4d6e7d8ecfba0e20ce47b891718fb0f6952f039062c38bfdab72570"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "SkinRechargeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8383374429497909000-SkinRechargeCmd.lua.bin",
+        "bytes": 307,
+        "sha256": "552619292ff6c36fe816425f4e7df893c30b56f72d184a4d280a24985c7bcf53"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GemRebateActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/849602450087891300-GemRebateActCmd.lua.bin",
+        "bytes": 370,
+        "sha256": "0a1503fee8f38c150448b371b404855e677ffb723a58b530ddc8c620126e2f14"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "PreheatActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8520309377707537000-PreheatActCmd.lua.bin",
+        "bytes": 571,
+        "sha256": "fb7c68b0681b6fc668fb91a6008c501d245d03375afa288424c3f762d4ca36bb"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "WarRuneCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/85592165959877150-WarRuneCmd.lua.bin",
+        "bytes": 1226,
+        "sha256": "fe20dfad43a74860821fc365e63cdbdbed75dc48c85640283c58d3dbc4620be5"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    },
+    {
+      "module": "CarnivalCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8574206722283765000-CarnivalCmd.lua.bin",
+        "bytes": 2471,
+        "sha256": "4be3d775aa4de24241e36f5feb2fd6bb77f21f60fb914fff617c08e6fe2aa17c"
+      },
+      "parsed": true,
+      "prototypes": 16,
+      "exports": 15,
+      "matchedCommands": 15
+    },
+    {
+      "module": "RechargeBonusCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8587302352072945000-RechargeBonusCmd.lua.bin",
+        "bytes": 443,
+        "sha256": "17a3660093d997b635dd01a33fbc90010039b8fe8684c4fea021aa09a08816db"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "DestinyPveCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/863859474235759100-DestinyPveCmd.lua.bin",
+        "bytes": 588,
+        "sha256": "1ffa0b6b4c6bc78295a43794a37d9e2f8d10d28ac09412c8c6978bfc34ef0cff"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "RedRainCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8638669192408911000-RedRainCmd.lua.bin",
+        "bytes": 642,
+        "sha256": "b4aabbb0480f934c3a06f110e32239cb9b27b1369eca6bbd3b1682873234ee1e"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "AdventureCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8655224327996895000-AdventureCmd.lua.bin",
+        "bytes": 295,
+        "sha256": "17826054384614fe4641e63b15a3dbc1d3acd832ae1e43b364dccc2c6ee5e87c"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "GuildNationCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8710200077080698000-GuildNationCmd.lua.bin",
+        "bytes": 13537,
+        "sha256": "41b6452f8cf470d108dfc99f3208beb1e8a0aa32ccf50bfe3b1b4167db441a47"
+      },
+      "parsed": true,
+      "prototypes": 66,
+      "exports": 65,
+      "matchedCommands": 65
+    },
+    {
+      "module": "FiveDayBossActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8744196282338766000-FiveDayBossActCmd.lua.bin",
+        "bytes": 821,
+        "sha256": "30c6f267c038050191b74688cdf701ca060a3a72f9c8d01602de2f56449a4bad"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "GuildRedEnvelopeCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/879330359842887700-GuildRedEnvelopeCmd.lua.bin",
+        "bytes": 1572,
+        "sha256": "69a9438bb3ab4281396ca99ddec01b4ad675b4e318ce5f60fb0ac40af627ca16"
+      },
+      "parsed": true,
+      "prototypes": 9,
+      "exports": 8,
+      "matchedCommands": 8
+    },
+    {
+      "module": "InviteOldActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8797812821574744000-InviteOldActCmd.lua.bin",
+        "bytes": 552,
+        "sha256": "4ad35a4f9da75f2cd7c1c01284e06bbf0f56457655e78e11f19aea8e6a0946c5"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "RealtimeMapCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8807157835855460000-RealtimeMapCmd.lua.bin",
+        "bytes": 1245,
+        "sha256": "a25065f856b44ee10a56361beaf82509e7c125a0e875eaf79f837bbd823de671"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "AlbumCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8846175174293517000-AlbumCmd.lua.bin",
+        "bytes": 575,
+        "sha256": "ec032af99336e0e2abafb7d35b071e8061bba33adcbe1550f289ab2adbdfb8d1"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "FinanceManageActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8854544921772416000-FinanceManageActCmd.lua.bin",
+        "bytes": 601,
+        "sha256": "6b1ca4a17146f8f1f8281caa482249983613011eaed78696c4d926b83858b61d"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "AnniversaryBanquetActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8860018473111157000-AnniversaryBanquetActCmd.lua.bin",
+        "bytes": 795,
+        "sha256": "bf8ae126ad7aa1d025bc68a60b5ce1b9c5fbf9544f84cd5a8350f991e11c2a4b"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "PremiumActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8886846334304672000-PremiumActCmd.lua.bin",
+        "bytes": 400,
+        "sha256": "9bc4650764f731cbeb468a197e89a0b538b8e7330f1634719aa40dcd7d4b2e54"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "FirecrackerActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8961124309117917000-FirecrackerActCmd.lua.bin",
+        "bytes": 1458,
+        "sha256": "aa477472668286d3ec778304f3eba04bb8baed69c3b31d090f8a9d241b7f2cb5"
+      },
+      "parsed": true,
+      "prototypes": 6,
+      "exports": 5,
+      "matchedCommands": 5
+    },
+    {
+      "module": "ShopCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/8988636953529905000-ShopCmd.lua.bin",
+        "bytes": 1503,
+        "sha256": "5e723e1aa5b4c9618cfe9004950df151af2e6a0c24a7495ca4848f9aeab223e9"
+      },
+      "parsed": true,
+      "prototypes": 9,
+      "exports": 8,
+      "matchedCommands": 8
+    },
+    {
+      "module": "ChatCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9096335668215778000-ChatCmd.lua.bin",
+        "bytes": 2201,
+        "sha256": "4795ad4c14b19b93c161d0a017110993d2fe9d1d1ab43e7460e35b7bc6ea04e6"
+      },
+      "parsed": true,
+      "prototypes": 11,
+      "exports": 10,
+      "matchedCommands": 10
+    },
+    {
+      "module": "GuildBargainCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9097673861721910000-GuildBargainCmd.lua.bin",
+        "bytes": 917,
+        "sha256": "33179fe50a49ee2decb1816913a47ec4f2dccfaf6cc7ec4aa665e06312072e25"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "RecoveryCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9198618606690378000-RecoveryCmd.lua.bin",
+        "bytes": 293,
+        "sha256": "0b226b169cdfbf2a410412056dfd68d3fe78f85815854fe8941179d54c4c7df0"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "AssistantCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9212747486765066000-AssistantCmd.lua.bin",
+        "bytes": 734,
+        "sha256": "f95ae0837d711df5b569e5bec499aedd7f80c0409ef4ae8f257d9547c1a2f6f4"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "CampTowerCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9297558326346930000-CampTowerCmd.lua.bin",
+        "bytes": 761,
+        "sha256": "ce5b5a8eb72289b6e4c27df640fe697edcc2d7288185413bd19920500b90fb3c"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "MysteryShopCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9307536155876792000-MysteryShopCmd.lua.bin",
+        "bytes": 609,
+        "sha256": "5fcae6825818abd386fe913f7bb20e18840a938711b1278a605eb5eb157f844f"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "TaskAwardCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9455484911688714000-TaskAwardCmd.lua.bin",
+        "bytes": 455,
+        "sha256": "e874dde6e9e999ca189a917a9c7f77f2b4b970853c34aa451b13bc4f21846a2d"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "GiftBoxActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9537439057306685000-GiftBoxActCmd.lua.bin",
+        "bytes": 394,
+        "sha256": "9560ae9285126369a2a46d20e079f874a613f70921ee21a3e921b542d768a5f9"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "FlopCardActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9589806244159111000-FlopCardActCmd.lua.bin",
+        "bytes": 893,
+        "sha256": "344b953e6596fb1765e81eb84203c52ef6eca0f3624a335290da9e64087a7562"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "OpenServerSprintCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9641525740660836000-OpenServerSprintCmd.lua.bin",
+        "bytes": 962,
+        "sha256": "a66c2b5d2108dc22111571860c09b66030c3f6a28d0c60598ed92d3dcfb2135f"
+      },
+      "parsed": true,
+      "prototypes": 5,
+      "exports": 4,
+      "matchedCommands": 4
+    },
+    {
+      "module": "LevelSprintCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9720078863427197000-LevelSprintCmd.lua.bin",
+        "bytes": 307,
+        "sha256": "10c3a2e8c81a65f48f03cb97502e9100cb47ba82638d3db279c2a9d1170c957e"
+      },
+      "parsed": true,
+      "prototypes": 2,
+      "exports": 1,
+      "matchedCommands": 1
+    },
+    {
+      "module": "SupportCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/976672072775941000-SupportCmd.lua.bin",
+        "bytes": 413,
+        "sha256": "92d5564ec7d1fad3efb838e8301ffff1135733ecf3c3a4eff0f6368dfd6aaccd"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "PlayMatchCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9791087968931357000-PlayMatchCmd.lua.bin",
+        "bytes": 429,
+        "sha256": "9eedf54d13317fd1021f237525de38b76c6861efbcbc2d408c5049129b08abfe"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "VickreyAuctionActCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/981256927373506700-VickreyAuctionActCmd.lua.bin",
+        "bytes": 719,
+        "sha256": "29eaf9197980cc0ffefb30ba3e5eaa22028a7101084cd3f06f2231ba506d2ba7"
+      },
+      "parsed": true,
+      "prototypes": 3,
+      "exports": 2,
+      "matchedCommands": 2
+    },
+    {
+      "module": "TriMatchTowerCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9836986791149652000-TriMatchTowerCmd.lua.bin",
+        "bytes": 910,
+        "sha256": "31ced16ddc881286f7e72e7c93ca6e25a1e5991faff9200a61c99c51c62635e0"
+      },
+      "parsed": true,
+      "prototypes": 4,
+      "exports": 3,
+      "matchedCommands": 3
+    },
+    {
+      "module": "LeaderEquipCmd",
+      "evidence": {
+        "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/9857105563871693000-LeaderEquipCmd.lua.bin",
+        "bytes": 1337,
+        "sha256": "6d06015286f4282a48e1374b8c97b39687acf4256d4ae03e066de61e0c98eaa2"
+      },
+      "parsed": true,
+      "prototypes": 8,
+      "exports": 7,
+      "matchedCommands": 7
+    }
+  ],
+  "schemaErrors": [],
+  "unresolvedSchemas": [
+    {
+      "name": "req_red_envelope_info",
+      "direction": "c2s",
+      "type": 77002,
+      "schema": "pb_client_red_envelope"
+    },
+    {
+      "name": "req_guild_red_envelop_show_log",
+      "direction": "c2s",
+      "type": 83105,
+      "schema": "pb_guild_red_envelope_fetch_log"
+    },
+    {
+      "name": "req_leader_equip_recast",
+      "direction": "c2s",
+      "type": 98406,
+      "schema": "pb_leader_equip_recast_back"
+    },
+    {
+      "name": "req_destiny_pve_fight",
+      "direction": "c2s",
+      "type": 104701,
+      "schema": "pb_destiny_pve_fight_rsq"
+    },
+    {
+      "name": "req_guild_crusade_get_rank",
+      "direction": "c2s",
+      "type": 105805,
+      "schema": "pb_guild_crusade_rank_rsp"
+    },
+    {
+      "name": "rev_monthly_activity_all_info",
+      "direction": "s2c-push",
+      "type": 2701,
+      "schema": "monthly_activity_all_info"
+    },
+    {
+      "name": "rev_monthly_activity_info",
+      "direction": "s2c-push",
+      "type": 2702,
+      "schema": "monthly_activity_info"
+    },
+    {
+      "name": "rev_init_intelli_info",
+      "direction": "s2c-push",
+      "type": 2901,
+      "schema": "intelli_info"
+    },
+    {
+      "name": "rev_preach_unlock_update",
+      "direction": "s2c-push",
+      "type": 3003,
+      "schema": "pb_preach_up_player_or_vip_level_back"
+    },
+    {
+      "name": "rev_preach_get_power",
+      "direction": "s2c-push",
+      "type": 3004,
+      "schema": "pb_preach_get_power_heroes"
+    },
+    {
+      "name": "rev_pit_lord_info",
+      "direction": "s2c-push",
+      "type": 9001,
+      "schema": "pb_pit_lord_info"
+    },
+    {
+      "name": "rev_play_match_changed",
+      "direction": "s2c-push",
+      "type": 9220,
+      "schema": "pb_play_match_changed"
+    },
+    {
+      "name": "rev_play_room_changed",
+      "direction": "s2c-push",
+      "type": 9221,
+      "schema": "pb_play_room_changed"
+    },
+    {
+      "name": "rev_triple_match_fight_takeover_notify",
+      "direction": "s2c-push",
+      "type": 11903,
+      "schema": "pb_triple_match_fight_takeover_notify"
+    }
+  ],
+  "requestEncodingUnknowns": [
+    "gm_cmd",
+    "req_beat_gopher"
+  ],
+  "pushesWithoutPortHandlers": [
+    {
+      "name": "rev_guild_notice_mail",
+      "type": 2310
+    },
+    {
+      "name": "rev_privilege_switch",
+      "type": 5090
+    },
+    {
+      "name": "rev_guild_trial_notice",
+      "type": 5192
+    },
+    {
+      "name": "rev_martial_club_employ_info",
+      "type": 6334
+    },
+    {
+      "name": "rev_guild_gvg_team_change",
+      "type": 9035
+    },
+    {
+      "name": "rev_guild_gvg_team_node_change",
+      "type": 9036
+    },
+    {
+      "name": "rev_guild_nation_guild_tech_progress",
+      "type": 9232
+    },
+    {
+      "name": "rev_guild_nation_guild_delete_assist",
+      "type": 9234
+    },
+    {
+      "name": "rev_guild_nation_guild_repair_base",
+      "type": 9256
+    },
+    {
+      "name": "rev_guild_hunt_day_change_push",
+      "type": 9904
+    }
+  ]
+}

@@ -57,3 +57,23 @@ isolated-local-v8b/com.jzyx.ps.signed.apk基于原APK独立修改副本，复用
 - 修复：首次购买只增加 `buy_times`；首次次数耗尽后，若该行仍有 `buy_additionally`，则扣减并完成补买，继续通过 1900 推送 `pb_daily_discount_all`（flag 40）。订单和钱包流水记录 `daily_discount_additional` 与 `requested_extra_buy`；重启回填只把普通订单计入 `buy_times`，补买订单不消耗首次限购。
 - 验证：`npm test --prefix personal-server` 为 137/137 通过；真实 TCP 用例覆盖 `40010` 首次购买后以 `isExtraBuy=true` 补买、推送、模块108从6降到5及订单 payload 标记，另覆盖补买耗尽、重启保持和旧限购应答。`46003` 配置本身 `is_buy_additionally=false`，不能作为补买商品。
 - 部署核对：修改前进程 PID32312 启动于2026-10-28T16:46:16Z，包含 `3e1efea` 的已提交每日特惠同步，但不包含本次补买改动。提交 `da42286` 后已备份 SQLite 并重启服务端为 PID17888（2026-10-28T17:09:38Z），五端口仅 loopback；客户端未重启，17:09:47Z 自动握手并完成145模块登录。备份与部署证据在 `analysis/experiments/private-server-20261025/p3/daily-discount-additional-20261029-010915/`。
+
+## 2026-10-30 01:18 /pay/recharge/order 签名 401 修复
+
+- 根因：客户端 `com.jzyx.sdk.service.JZService.recharge` 构造 HashMap，`channel` 来自 `OrderInfo.getChannel()` 且为 null；`Util.sign` 按 Java `String.valueOf(null)` 将值签为字面量 `null`，而 `SyncHttpClient.encodeParameters` 把同一字段在表单中编码为空串。服务端旧代码按 `channel=""` 验签，所以真实请求必然返回 401/1001。
+- 修复：`sdk-service.mjs` 的 `walletOrder` 在验签前复制字段，channel 缺失或为空时归一化为字面量 `null`；HTTP 原值不变。另在验签后先按 `cp_order`（即 quickOrderPay 返回的 order_id）调用 `wallet.findOrder`，订单存在且账户/商品/价格一致时直接返回成功，不再调用 `wallet.buy`，避免签名修复后重复扣款/发奖。
+- 回归证据：用日志中真实 40009 请求全部字段和 received `88328735efa46d224ba5a64b3cfbb00b` 复算，channel 取 `null` 时得到同一 MD5；旧代码的空串分支为 `b14c8086cf42bbb3f2867a1c8bbf6f71`。部署后向 `http://127.0.0.1:18880/pay/recharge/order` 重放该真实已购请求，返回 200 `Local balance purchase confirmed`，日志 `wallet_order_confirmed` 指向 `local-c8bd4333-dbf2-4b8c-8e4e-30deda5863df`，订单表未新增行、余额未变化。
+- 测试：新增 `wallet order confirms an existing QuickSDK order without buying or notifying twice`，覆盖 channel 空串验签、已存在订单确认、订单/余额/1900 推送均不增加、商品不匹配拒绝。全量 `161/161` 通过。
+- 部署：2026-10-29T17:18:51Z 重启为 PID 37280，五端口 18880/18881/18882/18883/19090 仅监听 127.0.0.1。重启前一致备份 `recharge-signature-fix-20261030-0118/game.before-restart.local-only.sqlite`，integrity ok、user_version 4、SHA256 `b8eeea3f68038c6c0217edd71aba1c9d7e3307c193ea9610ba7e60082286c996`；日志在 evidence 目录。
+- 待验收：由用户手动购买一次 40009，确认不再弹“网络发生错误”、出现奖励/购买成功反馈；同时核对订单只新增 1 条、余额只扣 1 次、1900 推送正常。修复前提示：服务端已成功扣款发奖的旧订单也会因 idempotent 确认返回成功，不代表再次发货。
+- 遗留：46003 一键购买被 307 当日限购阻止，需干净限购数据再验；星钻充值弹窗代金券选项为独立问题。
+
+## 2026-10-30 商城初始化与 QuickSDK 失败反馈修复
+
+- 商城主页无响应/初始化的根因：服务端 `type=1202` 返回空 `items_groups`，客户端 `ShopAutoRefresh._InitData` 固定读取第一组后报 nil。`game/gateway.mjs` 现为自动刷新商店 `201-207` 返回首个合法分组及 `pb_shop_auto_refresh`；混合商店测试已加入 `gameplay-gateway.test.mjs`。
+- 一键购买失败无 UI 的根因：QuickSDK `com.quicksdk.net.Connect$2.run` 从响应 `error.message` 和 `error.id` 构造 `PayNotifier.onFailed(cpOrderID, message, trace)`；`com.quicksdk.Payment$1.onFailed` 仅在 `trace=80000` 显示服务端 message Toast、`trace=80001` 显示限购弹窗。旧响应只有 `error.code/message`，trace 为空，因此购买虽被拒绝但界面无任何反馈。
+- 修复：`sdk-service.mjs` 的 QuickSDK 失败响应增加 `error.id`。余额不足及其他普通失败映射为 `80000`，商品限购 `307` 映射为 `80001`；余额不足显示“余额不足，请先充值”，限购显示“该商品今日购买次数已用完”，`code/message` 仍保留供服务端排障。
+- 验证：定向 `sdk-service.test.mjs` 20/20、全量 `npm test --prefix personal-server` 167/167 通过；用例分别断言 `301 -> id=80000` 和 `307 -> id=80001`。实打实向运行中的 18880 发送 46003（¥9，当前余额 ¥4）QuickSDK 加密请求，返回 `{code:301,id:"80000",message:"余额不足，请先充值"}`，未生成订单或扣款。
+- 部署：首次反馈修复于 2026-10-30T05:39:59.888Z 将项目服务从 PID 32572 重启为 PID 36532；中文化 message 后于 2026-10-30T05:47:25.128Z 再重启为 PID 38688。五端口 18880/18881/18882/18883/19090 均仅监听 127.0.0.1。证据目录 `analysis/experiments/private-server-20261025/p3/quick-pay-feedback-20261030-1340/`，包含旧进程、重启前 SQLite、两次部署结果和真实失败响应。
+- 当前隔离 APK 的 `FC_LOCAL_BALANCE_PAY=1` 路径按设计直接请求本机余额订单，并抑制 QuickSDK 外部支付选择器回调；因此价格/购买入口不会再跳原外部支付页。价格入口、一键购买现在至少应得到上述本机失败 Toast；若仍需中间支付页，应作为客户端 UI 补丁另行验收。
+- 待视觉验收：用户在当前“超值精选”页手动点一次 46003 一键购买，确认“余额不足，请先充值”Toast 实际出现。服务端和静态 DEX 链已验收，但该 Toast 尚未标记为真机视觉通过。

@@ -30,3 +30,13 @@ fighttable-details.jsonl
 **/*.local-only.*
 # Raw app backups can contain stored account sessions.
 analysis/experiments/private-server-*/p0/backup/
+
+# Local test APK snapshots are kept for rollback but never committed.
+/apk/*.apk
+/apk/*.idsig
+
+# Isolated worktrees and root-level table-inspection scratch files.
+/.worktree/
+/$out
+/backup.ab
+/tmp-*.json

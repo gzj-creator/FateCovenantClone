@@ -1,5 +1,13 @@
 # 个人服务器兼容实验：续接计划
 
+## 2026-10-28 看板娘修复与可用快照
+
+主界面看板娘缺失已定位并实测修复：根因不是资源缺失，而是隔离客户端 PlayerPrefs 中 SubDownloadFinish=0 时，UniCore.RemoteLoadMgr.NeedRemoteLoad 把 sub_first 资源误判为远程下载；UpdateDownloader.AsyncAssetLackPreCheck 为空导致 AddRemoteLoad 失败，AssetBundle 请求未创建并在 6000 帧后超时，报 hero_sl_GuangZhiXin_new_talk.prefab load fail by bundle load timeOut 和 [MissAsset]。在 /data/data/com.jzyx.ps/shared_prefs/com.jzyx.ps.v2.playerprefs.xml 写入 SubDownloadFinish=1 后，截图 analysis/experiments/private-server-20261025/p3/kanban-after-subdownload-20261028.png 确认看板娘恢复；修复后 Info 日志无 AddRemoteLoad/timeout/MissAsset。该值未烘焙进 APK，重装/清数据/换设备后需重新写入。
+
+当前可用 APK 快照已保存到 apk/com.jzyx.ps.v8b-working.apk（4,116,360,373 字节，SHA256 c33a192cd875fd9cda8e5a25104d49d5b2d4b5325056380efc53dc96de1ef3cf），不提交 Git；说明见 apk/README.md。用户已要求把“每次涉及 APK 的修改，验收通过后同步一份到 apk/ 目录并记录元数据”作为持久规则写入 AGENTS.md。设备 ADB 使用 E:\Mumu\MuMuPlayer\nx_main\adb.exe -s 127.0.0.1:16448；原版 com.jzyx.my 未操作。
+
+详细根因、代码路径、日志和修复步骤见 [客户端资源实操](../agent/workflow/client-resource/implementation.md)。
+
 2026-10-25 23:59用户换session，最新完整提示词[余额管理接替](../promot/2026-10-25-wallet-admin-handoff.md)。真实APK注册补丁已成功登录，三个79104巅峰任务奖已提交入库，92/92测试。Web18883在线，余额0/订单0，等用户后台加钱后做真实充值闭环。服务PID1776、客户端10836仅检查点；隔离/reverse保持，不清理、不重置用户领奖状态。本轮一致备份含最新领奖，见wallet-admin-20261025/handoff-game.local-only.sqlite。
 
 2026-10-25 23:44最新：用户要求管理Web加余额及游戏内余额充值，已部署[余额管理](../agent/workflow/wallet-admin/implementation.md)。管理http://127.0.0.1:18883/，密钥在p3/runtime.local-only.data/admin-key.local-only.txt。91项组件通过，页面桌面/手机验证通过；v8b独立副本已安装重开，原有SQLite逐表保留。服务PID35132仅检查点，实时读取状态文件，五端口loopback。冲榜79104任务领奖实现详见[活动记录](../agent/workflow/activity-ranking/implementation.md)，Tournament已有当日96名，不要给Hunter伪造排名。游戏内充值和领奖待用户验证；复杂商品、最终榜单结算、战斗/招募仍未实现。不要清理隔离/reverse。
