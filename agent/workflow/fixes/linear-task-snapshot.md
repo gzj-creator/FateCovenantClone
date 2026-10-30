@@ -46,7 +46,8 @@
 
 ## 验证
 
-- `npm test --prefix personal-server`：155/155 通过。
+- worktree `npm test --prefix personal-server`：155/155 通过；合并到当前 main 后
+  全套测试 163/163 通过。
 - 新增回归测试：领取主线任务后体力任务不再继承主线快照；v5 迁移清理
   旧 module 90 快照。
 - 对当前运行数据库副本执行新存储迁移后验证：module 90 为
@@ -55,9 +56,17 @@
 
 ## 部署与验收状态
 
-- 代码在 worktree 分支 `feature/stamina-task-fix`，尚未合并/部署到运行服务
-  （PID 32088，用户可能正在游玩，未重启）。
-- 需要重启服务并让客户端重新登录后，由用户打开任务页视觉确认不再显示
-  负数；此前不能标记为已验收。
+- 2026-10-30 已合并到 `main`（提交 `bdc13a6`），并重启本地服务。
+- 重启前使用 SQLite 序列化快照生成一致备份
+  `analysis/experiments/private-server-20261025/p3/stamina-task-fix-20261030/game-before-v5.local-only.sqlite`，
+  大小 286720 字节，SHA256
+  `06e3f1ab520721caf3e033ab14a5857b2dea26de7c5ae44297f88948411d74e4`，备份与原库
+  `integrity_check` 均为 `ok`。
+- 新服务 PID `31784`，启动时间 `2026-10-30T00:33:51.352Z`；五个端口
+  `18880/18881/18882/18883/19090` 均只监听 `127.0.0.1`。
+- v5 迁移已执行：`user_version=5`，module 90 为
+  `{task_list:[{type:1,receive_tid:10001}]}`，体力统计 total=40，计算值
+  `40/10`，库完整性 `ok`，新服务 stderr 为空；隔离客户端已自动重连。
+- 仍需用户打开任务页做视觉确认；此前不能标记为“显示已验收”。
 - 任务激活/快照重建的完整服务器语义仍未实现；本次只消除已领取任务遗留
   快照造成的错误显示，不伪造激活进度。
