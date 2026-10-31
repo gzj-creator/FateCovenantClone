@@ -156,6 +156,7 @@ export function createLocalGame({
     const petLogin = await petActivity.synchronizeLogin(activity, loginSeconds);
     const heroDrawLogin = heroDrawActivity.synchronizeLogin(activity, loginSeconds);
     const rebateLogin = rechargeRebateReset.synchronizeLogin(activity, loginSeconds);
+    const accRechargeLogin = accRecharge.synchronizeLogin(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -176,6 +177,7 @@ export function createLocalGame({
       heroDrawCount: heroDrawLogin?.drawData?.role_data?.draw_count ?? null,
       heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
       rechargeRebateResetId: rebateLogin?.actId ?? null,
+      accRechargeActivityIds: accRechargeLogin.activityIds,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });

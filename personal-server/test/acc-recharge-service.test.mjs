@@ -41,11 +41,27 @@ function setAwardState(store, actId, bytes) {
   store.transaction(model => {
     const modules = new Map(model.state.modules.value);
     const data = codec.unpack('pb_acc_recharge_list', rawBinary(modules.get(106)));
-    const row = data.list.find(entry => Number(entry.act_id) === actId);
+    let row = data.list.find(entry => Number(entry.act_id) === actId);
+    if (!row) {
+      row = { act_id: actId, award_state: '' };
+      data.list.push(row);
+    }
     row.award_state = bytes.toString('base64');
     modules.set(106, serializedBinary(codec.pack('pb_acc_recharge_list', data)));
     model.state.modules.value = [...modules];
   });
+}
+
+function loginActivity(store) {
+  return codec.unpack('pb_act_login', rawBinary(new Map(store.state().modules.value).get(92)));
+}
+
+function unwrapActivityLoginData(value) {
+  const bytes = Buffer.from(String(value ?? ''), 'base64');
+  assert.equal(bytes[0], 0x83);
+  assert.equal(bytes[1], 0x6d);
+  assert.equal(bytes.length, bytes.readUInt32BE(2) + 6);
+  return bytes.subarray(6);
 }
 
 function setup(t, initialTables = tables, calendarMode = null) {
@@ -230,6 +246,42 @@ test('repairs legacy byte-index award states from persisted claims', t => {
   assert.equal(hasBit(state, 3), true);
   const duplicate = claim(e.service, 36001101);
   assert.deepEqual(codec.unpack('pb_res_to_client', duplicate.data).changes, []);
+});
+
+test('login synchronizes cumulative recharge award bits into activity module 92', async t => {
+  const e = setup(t);
+  setAwardState(e.store, 106036, Buffer.from([0x70, 0, 0, 0]));
+  setAwardState(e.store, 106037, Buffer.from([0x78, 0, 0, 0]));
+  const activity = loginActivity(e.store);
+  activity.act_list = activity.act_list.filter(entry => ![106036, 106037].includes(Number(entry.state_data?.act_id)));
+  activity.act_parallel_list = activity.act_parallel_list.flatMap(group => {
+    const states_data = (group.states_data ?? []).filter(state => ![106036, 106037].includes(Number(state.act_id)));
+    return states_data.length ? [{ ...group, states_data }] : [];
+  });
+
+  const result = await e.service.synchronizeLogin(activity, SERVER_OPENED_AT);
+  assert.deepEqual(result.activityIds, [106036, 106037]);
+  assert.equal(activity.act_list.filter(entry => Number(entry.state_data?.act_id) === 106036).length, 1);
+  assert.equal(activity.act_list.filter(entry => Number(entry.state_data?.act_id) === 106037).length, 1);
+  const first = activity.act_list.find(entry => Number(entry.state_data?.act_id) === 106036);
+  const second = activity.act_list.find(entry => Number(entry.state_data?.act_id) === 106037);
+  assert.equal(Number(first.state_data.cur_state_id), 50);
+  assert.equal(Number(first.state_data.history_time[0].state_id), 50);
+  assert.equal(Number(second.state_data.cur_state_id), 50);
+  assert.deepEqual(
+    [...Buffer.from(codec.unpack('pb_acc_recharge', unwrapActivityLoginData(first.module_login_data)).award_state, 'base64').subarray(0, 4)],
+    [0x70, 0, 0, 0]
+  );
+  assert.deepEqual(
+    [...Buffer.from(codec.unpack('pb_acc_recharge', unwrapActivityLoginData(second.module_login_data)).award_state, 'base64').subarray(0, 4)],
+    [0x78, 0, 0, 0]
+  );
+
+  const roundTrip = codec.unpack('pb_act_login', codec.pack('pb_act_login', activity));
+  assert.equal(roundTrip.act_list.filter(entry => [106036, 106037].includes(Number(entry.state_data?.act_id))).length, 2);
+
+  await e.service.synchronizeLogin(activity, SERVER_OPENED_AT);
+  assert.equal(activity.act_list.filter(entry => [106036, 106037].includes(Number(entry.state_data?.act_id))).length, 2);
 });
 
 test('648 tier grants supported inventory and retains feature-domain rewards', t => {
