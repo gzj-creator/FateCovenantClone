@@ -31,6 +31,7 @@ import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
 import { createWishTreasureService } from './wish-treasure-service.mjs';
+import { createWishTreeService } from './wish-tree-service.mjs';
 import { createWeekHuntService } from './week-hunt-service.mjs';
 import { createFirstRechargeService } from './first-recharge-service.mjs';
 import { createRechargeBonusService } from './recharge-bonus-service.mjs';
@@ -84,6 +85,7 @@ export function createLocalGame({
   const heroDrawActivity = createHeroDrawActivityService({ store, codec, tables, heroTables, calendar, now: clock, logger });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
   const wishTreasure = createWishTreasureService({ store, codec, tables, calendar, now: clock, logger });
+  const wishTree = createWishTreeService({ store, codec, tables, now: clock, logger });
   const weekHunt = createWeekHuntService({ store, codec, tables, now: clock });
   const firstRecharge = createFirstRechargeService({ store, codec, tables, now: clock, logger });
   const rechargeBonus = createRechargeBonusService({ store, codec, tables, calendar, now: clock, logger });
@@ -113,7 +115,7 @@ export function createLocalGame({
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,wishTreasure,weekHunt,
+    store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -131,6 +133,7 @@ export function createLocalGame({
     handbook.ensureLoginState();
     teamSuggest.ensureLoginState();
     wishTreasure.ensureLoginState();
+    wishTree.ensureLoginState();
     weekHunt.ensureLoginState();
     destiny.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
@@ -517,6 +520,26 @@ export function createLocalGame({
         }
         return;
       }
+      if (wishTree.supports(type)) {
+        let input;
+        try {
+          if (type === 91704) input = unpack('pb_wish_tree_select_req', request.data);
+          else input = await singleIdArgument(request.data, 'Invalid wish-tree argument');
+          const result = wishTree.execute(type, input);
+          if (result.data?.length) send(seq, result.data); else send(seq);
+          log({
+            event: 'wish_tree_committed', type, seq,
+            wishType: result.value?.type,
+            awardTid: result.value?.award_tid,
+            changes: result.value?.res?.changes?.length ?? 0
+          });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'wish_tree_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if(sprint.supports(type)||wallet&&type===16003){
         try{
           if(type===16003){const decoded=await decodeEtf(request.data);const value=decoded?.value??decoded;const bytes=Buffer.isBuffer(value)?value:Array.isArray(value)?Buffer.from(value):null;wallet.acknowledge(bytes?bytes.toString():value);send(seq);}
@@ -789,7 +812,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, tables,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, wishTree, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
