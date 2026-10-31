@@ -530,3 +530,76 @@ test('leader equipment wear equips gear through the gateway and persists it', { 
     type: 98401, seq: 2, slotTypes: [1], subUids: [uid]
   });
 });
+
+test('cabin unlock, hero placement and atomic swap use real gateway framing and persist module 114', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-cabin-gateway-'));
+  const events = [];
+  const game = createLocalGame({
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    logger: event => events.push(event)
+  });
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  game.store.transaction(model => { model.role.level = 46; });
+  addResource(game.store, '101500', 1000);
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  const loginValue = await decodeEtf(Buffer.from(login.data, 'base64'));
+  const cabin = codec.unpack('pb_campsite_data', loginModuleBytes(loginValue, 114));
+  assert.deepEqual(cabin.groups_data.map(group => Number(group.group_id)), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(Buffer.from(cabin.groups_data[0].cell_states, 'base64').toString('hex'), '70');
+
+  let response = await request(83201, 2, await encodeEtf([1, 4]));
+  assert.equal(response.err, undefined);
+  const changes = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.deepEqual(changes.map(change => [change.tid, change.diff_num]), [['101500', '-1000']]);
+  assert.equal(game.store.read().resources.get('101500').num, '0');
+
+  response = await request(83202, 3, codec.pack('pb_campsite_place', {
+    place_groups: [{ group_id: 1, cell_index_list: [1], hero_uid_list: ['1020601'] }]
+  }));
+  assert.equal(response.err, undefined);
+  const placed = codec.unpack('pb_campsite_data', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(placed.groups_data[0].hero_list, ['1020601', '0', '0', '0']);
+  const persisted = codec.unpack('pb_campsite_data', rawBinary(new Map(game.store.state().modules.value).get(114)));
+  const group = persisted.groups_data.find(value => Number(value.group_id) === 1);
+  assert.equal(Buffer.from(group.cell_states, 'base64').toString('hex'), '78');
+  assert.deepEqual(group.hero_list, ['1020601', '0', '0', '0']);
+
+  response = await request(83202, 4, codec.pack('pb_campsite_place', {
+    place_groups: [{ group_id: 1, cell_index_list: [2], hero_uid_list: ['1020301'] }]
+  }));
+  assert.equal(response.err, undefined);
+
+  response = await request(83202, 5, codec.pack('pb_campsite_place', {
+    place_groups: [{ group_id: 1, cell_index_list: [1, 2], hero_uid_list: ['1020301', '1020601'] }]
+  }));
+  assert.equal(response.err, undefined);
+  const swapped = codec.unpack('pb_campsite_data', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(swapped.groups_data[0].hero_list, ['1020301', '1020601', '0', '0']);
+  const swappedPersisted = codec.unpack('pb_campsite_data', rawBinary(new Map(game.store.state().modules.value).get(114)));
+  const swappedGroup = swappedPersisted.groups_data.find(value => Number(value.group_id) === 1);
+  assert.deepEqual(swappedGroup.hero_list, ['1020301', '1020601', '0', '0']);
+
+  assert.equal(events.some(event => event.event === 'unsupported_command' && [83201, 83202].includes(event.type)), false);
+  assert.deepEqual(events.filter(event => event.event === 'cabin_committed').map(event => event.type), [83201, 83202, 83202, 83202]);
+});
