@@ -1,5 +1,7 @@
 # Personal-server workflow
 
+2026-10-31：[限购礼包错误日志 ID 修复](fixes/purchase-limit-error.md)。`wallet-service` 原先先查余额后查限购，售罄且余额不足时 QuickSDK 误报 `301/80000`；现已调整为先限购后余额，真实本机 SDK 对已售罄 `40010` 返回 `307/80001`，全量 `275/275` 通过，实时服务 PID 以 `server.local-only.json` 为准。
+
 2026-10-31：[特聘券购买扣钻但券不即显修复](fixes/recruit-purchase-ticket-sync.md)。type 599 购买已在服务端事务扣星钻并写入特聘券 `3002`，但物品发放的 `pb_res_change` 缺少 `new_bin`，客户端 `AwardKit.Parse` 无法即时建立或刷新资源对象。物品发放回包现附完整 `pb_res_obj { tid, num }`；普通/特聘买券回归均校验解码后的新数量，最新 `main@5e354e7` 合并后全量 `271/271` 通过，worktree 服务 PID `18688`，真实 APK 再次购买验收待用户操作。
 
 2026-10-31：[招募首次角色、次数/积分与半神补券修复](recruitment/implementation.md)。首英雄现在返回完整碎片卡包并即时写入英雄/模块 10，`uid=tid` 修复小队不可见；模块 21/75/77901 更新招募次数和积分。半神 type 87618 改为模块 518 下的补券、扣券、抽取、幻武入库事务，不再只扣星钻。`main@f32e4ac` 已通过 `d0cb52a` 合入，定向 28/28、全量 257/257 通过，并已从合并 worktree 部署新 PID `43432`。真实 APK 验收待用户点击，详见[首次角色修复](fixes/recruit-result-no-card.md)。
