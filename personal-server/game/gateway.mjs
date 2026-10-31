@@ -39,6 +39,9 @@ import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
+const LEADER_EQUIP_WEAR_TYPE = 98401;
+const FEATURE_NOT_OPEN_CODE = 305;
+
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
 export function createLocalGame({
   databasePath,
@@ -588,6 +591,14 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'lineup_rejected', type, seq, code, errorName: error.name });
         }
+        return;
+      }
+      if (type === LEADER_EQUIP_WEAR_TYPE) {
+        // Leader-equipment inventory is visible, but the wear/slot feature is
+        // not implemented yet. Return the client-known unopened-feature code
+        // so the native UI shows its business message instead of "server error".
+        send(seq, Buffer.alloc(0), { err: FEATURE_NOT_OPEN_CODE });
+        log({ event: 'leader_equip_wear_rejected', type, seq, code: FEATURE_NOT_OPEN_CODE, reason: 'feature_not_open' });
         return;
       }
       if (recruit.supports(type)) {

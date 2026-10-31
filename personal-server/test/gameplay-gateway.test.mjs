@@ -353,3 +353,49 @@ test('all-open mode returns every stored activity and forces test-visible states
   assert.equal(returnedIds.has(83028), true);
   assert.equal(returnedIds.has(1074011), true);
 });
+
+test('leader equipment wear reports an unopened feature instead of a generic server error', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-leader-equip-wear-'));
+  const events = [];
+  const game = createLocalGame({
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    logger: event => events.push(event)
+  });
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  const before = codec.unpack('pb_leader_equips_data', rawBinary(new Map(game.store.state().modules.value).get(175)));
+  const response = await request(98401, 2, codec.pack('pb_leader_equip_wear_req', {}));
+  assert.equal(response.err.err, 305);
+  assert.equal(response.err.stacktrace, undefined);
+  const after = codec.unpack('pb_leader_equips_data', rawBinary(new Map(game.store.state().modules.value).get(175)));
+  assert.deepEqual(after, before);
+
+  assert.equal(events.some(event => event.event === 'unsupported_command' && event.type === 98401), false);
+  const rejection = events.find(event => event.event === 'leader_equip_wear_rejected');
+  assert.ok(rejection?.connection);
+  assert.deepEqual({ event: rejection.event, type: rejection.type, seq: rejection.seq, code: rejection.code, reason: rejection.reason }, {
+    event: 'leader_equip_wear_rejected', type: 98401, seq: 2, code: 305, reason: 'feature_not_open'
+  });
+});
