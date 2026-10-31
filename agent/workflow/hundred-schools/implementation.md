@@ -61,13 +61,15 @@
   - 大小 `319488` 字节
   - SHA256 `2D6FDA06D794C75E2188FFEB442D4AB37DD284EB3ECE65128695174D72BF471F`
   - `PRAGMA integrity_check=ok`，`user_version=9`
-- 修复版服务 PID `38720`，入口为本 worktree 的 `personal-server/local-server.mjs`，工作目录为主仓库根目录。
+- 最终修复版服务 PID `3180`，入口为本 worktree 的 `personal-server/local-server.mjs`，工作目录为主仓库根目录。
 - `18880/18881/18882/18883/19090` 均确认仅监听 `127.0.0.1`。
-- 新日志：
-  - `analysis/experiments/private-server-20261025/p3/hundred-schools-20261031/local-server.pet-fix.stdout.log`
-  - `analysis/experiments/private-server-20261025/p3/hundred-schools-20261031/local-server.pet-fix.stderr.log`
+- 最终日志：
+  - `analysis/experiments/private-server-20261025/p3/hundred-schools-20261031/local-server.final.stdout.log`
+  - `analysis/experiments/private-server-20261025/p3/hundred-schools-20261031/local-server.final.stderr.log`
   - stderr 为空。
 
 ## 真实客户端状态
 
-服务器侧完整协议、事务与页面所需数据已通过组件和临时 TCP 测试。部署前真实登录事件已确认模块 92 含百派活动和 `recharge_limit_info`，但当时版本的宠物平行活动负载仍会触发 `PetActivityMgr` 类型错位。修复版重启后尚未由用户重新登录并逐页点击；真实 APK 的最终视觉验收应在重新登录后依次检查流派选择/命格、任务、限时招募礼包、推荐礼包和榜单。
+服务器侧完整协议、事务与页面所需数据已通过组件和临时 TCP 测试。最终版重启后，隔离客户端已完成一次真实重连和登录：服务端在 `2026-10-31T06:18:27.347Z` 收到 `909103/seq 1`，在 `06:18:27.398Z` 记录 `hero_draw_activity_login_synchronized`，随后发送 `19794` 字节、`146` 个模块的登录响应并记录 `login_sent`。新客户端进程 PID `24933` 的 logcat 已进入大厅，最终登录后未再出现 `PetActivityMgr`、`type mismatch`、`unsupported_command 100301/100302`、`hero_draw_activity_rejected` 或 `handler_error`。
+
+真实 APK 的逐页视觉验收仍需在用户操作后按顺序检查流派选择/命格、任务、限时招募礼包、推荐礼包和四个榜单；本次未代替用户点击活动页面，因此不能把组件、真实 TCP 和登录成功扩大表述为逐页人工验收完成。
