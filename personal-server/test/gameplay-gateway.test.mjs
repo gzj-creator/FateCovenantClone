@@ -148,6 +148,26 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(game.store.read().resources.get('71200').num, '0');
   assert.equal(game.store.read().resources.get('21300104').num, '1');
 
+  // Designated emoji box: both one-key (159) and single use (151) must go
+  // through the same fixed award list as the client's ItemBox callback.
+  addResource(game.store, 1501200, 2);
+  response = await request(159, 51, codec.pack('pb_one_key_use', { use: [{ tid: 1501200, num: 2 }] }));
+  assert.equal(response.err, undefined);
+  const designatedChanges = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(designatedChanges.find(change => change.tid === '1501200').diff_num, '-2');
+  assert.equal(designatedChanges.find(change => change.tid === '381002').diff_num, '2');
+  assert.equal(designatedChanges.find(change => change.tid === '389002').diff_num, '2');
+  addResource(game.store, 1501200, 1);
+  response = await request(151, 52, codec.pack('simple_use', { tid: 1501200, num: 1 }));
+  assert.equal(response.err, undefined);
+  const designatedSingle = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(designatedSingle.find(change => change.tid === '1501200').diff_num, '-1');
+  assert.equal(designatedSingle.find(change => change.tid === '381002').diff_num, '1');
+  assert.equal(designatedSingle.find(change => change.tid === '389002').diff_num, '1');
+  assert.equal(game.store.read().resources.get('1501200').num, '0');
+  assert.deepEqual(game.store.read().resources.get('381002').location.slice(0, 2), [6, 0]);
+  assert.deepEqual(game.store.read().resources.get('389002').location.slice(0, 2), [6, 0]);
+
   // Activity reads answer, activity mutations stay refused.
   response = await request(110308, 6, Buffer.alloc(0));
   assert.equal(response.err, undefined);

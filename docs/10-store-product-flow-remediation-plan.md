@@ -17,7 +17,7 @@
 - 主工作区：`F:\projects\FateCovenantClone`
 - 独立 worktree：`C:\Users\gzj\.codex\worktrees\766c\FateCovenantClone`
 - 分支：`feature/store-product-flow-fixes-20261031`
-- 基线提交：`3137e01 fix: align weekly gift sellout with current day`
+- 初始基线提交：`3137e01 fix: align weekly gift sellout with current day`。F4/F5 已在基于最新 `main` `0fb31e5` 的独立集成 worktree 中复验并合入。
 - 主工作区已有未提交 `tools/extract-battle-tables.mjs`，与本计划无关，禁止带入、覆盖或清理。
 - worktree 的 `analysis` 目录通过 junction 指向主工作区的只读证据目录；所有子 agent 只能读取现有运行库、日志和截图，不得写入或清理其中的运行态数据。
 - 被忽略的测试 fixture `personal-server/fixtures/login-modules.local-only.json` 已复制到 worktree，仅供离线测试。
@@ -40,8 +40,8 @@
 | F1 | 每日必买免费礼包未售罄；所有限购礼包售罄口径 | 统一限购计数与客户端展示字段；修复一键购买后免费礼包状态；补回归测试和证据说明 | `welfare-service.mjs`、`wallet-service.mjs`、`week-hunt-service.mjs`、相关配置与测试 | 待开始 |
 | F2 | 必买返利/特惠返利购买后 7 次可领取但按钮灰 | 对齐购买记录、可领取次数、领取按钮状态和登录推送；覆盖两种返利 | `recharge-bonus-service.mjs`、`recharge-rebate-reset-service.mjs`、登录同步与测试 | 待开始 |
 | F3 | 通行证/战令购买无反应 | 盘点所有通行证 SKU，统一购买后的活动/模块/推送同步，覆盖标准通行证与月卡战令 | `permit-service.mjs`、`month-permit-service.mjs`、`wallet-service.mjs` 的购买接入与测试 | 待开始 |
-| F4 | 表情包宝箱无法打开 | 定位具体物品与箱型，接通请求、扣箱、奖励发放、重开持久化 | `item-box-service.mjs`、对应资源/奖励处理与测试 | 待开始 |
-| F5 | 主线任务领取金币等奖励未完成 | 定位客户端实际命令与任务表，补齐可验证的任务奖励领取，不伪造未证实的任务类型 | `task-service.mjs`、主线/任务协议接入与测试 | 待开始 |
+| F4 | 表情包宝箱无法打开 | 定位具体物品与箱型，接通请求、扣箱、奖励发放、重开持久化 | `item-box-service.mjs`、对应资源/奖励处理与测试 | 主验收通过，已合入 main；待部署 |
+| F5 | 主线任务领取金币等奖励未完成 | 定位客户端实际命令与任务表，补齐可验证的任务奖励领取，不伪造未证实的任务类型 | `task-service.mjs`、主线/任务协议接入与测试 | 主验收通过，已合入 main；待部署 |
 
 每个任务的详细调查、根因、实现边界、测试命令和状态记录在 `agent/workflow/store-product-flow-fixes/<任务编号>.md`。子 agent 必须维护自己的文件；总计划表由主 agent 验收后更新。
 
@@ -89,3 +89,11 @@
 - worktree 测试环境已补齐 `personal-server/node_modules` 和只读分析证据 junction；首个全量测试在复制 fixture 前因缺少 `login-modules.local-only.json` 失败，fixture 补齐后重新执行。
 - 离线基线：`npm test --prefix personal-server` 为 **287/287** 通过。
 - 主工作区未提交的 `tools/extract-battle-tables.mjs` 未复制、未修改。
+
+### 2026-10-31 F4/F5 合入 main
+
+- F4 与 F5 在基于最新 `main` `0fb31e5` 的独立 worktree `F:\projects\FateCovenantClone\.worktree\store-product-f4-f5-integration` 中完成干净集成。
+- 主验收复测 F4、F5 和 gateway 目标测试 32/32 通过；全量 `npm test --prefix personal-server` 310/310 通过。
+- F4 已接通 `1501200` 指定奖励箱的 151/159 路径、两种表情奖励、扣箱、回滚和重开持久化；F5 已接通命运阶段函数 155 对应的六个主线任务。
+- 两项只达到组件和临时 TCP/SQLite 集成验收，尚未部署、未重启正式服务、未写生产 SQLite，也未取得用户视觉确认。
+- F1/F2/F3 继续在总功能 worktree 调查和实现，不随本次合入 main。
