@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf, encodeEtf } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { createGuildRosterService, GUILD_JOB } from '../game/guild-roster-service.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
@@ -51,6 +51,12 @@ async function guildLoginFromPayload(payload) {
   const module = login[2].value.find(([id]) => Number(id) === 24);
   assert.ok(module, 'login module 24 is present');
   return codec.unpack('pb_res_guild_login', Buffer.from(module[1].value));
+}
+
+function guildModulePayload(state) {
+  const module = new Map(state.modules.value).get(24);
+  assert.ok(module, 'module 24 is present');
+  return rawBinary(module);
 }
 
 function makeGameFactory(prefix = 'fc-guild-roster-') {
@@ -275,4 +281,107 @@ test('guild roster mutations roll back when response packing fails', async t => 
   const before = service.loginPayload();
   await assert.rejects(service.execute(21006, [String(seeded.guildId), target.role_id]), /forced response packing failure/);
   assert.deepEqual(service.loginPayload(), before, 'the failed command must roll back the login-module transaction');
+});
+
+test('21007 ETF response encoding fails before guild, hero, and module state are committed', async t => {
+  const factory = makeGameFactory('fc-guild-leave-encoding-');
+  let game = factory.makeGame();
+  t.after(async () => {
+    try { await game?.close(); } finally { fs.rmSync(factory.directory, { recursive: true, force: true }); }
+  });
+
+  const initial = await guildLoginFromPayload(await game.loginPayload());
+  const guildId = String(initial.guildId);
+  const successor = initial.guild.member_list.find(member => Number(member.job) === GUILD_JOB.MEMBER);
+  assert.ok(successor, 'the seeded roster has a successor');
+
+  const service = createGuildRosterService({ store: game.store, codec, now: () => SERVER_OPENED_AT + 3600 });
+  service.ensureLoginState();
+  const transferred = await service.execute(21010, [guildId, successor.role_id, GUILD_JOB.PRESIDENT]);
+  assert.deepEqual(transferred.pushes.map(push => push.type), [2305]);
+
+  const beforeState = game.store.state();
+  const beforeModule = Buffer.from(guildModulePayload(beforeState));
+  const beforeLogin = codec.unpack('pb_res_guild_login', beforeModule);
+  const beforeHeroes = structuredClone(game.store.read().heroInfo.hero_list);
+  let encodeCalls = 0;
+  const failing = createGuildRosterService({
+    store: game.store,
+    codec,
+    now: () => SERVER_OPENED_AT + 7200,
+    encodeResponse: async () => {
+      encodeCalls++;
+      throw new Error('forced 21007 ETF encoding failure');
+    }
+  });
+
+  await assert.rejects(failing.execute(21007, Number(guildId)), /forced 21007 ETF encoding failure/);
+  assert.equal(encodeCalls, 1);
+  const afterState = game.store.state();
+  const afterLogin = codec.unpack('pb_res_guild_login', guildModulePayload(afterState));
+  assert.deepEqual(afterLogin.guild.member_list, beforeLogin.guild.member_list);
+  assert.equal(afterLogin.guildId, beforeLogin.guildId);
+  assert.equal(afterLogin.last_leave_time, beforeLogin.last_leave_time);
+  assert.equal(afterLogin.leave_count, beforeLogin.leave_count);
+  assert.ok(Buffer.from(guildModulePayload(afterState)).equals(beforeModule), 'module 24 is byte-for-byte unchanged');
+  assert.deepEqual(game.store.read().heroInfo.hero_list, beforeHeroes);
+
+  await game.close();
+  game = undefined;
+  game = factory.makeGame();
+  const reopened = await guildLoginFromPayload(await game.loginPayload());
+  assert.deepEqual(reopened.guild.member_list, beforeLogin.guild.member_list);
+  assert.equal(reopened.guildId, beforeLogin.guildId);
+  assert.equal(reopened.last_leave_time, beforeLogin.last_leave_time);
+  assert.equal(reopened.leave_count, beforeLogin.leave_count);
+  assert.ok(Buffer.from(guildModulePayload(game.store.state())).equals(beforeModule), 'module 24 remains unchanged after SQLite reopen');
+  assert.deepEqual(game.store.read().heroInfo.hero_list, beforeHeroes);
+});
+
+test('21007 retries its preencoded response when module 24 changes concurrently', async t => {
+  const factory = makeGameFactory('fc-guild-leave-concurrent-');
+  const game = factory.makeGame();
+  t.after(async () => {
+    try { await game.close(); } finally { fs.rmSync(factory.directory, { recursive: true, force: true }); }
+  });
+
+  const initial = await guildLoginFromPayload(await game.loginPayload());
+  const guildId = String(initial.guildId);
+  const successor = initial.guild.member_list.find(member => Number(member.job) === GUILD_JOB.MEMBER);
+  assert.ok(successor, 'the seeded roster has a successor');
+  let encodeCalls = 0, releaseFirstEncode, signalFirstEncode;
+  const firstEncodeStarted = new Promise(resolve => { signalFirstEncode = resolve; });
+  const service = createGuildRosterService({
+    store: game.store,
+    codec,
+    now: () => SERVER_OPENED_AT + 3600,
+    encodeResponse: value => {
+      encodeCalls++;
+      if (encodeCalls !== 1) return encodeEtf(value);
+      return new Promise((resolve, reject) => {
+        releaseFirstEncode = () => encodeEtf(value).then(resolve, reject);
+        signalFirstEncode();
+      });
+    }
+  });
+  service.ensureLoginState();
+  await service.execute(21010, [guildId, successor.role_id, GUILD_JOB.PRESIDENT]);
+
+  const leaving = service.execute(21007, Number(guildId));
+  await firstEncodeStarted;
+  const concurrentMember = { role_id: '100009999', job: GUILD_JOB.MEMBER, join_time: String(SERVER_OPENED_AT + 100) };
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const login = codec.unpack('pb_res_guild_login', rawBinary(modules.get(24)));
+    login.guild.member_list.push(concurrentMember);
+    modules.set(24, serializedBinary(codec.pack('pb_res_guild_login', login)));
+    model.state.modules.value = [...modules];
+  });
+  releaseFirstEncode();
+
+  const result = await leaving;
+  assert.equal(encodeCalls, 2, 'the stale preencoding is discarded and retried');
+  const change = codec.unpack('pb_res_guild_member_change', result.pushes[0].data);
+  assert.ok(change.member_list.some(member => String(member.role_id) === concurrentMember.role_id));
+  assert.equal(change.member_list.some(member => String(member.role_id) === String(initial.guild.member_list[0].role_id)), false);
 });
