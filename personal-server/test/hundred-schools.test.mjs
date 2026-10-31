@@ -191,10 +191,11 @@ async function gatewayFixture(t, logger = () => {}) {
   const requestWithWalletPush = async (seq, data) => {
     send(codec.pack('pb_c2s', { type: 16004, seq, data }));
     const frames = [];
-    while (frames.length < 2) frames.push(codec.unpack('pb_s2c', await next()));
+    while (!frames.some(frame => frame.seq === seq)) frames.push(codec.unpack('pb_s2c', await next()));
     return {
       ack: frames.find(frame => frame.seq === seq),
-      notification: frames.find(frame => frame.type === 1900)
+      notification: frames.find(frame => frame.type === 1900),
+      wishNotification: frames.find(frame => frame.type === 9132)
     };
   };
   const loginResponse = await request(909103, 1, codec.pack('login', {
@@ -233,10 +234,13 @@ test('genre selection persists and the star task uses the selected lineup id', t
   assert.equal(storedDraw(env.store).role_data.draw_count, 400);
   assert.equal(storedDraw(env.store).server_draw_count, 400);
 
-  const gapBefore = BigInt(env.store.read().resources.get('200110')?.num ?? 0);
   const personal = env.heroDraw.claimTask(7);
   assert.equal(hasBit(Buffer.from(personal.value.reward_bytes), 7), true);
-  assert.equal(BigInt(env.store.read().resources.get('200110').num), gapBefore + 1n);
+  const artifactChange = personal.value.res.changes.find(row => row.tid === '200110');
+  assert.equal(Number(artifactChange.diff_num), 1);
+  const artifactModule = new Map(env.store.state().modules.value).get(50);
+  const artifacts = codec.unpack('pb_artifact_info', rawBinary(artifactModule.value[0]));
+  assert.equal(Number(artifacts.artifact_list.find(row => Number(row.tid) === 200110).num), Number(artifactChange.new_num));
   assert.doesNotThrow(() => env.heroDraw.claimTask(24));
   assert.doesNotThrow(() => env.heroDraw.claimTask(25));
   assert.throws(() => env.heroDraw.claimTask(7), error => error.code === 310);

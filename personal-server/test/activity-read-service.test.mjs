@@ -16,7 +16,7 @@ const tables = readGameTables();
 const SERVER_OPENED_AT = 1792789200;
 const DAY = 86400;
 
-function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
+function setup(t, initialSeconds = SERVER_OPENED_AT + 3600, serviceTables = tables) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-fishing-'));
   const file = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, file);
@@ -40,11 +40,11 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
     return opened;
   };
   let store = openStore();
-  const calendar = createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
+  const calendar = createActivityCalendar({ tables: serviceTables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
   const make = () => createActivityReadService({
     codec,
     store,
-    tables,
+    tables: serviceTables,
     calendar,
     now: () => nowSeconds * 1000,
     random: () => 0.5
@@ -176,7 +176,11 @@ test('batch fishing consumes available bait and records every catch atomically',
 });
 
 test('rejects closed, cross-version, locked and unsupported-reward requests atomically', t => {
-  const env = setup(t);
+  // Keep this regression test explicit even though 4040301 became a supported
+  // HeroTable reward when the generic reward dispatcher was introduced.
+  const restrictedTables = { ...tables, FishingIsland: new Map(tables.FishingIsland) };
+  restrictedTables.FishingIsland.set(204, { ...tables.FishingIsland.get(204), unlock_reward: [[999999999, 1]] });
+  const env = setup(t, SERVER_OPENED_AT + 3600, restrictedTables);
   const rejects = (fn, code) => assert.throws(fn, error => error.code === code);
   rejects(() => unlock(env.service, 89001, 201), 1);
   rejects(() => unlock(env.service, 1074003, 999), 1);

@@ -552,9 +552,9 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     const bits = await decodeBitBlock(Buffer.from(current.box_award ?? '', 'base64'));
     if (boxes.some(box => hasBit(bits, Number(box.tid)))) throw new GameError(310, 'Mission box reward already claimed');
     const requiredBytes = Math.floor(Math.max(...boxes.map(box => Number(box.tid))) / 8) + 1;
-    const nextBits = Buffer.alloc(Math.max(bits.length, requiredBytes));
+    let nextBits = Buffer.alloc(Math.max(bits.length, requiredBytes));
     bits.copy(nextBits);
-    for (const box of boxes) setBit(nextBits, Number(box.tid));
+    for (const box of boxes) nextBits = setBit(nextBits, Number(box.tid));
     const nextMission = { ...current, box_award: (await encodeBitBlock(nextBits)).toString('base64') };
     const moduleBytes = serializedBinary(codec.pack('pb_mission', nextMission));
     const expectedModule = JSON.stringify(module);

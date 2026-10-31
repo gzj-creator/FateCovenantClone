@@ -78,10 +78,10 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
       const period = 'v' + Number(act.version);
       const matching = claims.filter(claim => Number(claim.act_id) === actId && claim.period === period);
       if (!matching.length) continue;
-      const bits = Buffer.alloc(AWARD_STATE_WIDTH);
+      let bits = Buffer.alloc(AWARD_STATE_WIDTH);
       for (const claim of matching) {
         const bit = Number(claim.task_id) % AWARD_STATE_WIDTH;
-        if (bit > 0) setBit(bits, bit);
+        if (bit > 0) bits = setBit(bits, bit);
       }
       if (!awardStateBytes(row.award_state).equals(bits)) repairs.set(actId, bits);
     }
@@ -151,8 +151,8 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
         throw new GameError(310, 'Reward already claimed');
       }
 
-      setBit(awardState, slot);
-      entry.award_state = awardState.toString('base64');
+      const nextAwardState = setBit(awardState, slot);
+      entry.award_state = nextAwardState.toString('base64');
       const res = grantResources(model, award.award, tables);
       const nextModule = serializedBinary(codec.pack('pb_acc_recharge_list', dataRows));
       const updated = new Map(model.state.modules.value);
