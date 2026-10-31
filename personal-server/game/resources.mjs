@@ -8,7 +8,10 @@ function resourceType(item, tables) {
 }
 
 function appendLocation(model, modules, type) {
-  if (type === 1500) {
+  // Source currency and artifact rewards share the role-level currency module.
+  // Artifact rows still use the same numeric ownership entry, while their
+  // detailed instance data remains in the client's artifact subsystem.
+  if (type === 1500 || type === 10) {
     const occupied = [...model.resources.values()].filter(x => x.location[0] === 5).map(x => x.location[2]);
     return [5, null, Math.max(-1, ...occupied) + 1];
   }

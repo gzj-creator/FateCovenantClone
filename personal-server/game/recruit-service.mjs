@@ -87,7 +87,7 @@ function module10(model) {
   return { modules, module };
 }
 
-export function createRecruitService({ store, codec, tables, heroTables, random = Math.random, now = () => Math.floor(Date.now() / 1000) }) {
+export function createRecruitService({ store, codec, tables, heroTables, random = Math.random, now = () => Math.floor(Date.now() / 1000), onDraw = null }) {
   const pools = buildRecruitPoolCatalog(heroTables);
   const drawConfigs = new Map();
   for (const [lib, pool] of pools) {
@@ -327,6 +327,9 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
     else info.draw_num_kv_list.push({ key: drawTypeKey, value: String(count) });
     info.data_version = (info.data_version ?? 0) + 1;
     writeDrawInfo(model, state);
+    // Activity progress belongs to the same SQLite transaction as the draw. A
+    // callback failure therefore rolls back both the recruitment and activity.
+    const activityProgress = onDraw?.(model, { lib, count, seconds }) ?? null;
     return {
       schema: 'hero_draw_back',
       value: {
@@ -342,6 +345,7 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
         count,
         ruleVersion: RECRUIT_RULE_VERSION,
         newHeroes: newHeroes.map(hero => hero.tid),
+        activityProgress,
         results: results.map(result => ({ tid: result.tid, quality: result.quality, guaranteed: result.guaranteed, wishHero: result.wishHero }))
       }
     };

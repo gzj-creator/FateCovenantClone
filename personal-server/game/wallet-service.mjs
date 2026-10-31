@@ -48,12 +48,13 @@ function reviveJsonBuffers(value) {
   return value;
 }
 const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
-export function createWalletService({ store, codec, tables, voucher, monthPermit, permitService, petActivity, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
+export function createWalletService({ store, codec, tables, voucher, monthPermit, permitService, petActivity, heroDrawActivity, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
   const log = event => { try { logger(event); } catch {} };
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
   const standardPermits = permitService ?? createPermitService({ codec, tables });
   const GIFT_BUY_RECORD_HANDLE = 73;
   const dailyRechargeRows = [...(tables.DailyDiscountRecharge?.values?.() ?? [])];
+  const dailyDiscountProductIds = new Set(dailyRechargeRows.map(row => Number(row.recharge_id)));
   const dailyRechargeRowByTid = new Map(dailyRechargeRows.map(row => [Number(row.tid), row]));
   const dailyRechargeRowByProductId = new Map(dailyRechargeRows.map(row => [Number(row.recharge_id), row]));
   const dailyDay = seconds => Math.floor((seconds + DAILY_RESET_OFFSET_SECONDS) / 86400);
@@ -170,7 +171,12 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       }
     }
     const currentSeconds = now();
-    const hasDailyOrders = rows.some(row => tables.Recharge.get(row.product_id)?.type === DAILY_DISCOUNT_RECHARGE);
+    const hasDailyOrders = rows.some(row => {
+      if (tables.Recharge.get(row.product_id)?.type !== DAILY_DISCOUNT_RECHARGE) return false;
+      let payload = {};
+      try { payload = JSON.parse(row.payload_json ?? '{}'); } catch {}
+      return Number(payload.hero_activity_id) !== Number(heroDrawActivity?.activityId);
+    });
     if (modules.has(DAILY_DISCOUNT_MODULE) || hasDailyOrders) {
       const info = dailyDiscountInfo(modules), today = dailyDay(currentSeconds);
       let dailyChanged = normalizeDailyDiscount(info, currentSeconds);
@@ -182,6 +188,9 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         if (!Number.isSafeInteger(parsed) || dailyDay(parsed) !== today) continue;
         let payload = {};
         try { payload = JSON.parse(row.payload_json ?? '{}'); } catch {}
+        // A shared RechargeTable row such as 40008 can be bought from both the
+        // daily-discount and hundred-schools UIs. Keep their counters separate.
+        if (Number(payload.hero_activity_id) === Number(heroDrawActivity?.activityId)) continue;
         // Additional buys share the daily row but do not consume its normal
         // `can_buy_times` allowance.
         if (payload.daily_discount_additional === true) continue;
@@ -205,8 +214,23 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
   // whose rewards can be granted by resources.mjs are eligible here.
   const resourceProduct = row => [1,43,46,47,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => tables.Item.has(tid) && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0);
   const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && (row.sync_handle ?? 0) === 0
-    && (row.type === 130 ? permits.supports(row) : row.type === 76 ? Boolean(petActivity?.giftConfig(row.tid)) : (standardPermits.supports(row) || resourceProduct(row)));
+    && (row.type === 130 ? permits.supports(row) : row.type === 76 ? Boolean(petActivity?.giftConfig(row.tid)) : Boolean(heroDrawActivity?.giftConfig(row.tid)) || standardPermits.supports(row) || resourceProduct(row));
   const products = [...tables.Recharge.values()].filter(supported);
+  function heroGiftForPurchase(productId, activityVersion) {
+    const gift = heroDrawActivity?.giftConfig(productId);
+    if (!gift) return null;
+    if (activityVersion === undefined || activityVersion === null) {
+      // 40008 and 40010 are shared by DailyDiscount and Hundred Schools. Their
+      // DailyDiscount request has the binary JSON extra-parameter payload; the
+      // Hundred Schools request carries a plain activity-version argument.
+      return dailyDiscountProductIds.has(Number(productId)) ? null : gift;
+    }
+    const version = Number(activityVersion);
+    if (!Number.isSafeInteger(version) || version !== Number(gift.config.version)) {
+      throw new GameError(5, 'Hundred schools purchase version does not match the running activity');
+    }
+    return gift;
+  }
   function snapshot() {
     return store.inspect(db => ({
       accounts: db.prepare('SELECT account_id,role_id,balance_cents FROM local_wallets ORDER BY account_id').all().map(row => ({ ...row, phone: row.account_id === accountId ? phone : '', nickname: store.read().role.nick_name ? Buffer.from(store.read().role.nick_name, 'base64').toString() : '' })),
@@ -236,9 +260,15 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       return { balance_cents: balance, duplicate: false };
     });
   }
-  function assertPurchaseAvailable({ product_id, extra_buy = false } = {}) {
+  function assertPurchaseAvailable({ product_id, extra_buy = false, activity_version } = {}) {
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
+    const heroGift = heroGiftForPurchase(product_id, activity_version);
+    if (heroGift) {
+      if (![16, 46, 106].includes(Number(product.type)) || Number(product.pay_type) !== 0) throw new GameError(5, 'Hundred schools gift has an unsupported price');
+      if (!heroDrawActivity.giftPurchaseAllowed(product_id, 1)) throw new GameError(307, 'Product purchase limit reached');
+      return;
+    }
     if (product.type === 76) {
       petActivity.assertGiftAvailable(product_id);
       const purchaseCount = petActivity.giftPurchaseCount(product_id);
@@ -255,11 +285,12 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     const purchaseCount = store.inspect(db => db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(accountId, product_id).n);
     if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
   }
-  function buy({ account_id = accountId, product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false }) {
+  function buy({ account_id = accountId, product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false, activity_version }) {
     if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)) throw new GameError(1, 'Invalid local purchase');
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
-    const petGift = product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
+    const heroGift = heroGiftForPurchase(product_id, activity_version);
+    const petGift = !heroGift && product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
     if ((voucher_item_tid !== undefined || voucher_amount_cents !== undefined || voucher_count !== 0) && !voucher) throw new GameError(5, 'Voucher payment is not configured');
     const purchasedAt = now();
     if (!Number.isSafeInteger(purchasedAt) || purchasedAt <= 0) throw new GameError(1, 'Invalid purchase time');
@@ -287,11 +318,13 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       }
       const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
       if (balance < quote.balance_cents) throw new GameError(301, 'Account balance is insufficient');
-      if (product.type !== 76 && product.can_buy_times > 0 && (product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
+      if (!heroGift && product.type !== 76 && product.can_buy_times > 0 && (product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
       const modules = new Map(model.state.modules.value);
       let dailyPlan = null;
       if (product.can_buy_times > 0) {
-        if (product.type === 76) {
+        if (heroGift) {
+          if (!heroDrawActivity.giftPurchaseAllowed(product_id, 1, db, purchasedAt)) throw new GameError(307, 'Product purchase limit reached');
+        } else if (product.type === 76) {
           const purchaseCount = petActivity.giftPurchaseCount(product_id, db);
           if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
         } else if (product.type === DAILY_DISCOUNT_RECHARGE) {
@@ -336,6 +369,14 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         });
         extraRetList.push(petActivity.rechargeExtra(petGift.activityId, db));
       }
+      if (heroGift) {
+        heroDrawActivity.recordGiftPurchase({
+          model, db, activityId: heroGift.activityId, productId: product_id, buyNum: 1,
+          priceItemTid: 0, priceAmount: product.price, requestId: request_id,
+          payload: { product_id, activity_id: heroGift.activityId, wallet_purchase: true, hero_activity_id: heroGift.activityId }
+        });
+        extraRetList.push(heroDrawActivity.rechargeExtra(heroGift.activityId, db));
+      }
       const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: etfList([[dailyPlan?.additional === true, 0, day]]), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
@@ -343,7 +384,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       modules.set(19,serializedBinary(codec.pack('res_recharge_login',login))); model.state.modules.value = [...modules];
       const balanceAfter = balance - quote.balance_cents;
       db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter,account_id);
-      const result = { order_id: order, product_id, price_cents: product.price, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, balance_paid_cents: quote.balance_cents, balance_cents: balanceAfter, notification: data.toString('base64'), daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true };
+      const result = { order_id: order, product_id, price_cents: product.price, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, balance_paid_cents: quote.balance_cents, balance_cents: balanceAfter, notification: data.toString('base64'), daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true, ...(heroGift ? { hero_activity_id: heroGift.activityId } : {}) };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(result),order);
       db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order,account_id,'purchase',-quote.balance_cents,balanceAfter,createdAt,JSON.stringify({ product_id, order_id: order, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true }));
       return { ...result, duplicate: false };
@@ -363,11 +404,22 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)
       || !Number.isSafeInteger(buy_num) || buy_num < 1 || buy_num > 100) throw new GameError(1, 'Invalid local gift purchase');
     const product = tables.Recharge.get(product_id);
-    if (!product || !([46, 76].includes(product.type))) throw new GameError(5, 'This gift needs an additional gameplay handler');
-    if (product.type === 46 && buy_num !== 1) throw new GameError(1, 'Ordinary gifts are purchased one at a time');
-    const petGift = product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
+    const heroGift = heroDrawActivity?.giftConfig(product_id);
+    if (!product || (!heroGift && ![46, 76].includes(product.type))) throw new GameError(5, 'This gift needs an additional gameplay handler');
+    if (!heroGift && product.type === 46 && buy_num !== 1) throw new GameError(1, 'Ordinary gifts are purchased one at a time');
+    const petGift = !heroGift && product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
     const free = product.pay_type === 2;
-    if (product.type === 46) {
+    if (heroGift) {
+      if (![16, 46, 106].includes(Number(product.type))) throw new GameError(5, 'Hundred schools gift type is unsupported');
+      if (free) {
+        if (Number(product.price) !== 0) throw new GameError(5, 'Free hundred-schools gift has an invalid price');
+      } else if (product.pay_type === 1) {
+        if (!Number.isSafeInteger(Number(product.price)) || Number(product.price) <= 0
+          || !Number.isSafeInteger(Number(product.cost_item)) || Number(product.cost_item) <= 0) throw new GameError(5, 'Hundred schools gift resource price is invalid');
+      } else {
+        throw new GameError(5, 'This hundred-schools gift must be purchased through the recharge flow');
+      }
+    } else if (product.type === 46) {
       if (free ? product.price !== 0 : !(product.pay_type === 0 && Number.isSafeInteger(product.price) && product.price > 0)) throw new GameError(5, 'Unsupported gift price');
     } else if (free) {
       if (Number(product.price) !== 0) throw new GameError(5, 'Free pet gift has an invalid price');
@@ -385,30 +437,33 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         if (old.product_id !== product_id || Number(oldPayload.buy_num ?? 1) !== buy_num) throw new GameError(1, 'Purchase request ID already used');
         return { ...oldPayload, duplicate: true };
       }
+      const purchasedAt = now();
       const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
-      if (product.type === 46 && !free && balance < product.price) throw new GameError(301, 'Account balance is insufficient');
-      const purchasedCount = product.type === 76
+      if (!heroGift && product.type === 46 && !free && balance < product.price) throw new GameError(301, 'Account balance is insufficient');
+      const purchasedCount = heroGift
+        ? heroDrawActivity.giftPurchaseCount(product_id, db, purchasedAt)
+        : product.type === 76
         ? petActivity.giftPurchaseCount(product_id, db)
         : db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id, product_id).n;
       if (product.can_buy_times > 0 && purchasedCount + buy_num > product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
-      const purchasedAt = now();
       const order = 'local-' + randomUUID();
       const changes = [];
-      if (petGift && product.pay_type === 1) {
+      if ((petGift || heroGift) && product.pay_type === 1) {
         changes.push(...consumeResources(model, [[Number(product.cost_item), Number(product.price) * buy_num]]).changes);
       }
       changes.push(...grantResources(model, product.reward_tid.map((tid, i) => [tid, product.reward_count[i] * buy_num]), tables).changes);
       const res = { changes, is_overflow: false };
-      const orderPrice = product.type === 76 ? 0 : product.price;
+      const orderPrice = petGift || heroGift ? 0 : product.price;
       db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)').run(order, account_id, request_id, product_id, orderPrice, '{}', new Date(purchasedAt * 1000).toISOString());
       const modules = new Map(model.state.modules.value);
       const login = modules.has(19) ? codec.unpack('res_recharge_login', rawBinary(modules.get(19))) : {};
       addBuyGiftRecord(login, product_id, purchasedAt);
       modules.set(19, serializedBinary(codec.pack('res_recharge_login', login)));
       model.state.modules.value = [...modules];
-      const balanceAfter = product.type === 46 && !free ? balance - product.price : balance;
-      if (product.type === 46 && !free) db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter, account_id);
+      const balanceAfter = !heroGift && product.type === 46 && !free ? balance - product.price : balance;
+      if (!heroGift && product.type === 46 && !free) db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter, account_id);
       const extraRetList = [];
+      if (heroGift) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: codec.pack('pb_buy_gift_record', { recharge_tid: product_id, buy_time: purchasedAt }) });
       if (petGift) {
         petActivity.recordGiftPurchase({
           model, db, activityId: petGift.activityId, productId: product_id, buyNum: buy_num,
@@ -419,9 +474,19 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         });
         extraRetList.push(petActivity.rechargeExtra(petGift.activityId, db));
       }
-      const value = { order_id: order, product_id, price_cents: orderPrice, balance_cents: balanceAfter, time: purchasedAt, buy_num, res, extra_ret_list: extraRetList };
+      if (heroGift) {
+        heroDrawActivity.recordGiftPurchase({
+          model, db, activityId: heroGift.activityId, productId: product_id, buyNum: buy_num,
+          priceItemTid: product.pay_type === 1 ? Number(product.cost_item) : 0,
+          priceAmount: product.pay_type === 1 ? Number(product.price) * buy_num : 0,
+          requestId: request_id,
+          payload: { product_id, activity_id: heroGift.activityId, buy_num, hero_activity_id: heroGift.activityId }
+        });
+        extraRetList.push(heroDrawActivity.rechargeExtra(heroGift.activityId, db));
+      }
+      const value = { order_id: order, product_id, price_cents: orderPrice, balance_cents: balanceAfter, time: purchasedAt, buy_num, res, extra_ret_list: extraRetList, ...(heroGift ? { hero_activity_id: heroGift.activityId } : {}) };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(value), order);
-      if (product.type === 46 && !free) db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order, account_id, 'gift_purchase', -product.price, balanceAfter, new Date(purchasedAt * 1000).toISOString(), JSON.stringify({ product_id, order_id: order }));
+      if (!heroGift && product.type === 46 && !free) db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order, account_id, 'gift_purchase', -product.price, balanceAfter, new Date(purchasedAt * 1000).toISOString(), JSON.stringify({ product_id, order_id: order }));
       return { ...value, duplicate: false };
     });
     if (!result.duplicate) log({ event: 'wallet_gift_purchase_committed', productId: product_id, orderId: result.order_id, free });
