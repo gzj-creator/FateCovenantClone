@@ -15,6 +15,7 @@
 | [04-system-roadmap.md](04-system-roadmap.md) | 完整系统范围、成品号取证、图鉴/技能/养成/天极/法阵路线和验收 | 确定接下来实现什么、检查整体进度时 |
 | [05-development-status.md](05-development-status.md) | 当前源码、验证证据、工具链限制、剩余工作与准确续接命令 | 每次续接开发、检查哪些内容实际通过时先读 |
 | [09-system-completion-plan.md](09-system-completion-plan.md) | 图鉴剩余操作及团员名册、法阵、星魂卷轴、训练、船舱、时空神殿的分工与整体验收 | 分派模块、合并实现或核对后期系统进度时 |
+| [10-store-product-flow-remediation-plan.md](10-store-product-flow-remediation-plan.md) | 商城限购、返利、通行证、表情包宝箱与主线任务奖励修复计划及验收状态 | 处理本轮商城/任务链路时 |
 
 ## 项目一句话定义
 
