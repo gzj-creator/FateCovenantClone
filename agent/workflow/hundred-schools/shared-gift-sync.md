@@ -42,6 +42,7 @@ Client evidence:
 
 - Targeted `node --test test/hundred-schools.test.mjs`: 7/7 passed.
 - Full `npm test`: 207/207 passed.
+- Integrated `main` full regression after the endgame merge: 230/230 passed.
 - Real temporary TCP 16004 purchase with the tuple-shaped DailyDiscount
   `extra_param` returns both flags, persists one `40010` Hundred Schools gift,
   and refuses a later direct duplicate without charging again.
