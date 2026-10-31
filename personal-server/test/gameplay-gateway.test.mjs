@@ -183,6 +183,43 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(draw.recruit_info.draw_count, 3);
   assert.ok(draw.res.changes.some(change => change.tid === '2002' && change.diff_num === '-2'));
   assert.equal(game.store.read().resources.get('2002').num, String(ticketsBeforeRecruitment));
+  const drawStatistics = codec.unpack('pb_s2c', await next());
+  assert.equal(drawStatistics.type, 2000);
+  const statisticsPush = codec.unpack('pb_count_statics_send_list', Buffer.from(drawStatistics.data, 'base64'));
+  assert.equal(statisticsPush.data_list.length, 1);
+  assert.equal(statisticsPush.data_list[0].stat_tid, 1);
+  assert.deepEqual(statisticsPush.data_list[0].expand_id_list, ['1']);
+  assert.equal(Number(statisticsPush.data_list[0].data.list.find(row => Number(row.id) === 1).total), 3);
+  const achievementStatistics = codec.unpack('pb_s2c', await next());
+  assert.equal(achievementStatistics.type, 2000);
+  const achievementPush = codec.unpack('pb_count_statics_send_list', Buffer.from(achievementStatistics.data, 'base64'));
+  assert.equal(achievementPush.data_list.length, 1);
+  assert.equal(achievementPush.data_list[0].stat_tid, 75);
+
+  // Demigod resident recruitment buys the missing ticket and performs the
+  // requested draw atomically. AwardKit reads the result from pb_res_to_client;
+  // there is no separate 10101 state push in this protocol.
+  game.store.transaction(model => { model.resources.get('101500').num = '2000'; });
+  response = await request(87618, 17, await encodeEtf([1]));
+  assert.equal(response.err, undefined);
+  const demigodPurchase = codec.unpack('pb_fantasy_equip_draw_buy_rsp', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(demigodPurchase.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [['101500', '-400']]);
+  assert.equal(demigodPurchase.res.changes.filter(change => change.extra).length, 1);
+  assert.equal(demigodPurchase.draw.left_buy_times, 9);
+  assert.equal(demigodPurchase.draw.total_draw_times, '1');
+  const demigodModule = new Map(game.store.state().modules.value).get(518);
+  assert.equal(codec.unpack('pb_fantasy_draw', rawBinary(demigodModule.value[2])).total_draw_times, '1');
+  assert.equal(codec.unpack('pb_fantasy_equip_res', rawBinary(demigodModule.value[0])).equips.length, 1);
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value), module = modules.get(518);
+    const draw = codec.unpack('pb_fantasy_draw', rawBinary(module.value[2]));
+    draw.total_draw_times = '100';
+    module.value[2] = serializedBinary(codec.pack('pb_fantasy_draw', draw));
+    model.state.modules.value = [...modules];
+  });
+  response = await request(87617, 18, codec.pack('pb_fantasy_equip_draw_wish_req', { wish_list: [1200719, 1200819] }));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(codec.unpack('pb_fantasy_draw', Buffer.from(response.data, 'base64')).wish_list, [1200719, 1200819]);
 
   // The real MissionUIMgr encoder omits chapter_tid/section_idx; mission_id alone must settle.
   response = await request(201, 11, codec.pack('pb_fight_request', {

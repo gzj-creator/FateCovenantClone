@@ -8,7 +8,7 @@ import { createHeroProgression, GameError } from './hero-progression.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createRankService } from './rank-service.mjs';
 import { createFeatureService } from './feature-service.mjs';
-import { readHeroTables } from '../config/hero-tables.mjs';
+import { readFantasyEquipTables, readHeroTables } from '../config/hero-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from './wallet-service.mjs';
 import { createWelfareService } from './welfare-service.mjs';
@@ -59,7 +59,7 @@ export function createLocalGame({
       modules: template[2], rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
   }
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
-  const heroTables = readHeroTables(), tables = readGameTables();
+  const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables(), tables = readGameTables();
   const calendar = createActivityCalendar({
     tables,
     serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt,
@@ -72,7 +72,7 @@ export function createLocalGame({
   const lineups = createLineupService({ store, codec });
   const ranks = createRankService({ codec });
   const features = createFeatureService({ store, codec, sprintPreview });
-  const recruit = createRecruitService({ store, codec, tables, heroTables });
+  const recruit = createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
@@ -465,8 +465,14 @@ export function createLocalGame({
       if (recruit.supports(type)) {
         try {
           let input;
-          if ([601, 642, 657, 673].includes(type)) {
-            const schema = type === 601 ? 'pb_draw_hero' : type === 673 ? 'pb_draw_marquee_req' : 'pb_draw_choose_wish_req';
+          if ([601, 642, 657, 673, 87617].includes(type)) {
+            const schema = type === 601
+              ? 'pb_draw_hero'
+              : type === 673
+                ? 'pb_draw_marquee_req'
+                : type === 87617
+                  ? 'pb_fantasy_equip_draw_wish_req'
+                  : 'pb_draw_choose_wish_req';
             input = request.data?.length ? unpack(schema, request.data) : {};
           } else if (request.data?.length) {
             const decoded = await decodeEtf(request.data), value = decoded?.value ?? decoded;
@@ -474,7 +480,8 @@ export function createLocalGame({
           }
           const result = recruit.execute(type, input);
           send(seq, result.data);
-          log({ event: 'recruit_committed', type, seq, responseBytes: result.data.length, ...result.valueForLog });
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          log({ event: 'recruit_committed', type, seq, responseBytes: result.data.length, pushCount: result.pushes?.length ?? 0, ...result.valueForLog });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });

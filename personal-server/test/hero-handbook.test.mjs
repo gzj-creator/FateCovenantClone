@@ -8,11 +8,11 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroHandbookService } from '../game/hero-handbook-service.mjs';
 import { createRecruitService } from '../game/recruit-service.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
-import { readHeroTables } from '../config/hero-tables.mjs';
+import { readFantasyEquipTables, readHeroTables } from '../config/hero-tables.mjs';
 import { createLocalGame } from '../local-game.mjs';
 
 const codec = createGameCodec();
-const heroTables = readHeroTables(), tables = readGameTables();
+const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables(), tables = readGameTables();
 const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 
@@ -100,7 +100,7 @@ test('a recruited hero is lit and remains lit after reopening the save', t => {
     if (ticket) ticket.num = '10';
     else model.resources.set('2002', { tid: '2002', num: '10', location: [6, 1, 0] });
   });
-  const recruit = createRecruitService({ store: env.store, codec, tables, heroTables, random: () => 0 });
+  const recruit = createRecruitService({ store: env.store, codec, tables, heroTables, fantasyEquipTables, random: () => 0 });
   recruit.ensureLoginState();
   recruit.execute(601, { draw_lib: 1, point_draw_num: 1 });
   assert.ok(env.store.read().heroInfo.hero_list.some(hero => Number(hero.tid) === 1010101));

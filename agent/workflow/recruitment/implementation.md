@@ -20,7 +20,7 @@
 - `673`：返回空的自定义跑马灯数据。
 - `DailyCanDrawNum`：与客户端 `HeroDataMgr:DrawNumLimit` 对齐。高级招募初始 `1,000,000` 次，心愿招募初始 `10,000` 次；抽卡后扣减，跨天按 `HeroTable.DrawNumLimit` 恢复。
 
-新英雄仍通过客户端既有的 `ItemTable.Chip[award.tid] + award.extra` 路径识别。`extra` 是 ETF 编码的英雄 TID，不是 protobuf 英雄对象。英雄本体、碎片和招募计数均在同一个 SQLite 事务内写入；重复英雄按 `Quality.convert_piece_new` 转换为碎片。
+首次解锁时，`decompose_args.extra` 仍是 ETF 编码的英雄 TID；资源变化 `pb_res_change.extra` 则是 ETF 二进制列表，元素为 protobuf `hero`。英雄本体、碎片和招募计数均在同一个 SQLite 事务内写入；重复英雄按 `Quality.convert_piece_new` 转换为碎片。
 
 > 2026-10-30 修复：新英雄也必须按 `Quality.convert_piece_new` 发放碎片包，不能只发 1 个碎片；否则 `HeroDrawUILogic.FilterAwards` 的 `floor(num / convert_piece_new)` 为 0，结果页会以 `executeCount = 0` 崩溃。详见 [fixes/recruit-result-no-card.md](../fixes/recruit-result-no-card.md)。
 
@@ -77,3 +77,35 @@ npm test --prefix .\personal-server
 - 全量 `npm test --prefix .\personal-server` 为 `211/211` 通过。
 - 只读核对当前运行数据库：`lib1.draw_count=4`、`lib2.draw_count=50`，合计54，因此品质60仍锁定；`lib2` 已有抽卡进度继续可进入。该库中已有的两名品质50心愿只保留展示，累计100抽前不会参与抽取替换。
 - 服务 PID 12980 当前仍有客户端约31秒一次的连接保活；本轮没有停止、重启或部署到运行进程。代码与测试已完成，需在客户端退出或维护窗口重启本机服务后生效。
+
+## 2026-10-31 首次角色、招募统计与半神招募修复
+
+工作分支：`fix/recruitment-bugfix-20261031`。基线为 `main@30143e1`；修复位于隔离 worktree，测试通过后部署。
+
+### 首次角色和小队同步
+
+- 每次抽到英雄均按 `Quality[quality].convert_piece_new` 发放完整碎片包。结果为首次解锁时，同一 `pb_res_change.extra` 还携带 ETF 二进制列表，元素是 protobuf `hero`；客户端 `HeroRes.ResChange -> HeroMgr.AddHeroes` 可立即建立英雄缓存。
+- 新英雄的 `uid=tid`，并立即写入 SQLite `heroes` 与登录模块 10。修复前裸 ETF 整数 extra 不生成即时英雄对象，且旧 UID 与 TID 不同会导致小队按 TID 查询不到。
+- 首次解锁同时写 `decompose_args`，使用碎片 TID、完整碎片数和 ETF 整数英雄 TID；重复英雄不写英雄对象或 decompose 记录。
+
+### 次数、积分和成就
+
+- 每次 type 601 抽取同步 `draw_count`、`daily_draw_count`、`daily_can_draw_num` 和 `draw_num_kv_list`。
+- 模块 21 的统计 TID 1 按招募库累计并推送 type 2000；登录时可按保存的 `draw_count` 回填历史统计。
+- 招募成就统计 TID 75 取四个本地库 `draw_count` 合计。type 77901 返回自定义统计二进制列表，type 662 事务领取 `DrawAchievementAward[2]`，重复领取拒绝，位图和资源同一事务持久化。
+
+### 半神招募
+
+- 运行日志中的 type 87618 请求体为 ETF 整数列表，例如 `g2EC` 解码为 `[2]`，即客户端请求补买 2 张券；调用链是 `DemigodResidentDrawMgr.ReqDrawBuyDemigod`，回调随后直接调用 `HeroDrawUILogic.HandleDraw`，因此补买和抽取必须在同一请求内完成。
+- 状态按客户端 `FantasyEquipMgr.LoginParse` 写到模块 518：索引 0 为 `pb_fantasy_equip_res`，索引 1 为原样保留的 `pb_fantasy_formation_list`，索引 2 为 `pb_fantasy_draw`。旧 `state.demigodDraw` 首次读取时迁移，编队槽不重写。
+- type 87618 返回 `pb_fantasy_equip_draw_buy_rsp { res, draw }`。星钻补券、扣券、抽取、幻武 UID 分配、幻武列表和抽取状态均在一个事务内；响应资源变化按 TID 合并，不再发送错误的 10101 推送。
+- 每次幻武结果是独立 `pb_res_change`，`diff_num=1`，`extra` 为单个 protobuf `pb_fantasy_equip`。幻武 UID 从 `max_equip_id` 递增并同步回模块 518。
+- 配置来自 `DrawNormal[1]`：券 `808002`，星钻 `101500`，单价 400，日限 10、总限 70。type 87617 保存最多 4 个心愿槽；累计 100 抽解锁。`wish_ratio=[5000,10000]` 实现首次 50%、失败一次后必中，命中后失败计数清零。
+- `Guaranteed[103].guaranteed_num=40` 写入每抽结果的保底标记并累计总抽数。客户端 `DrawGroup 60101/60102` 为空，无法恢复官方成员/概率，因此候选取 `DrawUnlock` 已解锁 TID，权重取 `FantasyEquip.lucky_value`；这是明确的本地兼容规则，不宣称为原服概率。
+- 单抽/五连兼容推断：`buyCount==0` 或“现有券 + 补买数 >= 5”时执行五连，否则执行单抽。实际证据确认了 `[2]` 是补买数量；若 UI 还有未覆盖的组合，实机验收时按请求体和目标按钮继续校正。
+
+### 验证和边界
+
+- 招募+网关定向 `21/21`、全量 `220/220`、`git diff --check` 通过。
+- 覆盖首次解锁/重复转换、即时英雄 extra、模块 10 恢复、小队 UID/TID 一致、统计回填和推送、成就防重、半神补券/扣券/幻武入库、UID 唯一、40 抽标记、心愿替换、模块 518 迁移、formation 保留、编码失败整体回滚。
+- 尚未完成真实 APK 验收；本轮不修改 APK，不需要更新 `apk/` 快照或 `apk/README.md`。

@@ -6,9 +6,10 @@ import test from 'node:test';
 import { createGameCodec, decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
-import { readHeroTables } from '../config/hero-tables.mjs';
+import { readFantasyEquipTables, readHeroTables } from '../config/hero-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createRecruitService } from '../game/recruit-service.mjs';
+import { createLineupService } from '../game/lineup-service.mjs';
 import {
   RECRUIT_POOL_RULES,
   availableQualityWeights,
@@ -19,6 +20,7 @@ import {
 const codec = createGameCodec();
 const tables = readGameTables();
 const heroTables = readHeroTables();
+const fantasyEquipTables = readFantasyEquipTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
 const now = () => Date.UTC(2026, 9, 29, 12, 0, 0) / 1000;
 
@@ -40,7 +42,7 @@ function setup(t, random = () => 0) {
   const databasePath = path.join(directory, 'game.sqlite'), legacyStatePath = path.join(directory, 'legacy.json');
   fs.writeFileSync(legacyStatePath, JSON.stringify(fixture()));
   let store = createGameStore({ databasePath, legacyStatePath, codec });
-  const make = (override = {}) => createRecruitService({ store, codec, tables, heroTables, random, now, ...override });
+  const make = (override = {}) => createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, random, now, ...override });
   let service = make();
   service.ensureLoginState();
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -71,6 +73,36 @@ function recruitInfo(env, lib) {
   return codec.unpack('pb_hero_draw_info', rawBinary(module.value[2])).recruit_list.find(info => Number(info.draw_lib) === lib);
 }
 
+function drawInfo(env) {
+  const module = new Map(env.store.state().modules.value).get(10);
+  return codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
+}
+
+const roleStatistics = [...tables.CountStatistics.values()]
+  .filter(row => !row.custom_login && Number(row.type) === 0);
+
+function statisticsData(env, statTid) {
+  const slot = roleStatistics.findIndex(row => Number(row.tid) === statTid) + 1;
+  const module = new Map(env.store.state().modules.value).get(21);
+  return codec.unpack('pb_count_statics_data', rawBinary(module.value[slot]));
+}
+
+async function decodeHeroExtra(bytes) {
+  const list = await decodeEtf(Buffer.from(bytes, 'base64'));
+  assert.equal(list.value.length, 1);
+  return codec.unpack('hero', Buffer.from(list.value[0].value));
+}
+
+async function customStatistics(env) {
+  const decoded = await decodeEtf(env.service.execute(77901, [env.store.read().state.roleId]).data);
+  return decoded.value.map(item => codec.unpack('pb_count_statics_data', Buffer.from(item.value)));
+}
+
+function statisticsTid75(data) {
+  const customTids = [...tables.CountStatistics.values()].filter(row => row.custom_login).map(row => Number(row.tid));
+  return data[customTids.indexOf(75)];
+}
+
 function setPity(env, lib, value) {
   updateRecruitInfo(env, lib, info => { info.guaranteed_count = value; });
 }
@@ -97,6 +129,34 @@ function setDrawCounts(env, counts) {
   });
 }
 
+function demigodModule(env) {
+  return new Map(env.store.state().modules.value).get(518);
+}
+
+function demigodDraw(env) {
+  return codec.unpack('pb_fantasy_draw', rawBinary(demigodModule(env).value[2]));
+}
+
+function demigodEquips(env) {
+  return codec.unpack('pb_fantasy_equip_res', rawBinary(demigodModule(env).value[0]));
+}
+
+function updateDemigodDraw(env, update) {
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value), module = modules.get(518);
+    const draw = module.value[2].value.data.length
+      ? codec.unpack('pb_fantasy_draw', rawBinary(module.value[2]))
+      : {};
+    update(draw);
+    module.value[2] = serializedBinary(codec.pack('pb_fantasy_draw', draw));
+    model.state.modules.value = [...modules];
+  });
+}
+
+function decodeDemigodEquipExtra(value) {
+  return codec.unpack('pb_fantasy_equip', Buffer.from(value, 'base64'));
+}
+
 const rejected = (action, code) => assert.throws(action, error => error.code === code);
 
 test('ticket purchases deduct diamonds, persist limits and reject insufficient funds', t => {
@@ -115,6 +175,124 @@ test('ticket purchases deduct diamonds, persist limits and reject insufficient f
   rejected(() => env.service.execute(600, 1), 301);
   env.store.transaction(model => { model.state.recruitPurchases.normal.daily = 1200; });
   rejected(() => env.service.execute(600, 1), 305);
+});
+
+test('demigod five draw buys and consumes tickets, emits real equips and survives reopen', t => {
+  const env = setup(t);
+  const formationBefore = structuredClone(demigodModule(env).value[1]);
+  env.seed(101500, 5000);
+  const result = env.service.execute(87618, [5]);
+  const response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', result.data);
+  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
+    ['101500', '-2000']
+  ]);
+  const equipChanges = response.res.changes.filter(change => change.extra);
+  assert.equal(equipChanges.length, 5);
+  assert.deepEqual(equipChanges.map(change => change.diff_num), ['1', '1', '1', '1', '1']);
+  const drawn = equipChanges.map(change => decodeDemigodEquipExtra(change.extra));
+  assert.deepEqual(drawn.map(equip => equip.uid), ['1', '2', '3', '4', '5']);
+  assert.equal(new Set(drawn.map(equip => equip.uid)).size, 5);
+  assert.equal(response.draw.total_draw_times, '5');
+  assert.equal(response.draw.left_buy_times, 5);
+  assert.equal(result.pushes, undefined);
+  assert.equal(Number(env.store.read().resources.get('808002').num), 0);
+
+  const persisted = demigodEquips(env);
+  assert.equal(persisted.equips.length, 5);
+  assert.equal(persisted.max_equip_id, 5);
+  assert.deepEqual(persisted.equips.map(equip => equip.uid), ['1', '2', '3', '4', '5']);
+  assert.deepEqual(demigodModule(env).value[1], formationBefore);
+
+  env.reopen();
+  assert.equal(demigodDraw(env).total_draw_times, '5');
+  assert.equal(demigodDraw(env).left_buy_times, 5);
+  assert.equal(demigodEquips(env).equips.length, 5);
+  assert.deepEqual(demigodModule(env).value[1], formationBefore);
+});
+
+test('demigod single draw purchases one ticket while an owned five-ticket draw spends no diamonds', t => {
+  const single = setup(t);
+  single.seed(101500, 1000);
+  let response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', single.service.execute(87618, [1]).data);
+  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
+    ['101500', '-400']
+  ]);
+  assert.equal(response.draw.total_draw_times, '1');
+  assert.equal(response.draw.left_buy_times, 9);
+  assert.equal(demigodEquips(single).equips.length, 1);
+
+  const multi = setup(t);
+  multi.seed(808002, 5);
+  response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', multi.service.execute(87618, [0]).data);
+  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
+    ['808002', '-5']
+  ]);
+  assert.equal(response.draw.total_draw_times, '5');
+  assert.equal(demigodDraw(multi).left_buy_times, 10);
+  rejected(() => multi.service.execute(87618, [0]), 301);
+});
+
+test('demigod wishes replace results, reset failure progress and expose the forty-draw guarantee', t => {
+  const sequence = [0.99, 0.99, 0, 0.99, 0, 0, 0, 0];
+  let randomIndex = 0;
+  const env = setup(t, () => sequence[randomIndex++] ?? 0);
+  updateDemigodDraw(env, draw => { draw.total_draw_times = 100; });
+  const wishList = [1200819, 1200919, 1201019, 1201719];
+  assert.deepEqual(
+    codec.unpack('pb_fantasy_draw', env.service.execute(87617, { wish_list: wishList }).data).wish_list,
+    wishList
+  );
+  rejected(() => env.service.execute(87617, { wish_list: [1200119] }), 5);
+  rejected(() => env.service.execute(87617, { wish_list: [wishList[0], wishList[0]] }), 5);
+  rejected(() => env.service.execute(87617, { wish_list: [999999999] }), 5);
+
+  updateDemigodDraw(env, draw => { draw.total_draw_times = 39; draw.wish_list = []; });
+  env.seed(808002, 5);
+  const result = env.service.execute(87618, [0]);
+  const response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', result.data);
+  assert.equal(response.draw.total_draw_times, '44');
+  assert.equal(result.valueForLog.results.filter(row => row.guaranteed).length, 1);
+
+  updateDemigodDraw(env, draw => {
+    draw.total_draw_times = 100;
+    draw.wish_list = wishList;
+    draw.wish_fail_times = 0;
+  });
+  sequence.splice(0, sequence.length, 0.99, 0.99, 0, 0.99, 0, 0, 0.99, 0);
+  randomIndex = 0;
+  env.seed(808002, 5);
+  const wishedResult = env.service.execute(87618, [0]);
+  const wished = codec.unpack('pb_fantasy_equip_draw_buy_rsp', wishedResult.data);
+  const tids = wished.res.changes.filter(change => change.extra).map(change => Number(decodeDemigodEquipExtra(change.extra).tid));
+  assert.deepEqual(tids, [1202819, 1200819, 1200719, 1200819, 1200719]);
+  assert.equal(wished.draw.wish_fail_times, '1');
+});
+
+test('demigod state migrates from metadata into module 518 and encoding failure rolls back', t => {
+  const env = setup(t);
+  const formationBefore = structuredClone(demigodModule(env).value[1]);
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value), module = modules.get(518);
+    module.value[2] = serializedBinary(Buffer.alloc(0));
+    model.state.demigodDraw = { wish_list: [], total_draw_times: 100, wish_fail_times: 2, refresh_stamp: now(), left_buy_times: 10 };
+    model.state.modules.value = [...modules];
+  });
+  env.service.ensureLoginState();
+  assert.equal(demigodDraw(env).total_draw_times, '100');
+  assert.deepEqual(demigodModule(env).value[1], formationBefore);
+
+  env.seed(101500, 5000);
+  const before = env.store.state();
+  const failing = {
+    ...codec,
+    pack(name, value) {
+      if (name === 'pb_fantasy_equip') throw new Error('Injected demigod result encoding failure');
+      return codec.pack(name, value);
+    }
+  };
+  const service = env.make({ codec: failing });
+  assert.throws(() => service.execute(87618, [1]), /Injected demigod result encoding failure/);
+  assert.deepEqual(env.store.state(), before);
 });
 
 test('all four local draw libraries consume configured prices and return recruit state', t => {
@@ -137,6 +315,85 @@ test('all four local draw libraries consume configured prices and return recruit
   assert.equal(multi.res.changes[0].diff_num, '-10');
   rejected(() => env.service.execute(601, { draw_lib: 99, draw_type: 0 }), 5);
   rejected(() => env.service.execute(601, { draw_lib: 1, point_draw_num: 11 }), 1);
+});
+
+test('draw statistics backfill historical counts and publish both draw and achievement totals', async t => {
+  const env = setup(t);
+  setDrawCounts(env, { 1: 5, 2: 61 });
+  env.service.ensureLoginState();
+  let statistics = statisticsData(env, 1);
+  assert.equal(Number(statistics.list.find(row => Number(row.id) === 1).total), 5);
+  assert.equal(Number(statistics.list.find(row => Number(row.id) === 2).total), 61);
+
+  env.seed(2002, 10);
+  const result = env.service.execute(601, { draw_lib: 1, point_draw_num: 2 });
+  assert.equal(result.pushes.length, 2);
+  assert.equal(result.pushes[0].type, 2000);
+  const pushed = codec.unpack('pb_count_statics_send_list', result.pushes[0].data).data_list[0];
+  assert.equal(pushed.stat_tid, 1);
+  assert.deepEqual(pushed.expand_id_list, ['1']);
+  assert.equal(Number(pushed.data.list.find(row => Number(row.id) === 1).total), 7);
+  const achievementPush = codec.unpack('pb_count_statics_send_list', result.pushes[1].data).data_list[0];
+  assert.equal(achievementPush.stat_tid, 75);
+  assert.equal(achievementPush.data.list.reduce((sum, row) => sum + Number(row.total), 0), 68);
+  assert.equal(Number(statisticsTid75(await customStatistics(env)).list[0].total), 68);
+
+  env.reopen();
+  statistics = statisticsData(env, 1);
+  assert.equal(Number(statistics.list.find(row => Number(row.id) === 1).total), 7);
+  assert.equal(Number(statistics.list.find(row => Number(row.id) === 2).total), 61);
+  assert.equal(Number(statisticsTid75(await customStatistics(env)).list[0].total), 68);
+});
+
+test('draw achievement awards validate progress, persist their bit state and reject duplicate claims', t => {
+  const env = setup(t);
+  setDrawCounts(env, { 1: 20 });
+  rejected(() => env.service.execute(662, [2002]), 305);
+  let response = codec.unpack('pb_res_to_client', env.service.execute(662, [2001]).data);
+  assert.deepEqual(response.changes.map(change => [change.tid, change.diff_num]), [['391002', '400']]);
+  let achievement = drawInfo(env).achieve_list.find(row => Number(row.tid) === 2);
+  assert.deepEqual([...Buffer.from(achievement.award_state, 'base64')], [0x80]);
+
+  setDrawCounts(env, { 1: 40 });
+  response = codec.unpack('pb_res_to_client', env.service.execute(662, [2002]).data);
+  assert.deepEqual(response.changes.map(change => [change.tid, change.diff_num]), [['392002', '10']]);
+  achievement = drawInfo(env).achieve_list.find(row => Number(row.tid) === 2);
+  assert.deepEqual([...Buffer.from(achievement.award_state, 'base64')], [0xc0]);
+  rejected(() => env.service.execute(662, [2001]), 305);
+  rejected(() => env.service.execute(662, [9999]), 5);
+
+  env.reopen();
+  achievement = drawInfo(env).achieve_list.find(row => Number(row.tid) === 2);
+  assert.deepEqual([...Buffer.from(achievement.award_state, 'base64')], [0xc0]);
+  rejected(() => env.service.execute(662, [2002]), 305);
+});
+
+test('draw achievement encoding failure rolls back reward and claim state', t => {
+  const env = setup(t);
+  setDrawCounts(env, { 1: 20 });
+  const before = env.store.state();
+  const failing = {
+    ...codec,
+    pack(name, value) {
+      if (name === 'pb_res_to_client') throw new Error('Injected achievement response failure');
+      return codec.pack(name, value);
+    }
+  };
+  assert.throws(() => env.make({ codec: failing }).execute(662, [2001]), /Injected achievement response failure/);
+  assert.deepEqual(env.store.state(), before);
+});
+
+test('single draws merge into the legacy default-key draw counter', t => {
+  const env = setup(t);
+  setDrawCounts(env, { 1: 30 });
+  updateRecruitInfo(env, 2, info => {
+    info.draw_num_kv_list = [{ key: 1, value: '60' }, { value: '1' }];
+  });
+  env.seed(3002, 10);
+  env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
+  const rows = recruitInfo(env, 2).draw_num_kv_list;
+  assert.equal(rows.find(row => Number(row.key ?? 0) === 1)?.value, '60');
+  assert.equal(rows.find(row => Number(row.key ?? 0) === 0)?.value, '2');
 });
 
 test('pool rules use different weights, lock quality 60 before 100 draws and never expose quality 70', () => {
@@ -241,15 +498,32 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   assert.equal(newChange.diff_num, String(convertCount));
   // HeroDrawUILogic.FilterAwards renders floor(diff_num / convert_piece_new) cards.
   assert.equal(Number(newChange.diff_num) / convertCount, 1);
-  assert.deepEqual(first.decompose_args, []);
-  assert.equal(await decodeEtf(Buffer.from(newChange.extra, 'base64')), 1010101);
+  assert.equal(first.decompose_args.length, 1);
+  assert.equal(first.decompose_args[0].tid, String(newChange.tid));
+  assert.equal(first.decompose_args[0].num, String(convertCount));
+  assert.equal(await decodeEtf(Buffer.from(first.decompose_args[0].extra, 'base64')), 1010101);
+  const syncedHero = await decodeHeroExtra(newChange.extra);
+  assert.equal(syncedHero.tid, '1010101');
+  assert.equal(syncedHero.uid, '1010101');
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
   const loginHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.state().modules.value).get(10).value[0]));
   const recruited = loginHeroes.hero_list.find(hero => Number(hero.tid) === 1010101);
   assert.ok(recruited);
   assert.equal(recruited.uid, recruited.tid);
   assert.equal(recruited.uid, '1010101');
+  // A newly unlocked hero must be usable for the next squad edit without
+  // relogging: the model has already received the same hero through ResChange.
+  const lineupService = createLineupService({ store: env.store, codec });
+  const preset = structuredClone(env.store.read().lineups.pre_lineups[0]);
+  preset.lineup.fighter_list.push({ loc: 1, index: 5, hero_id: recruited.uid });
+  const lineupResponse = codec.unpack('pb_edit_pre_lineup_rsp', lineupService.execute(209, {
+    pre_lineup_list: [preset],
+    handle_types: []
+  }).data);
+  assert.ok(lineupResponse.role_lineup.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === recruited.uid));
   env.reopen();
+  assert.equal(env.store.read().heroInfo.hero_list.find(hero => hero.tid === recruited.tid)?.uid, recruited.uid);
+  assert.ok(env.store.read().lineups.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === recruited.uid));
   const second = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
   const duplicate = second.res.changes.find(change => change.tid === '21100104');
   assert.equal(duplicate.diff_num, String(convertCount));
@@ -264,8 +538,8 @@ test('pity persists across reopen and forces a quality-five hero at the configur
   setPity(env, 1, 49);
   const response = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
   const heroChange = response.res.changes.find(change => change.extra);
-  const heroTid = await decodeEtf(Buffer.from(heroChange.extra, 'base64'));
-  assert.ok(heroTables.Hero.get(heroTid).quality >= 50);
+  const hero = await decodeHeroExtra(heroChange.extra);
+  assert.ok(heroTables.Hero.get(Number(hero.tid)).quality >= 50);
   assert.equal(Number(response.recruit_info.guaranteed_count ?? 0), 0);
   env.reopen();
   assert.equal(Number(recruitInfo(env, 1).guaranteed_count ?? 0), 0);
@@ -284,6 +558,22 @@ test('draw encoding failure rolls back costs, heroes and recruit state', t => {
   };
   const service = env.make({ codec: failing });
   assert.throws(() => service.execute(601, { draw_lib: 1, point_draw_num: 1 }), /Injected recruit encoding failure/);
+  assert.deepEqual(env.store.state(), before);
+});
+
+test('statistics push encoding failure rolls back the entire draw', t => {
+  const env = setup(t);
+  env.seed(2002, 10);
+  const before = env.store.state();
+  const failing = {
+    ...codec,
+    pack(name, value) {
+      if (name === 'pb_count_statics_send_list') throw new Error('Injected statistics push failure');
+      return codec.pack(name, value);
+    }
+  };
+  const service = env.make({ codec: failing });
+  assert.throws(() => service.execute(601, { draw_lib: 1, point_draw_num: 1 }), /Injected statistics push failure/);
   assert.deepEqual(env.store.state(), before);
 });
 
