@@ -125,7 +125,7 @@ test('grants version bait once, unlocks the correct first island and persists', 
   const reopened = codec.unpack('pb_fishing_act_data_res', unlock(env.service, 1074003, 201).data);
   assert.deepEqual(reopened.data.unlock_map_list, ['201']);
   assert.deepEqual(reopened.res.changes, []);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 7);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 8);
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('fishing-activity-state-v6')));
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('activity-calendar-server-open-v7')));
   assert.equal(env.store.read().state.serverOpenedAt, SERVER_OPENED_AT);

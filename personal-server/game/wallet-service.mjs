@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
-import { grantResources } from './resources.mjs';
+import { consumeResources, grantResources } from './resources.mjs';
 import { GameError } from './hero-progression.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
 import { createPermitService } from './permit-service.mjs';
@@ -37,7 +37,18 @@ function etfTerm(value) {
 function etfList(values) {
   return Buffer.concat([Buffer.from([0x83]), etfTerm(values)]);
 }
-export function createWalletService({ store, codec, tables, voucher, monthPermit, permitService, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
+// Payloads are stored as JSON for idempotent replay. JSON turns Buffers into
+// {type:'Buffer',data:[...]}; restore them before handing the payload back to
+// protobufjs so a retried request cannot fail while encoding its response.
+function reviveJsonBuffers(value) {
+  if (Array.isArray(value)) return value.map(reviveJsonBuffers);
+  if (!value || typeof value !== 'object') return value;
+  if (value.type === 'Buffer' && Array.isArray(value.data)) return Buffer.from(value.data);
+  for (const [key, entry] of Object.entries(value)) value[key] = reviveJsonBuffers(entry);
+  return value;
+}
+const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
+export function createWalletService({ store, codec, tables, voucher, monthPermit, permitService, petActivity, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
   const log = event => { try { logger(event); } catch {} };
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
   const standardPermits = permitService ?? createPermitService({ codec, tables });
@@ -193,7 +204,8 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
   // example a month card grants diamonds plus its activation item). Only rows
   // whose rewards can be granted by resources.mjs are eligible here.
   const resourceProduct = row => [1,43,46,47,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => tables.Item.has(tid) && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0);
-  const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && (row.sync_handle ?? 0) === 0 && (row.type === 130 ? permits.supports(row) : (standardPermits.supports(row) || resourceProduct(row)));
+  const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && (row.sync_handle ?? 0) === 0
+    && (row.type === 130 ? permits.supports(row) : row.type === 76 ? Boolean(petActivity?.giftConfig(row.tid)) : (standardPermits.supports(row) || resourceProduct(row)));
   const products = [...tables.Recharge.values()].filter(supported);
   function snapshot() {
     return store.inspect(db => ({
@@ -227,6 +239,12 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
   function assertPurchaseAvailable({ product_id, extra_buy = false } = {}) {
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
+    if (product.type === 76) {
+      petActivity.assertGiftAvailable(product_id);
+      const purchaseCount = petActivity.giftPurchaseCount(product_id);
+      if (product.can_buy_times > 0 && purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
+      return;
+    }
     if (!(product.can_buy_times > 0)) return;
     if ((product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
     if (product.type === DAILY_DISCOUNT_RECHARGE) {
@@ -241,6 +259,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)) throw new GameError(1, 'Invalid local purchase');
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
+    const petGift = product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
     if ((voucher_item_tid !== undefined || voucher_amount_cents !== undefined || voucher_count !== 0) && !voucher) throw new GameError(5, 'Voucher payment is not configured');
     const purchasedAt = now();
     if (!Number.isSafeInteger(purchasedAt) || purchasedAt <= 0) throw new GameError(1, 'Invalid purchase time');
@@ -262,17 +281,20 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     const result = store.transaction((model, db) => {
       const old = db.prepare('SELECT * FROM recharge_orders WHERE account_id=? AND request_id=?').get(account_id, request_id);
       if (old) {
-        const oldPayload = JSON.parse(old.payload_json);
+        const oldPayload = parseStoredPayload(old.payload_json);
         if (old.product_id !== product_id || (oldPayload.voucher_quantity ?? 0) !== quote.quantity) throw new GameError(1, 'Purchase request ID already used');
         return { ...oldPayload, duplicate: true };
       }
       const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
       if (balance < quote.balance_cents) throw new GameError(301, 'Account balance is insufficient');
-      if (product.can_buy_times > 0 && (product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
+      if (product.type !== 76 && product.can_buy_times > 0 && (product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
       const modules = new Map(model.state.modules.value);
       let dailyPlan = null;
       if (product.can_buy_times > 0) {
-        if (product.type === DAILY_DISCOUNT_RECHARGE) {
+        if (product.type === 76) {
+          const purchaseCount = petActivity.giftPurchaseCount(product_id, db);
+          if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
+        } else if (product.type === DAILY_DISCOUNT_RECHARGE) {
           dailyPlan = planDailyDiscountPurchase(modules, product, purchasedAt, extra_buy === true);
           if (!dailyPlan) throw new GameError(307, 'Product purchase limit reached');
         } else {
@@ -306,6 +328,14 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       if (giftRecord) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord });
       const dailyDiscount = dailyPlan ? setDailyDiscountInfo(modules, dailyPlan.info) : null;
       if (dailyDiscount) extraRetList.push({ flag: DAILY_DISCOUNT_HANDLE, data: dailyDiscount });
+      if (petGift) {
+        petActivity.recordGiftPurchase({
+          model, db, activityId: petGift.activityId, productId: product_id, buyNum: 1,
+          priceItemTid: 0, priceAmount: product.price, requestId: request_id,
+          payload: { product_id, activity_id: petGift.activityId, wallet_purchase: true }
+        });
+        extraRetList.push(petActivity.rechargeExtra(petGift.activityId, db));
+      }
       const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: etfList([[dailyPlan?.additional === true, 0, day]]), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
@@ -326,42 +356,72 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     }
     const { notification, ...publicResult } = result; return publicResult;
   }
-  // RechargeTable type 46 is the in-game gift family. Its rewards are ordinary inventory items
-  // (not only diamonds), and its limit is counted from local orders instead of a recharge SDK
-  // notification. Free gifts (pay_type 2, price 0) use the same order table so their one-time
-  // limit survives restarts.
+  // RechargeTable type 46 is the ordinary in-game gift family. Type 76 is owned by the pet
+  // activity and may be free, resource-priced, or wallet-priced. The latter still enters through
+  // buy(); purchaseGift() handles the free and resource-priced variants used by command 16005.
   function purchaseGift({ account_id = accountId, product_id, request_id, buy_num = 1 }) {
-    if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id) || buy_num !== 1) throw new GameError(1, 'Invalid local gift purchase');
+    if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)
+      || !Number.isSafeInteger(buy_num) || buy_num < 1 || buy_num > 100) throw new GameError(1, 'Invalid local gift purchase');
     const product = tables.Recharge.get(product_id);
-    if (!product || product.type !== 46) throw new GameError(5, 'This gift needs an additional gameplay handler');
+    if (!product || !([46, 76].includes(product.type))) throw new GameError(5, 'This gift needs an additional gameplay handler');
+    if (product.type === 46 && buy_num !== 1) throw new GameError(1, 'Ordinary gifts are purchased one at a time');
+    const petGift = product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
     const free = product.pay_type === 2;
-    if (free ? product.price !== 0 : !(product.pay_type === 0 && Number.isSafeInteger(product.price) && product.price > 0)) throw new GameError(5, 'Unsupported gift price');
+    if (product.type === 46) {
+      if (free ? product.price !== 0 : !(product.pay_type === 0 && Number.isSafeInteger(product.price) && product.price > 0)) throw new GameError(5, 'Unsupported gift price');
+    } else if (free) {
+      if (Number(product.price) !== 0) throw new GameError(5, 'Free pet gift has an invalid price');
+    } else if (product.pay_type === 1) {
+      if (!Number.isSafeInteger(Number(product.price)) || Number(product.price) <= 0
+        || !Number.isSafeInteger(Number(product.cost_item)) || Number(product.cost_item) <= 0) throw new GameError(5, 'Pet gift resource price is invalid');
+    } else {
+      throw new GameError(5, 'This pet gift must be purchased through the recharge flow');
+    }
     if (!Array.isArray(product.reward_tid) || !product.reward_tid.length || !Array.isArray(product.reward_count) || product.reward_tid.length !== product.reward_count.length) throw new GameError(5, 'Gift has no configured rewards');
     const result = store.transaction((model, db) => {
       const old = db.prepare('SELECT * FROM recharge_orders WHERE account_id=? AND request_id=?').get(account_id, request_id);
       if (old) {
-        if (old.product_id !== product_id) throw new GameError(1, 'Purchase request ID already used');
-        return { ...JSON.parse(old.payload_json), duplicate: true };
+        const oldPayload = parseStoredPayload(old.payload_json);
+        if (old.product_id !== product_id || Number(oldPayload.buy_num ?? 1) !== buy_num) throw new GameError(1, 'Purchase request ID already used');
+        return { ...oldPayload, duplicate: true };
       }
       const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
-      if (!free && balance < product.price) throw new GameError(301, 'Account balance is insufficient');
-      if (product.can_buy_times > 0 && db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id, product_id).n >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
-      const order = 'local-' + randomUUID(), now = Math.floor(Date.now() / 1000);
-      db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)').run(order, account_id, request_id, product_id, product.price, '{}', new Date().toISOString());
-      const res = grantResources(model, product.reward_tid.map((tid, i) => [tid, product.reward_count[i]]), tables);
+      if (product.type === 46 && !free && balance < product.price) throw new GameError(301, 'Account balance is insufficient');
+      const purchasedCount = product.type === 76
+        ? petActivity.giftPurchaseCount(product_id, db)
+        : db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id, product_id).n;
+      if (product.can_buy_times > 0 && purchasedCount + buy_num > product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
+      const purchasedAt = now();
+      const order = 'local-' + randomUUID();
+      const changes = [];
+      if (petGift && product.pay_type === 1) {
+        changes.push(...consumeResources(model, [[Number(product.cost_item), Number(product.price) * buy_num]]).changes);
+      }
+      changes.push(...grantResources(model, product.reward_tid.map((tid, i) => [tid, product.reward_count[i] * buy_num]), tables).changes);
+      const res = { changes, is_overflow: false };
+      const orderPrice = product.type === 76 ? 0 : product.price;
+      db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)').run(order, account_id, request_id, product_id, orderPrice, '{}', new Date(purchasedAt * 1000).toISOString());
       const modules = new Map(model.state.modules.value);
       const login = modules.has(19) ? codec.unpack('res_recharge_login', rawBinary(modules.get(19))) : {};
-      const giftRecord = login.buy_gift_record ? codec.unpack('pb_buy_gift_record_list', Buffer.from(login.buy_gift_record, 'base64')) : { record_list: [] };
-      giftRecord.record_list.push({ recharge_tid: product_id, buy_time: now });
-      if (giftRecord.record_list.length > 200) giftRecord.record_list = giftRecord.record_list.slice(-200);
-      login.buy_gift_record = codec.pack('pb_buy_gift_record_list', giftRecord).toString('base64');
+      addBuyGiftRecord(login, product_id, purchasedAt);
       modules.set(19, serializedBinary(codec.pack('res_recharge_login', login)));
       model.state.modules.value = [...modules];
-      const balanceAfter = free ? balance : balance - product.price;
-      if (!free) db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter, account_id);
-      const value = { order_id: order, product_id, price_cents: product.price, balance_cents: balanceAfter, time: now, res };
+      const balanceAfter = product.type === 46 && !free ? balance - product.price : balance;
+      if (product.type === 46 && !free) db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter, account_id);
+      const extraRetList = [];
+      if (petGift) {
+        petActivity.recordGiftPurchase({
+          model, db, activityId: petGift.activityId, productId: product_id, buyNum: buy_num,
+          priceItemTid: product.pay_type === 1 ? Number(product.cost_item) : 0,
+          priceAmount: product.pay_type === 1 ? Number(product.price) * buy_num : 0,
+          requestId: request_id,
+          payload: { product_id, activity_id: petGift.activityId, buy_num }
+        });
+        extraRetList.push(petActivity.rechargeExtra(petGift.activityId, db));
+      }
+      const value = { order_id: order, product_id, price_cents: orderPrice, balance_cents: balanceAfter, time: purchasedAt, buy_num, res, extra_ret_list: extraRetList };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(value), order);
-      db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order, account_id, 'gift_purchase', -product.price, balanceAfter, new Date().toISOString(), JSON.stringify({ product_id, order_id: order }));
+      if (product.type === 46 && !free) db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order, account_id, 'gift_purchase', -product.price, balanceAfter, new Date(purchasedAt * 1000).toISOString(), JSON.stringify({ product_id, order_id: order }));
       return { ...value, duplicate: false };
     });
     if (!result.duplicate) log({ event: 'wallet_gift_purchase_committed', productId: product_id, orderId: result.order_id, free });

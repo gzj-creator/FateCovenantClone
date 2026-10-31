@@ -28,7 +28,19 @@ const key = JSON.parse(fs.readFileSync('analysis/experiments/private-server-2026
 const list = createServerListService({ signingKey: key, server: { id: 1, name: 'Local Server', extranetIp: '127.0.0.1:19090' }, codec: createProtobufJsCodec(), logger });
 const updateManifestPath = path.join(directory, 'update-manifest-364110.local-only.txt');
 const startup = createStartupService({ appVersion: '1.55.090365', assetVersion: 364110, updateManifest: fs.readFileSync(updateManifestPath), logger });
-const game = createLocalGame({ databasePath: path.join(directory, 'game.local-only.sqlite'), statePath: path.join(directory, 'state.local-only.json'), capturePath: 'personal-server/fixtures/login-modules.local-only.json', verifySession: sdk.verifySession, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId, sprintPreview: true, localWallet:true, missionFightPlayback:true, logger });
+const game = createLocalGame({
+  databasePath: path.join(directory, 'game.local-only.sqlite'),
+  statePath: path.join(directory, 'state.local-only.json'),
+  capturePath: 'personal-server/fixtures/login-modules.local-only.json',
+  verifySession: sdk.verifySession,
+  serverOpenedAt,
+  activityMode: activityCalendar.mode,
+  currentFishingActivityId: activityCalendar.currentFishingActivityId,
+  sprintPreview: true,
+  localWallet: true,
+  missionFightPlayback: true,
+  logger
+});
 sdk.attachWallet(game.wallet);
 const tokenPath=path.join(directory,'admin-key.local-only.txt');
 const admin=createAdminService({wallet:game.wallet,mail:game.mail,voucher:game.voucher,...(fs.existsSync(tokenPath)?{token:fs.readFileSync(tokenPath,'utf8').trim()}:{})});

@@ -13,7 +13,7 @@
   - 失败证据：2026-10-30 12:22:51、12:22:53 客户端两次发送 `req_fishing_act_unlock_map`，服务返回业务错误 5；日志同时记录 `FishingActIslandMainForm._ctnClick`。
   - 根因：客户端点击岛屿发送 `pb_fishing_act_common_req{act_id,value=map_id}`，旧网关把 110305 固定标为未实现。89001 是百媚之约，不是钓鱼活动 ID。
   - 已实现：按 `ActFrameTable.Act.version` 映射 `FishingActTable.Version.island_version`，校验 `Island.belonging_version`；按钓鱼积分和 `FishingActTable.Level` 计算等级；校验 `unlock_level_condition`；首次解锁按 `unlock_reward` 发奖；SQLite 持久化 `unlock_map_list`，重复请求幂等。
-  - 存档：schema v6 新增 `fishing_activity_state`，schema v7 持久化开服时间；首次与重复解锁、进程重开和奖励去重均有测试。
+  - 存档：schema v6 新增 `fishing_activity_state`，schema v7 持久化开服时间，schema v8 新增活动商城与礼包购买记录；首次与重复解锁、进程重开和奖励去重均有测试。
   - 验收：组件与临时 TCP 通过；真实登录已收到过滤后的活动列表；下次活动开放后的 APK 请求和用户视觉仍待确认。
 
 - [x] **活动日历 / 开服相对日（module 92）**
@@ -65,7 +65,7 @@
 | [ ] | 热门推荐礼包48 / 61070 | module 92 并行组存在；未采集 | 核对商品、限购和推荐排序 | - / - / - / - |
 | [ ] | 圣器抽奖活动9_SP1 / 159009 | module 92 并行组存在；未采集 | 核对抽奖概率、保底和圣器发放 | - / - / - / - |
 | [ ] | 精灵投放_水果抽奖SP_小夜 / 101024 | module 92 并行组存在；未采集 | 核对卡池配置和奖励 | - / - / - / - |
-| [x] | 魔灵投放_超凡赫萝 / 83028 | 配置窗口于 2026-10-26 05:00 结束；登录日历已从响应移除，SQLite 原快照保留 | 用户确认入口消失；后续仅在该活动重新开放时做玩法验收 | 组件 / 临时 TCP / 真实登录响应 / - |
+| [x] | 魔灵投放_超凡赫萝 / 83028 | module 92、module 83、商城 5070005 与礼包 730400-730408 已联动；配置窗口于 2026-10-26 05:00 结束后会同步移出，`all-open` 测试模式仍可强制展示，SQLite 原快照保留 | 当前由配置文件控制；部署后按模式验证登录、商城和三类礼包同步出现或移除 | 组件 / 临时 TCP / 真实登录响应 / - |
 | [ ] | 尚未观测到的活动 / 动态列表 | 以每次登录 module 92 为准，不能沿用旧 ID 列表 | 每次新增活动先登记、再取证、再实现 | - / - / - / - |
 
 ## 执行约定

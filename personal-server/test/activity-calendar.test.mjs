@@ -66,6 +66,63 @@ test('filters expired custom activities while preserving a live parallel group p
   assert.equal(activity.act_list.some(entry => Number(entry.state_data?.act_id) === 83028), false);
 });
 
+test('applies join-day and server-opening limits before an activity window opens', () => {
+  const joinDayTables = {
+    Activity: new Map([[900001, {
+      tid: 900001,
+      server_day: 1,
+      server_start_time: 18000,
+      duration_day: 5,
+      end_time: 18000,
+      join_server_day: 3,
+      server_mini_open_limited: 0,
+      server_max_open_limited: 0
+    }]]),
+    ActFrameAct: new Map()
+  };
+  const activity = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+  const onDay = day => createActivityCalendar({
+    tables: joinDayTables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => (SERVER_OPENED_AT + day * DAY) * 1000
+  });
+  assert.equal(onDay(0).isActivityRunning(900001, { act_id: 900001, cur_state_id: 50 }, activity), false);
+  assert.equal(onDay(1).isActivityRunning(900001, { act_id: 900001, cur_state_id: 50 }, activity), false);
+  assert.equal(onDay(2).isActivityRunning(900001, { act_id: 900001, cur_state_id: 50 }, activity), true);
+
+  const limitedTables = {
+    Activity: new Map(),
+    ActFrameAct: new Map([[900002, {
+      tid: 900002,
+      refer_day: 1,
+      server_start_time: 18000,
+      duration_day: 5,
+      end_time: 18000,
+      server_day_limit: 0,
+      server_mini_open_limited: SERVER_OPENED_AT + DAY,
+      server_max_open_limited: SERVER_OPENED_AT + 2 * DAY
+    }]])
+  };
+  const early = createActivityCalendar({
+    tables: limitedTables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => SERVER_OPENED_AT * 1000
+  });
+  const eligible = createActivityCalendar({
+    tables: limitedTables,
+    serverOpenedAt: SERVER_OPENED_AT + DAY,
+    now: () => (SERVER_OPENED_AT + DAY) * 1000
+  });
+  const late = createActivityCalendar({
+    tables: limitedTables,
+    serverOpenedAt: SERVER_OPENED_AT + 3 * DAY,
+    now: () => (SERVER_OPENED_AT + 3 * DAY) * 1000
+  });
+  assert.equal(early.isActivityRunning(900002, { act_id: 900002, cur_state_id: 50 }, activity), false);
+  assert.equal(eligible.isActivityRunning(900002, { act_id: 900002, cur_state_id: 50 }, activity), true);
+  assert.equal(late.isActivityRunning(900002, { act_id: 900002, cur_state_id: 50 }, activity), false);
+});
+
 test('adds the current fishing activity once and does not override a server pause', () => {
   const calendar = calendarAt(SERVER_OPENED_AT + 3600);
   const activity = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };

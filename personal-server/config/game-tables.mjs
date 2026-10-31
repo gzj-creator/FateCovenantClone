@@ -48,6 +48,23 @@ export function readGameTables() {
     }),
     // Welfare activities expose their configuration through these generated tables.
     Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,
+    // The pet activity owns both its exclusive currency shop and recharge gift
+    // family. Keep the generated names explicit so those two code paths cannot
+    // mix them with the ordinary mall tables.
+    ...readGeneratedTables(new URL('../../analysis/tmp/activity-decompiled/PetActivityTable.data.lua.json', import.meta.url), [
+      'PopupShow', 'MainShow', 'PetDecoration', 'Pet', 'ChallengeBuff',
+      'ChallengeTask', 'ChallengeRankAward', 'ChallengeVersion', 'Challenge',
+      'CureWoundState', 'CureFavor', 'Cure', 'PetExclusiveShop', 'PetDraw',
+      'GiftShop', 'PetActivity', 'Exchange'
+    ]),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/activity-decompiled/ShopTable.data.lua.json', import.meta.url), [
+      'Item', 'Period', 'AutoRefresh', 'Main'
+    ]), {
+      Item: 'ShopItem',
+      Period: 'ShopPeriod',
+      AutoRefresh: 'ShopAutoRefresh',
+      Main: 'ShopMain'
+    }),
     ...readGeneratedTables(new URL('MultiLoginTable.data.lua.json', base), ['Const', 'MultiLogin']),
     ...readGeneratedTables(new URL('PrincessTable.data.lua.json', base), ['EnergyAward', 'Gift', 'LoginAward', 'HolidayAward']),
     // Daily-discount rotation maps its short row ids (1..6) to real RechargeTable ids.

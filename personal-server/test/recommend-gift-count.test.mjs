@@ -21,7 +21,7 @@ test('recommend gift list reports stored purchase counts so limited offers stop 
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-recommend-gift-'));
   const databasePath = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, databasePath);
-  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
+  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, activityMode: 'all-open', verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const address = await game.listen(0);

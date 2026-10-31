@@ -20,6 +20,7 @@ import { createActivityReadService } from './activity-read-service.mjs';
 import { createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
+import { createPetActivityService } from './pet-activity-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
@@ -28,7 +29,21 @@ import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../ga
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
-export function createLocalGame({ databasePath, statePath, capturePath, verifySession, serverOpenedAt, activityMode = 'schedule', currentFishingActivityId, sprintPreview = false, localWallet = false, missionFightPlayback = false, now = Date.now, random = Math.random, logger = () => {} }) {
+export function createLocalGame({
+  databasePath,
+  statePath,
+  capturePath,
+  verifySession,
+  serverOpenedAt,
+  activityMode = 'schedule',
+  currentFishingActivityId,
+  sprintPreview = false,
+  localWallet = false,
+  missionFightPlayback = false,
+  now = Date.now,
+  random = Math.random,
+  logger = () => {}
+}) {
   const codec = createGameCodec(), { root, pack, unpack } = codec;
   const clock = () => Number(now());
   function seed() {
@@ -45,7 +60,14 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   }
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
   const heroTables = readHeroTables(), tables = readGameTables();
-  const calendar = createActivityCalendar({ tables, serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt, mode: activityMode, currentFishingActivityId, now: clock });
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt,
+    mode: activityMode,
+    currentFishingActivityId,
+    now: clock
+  });
+  const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const ranks = createRankService({ codec });
@@ -56,7 +78,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
-  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger}):undefined;
+  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger,petActivity,now:() => Math.floor(clock() / 1000)}):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -95,11 +117,14 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(state => Number(state.act_id)))
     ]);
     const schedule = calendar.applyLoginSchedule(activity, loginSeconds);
+    const petLogin = await petActivity.synchronizeLogin(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
-      ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(state => Number(state.act_id)))
+      ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
     ]);
     modules.set(92, binary(pack('pb_act_login', activity)));
+    if (petLogin) modules.set(petActivity.moduleId, binary(petLogin.module));
+    else modules.delete(petActivity.moduleId);
     logger({
       event: 'activity_login_calendar_applied',
       activityMode: calendar.mode,
@@ -107,6 +132,8 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
       serverDay: serverDayNumber(calendar.serverOpenedAt, loginSeconds),
       activeFishingActivityIds: schedule.fishingActivityIds,
       fishingBenefitActivityId: fishingBenefits.actId,
+      petActivityId: petLogin?.actId ?? null,
+      petShopId: petLogin?.shopId ?? null,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -368,19 +395,25 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           productId = Number(args[0]);
           const options = rechargeOptions(args[1]);
           const itemTid = Number(args[2]);
-          const product = wallet.snapshot().products.find(value => value.id === productId);
-          if (!product) throw new GameError(5, 'Unsupported voucher recharge product');
-          const sku = voucher.sku();
-          if (itemTid !== sku.item_tid) throw new GameError(5, 'Unsupported voucher item');
+          if (!Number.isSafeInteger(itemTid) || itemTid < 0) throw new GameError(1, 'Invalid recharge payment item');
           wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy });
-          // Native 16004 carries the item id but no count. The client validation
-          // only runs when it can cover the whole price, so use every available
-          // voucher up to the order maximum and charge the remainder to balance.
-          const available = voucher.balance().quantity;
-          const maximum = voucher.autoCount(product.price_cents);
-          const voucherCount = Math.min(available, maximum);
-          if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
-          const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy });
+          let order;
+          if (itemTid === 0) {
+            // RechargeMgr sends zero for normal balance payment.
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, extra_buy: options.is_extra_buy });
+          } else {
+            const product = wallet.snapshot().products.find(value => value.id === productId);
+            if (!product) throw new GameError(5, 'Unsupported voucher recharge product');
+            const sku = voucher.sku();
+            if (itemTid !== sku.item_tid) throw new GameError(5, 'Unsupported voucher item');
+            // Native 16004 carries no voucher count. Use every available voucher
+            // up to the order maximum and charge the remainder to balance.
+            const available = voucher.balance().quantity;
+            const maximum = voucher.autoCount(product.price_cents);
+            const voucherCount = Math.min(available, maximum);
+            if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy });
+          }
           send(seq);
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
         } catch (error) {
@@ -488,19 +521,33 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           if (Array.isArray(value)) shopIds = value.filter(id => Number.isSafeInteger(id) && id > 0).slice(0, 32);
         } catch {}
         const autoRefreshIds = new Set([201, 202, 203, 204, 205, 206, 207]);
-        const now = Math.floor(Date.now() / 1000);
+        const shopNow = Math.floor(clock() / 1000);
         const autoRefresh = pack('pb_shop_auto_refresh', {
-          next_refresh_time: now + 86400,
+          next_refresh_time: shopNow + 86400,
           limit_bought_count: 0,
           items_history_bought: []
         });
-        const shops = shopIds.map(id => ({
-          id,
-          version: 0,
-          items_groups: autoRefreshIds.has(id) ? [{ item_list: [], group_data_bin: autoRefresh }] : []
-        }));
+        const shops = petActivity.queryShops(shopIds).map(shop => {
+          if (autoRefreshIds.has(Number(shop.id)) && !shop.items_groups.length) {
+            shop.items_groups = [{ item_list: [], group_data_bin: autoRefresh }];
+          }
+          return shop;
+        });
         send(seq, pack('pb_query_shops_back', { shops }));
-        log({ event: 'shop_info_sent', type, seq, shopIds, autoRefreshIds: shopIds.filter(id => autoRefreshIds.has(id)) }); return;
+        log({ event: 'shop_info_sent', type, seq, shopCount: shops.length, autoRefreshIds: shopIds.filter(id => autoRefreshIds.has(Number(id))), petShopId: shops.find(shop => Number(shop.id) === 5070005)?.id ?? null }); return;
+      }
+      if (type === 1201) {
+        try {
+          const requestData = unpack('pb_req_buy_shop_item', request.data);
+          const result = petActivity.purchaseShop(requestData, { connection: id, seq });
+          send(seq, result.data);
+          log({ event: 'pet_activity_shop_purchase_committed', type, seq, shopId: requestData.shop_id, itemId: requestData.shop_item_id, count: requestData.count, duplicate: result.duplicate });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'pet_activity_shop_purchase_rejected', type, seq, code, message: error.message });
+        }
+        return;
       }
       if (type === 85901) {
         try {
@@ -508,10 +555,27 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           // buy_times drives the client's remaining-purchase badge. Mirror the
           // same recharge_orders count that wallet purchase limits enforce.
           const buyCounts = store.inspect(db => new Map(db.prepare('SELECT product_id, count(*) AS n FROM recharge_orders GROUP BY product_id').all().map(row => [Number(row.product_id), Number(row.n)])));
-          const gift_list = actives.map(active => ({
-            act_tid: active.act_tid,
-            buy_list: (active.gift_id ?? []).map(rechargeTid => ({ recharge_tid: rechargeTid, buy_times: buyCounts.get(Number(rechargeTid)) ?? 0 }))
-          }));
+          const activityState = petActivity.loginActivity();
+          const runningIds = new Set([
+            ...(activityState.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+            ...(activityState.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
+          ]);
+          const pausedIds = new Set((activityState.act_pause_list ?? []).map(Number));
+          const gift_list = actives.flatMap(active => {
+            const actId = Number(active.act_tid);
+            if (!runningIds.has(actId) || pausedIds.has(actId) || !calendar.isActivityRunning(actId, null, activityState)) return [];
+            const petCfg = tables.PetActivity?.get(actId);
+            const configuredGifts = petCfg ? new Set((tables.GiftShop?.get(Number(petCfg.gift))?.gift ?? []).map(Number)) : null;
+            const requestedGifts = (active.gift_id ?? []).map(Number).filter(id => !configuredGifts || configuredGifts.has(id));
+            if (!requestedGifts.length) return [];
+            return [{
+              act_tid: actId,
+              buy_list: requestedGifts.map(rechargeTid => ({
+                recharge_tid: rechargeTid,
+                buy_times: petCfg ? petActivity.giftPurchaseCount(rechargeTid) : (buyCounts.get(rechargeTid) ?? 0)
+              }))
+            }];
+          });
           send(seq, pack('pb_recommend_gift_active_rsp', { gift_list }));
           log({ event: 'recommend_gift_active_sent', type, seq, giftCount: gift_list.length, buyCount: gift_list.reduce((sum, gift) => sum + gift.buy_list.length, 0), boughtCount: gift_list.reduce((sum, gift) => sum + gift.buy_list.filter(buy => buy.buy_times > 0).length, 0) });
         } catch (error) {
@@ -542,7 +606,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

@@ -24,6 +24,23 @@ function activityConfig(tables, actId) {
   return tables?.ActFrameAct?.get(actId) ?? tables?.Activity?.get(actId) ?? null;
 }
 
+function serverEligibility(config, serverOpenedAt, at) {
+  if (!config) return true;
+  const minimumDay = Math.max(
+    0,
+    Number(config.join_server_day) || 0,
+    Number(config.server_day_limit) || 0
+  );
+  if (minimumDay > 0 && serverDayNumber(serverOpenedAt, at) < minimumDay) return false;
+
+  const openedAt = seconds(serverOpenedAt);
+  const minimumOpenTime = seconds(config.server_mini_open_limited);
+  const maximumOpenTime = seconds(config.server_max_open_limited);
+  if (minimumOpenTime > 0 && openedAt < minimumOpenTime) return false;
+  if (maximumOpenTime > 0 && openedAt > maximumOpenTime) return false;
+  return true;
+}
+
 function customActivity(activity, actId) {
   return (activity?.act_custom_list ?? []).find(row => Number(row.act_id) === actId) ?? null;
 }
@@ -105,7 +122,9 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     const custom = customActivity(activity, id);
     if (custom) return isCustomRunning(custom, at);
 
-    const window = activityWindow(activityConfig(tables, id), openedAt);
+    const config = activityConfig(tables, id);
+    if (!serverEligibility(config, openedAt, at)) return false;
+    const window = activityWindow(config, openedAt);
     if (window) return at >= window.start && at < window.end;
     return Number(stateData?.cur_state_id ?? 50) === 50;
   }
@@ -211,6 +230,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     serverOpenedAt: openedAt,
     mode,
     currentSeconds,
+    isServerEligible: (actId, at = currentSeconds()) => serverEligibility(activityConfig(tables, Number(actId)), openedAt, at),
     isActivityRunning,
     filterLoginActivity,
     applyLoginSchedule,

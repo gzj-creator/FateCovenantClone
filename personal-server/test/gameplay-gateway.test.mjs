@@ -161,7 +161,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.deepEqual(shops.map(shop => shop.id), [207, 206, 402]);
   assert.deepEqual(shops.map(shop => shop.items_groups.length), [1, 1, 0]);
   const autoRefresh = codec.unpack('pb_shop_auto_refresh', Buffer.from(shops[0].items_groups[0].group_data_bin, 'base64'));
-  assert.ok(Number(autoRefresh.next_refresh_time) > Math.floor(Date.now() / 1000));
+  assert.ok(Number(autoRefresh.next_refresh_time) > Math.floor(GAME_NOW / 1000));
   assert.equal(Number(autoRefresh.limit_bought_count ?? 0), 0);
   assert.deepEqual(autoRefresh.items_history_bought ?? [], []);
 
@@ -241,14 +241,12 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(9010, 17, await encodeEtf([10001]));
   assert.equal(response.err.err, 310);
 
-  // Chapter completion asks which recommended gifts are active. Echo the
-  // observed request as zero-purchase counts instead of failing the callback.
+  // Chapter completion asks which recommended gifts are active. The scheduled
+  // calendar excludes this expired offer so its commerce data cannot leak into
+  // the login response.
   response = await request(85901, 18, codec.pack('pb_recommend_gift_active_req', { actives: [{ act_tid: 61070, gift_id: [2811, 2812, 2813] }] }));
   assert.equal(response.err, undefined);
-  const gift = codec.unpack('pb_recommend_gift_active_rsp', Buffer.from(response.data, 'base64')).gift_list[0];
-  assert.equal(gift.act_tid, 61070);
-  assert.deepEqual(gift.buy_list.map(entry => entry.recharge_tid), [2811, 2812, 2813]);
-  assert.ok(gift.buy_list.every(entry => !entry.buy_times));
+  assert.deepEqual(codec.unpack('pb_recommend_gift_active_rsp', Buffer.from(response.data ?? '', 'base64')).gift_list, []);
 
   // On local day 8 the opening fishing generation and contract 83028 are over.
   gameNow = (SERVER_OPENED_AT + 7 * 86400) * 1000;

@@ -1,7 +1,7 @@
 # 个人服务器修复记录
 
 基线提交 `26982a4`；2026-10-30 活动修复 worktree 基线 `5aa0a21`。本目录逐项记录“用户反馈 → 证据 → 根因 → 实现边界 → 测试 → 验收级别”。
-统一测试：`npm test --prefix personal-server`，当前结果为 **192/192 通过**。
+统一测试：`npm test --prefix personal-server`，当前结果为 **199/199 通过**。
 
 | 编号 | 故障 | 本文档 | 本轮结论 |
 |---|---|---|---|
@@ -10,7 +10,7 @@
 | G2 | 背包宝箱开启报错 | [item-box.md](item-box.md) | 新增配置化随机宝箱开启；选择/付费/重复箱明确拒绝 |
 | G3 | 海岛垂钓活动报错 | [fishing-act.md](fishing-act.md) | 110305 岛屿解锁已实现；垂钓与其余奖励仍明确拒绝 |
 | G4 | 超凡冒险者活动打不开 | [helpup-act.md](helpup-act.md) | 新增助力次数读取；任务/阶段/助力明确拒绝；入口活动数据仍缺证据 |
-| G5 | 新超凡魔灵服务器错误 | [pet-spirit.md](pet-spirit.md) | 未确认失败命令，未实现业务；增加请求载荷诊断以定位 |
+| G5 | 新超凡魔灵服务器错误 | [pet-activity/implementation.md](../pet-activity/implementation.md) | 83028 活动、专属商城和现世礼包已接入同一开服活动日历；组件/TCP 通过，实时 APK 未验收 |
 | H1 | 进入大厅显示服务器错误 | [hall-entry.md](hall-entry.md) | 大厅商店读取按请求 id 空组回包、活动阶段同步空变更回执 |
 | W2 | daily discount batch purchase limit | [daily-discount-batch-limit.md](daily-discount-batch-limit.md) | 46003 batch_update sync, restart backfill and real TCP verified; 192/192 tests |
 
