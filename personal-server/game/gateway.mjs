@@ -8,7 +8,7 @@ import { createHeroProgression, GameError } from './hero-progression.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createRankService } from './rank-service.mjs';
 import { createFeatureService } from './feature-service.mjs';
-import { readFantasyEquipTables, readHeroTables } from '../config/hero-tables.mjs';
+import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from './wallet-service.mjs';
 import { createWelfareService } from './welfare-service.mjs';
@@ -70,7 +70,8 @@ export function createLocalGame({
       modules: template[2], rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
   }
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
-  const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables(), tables = readGameTables();
+  const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
+  const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
   const calendar = createActivityCalendar({
     tables,
     serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt,
@@ -97,6 +98,7 @@ export function createLocalGame({
     tables,
     heroTables,
     fantasyEquipTables,
+    leaderEquipTables,
     now: () => Math.floor(clock() / 1000),
     onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
   });

@@ -22,6 +22,8 @@
 
 首次解锁时，`decompose_args.extra` 仍是 ETF 编码的英雄 TID；资源变化 `pb_res_change.extra` 则是 ETF 二进制列表，元素为 protobuf `hero`。英雄本体、碎片和招募计数均在同一个 SQLite 事务内写入；重复英雄按 `Quality.convert_piece_new` 转换为碎片。
 
+> 2026-10-31 覆盖：首次解锁不再写 `decompose_args`。完整碎片包和 `change.extra` 已分别负责结果卡与即时英雄对象；再追加 `decompose_args` 会让同一英雄生成两张卡，十连出现新英雄时超出结果页 10 个槽位并触发 `Transform child out of bounds`。
+
 > 2026-10-30 修复：新英雄也必须按 `Quality.convert_piece_new` 发放碎片包，不能只发 1 个碎片；否则 `HeroDrawUILogic.FilterAwards` 的 `floor(num / convert_piece_new)` 为 0，结果页会以 `executeCount = 0` 崩溃。详见 [fixes/recruit-result-no-card.md](../fixes/recruit-result-no-card.md)。
 
 ## 持久化与限制
@@ -46,6 +48,14 @@
 cd F:\projects\FateCovenantClone
 npm test --prefix .\personal-server
 ```
+
+## 2026-10-31 冒险十连空白与圣装招募修复
+
+- 冒险池空白根因：十连中每名首次获得的英雄会同时产生完整碎片资源变化、即时英雄 `extra` 和 `decompose_args`；客户端把后两者都计作结果卡，导致十连出现 12/13 张卡，而 `HeroDrawResultShowForm` 只有 10 个槽位，最终在 `ShowDrawCard` 抛 `Transform child out of bounds`。现在 `decompose_args` 始终为空，首次英雄仍完整发放碎片、即时英雄对象并写入数据库，恰好生成 10 张卡。
+- 圣装入口根因：功能位 `1348` 未开放时 `LeaderEquipDrawMgr.GetCurLib()` 返回 `nil`，`HeroDrawForm` 随后回落到普通冒险库；`HeroTable.Draw[116..121].fun_open=1322` 也未开放。`sprintPreview` 现在同时开放 `1322/1348`，重启后会持久写回登录模块。
+- 圣装 `601` 现在识别 `draw_lib=116..121`，按 `LeaderEquipTable.Grade.draw_lib` 与 `LeaderEquip.grade` 选择当前阶级装备，消费 `Draw` 配置的 `2002`，每个结果返回一个唯一 `pb_leader_equip`，同事务更新模块 175 的 `equip_list/max_uid`。
+- 本地奖池暂以对应 grade 装备等权抽取；现有 `DrawTable.Group` 未导出 `lib_range` 和完整原服权重，不能把该规则标为官方概率。
+- 定向 `recruit-service.test.mjs` 为 `23/23`，全量 `npm test --prefix .\personal-server` 为 `291/291`，`git diff --check` 与语法检查通过。当前代码尚未部署到 PID 4488；用户测试结束后重启服务，再做真实 APK 的两项验收。
 
 ## 2026-10-31 各池独立规则修复
 
@@ -128,3 +138,11 @@ npm test --prefix .\personal-server
 - 部署前一致备份为 `analysis/experiments/private-server-20261025/p3/recruitment-ticket-sync-20261031/game.before-ticket-sync-deploy.local-only.sqlite`：344,064 字节，SHA256 `0975ab1d61aef339900c8d0ecadb074b1ee84b64185636397751328272da9463`，schema v10，`integrity_check=ok`。
 - 已从修复 worktree 部署 PID `18688`，`startedAt=2026-10-31T10:40:15.125Z`；五端口仅监听 `127.0.0.1`，stderr 为空。隔离客户端在 10:40:20 自动完成握手和登录，`moduleCount=146`，未操作原版包或点击客户端。
 - 用户此前购买的券在服务端已存在；现有客户端重连后应以登录数据显示余额。真实即时刷新仍需再次购买验收，当前 UI 是否显示 8 张特聘券也需用户视觉确认。
+
+## 2026-10-31 特聘券 TID 映射纠正（supersedes the preceding ticket note）
+
+- The earlier note called `3002` the special ticket. That was incorrect: the shipped tables define `Draw(2).cost_item=[3002]` as the elite ticket and `Draw(10).cost_item=[4002]` as the special ticket. `HeroTable.TID_MAGIC_DRAW_LIB` is `10`.
+- The actual server bug was in `purchase()`: type `599` selected library `2`, so diamonds were charged and an elite ticket was granted. The immediate `new_bin` fix was valid but could not make the special page show a `3002` resource.
+- `personal-server/game/recruit-service.mjs` now maps type `599` to library `10`. Regression coverage verifies `599 -> 4002`, `601/draw_lib=10` consumes `4002`, login/module-6 persistence, and transaction rollback. The merged main tree passes `291/291` service tests.
+- Runtime remediation added 9 `4002` tickets, matching the persisted type-599 purchase total, while retaining the existing `3002` balance (including normal rewards). Before remediation: `3002=23`, `4002=0`; after: `3002=23`, `4002=9`. The SQLite backup is `analysis/experiments/private-server-20261025/p3/recruit-special-ticket-remediation-20261031/game.before-remediation.local-only.sqlite`, 352,256 bytes, SHA256 `D848D776BB2913CC781C91FE16941B4113848B2CF066F1C49847E2F14A78CA82`, integrity check `ok`.
+- The service was restarted from the merged `main` tree as PID `16048` at `2026-10-31T13:06:35.228Z`; all five loopback ports are owned by that PID and the isolated client reconnected. Client-side visual confirmation of the displayed balance and a new purchase remains the final acceptance step.

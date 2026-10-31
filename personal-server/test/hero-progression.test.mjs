@@ -55,13 +55,13 @@ test('feature acknowledgements preserve old bits, use captured MSB ordering and 
   assert.deepEqual(env.store.state(), snapshot);
 });
 
-test('local sprint preview opens only its two entry gates and is persistent and idempotent', t => {
+test('local preview open gates include leader-equipment draws and are persistent and idempotent', t => {
   const env = setup(t), original = env.store.read();
   createFeatureService({ store: env.store, codec, sprintPreview: true });
   const first = env.store.state();
   const targets = codec.unpack('res_fun_open_login', rawBinary(new Map(first.modules.value).get(3))).target_list;
   const bytes = Buffer.from(targets.find(row => row.target_tid === 1).fun_open_state, 'base64');
-  for (const id of [1039, 1537]) assert.ok(bytes[Math.floor((id % 1000) / 8)] & (128 >> (id % 8)));
+  for (const id of [1039, 1322, 1348, 1537]) assert.ok(bytes[Math.floor((id % 1000) / 8)] & (128 >> (id % 8)));
   env.reopen();
   createFeatureService({ store: env.store, codec, sprintPreview: true });
   assert.deepEqual(env.store.state(), first);

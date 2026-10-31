@@ -2,8 +2,10 @@ import fs from 'node:fs';
 
 const defaultPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/HeroTable.data.lua.json', import.meta.url);
 const defaultFantasyEquipPath = new URL('../../analysis/recruitment-debug/bytecode/FantasyEquipTable.data.json', import.meta.url);
+const defaultLeaderEquipPath = new URL('../../analysis/recruitment-debug/bytecode/LeaderEquipTable.data.lua.json', import.meta.url);
 let defaultCache;
 let defaultFantasyEquipCache;
+let defaultLeaderEquipCache;
 
 // Interpret generated, straight-line table constructors without executing Lua.
 export function readHeroTables(file = defaultPath) {
@@ -21,6 +23,13 @@ export function readFantasyEquipTables(file = defaultFantasyEquipPath) {
   if (file === defaultFantasyEquipPath && defaultFantasyEquipCache) return defaultFantasyEquipCache;
   const tables = readGeneratedTables(file, ['DrawNormal', 'DrawNormalWish', 'DrawUnlock', 'FantasyEquip']);
   if (file === defaultFantasyEquipPath) defaultFantasyEquipCache = tables;
+  return tables;
+}
+
+export function readLeaderEquipTables(file = defaultLeaderEquipPath) {
+  if (file === defaultLeaderEquipPath && defaultLeaderEquipCache) return defaultLeaderEquipCache;
+  const tables = readGeneratedTables(file, ['LeaderEquip', 'Grade']);
+  if (file === defaultLeaderEquipPath) defaultLeaderEquipCache = tables;
   return tables;
 }
 

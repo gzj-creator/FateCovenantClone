@@ -34,3 +34,9 @@ new_bin: codec.pack('pb_res_obj', {
 ## 尚待真实客户端确认
 
 用户需要确认重连后的特聘券余额显示，并再次购买至少 1 张券，确认星钻扣减与特聘券数量在同一界面立即同步。当前组件与部署验证通过，不能替代真实 UI 验收。
+
+## 2026-10-31 根因纠正与补发
+
+The preceding diagnosis stopped at the missing `new_bin` field and used the wrong ticket name. The shipped contract is `3002=elite (Draw 2)` and `4002=special (Draw 10)`. Type 599 was selecting Draw 2, so it was issuing the wrong resource even after the `new_bin` response fix.
+
+`recruit-service.mjs` now selects library 10 for type 599. The regression test covers purchase, special draw consumption, module-6/login persistence, and rollback; the merged main tree passes 291/291 service tests. The nine historical type-599 purchases were compensated with nine `4002` tickets in an idempotent transaction; the existing `3002` balance was left untouched. The remediation backup and live values are recorded in `agent/workflow/recruitment/implementation.md`.

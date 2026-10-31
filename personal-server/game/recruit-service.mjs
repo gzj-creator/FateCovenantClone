@@ -1,4 +1,4 @@
-import { encodeEtfBinaryList, encodeEtfInteger, serializedBinary } from '../protocol/game-codec.mjs';
+import { encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import {
   RECRUIT_RULE_VERSION,
@@ -30,6 +30,8 @@ const DEMIGOD_MODULE_ID = 518;
 const DEMIGOD_EQUIP_RES_INDEX = 0;
 const DEMIGOD_FORMATION_INDEX = 1;
 const DEMIGOD_DRAW_INDEX = 2;
+const LEADER_EQUIP_MODULE_ID = 175;
+const LEADER_EQUIP_DRAW_TYPE = 1031;
 const supportedLibs = new Set(SUPPORTED_RECRUIT_LIBS);
 
 function startOfUtcDay(seconds) {
@@ -160,7 +162,7 @@ function module10(model) {
   return { modules, module };
 }
 
-export function createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, random = Math.random, now = () => Math.floor(Date.now() / 1000), onDraw = null }) {
+export function createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, leaderEquipTables, random = Math.random, now = () => Math.floor(Date.now() / 1000), onDraw = null }) {
   const pools = buildRecruitPoolCatalog(heroTables);
   const drawConfigs = new Map();
   for (const [lib, pool] of pools) {
@@ -188,6 +190,19 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     if (!heroTables.DrawAchievementLib.has(awardLib)) throw new Error(`Recruitment achievement tier ${awardLib} is missing`);
   }
   const demigodBuyConfig = fantasyEquipTables?.DrawNormal?.get(DEMIGOD_DRAW_NORMAL_TID);
+  const leaderDraws = new Map();
+  if (leaderEquipTables) {
+    const items = [...leaderEquipTables.LeaderEquip.values()];
+    for (const grade of leaderEquipTables.Grade.values()) {
+      const lib = Number(grade.draw_lib);
+      const drawConfig = heroTables.Draw.get(lib);
+      const gradeItems = items.filter(item => Number(item.grade) === Number(grade.tid));
+      if (!drawConfig || Number(drawConfig.draw_type) !== LEADER_EQUIP_DRAW_TYPE || gradeItems.length === 0) {
+        throw new Error(`Leader-equipment draw configuration is missing for grade ${grade.tid}`);
+      }
+      leaderDraws.set(lib, { grade, drawConfig, items: gradeItems });
+    }
+  }
   function requireDemigodConfig() {
     if (!fantasyEquipTables || !demigodBuyConfig) fail(5, 'Demigod resident draw purchase configuration is missing');
   }
@@ -214,6 +229,24 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
 
   function writeDrawInfo(model, state) {
     state.module.value[2] = serializedBinary(codec.pack('pb_hero_draw_info', state.drawInfo));
+    model.state.modules.value = [...state.modules];
+  }
+
+  function readLeaderEquipState(model) {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(LEADER_EQUIP_MODULE_ID);
+    if (!module || !module.value?.data?.length) fail(5, 'Leader-equipment module is missing');
+    const data = codec.unpack('pb_leader_equips_data', rawBinary(module));
+    data.slots ??= [];
+    data.equip_list ??= [];
+    data.max_uid = String(data.max_uid ?? 0);
+    data.draw_info ??= { lv: 1 };
+    data.dismiss ??= '';
+    return { modules, module, data };
+  }
+
+  function writeLeaderEquipState(model, state) {
+    state.modules.set(LEADER_EQUIP_MODULE_ID, serializedBinary(codec.pack('pb_leader_equips_data', state.data)));
     model.state.modules.value = [...state.modules];
   }
 
@@ -633,7 +666,9 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
 
   function purchase(model, type, quantity, seconds) {
     const magic = type === 599;
-    const lib = magic ? 2 : 1;
+    // req_draw_buy_magic_scroll is the special recruitment shop. Its ticket
+    // must come from the special draw library (10), not the elite pool (2).
+    const lib = magic ? 10 : 1;
     const count = integer(quantity, 1, 8000, 'Invalid ticket purchase quantity');
     const draw = heroTables.Draw.get(lib);
     const ticketTid = Number(draw?.cost_item?.[0]);
@@ -697,8 +732,81 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     return { ...hero, guaranteed, wishHero, lib };
   }
 
+  function drawLeaderEquip(model, request, seconds, lib, leaderDraw) {
+    const config = leaderDraw.drawConfig;
+    const pointCount = n(request.point_draw_num);
+    const count = pointCount > 0 ? pointCount : n(request.draw_type) === 1 ? Number(config.most_draw_count) : 1;
+    integer(count, 1, Math.max(1, Number(config.most_draw_count)), 'Invalid leader-equipment draw count');
+    const specified = n(request.specify_item_tid);
+    const configuredCosts = (config.cost_item ?? []).map((tid, index) => ({
+      tid: Number(tid),
+      amount: Number(config.cost_item_count?.[index] ?? 1) * count
+    }));
+    if (specified && !configuredCosts.some(cost => cost.tid === specified)) fail(1, 'The selected draw item is not configured');
+    const costs = specified ? configuredCosts.filter(cost => cost.tid === specified) : configuredCosts;
+    if (!costs.length || costs.some(cost => !cost.tid || !Number.isSafeInteger(cost.amount))) {
+      fail(5, 'Leader-equipment draw cost configuration is missing');
+    }
+
+    const state = readLeaderEquipState(model);
+    const spent = consumeResources(model, costs.map(cost => [cost.tid, cost.amount]), 301);
+    const changes = [...spent.changes];
+    let nextUid = BigInt(state.data.max_uid);
+    for (const equip of state.data.equip_list) nextUid = nextUid > BigInt(equip.uid ?? 0) ? nextUid : BigInt(equip.uid ?? 0);
+    const results = [];
+    for (let index = 0; index < count; index++) {
+      const configItem = pickRandom(leaderDraw.items.map(item => ({ ...item, weight: 1 })), random);
+      nextUid += 1n;
+      const equip = {
+        tid: String(configItem.tid),
+        uid: nextUid.toString(),
+        star: 0,
+        level: 1,
+        intensify_info: { intensify_level: 0, intensify_times: 0 }
+      };
+      const encoded = codec.pack('pb_leader_equip', equip);
+      changes.push({
+        tid: equip.tid,
+        new_num: '1',
+        diff_num: '1',
+        // LeaderEquipRes.ResChange decodes new_bin, inserts the object into its
+        // backpack, then copies the same payload to extra for the result card.
+        new_bin: encoded.toString('base64'),
+        extra: encoded.toString('base64')
+      });
+      state.data.equip_list.push(equip);
+      results.push({ tid: Number(equip.tid), uid: equip.uid, grade: Number(configItem.grade), drawLib: lib });
+    }
+    state.data.max_uid = nextUid.toString();
+    writeLeaderEquipState(model, state);
+
+    const recruitInfo = recruitDefaults(lib);
+    recruitInfo.draw_count = count;
+    recruitInfo.daily_draw_count = count;
+    recruitInfo.daily_can_draw_num = 1000000;
+    recruitInfo.data_version = 1;
+    return {
+      schema: 'hero_draw_back',
+      value: {
+        res: { changes },
+        recruit_info: recruitInfo,
+        decompose_args: [],
+        pre_args: []
+      },
+      pushes: [],
+      valueForLog: {
+        lib,
+        count,
+        leaderEquip: true,
+        seconds: seconds,
+        results
+      }
+    };
+  }
+
   function draw(model, request, seconds) {
     const lib = integer(n(request.draw_lib), 1, 1000000, 'Invalid draw library');
+    if (leaderDraws.has(lib)) return drawLeaderEquip(model, request, seconds, lib, leaderDraws.get(lib));
     if (!supportedLibs.has(lib)) fail(5, 'Draw library is not available on the local server');
     const config = heroTables.Draw.get(lib);
     if (!config) fail(5, 'Draw library configuration is missing');
@@ -719,7 +827,6 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     const spent = consumeResources(model, costs.map(cost => [cost.tid, cost.amount]), 301);
     const changes = [...spent.changes];
     const newHeroes = [];
-    const decomposeArgs = [];
     const results = [];
     for (let index = 0; index < count; index++) {
       const result = drawOne(info, lib, completedDrawCounts(state.byLib));
@@ -744,9 +851,6 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
         change.extra = encodeEtfBinaryList([codec.pack('hero', hero)]);
         model.heroInfo.hero_list.push(hero);
         newHeroes.push(hero);
-        // HeroMgr.GetDisplayNewHeroes uses the chip arg plus extra hero TID to
-        // distinguish a first unlock from an ordinary repeat chip result.
-        decomposeArgs.push({ tid: String(result.chip), num: String(amount), extra: encodeEtfInteger(result.tid) });
       }
       changes.push(change);
     }
@@ -770,7 +874,11 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
       value: {
         res: { changes },
         recruit_info: info,
-        decompose_args: decomposeArgs,
+        // New heroes already have one full-chip resource change plus an ETF
+        // hero in change.extra. HeroDrawUILogic turns that resource change into
+        // a result card, so adding a decompose argument here creates a second
+        // card for the same pull and can overrun the client's ten-child grid.
+        decompose_args: [],
         pre_args: []
       },
       pushes,
