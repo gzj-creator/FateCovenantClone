@@ -73,7 +73,7 @@
 ## 验证
 
 - 四项功能提交后为 **210/210 通过**；合入最新 main 与 hundred-schools 后为
-  **228/228 通过**；修正扫荡动态上限后为 **229/229 通过**。
+  **228/228 通过**；修正扫荡动态上限后为 **230/230 通过**。
 - 定向测试覆盖真实 TCP 636、ETF 82601、PB 640、PB 503、SQLite 重开、资源不足、
   重复请求、非法配置和编码失败回滚。
 - 640 网关测试使用真实客户端的 `res:[{tid:"821502"}]` 形状。
@@ -117,4 +117,15 @@
 - 服务端现在读取 `EnergyConst`，按 `floor(max / cost_num)` 得到当前配置上限
   `floor(3000 / 5) = 600`。99 次有自动测试覆盖，601 次在扣资源和发奖前拒绝。
 - `mission-fight-service.test.mjs` 定向测试 16/16 通过，personal-server 全量测试
-  **229/229 通过**。
+  **230/230 通过**。
+- 动态上限修正提交为 `2df7a79`，合入最新 main 后为 `3336272`。
+- 部署前一致性备份为
+  `analysis/experiments/private-server-20261025/p3/sweep-dynamic-20261031-150938/game-before-dynamic-sweep.local-only.sqlite`，
+  SHA256 `b810a32afb58208905da2021bfd78590303d6f97327820b2ae97e512b329e582`，
+  `quick_check=ok`，`user_version=9`。
+- 新服务 PID `8236`，工作目录 `F:\projects\FateCovenantClone`；
+  `18880/18881/18882/18883/19090` 五端口均由该进程监听且只监听
+  `127.0.0.1`。部署记录见同目录 `dynamic-sweep-deploy-result.local-only.json`。
+- `2026-10-31T07:10:07Z` 隔离客户端自动重连；握手接受、登录成功并下发 146 个模块。
+  本轮服务日志未见 `AddRemoteLoad`、资源超时或 `MissAsset`；部署与重连没有调用
+  503 扫荡写接口，没有替用户消费正式资源。客户端实际扫荡次数仍待用户自行验证。
