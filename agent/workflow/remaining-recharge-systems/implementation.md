@@ -105,3 +105,18 @@ SHA256 `20f27b6b5128334a09c8386b3cf25e03023e5a75515ff167c56e6ac5416dab8c`。
 11 类英雄、资源、编队、余额、订单与券表逐表哈希不变。原版应用及 APK 未修改。
 
 上述结果尚不等于隔离 APK 点击验收。仍需用户重登后点每日返利、一键购买及 30 元礼包，核对反馈、到账和重登保持。
+
+### 本次部署
+
+- 业务提交 `576758c` 与文档已合入 `main`；部署时代码为 `68024f2`。`main` 全量再次通过 **262/262**。
+- 2026-10-31T10:34:32.260Z 新服务 PID `26404`，入口为主仓库绝对路径
+  `F:\projects\FateCovenantClone\personal-server\local-server.mjs`，五个端口均只监听 127.0.0.1，最终 stderr 为空。
+- 最终一致备份为 `game.final-before.local-only.sqlite`，SHA256 与上文备份一致；实际停服后原始 SQLite/WAL/SHM
+  副本为 `confirmed-stopped-*`。`deployment-data.local-only.json` 确认 integrity ok、user_version 10、管理页 HTTP 200，
+  上述 11 类业务表与最终备份逐表哈希一致。
+- 首次切换时 PowerShell `Stop-Process` 抛 NullReferenceException，旧服务仍占端口，新进程 `43856` 因 EADDRINUSE 退出；
+  随后核对旧 PID、仅终止该 Node 服务并成功切换。首次尝试日志保留，不将 `stopped-*` 误作已确认停服的原始快照。
+- 10:35:02Z 隔离客户端自动完成真实握手与登录，日志 `login_sent moduleCount=146`，
+  `recharge_rebate_reset_login_synchronized actId=118003`；未操作设备或客户端界面。
+- 真实日志仍有原已存在的 `unsupported_command type=89501`，不属于本次三项充值入口；不宣称全部客户端错误消失。
+  每日返利、46003 和 40008 的部署后点击、到账及重登保持仍待用户验收。
