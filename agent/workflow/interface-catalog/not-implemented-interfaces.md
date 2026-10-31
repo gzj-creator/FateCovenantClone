@@ -257,12 +257,12 @@
 | type | 接口 | 请求编码 | 请求 schema | 编码模块 |
 | ---: | --- | --- | --- | --- |
 | 666 | `req_one_key_develop` | `protobuf` | `pb_hero_one_key_up_req` | `HeroCmd` |
-| 1001 | `req_equip_level_up` | `protobuf` | `pb_equip_level_up_req` | `EquipCmd` |
-| 1002 | `req_equip_forge` | `protobuf` | `pb_equip_forge_req` | `EquipCmd` |
+| 1001 | [`req_equip_level_up`](equipment-1001-1002-1006.md) | `protobuf` | `pb_equip_level_up_req` | `EquipCmd` |
+| 1002 | [`req_equip_forge`](equipment-1001-1002-1006.md) | `protobuf` | `pb_equip_forge_req` | `EquipCmd` |
 | 1003 | `req_equip_refine` | `etf` | `-` | `EquipCmd` |
 | 1004 | `req_equip_refine_one_key` | `protobuf` | `pb_equip_refine_one_key_req` | `EquipCmd` |
 | 1005 | `req_equip_inscription` | `protobuf` | `pb_equip_inscription_req` | `EquipCmd` |
-| 1006 | `req_equip_wear` | `protobuf` | `pb_equip_wear_req` | `EquipCmd` |
+| 1006 | [`req_equip_wear`](equipment-1001-1002-1006.md) | `protobuf` | `pb_equip_wear_req` | `EquipCmd` |
 | 1007 | `req_equip_awake` | `etf` | `-` | `EquipCmd` |
 | 1008 | `req_equip_res_exchange` | `protobuf` | `pb_equip_res_exchange_req` | `EquipCmd` |
 | 1009 | `req_equip_refine_one_key_batch` | `protobuf` | `pb_equip_refine_one_key_batch_req` | `EquipCmd` |
