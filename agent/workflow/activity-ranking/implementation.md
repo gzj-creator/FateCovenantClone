@@ -1,5 +1,7 @@
 # 活动时间、榜单入口与任务领奖
 
+2026-10-31：[排行榜通用协议扩展](leaderboard-api.md)在 `feature/avatar-profile` 分支补齐 `2002/2005/2006/2007/2009/2010`，并保留已实现的 `2000/2001/2008/2011` 空榜/未上榜语义；组件和临时 TCP 共 267/267 通过，尚未部署或 APK 验收。
+
 23:59最新真实APK证据覆盖下方待验：23:56:32、33、34分别发79104 act_id13016、task55021/55022/55023，seq28/31/34全部sprint_reward_committed。SQLite已持久化三条activity_claims，module92 receive_data=AAAH，refresh_day20751；当前钻石60、冲榜积分60。未手改真实排名，使用module150当日96名。用户尚未口头反馈奖励展示，不能写完整活动玩法验收。证据wallet-admin-20261025/handoff-acceptance.local-only.json和handoff-game.local-only.sqlite，integrity_check=ok。
 
 更新：2026-10-25 23:44。

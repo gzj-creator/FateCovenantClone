@@ -383,6 +383,43 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
     if (type === 2011) assert.deepEqual(board.client_list.map(value => value.rank_id), ['1001', '2002']);
     else assert.equal(board.rank_id, String(type === 2000 ? 1001 : 2002));
   }
+  response = await request(2001, 2001, Buffer.from('g2wAAAACYTViAAGGoWo=', 'base64'));
+  assert.equal(response.seq, 2001);
+  assert.equal(response.err, undefined);
+  const selfRank = codec.unpack('rank_info', Buffer.from(response.data, 'base64'));
+  assert.equal(selfRank.id, '100001');
+  assert.equal(selfRank.rank_id, '53');
+  assert.equal(selfRank.rank ?? 0, 0);
+  assert.equal(selfRank.value ?? '0', '0');
+  assert.equal(events.some(event => event.event === 'rank_sent' && event.type === 2001), true);
+  response = await request(2001, 2003, await encodeEtf([53]));
+  assert.equal(response.seq, 2003);
+  assert.equal(response.err.err, 1);
+  assert.equal(events.some(event => event.event === 'rank_rejected' && event.type === 2001 && event.code === 1), true);
+  assert.equal(events.some(event => event.event === 'unsupported_command' && event.type === 2001), false);
+  const leaderboardCases = [
+    [2002, [53, 3], 'rank_to_client', value => assert.equal(value.rank_id, '53')],
+    [2005, [7, 53], 'pb_rank_cross_group_top', value => assert.deepEqual(value.top_list, [])],
+    [2006, [53, 54], 'rank_to_client', value => assert.equal(value.rank_id, '53')],
+    [2007, [53, 100001], 'rank_info', value => assert.deepEqual([value.id, value.rank_id, value.rank ?? 0], ['100001', '53', 0])],
+    [2010, [100001, [53, 54]], 'pb_rev_rank', value => assert.deepEqual(value.infos.map(info => info.rank_id), ['53', '54'])]
+  ];
+  for (const [type, input, schema, inspect] of leaderboardCases) {
+    response = await request(type, 3000 + type % 1000, await encodeEtf(input));
+    assert.equal(response.err, undefined);
+    inspect(codec.unpack(schema, Buffer.from(response.data ?? '', 'base64')));
+    assert.equal(events.some(event => event.event === 'rank_sent' && event.type === type), true);
+    assert.equal(events.some(event => event.event === 'unsupported_command' && event.type === type), false);
+  }
+  response = await request(2009, 3010, await encodeEtf('Local banner'));
+  assert.equal(response.err, undefined);
+  assert.equal(Buffer.from(response.data ?? '', 'base64').length, 0);
+  response = await request(2000, 3011, await encodeEtf([53]));
+  assert.deepEqual(codec.unpack('rank_to_client', Buffer.from(response.data, 'base64')).bubbles, [{ id: '100001', notice: 'Local banner' }]);
+  const storedRankBubble = game.store.inspect(db => JSON.parse(db.prepare('SELECT metadata_json FROM roles LIMIT 1').get().metadata_json).rankBubble);
+  assert.deepEqual(storedRankBubble, { id: '100001', notice: 'Local banner' });
+  assert.equal(events.some(event => event.event === 'rank_sent' && event.type === 2009), true);
+  assert.equal(events.some(event => event.event === 'unsupported_command' && [2000, 2001, 2002, 2005, 2006, 2007, 2008, 2009, 2010, 2011].includes(event.type)), false);
   response = await request(218, 5, await encodeEtf(0));
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('pb_edit_pre_lineup_rsp', Buffer.from(response.data, 'base64')).role_lineup.pre_lineups.length, 1);
