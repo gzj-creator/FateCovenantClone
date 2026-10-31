@@ -25,6 +25,7 @@ import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
+import { createGuildRosterService } from './guild-roster-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
@@ -103,6 +104,7 @@ export function createLocalGame({
     onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
   });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
+  const guildRoster = createGuildRosterService({ store, codec, now: () => Math.floor(clock() / 1000) });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
@@ -126,6 +128,7 @@ export function createLocalGame({
     wishTreasure.ensureLoginState();
     weekHunt.ensureLoginState();
     destiny.ensureLoginState();
+    guildRoster.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
     rechargeBonus.synchronize();
     const state = store.state();
@@ -140,6 +143,7 @@ export function createLocalGame({
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
+    modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
     let activity;
     try {
@@ -578,6 +582,21 @@ export function createLocalGame({
         }
         return;
       }
+      if (guildRoster.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const input = decoded?.value ?? decoded;
+          const result = await guildRoster.execute(type, input);
+          send(seq, result.data);
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          log({ event: 'guild_roster_committed', type, seq, memberCount: result.value?.members?.length ?? result.value?.member_list?.length ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guild_roster_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (lineups.supports(type)) {
         try {
           const input = type === 218 ? await decodeEtf(request.data) : unpack(type === 208 ? 'pb_edit_lineup_req' : 'pb_edit_pre_lineup_req', request.data);
@@ -756,7 +775,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, tables,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, petActivity, heroDrawActivity, wishTreasure, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
