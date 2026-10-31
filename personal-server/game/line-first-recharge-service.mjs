@@ -200,8 +200,9 @@ export function createLineFirstRechargeService({ store, codec, tables, now = Dat
       }
       const res = grantResources(model, [[Number(award[0]), Number(award[1])]], tables, { codec });
       buyInfo.rev_bin = setBit(bits, awardIndex).toString('base64');
-      writeInfo(modules, info, codec);
-      model.state.modules.value = [...modules];
+      const updatedModules = new Map(model.state.modules.value);
+      writeInfo(updatedModules, info, codec);
+      model.state.modules.value = [...updatedModules];
       db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(
         model.state.roleId, 'line_first_recharge', key, new Date(at * 1000).toISOString()
       );

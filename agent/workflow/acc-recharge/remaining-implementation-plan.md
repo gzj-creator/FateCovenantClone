@@ -73,7 +73,7 @@
 | --- | --- | --- | --- | --- |
 | 首充 | 模块 51 | 16001 req_get_first_recharge_reward，ETF 空请求 | pb_res_rev_first_recharge_reward | FirstRecharge 配置 3 档，need_amount 为 600/3000/10000 分；每档 days=[1,2,3] |
 | 充值福利 | 模块 149 | 88301 req_select_group；88302 req_get_recharge_bonus_award | pb_recharge_bonus；pb_recharge_bonus_back | 配置开服第 1 天和第 35 天两轮；第 2 轮可选组 1/2；共 24 个 Award |
-| 钻石返利重置 | 活动登录态，通常在模块 92 的 state/module_login_data 中 | 100201 req_recharge_rebate_reset_award，ETF 空请求 | pb_recharge_rebate_reset_enter / pb_recharge_rebate_reset_back | Act 表有 3 条配置；必须按 Activity/ActFrame 当前窗口选实际活动 |
+| 钻石返利重置 | 活动登录态，通常在模块 92 的 state/module_login_data 中 | 100201 req_recharge_rebate_reset_award，ETF [act_id, slot] | pb_recharge_rebate_reset_enter / pb_recharge_rebate_reset_back | slot 0 为预览奖励，1..3 为每日奖励；必须按 Activity/ActFrame 当前窗口选实际活动 |
 | 线性首充 | 模块 547 | 102101 req_line_first_recharge_choose；102102 req_line_first_recharge_rev | pb_line_first_recharge；pb_line_first_recharge_rev_back | 购买走标准充值链路；当前活动 ID 和解锁规则尚需补齐证据 |
 | 充值额外奖励 | 模块 19 的 recharge_extra_award_info | 无独立领取命令 | 通过充值响应 extra_ret_list/extra_ret_map 下发 | 字段为 flush_day、buy_num_list；监听 EVT_RECHARGE 和部分 EVT_BUY_OR_REV |
 | 百元累充 | 模块 166 | 92001 req_hundred_acc | pb_res_to_client | 已完成金额与领取主链，高档专用奖励仍依赖奖励持有系统 |
@@ -341,7 +341,7 @@ ItemTitle、EmojiItem、ItemRoleSkin、SpRelicItem 的具体登录模块和可�
 实现：
 
 1. 在活动登录 state 中写入/解析 pb_recharge_rebate_reset。
-2. 100201 空请求从当前不歧义的活动解析 act_id。
+2. 100201 接受精确 ETF `[act_id, slot]`。`RechargeRebateResetActMgr.ReqClaimAward` prototype 11 明确发送这两个参数；slot 0 对应 preview_award，slot 1..3 对应 daily_award 的第 1..3 项，每次只领指定项。原计划的“空请求”已由字节码证据纠正。
 3. 领取时检查活动窗口、开放天、BitBlock、claim 记录。
 4. 同一事务发奖、写位、写 reward_claims，并返回 pb_recharge_rebate_reset_back。
 5. 若同时有两个活动候选，必须按配置优先级或真实客户端规则确定一个；不能随机选择。

@@ -116,8 +116,9 @@ export function createRechargeBonusService({ store, codec, tables, calendar, now
       }
       const res = grantResources(model, (award.award_list ?? []).map(([tid, count]) => [Number(tid), Number(count)]), tables, { codec });
       info.award_bin = setBit(bits, slot).toString('base64');
-      writeInfo(modules, info, codec);
-      model.state.modules.value = [...modules];
+      const updatedModules = new Map(model.state.modules.value);
+      writeInfo(updatedModules, info, codec);
+      model.state.modules.value = [...updatedModules];
       db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(
         model.state.roleId, 'recharge_bonus', key, new Date(at * 1000).toISOString()
       );
