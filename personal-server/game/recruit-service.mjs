@@ -633,7 +633,9 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
 
   function purchase(model, type, quantity, seconds) {
     const magic = type === 599;
-    const lib = magic ? 2 : 1;
+    // req_draw_buy_magic_scroll is the special recruitment shop. Its ticket
+    // must come from the special draw library (10), not the elite pool (2).
+    const lib = magic ? 10 : 1;
     const count = integer(quantity, 1, 8000, 'Invalid ticket purchase quantity');
     const draw = heroTables.Draw.get(lib);
     const ticketTid = Number(draw?.cost_item?.[0]);

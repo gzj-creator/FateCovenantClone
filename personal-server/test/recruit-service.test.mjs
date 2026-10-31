@@ -78,6 +78,12 @@ function drawInfo(env) {
   return codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
 }
 
+function loginItem(env, tid) {
+  const module = new Map(env.store.state().modules.value).get(6);
+  return module.value.flatMap(group => Array.isArray(group.value) ? group.value.map(item => codec.unpack('pb_res_obj', rawBinary(item))) : [])
+    .find(item => Number(item.tid) === tid);
+}
+
 const roleStatistics = [...tables.CountStatistics.values()]
   .filter(row => !row.custom_login && Number(row.type) === 0);
 
@@ -170,19 +176,60 @@ test('ticket purchases deduct diamonds, persist limits and reject insufficient f
   );
   assert.equal(normal.buy_info.buy_max_num, 1198);
   const magic = codec.unpack('pb_draw_normal_buy_ret', env.service.execute(599, 2).data);
-  assert.deepEqual(magic.res.changes.map(change => [change.tid, change.diff_num]), [['101500', '-1600'], ['3002', '2']]);
+  assert.deepEqual(magic.res.changes.map(change => [change.tid, change.diff_num]), [['101500', '-1600'], ['4002', '2']]);
   assert.deepEqual(
-    codec.unpack('pb_res_obj', Buffer.from(magic.res.changes.find(change => change.tid === '3002').new_bin, 'base64')),
-    { tid: '3002', num: '2' }
+    codec.unpack('pb_res_obj', Buffer.from(magic.res.changes.find(change => change.tid === '4002').new_bin, 'base64')),
+    { tid: '4002', num: '2' }
   );
   assert.equal(magic.buy_info.buy_max_num, 58);
   env.reopen();
   assert.equal(env.store.read().resources.get('2002').num, '2');
-  assert.equal(env.store.read().resources.get('3002').num, '2');
+  assert.equal(env.store.read().resources.get('4002').num, '2');
+  assert.equal(env.store.read().resources.has('3002'), false);
   env.seed(101500, 100);
   rejected(() => env.service.execute(600, 1), 301);
   env.store.transaction(model => { model.state.recruitPurchases.normal.daily = 1200; });
   rejected(() => env.service.execute(600, 1), 305);
+});
+
+test('special ticket purchases feed the special draw library end to end', t => {
+  const env = setup(t);
+  env.seed(101500, 10000);
+  const purchase = codec.unpack('pb_draw_normal_buy_ret', env.service.execute(599, 2).data);
+  assert.deepEqual(purchase.res.changes.map(change => [change.tid, change.diff_num]), [
+    ['101500', '-1600'],
+    ['4002', '2']
+  ]);
+  assert.equal(loginItem(env, 4002).num, '2');
+
+  const drawResult = env.service.execute(601, { draw_lib: 10, point_draw_num: 1 });
+  const draw = codec.unpack('hero_draw_back', drawResult.data);
+  assert.equal(draw.recruit_info.draw_lib, '10');
+  assert.equal(draw.recruit_info.draw_count, 1);
+  assert.equal(draw.res.changes.find(change => change.tid === '4002').diff_num, '-1');
+  assert.equal(draw.res.changes.some(change => change.tid === '3002'), false);
+
+  env.reopen();
+  assert.equal(env.store.read().resources.get('4002').num, '1');
+  assert.equal(loginItem(env, 4002).num, '1');
+  assert.equal(env.store.read().resources.has('3002'), false);
+  assert.equal(recruitInfo(env, 10).draw_count, 1);
+});
+
+test('special ticket purchase encoding failure rolls back diamonds and tickets', t => {
+  const env = setup(t);
+  env.seed(101500, 10000);
+  const before = env.store.state();
+  const failing = {
+    ...codec,
+    pack(name, value) {
+      if (name === 'pb_draw_normal_buy_ret') throw new Error('Injected purchase encoding failure');
+      return codec.pack(name, value);
+    }
+  };
+  const service = env.make({ codec: failing });
+  assert.throws(() => service.execute(599, 2), /Injected purchase encoding failure/);
+  assert.deepEqual(env.store.state(), before);
 });
 
 test('demigod five draw buys and consumes tickets, emits real equips and survives reopen', t => {
