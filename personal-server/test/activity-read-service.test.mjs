@@ -20,7 +20,14 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
   const file = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, file);
   let nowSeconds = initialSeconds;
-  let store = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
+  const openStore = () => {
+    const opened = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
+    // The saved fixture is already schema v8, so pin its persisted opening time
+    // instead of relying on the one-time v7 migration to replace the value.
+    opened.transaction(model => { model.state.serverOpenedAt = SERVER_OPENED_AT; });
+    return opened;
+  };
+  let store = openStore();
   const calendar = createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
   const make = () => createActivityReadService({
     codec,
@@ -38,7 +45,7 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
     setNow(seconds) { nowSeconds = seconds; },
     reopen() {
       store.close();
-      store = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
+      store = openStore();
       service = make();
     }
   };
@@ -121,15 +128,16 @@ test('grants version bait once, unlocks the correct first island and persists', 
   assert.deepEqual(repeated.res.changes, []);
   assert.equal(resource(env.store, 101500), beforeDiamond + 500n);
 
-  const persistedServerOpenedAt = env.store.read().state.serverOpenedAt;
   env.reopen();
   const reopened = codec.unpack('pb_fishing_act_data_res', unlock(env.service, 1074003, 201).data);
   assert.deepEqual(reopened.data.unlock_map_list, ['201']);
   assert.deepEqual(reopened.res.changes, []);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 8);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 9);
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('fishing-activity-state-v6')));
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('activity-calendar-server-open-v7')));
-  assert.equal(env.store.read().state.serverOpenedAt, persistedServerOpenedAt);
+  assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('pet-activity-commerce-v8')));
+  assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('hero-identity-v9')));
+  assert.equal(env.store.read().state.serverOpenedAt, SERVER_OPENED_AT);
 });
 
 test('batch fishing consumes available bait and records every catch atomically', t => {

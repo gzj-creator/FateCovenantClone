@@ -1,5 +1,6 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
+import { activityWindow } from './activity-calendar.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
 import { grantResources } from './resources.mjs';
 
@@ -7,11 +8,34 @@ const MODULE_ID = 106;
 const ACT_TYPE = 106;
 const AWARD_STATE_WIDTH = 100;
 
-function rechargeTotal(modules, codec) {
+function rechargeDayIndex(timestampSeconds) {
+  return Math.floor((timestampSeconds + 10800) / 86400);
+}
+
+function rechargeRangeTotal(modules, codec, activity, serverOpenedAt) {
+  const window = activityWindow(activity, serverOpenedAt);
+  if (!window || !Number.isSafeInteger(window.start) || !Number.isSafeInteger(window.end) || window.end < window.start) {
+    throw new GameError(5, 'Cumulative-recharge activity window is invalid');
+  }
+  const startDay = rechargeDayIndex(window.start);
+  const endDay = rechargeDayIndex(window.end);
   const module = modules.get(19);
-  if (!module) return 0;
+  if (!module) return { totalCents: 0, startDay, endDay };
   const login = codec.unpack('res_recharge_login', rawBinary(module));
-  return Number(login.total_amount ?? 0);
+  const records = login.recharge_record?.recent_record ?? [];
+  if (!Array.isArray(records)) throw new GameError(5, 'Cumulative-recharge records are invalid');
+  let totalCents = 0;
+  for (const record of records) {
+    const dayIndex = Number(record?.day_index);
+    const amountCents = Number(record?.amount);
+    if (!Number.isSafeInteger(dayIndex) || !Number.isSafeInteger(amountCents) || amountCents < 0) {
+      throw new GameError(5, 'Cumulative-recharge record is invalid');
+    }
+    if (dayIndex < startDay || dayIndex > endDay) continue;
+    totalCents += amountCents;
+    if (!Number.isSafeInteger(totalCents)) throw new GameError(5, 'Cumulative-recharge range total is invalid');
+  }
+  return { totalCents, startDay, endDay };
 }
 
 function recharges(module, codec) {
@@ -27,8 +51,9 @@ function awardStateBytes(value) {
   return bits;
 }
 
-export function createAccRechargeService({ store, codec, tables, logger = () => {} }) {
+export function createAccRechargeService({ store, codec, tables, calendar, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
+  const serverOpenedAt = Number(calendar?.serverOpenedAt ?? store.serverOpenedAt);
 
   // The first implementation treated award_state as one byte per tier. The
   // client reads it through Core.BitBlock, so legacy claims need a one-time
@@ -114,8 +139,14 @@ export function createAccRechargeService({ store, codec, tables, logger = () => 
       const awardState = awardStateBytes(entry.award_state);
       if (hasBit(awardState, slot)) throw new GameError(310, 'Reward already claimed');
 
-      const count = rechargeTotal(freshModules, codec);
-      if (count < Number(award.acc_cnt)) throw new GameError(311, 'Cumulative recharge amount is insufficient');
+      // The client compares this activity's inclusive day range from the recharge
+      // records, and both record amounts and award.acc_cnt are stored in cents.
+      const { totalCents, startDay, endDay } = rechargeRangeTotal(freshModules, codec, act, serverOpenedAt);
+      const requiredCents = Number(award.acc_cnt);
+      if (!Number.isSafeInteger(requiredCents) || requiredCents <= 0) {
+        throw new GameError(5, 'Cumulative-recharge threshold is invalid');
+      }
+      if (totalCents < requiredCents) throw new GameError(311, 'Cumulative recharge amount is insufficient');
       if (db.prepare('SELECT 1 FROM activity_claims WHERE role_id=? AND act_id=? AND task_id=? AND period=?').get(model.state.roleId, actId, awardTid, 'v' + act.version)) {
         throw new GameError(310, 'Reward already claimed');
       }
@@ -130,7 +161,7 @@ export function createAccRechargeService({ store, codec, tables, logger = () => 
       db.prepare('INSERT INTO activity_claims VALUES (?,?,?,?,?)').run(
         model.state.roleId, actId, awardTid, 'v' + act.version, new Date().toISOString()
       );
-      log({ event: 'acc_recharge_claim_committed', actId, awardTid, total: count, slot, changes: res.changes.length });
+      log({ event: 'acc_recharge_claim_committed', actId, awardTid, total: totalCents, startDay, endDay, slot, changes: res.changes.length });
       return { value: { res }, data: codec.pack('pb_res_to_client', res) };
     });
   }

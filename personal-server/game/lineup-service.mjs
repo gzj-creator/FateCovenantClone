@@ -1,5 +1,37 @@
 import { GameError } from './hero-progression.mjs';
+import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 const fail = (code, message) => { throw new GameError(code, message); };
+
+function readCustomPreLineups(model, codec) {
+  const module = new Map(model.state.modules.value).get(9);
+  if (!module) return [];
+  const login = codec.unpack('pb_lineup_login', rawBinary(module));
+  if (!login.custom_pre_lineup) return [];
+  return codec.unpack('pb_custom_lineup_role', Buffer.from(login.custom_pre_lineup, 'base64')).custom_pre_lineups ?? [];
+}
+
+function customPreLineupList(model, codec) {
+  const current = model.lineups.pre_lineups.find(pre => pre.index === (model.lineups.cur_pre_index || 1));
+  const list = structuredClone(readCustomPreLineups(model, codec));
+  if (!list.length) list.push({ index: '-1', type: '1', lineup: { type: 1, team_list: [], custom_attr: [] } });
+  const main = list.find(item => String(item.index) === '-1') ?? list[0];
+  if (current?.lineup) {
+    main.lineup = { type: Number(main.lineup?.type ?? 1), team_list: [structuredClone(current.lineup)], custom_attr: structuredClone(main.lineup?.custom_attr ?? []) };
+  }
+  return { custom_pre_lineups: list };
+}
+
+function persistCustomPreLineupList(model, codec, value) {
+  const modules = new Map(model.state.modules.value);
+  const module = modules.get(9);
+  if (!module) return;
+  const login = codec.unpack('pb_lineup_login', rawBinary(module));
+  const previous = login.custom_pre_lineup ? codec.unpack('pb_custom_lineup_role', Buffer.from(login.custom_pre_lineup, 'base64')) : {};
+  login.custom_pre_lineup = codec.pack('pb_custom_lineup_role', { ...previous, custom_pre_lineups: value.custom_pre_lineups }).toString('base64');
+  modules.set(9, serializedBinary(codec.pack('pb_lineup_login', login)));
+  model.state.modules.value = [...modules];
+}
+
 function validateTeam(model, team) {
   if (!team || !Number.isInteger(team.team_id) || team.team_id < 1) fail(51558, 'Invalid team');
   const cells = new Set(), positions = new Set(), heroes = new Set();
@@ -79,7 +111,9 @@ export function createLineupService({ store, codec }) {
             }
           }
           const changed = syncHeroes(model);
-          schema = 'pb_edit_pre_lineup_rsp'; value = { role_lineup: model.lineups, copy_lineup: copy, change_hero: changed };
+          const custom = customPreLineupList(model, codec);
+          if (type === 209) persistCustomPreLineupList(model, codec, custom);
+          schema = 'pb_edit_pre_lineup_rsp'; value = { role_lineup: model.lineups, copy_lineup: copy, change_hero: changed, custom_pre_lineup_list: custom };
         } else fail(1, 'Invalid lineup command');
         return { schema, value, data: codec.pack(schema, value) };
       });

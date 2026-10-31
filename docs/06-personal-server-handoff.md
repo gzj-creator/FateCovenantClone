@@ -1,5 +1,13 @@
 # 个人服务器兼容实验：续接计划
 
+## 2026-10-31 招募池独立规则（已部署）
+
+招募服务已从“所有库共用一套品质权重与全英雄池”改为按 `lib=1/2/3/10` 使用独立规则。当前本地兼容矩阵中，精英库 `lib=2` 永不产生品质 70（超凡），品质 60（天极）只有累计完成 100 抽后才进入候选；99 抽完成时仍锁定，第 100 抽完成后下一次抽取才开放。友情库不产生品质 60/70，其余现有库也均排除品质 70。具体权重、保底、候选集与心愿约束见 [招募实现](../agent/workflow/recruitment/implementation.md#2026-10-31-各池独立规则修复)。
+
+全量组件测试 `211/211` 通过。另对当前 SQLite 的 WAL 一致副本执行了一次真实服务构造和精英单抽：原状态 `lib1.draw_count=4`、`lib2.draw_count=50`，合计 54；抽取后 `lib2.draw_count=51`，结果品质 50，未出现品质 60/70，现有英雄和 `lib2` 两条心愿均保留。该结果验证了旧存档兼容，不代表用户界面验收。
+
+用户明确要求重启后，已于 2026-10-31 13:30（Asia/Shanghai）停止旧 PID 12980，并以 `main@280002e` 启动新 PID 36204。18880/18881/18882/18883/19090 五个端口均恢复为 loopback 监听，客户端立即重新连接；`game_connected`、`challenge_sent`、`handshake_accepted`、`login_sent` 均成功，返回 146 个登录模块，新进程 stderr 为空。重启前 SQLite 独立备份位于 `analysis/experiments/private-server-20261025/p3/recruit-pool-restart-20261031-053048/game.before-restart.local-only.sqlite`，SHA256 为 `20a8b1d1beef0c9418fe0138888a15d6afd3bb7ac8a1b209521b3ed292834aed`。本轮未修改 APK，无需重建或更新 APK 快照。
+
 ## 2026-10-28 看板娘修复与可用快照
 
 主界面看板娘缺失已定位并实测修复：根因不是资源缺失，而是隔离客户端 PlayerPrefs 中 SubDownloadFinish=0 时，UniCore.RemoteLoadMgr.NeedRemoteLoad 把 sub_first 资源误判为远程下载；UpdateDownloader.AsyncAssetLackPreCheck 为空导致 AddRemoteLoad 失败，AssetBundle 请求未创建并在 6000 帧后超时，报 hero_sl_GuangZhiXin_new_talk.prefab load fail by bundle load timeOut 和 [MissAsset]。在 /data/data/com.jzyx.ps/shared_prefs/com.jzyx.ps.v2.playerprefs.xml 写入 SubDownloadFinish=1 后，截图 analysis/experiments/private-server-20261025/p3/kanban-after-subdownload-20261028.png 确认看板娘恢复；修复后 Info 日志无 AddRemoteLoad/timeout/MissAsset。该值未烘焙进 APK，重装/清数据/换设备后需重新写入。

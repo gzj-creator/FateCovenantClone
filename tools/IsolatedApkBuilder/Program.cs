@@ -18,7 +18,7 @@ internal static class Program
     private const string ExpectedWalletDexEntrySha256 = "7593e3b4343ad0216b904f44290f3dc34441ccbb7221ea8b26559463166d89aa";
     private const string ExpectedWalletLuaEntrySha256 = "fd1fa8b504d080eb7fbb7a91b5390041fd38af896cdca2f4a8a57d1c10236cda";
     private const string ExpectedWalletLanguageEntrySha256 = "e11100a963483589fe51642bf39fe9131a90283cb37504961c233e8e20c417a5";
-    private const string ExpectedPatchedLuaBundleSha256 = "90595989c0d3dc93b0fa6e741a334b1b4ec7432153addd9ca451593e23782012";
+    private const string ExpectedPatchedLuaBundleSha256 = "372cd1f0bca6d3f2339102ba816fa39a5df435c53e5850a3eee6910f174f50c7";
     private const string ExpectedPatchedLanguageBundleSha256 = "fafdbe68c795dba8e40dd210a8524669386be3244d94a515157f9c70adf65b64";
     private static readonly Encoding Utf8 = new UTF8Encoding(false, true);
     private static readonly string[] ControlledFields = { "Host", "ListPorts", "UpdateAddr", "AppDownloadAddr" };

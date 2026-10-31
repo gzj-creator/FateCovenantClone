@@ -87,7 +87,7 @@ export function createLocalGame({
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
-  const accRecharge=createAccRechargeService({store,codec,tables,logger});
+  const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     recruit.ensureLoginState();

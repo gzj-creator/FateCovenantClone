@@ -59,12 +59,34 @@ export function materializeState(model, codec) {
   return state;
 }
 
+function remapHeroId(value, idMap) {
+  if (value === undefined || value === null) return value;
+  const mapped = idMap.get(String(value));
+  if (mapped === undefined) return value;
+  return typeof value === 'string' ? mapped : Number(mapped);
+}
+
+function remapLineup(lineup, idMap) {
+  for (const fighter of lineup?.fighter_list ?? []) fighter.hero_id = remapHeroId(fighter.hero_id, idMap);
+  for (const team of lineup?.team_list ?? []) {
+    for (const fighter of team.fighter_list ?? []) fighter.hero_id = remapHeroId(fighter.hero_id, idMap);
+    for (const lease of team.lease_fighter_list ?? []) {
+      lease.replace_hero_id = remapHeroId(lease.replace_hero_id, idMap);
+      if (lease.hero) lease.hero.uid = remapHeroId(lease.hero.uid, idMap);
+    }
+  }
+}
+
+function remapRoleLineup(roleLineup, idMap) {
+  for (const preset of [...(roleLineup?.pre_lineups ?? []), ...(roleLineup?.pre_lineups_standby ?? [])]) remapLineup(preset.lineup, idMap);
+}
+
 export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt }) {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 8) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 9) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -240,6 +262,60 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('pet-activity-commerce-v8', 'add-activity-shop-and-gift-purchases', new Date().toISOString());
         db.exec('PRAGMA user_version=8; COMMIT');
         version = 8;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 9) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        for (const role of db.prepare('SELECT role_id FROM roles').all()) {
+          const rows = db.prepare('SELECT rowid,uid,tid,level,star,star_progress,break_level,payload_json FROM heroes WHERE role_id=? ORDER BY rowid').all(role.role_id);
+          const idMap = new Map(), tids = new Set(), normalized = [];
+          for (const row of rows) {
+            const uid = String(row.uid), tid = String(row.tid);
+            if (tids.has(tid)) throw new Error(`Duplicate hero tid ${tid} for role ${role.role_id}`);
+            tids.add(tid);
+            idMap.set(uid, tid);
+            const payload = JSON.parse(row.payload_json);
+            payload.uid = tid; payload.tid = tid;
+            normalized.push({ ...row, uid: tid, tid, payload_json: JSON.stringify(payload) });
+          }
+          db.prepare('DELETE FROM heroes WHERE role_id=?').run(role.role_id);
+          const insertHero = db.prepare('INSERT INTO heroes VALUES (?,?,?,?,?,?,?,?)');
+          for (const row of normalized) insertHero.run(role.role_id, row.uid, row.tid, row.level, row.star, row.star_progress, row.break_level, row.payload_json);
+
+          const lineupRow = db.prepare('SELECT payload_json FROM lineups WHERE role_id=?').get(role.role_id);
+          const roleLineup = JSON.parse(lineupRow.payload_json);
+          remapRoleLineup(roleLineup, idMap);
+          db.prepare('UPDATE lineups SET payload_json=? WHERE role_id=?').run(JSON.stringify(roleLineup), role.role_id);
+          const playRows = db.prepare('SELECT lineup_type,payload_json FROM play_lineups WHERE role_id=? ORDER BY lineup_type').all(role.role_id);
+          const playLineups = playRows.map(row => JSON.parse(row.payload_json));
+          const updatePlay = db.prepare('UPDATE play_lineups SET payload_json=? WHERE role_id=? AND lineup_type=?');
+          for (const lineup of playLineups) { remapLineup(lineup, idMap); updatePlay.run(JSON.stringify(lineup), role.role_id, lineup.type); }
+
+          const module9Row = db.prepare('SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=9').get(role.role_id);
+          if (module9Row) {
+            const login = codec.unpack('pb_lineup_login', rawBinary(JSON.parse(module9Row.payload_json)));
+            login.pre_lineup = codec.pack('pb_role_lineup', roleLineup).toString('base64');
+            login.lineups = playLineups.map(lineup => codec.pack('pb_lineup', lineup).toString('base64'));
+            if (login.custom_pre_lineup) {
+              const custom = codec.unpack('pb_custom_lineup_role', Buffer.from(login.custom_pre_lineup, 'base64'));
+              for (const item of custom.custom_pre_lineups ?? []) remapLineup(item.lineup, idMap);
+              login.custom_pre_lineup = codec.pack('pb_custom_lineup_role', custom).toString('base64');
+            }
+            db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=9').run(JSON.stringify(serializedBinary(codec.pack('pb_lineup_login', login))), role.role_id);
+          }
+
+          const module10Row = db.prepare('SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=10').get(role.role_id);
+          if (module10Row) {
+            const module10 = JSON.parse(module10Row.payload_json);
+            const cells = codec.unpack('pb_hero_info', rawBinary(module10.value[0])).cell_list;
+            module10.value[0] = serializedBinary(codec.pack('pb_hero_info', { hero_list: normalized.map(row => JSON.parse(row.payload_json)), cell_list: cells }));
+            db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=10').run(JSON.stringify(module10), role.role_id);
+          }
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('hero-identity-v9', 'align-client-hero-uid-with-tid', new Date().toISOString());
+        db.exec('PRAGMA user_version=9; COMMIT');
+        version = 9;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }
