@@ -1,25 +1,34 @@
-# 英雄图鉴剩余操作任务卡
+# 英雄图鉴覆盖表
 
-状态：待执行。分支：`feature/system-hero-handbook-20261031`。
+状态：644 / 645 / 655 与登录同步已在 `feature/system-hero-handbook-20261031` 实现并通过服务测试。本轮只改 worktree，未部署、未操作设备、未改运行库或 APK。
 
-## 已有基础
+## 命令覆盖
 
-- `10009` 是英雄图鉴，父登录模块是 module 10，slot 3。
-- `hero-handbook-service.mjs` 已从关系型英雄列表重建已拥有图鉴记录，并保留 `own_rev`。
-- 已有实现只负责点亮；644 升级、645 一键升级和 655 拥有奖励领取仍未实现。
+| 命令 | 名称 | 请求 | 响应 | 状态 | 证据 |
+| --- | --- | --- | --- | --- | --- |
+| 644 | `req_req_hero_handbook_raise_level` | 裸 ETF 英雄 tid（无 pb 请求消息） | `pb_hero_handbook_raise_up_rsp` | 已实现 | `Cmd.lua.json` 常量表；`HeroCmd.lua.json` 原型 20；`HeroHandbookMgr.lua.json` 原型 20 `SeqRaiseStar` |
+| 645 | `req_req_hero_handbook_raise_one_key` | `pb_hero_handbook_raise_one_key_req.hero_id` | `pb_hero_handbook_raise_up_rsp` | 已实现 | `Cmd.lua.json`；`HeroCmd.lua.json` 原型 21；`HeroHandbookMgr.lua.json` 原型 48 `ReqRaiseStarOneKey` |
+| 655 | `req_hero_handbook_own_award` | 裸 ETF 英雄 tid（无 pb 请求消息；无 payload 时按兼容路径领取全部） | `pb_hero_handbook_own_award_back` | 已实现 | `Cmd.lua.json`；`HeroCmd.lua.json` 原型 29；`HeroHandbookMgr.lua.json` 原型 22 `ReqOwnAward`、原型 45 `CheckOwnAwardCanGot` |
 
-## 必须完成
+## 登录同步
 
-1. 从客户端 Lua、protobuf 和配置表确认 644/645/655 的请求、响应、登录同步、等级/奖励、资源和持久化规则。
-2. 扫描图鉴 UI 与 Cmd 中同一功能的其他可发送操作，逐项列入覆盖表；不遗漏激活、升级、一键、领取等可见操作。
-3. 实现全部有充分证据的操作；没有证据的分支返回业务错误并记录原因。
-4. 新增独立 service 或扩展现有 service，避免与其他模块并发修改共享文件；如 `gateway.mjs` 必须修改，保留最小路由 patch。
-5. 验证等级上限、经验/材料、奖励防重、重复/批量请求、事务回滚、SQLite 重开和真实登录 ETF。
-6. 更新本任务卡和 `implementation.md`，列出全部命令、规则、测试和仍未覆盖项。
+- module 10 `HeroDataMgr`，slot 3 = `pb_hero_all_handbook_record{records, own_rev}`。
+- 缺失记录按拥有英雄补齐：`star=0`、`quality=HeroTable.Hero[tid].quality`、合并 `is_mutant`。
+- 排除 `HeroTable.Hero.not_in_guide=true`；同 tid 多行取最高 star，其次最高 quality。
+- 已有 codex 进度与 `own_rev` 原样保留，幂等。
 
-## 验收
+## 明确不在本轮范围
 
-- 专项测试通过，worktree 内全量 `npm test` 无失败。
-- 临时 TCP 请求不返回 `LOCAL_NOT_IMPLEMENTED`（已实现命令范围内）。
-- 未对设备、运行服务、运行数据库或 APK 做操作。
+- `HeroLegendBook`（module 154）的 89801 `handle_star`、89802 `handle_bless`、89803 `handle_level`、89804 `handle_stage` 是另一套系统，未实现，仍返回 `LOCAL_NOT_IMPLEMENTED`。
+- 图鉴属性/战力的服务端重算（`GetTotalProperty`、`CalcAttrMap`、`CalcAddAttrKvL`）未实现；客户端按记录自行计算。
+- 644/645 的资源或材料消耗：客户端 `SeqRaiseStar` / `ReqRaiseStarOneKey` 都不携带消耗，配置表也没有图鉴升星成本列，服务端不扣资源。
+- 655 的 `res_change` 目前为空：`HeroTable.HandbookConstant`（tid=1）在现版本是 `award_item=0`、`award_count=0`。服务已按该配置动态发放，非零配置时走 `grantResources`。
+- 图鉴 UI 在本版本没有调用 `ReqOwnAward` 的入口（`HeroHandbookInfoNode._OnClick` 只调 `SeqRaiseStar`），655 属于协议兼容实现。
+- 未在运行中的本机服务、模拟器、APK 或真实账号验证；没有视觉验收。
+
+## 验收命令
+
+- `node --test personal-server/test/hero-handbook.test.mjs`：11/11。
+- `node --test personal-server/test/hero-handbook.test.mjs personal-server/test/recruit-service.test.mjs personal-server/test/hero-progression.test.mjs personal-server/test/gameplay-gateway.test.mjs`：54/54。
+- `npm test --prefix personal-server`：303/303，0 失败。
 
