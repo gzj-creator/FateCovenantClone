@@ -1,6 +1,17 @@
 import { GameError } from './hero-progression.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { readLineupTables } from '../config/lineup-tables.mjs';
 const fail = (code, message) => { throw new GameError(code, message); };
+
+// The ordinary preset editor sends handle_types=[0]. Apply that wildcard to
+// every configured single-team lineup whose LineupTable.Type row is
+// same_with_pre=true. Multi-team rows need their own team-source mapping and
+// are deliberately left untouched until that mapping is evidenced.
+function sharedPreSingleTeamTypes(lineupTables) {
+  return new Set([...lineupTables.Type.values()]
+    .filter(row => row.same_with_pre === true && Number(row.team_count) === 1)
+    .map(row => Number(row.tid)));
+}
 
 function readCustomPreLineups(model, codec) {
   const module = new Map(model.state.modules.value).get(9);
@@ -59,9 +70,51 @@ function syncHeroes(model) {
   }
   return changed;
 }
-export function createLineupService({ store, codec }) {
+
+function copyCurrentPreset(model, input, sharedPreTypes) {
+  const current = model.lineups.pre_lineups.find(pre => pre.index === (model.lineups.cur_pre_index || 1));
+  if (!current) fail(51553, 'Current preset does not exist');
+  const handles = [...new Set(input.handle_types ?? [])];
+  const wildcard = handles.some(handle => String(handle) === '0');
+  const targets = new Set();
+  for (const handle of handles) {
+    if (String(handle) === '0') continue;
+    const lineup = model.playLineups.find(candidate => String(candidate.type) === String(handle));
+    if (!lineup) fail(51552, 'Unknown lineup copy target');
+    targets.add(lineup);
+  }
+  if (wildcard) {
+    for (const lineup of model.playLineups) {
+      if (sharedPreTypes.has(Number(lineup.type))) targets.add(lineup);
+    }
+  }
+  const copy = [];
+  for (const lineup of targets) {
+    lineup.team_list = [structuredClone(current.lineup)];
+    copy.push(lineup);
+  }
+  return copy;
+}
+
+export function createLineupService({ store, codec, lineupTables = readLineupTables() }) {
+  const sharedPreTypes = sharedPreSingleTeamTypes(lineupTables);
   return {
     supports: type => [208, 209, 218].includes(type),
+    ensureLoginState() {
+      return store.transaction(model => {
+        const current = model.lineups.pre_lineups.find(pre => pre.index === (model.lineups.cur_pre_index || 1));
+        if (!current) return [];
+        const repaired = [];
+        for (const lineup of model.playLineups) {
+          if (!sharedPreTypes.has(Number(lineup.type))) continue;
+          const nextTeams = [structuredClone(current.lineup)];
+          if (JSON.stringify(lineup.team_list) === JSON.stringify(nextTeams)) continue;
+          lineup.team_list = nextTeams;
+          repaired.push(Number(lineup.type));
+        }
+        return repaired;
+      });
+    },
     execute(type, input) {
       return store.transaction(model => {
         let schema, value;
@@ -102,13 +155,7 @@ export function createLineupService({ store, codec }) {
               validateTeam(model, entry.lineup);
               model.lineups.pre_lineups[index] = structuredClone(entry);
             }
-            const current = model.lineups.pre_lineups.find(pre => pre.index === (model.lineups.cur_pre_index || 1));
-            for (const handle of new Set(input.handle_types ?? [])) {
-              if (String(handle) === '0') continue;
-              const lineup = model.playLineups.find(lineup => String(lineup.type) === String(handle));
-              if (!lineup) fail(51552, 'Unknown lineup copy target');
-              lineup.team_list = [structuredClone(current.lineup)]; copy.push(lineup);
-            }
+            copy = copyCurrentPreset(model, input, sharedPreTypes);
           }
           const changed = syncHeroes(model);
           const custom = customPreLineupList(model, codec);

@@ -325,7 +325,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(boxClaim.res_change.changes.find(change => change.tid === '101500').diff_num, '30');
   assert.equal(BigInt(game.store.read().resources.get('101500').num), boxDiamonds + 30n);
   response = await request(506, 15, await encodeEtf([1]));
-  assert.equal(response.err.err, 310);
+  assert.equal(response.err, undefined);
+  const repeatedBoxClaim = codec.unpack('pb_mission_rsp', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(repeatedBoxClaim.res_change.changes, []);
+  assert.equal(repeatedBoxClaim.mission.box_award, boxClaim.mission.box_award);
+  assert.equal(BigInt(game.store.read().resources.get('101500').num), boxDiamonds + 30n);
 
   // Linear task 10001 completes at journey mission 30204. The story request
   // above advances past that milestone, so claim it through the real ETF shape.
