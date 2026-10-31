@@ -53,9 +53,9 @@ function setup(t, clock = () => 1761829200000) {
   };
 }
 
-test('hundred-yuan cumulative recharge claims persist tier records and rewards', t => {
+test('hundred cumulative recharge claims persist tier records and rewards', t => {
   const e = setup(t);
-  e.setRechargeTotal(20400);
+  e.setRechargeTotal(599);
   const result = e.service.execute([1]);
   const response = codec.unpack('pb_res_to_client', result.data);
   assert.equal(response.changes.find(change => change.tid === '101500').diff_num, '100');
@@ -74,7 +74,22 @@ test('hundred-yuan cumulative recharge claims persist tier records and rewards',
   assert.deepEqual(activity.reward_list[0].reward_id_list, [1]);
 });
 
-test('real gateway routes ETF 92001 and returns the configured first-tier reward', async t => {
+test('hundred cumulative recharge compares cent totals without a second conversion', t => {
+  const e = setup(t);
+  assert.equal(tables.HundredAccGroup.get(2).amount, 600);
+  e.setRechargeTotal(21300);
+
+  const result = e.service.execute([2]);
+  const response = codec.unpack('pb_res_to_client', result.data);
+  assert.equal(response.changes.find(change => change.tid === '101500').diff_num, '300');
+  assert.equal(response.changes.find(change => change.tid === '1501200').diff_num, '1');
+
+  const activity = codec.unpack('pb_hundred_acc', rawBinary(new Map(e.store.state().modules.value).get(166)));
+  assert.deepEqual(activity.reward_list.map(row => row.group_id), [2]);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM activity_claims').get().n), 1);
+});
+
+test('real gateway routes ETF 92001 and returns the configured second-tier reward', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-hundred-acc-gateway-'));
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
@@ -83,7 +98,7 @@ test('real gateway routes ETF 92001 and returns the configured first-tier reward
     localWallet: true,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
   });
-  setRechargeTotal(game.store, 20400);
+  setRechargeTotal(game.store, 21300);
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const address = await game.listen(0);
@@ -103,9 +118,11 @@ test('real gateway routes ETF 92001 and returns the configured first-tier reward
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
-  const response = await request(92001, 2, await encodeEtf([1]));
+  const response = await request(92001, 2, await encodeEtf([2]));
   assert.equal(response.err, undefined);
-  assert.equal(codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes.find(change => change.tid === '101500').diff_num, '100');
+  const changes = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(changes.find(change => change.tid === '101500').diff_num, '300');
+  assert.equal(changes.find(change => change.tid === '1501200').diff_num, '1');
   const activity = codec.unpack('pb_hundred_acc', rawBinary(new Map(game.store.state().modules.value).get(166)));
-  assert.deepEqual(activity.reward_list.map(row => row.group_id), [1]);
+  assert.deepEqual(activity.reward_list.map(row => row.group_id), [2]);
 });
