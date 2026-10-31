@@ -89,7 +89,7 @@ export function createLocalGame({
   const rechargeExtraAward = createRechargeExtraAwardService({ codec, tables, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
-  const ranks = createRankService({ codec });
+  const ranks = createRankService({ codec, store });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
     store,
