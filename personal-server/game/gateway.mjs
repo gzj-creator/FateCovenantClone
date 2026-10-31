@@ -26,6 +26,7 @@ import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
+import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
@@ -105,6 +106,7 @@ export function createLocalGame({
     onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
   });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
+  const teamSuggest = createTeamSuggestService({ store, codec, tables, heroTables, now: clock });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
@@ -127,6 +129,7 @@ export function createLocalGame({
     recruit.ensureLoginState();
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
+    teamSuggest.ensureLoginState();
     wishTreasure.ensureLoginState();
     weekHunt.ensureLoginState();
     destiny.ensureLoginState();
@@ -559,6 +562,19 @@ export function createLocalGame({
           const code = error instanceof GameError ? (error.code === 307 ? 16016 : error.code) : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 160).toString('base64') });
+        }
+        return;
+      }
+      if (teamSuggest.supports(type)) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const result = teamSuggest.claim(decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'team_suggest_award_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'team_suggest_award_rejected', type, seq, code, message: error.message });
         }
         return;
       }
