@@ -118,3 +118,13 @@ npm test --prefix .\personal-server
 - 部署前使用 `VACUUM INTO` 创建一致备份 `analysis/experiments/private-server-20261025/p3/recruitment-bugfix-20261031/game.before-main-merge-deploy.local-only.sqlite`：339,968 字节，SHA256 `4fb26305268c72990d44d33e652e7dcf248966673d7ead418d7ec2fbb162a7d0`，schema v10，`integrity_check=ok`，roles=1、heroes=38、resources=69。
 - 已从合并后的 worktree 部署个人服务，新 PID `43432`，`startedAt=2026-10-31T10:10:58.430Z`；`18880/18881/18882/18883/19090` 五个端口均由该 PID 在 `127.0.0.1` 监听，`local_server_ready` 已记录，隔离客户端已自动重连到 19090。部署错误日志为空；未停止、重启或点击客户端，未操作原版 `com.jzyx.my`。
 - 真实 APK 验收仍待用户在现有隔离客户端执行：首次英雄结果卡与英雄库/小队即时展示、招募次数/积分增加、半神星钻补券后券立即增加并产生幻武结果、特聘/指定招募买券同步，以及重登后的持久化。
+
+## 2026-10-31 特聘券购买即时同步修复
+
+- 用户反馈特聘招募买券后星钻扣除，但特聘券数量没有立即增加。真实请求为 type 599 / seq 25，服务端返回 `recruit_committed`，SQLite 已扣星钻并增加 `3002`；修复前实时余额为星钻 `750`、普通券 `2002=4`、特聘券 `3002=8`，特聘购买计数 `daily=4,total=4`，确认不是购买事务丢失。
+- 客户端 `HeroDrawMgr` 的 599 回调依次执行 `AwardKit.Parse(data.res)` 和 `SetMagicDrawBuyInfo(data.buy_info)`。`ResContainer.Change` 在资源对象尚不存在时依赖 `pb_res_change.new_bin` 的完整 `pb_res_obj { tid, num }`；服务端通用物品发放只返回 `tid/new_num/diff_num`，因此券的持久化数量虽已增加，客户端本地容器没有即时创建或刷新。
+- `grantResources` 的 `handler.kind === 'item'` 现在同时写 `new_bin: codec.pack('pb_res_obj', { tid, num })`。该路径覆盖普通券、特聘券及背包物品发放；资源消耗逻辑不变。
+- 招募回归测试对 type 600/599 的 `2002`、`3002` change 解码 `new_bin`，校验 TID 与购买后的真实余额完全一致。最新 `main@5e354e7` 已通过合并提交 `08e9ad4` 合入修复分支，合并后全量 `271/271` 通过。
+- 部署前一致备份为 `analysis/experiments/private-server-20261025/p3/recruitment-ticket-sync-20261031/game.before-ticket-sync-deploy.local-only.sqlite`：344,064 字节，SHA256 `0975ab1d61aef339900c8d0ecadb074b1ee84b64185636397751328272da9463`，schema v10，`integrity_check=ok`。
+- 已从修复 worktree 部署 PID `18688`，`startedAt=2026-10-31T10:40:15.125Z`；五端口仅监听 `127.0.0.1`，stderr 为空。隔离客户端在 10:40:20 自动完成握手和登录，`moduleCount=146`，未操作原版包或点击客户端。
+- 用户此前购买的券在服务端已存在；现有客户端重连后应以登录数据显示余额。真实即时刷新仍需再次购买验收，当前 UI 是否显示 8 张特聘券也需用户视觉确认。
