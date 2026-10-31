@@ -66,6 +66,30 @@ function nextStage(stages, tid) {
   return stages.find(stage => Number(stage.tid) > Number(tid)) ?? null;
 }
 
+function backfillPurchases(db, info, group, stages, tables) {
+  if (!db || !Array.isArray(info.buy_list)) return 0;
+  const products = new Map();
+  for (const stage of stages) {
+    for (const choose of chooseList(tables, stage.tid)) {
+      products.set(Number(choose.gift), { stage: Number(stage.tid), choose: Number(choose.tid) });
+    }
+  }
+  const bought = new Set(info.buy_list.map(row => Number(row.tid)));
+  const start = Number(group.start_time);
+  const end = Number(group.end_time);
+  let added = 0;
+  for (const order of db.prepare('SELECT product_id,created_at FROM recharge_orders ORDER BY rowid').all()) {
+    const purchase = products.get(Number(order.product_id));
+    if (!purchase || bought.has(purchase.stage)) continue;
+    const buyTime = Math.floor(Date.parse(order.created_at) / 1000);
+    if (!Number.isSafeInteger(buyTime) || buyTime < start || end && buyTime >= end) continue;
+    info.buy_list.push({ tid: purchase.stage, buy_time: buyTime, rev_bin: Buffer.alloc(0), choose_tid: purchase.choose });
+    bought.add(purchase.stage);
+    added += 1;
+  }
+  return added;
+}
+
 export function createLineFirstRechargeService({ store, codec, tables, now = Date.now, logger = () => {} }) {
   if (!tables.LineFirstRechargeGroup || !tables.LineFirstRechargeChoose || !tables.LineFirstRecharge) {
     throw new Error('Linear first-recharge configuration is missing');
@@ -73,7 +97,7 @@ export function createLineFirstRechargeService({ store, codec, tables, now = Dat
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(now());
 
-  function normalizeState(modules, at) {
+  function normalizeState(modules, at, db = null) {
     const before = modules.get(MODULE_ID) ? JSON.stringify(readInfo(modules, codec)) : null;
     const group = activeGroup(tables, at);
     if (!group) return { info: readInfo(modules, codec), group: null, stages: [], changed: false };
@@ -91,6 +115,7 @@ export function createLineFirstRechargeService({ store, codec, tables, now = Dat
       };
     }
     info.buy_list = (info.buy_list ?? []).filter(row => stageIds.has(Number(row.tid)));
+    backfillPurchases(db, info, group, stages, tables);
     const bought = new Set(info.buy_list.map(row => Number(row.tid)));
     let stage = stages.find(row => Number(row.tid) === Number(info.tid)) ?? stages.find(row => !bought.has(Number(row.tid))) ?? stages.at(-1) ?? null;
     if (stage && bought.has(Number(stage.tid))) {
@@ -107,9 +132,9 @@ export function createLineFirstRechargeService({ store, codec, tables, now = Dat
   }
 
   function ensureLoginState() {
-    return store.transaction(model => {
+    return store.transaction((model, db) => {
       const modules = new Map(model.state.modules.value);
-      const result = normalizeState(modules, currentSeconds());
+      const result = normalizeState(modules, currentSeconds(), db);
       if (result.changed) model.state.modules.value = [...modules];
       return result;
     });
