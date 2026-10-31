@@ -24,6 +24,7 @@ import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
+import { createMonthPermitService } from './month-permit-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
@@ -348,8 +349,9 @@ export function createLocalGame({
   const timeTemple=createTimeTempleService({store,codec,publish});
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
+  const monthPermit=createMonthPermitService({codec,tables});
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
+    store,codec,tables,voucher,monthPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -642,6 +644,19 @@ export function createLocalGame({
         send(seq, await loginPayload()); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
+      if (type === 105802) {
+        try {
+          const requestData = unpackRequest('pb_month_permit_buy_exp_req', request.data);
+          const result = store.transaction(model => monthPermit.buyLevel({ model, request: requestData }));
+          send(seq, pack('pb_month_permit_buy_level_back', result.response));
+          log({ event: 'month_permit_buy_level_committed', type, seq, actId: result.actId, expGain: result.expGain, cost: result.cost, buyExpNum: result.buyExpNum });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'month_permit_buy_level_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (mail && mail.supports(type)) {
         try {
           let result;
@@ -1369,7 +1384,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity,
+    root, loginPayload, store, wallet, mail, voucher, monthPermit, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },

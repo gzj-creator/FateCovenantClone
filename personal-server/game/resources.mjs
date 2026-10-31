@@ -17,6 +17,7 @@ const ITEM_GROUP_HANDLERS = new Map([
   ['1200:ItemBox', 1], ['1200:ItemSuitBox', 1], ['1200:ItemTimeBox', 1],
   ['1900:ItemBase', 3],
   ['3300:ItemBase', 9],
+  ['4200:ItemBase', 0],
   ['4100:ItemSpiritCourtyard', 19]
 ]);
 

@@ -15,7 +15,9 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('OpenServerSprintTable.data.lua.json', base), ['SprintRankTask', 'SprintType']),
     // Monthly pass products are RechargeTable type=130 rows; the matching Gear row
     // binds a product to the activity version that owns its pay_list entry.
-    ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle']), { Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle' }),
+    ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle', 'UpLv', 'BuyExp']), {
+      Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle', UpLv: 'MonthPermitUpLv', BuyExp: 'MonthPermitBuyExp'
+    }),
     // Standard permits link their RechargeTable product to module 38.
     ...pick(readGeneratedTables(new URL('../../analysis/tmp/PermitTable.data.bytecode.json', import.meta.url), ['Base']), { Base: 'PermitBase' }),
     ...pick(readGeneratedTables(new URL('ActFrameTable.data.lua.json', base), ['Act', 'ActType']), { Act: 'ActFrameAct', ActType: 'ActFrameType' }),
