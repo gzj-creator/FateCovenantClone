@@ -31,6 +31,8 @@ import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
+import { createNorseRuneService } from './norse-rune-service.mjs';
+import { readNorseRuneTables } from '../config/norse-rune-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
 import { createWishTreasureService } from './wish-treasure-service.mjs';
 import { createWeekHuntService } from './week-hunt-service.mjs';
@@ -111,6 +113,7 @@ export function createLocalGame({
   const guildRoster = createGuildRosterService({ store, codec, now: () => Math.floor(clock() / 1000) });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
+  const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
@@ -135,6 +138,7 @@ export function createLocalGame({
     destiny.ensureLoginState();
     magicCircle.ensureLoginState();
     guildRoster.ensureLoginState();
+    norseRune.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
     rechargeBonus.synchronize();
     const state = store.state();
@@ -729,6 +733,18 @@ export function createLocalGame({
         }
         return;
       }
+      if (norseRune.supports(type)) {
+        try {
+          const result = await norseRune.execute(type, request.data);
+          send(seq, result.data);
+          log({ event: 'norse_rune_committed', type, seq, wishLevel: result.value.level ?? undefined, exp: result.value.exp ?? undefined });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'norse_rune_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (type === 8000) {
         const requestData = unpack('pb_req_save_process', request.data);
         store.transaction(model => { for (const process of requestData.req_list ?? []) model.state.guides[process.key_id] = process.process_id; });
@@ -834,7 +850,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, petActivity, heroDrawActivity, wishTreasure, tables, magicCircle,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, petActivity, heroDrawActivity, wishTreasure, tables, magicCircle, norseRune,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
