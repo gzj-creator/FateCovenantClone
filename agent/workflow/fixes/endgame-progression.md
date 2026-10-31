@@ -63,7 +63,8 @@
 
 ## 验证
 
-- `npm test --prefix personal-server`：**210/210 通过**。
+- 四项功能提交后为 **210/210 通过**；合入最新 main 与 hundred-schools 后为
+  **228/228 通过**。
 - 定向测试覆盖真实 TCP 636、ETF 82601、PB 640、PB 503、SQLite 重开、资源不足、
   重复请求、非法配置和编码失败回滚。
 - 640 网关测试使用真实客户端的 `res:[{tid:"821502"}]` 形状。
@@ -73,7 +74,7 @@
 
 - 组件测试：通过。
 - 临时 SQLite/TCP 集成：通过。
-- 真实 APK 请求：待部署后核验。
+- 真实 APK 请求：服务已部署并完成自动重连登录，四项业务请求待用户实际触发。
 - 用户视觉验收：待用户确认四项界面结果。
 
 ## 2026-10-31 运行环境备注
@@ -82,3 +83,20 @@
 误记为本次修复已部署。部署前必须重新读取
 `runtime.local-only.data/server.local-only.json`、进程命令行和 SQLite 一致性，并使用
 当前运行库的一致性备份。
+
+## 2026-10-31 集成部署
+
+- 修复提交为 `d23ba96`，随后以 `9eed028` 合入最新 main，并以 `0f0f968` 合入已完成的
+  `feature/hundred-schools`（`6062ac3`）。合并后全量测试为 **228/228 通过**。
+- 部署前运行服务 PID `3180` 来自 `.worktree/hundred-schools`，不含本轮四项修复。
+- 部署前一致性备份：
+  `analysis/experiments/private-server-20261025/p3/endgame-progression-20261031/game-before-integrated-deploy.local-only.sqlite`，
+  SHA256 `505e73e6fcfe70563951b7eb22daf39c311bcfba967ffa336df696b04c96dd22`，
+  `integrity_check=ok`，`user_version=9`。
+- 集成服务 PID `21672`，工作目录 `F:\projects\FateCovenantClone`，脚本来自
+  `.worktree/endgame-progression-fixes/personal-server/local-server.mjs`；端口
+  `18880/18881/18882/18883/19090` 均只监听 `127.0.0.1`。启动记录和端口证据在
+  `endgame-progression-20261031/integration-deploy-result.local-only.json`。
+- `2026-10-31T06:40:52Z` 隔离客户端自动重连；握手、登录、module 146 下发及活动同步均成功，
+  未见 `LOCAL_NOT_IMPLEMENTED`、`AddRemoteLoad` 或连接错误。部署本身未调用四项业务写接口，
+  因此没有替用户消费资源。

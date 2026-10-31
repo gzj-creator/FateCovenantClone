@@ -161,6 +161,7 @@ G3 现已实现：
 
 `fix/endgame-progression-fixes` 已实现 type 636 升级门槛修正、82601 星火节点、
 640 非凡觉醒和 503 主线扫荡。640 的真实请求只携带材料类型，数量由配置
-`stone_num` 决定。服务全量测试为 210/210 通过，包含真实 TCP、事务回滚和 SQLite
-重开；代码完成时尚待部署到隔离客户端并完成四项视觉验收。详细证据见
+`stone_num` 决定。与最新 main、hundred-schools 集成后服务全量测试为 228/228 通过，
+包含真实 TCP、事务回滚和 SQLite 重开。集成服务已部署，隔离客户端自动重连登录成功；
+四项业务操作与视觉验收待用户实际触发。详细证据见
 [后期养成与扫荡修复](../agent/workflow/fixes/endgame-progression.md)。
