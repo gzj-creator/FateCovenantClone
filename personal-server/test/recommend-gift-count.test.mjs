@@ -216,7 +216,7 @@ test('native 16004 batch offer updates all limited rows, rejects components and 
   assert.equal(frames.find(frame => frame.seq === 2)?.err, undefined);
   const purchase = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
   const pushed = codec.unpack('pb_daily_discount_all', Buffer.from(purchase.extra_ret_list.find(entry => entry.flag === 40).data, 'base64'));
-  assert.deepEqual([6, 2, 5].map(tid => pushed.daily_discount_list.find(row => row.recharge_tid === tid)?.buy_times ?? 0), [1, 1, 1]);
+  assert.deepEqual([6, 2, 5, 1].map(tid => pushed.daily_discount_list.find(row => row.recharge_tid === tid)?.buy_times ?? 0), [1, 1, 1, 1]);
 
   for (const [seq, productId] of [[3, 40009], [4, 46002], [5, 46003]]) {
     const response = await request(16004, seq, await encodeEtf([productId, binary(Buffer.from('[]')), 701500]));

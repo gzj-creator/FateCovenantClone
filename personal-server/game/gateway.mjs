@@ -29,6 +29,7 @@ import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createGuildRosterService } from './guild-roster-service.mjs';
 import { createHeroFavorService } from './hero-favor-service.mjs';
+import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
@@ -37,6 +38,7 @@ import { createNorseRuneService } from './norse-rune-service.mjs';
 import { readNorseRuneTables } from '../config/norse-rune-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
 import { createWishTreasureService } from './wish-treasure-service.mjs';
+import { createWishTreeService } from './wish-tree-service.mjs';
 import { createWeekHuntService } from './week-hunt-service.mjs';
 import { createFirstRechargeService } from './first-recharge-service.mjs';
 import { createRechargeBonusService } from './recharge-bonus-service.mjs';
@@ -91,6 +93,7 @@ export function createLocalGame({
   const heroDrawActivity = createHeroDrawActivityService({ store, codec, tables, heroTables, calendar, now: clock, logger });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
   const wishTreasure = createWishTreasureService({ store, codec, tables, calendar, now: clock, logger });
+  const wishTree = createWishTreeService({ store, codec, tables, now: clock, logger });
   const weekHunt = createWeekHuntService({ store, codec, tables, now: clock });
   const firstRecharge = createFirstRechargeService({ store, codec, tables, now: clock, logger });
   const rechargeBonus = createRechargeBonusService({ store, codec, tables, calendar, now: clock, logger });
@@ -118,6 +121,7 @@ export function createLocalGame({
   const heroFavor = createHeroFavorService({
     store, codec, heroTables, tables, now: () => Math.floor(clock() / 1000)
   });
+  const teamSuggest = createTeamSuggestService({ store, codec, tables, heroTables, now: clock });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
@@ -127,7 +131,7 @@ export function createLocalGame({
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,wishTreasure,weekHunt,
+    store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -138,11 +142,15 @@ export function createLocalGame({
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
+    const repairedLineups = lineups.ensureLoginState();
+    if (repairedLineups.length) logger({ event: 'shared_pre_lineups_repaired', types: repairedLineups });
     recruit.ensureLoginState();
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
     heroFavor.ensureLoginState();
+    teamSuggest.ensureLoginState();
     wishTreasure.ensureLoginState();
+    wishTree.ensureLoginState();
     weekHunt.ensureLoginState();
     destiny.ensureLoginState();
     magicCircle.ensureLoginState();
@@ -536,6 +544,26 @@ export function createLocalGame({
         }
         return;
       }
+      if (wishTree.supports(type)) {
+        let input;
+        try {
+          if (type === 91704) input = unpack('pb_wish_tree_select_req', request.data);
+          else input = await singleIdArgument(request.data, 'Invalid wish-tree argument');
+          const result = wishTree.execute(type, input);
+          if (result.data?.length) send(seq, result.data); else send(seq);
+          log({
+            event: 'wish_tree_committed', type, seq,
+            wishType: result.value?.type,
+            awardTid: result.value?.award_tid,
+            changes: result.value?.res?.changes?.length ?? 0
+          });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'wish_tree_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if(sprint.supports(type)||wallet&&type===16003){
         try{
           if(type===16003){const decoded=await decodeEtf(request.data);const value=decoded?.value??decoded;const bytes=Buffer.isBuffer(value)?value:Array.isArray(value)?Buffer.from(value):null;wallet.acknowledge(bytes?bytes.toString():value);send(seq);}
@@ -581,6 +609,19 @@ export function createLocalGame({
           const code = error instanceof GameError ? (error.code === 307 ? 16016 : error.code) : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 160).toString('base64') });
+        }
+        return;
+      }
+      if (teamSuggest.supports(type)) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const result = teamSuggest.claim(decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'team_suggest_award_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'team_suggest_award_rejected', type, seq, code, message: error.message });
         }
         return;
       }
@@ -894,7 +935,9 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, heroFavor, destiny, petActivity, heroDrawActivity, wishTreasure, timeTemple, tables, magicCircle, norseRune, cabin,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, heroFavor,
+    teamSuggest, destiny, petActivity, heroDrawActivity, wishTreasure, wishTree, timeTemple, tables,
+    magicCircle, norseRune, cabin,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

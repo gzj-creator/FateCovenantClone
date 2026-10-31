@@ -4,6 +4,11 @@ import { GameError } from './hero-progression.mjs';
 const PERMIT_MODULE = 38;
 const PERMIT_PRODUCT_TYPE = 6;
 const BASE_PERMIT_TYPES = new Set([67, 68, 69, 70, 71]);
+// RechargeTable.Handle[9] maps recharge_type 6 to PermitNewMgr. The client
+// loops over extra_ret_list without a nil guard, so a standard permit purchase
+// must return at least one entry. PermitNewMgr refreshes from the product tid;
+// the pb_permit_info payload documents the row that changed.
+const PERMIT_HANDLE_FLAG = 9;
 
 // Standard permits use their own login module. RechargeTable links the shop
 // product to a PermitTable row, and the client refreshes the row from the 1900
@@ -46,7 +51,10 @@ export function createPermitService({ codec, tables }) {
       moduleValue.value[elementIndex] = serializedBinary(codec.pack('pb_permit_data', data));
       modules.set(PERMIT_MODULE, moduleValue);
       model.state.modules.value = [...modules];
-      return { permitId: String(permit.tid), extraRetList: [] };
+      return {
+        permitId: String(permit.tid),
+        extraRetList: [{ flag: PERMIT_HANDLE_FLAG, data: codec.pack('pb_permit_info', info) }]
+      };
     }
 
     throw new GameError(5, 'Permit login row is unavailable');

@@ -326,6 +326,49 @@ test('squad version switching is idempotent and restores each saved layout after
   rejected(() => service().execute(218, 5), 1);
 });
 
+test('shared-pre wildcard repairs every single-team journey lineup without overwriting independent or multi-team lineups', t => {
+  const env = setup(t), service = createLineupService({ store: env.store, codec });
+  let independent, multiTeam;
+  env.store.transaction(model => {
+    const current = model.lineups.pre_lineups.find(pre => pre.index === (model.lineups.cur_pre_index || 1));
+    current.lineup.fighter_list[0].loc = 3;
+    for (const lineup of model.playLineups) lineup.team_list[0].fighter_list[0].loc = 1;
+    independent = structuredClone(model.playLineups.find(lineup => lineup.type === 1));
+    independent.type = 4;
+    independent.team_list[0].fighter_list[0].loc = 2;
+    model.playLineups.push(independent);
+    const sharedJourney = structuredClone(model.playLineups.find(lineup => lineup.type === 1));
+    sharedJourney.type = 2;
+    model.playLineups.push(sharedJourney);
+    multiTeam = structuredClone(sharedJourney);
+    multiTeam.type = 60;
+    model.playLineups.push(multiTeam);
+  });
+  independent = structuredClone(env.store.read().playLineups.find(lineup => lineup.type === 4));
+  multiTeam = structuredClone(env.store.read().playLineups.find(lineup => lineup.type === 60));
+
+  assert.deepEqual(service.ensureLoginState(), [1, 2, 76, 77]);
+  const repaired = env.store.read();
+  const preset = repaired.lineups.pre_lineups[0].lineup;
+  for (const type of [1, 2, 76, 77]) assert.deepEqual(repaired.playLineups.find(lineup => lineup.type === type).team_list, [preset]);
+  assert.deepEqual(repaired.playLineups.find(lineup => lineup.type === 4), independent);
+  assert.deepEqual(repaired.playLineups.find(lineup => lineup.type === 60), multiTeam);
+  assert.deepEqual(service.ensureLoginState(), []);
+  const updatedPreset = structuredClone(repaired.lineups.pre_lineups[0]);
+  const copied = codec.unpack('pb_edit_pre_lineup_rsp', service.execute(209, { pre_lineup_list: [updatedPreset], handle_types: ['0'] }).data);
+  assert.deepEqual(copied.copy_lineup.map(lineup => lineup.type), [1, 2, 76, 77]);
+
+  const login = codec.unpack('pb_lineup_login', rawBinary(new Map(env.store.state().modules.value).get(9)));
+  assert.deepEqual(
+    login.lineups.map(bytes => codec.unpack('pb_lineup', Buffer.from(bytes, 'base64')).type).sort((a, b) => a - b),
+    [1, 2, 4, 60, 76, 77]
+  );
+  env.reopen();
+  assert.deepEqual(createLineupService({ store: env.store, codec }).ensureLoginState(), []);
+  assert.deepEqual(env.store.read().playLineups.find(lineup => lineup.type === 4), independent);
+  assert.deepEqual(env.store.read().playLineups.find(lineup => lineup.type === 60), multiTeam);
+});
+
 test('preset and play-lineup edits validate ownership and duplicate positions atomically', t => {
   const env = setup(t), service = createLineupService({ store: env.store, codec });
   const original = env.store.read(), preset = structuredClone(original.lineups.pre_lineups[0]);

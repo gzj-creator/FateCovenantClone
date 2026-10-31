@@ -14,6 +14,7 @@ export function readHeroTables(file = defaultPath) {
     'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
     'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
+    'TeamSuggest', 'TeamSuggestAward', 'TeamSuggestType', 'TeamSuggestTeamType',
     // Hero favour/"training" (HeroFavorMgr): the login module stores the
     // player's accumulated favour while these tables own gift values, level
     // thresholds, rewards, break caps and playground eligibility.

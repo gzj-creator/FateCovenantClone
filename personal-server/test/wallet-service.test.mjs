@@ -159,13 +159,15 @@ test('daily discount batch purchase consumes every included offer and survives r
   const result=e.wallet.buy({product_id:46003,request_id:'daily-batch-first'});
   assert.equal(result.balance_paid_cents,900);
   const push=codec.unpack('res_recharge_success',e.pushes[0].data);
+  assert.equal(push.res.changes.find(change=>change.tid==='101500').diff_num,'150');
   const pushed=codec.unpack('pb_daily_discount_all',Buffer.from(push.extra_ret_list.find(entry=>entry.flag===40).data,'base64'));
-  const assertConsumed=info=>assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1]);
+  const assertConsumed=info=>assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
   assertConsumed(pushed);
   assertConsumed(codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108))));
   for(const [productId,requestId] of [[46003,'daily-batch-repeat'],[40009,'daily-batch-component-a'],[46002,'daily-batch-component-b']]) {
     assert.throws(()=>e.wallet.buy({product_id:productId,request_id:requestId}),error=>error.code===307);
   }
+  assert.throws(()=>e.wallet.purchaseGift({product_id:40006,request_id:'daily-batch-free'}),error=>error.code===307);
   assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9100);assert.equal(e.pushes.length,1);
 
   e.reopen();
@@ -179,8 +181,25 @@ test('daily discount batch offer is unavailable after one included component is 
   e.wallet.buy({product_id:40009,request_id:'daily-component-first'});
   assert.throws(()=>e.wallet.buy({product_id:46003,request_id:'daily-component-bundle'}),error=>error.code===307);
   const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
-  assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[0,1,0]);
+  assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[0,1,0,0]);
   assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9400);
+});
+
+test('free daily gift bought first remains part of the sold-out batch state without duplicate reward',t=>{
+  const e=setup(t);
+  const before=BigInt(e.store.read().resources.get('101500')?.num??0);
+  e.wallet.purchaseGift({product_id:40006,request_id:'daily-free-first'});
+  assert.equal(BigInt(e.store.read().resources.get('101500').num)-before,30n);
+  e.wallet.credit({account_id:'local-1',amount_cents:1000,request_id:'daily-free-bundle-fund'});
+  const bundle=e.wallet.buy({product_id:46003,request_id:'daily-free-bundle'});
+  assert.equal(bundle.balance_cents,100);
+  assert.equal(BigInt(e.store.read().resources.get('101500').num)-before,150n);
+  const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
+  assert.throws(()=>e.wallet.purchaseGift({product_id:40006,request_id:'daily-free-repeat'}),error=>error.code===307);
+  e.reopen();
+  const reopened=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.deepEqual([6,2,5,1].map(tid=>reopened.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
 });
 
 test('sold-out purchase limit wins over an empty wallet balance',t=>{
@@ -225,7 +244,7 @@ test('daily discount purchase counts are rebuilt from orders on restart',t=>{
   createWalletService({store:e.store,codec,tables,now:()=>now});
   const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
   assert.equal(info.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
-  assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1]);
+  assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
 });
 
 test('wallet logging failures cannot reject committed credits or purchases',t=>{

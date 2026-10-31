@@ -1,4 +1,5 @@
 import { readGeneratedTables } from './hero-tables.mjs';
+import { wishTreeTables } from './wish-tree-tables.mjs';
 const base = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/', import.meta.url);
 let cached;
 export function readGameTables() {
@@ -116,6 +117,10 @@ export function readGameTables() {
       FirstRecharge: 'FirstRecharge',
       Award: 'FirstRechargeAward'
     }),
+    // WishTree (rebate) is a login-module table rather than an activity. Its
+    // gift groups and award rows are small enough to keep as reviewed static
+    // configuration; module 165 still stores every mutable field.
+    ...wishTreeTables,
     ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/14863431925290164000-RechargeBonusTable.data.json', import.meta.url), ['RechargeBonus', 'Group', 'Award']), {
       RechargeBonus: 'RechargeBonus',
       Group: 'RechargeBonusGroup',
