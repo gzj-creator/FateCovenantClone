@@ -138,3 +138,42 @@ test('optional box transaction rolls back when award encoding fails', t => {
   assert.throws(() => broken.openSelected({ tid: 71200, num: 1, selected: [{ index: 1, num: 1 }] }), /encode fail/);
   assert.deepEqual(env.store.state(), before);
 });
+
+test('guaranteed random box forces its configured group at the threshold and persists counters', t => {
+  const env = setup(t, { random: () => 0.99 });
+  addBox(env, 3501200, 8);
+  const before = BigInt(env.store.read().resources.get('3002')?.num ?? 0);
+  for (let index = 0; index < 6; index++) env.service.open([{ tid: 3501200, num: 1 }]);
+  let guarantee = env.store.read().state.boxGuarantees?.['3501200'];
+  assert.equal(guarantee.noGuaranteeCount, 6);
+  assert.equal(guarantee.openCount, 6);
+  assert.equal(guarantee.openTotalCount, 6);
+  assert.equal(guarantee.counterGuaranteeCount, 0);
+
+  const seventh = env.service.open([{ tid: 3501200, num: 1 }]);
+  const award = seventh.value.changes.find(change => change.tid === '3002');
+  assert.equal(award.diff_num, '10');
+  guarantee = env.store.read().state.boxGuarantees['3501200'];
+  assert.equal(guarantee.noGuaranteeCount, 0);
+  assert.equal(guarantee.openCount, 7);
+  assert.equal(guarantee.openTotalCount, 7);
+  assert.equal(guarantee.counterGuaranteeCount, 1);
+  assert.equal(BigInt(env.store.read().resources.get('3002').num), before + 10n);
+
+  env.reopen();
+  assert.deepEqual(env.store.read().state.boxGuarantees['3501200'], guarantee);
+});
+
+test('guaranteed random box counters and stock roll back when award encoding fails', t => {
+  const env = setup(t, { random: () => 0.99 });
+  addBox(env, 3501200, 2);
+  const before = env.store.state();
+  const broken = createItemBoxService({
+    store: env.store,
+    codec: { ...codec, pack: (name, object) => { if (name === 'pb_res_to_client') throw new Error('encode fail'); return codec.pack(name, object); } },
+    tables,
+    random: () => 0.99
+  });
+  assert.throws(() => broken.open([{ tid: 3501200, num: 2 }]), /encode fail/);
+  assert.deepEqual(env.store.state(), before);
+});

@@ -18,13 +18,13 @@
 
 - 仅执行**完全由配置定义**的普通随机宝箱：`ItemBox/ItemSuitBox` 类 + `Random_Box` + `DrawTable` 权重（先按 `weight_group` 选组，再按 `lib_range` 权重选奖励）且无任何保底字段。
 - 事务内合并同一 tid 的扣减与发放，回包 `pb_res_to_client{changes}`；库存不足、数量非法、未知物品全部拒绝且不改状态。
-- 明确拒绝：`OptionalBox`（选择语义未证实）、`Designated_Box`（规则未证实）、`Pay_Box`（需充值处理器）、`BoxRepeat`（需重复箱状态）、含保底的抽奖库；157 的 `lottery_list` 非空直接拒绝。
+- 明确拒绝：`Designated_Box`（规则未证实）、`Pay_Box`（需充值处理器）、`BoxRepeat`（需重复箱状态）；157 的 `lottery_list` 非空直接拒绝。
 - 151 = 单个 `simple_use`；159 = `pb_one_key_use.use[]`；157 = `pb_batch_use_box_req.box_list[]`。152/153/155/156/158 未接入。
 
 ## 实现边界
 
 - 随机数来自服务端（测试注入确定随机），因此同一请求可能得到不同奖励；这是配置定义的随机宝箱行为，不是伪造。
-- 保底计数、`pb_box_guarantee` 持久化、`new_bin/extra` 资源附加数据、宝箱批量展示文案均未实现。
+- 2026-10-31 起，配置中带正保底的三个随机箱会持久化 `noGuaranteeCount/openCount/counterGuaranteeCount/openTotalCount`，达到本机兼容阈值后强制从 `guaranteed_group` 抽取；训练见 `personal-server/test/item-box-service.test.mjs`。`pb_box_guarantee` 登录回包槽位、`new_bin/extra` 资源附加数据和宝箱批量展示文案仍未实现。
 - 奖励资源仍受 `grantResources` 限定：若抽到尚未支持 `res_type` 的奖励，整笔使用回滚并报错（不会吞箱）。
 
 ## 复现

@@ -79,6 +79,19 @@ function drawInfo(env) {
   return codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
 }
 
+function setRecruitRecord(env, record) {
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value), module = modules.get(10);
+    const info = codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
+    info.recruit_list = (info.recruit_list ?? []).filter(entry =>
+      Number(entry.tid) !== Number(record.tid) && Number(entry.draw_lib) !== Number(record.draw_lib)
+    );
+    info.recruit_list.push(record);
+    module.value[2] = serializedBinary(codec.pack('pb_hero_draw_info', info));
+    model.state.modules.value = [...modules];
+  });
+}
+
 function loginItem(env, tid) {
   const module = new Map(env.store.state().modules.value).get(6);
   return module.value.flatMap(group => Array.isArray(group.value) ? group.value.map(item => codec.unpack('pb_res_obj', rawBinary(item))) : [])
@@ -348,6 +361,27 @@ test('demigod wishes replace results, reset failure progress and expose the fort
   assert.equal(wished.draw.wish_fail_times, '1');
 });
 
+test('demigod forty-draw pity forces the best unlocked equip and stays synced with module 10', t => {
+  const env = setup(t);
+  updateDemigodDraw(env, draw => { draw.total_draw_times = 39; draw.wish_list = []; });
+  env.seed(808002, 5);
+  const result = env.service.execute(87618, [0]);
+  assert.equal(result.valueForLog.results[0].guaranteed, true);
+  assert.equal(result.valueForLog.results[0].tid, 1200719);
+  assert.equal(demigodDraw(env).total_draw_times, '44');
+
+  let record = recruitInfo(env, 226);
+  assert.equal(Number(record.tid), 1049);
+  assert.equal(Number(record.draw_count), 44);
+  assert.equal(Number(record.guaranteed_count), 4);
+  assert.equal(Number(record.high_guaranteed_count), 4);
+
+  env.reopen();
+  record = recruitInfo(env, 226);
+  assert.equal(Number(record.draw_count), 44);
+  assert.equal(Number(record.guaranteed_count), 4);
+});
+
 test('demigod state migrates from metadata into module 518 and encoding failure rolls back', t => {
   const env = setup(t);
   const formationBefore = structuredClone(demigodModule(env).value[1]);
@@ -432,6 +466,32 @@ test('leader-equipment ten draw consumes tickets, returns real equipment and sur
   assert.equal(persisted.draw_info.lv, 1);
   env.reopen();
   assert.deepEqual(leaderEquipData(env), persisted);
+});
+
+test('leader-equipment libraries 116 through 121 share a persistent forty-draw pity record', t => {
+  const env = setup(t);
+  env.seed(2002, 100);
+  setRecruitRecord(env, { tid: 1031, draw_lib: '116', draw_count: '35', guaranteed_count: 35, high_guaranteed_count: 35 });
+
+  let result = env.service.execute(601, { draw_lib: 116, point_draw_num: 5 });
+  assert.equal(result.valueForLog.results[4].guaranteed, true);
+  assert.equal(result.valueForLog.results[4].tid, 5109018);
+  let record = drawInfo(env).recruit_list.find(entry => Number(entry.tid) === 1031);
+  assert.equal(Number(record.draw_count), 40);
+  assert.equal(Number(record.guaranteed_count ?? 0), 0);
+
+  result = env.service.execute(601, { draw_lib: 117, point_draw_num: 5 });
+  assert.equal(result.valueForLog.results.every(entry => entry.guaranteed === false), true);
+  record = drawInfo(env).recruit_list.find(entry => Number(entry.tid) === 1031);
+  assert.equal(Number(record.draw_lib), 117);
+  assert.equal(Number(record.draw_count), 45);
+  assert.equal(Number(record.guaranteed_count), 5);
+  assert.equal(drawInfo(env).recruit_list.filter(entry => Number(entry.tid) === 1031).length, 1);
+
+  env.reopen();
+  record = drawInfo(env).recruit_list.find(entry => Number(entry.tid) === 1031);
+  assert.equal(Number(record.draw_count), 45);
+  assert.equal(Number(record.guaranteed_count), 5);
 });
 
 test('draw statistics backfill historical counts and publish both draw and achievement totals', async t => {
