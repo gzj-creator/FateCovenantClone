@@ -67,19 +67,33 @@ function pickRandom(entries, random) {
   return entries.at(-1);
 }
 
-function mergeResourceChanges(changes) {
+function mergeResourceChanges(changes, model, codec) {
   const byTid = new Map();
   for (const change of changes) {
     const tid = String(change.tid);
     const previous = byTid.get(tid);
     if (previous) {
-      previous.diff_num = String(BigInt(previous.diff_num ?? 0) + BigInt(change.diff_num ?? 0));
-      previous.new_num = change.new_num;
+      byTid.set(tid, {
+        ...previous,
+        ...change,
+        tid,
+        diff_num: String(BigInt(previous.diff_num ?? 0) + BigInt(change.diff_num ?? 0))
+      });
     } else {
       byTid.set(tid, { ...change, tid, diff_num: String(change.diff_num ?? 0) });
     }
   }
-  return [...byTid.values()].filter(change => BigInt(change.diff_num) !== 0n);
+  return [...byTid.values()].flatMap(change => {
+    const newNum = model.resources.get(change.tid)?.num ?? change.new_num;
+    const merged = { ...change, new_num: newNum };
+    if (change.new_bin !== undefined) {
+      // A buy-and-draw request can net to zero. Keep this change so the client
+      // creates the inventory object, but advertise the transaction's final
+      // balance instead of the intermediate balance from the grant step.
+      merged.new_bin = codec.pack('pb_res_obj', { tid: change.tid, num: String(newNum) });
+    }
+    return BigInt(change.diff_num) === 0n && change.new_bin === undefined ? [] : [merged];
+  });
 }
 
 function achievementAwardIndex(awardLib) {
@@ -108,9 +122,9 @@ function setAchievementAward(awardState, awardLib) {
   return bytes;
 }
 
-function recruitDefaults(lib) {
+function recruitDefaults(lib, recordTid = lib) {
   return {
-    tid: lib,
+    tid: recordTid,
     draw_lib: String(lib),
     free_count: 0,
     daily_flush_time: 0,
@@ -143,14 +157,14 @@ function recruitDefaults(lib) {
   };
 }
 
-function normalizeRecruit(info, lib) {
-  const defaults = recruitDefaults(lib);
+function normalizeRecruit(info, lib, recordTid) {
+  const defaults = recruitDefaults(lib, recordTid);
   for (const key of ['wish_hero_list', 'wish_must_count', 'draw_num_kv_list', 'random_box_draw_list', 'latest_more_draw_list', 'extra_wish_list', 'hero_transfer_num']) {
     if (!Array.isArray(info[key])) info[key] = [];
   }
   for (const [key, value] of Object.entries(defaults)) if (info[key] === undefined || info[key] === null) info[key] = value;
   info.draw_num_kv_list = info.draw_num_kv_list.map(row => row.key === undefined || row.key === null ? { ...row, key: 0 } : row);
-  info.tid = lib;
+  info.tid = recordTid;
   info.draw_lib = String(lib);
   return info;
 }
@@ -207,6 +221,11 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     if (!fantasyEquipTables || !demigodBuyConfig) fail(5, 'Demigod resident draw purchase configuration is missing');
   }
 
+  function recruitRecordTid(lib) {
+    const draw = heroTables.Draw.get(lib);
+    return draw?.is_record_by_type ? Number(draw.draw_type) : lib;
+  }
+
   function readState(model) {
     const { modules, module } = module10(model);
     const drawInfo = codec.unpack('pb_hero_draw_info', Buffer.from(module.value[2]?.value?.data ?? []));
@@ -215,11 +234,11 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     const byLib = new Map();
     for (const info of drawInfo.recruit_list) {
       const lib = n(info.draw_lib) || Number(info.tid);
-      if (supportedLibs.has(lib)) byLib.set(lib, normalizeRecruit(info, lib));
+      if (supportedLibs.has(lib)) byLib.set(lib, normalizeRecruit(info, lib, recruitRecordTid(lib)));
     }
     for (const lib of supportedLibs) {
       if (!byLib.has(lib)) {
-        const info = recruitDefaults(lib);
+        const info = recruitDefaults(lib, recruitRecordTid(lib));
         drawInfo.recruit_list.push(info);
         byLib.set(lib, info);
       }
@@ -583,7 +602,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     writeDemigodDrawState(model, state);
     return {
       schema: 'pb_fantasy_equip_draw_buy_rsp',
-      value: { res: { changes: [...mergeResourceChanges(purchaseChanges), ...equipChanges] }, draw: state.draw },
+      value: { res: { changes: [...mergeResourceChanges(purchaseChanges, model, codec), ...equipChanges] }, draw: state.draw },
       valueForLog: {
         buyCount,
         drawCount,
@@ -780,7 +799,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     state.data.max_uid = nextUid.toString();
     writeLeaderEquipState(model, state);
 
-    const recruitInfo = recruitDefaults(lib);
+    const recruitInfo = recruitDefaults(lib, recruitRecordTid(lib));
     recruitInfo.draw_count = count;
     recruitInfo.daily_draw_count = count;
     recruitInfo.daily_can_draw_num = 1000000;

@@ -222,6 +222,17 @@ test('special ticket purchases feed the special draw library end to end', t => {
   assert.equal(recruitInfo(env, 10).draw_count, 1);
 });
 
+test('special recruit uses the client record tid and updates its thirty-draw pity counter', t => {
+  const env = setup(t, () => 0);
+  env.seed(4002, 3);
+  const response = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 10, point_draw_num: 3 }).data);
+  assert.equal(Number(response.recruit_info.tid), 1011);
+  assert.equal(Number(response.recruit_info.draw_lib), 10);
+  assert.equal(Number(response.recruit_info.guaranteed_count), 3);
+  assert.equal(Number(recruitInfo(env, 10).tid), 1011);
+  assert.equal(Number(recruitInfo(env, 10).guaranteed_count), 3);
+});
+
 test('special ticket purchase encoding failure rolls back diamonds and tickets', t => {
   const env = setup(t);
   env.seed(101500, 10000);
@@ -244,9 +255,13 @@ test('demigod five draw buys and consumes tickets, emits real equips and survive
   env.seed(101500, 5000);
   const result = env.service.execute(87618, [5]);
   const response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', result.data);
-  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
-    ['101500', '-2000']
+  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+    ['101500', '-2000'],
+    ['808002', '0']
   ]);
+  const ticketAfterFive = codec.unpack('pb_res_obj', Buffer.from(response.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
+  assert.equal(ticketAfterFive.tid, '808002');
+  assert.equal(Number(ticketAfterFive.num ?? 0), 0);
   const equipChanges = response.res.changes.filter(change => change.extra);
   assert.equal(equipChanges.length, 5);
   assert.deepEqual(equipChanges.map(change => change.diff_num), ['1', '1', '1', '1', '1']);
@@ -275,9 +290,13 @@ test('demigod single draw purchases one ticket while an owned five-ticket draw s
   const single = setup(t);
   single.seed(101500, 1000);
   let response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', single.service.execute(87618, [1]).data);
-  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
-    ['101500', '-400']
+  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+    ['101500', '-400'],
+    ['808002', '0']
   ]);
+  const ticketAfterOne = codec.unpack('pb_res_obj', Buffer.from(response.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
+  assert.equal(ticketAfterOne.tid, '808002');
+  assert.equal(Number(ticketAfterOne.num ?? 0), 0);
   assert.equal(response.draw.total_draw_times, '1');
   assert.equal(response.draw.left_buy_times, 9);
   assert.equal(demigodEquips(single).equips.length, 1);
