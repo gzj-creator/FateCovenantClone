@@ -243,7 +243,10 @@ test('648 tier grants supported inventory and retains feature-domain rewards', t
 
   let result = claim(e.service, 37001105, 106037);
   let changes = codec.unpack('pb_res_to_client', result.data).changes;
-  assert.deepEqual(changes, [{ tid: '494002', new_num: String(before + 10n), diff_num: '10' }]);
+  assert.deepEqual(
+    changes.map(change => ({ tid: change.tid, new_num: change.new_num, diff_num: change.diff_num })),
+    [{ tid: '494002', new_num: String(before + 10n), diff_num: '10' }]
+  );
   const after = BigInt(e.store.inspect(db => db.prepare("SELECT amount FROM resources WHERE tid='494002'").get().amount));
   assert.equal(after, before + 10n);
   assert.deepEqual(e.store.inspect(db => db.prepare(

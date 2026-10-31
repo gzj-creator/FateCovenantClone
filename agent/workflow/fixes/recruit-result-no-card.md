@@ -75,3 +75,10 @@ input\HeroGetDisplayForm.lua.txt:287: in function '_Close'
 cd F:\projects\FateCovenantClone\.worktree\recruit-hero-grant
 npm test --prefix .\personal-server
 ```
+
+## 2026-10-31 main 合并与运行部署
+
+- `main@f32e4ac` 已合入修复分支，合并提交 `d0cb52a`；合并后招募+百院+网关定向 `28/28`、全量 `257/257` 通过。
+- 招募事务保留 main 的百院进度回调，并同时更新模块 21 招募统计和 type 2000 推送。真实 TCP 测试现已按序号读取命令回包，避免把主动统计推送误判为下一次任务回包。
+- 部署前一致备份：`analysis/experiments/private-server-20261025/p3/recruitment-bugfix-20261031/game.before-main-merge-deploy.local-only.sqlite`，SHA256 `4fb26305268c72990d44d33e652e7dcf248966673d7ead418d7ec2fbb162a7d0`，schema v10，完整性 `ok`。
+- 合并版本已部署，实时 PID `43432`，五端口 loopback 正常，客户端链路已自动恢复。真实 APK 的结果卡、小队展示、次数/积分和补券验收仍待用户操作。

@@ -1,6 +1,6 @@
 # Personal-server workflow
 
-2026-10-31：[招募首次角色、次数/积分与半神补券修复](recruitment/implementation.md)。首个英雄现在返回完整碎片卡包并即时写入英雄/模块 10，`uid=tid` 修复小队不可见；模块 21/75/77901 更新招募次数和积分。半神 type 87618 改为模块 518 下的补券、扣券、抽取、幻武入库事务，不再只扣星钻。定向 21/21、全量 220/220 通过，详见[首次角色修复](fixes/recruit-result-no-card.md)。
+2026-10-31：[招募首次角色、次数/积分与半神补券修复](recruitment/implementation.md)。首英雄现在返回完整碎片卡包并即时写入英雄/模块 10，`uid=tid` 修复小队不可见；模块 21/75/77901 更新招募次数和积分。半神 type 87618 改为模块 518 下的补券、扣券、抽取、幻武入库事务，不再只扣星钻。`main@f32e4ac` 已通过 `d0cb52a` 合入，定向 28/28、全量 257/257 通过，并已从合并 worktree 部署新 PID `43432`。真实 APK 验收待用户点击，详见[首次角色修复](fixes/recruit-result-no-card.md)。
 
 2026-10-30 21:33：[百元累充领取修复](acc-recharge/implementation.md#2026-10-30-百元累充-92001-领取修复)。真实客户端 `92001 req_hundred_acc` 旧网关返回 `LOCAL_NOT_IMPLEMENTED:92001`；已在独立 worktree 实现模块 166 首档事务领取、奖励发放、防重与重开验证，170/170 测试通过并从 worktree 部署，新 PID 以 `server.local-only.json` 为准。4 个实际变化文件已同步回 `main`，主目录 170/170 复验通过。真实点击验收待用户执行。
 

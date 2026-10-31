@@ -109,3 +109,12 @@ npm test --prefix .\personal-server
 - 招募+网关定向 `21/21`、全量 `220/220`、`git diff --check` 通过。
 - 覆盖首次解锁/重复转换、即时英雄 extra、模块 10 恢复、小队 UID/TID 一致、统计回填和推送、成就防重、半神补券/扣券/幻武入库、UID 唯一、40 抽标记、心愿替换、模块 518 迁移、formation 保留、编码失败整体回滚。
 - 尚未完成真实 APK 验收；本轮不修改 APK，不需要更新 `apk/` 快照或 `apk/README.md`。
+
+## 2026-10-31 main 合并与部署
+
+- `main@f32e4ac` 已通过合并提交 `d0cb52a` 合入 `fix/recruitment-bugfix-20261031`。三个冲突文件按两端语义合并：保留 `NormalDrawExchangeLineup`，网关同时传入 `fantasyEquipTables` 与百院招募活动回调，招募事务同时更新本修复的统计/推送和 main 的百院进度。
+- 合并暴露的测试接收队列问题已修正：招募现在会发送 type 2000 统计推送，百院真实 TCP 用例改为按请求序号等待匹配回包，不再把队列里的合法推送误当成下一次命令回包。
+- 招募、百院、网关定向 `28/28` 通过；合并后全量 `npm test --prefix .\personal-server` 为 `257/257` 通过，`git diff --check` 和冲突标记检查通过。
+- 部署前使用 `VACUUM INTO` 创建一致备份 `analysis/experiments/private-server-20261025/p3/recruitment-bugfix-20261031/game.before-main-merge-deploy.local-only.sqlite`：339,968 字节，SHA256 `4fb26305268c72990d44d33e652e7dcf248966673d7ead418d7ec2fbb162a7d0`，schema v10，`integrity_check=ok`，roles=1、heroes=38、resources=69。
+- 已从合并后的 worktree 部署个人服务，新 PID `43432`，`startedAt=2026-10-31T10:10:58.430Z`；`18880/18881/18882/18883/19090` 五个端口均由该 PID 在 `127.0.0.1` 监听，`local_server_ready` 已记录，隔离客户端已自动重连到 19090。部署错误日志为空；未停止、重启或点击客户端，未操作原版 `com.jzyx.my`。
+- 真实 APK 验收仍待用户在现有隔离客户端执行：首次英雄结果卡与英雄库/小队即时展示、招募次数/积分增加、半神星钻补券后券立即增加并产生幻武结果、特聘/指定招募买券同步，以及重登后的持久化。

@@ -164,9 +164,17 @@ test('ticket purchases deduct diamonds, persist limits and reject insufficient f
   env.seed(101500, 10000);
   const normal = codec.unpack('pb_draw_normal_buy_ret', env.service.execute(600, 2).data);
   assert.deepEqual(normal.res.changes.map(change => [change.tid, change.diff_num]), [['101500', '-500'], ['2002', '2']]);
+  assert.deepEqual(
+    codec.unpack('pb_res_obj', Buffer.from(normal.res.changes.find(change => change.tid === '2002').new_bin, 'base64')),
+    { tid: '2002', num: '2' }
+  );
   assert.equal(normal.buy_info.buy_max_num, 1198);
   const magic = codec.unpack('pb_draw_normal_buy_ret', env.service.execute(599, 2).data);
   assert.deepEqual(magic.res.changes.map(change => [change.tid, change.diff_num]), [['101500', '-1600'], ['3002', '2']]);
+  assert.deepEqual(
+    codec.unpack('pb_res_obj', Buffer.from(magic.res.changes.find(change => change.tid === '3002').new_bin, 'base64')),
+    { tid: '3002', num: '2' }
+  );
   assert.equal(magic.buy_info.buy_max_num, 58);
   env.reopen();
   assert.equal(env.store.read().resources.get('2002').num, '2');
