@@ -91,7 +91,7 @@ test('migrates once into relational SQLite tables, backs up JSON, and preserves 
   env.reopen();
   assert.equal(env.store.state().guides[55], 66);
   const db = new DatabaseSync(env.databasePath, { readOnly: true });
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 6);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 7);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reward_claims'").get());
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
   db.close();
@@ -301,7 +301,9 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
   send(codec.pack('pb_c2s', { type: -1, seq: 24, data: Buffer.alloc(0) }));
   const login = await decodeEtf(await game.loginPayload());
   assert.ok(Math.abs(login[1][0] - Date.now()) < 5000);
-  assert.deepEqual(Buffer.from(new Map(login[2].value).get(92).value), activityBefore);
+  const loginActivity = codec.unpack('pb_act_login', Buffer.from(new Map(login[2].value).get(92).value));
+  assert.equal(loginActivity.act_parallel_list.flatMap(group => group.states_data).some(state => state.act_id === 83028), false);
+  assert.deepEqual(rawBinary(new Map(game.store.state().modules.value).get(92)), activityBefore);
   const heroModule = new Map(login[2].value).get(10).value[0];
   const hero = codec.unpack('pb_hero_info', Buffer.from(heroModule.value)).hero_list.find(hero => hero.uid === '2020601');
   assert.equal(hero.level, 9); assert.equal(hero.star_progress, 3);

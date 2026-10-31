@@ -114,10 +114,10 @@ PlayerPrefs 中 SubDownloadFinish 默认为 0。UniCore 的远程加载判断在
 
 当前可用快照只保存在项目目录，不提交 Git：
 
-    apk/com.jzyx.ps.v8b-working.apk
+    apk/com.jzyx.ps.v9-working.apk
 
-- 大小：4,116,360,373 字节
-- SHA256：c33a192cd875fd9cda8e5a25104d49d5b2d4b5325056380efc53dc96de1ef3cf
+- 大小：4,185,758,901 字节
+- SHA256：1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473
 - 包名/版本：com.jzyx.ps / 1.55.090365
 - 签名：v1/v2/v3 验证通过，证书 CN=FateCovenant Local Test
 - 来源：analysis/experiments/private-server-20261025/p3/isolated-local-v8b/com.jzyx.ps.signed.apk

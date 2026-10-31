@@ -12,6 +12,8 @@ export function readGameTables() {
     // Monthly pass products are RechargeTable type=130 rows; the matching Gear row
     // binds a product to the activity version that owns its pay_list entry.
     ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle']), { Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle' }),
+    // Standard permits link their RechargeTable product to module 38.
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/PermitTable.data.bytecode.json', import.meta.url), ['Base']), { Base: 'PermitBase' }),
     ...pick(readGeneratedTables(new URL('ActFrameTable.data.lua.json', base), ['Act', 'ActType']), { Act: 'ActFrameAct', ActType: 'ActFrameType' }),
     // Cumulative-recharge awards are keyed by award tid; version links each row
     // to the ActFrame type that owns the claim state.
@@ -24,10 +26,25 @@ export function readGameTables() {
     }),
     // Fishing activity versions bind an ActFrame row to one island/level/rules
     // generation. Keep these names separate from generic activity tables.
-    ...pick(readGeneratedTables(new URL('../../analysis/tmp/FishingActTable.data.lua.json', import.meta.url), ['Island', 'Version', 'Level']), {
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/FishingActTable.data.lua.json', import.meta.url), [
+      'Island', 'Version', 'Level', 'IslandFish', 'Const', 'HighScoreRank', 'ScoreRank',
+      'Buy', 'Progress', 'Rod', 'Fish', 'IsWeather', 'IslandWeight', 'QteGame', 'Quality'
+    ]), {
       Island: 'FishingIsland',
       Version: 'FishingVersion',
-      Level: 'FishingLevel'
+      Level: 'FishingLevel',
+      IslandFish: 'FishingIslandFish',
+      Const: 'FishingConst',
+      HighScoreRank: 'FishingHighScoreRank',
+      ScoreRank: 'FishingScoreRank',
+      Buy: 'FishingBuy',
+      Progress: 'FishingProgress',
+      Rod: 'FishingRod',
+      Fish: 'FishingFish',
+      IsWeather: 'FishingWeather',
+      IslandWeight: 'FishingIslandWeight',
+      QteGame: 'FishingQteGame',
+      Quality: 'FishingQuality'
     }),
     // Welfare activities expose their configuration through these generated tables.
     Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,

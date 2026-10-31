@@ -91,10 +91,10 @@ test('month permit purchase with vouchers stores pay_list, returns flag 116 and 
   const before = rechargeTotal(e.store);
 
   const result = e.wallet.buy({ product_id: PERMIT_PRODUCT, request_id: 'permit-voucher-buy', voucher_item_tid: 701500 });
-  assert.equal(result.voucher_quantity, 6800);
+  assert.equal(result.voucher_quantity, 68);
   assert.equal(result.voucher_amount_cents, 6800);
   assert.equal(result.balance_paid_cents, 0);
-  assert.equal(e.voucher.balance().quantity, 3200);
+  assert.equal(e.voucher.balance().quantity, 32);
   assert.equal(rechargeTotal(e.store), before + 6800);
 
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
@@ -122,14 +122,14 @@ test('wallet uses all available vouchers and charges the remainder for a partial
   e.wallet.credit({ account_id: 'local-1', amount_cents: 200, request_id: 'partial-balance' });
   const product = tables.Recharge.get(40009);
   assert.equal(product.price, 600);
-  const result = e.wallet.buy({ product_id: 40009, request_id: 'partial-voucher-order', voucher_count: 400 });
+  const result = e.wallet.buy({ product_id: 40009, request_id: 'partial-voucher-order', voucher_count: 4 });
   assert.equal(result.price_cents, 600);
-  assert.equal(result.voucher_quantity, 400);
+  assert.equal(result.voucher_quantity, 4);
   assert.equal(result.voucher_amount_cents, 400);
   assert.equal(result.balance_paid_cents, 200);
   assert.equal(result.balance_cents, 0);
   assert.equal(e.voucher.balance().quantity, 0);
-  assert.equal(e.wallet.snapshot().orders[0].voucher_quantity, 400);
+  assert.equal(e.wallet.snapshot().orders[0].voucher_quantity, 4);
   assert.equal(e.wallet.snapshot().orders[0].balance_paid_cents, 200);
 });
 
@@ -159,7 +159,7 @@ test('repeated month permit purchase is rejected and leaves voucher, orders and 
   const pushes = e.pushes.length;
   assert.throws(() => e.wallet.buy({ product_id: PERMIT_PRODUCT, request_id: 'permit-second' }), x => x.code === 307);
   assert.deepEqual(e.store.state(), state);
-  assert.equal(e.voucher.balance().quantity, 3200);
+  assert.equal(e.voucher.balance().quantity, 32);
   assert.equal(e.wallet.snapshot().orders.length, 1);
   assert.equal(e.pushes.length, pushes);
 });
@@ -188,10 +188,10 @@ test('voucher payment of a month-card product grants mixed rewards and counts fu
   const before = rechargeTotal(e.store);
 
   const result = e.wallet.buy({ product_id: 140001, request_id: 'month-card-voucher', voucher_item_tid: 701500 });
-  assert.equal(result.voucher_quantity, 3000);
+  assert.equal(result.voucher_quantity, 30);
   assert.equal(result.voucher_amount_cents, 3000);
   assert.equal(result.balance_paid_cents, 0);
-  assert.equal(e.voucher.balance().quantity, 7000);
+  assert.equal(e.voucher.balance().quantity, 70);
   assert.equal(rechargeTotal(e.store), before + 3000);
   assert.equal(e.store.read().resources.get('101500').num, '1000');
   assert.equal(e.store.read().resources.get('2002').num, '10');
@@ -199,7 +199,7 @@ test('voucher payment of a month-card product grants mixed rewards and counts fu
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
   assert.equal(Number(push.recharge_id), 140001);
   assert.equal(push.get_token, true);
-  assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-3000');
+  assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-30');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 101500)?.diff_num, '1000');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 2002)?.diff_num, '10');
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
@@ -214,17 +214,17 @@ test('voucher payment of a type-46 diamond recharge grants rewards and counts fu
   const before = rechargeTotal(e.store);
 
   const result = e.wallet.buy({ product_id: 40008, request_id: 'type46-voucher', voucher_item_tid: 701500 });
-  assert.equal(result.voucher_quantity, 3000);
+  assert.equal(result.voucher_quantity, 30);
   assert.equal(result.voucher_amount_cents, 3000);
   assert.equal(result.balance_paid_cents, 0);
-  assert.equal(e.voucher.balance().quantity, 7000);
+  assert.equal(e.voucher.balance().quantity, 70);
   assert.equal(rechargeTotal(e.store), before + 3000);
   assert.equal(e.store.read().resources.get('101500').num, '300');
 
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
   assert.equal(Number(push.recharge_id), 40008);
   assert.equal(push.get_token, true);
-  assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-3000');
+  assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-30');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 101500)?.diff_num, '300');
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
   assertRechargeExtra(extraParams);
@@ -237,7 +237,7 @@ test('voucher payment of a type-46 diamond recharge grants rewards and counts fu
   const recordList = codec.unpack('pb_buy_gift_record_list', Buffer.from(loginAfterPurchase.buy_gift_record, 'base64')).record_list;
   assert.deepEqual(recordList.map(record => Number(record.recharge_tid)), [40008]);
   e.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'type46-limit-fund' });
-  const additional = e.wallet.buy({ product_id: 40008, request_id: 'type46-second', voucher_item_tid: 701500 });
+  const additional = e.wallet.buy({ product_id: 40008, request_id: 'type46-second', voucher_item_tid: 701500, extra_buy: true });
   assert.equal(additional.daily_discount_additional, true);
-  assert.equal(e.voucher.balance().quantity, 4000);
+  assert.equal(e.voucher.balance().quantity, 40);
 });

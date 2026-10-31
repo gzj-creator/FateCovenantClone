@@ -129,6 +129,35 @@ test('daily discount purchases publish and persist the refreshed protobuf with a
   assert.equal(refreshed.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
 });
 
+test('daily discount batch purchase consumes every included offer and survives restart',t=>{
+  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'daily-batch-fund'});
+  const result=e.wallet.buy({product_id:46003,request_id:'daily-batch-first'});
+  assert.equal(result.balance_paid_cents,900);
+  const push=codec.unpack('res_recharge_success',e.pushes[0].data);
+  const pushed=codec.unpack('pb_daily_discount_all',Buffer.from(push.extra_ret_list.find(entry=>entry.flag===40).data,'base64'));
+  const assertConsumed=info=>assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1]);
+  assertConsumed(pushed);
+  assertConsumed(codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108))));
+  for(const [productId,requestId] of [[46003,'daily-batch-repeat'],[40009,'daily-batch-component-a'],[46002,'daily-batch-component-b']]) {
+    assert.throws(()=>e.wallet.buy({product_id:productId,request_id:requestId}),error=>error.code===307);
+  }
+  assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9100);assert.equal(e.pushes.length,1);
+
+  e.reopen();
+  assertConsumed(codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108))));
+  assert.throws(()=>e.wallet.buy({product_id:40009,request_id:'daily-batch-after-restart'}),error=>error.code===307);
+  assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9100);
+});
+
+test('daily discount batch offer is unavailable after one included component is sold',t=>{
+  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'daily-component-fund'});
+  e.wallet.buy({product_id:40009,request_id:'daily-component-first'});
+  assert.throws(()=>e.wallet.buy({product_id:46003,request_id:'daily-component-bundle'}),error=>error.code===307);
+  const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[0,1,0]);
+  assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9400);
+});
+
 test('daily discount additional purchases are finite and survive restart',t=>{
   const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'daily-extra-fund'});
   const results=[];
@@ -152,10 +181,13 @@ test('daily discount purchase counts are rebuilt from orders on restart',t=>{
       .run('daily-backfill','local-1','daily-backfill-request',40008,3000,'{"daily_discount_additional":false}',new Date(now*1000).toISOString(),1);
     db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
       .run('daily-backfill-extra','local-1','daily-backfill-extra-request',40008,3000,'{"daily_discount_additional":true}',new Date(now*1000).toISOString(),1);
+    db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
+      .run('daily-backfill-batch','local-1','daily-backfill-batch-request',46003,900,'{"daily_discount_additional":false}',new Date(now*1000).toISOString(),1);
   });
   createWalletService({store:e.store,codec,tables,now:()=>now});
   const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
   assert.equal(info.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
+  assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1]);
 });
 
 test('wallet logging failures cannot reject committed credits or purchases',t=>{

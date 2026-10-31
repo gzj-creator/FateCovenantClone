@@ -3,6 +3,7 @@ import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { grantResources } from './resources.mjs';
 import { GameError } from './hero-progression.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
+import { createPermitService } from './permit-service.mjs';
 const DAILY_DISCOUNT_RECHARGE = 46;
 const DAILY_DISCOUNT_HANDLE = 40;
 const DAILY_DISCOUNT_MODULE = 108;
@@ -36,10 +37,14 @@ function etfTerm(value) {
 function etfList(values) {
   return Buffer.concat([Buffer.from([0x83]), etfTerm(values)]);
 }
-export function createWalletService({ store, codec, tables, voucher, monthPermit, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
+export function createWalletService({ store, codec, tables, voucher, monthPermit, permitService, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
   const log = event => { try { logger(event); } catch {} };
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
+  const standardPermits = permitService ?? createPermitService({ codec, tables });
   const GIFT_BUY_RECORD_HANDLE = 73;
+  const dailyRechargeRows = [...(tables.DailyDiscountRecharge?.values?.() ?? [])];
+  const dailyRechargeRowByTid = new Map(dailyRechargeRows.map(row => [Number(row.tid), row]));
+  const dailyRechargeRowByProductId = new Map(dailyRechargeRows.map(row => [Number(row.recharge_id), row]));
   const dailyDay = seconds => Math.floor((seconds + DAILY_RESET_OFFSET_SECONDS) / 86400);
   const nextDailyRefresh = seconds => (dailyDay(seconds) + 1) * 86400 - DAILY_RESET_OFFSET_SECONDS;
   const dailyDiscountInfo = modules => {
@@ -65,11 +70,21 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     modules.set(DAILY_DISCOUNT_MODULE, serializedBinary(data));
     return data;
   };
-  const planDailyDiscountPurchase = (modules, product, seconds) => {
-    const rechargeTid = DAILY_DISCOUNT_VALUE_INDEX.get(Number(product.tid));
-    if (!rechargeTid) throw new GameError(5, 'Daily discount product is not mapped');
-    const info = dailyDiscountInfo(modules);
-    normalizeDailyDiscount(info, seconds);
+  const affectedDailyDiscountTids = product => {
+    const own = dailyRechargeRowByProductId.get(Number(product.tid));
+    const fallbackTid = DAILY_DISCOUNT_VALUE_INDEX.get(Number(product.tid));
+    const ownTid = Number(own?.tid ?? fallbackTid);
+    if (!ownTid) throw new GameError(5, 'Daily discount product is not mapped');
+    const tids = [ownTid];
+    for (const dependency of own?.batch_update ?? []) {
+      const dependencyTid = Number(dependency);
+      const dependencyRow = dailyRechargeRowByTid.get(dependencyTid);
+      if (!dependencyRow || !tables.Recharge.get(Number(dependencyRow.recharge_id))) throw new GameError(5, 'Daily discount batch configuration is invalid');
+      tids.push(dependencyTid);
+    }
+    return [...new Set(tids)];
+  };
+  const dailyDiscountRow = (info, rechargeTid) => {
     let row = info.daily_discount_list.find(value => Number(value.recharge_tid) === rechargeTid);
     if (!row) {
       row = { recharge_tid: rechargeTid, buy_times: 0, refresh_time: info.refresh_time, buy_additionally: 0 };
@@ -78,12 +93,25 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     row.buy_times = Math.max(0, Number(row.buy_times ?? 0));
     row.buy_additionally = Math.max(0, Number(row.buy_additionally ?? 0));
     row.refresh_time ??= info.refresh_time;
-    const regularRemaining = Math.max(0, Number(product.can_buy_times ?? 0) - row.buy_times);
-    if (regularRemaining > 0) {
-      row.buy_times += 1;
+    return row;
+  };
+  const planDailyDiscountPurchase = (modules, product, seconds, allowAdditional = false) => {
+    const rechargeTid = Number(dailyRechargeRowByProductId.get(Number(product.tid))?.tid ?? DAILY_DISCOUNT_VALUE_INDEX.get(Number(product.tid)));
+    if (!rechargeTid) throw new GameError(5, 'Daily discount product is not mapped');
+    const affectedTids = affectedDailyDiscountTids(product);
+    const info = dailyDiscountInfo(modules);
+    normalizeDailyDiscount(info, seconds);
+    const rows = affectedTids.map(tid => ({
+      row: dailyDiscountRow(info, tid),
+      product: tables.Recharge.get(Number(dailyRechargeRowByTid.get(tid)?.recharge_id ?? product.tid))
+    }));
+    const regularAvailable = rows.every(({ row, product: affectedProduct }) => affectedProduct && Number(affectedProduct.can_buy_times ?? 0) > row.buy_times);
+    if (regularAvailable) {
+      for (const { row } of rows) row.buy_times += 1;
       return { info, additional: false };
     }
-    if (row.buy_additionally > 0) {
+    const row = rows.find(value => value.row.recharge_tid === rechargeTid)?.row;
+    if (allowAdditional && row.buy_additionally > 0) {
       row.buy_additionally -= 1;
       return { info, additional: true };
     }
@@ -138,8 +166,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       const counts = new Map(), limits = new Map();
       for (const row of rows) {
         const product = tables.Recharge.get(row.product_id);
-        const rechargeTid = DAILY_DISCOUNT_VALUE_INDEX.get(Number(row.product_id));
-        if (product?.type !== DAILY_DISCOUNT_RECHARGE || !rechargeTid) continue;
+        if (product?.type !== DAILY_DISCOUNT_RECHARGE || !dailyRechargeRowByProductId.has(Number(row.product_id))) continue;
         const parsed = Math.floor(Date.parse(row.created_at) / 1000);
         if (!Number.isSafeInteger(parsed) || dailyDay(parsed) !== today) continue;
         let payload = {};
@@ -147,15 +174,14 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         // Additional buys share the daily row but do not consume its normal
         // `can_buy_times` allowance.
         if (payload.daily_discount_additional === true) continue;
-        counts.set(rechargeTid, (counts.get(rechargeTid) ?? 0) + 1);
-        limits.set(rechargeTid, Number(product.can_buy_times ?? 1));
+        for (const rechargeTid of affectedDailyDiscountTids(product)) {
+          const affectedProduct = tables.Recharge.get(Number(dailyRechargeRowByTid.get(rechargeTid)?.recharge_id ?? product.tid));
+          counts.set(rechargeTid, (counts.get(rechargeTid) ?? 0) + 1);
+          limits.set(rechargeTid, Number(affectedProduct?.can_buy_times ?? 1));
+        }
       }
       for (const [rechargeTid, count] of counts) {
-        let daily = info.daily_discount_list.find(row => Number(row.recharge_tid) === rechargeTid);
-        if (!daily) {
-          daily = { recharge_tid: rechargeTid, buy_times: 0, refresh_time: info.refresh_time, buy_additionally: 0 };
-          info.daily_discount_list.push(daily);
-        }
+        const daily = dailyDiscountRow(info, rechargeTid);
         const normalized = Math.min(limits.get(rechargeTid) ?? count, count);
         if ((daily.buy_times ?? 0) !== normalized) { daily.buy_times = normalized; dailyChanged = true; }
       }
@@ -167,7 +193,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
   // example a month card grants diamonds plus its activation item). Only rows
   // whose rewards can be granted by resources.mjs are eligible here.
   const resourceProduct = row => [1,43,46,47,81].includes(row.type) && row.reward_tid?.length > 0 && row.reward_tid.length === row.reward_count?.length && row.reward_tid.every((tid,i) => tables.Item.has(tid) && Number.isSafeInteger(row.reward_count[i]) && row.reward_count[i] > 0);
-  const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && (row.sync_handle ?? 0) === 0 && (row.type === 130 ? permits.supports(row) : resourceProduct(row));
+  const supported = row => Boolean(row) && row.pay_type === 0 && row.price > 0 && Number.isSafeInteger(row.price) && (row.sync_handle ?? 0) === 0 && (row.type === 130 ? permits.supports(row) : (standardPermits.supports(row) || resourceProduct(row)));
   const products = [...tables.Recharge.values()].filter(supported);
   function snapshot() {
     return store.inspect(db => ({
@@ -197,6 +223,19 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       log({ event: 'wallet_credited', accountId: account_id, amountCents: amount_cents });
       return { balance_cents: balance, duplicate: false };
     });
+  }
+  function assertPurchaseAvailable({ product_id, extra_buy = false } = {}) {
+    const product = tables.Recharge.get(product_id);
+    if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
+    if (!(product.can_buy_times > 0)) return;
+    if ((product.buy_cycle_limit ?? 0) !== 0) throw new GameError(5, 'Periodic product limits require a gameplay handler');
+    if (product.type === DAILY_DISCOUNT_RECHARGE) {
+      const modules = new Map(store.state().modules.value);
+      if (!planDailyDiscountPurchase(modules, product, now(), extra_buy === true)) throw new GameError(307, 'Product purchase limit reached');
+      return;
+    }
+    const purchaseCount = store.inspect(db => db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(accountId, product_id).n);
+    if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
   }
   function buy({ account_id = accountId, product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false }) {
     if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)) throw new GameError(1, 'Invalid local purchase');
@@ -234,7 +273,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       let dailyPlan = null;
       if (product.can_buy_times > 0) {
         if (product.type === DAILY_DISCOUNT_RECHARGE) {
-          dailyPlan = planDailyDiscountPurchase(modules, product, purchasedAt);
+          dailyPlan = planDailyDiscountPurchase(modules, product, purchasedAt, extra_buy === true);
           if (!dailyPlan) throw new GameError(307, 'Product purchase limit reached');
         } else {
           const purchaseCount = db.prepare('SELECT count(*) n FROM recharge_orders WHERE account_id=? AND product_id=?').get(account_id, product_id).n;
@@ -247,7 +286,9 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       const changes = [];
       if (quote.quantity > 0) changes.push(voucher.consume({ model, db, orderId: order, roleId: model.state.roleId, quantity: quote.quantity, amountCents: quote.amount_cents }));
       changes.push(...grantResources(model, product.reward_tid.map((tid,i) => [tid,product.reward_count[i]]), tables).changes);
-      const permit = product.type === 130 ? permits.purchase({ model, product }) : null;
+      const permit = product.type === 130
+        ? permits.purchase({ model, product })
+        : (standardPermits.supports(product) ? standardPermits.purchase({ model, product }) : null);
       const res = { changes, is_overflow: false };
       const login = codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
       const total = (login.total_amount ?? 0) + product.price;
@@ -350,5 +391,5 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       return { order_id: row.order_id, account_id: row.account_id, product_id: row.product_id, price_cents: row.price_cents, created_at: row.created_at, acknowledged: Boolean(row.acknowledged), balance_cents: wallet?.balance_cents ?? payload.balance_cents ?? 0 };
     });
   }
-  return { snapshot, credit, buy, purchaseGift, acknowledge, findOrder, accountId };
+  return { snapshot, credit, assertPurchaseAvailable, buy, purchaseGift, acknowledge, findOrder, accountId };
 }

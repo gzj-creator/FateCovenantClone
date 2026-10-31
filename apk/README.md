@@ -6,14 +6,17 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 文件 | apk/com.jzyx.ps.v8b-working.apk |
-| 保存日期 | 2026-10-28 |
-| 大小 | 4,116,360,373 字节 |
-| SHA256 | c33a192cd875fd9cda8e5a25104d49d5b2d4b5325056380efc53dc96de1ef3cf |
+| 文件 | apk/com.jzyx.ps.v9-working.apk |
+| 保存日期 | 2026-10-31 |
+| 大小 | 4,185,758,901 字节 |
+| SHA256 | 1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473 |
 | 包名 | com.jzyx.ps |
 | 版本 | 1.55.090365（versionCode 362155） |
 | 签名 | v1/v2/v3 验证通过；证书 CN=FateCovenant Local Test |
-| 来源 | analysis/experiments/private-server-20261025/p3/isolated-local-v8b/com.jzyx.ps.signed.apk |
+| 证书 SHA256 | 976534938a9295ed80f4b6ea5ae88e7c8e6b4242cec776ee0f38882a2c76644c |
+| 来源 | analysis/experiments/private-server-20261025/p3/isolated-voucher-1yuan-onkey-recharge-forward10-debug-preserved-20261031/com.jzyx.ps.signed.apk |
+| 安装校验 | 设备 base.apk SHA256 与源构建及本快照一致 |
+| 验收证据 | 真实 46003 订单 16004→1900→16003 成功；192/192 测试；批量限购修复与重连证据见 analysis/experiments/private-server-20261025/p3/daily-discount-batch-20261031/ |
 
 ## 使用条件
 
@@ -28,7 +31,7 @@
 - 安装前确认设备和 ADB：
 
       $adb = 'E:/Mumu/MuMuPlayer/nx_main/adb.exe'
-      & $adb -s 127.0.0.1:16448 install -r apk/com.jzyx.ps.v8b-working.apk
+      & $adb -s 127.0.0.1:16448 install -r apk/com.jzyx.ps.v9-working.apk
 
 ## 边界
 

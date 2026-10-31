@@ -2,24 +2,32 @@ import { randomUUID } from 'node:crypto';
 import { GameError } from './hero-progression.mjs';
 
 const DEFAULT_ITEM_TID = 701500;
-const DEFAULT_FACE_VALUE_CENTS = 1;
+const FACE_VALUE_CENTS = 100;
 
 const fail = (code, message) => { throw new GameError(code, message); };
 const integer = (value, min, max, message) => {
   if (!Number.isSafeInteger(value) || value < min || value > max) fail(1, message);
   return value;
 };
-// The native client's 16004 request has no coupon count. Its RechargeMgr computes
-// price / RechargeTable.Param.score_token_rate and compares that with the backpack
-// count. The local voucher unit therefore has to use the same face value.
+// The native client's 16004 request has no coupon count. Its RechargeMgr uses
+// RechargeTable.Param.score_token_rate, so the local item policy and the patched
+// client table both define one voucher as one yuan.
 export function createVoucherService({ store, tables, now = () => Math.floor(Date.now() / 1000), logger = () => {} }) {
   const parameter = tables.RechargeParam?.get(1) ?? {};
   const itemTid = integer(Number(parameter.coupon ?? DEFAULT_ITEM_TID), 1, 2147483647, 'Invalid voucher item configuration');
-  const faceValueCents = integer(Number(parameter.score_token_rate ?? DEFAULT_FACE_VALUE_CENTS), 1, 1000000, 'Invalid voucher rate configuration');
+  const faceValueCents = FACE_VALUE_CENTS;
   const skuId = 'voucher-' + itemTid;
   store.transaction((model, db) => {
-    db.prepare('INSERT OR IGNORE INTO voucher_skus VALUES (?,?,?,?,?,?)')
+    db.prepare(`INSERT INTO voucher_skus VALUES (?,?,?,?,?,?)
+      ON CONFLICT(sku_id) DO UPDATE SET
+        item_tid=excluded.item_tid,
+        face_value_cents=excluded.face_value_cents,
+        title=excluded.title,
+        active=1`)
       .run(skuId, itemTid, faceValueCents, '代金券', 1, new Date().toISOString());
+    // Voucher mails are denominated in item count. Rebase existing grants so the
+    // admin ledger and the patched client agree after upgrading from the old rate.
+    db.prepare('UPDATE voucher_grants SET face_value_cents=? WHERE sku_id=?').run(faceValueCents, skuId);
   });
 
   function sku() {

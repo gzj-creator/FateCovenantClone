@@ -136,3 +136,53 @@ npm test --prefix personal-server
   - mail-service.mjs??? tid ?? 11400?MailTable ?????????????????
 - ???npm test 116/116 ????? month-permit-voucher.test.mjs ?????/?????flag116?pay_list ????????????????????????? SQLite ???? 1300071 ??????36 ???????? 1004012 ????? 35 ???????? 10000?3200?
 - ????? APK ?? ?68 ?????????????????????
+
+## 2026-10-31 代金券 1 元面值与累充修复（真实客户端部分验收）
+
+本轮把代金券口径从“1 张 = 1 分”改为“1 张 = 1 元”，同时修正客户端支付确认文案和累充行为。
+
+### 实现
+
+- `personal-server/game/voucher-service.mjs` 固定 `FACE_VALUE_CENTS=100`；启动时把现有 `voucher_skus` 与 `voucher_grants` 的旧 1 分口径升级为 100 分。`¥6` 商品完整用券时扣 6 张。
+- 钱包仍按商品原价累计充值。`wallet-service.mjs` 的 `res_recharge_login.total_amount` 增加 `product.price`，与实付余额和代金券抵扣比例无关；该行为已由普通商品、月卡和 type 46 钻石充值测试覆盖。
+- 客户端 `RechargeTable.data.lua.json` 的 `score_token_rate` 从 `1` 改为 `100`，使原生 Lua 按 `价格 ÷ 100` 计算所需券数。
+- 语言包同时修改了两套支付提示，避免不同路由继续显示旧文案：
+  - `200009={0}不足，请补充后再试`
+  - `1477=您当前拥有<color=#d19c27>{0}</color>礼券，本次购买将消耗<color=#d19c27>{1}</color>礼券，购买<color=#d19c27>{2}</color>后剩余<color=#d19c27>{3}</color>礼券，<color=#2F9A7D>消耗代金券计入累充</color>，是否确认？`
+  - `2405=您拥有<color=#d19c27>{0}</color>代金券，本次消耗<color=#d19c27>{1}</color>张，购买<color=#d19c27>{2}</color>后剩余<color=#d19c27>{3}</color>张，本次消费计入累计充值，确认？`
+- Web 管理页显示 `1 张 = ¥1.00`，默认发放 1 张，并明确“使用代金券的订单按商品原价计入累充”。
+- APK 构建器现在同时替换 DEX、Lua 表和语言包。`forward6` 额外修正了单笔礼包按钮进入正常充值流程。
+
+### 邮件发放与领取
+
+通过 Web 管理 API 发放游戏邮件：
+
+| 字段 | 值 |
+| --- | --- |
+| request_id | `voucher-1m-20261031` |
+| mail_id | `2` |
+| 标题 | `百万代金券到账` |
+| 正文 | `已发放 1,000,000 张代金券，每张可抵扣 1 元。` |
+| 数量 | `1,000,000` 张 |
+| 面值 | `100` 分/张 |
+| 总面值 | `100,000,000` 分（¥1,000,000） |
+| 有效期 | 永不过期 |
+
+真实客户端已完成邮件读取和领取。服务日志在 `2026-10-30T23:53:02.390Z` 记录 `3003 read_mail`，在 `23:53:06.792Z` 记录 `3004 award_mail`；SQLite 中 `game_mails.received=1`、`voucher_grants.claimed_at=2026-10-30T23:53:06.804Z`，代金券资源 `701500` 从 400 张增加到 `1,000,400` 张。
+
+### 部署与验收证据
+
+- 最新服务 PID 以 `analysis/experiments/private-server-20261025/p3/runtime.local-only.data/server.local-only.json` 为准；本轮核对为 PID `7256`，五个端口 `18880/18881/18882/18883/19090` 正常启动，SQLite schema v7、`integrity_check=ok`。
+- 当前设备包为 `analysis/experiments/private-server-20261025/p3/isolated-voucher-1yuan-onkey-recharge-forward6-20261031/com.jzyx.ps.signed.apk`，4,185,758,901 字节，SHA256 `ae08340adf9faab19402567c5f4e92fae7bb7ceea52ab1ac21400c3128363bf5`；设备 `base.apk` 复算 SHA256 相同，v1/v2/v3 签名和 alignment 已验证。
+- 设备安装后分配 UID `10045`，四个 ADB reverse 与 BPF 隔离均已按新 UID 重建；只使用 `127.0.0.1:16448`，未操作原版 `com.jzyx.my`。
+- 测试：代金券与月卡专项 `16/16` 通过；全量测试在 `docs/07-private-server-feature-execution-plan.md` 记录为 `189/189`。专项覆盖真实 TCP `3002` 一键领取、`16004` 用券支付、`1900` 成功推送与 `16003` 确认，以及普通商品/月卡/type 46 的整单累充。
+- 真实客户端已到达服务器选择页、完成本机 SDK 登录、进入大厅和充值商店；截图与日志位于 `isolated-voucher-1yuan-onkey-recharge-forward6-20261031/`，汇总见 `runtime-verification.json`。
+
+### 真实支付、限额同步与 APK 验收（2026-10-31 完成）
+
+- 真实客户端已完成 46003 一键购买：订单 local-6ff68d6d-927e-4761-a4bc-e4480d251e02，原价 900 分，消耗 9 张 ¥1 代金券，16004、1900、16003 链路成功，最终 acknowledged=1；星钻界面从 930 增至 1050。
+- 代金券库存从 1,000,400 降至 1,000,391；使用代金券的订单按商品原价计入累充，支付提示已明确“消耗代金券计入累充”。
+- 后续发现 46003 的 DailyDiscountRecharge.batch_update=[2,5] 未同步，导致 module 108 只把行 6 标记已购。现已改为同一事务应用批量依赖、重启按订单回填，并在代金券余额检查前先做限购预检。直接购买 40009、46002 或再次购买 46003 均返回 307 且不扣款。
+- 新增钱包与真实 TCP 回归测试，完整 npm test --prefix personal-server 为 192/192 通过。运行库启动回填后行 6、2、5 均为 buy_times=1，schema v7、integrity_check=ok。
+- 当前 APK 已固化为 apk/com.jzyx.ps.v9-working.apk，大小 4,185,758,901 字节，SHA256 1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473；v1/v2/v3 签名和安装副本哈希均已验证。
+- 服务最新 PID 以 runtime.local-only.data/server.local-only.json 为准；本轮部署为 PID 8100。客户端自动重连并完成 145 模块登录，商店卡片视觉状态留待用户下次打开确认。

@@ -20,6 +20,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 const codec = createGameCodec();
 const tables = readGameTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const rechargeTotal = store => codec.unpack('res_recharge_login', rawBinary(new Map(store.state().modules.value).get(19))).total_amount ?? 0;
 
 function fixture() {
   return {
@@ -69,7 +70,7 @@ test('voucher mail issue is idempotent and appears in login module 93', t => {
   const e = setup(t);
   const request = voucherRequest();
   const issued = e.mail.issueVoucher(request);
-  assert.equal(issued.quantity, 600);
+  assert.equal(issued.quantity, 6);
   assert.equal(issued.amount_cents, 600);
   assert.equal(issued.duplicate, false);
   const duplicate = e.mail.issueVoucher(request);
@@ -85,7 +86,7 @@ test('voucher mail issue is idempotent and appears in login module 93', t => {
   assert.equal(brief.title, '活动补偿');
   assert.ok(!brief.read);
   assert.ok(!brief.received);
-  assert.deepEqual(brief.award.map(row => [row.id, row.count]), [[701500, 600]]);
+  assert.deepEqual(brief.award.map(row => [row.id, row.count]), [[701500, 6]]);
   assert.ok(brief.expire_time > 0);
   assert.equal(Number(brief.expire_convert_time), request.expire_at);
 
@@ -99,9 +100,9 @@ test('claiming a voucher mail grants item 701500 exactly once and syncs grant st
   const issued = e.mail.issueVoucher(voucherRequest());
   const claimed = e.mail.claim(issued.mail_id);
   const value = codec.unpack('pb_rev_award_mail', claimed.data);
-  assert.deepEqual(value.award.map(row => [row.id, row.count]), [[701500, 600]]);
-  assert.equal(value.res.changes.find(change => change.tid === '701500').diff_num, '600');
-  assert.equal(e.voucher.balance().quantity, 600);
+  assert.deepEqual(value.award.map(row => [row.id, row.count]), [[701500, 6]]);
+  assert.equal(value.res.changes.find(change => change.tid === '701500').diff_num, '6');
+  assert.equal(e.voucher.balance().quantity, 6);
   assert.equal(e.voucher.balance().amount_cents, 600);
   assert.throws(() => e.mail.claim(issued.mail_id), x => x.code === 5);
 
@@ -113,7 +114,7 @@ test('claiming a voucher mail grants item 701500 exactly once and syncs grant st
 
   const snapshot = e.voucher.snapshot();
   assert.equal(snapshot.sku.item_tid, 701500);
-  assert.equal(snapshot.sku.face_value_cents, 1);
+  assert.equal(snapshot.sku.face_value_cents, 100);
   assert.equal(snapshot.mails[0].status, 'claimed');
   assert.equal(snapshot.totals.pending_count, 0);
   assert.equal(snapshot.totals.claimed_amount_cents, 600);
@@ -124,7 +125,20 @@ test('claiming a voucher mail grants item 701500 exactly once and syncs grant st
   assert.equal(detail.title, '活动补偿');
   assert.equal(detail.content, '测试代金券');
   assert.equal(detail.send_name, '系统');
-  assert.deepEqual(detail.award.map(row => [Number(row.tid), Number(row.num)]), [[701500, 600]]);
+  assert.deepEqual(detail.award.map(row => [Number(row.tid), Number(row.num)]), [[701500, 6]]);
+});
+
+test('an existing voucher SKU and its grants upgrade from cents to yuan', t => {
+  const e = setup(t);
+  const issued = e.mail.issueVoucher(voucherRequest({ request_id: 'legacy-rate' }));
+  e.store.inspect(db => {
+    db.prepare('UPDATE voucher_skus SET face_value_cents=1').run();
+    db.prepare('UPDATE voucher_grants SET face_value_cents=1 WHERE mail_id=?').run(issued.mail_id);
+  });
+  e.reopen();
+  assert.equal(e.voucher.sku().face_value_cents, 100);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT face_value_cents FROM voucher_grants WHERE mail_id=?').get(issued.mail_id).face_value_cents), 100);
+  assert.equal(e.voucher.snapshot().totals.outstanding_amount_cents, 600);
 });
 
 test('expired voucher mail cannot be claimed but can be deleted; pending reward cannot be deleted', t => {
@@ -149,13 +163,14 @@ test('expired voucher mail cannot be claimed but can be deleted; pending reward 
 
 test('voucher purchase applies partial, full and counted deductions with balance payment', t => {
   const e = setup(t);
+  const cumulativeBefore = rechargeTotal(e.store);
   e.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'fund' });
   const issued = e.mail.issueVoucher(voucherRequest({ request_id: 'grant-1200', amount_cents: 1200 }));
   e.mail.claim(issued.mail_id);
-  assert.equal(e.voucher.balance().quantity, 1200);
+  assert.equal(e.voucher.balance().quantity, 12);
 
   const partial = e.wallet.buy({ product_id: 11, request_id: 'partial', voucher_amount_cents: 200 });
-  assert.equal(partial.voucher_quantity, 200);
+  assert.equal(partial.voucher_quantity, 2);
   assert.equal(partial.voucher_amount_cents, 200);
   assert.equal(partial.balance_paid_cents, 400);
   assert.equal(partial.balance_cents, 9600);
@@ -164,41 +179,42 @@ test('voucher purchase applies partial, full and counted deductions with balance
   const partialPush = codec.unpack('res_recharge_success', e.pushes.find(push => push.type === 1900).data);
   assert.equal(partialPush.is_use_token, true);
   assert.equal(Number(partialPush.use_item_tid), 701500);
-  assert.equal(partialPush.res.changes.find(change => change.tid === '701500').diff_num, '-200');
-  assert.equal(e.voucher.balance().quantity, 1000);
+  assert.equal(partialPush.res.changes.find(change => change.tid === '701500').diff_num, '-2');
+  assert.equal(e.voucher.balance().quantity, 10);
   assert.equal(e.store.read().resources.get('101500').num, '60');
 
   const retry = e.wallet.buy({ product_id: 11, request_id: 'partial', voucher_amount_cents: 200 });
   assert.equal(retry.duplicate, true);
   assert.equal(retry.order_id, partial.order_id);
   assert.equal(e.pushes.filter(push => push.type === 1900).length, 1);
-  assert.equal(e.voucher.balance().quantity, 1000);
+  assert.equal(e.voucher.balance().quantity, 10);
 
   const full = e.wallet.buy({ product_id: 11, request_id: 'full', voucher_item_tid: 701500 });
-  assert.equal(full.voucher_quantity, 600);
+  assert.equal(full.voucher_quantity, 6);
   assert.equal(full.voucher_amount_cents, 600);
   assert.equal(full.balance_paid_cents, 0);
   assert.equal(full.balance_cents, 9600);
-  assert.equal(e.voucher.balance().quantity, 400);
+  assert.equal(e.voucher.balance().quantity, 4);
   assert.equal(e.pushes.filter(push => push.type === 1900).length, 2);
 
-  const counted = e.wallet.buy({ product_id: 11, request_id: 'counted', voucher_count: 100 });
-  assert.equal(counted.voucher_quantity, 100);
-  assert.equal(counted.balance_paid_cents, 500);
-  assert.equal(counted.balance_cents, 9100);
-  assert.equal(e.voucher.balance().quantity, 300);
+  const counted = e.wallet.buy({ product_id: 11, request_id: 'counted', voucher_count: 3 });
+  assert.equal(counted.voucher_quantity, 3);
+  assert.equal(counted.balance_paid_cents, 300);
+  assert.equal(counted.balance_cents, 9300);
+  assert.equal(e.voucher.balance().quantity, 1);
   assert.equal(e.store.read().resources.get('101500').num, '180');
 
   const snapshot = e.wallet.snapshot();
   const order = snapshot.orders.find(row => row.order_id === partial.order_id);
-  assert.equal(order.voucher_quantity, 200);
+  assert.equal(order.voucher_quantity, 2);
   assert.equal(order.voucher_amount_cents, 200);
   assert.equal(order.balance_paid_cents, 400);
   const fullOrder = snapshot.orders.find(row => row.order_id === full.order_id);
-  assert.equal(fullOrder.voucher_quantity, 600);
+  assert.equal(fullOrder.voucher_quantity, 6);
   assert.equal(fullOrder.balance_paid_cents, 0);
-  assert.equal(snapshot.totals.voucher_redeemed_cents, 900);
+  assert.equal(snapshot.totals.voucher_redeemed_cents, 1100);
   assert.equal(snapshot.totals.voucher_order_count, 3);
+  assert.equal(rechargeTotal(e.store), cumulativeBefore + 1800);
 });
 
 test('voucher payment rejects insufficient voucher, insufficient balance and excess deduction atomically', t => {
@@ -226,7 +242,7 @@ test('voucher payment rejects insufficient voucher, insufficient balance and exc
   e.store.inspect(db => db.exec("CREATE TRIGGER deny_voucher BEFORE INSERT ON voucher_redemptions BEGIN SELECT RAISE(ABORT,'deny'); END"));
   assert.throws(() => e.wallet.buy({ product_id: 11, request_id: 'blocked', voucher_amount_cents: 100 }));
   assert.deepEqual(e.store.state(), guarded);
-  assert.equal(e.voucher.balance().quantity, 500);
+  assert.equal(e.voucher.balance().quantity, 5);
   assert.equal(e.pushes.filter(push => push.type === 1900).length, 1);
   e.store.inspect(db => db.exec('DROP TRIGGER deny_voucher'));
 
@@ -242,7 +258,7 @@ test('voucher payment rejects insufficient voucher, insufficient balance and exc
   const poorBefore = poor.store.state();
   assert.throws(() => poor.wallet.buy({ product_id: 11, request_id: 'poor-balance', voucher_amount_cents: 100 }), x => x.code === 301);
   assert.deepEqual(poor.store.state(), poorBefore);
-  assert.equal(poor.voucher.balance().quantity, 600);
+  assert.equal(poor.voucher.balance().quantity, 6);
 });
 
 test('voucher mail, grant and order state survive reopening the database', t => {
@@ -252,22 +268,23 @@ test('voucher mail, grant and order state survive reopening the database', t => 
   e.mail.claim(issued.mail_id);
   const order = e.wallet.buy({ product_id: 11, request_id: 'persist-order', voucher_amount_cents: 200 });
   e.reopen();
-  assert.equal(e.voucher.balance().quantity, 400);
+  assert.equal(e.voucher.balance().quantity, 4);
   const snapshot = e.voucher.snapshot();
   assert.equal(snapshot.mails.length, 1);
   assert.equal(snapshot.mails[0].status, 'claimed');
   assert.equal(snapshot.totals.redeemed_amount_cents, 200);
   const stored = e.wallet.snapshot().orders.find(row => row.order_id === order.order_id);
-  assert.equal(stored.voucher_quantity, 200);
+  assert.equal(stored.voucher_quantity, 2);
   assert.equal(stored.balance_paid_cents, 400);
   assert.equal(codec.unpack('pb_rev_login_mail_info', e.mail.loginPayload()).mail_list[0].received, true);
 
   const db = new DatabaseSync(e.databasePath, { readOnly: true });
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
   const names = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
   for (const name of ['voucher_skus', 'game_mails', 'voucher_grants', 'voucher_redemptions', 'reward_claims']) assert.ok(names.includes(name));
   assert.ok(db.prepare('SELECT name FROM migrations WHERE name=?').get('voucher-mail-v3'));
   assert.ok(db.prepare('SELECT name FROM migrations WHERE name=?').get('reward-claims-v4'));
+  assert.ok(db.prepare('SELECT name FROM migrations WHERE name=?').get('activity-calendar-server-open-v7'));
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
   db.close();
 });
@@ -283,6 +300,8 @@ test('admin page serves voucher tools and issues/purchases through authenticated
   const html = await page.text();
   assert.match(html, /voucher-layout/);
   assert.match(html, /voucher-amount/);
+  assert.match(html, /1 张 = ¥1\.00/);
+  assert.match(html, /id="voucher-preview">1 张/);
   const css = await fetch(url + '/admin.css');
   assert.equal(css.status, 200);
   assert.match(await css.text(), /\.voucher-layout/);
@@ -295,7 +314,7 @@ test('admin page serves voucher tools and issues/purchases through authenticated
   const issue = await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: Math.floor(Date.now() / 1000) + 3600, title: '管理端发券' });
   assert.equal(issue.status, 200);
   const issued = await issue.json();
-  assert.equal(issued.quantity, 600);
+  assert.equal(issued.quantity, 6);
   assert.equal((await (await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: Math.floor(Date.now() / 1000) + 3600, title: '管理端发券' })).json()).duplicate, true);
 
   const state = await (await fetch(url + '/api/state', { headers: { Authorization: 'Bearer voucher-key' } })).json();
@@ -306,14 +325,14 @@ test('admin page serves voucher tools and issues/purchases through authenticated
   assert.equal(state.vouchers.mails[0].status, 'pending');
 
   e.mail.claim(issued.mail_id);
-  assert.equal(e.voucher.balance().quantity, 600);
+  assert.equal(e.voucher.balance().quantity, 6);
   const purchase = await post('/api/purchase', { account_id: 'local-1', product_id: 11, request_id: 'admin-buy', voucher_amount_cents: 200 });
   assert.equal(purchase.status, 200);
   const bought = await purchase.json();
-  assert.equal(bought.voucher_quantity, 200);
+  assert.equal(bought.voucher_quantity, 2);
   assert.equal(bought.balance_paid_cents, 400);
   const vouchers = await (await fetch(url + '/api/vouchers', { headers: { Authorization: 'Bearer voucher-key' } })).json();
-  assert.equal(vouchers.balance.quantity, 400);
+  assert.equal(vouchers.balance.quantity, 4);
   assert.equal(vouchers.totals.claimed_amount_cents, 600);
 });
 
@@ -347,14 +366,14 @@ test('gateway login module 93, mail claim, native 16004 voucher payment and 1600
   const mailModule = codec.unpack('pb_rev_login_mail_info', Buffer.from(modules.get(93).value));
   assert.equal(mailModule.mail_list.length, 1);
   assert.equal(Number(mailModule.mail_list[0].id), issued.mail_id);
-  assert.deepEqual(mailModule.mail_list[0].award.map(row => [row.id, row.count]), [[701500, 600]]);
+  assert.deepEqual(mailModule.mail_list[0].award.map(row => [row.id, row.count]), [[701500, 6]]);
 
   response = await request(3002, 2, await encodeEtf([issued.mail_id]));
   assert.equal(response.err, undefined);
   const claimed = codec.unpack('pb_rev_one_key_award_mail', Buffer.from(response.data, 'base64'));
   assert.deepEqual(claimed.rev_id_list.map(Number), [issued.mail_id]);
-  assert.equal(claimed.res.changes.find(change => change.tid === '701500').diff_num, '600');
-  assert.equal(game.voucher.balance().quantity, 600);
+  assert.equal(claimed.res.changes.find(change => change.tid === '701500').diff_num, '6');
+  assert.equal(game.voucher.balance().quantity, 6);
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 3, data: await encodeEtf([11, '', 701500]) }));
   const push = codec.unpack('pb_s2c', await next());

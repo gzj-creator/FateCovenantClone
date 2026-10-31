@@ -59,12 +59,12 @@ export function materializeState(model, codec) {
   return state;
 }
 
-export function createGameStore({ databasePath, legacyStatePath, seed, codec }) {
+export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt }) {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 6) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 7) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -201,11 +201,38 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
         version = 6;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
+    if (version < 7) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const requested = Number(serverOpenedAt);
+        const rows = db.prepare('SELECT role_id,created_at,metadata_json FROM roles').all();
+        let openedAt = Number.isSafeInteger(requested) && requested > 0 ? requested : null;
+        if (!openedAt) {
+          for (const row of rows) {
+            const value = Number(JSON.parse(row.metadata_json).serverOpenedAt);
+            if (Number.isSafeInteger(value) && value > 0) { openedAt = value; break; }
+          }
+        }
+        if (!openedAt && rows.length) openedAt = Math.min(...rows.map(row => Number(row.created_at)));
+        if (!openedAt) throw new Error('Server opening time is missing');
+        const update = db.prepare('UPDATE roles SET metadata_json=? WHERE role_id=?');
+        for (const row of rows) {
+          const metadata = JSON.parse(row.metadata_json);
+          metadata.serverOpenedAt = openedAt;
+          update.run(JSON.stringify(metadata), row.role_id);
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('activity-calendar-server-open-v7', 'persist-local-server-opening-time', new Date().toISOString());
+        db.exec('PRAGMA user_version=7; COMMIT');
+        version = 7;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
   } catch (error) { db.close(); throw error; }
   function read() {
     const row = db.prepare('SELECT * FROM roles LIMIT 1').get();
     const id = row.role_id;
-    const state = { ...JSON.parse(row.metadata_json), roleId: id, serverId: row.server_id, createdAt: row.created_at,
+    const metadata = JSON.parse(row.metadata_json);
+    const state = { ...metadata, roleId: id, serverId: row.server_id, createdAt: row.created_at,
+      serverOpenedAt: Number(metadata.serverOpenedAt ?? row.created_at),
       modules: { value: db.prepare('SELECT * FROM login_modules WHERE role_id=? ORDER BY module_id').all(id).map(module => [module.module_id, JSON.parse(module.payload_json)]), improper: false },
       guides: Object.fromEntries(db.prepare('SELECT * FROM guides WHERE role_id=?').all(id).map(guide => [guide.guide_key, guide.process_id])) };
     const hero_list = db.prepare('SELECT * FROM heroes WHERE role_id=? ORDER BY rowid').all(id).map(hero => ({ ...JSON.parse(hero.payload_json), uid: hero.uid, tid: hero.tid, level: hero.level, star: hero.star, star_progress: hero.star_progress, breakthrough_level: hero.break_level }));
@@ -215,7 +242,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
       playLineups: db.prepare('SELECT payload_json FROM play_lineups WHERE role_id=? ORDER BY lineup_type').all(id).map(row => JSON.parse(row.payload_json)) };
   }
   return {
-    databasePath, read,
+    databasePath, read, serverOpenedAt: Number(read().state.serverOpenedAt),
     inspect(action) { return action(db); },
     state() { return materializeState(read(), codec); },
     transaction(action) {

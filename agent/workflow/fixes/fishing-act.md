@@ -1,8 +1,8 @@
 # G3 海岛垂钓活动报错
 
-更新时间：2026-10-30（Asia/Singapore）
+更新时间：2026-10-31（Asia/Singapore）
 
-状态：**岛屿解锁已实现，组件测试与临时 TCP 通过；尚未部署到实时服务，APK 和用户视觉未验收。**
+状态：**活动排期、免费鱼饵、甩杆、收获、批量收获和岛屿解锁均已实现；组件、临时 TCP、运行迁移与真实登录响应通过。下一轮 APK 操作和用户视觉未验收。**
 
 ## 本次失败证据
 
@@ -46,6 +46,9 @@ pb_fishing_act_common_req {
 
 `personal-server/game/activity-read-service.mjs`：
 
+- `110301` 校验活动版本、已解锁岛、默认鱼竿和鱼饵，持久化待收鱼；同一请求重试不重复扣饵。
+- `110302` 按配置生成鱼尺寸/积分并发放渔获，记录最高尺寸；放弃时只清空待收鱼。
+- `110311` 按实际鱼饵和配置上限批量生成渔获，扣饵、发奖和状态写入同一事务。
 - 解析真实 protobuf 请求，拒绝非法活动、非法地图和跨版本地图。
 - 按活动 `version` 选择正确岛屿版本，按当前钓鱼积分计算活动等级。
 - 首次解锁时校验 `unlock_level_condition`，通过 `grantResources` 发放 `unlock_reward`，并在同一事务中写入 `fishing_activity_state.unlock_map_list_json`。
@@ -55,8 +58,8 @@ pb_fishing_act_common_req {
 
 `personal-server/storage/game-store.mjs`：
 
-- schema 从 v5 升至 v6，新增 `fishing_activity_state`，按 `(role_id,act_id)` 保存积分、鱼竿、地图、鱼获/天气、领取位和待处理鱼等字段。
-- 迁移名 `fishing-activity-state-v6`；v5 运行库升级不会覆盖既有角色、英雄、编队、资源或活动领取位。
+- schema v6 新增 `fishing_activity_state`，按 `(role_id,act_id)` 保存积分、鱼竿、地图、鱼获/天气、领取位和待处理鱼等字段。
+- schema v7 把开服时间写入角色 metadata，迁移名为 `activity-calendar-server-open-v7`；不会覆盖既有角色、英雄、编队、资源或活动领取位。
 
 `personal-server/config/game-tables.mjs`：
 
@@ -64,16 +67,17 @@ pb_fishing_act_common_req {
 
 ## 验证
 
-- `node --test personal-server/test/activity-read-service.test.mjs`：4/4 通过。
-- `node --test personal-server/test/gameplay-gateway.test.mjs`：1/1 通过，包含临时端口 + 临时 SQLite 的 110305 首次解锁和重复幂等回包。
-- `npm test --prefix personal-server`：全量组件测试通过；见 `docs/08-activity-fix-checklist.md` 和本轮提交记录。
+- `node --test personal-server/test/activity-read-service.test.mjs personal-server/test/activity-calendar.test.mjs`：10/10 通过。
+- `node --test personal-server/test/gameplay-gateway.test.mjs`：通过，包含临时端口 + 临时 SQLite 的第 1 天登录、免费鱼饵、岛屿解锁、甩杆、收鱼和第 8 天过期过滤。
+- `node --test personal-server/test/hero-progression.test.mjs`：14/14 通过，包含登录 module 92 过滤但 SQLite 原快照哈希不变。
+- `npm test --prefix personal-server`：189/189 通过。
 
-测试覆盖：活动 1074001 地图 1、活动 1074011 地图 601、首次奖励只发一次、重开数据库后保持、非法活动/地图、跨版本地图、低等级拒绝、不可表示奖励回滚，以及 110308/110303/116004 回归。
+测试覆盖：第 1 天 `1074003/201`、第 11/21/22 天排期、免费鱼饵幂等、首次岛屿奖励只发一次、重开数据库后保持、甩杆重试、收获、批量收获、活动关闭、非法活动/地图、跨版本地图、低等级拒绝、不可表示奖励回滚，以及 110308/110303/116004 回归。
 
 ## 未实现边界
 
-- 110301/110302/110311（甩杆、收获、批量收获）仍未实现。
 - 110304 图鉴奖励、110306 换杆、110307 等级奖励、110309 排名奖励、110310 进度奖励仍未实现。
-- 活动日历是否把 `1074001-1074011` 写入 module 92 未在本修复中改变；本次只处理用户已实际触发的 110305。
+- 免费鱼饵只按每个版本首次发放 25 个；当前配置证据不足以证明每日重复发放，未实现每日补发。
 - 旧版本 2-4 的第 4/5 岛奖励含英雄 ID（4040301、1040201、3040201），当前通用资源发放器不能表示，会明确拒绝；不能把它记为已解锁。
-- 尚未重启服务、未点击客户端、未改动运行 SQLite/ADB reverse。部署后需用户重新进入海岛垂钓，确认首岛可进入并检查奖励与重启持久化。
+- 服务端已部署，SQLite 已升级到 v7 且原始 module 92 未被登录过滤覆写。未操作客户端、原版 APK 或 ADB reverse。
+- 当前服务由 `personal-server/config/activity-calendar.json` 的 `all-open` 测试模式强制开放活动，测试钓鱼版本为 `1074011`。用户可自行进入活动，确认入口、鱼饵、岛屿、甩杆、收鱼和重登持久化。

@@ -16,7 +16,7 @@ export function parseLuaJit(buffer) {
   if (byte() !== 27 || byte() !== 76 || byte() !== 74 || byte() !== 2) throw new Error('Expected LuaJIT dump v2');
   const flags = uleb();
   if (flags & 1) throw new Error('Big-endian LuaJIT dumps are unsupported');
-  if (!(flags & 2)) string(uleb());
+  const chunk = flags & 2 ? null : string(uleb());
   const stack = [];
   const prototypes = [];
   const tableScalar = () => {
@@ -101,7 +101,12 @@ export function parseLuaJit(buffer) {
     if (supported.length > 1) supported = supported.filter(attempt => attempt.uv === requiredUv);
     if (supported.length !== 1) throw new Error(`Constant boundary candidates: ${attempts.length}, supported: ${supported.length}, required UVs: ${requiredUv}`);
     const accepted = supported[0];
+    proto.headerUpvalueCount = proto.upvalueCount;
     proto.upvalueCount = accepted.uv;
+    proto.upvalues = [];
+    for (let index = 0; index < accepted.uv; index++) {
+      proto.upvalues.push(buffer.readUInt16LE(constantsStart + index * 2));
+    }
     proto.constants = accepted.constants;
     proto.numbers = accepted.numbers;
     stack.splice(0, stack.length, ...accepted.trialStack);
@@ -111,7 +116,7 @@ export function parseLuaJit(buffer) {
   }
 
   if (position !== buffer.length || stack.length !== 1) throw new Error('LuaJIT root/EOF mismatch');
-  return { prototypes, rootPrototype: stack[0] };
+  return { flags, chunk, prototypes, rootPrototype: stack[0] };
 }
 
 export function collectFiles(root) {

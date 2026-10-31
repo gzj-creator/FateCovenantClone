@@ -4,7 +4,7 @@
 
 主界面看板娘缺失已定位并实测修复：根因不是资源缺失，而是隔离客户端 PlayerPrefs 中 SubDownloadFinish=0 时，UniCore.RemoteLoadMgr.NeedRemoteLoad 把 sub_first 资源误判为远程下载；UpdateDownloader.AsyncAssetLackPreCheck 为空导致 AddRemoteLoad 失败，AssetBundle 请求未创建并在 6000 帧后超时，报 hero_sl_GuangZhiXin_new_talk.prefab load fail by bundle load timeOut 和 [MissAsset]。在 /data/data/com.jzyx.ps/shared_prefs/com.jzyx.ps.v2.playerprefs.xml 写入 SubDownloadFinish=1 后，截图 analysis/experiments/private-server-20261025/p3/kanban-after-subdownload-20261028.png 确认看板娘恢复；修复后 Info 日志无 AddRemoteLoad/timeout/MissAsset。该值未烘焙进 APK，重装/清数据/换设备后需重新写入。
 
-当前可用 APK 快照已保存到 apk/com.jzyx.ps.v8b-working.apk（4,116,360,373 字节，SHA256 c33a192cd875fd9cda8e5a25104d49d5b2d4b5325056380efc53dc96de1ef3cf），不提交 Git；说明见 apk/README.md。用户已要求把“每次涉及 APK 的修改，验收通过后同步一份到 apk/ 目录并记录元数据”作为持久规则写入 AGENTS.md。设备 ADB 使用 E:\Mumu\MuMuPlayer\nx_main\adb.exe -s 127.0.0.1:16448；原版 com.jzyx.my 未操作。
+当前可用 APK 快照已保存到 apk/com.jzyx.ps.v9-working.apk（4,185,758,901 字节，SHA256 1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473），不提交 Git；说明见 apk/README.md。用户已要求把“每次涉及 APK 的修改，验收通过后同步一份到 apk/ 目录并记录元数据”作为持久规则写入 AGENTS.md。设备 ADB 使用 E:\Mumu\MuMuPlayer\nx_main\adb.exe -s 127.0.0.1:16448；原版 com.jzyx.my 未操作。
 
 详细根因、代码路径、日志和修复步骤见 [客户端资源实操](../agent/workflow/client-resource/implementation.md)。
 

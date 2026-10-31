@@ -14,6 +14,15 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 const codec = createGameCodec();
 const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
 const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
+const SERVER_OPENED_AT = 1792789200;
+const GAME_NOW = (SERVER_OPENED_AT + 3600) * 1000;
+
+async function loginActivities(payload) {
+  const login = await decodeEtf(payload);
+  const entry = login[2].value.find(value => Number(value[0]) === 92);
+  assert.ok(entry, 'login module 92 is present');
+  return codec.unpack('pb_act_login', Buffer.from(entry[1].value));
+}
 
 function addResource(store, tid, num, group = 1) {
   store.transaction(model => {
@@ -29,7 +38,17 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-gameplay-'));
   const databasePath = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, databasePath);
-  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, missionFightPlayback: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
+  let gameNow = GAME_NOW;
+  const game = createLocalGame({
+    databasePath,
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    missionFightPlayback: true,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => gameNow,
+    random: () => 0.5
+  });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const address = await game.listen(0);
@@ -48,6 +67,9 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+  const scheduledActivity = await loginActivities(Buffer.from(login.data, 'base64'));
+  assert.equal(scheduledActivity.act_list.some(entry => Number(entry.state_data?.act_id) === 1074003), true);
+  assert.equal(BigInt(game.store.read().resources.get('821202')?.num ?? 0), 25n);
 
   // Heartbeat is one-way. If it receives an empty frame, the client's receive
   // stream is left at offset 4 and decodes the next frame header as protobuf.
@@ -107,15 +129,26 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(110308, 6, Buffer.alloc(0));
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_fishing_act_get_record_rsp', Buffer.from(response.data ?? '', 'base64')).record_list, []);
-  response = await request(110305, 55, codec.pack('pb_fishing_act_common_req', { act_id: 1074001, value: 1 }));
+  response = await request(110305, 55, codec.pack('pb_fishing_act_common_req', { act_id: 1074003, value: 201 }));
   assert.equal(response.err, undefined);
   const fishingUnlock = codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64'));
-  assert.equal(fishingUnlock.data.act_id, '1074001');
-  assert.deepEqual(fishingUnlock.data.unlock_map_list, ['1']);
+  assert.equal(fishingUnlock.data.act_id, '1074003');
+  assert.deepEqual(fishingUnlock.data.unlock_map_list, ['201']);
   assert.equal(fishingUnlock.res.changes.length, 2);
-  response = await request(110305, 56, codec.pack('pb_fishing_act_common_req', { act_id: 1074001, value: 1 }));
+  response = await request(110305, 56, codec.pack('pb_fishing_act_common_req', { act_id: 1074003, value: 201 }));
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64')).res.changes, []);
+  const baitBeforeCast = BigInt(game.store.read().resources.get('821202').num);
+  response = await request(110301, 57, codec.pack('pb_fishing_act_rod_req', { act_id: 1074003, map_id: 201 }));
+  assert.equal(response.err, undefined);
+  const waitingFish = codec.unpack('pb_fishing_act_role_data', Buffer.from(response.data ?? '', 'base64')).wait_fish;
+  assert.ok(Number(waitingFish.fish_id) > 0);
+  assert.equal(BigInt(game.store.read().resources.get('821202').num), baitBeforeCast - 1n);
+  response = await request(110302, 58, codec.pack('pb_fishing_act_get_req', { act_id: 1074003, is_get: true }));
+  assert.equal(response.err, undefined);
+  const collectedFish = codec.unpack('pb_fishing_act_get_rsp', Buffer.from(response.data ?? '', 'base64'));
+  assert.equal(collectedFish.data.get_num, '1');
+  assert.deepEqual(collectedFish.data.wait_fish, {});
   response = await request(116004, 7, codec.pack('pb_help_up_get_times_req', { act_id: 92144 }));
   assert.equal(Number(codec.unpack('pb_help_up_get_times_rsp', Buffer.from(response.data ?? '', 'base64')).times ?? 0), 0);
   response = await request(116001, 8, codec.pack('pb_help_up_task_reward_req', { act_id: 92144, task_id_list: [1] }));
@@ -216,4 +249,52 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(gift.act_tid, 61070);
   assert.deepEqual(gift.buy_list.map(entry => entry.recharge_tid), [2811, 2812, 2813]);
   assert.ok(gift.buy_list.every(entry => !entry.buy_times));
+
+  // On local day 8 the opening fishing generation and contract 83028 are over.
+  gameNow = (SERVER_OPENED_AT + 7 * 86400) * 1000;
+  const currentActivity = await loginActivities(await game.loginPayload());
+  const currentIds = [
+    ...currentActivity.act_list.map(entry => Number(entry.state_data?.act_id)),
+    ...currentActivity.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))
+  ];
+  assert.equal(currentIds.some(id => id >= 1074001 && id <= 1074011), false);
+  assert.equal(currentIds.includes(83028), false);
+  assert.equal(currentActivity.act_custom_list.some(entry => Number(entry.act_id) === 83028), false);
+});
+
+test('all-open mode returns every stored activity and forces test-visible states', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-all-open-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  fs.copyFileSync(backup, databasePath);
+  const game = createLocalGame({
+    databasePath,
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: () => true,
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityMode: 'all-open',
+    currentFishingActivityId: 1074011,
+    now: () => (SERVER_OPENED_AT + 7 * 86400) * 1000
+  });
+  t.after(async () => { await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  const stored = codec.unpack('pb_act_login', rawBinary(new Map(game.store.state().modules.value).get(92)));
+  const storedIds = [
+    ...stored.act_list.map(entry => Number(entry.state_data?.act_id)),
+    ...stored.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))
+  ];
+  const activity = await loginActivities(await game.loginPayload());
+  const returnedIds = new Set([
+    ...activity.act_list.map(entry => Number(entry.state_data?.act_id)),
+    ...activity.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))
+  ]);
+
+  assert.equal(game.calendar.mode, 'all-open');
+  assert.equal(activity.act_pause_list.length, 0);
+  assert.ok(activity.act_list.every(entry => Number(entry.state_data?.cur_state_id) === 50));
+  assert.ok(activity.act_parallel_list.every(group => group.states_data.every(entry => Number(entry.cur_state_id) === 50)));
+  assert.ok(activity.act_custom_list.every(entry => Number(entry.start_time ?? 0) === 0 && Number(entry.end_time ?? 0) === 0));
+  assert.ok(storedIds.every(id => returnedIds.has(id)));
+  assert.equal(returnedIds.has(83028), true);
+  assert.equal(returnedIds.has(1074011), true);
 });

@@ -77,6 +77,20 @@ function encodeInstruction(instruction) {
   return output;
 }
 
+function encodeUpvalues(prototype) {
+  if (!Array.isArray(prototype.upvalues) || prototype.upvalues.length !== prototype.upvalueCount) {
+    throw new Error(`Prototype ${prototype.index} has ${prototype.upvalues?.length ?? 0} upvalue descriptors for ${prototype.upvalueCount} slots`);
+  }
+  const output = [];
+  for (const descriptor of prototype.upvalues) {
+    if (!Number.isInteger(descriptor) || descriptor < 0 || descriptor > 0xffff) {
+      throw new Error(`Prototype ${prototype.index} has an invalid upvalue descriptor`);
+    }
+    output.push(descriptor & 0xff, (descriptor >>> 8) & 0xff);
+  }
+  return output;
+}
+
 export function serializeLuaJit(parsed, { stripDebug = true } = {}) {
   const output = [27, 76, 74, 2, stripDebug ? (parsed.flags | 2) : parsed.flags];
   if (!stripDebug) throw new Error('Serialization currently supports stripped dumps only');
@@ -85,7 +99,7 @@ export function serializeLuaJit(parsed, { stripDebug = true } = {}) {
     const body = [prototype.flags, prototype.parameters, prototype.frameSize, prototype.upvalueCount,
       ...uleb(prototype.constants.length), ...uleb(prototype.numbers.length), ...uleb(prototype.instructions.length)];
     for (const instruction of prototype.instructions) body.push(...encodeInstruction(instruction));
-    body.push(...new Array(prototype.upvalueCount * 2).fill(0));
+    body.push(...encodeUpvalues(prototype));
     for (const constant of [...prototype.constants].reverse()) body.push(...encodeConstant(constant));
     for (const number of prototype.numbers) {
       if (Number.isInteger(number) && number >= -2147483648 && number <= 2147483647) {

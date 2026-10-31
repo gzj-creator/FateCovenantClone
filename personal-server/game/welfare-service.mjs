@@ -13,7 +13,7 @@ async function readEtfBinary(raw) {
 
 const resToClient = res => ({ changes: res.changes, is_overflow: false });
 
-export function createWelfareService({ store, codec, tables, wallet, now = Date.now, logger = () => {} }) {
+export function createWelfareService({ store, codec, tables, wallet, calendar, now = Date.now, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
   const supported = new Set([82101, 84601, 99300, 16005]);
 
@@ -33,7 +33,11 @@ export function createWelfareService({ store, codec, tables, wallet, now = Date.
     const raw = modules.get(92) ? rawBinary(modules.get(92)) : Buffer.alloc(0);
     const activity = codec.unpack('pb_act_login', raw);
     const entry = (activity.act_list ?? []).find(row => Number(row.state_data?.act_id) === actId);
-    if (!entry || Number(entry.state_data.cur_state_id) !== 50 || (activity.act_pause_list ?? []).map(Number).includes(actId)) throw new GameError(309, 'Activity is not running');
+    if (!entry) throw new GameError(309, 'Activity is not running');
+    const running = calendar
+      ? calendar.isActivityRunning(actId, entry.state_data, activity, Math.floor(now() / 1000))
+      : Number(entry.state_data.cur_state_id) === 50 && !(activity.act_pause_list ?? []).map(Number).includes(actId);
+    if (!running) throw new GameError(309, 'Activity is not running');
     const cfg = tables.Activity.get(actId);
     if (!cfg || cfg.func !== 53) throw new GameError(5, 'Activity is not a multi-login activity');
     const version = Number(cfg.version);

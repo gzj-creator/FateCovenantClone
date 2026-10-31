@@ -290,7 +290,10 @@ export function createSdkService(options = {}) {
         const state = wallet.snapshot();
         const owner = state.accounts.find(value => value.account_id === account.userId);
         const product = state.products.find(value => value.id === productId);
-        if (!owner || !product) throw new RequestError(400, 400, 'Unsupported local payment product');
+        if (!owner || !product) {
+          log({ event: 'quick_order_pay_product_unavailable', productId, productExists: Boolean(product), ownerExists: Boolean(owner), code: 400, message: 'Unsupported local payment product' });
+          throw new RequestError(400, 400, 'Unsupported local payment product');
+        }
         const priceCents = Math.round(Number(payment.price) * 100);
         const amountCents = Math.round(Number(payment.amount) * 100);
         if (!Number.isFinite(payment.price) || !Number.isFinite(payment.amount) || priceCents !== product.price_cents || amountCents !== product.price_cents) {

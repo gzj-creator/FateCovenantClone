@@ -4,7 +4,7 @@
 
 2026-10-30 13:33：[累充活动奖励领取](acc-recharge/implementation.md)。旧网关未实现 `98620 req_acc_recharge_act_get_award`，领取时返回 `LOCAL_NOT_IMPLEMENTED:98620`；现已按活动 106036/版本 36 实现事务领取、奖励发放、模块 106 状态和防重，167/167 测试通过并已部署（实时 PID 以状态文件为准）。真实客户端领取仍待用户点击验收。
 
-2026-10-28 最新：[客户端资源：主界面看板娘缺失修复](client-resource/implementation.md)。隔离包 com.jzyx.ps 的 SubDownloadFinish=0 导致 sub_first 资源误入 RemoteLoadMgr，AddRemoteLoad 失败并在 6000 帧后报 MissAsset；写入 SubDownloadFinish=1 后截图确认看板娘恢复，修复后日志无 AddRemoteLoad/timeout/MissAsset。该值不在 APK 内，重装/清数据后需重设。当前可用快照保存在 apk/com.jzyx.ps.v8b-working.apk（4,116,360,373 字节，SHA256 c33a192c...），不提交 Git；说明见 apk/README.md。
+2026-10-28 最新：[客户端资源：主界面看板娘缺失修复](client-resource/implementation.md)。隔离包 com.jzyx.ps 的 SubDownloadFinish=0 导致 sub_first 资源误入 RemoteLoadMgr，AddRemoteLoad 失败并在 6000 帧后报 MissAsset；写入 SubDownloadFinish=1 后截图确认看板娘恢复，修复后日志无 AddRemoteLoad/timeout/MissAsset。该值不在 APK 内，重装/清数据后需重设。当前可用快照保存在 apk/com.jzyx.ps.v9-working.apk（4,185,758,901 字节，SHA256 1fd5fe0a...），不提交 Git；说明见 apk/README.md。
 
 2026-10-25 23:59交接：[下一session提示词](../../promot/2026-10-25-wallet-admin-handoff.md)。真实APK注册登录成功，三项79104任务领奖入SQLite；92项测试。管理页18883在线，账户余额0、订单0，待用户后台加钱后验证游戏充值。保持服务/隔离客户端和reverse运行，勿按旧采集记录清理。
 
@@ -35,7 +35,7 @@
 | 网关握手 | [加密核对](gateway-handshake/crypto.md) | 本机服真实APK握手接受；可选包加密仅组件验证 |
 | 登录初始化 | [实操](login-initialization/implementation.md) | 本机大厅显示通过；fixture与玩法完整性有缺口 |
 | 玩法状态 | [小队、养成与SQLite](gameplay-state/implementation.md) | 用户确认小队/升级/升星正常；SQLite v2；突破及完整进星仅组件，战斗结算待实现 |
-| 客户端资源 | [看板娘与 sub_first 远程加载](client-resource/implementation.md) | SubDownloadFinish=1 实测恢复看板娘；APK 快照 apk/com.jzyx.ps.v8b-working.apk，prefs 未烘焙 |
+| 客户端资源 | [看板娘与 sub_first 远程加载](client-resource/implementation.md) | SubDownloadFinish=1 实测恢复看板娘；APK 快照 apk/com.jzyx.ps.v9-working.apk，prefs 未烘焙 |
 | 操作采集 | [首次登录](capture-workflow/login-decode.md)、[战斗与编队](capture-workflow/battle-and-lineup.md) | 原版登录、上阵与战斗有操作证据，后续功能逐步解锁 |
 | 接口目录 | [统一目录](interface-catalog/README.md) | 静态与动态分列，未触发/未解锁/未知均保留缺口 |
 

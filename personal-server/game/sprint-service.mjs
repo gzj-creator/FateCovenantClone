@@ -2,14 +2,17 @@ import { E, binary, encodeEtf, decodeEtf, rawBinary, serializedBinary } from '..
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 const dayIndex = now => Math.floor((now/1000+10800)/86400);
-export function createSprintService({ store, codec, tables, now = Date.now }) {
+export function createSprintService({ store, codec, tables, calendar, now = Date.now }) {
   async function execute(request) {
     const ids=request.task_tid_list;
     if(!Number.isSafeInteger(request.act_id)||!Array.isArray(ids)||!ids.length||ids.length>100||new Set(ids).size!==ids.length||ids.some(id=>!Number.isSafeInteger(id)))throw new GameError(1,'Invalid sprint claim');
     const state=store.state(), modules=new Map(state.modules.value), activity=codec.unpack('pb_act_login',rawBinary(modules.get(92)));
     const group=activity.act_parallel_list.find(group=>group.states_data.some(row=>row.act_id===request.act_id));
     const act=group?.states_data.find(row=>row.act_id===request.act_id);
-    if(!group||act.cur_state_id!==50||activity.act_pause_list.includes(request.act_id))throw new GameError(309,'Activity is not running');
+    const running=calendar
+      ? calendar.isActivityRunning(request.act_id,act,activity,Math.floor(now()/1000))
+      : Boolean(group&&act?.cur_state_id===50&&!activity.act_pause_list.includes(request.act_id));
+    if(!group||!running)throw new GameError(309,'Activity is not running');
     const tuple=await decodeEtf(Buffer.from(group.module_login_data,'base64'));
     if(!(tuple instanceof E.OtpErlangList)||tuple.value.length<2)throw new GameError(5,'Unsupported sprint login layout');
     const taskData=codec.unpack('pb_sprint_task_data',Buffer.from(tuple.value[1].value));

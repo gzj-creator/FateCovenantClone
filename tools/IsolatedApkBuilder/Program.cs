@@ -14,6 +14,12 @@ using ICSharpCode.SharpZipLib.Checksum;
 internal static class Program
 {
     private const string ExpectedSourceSha256 = "b724dfbaa5687ebbfc9ce1b930e9bd88ca74f9b6afc3838d1e20acf66cd8ba5e";
+    private const string ExpectedWalletSourceSha256 = "37ba1ff04566cf3a1fa5a8ee16103589f459e62d60619bd1dcc9a2cc96b309e3";
+    private const string ExpectedWalletDexEntrySha256 = "7593e3b4343ad0216b904f44290f3dc34441ccbb7221ea8b26559463166d89aa";
+    private const string ExpectedWalletLuaEntrySha256 = "fd1fa8b504d080eb7fbb7a91b5390041fd38af896cdca2f4a8a57d1c10236cda";
+    private const string ExpectedWalletLanguageEntrySha256 = "e11100a963483589fe51642bf39fe9131a90283cb37504961c233e8e20c417a5";
+    private const string ExpectedPatchedLuaBundleSha256 = "90595989c0d3dc93b0fa6e741a334b1b4ec7432153addd9ca451593e23782012";
+    private const string ExpectedPatchedLanguageBundleSha256 = "fafdbe68c795dba8e40dd210a8524669386be3244d94a515157f9c70adf65b64";
     private static readonly Encoding Utf8 = new UTF8Encoding(false, true);
     private static readonly string[] ControlledFields = { "Host", "ListPorts", "UpdateAddr", "AppDownloadAddr" };
     private static readonly Dictionary<string, string> Renames = BuildRenames();
@@ -68,6 +74,13 @@ internal static class Program
     private static string Hex(byte[] bytes)
     {
         return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+    }
+
+    private static byte[] FromHex(string value)
+    {
+        Require(value.Length > 0 && (value.Length & 1) == 0, "Hex input must contain complete bytes.");
+        return Enumerable.Range(0, value.Length / 2)
+            .Select(index => Convert.ToByte(value.Substring(index * 2, 2), 16)).ToArray();
     }
 
     private static string HashStream(Stream stream)
@@ -342,27 +355,17 @@ internal static class Program
         byte[] output = (byte[])original.Clone();
         byte[] replacement = { 0x1a, 0x00, 0xd9, 0x4f, 0x11, 0x00 };
         Array.Copy(replacement, 0, output, offset, replacement.Length);
-        // JZRechargeService$d has already parsed order_no from the successful
-        // /pay/recharge/order response at 0x488388. Complete the SDK callback
-        // locally instead of trying to launch Alipay/WeChat with the empty local
-        // credential. v0 is order_no, v1 is the anonymous listener, v3 is the
-        // JZRechargeService instance, and the activity field is @0x535d.
+        // JZRechargeService$d has just stored order_no from the successful
+        // /pay/recharge/order response. Replace the Alipay credential branch
+        // through the success return with a local success callback. v0 is
+        // order_no, v1 is this anonymous listener, and field @0x535e is the
+        // JZRechargeService instance.
         int completion = 0x488388;
-        byte[] oldCompletion = {
-            0x71, 0x20, 0x08, 0x8b, 0x03, 0x00, 0x0c, 0x03, 0x54, 0x10,
-            0x5e, 0x53, 0x71, 0x10, 0x07, 0x8b, 0x00, 0x00, 0x0c, 0x00,
-            0x6e, 0x20, 0x3a, 0x88, 0x03, 0x00, 0x1a, 0x03, 0x9a, 0x51
-        };
+        byte[] oldCompletion = FromHex("7100338800000C0354105E537110078B00000C006E203A8803001A039A516E20EAA932000C0254135E531A00DA786E20ECA902000C0271200A8B230054125D536E1058000200");
         Require(original.Skip(completion).Take(oldCompletion.Length).SequenceEqual(oldCompletion), "SDK local completion instructions mismatch.");
-        byte[] localCompletion = {
-            0x07, 0x20,                                     // move-object v2, v0 (order_no)
-            0x54, 0x10, 0x5d, 0x53,                         // iget-object v0, v1, $d.a (Activity)
-            0x6e, 0x10, 0x58, 0x00, 0x00, 0x00,           // Activity.finish()
-            0x71, 0x10, 0x09, 0x8b, 0x03, 0x00,           // access$200(v3) -> v0
-            0x62, 0x01, 0xc4, 0x4d,                         // Constants.JZYX_PAYRESULT_SUCCESS -> v1
-            0x72, 0x30, 0x41, 0x81, 0x02, 0x01,           // onResult(v0, v1, v2)
-            0x0e, 0x00                                      // return-void
-        };
+        byte[] localPrefix = FromHex("070254105D536E105800000054105E537110098B00000C006201C44D723041811002");
+        Require(oldCompletion.Length == 70 && localPrefix.Length == 34, "SDK local completion patch width changed.");
+        byte[] localCompletion = localPrefix.Concat(Enumerable.Repeat((byte)0, oldCompletion.Length - localPrefix.Length)).ToArray();
         Array.Copy(localCompletion, 0, output, completion, localCompletion.Length);
         using (SHA1 sha = SHA1.Create()) Array.Copy(sha.ComputeHash(output, 32, output.Length - 32), 0, output, 12, 20);
         Adler32 checksum = new Adler32();
@@ -392,6 +395,10 @@ internal static class Program
 
     private static int Run(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--patch-wallet")
+            return RunWalletPatch(args);
+        if (args.Length > 0 && args[0] == "--patch-wallet-dex")
+            return RunWalletDexPatch(args);
         Require(args.Length == 3 && (args[0] == "--inspect" || args[0] == "--build"), "Usage: builder --inspect|--build <source.apk> <new-output.apk>");
         string sourcePath = Path.GetFullPath(args[1]), outputPath = Path.GetFullPath(args[2]);
         Require(!sourcePath.Equals(outputPath, StringComparison.OrdinalIgnoreCase), "Source and output paths must differ.");
@@ -526,6 +533,163 @@ internal static class Program
         File.WriteAllText(reportPath, report.ToString(Formatting.Indented) + "\n", new UTF8Encoding(false));
         Console.WriteLine(Obj("output", outputPath, "bytes", report["output"]["bytes"], "sha256", report["output"]["sha256"],
             "patchManifest", reportPath, "entryCount", records.Count).ToString(Formatting.Indented));
+        return 0;
+    }
+
+    private static int RunWalletDexPatch(string[] args)
+    {
+        Require(args.Length == 3, "Usage: builder --patch-wallet-dex <original-classes6.dex> <new-output.dex>");
+        string sourcePath = Path.GetFullPath(args[1]);
+        string outputPath = Path.GetFullPath(args[2]);
+        Require(!sourcePath.Equals(outputPath, StringComparison.OrdinalIgnoreCase), "Source and output paths must differ.");
+        Require(!File.Exists(outputPath), "Output already exists; refusing to overwrite.");
+        byte[] source = File.ReadAllBytes(sourcePath);
+        byte[] output = LocalSdkDex(source);
+        File.WriteAllBytes(outputPath, output);
+        Console.WriteLine(Obj("source", sourcePath, "sourceSha256", Hash(source), "output", outputPath,
+            "outputBytes", output.Length, "outputSha256", Hash(output)).ToString(Formatting.Indented));
+        return 0;
+    }
+
+    private static int RunWalletPatch(string[] args)
+    {
+        Require(args.Length == 6, "Usage: builder --patch-wallet <source.apk> <new-output.apk> <patched-lua.bundle> <original-classes6.dex> <patched-language.bundle>");
+        string sourcePath = Path.GetFullPath(args[1]);
+        string outputPath = Path.GetFullPath(args[2]);
+        string patchedBundlePath = Path.GetFullPath(args[3]);
+        string originalDexPath = Path.GetFullPath(args[4]);
+        string patchedLanguagePath = Path.GetFullPath(args[5]);
+        Require(!sourcePath.Equals(outputPath, StringComparison.OrdinalIgnoreCase), "Source and output paths must differ.");
+        Require(!File.Exists(outputPath), "Output already exists; refusing to overwrite.");
+        string reportPath = Path.Combine(Path.GetDirectoryName(outputPath), "wallet-patch-manifest.json");
+        Require(!File.Exists(reportPath), "Wallet patch manifest already exists; refusing to overwrite.");
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+
+        byte[] patchedBundle = File.ReadAllBytes(patchedBundlePath);
+        Require(Hash(patchedBundle) == ExpectedPatchedLuaBundleSha256, "Patched Lua bundle identity mismatch.");
+        byte[] patchedLanguageBundle = File.ReadAllBytes(patchedLanguagePath);
+        Require(Hash(patchedLanguageBundle) == ExpectedPatchedLanguageBundleSha256, "Patched language bundle identity mismatch.");
+        byte[] originalDex = File.ReadAllBytes(originalDexPath);
+        byte[] patchedDex = LocalSdkDex(originalDex);
+
+        List<EntryRecord> records = new List<EntryRecord>();
+        JObject report;
+        using (FileStream sourceFile = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024))
+        {
+            string sourceHash = HashStream(sourceFile);
+            Require(sourceHash == ExpectedWalletSourceSha256, "V8B source APK hash does not match the preserved baseline.");
+            List<CentralEntry> central = ReadCentralDirectory(sourceFile);
+            using (ZipArchive source = new ZipArchive(sourceFile, ZipArchiveMode.Read, true))
+            {
+                Require(source.Entries.Count == central.Count, "Central/ZipArchive entry count differs.");
+                for (int index = 0; index < central.Count; index++)
+                    Require(source.Entries[index].FullName == central[index].Name, "Entry order/name mismatch.");
+
+                ZipArchiveEntry sourceDex = source.GetEntry("classes6.dex");
+                ZipArchiveEntry sourceBundle = source.GetEntry("assets/Android/script/lua/64_lua_project.bundle");
+                ZipArchiveEntry sourceLanguage = source.GetEntry("assets/Android/sub_first/config/core/language.bundle");
+                Require(sourceDex != null && sourceBundle != null && sourceLanguage != null, "Wallet patch target members are absent.");
+                Require(Hash(ReadEntry(sourceDex, 64 * 1024 * 1024)) == ExpectedWalletDexEntrySha256, "V8B classes6.dex is not the expected wallet baseline.");
+                Require(Hash(ReadEntry(sourceBundle, 128 * 1024 * 1024)) == ExpectedWalletLuaEntrySha256, "V8B Lua bundle is not the expected wallet baseline.");
+                Require(Hash(ReadEntry(sourceLanguage, 16 * 1024 * 1024)) == ExpectedWalletLanguageEntrySha256, "V8B language bundle is not the expected baseline.");
+
+                using (FileStream outputFile = new FileStream(outputPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 1024 * 1024))
+                using (ZipOutputStream output = new ZipOutputStream(outputFile))
+                {
+                    output.IsStreamOwner = false;
+                    output.UseZip64 = UseZip64.Dynamic;
+                    output.SetLevel(6);
+                    for (int index = 0; index < source.Entries.Count; index++)
+                    {
+                        ZipArchiveEntry entry = source.Entries[index];
+                        EntryRecord record = new EntryRecord { name = entry.FullName, sourceFlags = central[index].Flags,
+                            sourceBytes = entry.Length, sourceCompressionMethod = central[index].Method };
+                        if (IsSignature(entry.FullName))
+                        {
+                            using (Stream input = entry.Open()) record.sourceSha256 = HashStream(input);
+                            record.action = "remove_signature";
+                            records.Add(record);
+                            continue;
+                        }
+
+                        byte[] replacement = entry.FullName == "classes6.dex" ? patchedDex
+                            : entry.FullName == "assets/Android/script/lua/64_lua_project.bundle" ? patchedBundle
+                            : entry.FullName == "assets/Android/sub_first/config/core/language.bundle" ? patchedLanguageBundle : null;
+                        uint crc = central[index].Crc;
+                        if (replacement != null)
+                        {
+                            Crc32 checksum = new Crc32(); checksum.Update(replacement); crc = (uint)checksum.Value;
+                        }
+                        ZipEntry target = new ZipEntry(entry.FullName);
+                        target.CompressionMethod = (CompressionMethod)central[index].Method;
+                        target.DateTime = entry.LastWriteTime.DateTime;
+                        target.ExternalFileAttributes = entry.ExternalAttributes;
+                        target.Size = replacement == null ? entry.Length : replacement.Length;
+                        target.Crc = crc;
+                        target.IsUnicodeText = (central[index].Flags & 0x0800) != 0;
+                        output.PutNextEntry(target);
+                        if (replacement == null)
+                        {
+                            using (Stream input = entry.Open()) record.sourceSha256 = CopyAndHash(input, output);
+                            record.outputSha256 = record.sourceSha256;
+                            record.outputBytes = record.sourceBytes;
+                            record.action = "copy";
+                        }
+                        else
+                        {
+                            using (Stream input = entry.Open()) record.sourceSha256 = HashStream(input);
+                            output.Write(replacement, 0, replacement.Length);
+                            record.outputSha256 = Hash(replacement);
+                            record.outputBytes = replacement.Length;
+                            record.action = "patch";
+                        }
+                        output.CloseEntry();
+                        records.Add(record);
+                        if ((index + 1) % 1000 == 0) Console.Error.WriteLine("Copied " + (index + 1) + "/" + source.Entries.Count + " ZIP entries.");
+                    }
+                }
+            }
+        }
+
+        int patchedCount = 0;
+        using (FileStream outputFile = new FileStream(outputPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024))
+        {
+            string outputHash = HashStream(outputFile);
+            List<CentralEntry> central = ReadCentralDirectory(outputFile);
+            using (ZipArchive output = new ZipArchive(outputFile, ZipArchiveMode.Read, true))
+            {
+                List<EntryRecord> expected = records.Where(value => value.action != "remove_signature").ToList();
+                Require(output.Entries.Count == expected.Count && central.Count == expected.Count, "Output member count mismatch.");
+                for (int index = 0; index < expected.Count; index++)
+                {
+                    EntryRecord record = expected[index];
+                    ZipArchiveEntry entry = output.Entries[index];
+                    Require(entry.FullName == record.name && central[index].Name == record.name, "Output ZIP member name/order mismatch.");
+                    Require(entry.Length == record.outputBytes, "Output member length mismatch: " + entry.FullName);
+                    record.outputFlags = central[index].Flags;
+                    Require((record.outputFlags & 0x0800) == (record.sourceFlags & 0x0800), "Output ZIP UTF-8 flag changed: " + entry.FullName);
+                    record.outputCompressionMethod = central[index].Method;
+                    Require(record.outputCompressionMethod == record.sourceCompressionMethod, "Output compression method changed: " + entry.FullName);
+                    using (Stream input = entry.Open()) Require(HashStream(input) == record.outputSha256, "Output content hash mismatch: " + entry.FullName);
+                    if (record.action == "patch") patchedCount++;
+                }
+            }
+            Require(patchedCount == 3, "Expected exactly three patched APK members.");
+            report = Obj("schemaVersion", 1, "recordedAtUtc", DateTime.UtcNow.ToString("o"),
+                "scope", "Incremental isolated wallet/signature APK; unsigned, not zipaligned, not installed or runtime validated",
+                "source", Obj("path", sourcePath, "bytes", new FileInfo(sourcePath).Length, "sha256", ExpectedWalletSourceSha256),
+                "patchedInputs", Obj("luaBundle", Obj("path", patchedBundlePath, "bytes", patchedBundle.Length, "sha256", Hash(patchedBundle)),
+                    "originalDex", Obj("path", originalDexPath, "bytes", originalDex.Length, "sha256", Hash(originalDex)),
+                    "languageBundle", Obj("path", patchedLanguagePath, "bytes", patchedLanguageBundle.Length, "sha256", Hash(patchedLanguageBundle))),
+                "output", Obj("path", outputPath, "package", "com.jzyx.ps", "bytes", outputFile.Length, "sha256", outputHash,
+                    "signed", false, "zipaligned", false, "deviceValidated", false),
+                "removedSignatureEntries", new JArray(records.Where(value => value.action == "remove_signature").Select(value => value.name)),
+                "entries", JArray.FromObject(records),
+                "verification", Obj("sourceHashMatched", true, "allOutputEntryHashesMatched", true, "compressionMethodsPreserved", true,
+                    "utf8FlagsPreserved", true, "exactPatchTargets", patchedCount, "unsignedDerivativeOnly", true));
+        }
+        File.WriteAllText(reportPath, report.ToString(Formatting.Indented) + "\n", new UTF8Encoding(false));
+        Console.WriteLine(report.ToString(Formatting.Indented));
         return 0;
     }
 

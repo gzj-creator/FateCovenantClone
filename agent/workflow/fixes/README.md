@@ -1,7 +1,7 @@
 # 个人服务器修复记录
 
 基线提交 `26982a4`；2026-10-30 活动修复 worktree 基线 `5aa0a21`。本目录逐项记录“用户反馈 → 证据 → 根因 → 实现边界 → 测试 → 验收级别”。
-统一测试：`npm test --prefix personal-server`，当前结果为 **163/163 通过**。
+统一测试：`npm test --prefix personal-server`，当前结果为 **192/192 通过**。
 
 | 编号 | 故障 | 本文档 | 本轮结论 |
 |---|---|---|---|
@@ -12,6 +12,7 @@
 | G4 | 超凡冒险者活动打不开 | [helpup-act.md](helpup-act.md) | 新增助力次数读取；任务/阶段/助力明确拒绝；入口活动数据仍缺证据 |
 | G5 | 新超凡魔灵服务器错误 | [pet-spirit.md](pet-spirit.md) | 未确认失败命令，未实现业务；增加请求载荷诊断以定位 |
 | H1 | 进入大厅显示服务器错误 | [hall-entry.md](hall-entry.md) | 大厅商店读取按请求 id 空组回包、活动阶段同步空变更回执 |
+| W2 | daily discount batch purchase limit | [daily-discount-batch-limit.md](daily-discount-batch-limit.md) | 46003 batch_update sync, restart backfill and real TCP verified; 192/192 tests |
 
 验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**本轮没有停止/重启服务与客户端、未点击设备、未修改 ADB reverse/UID 隔离，未向运行库写入测试数据。**
 

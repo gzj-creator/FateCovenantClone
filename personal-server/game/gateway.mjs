@@ -17,6 +17,7 @@ import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
+import { createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
@@ -26,8 +27,9 @@ import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../ga
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
-export function createLocalGame({ databasePath, statePath, capturePath, verifySession, sprintPreview = false, localWallet = false, missionFightPlayback = false, logger = () => {} }) {
+export function createLocalGame({ databasePath, statePath, capturePath, verifySession, serverOpenedAt, activityMode = 'schedule', currentFishingActivityId, sprintPreview = false, localWallet = false, missionFightPlayback = false, now = Date.now, random = Math.random, logger = () => {} }) {
   const codec = createGameCodec(), { root, pack, unpack } = codec;
+  const clock = () => Number(now());
   function seed() {
     const capture = JSON.parse(fs.readFileSync(capturePath));
     const template = capture.privateFlows.find(x => x.messageId === 'game:tcp-69:s2c:103')?.decoded;
@@ -36,12 +38,13 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     const role = unpack('to_client_role_info', rawBinary(modules.get(2)));
     role.nick_name = Buffer.from('Local Adventurer');
     role.res = { changes: [] };
-    return { version: 1, roleId: 100001, serverId: 1, createdAt: Math.floor(Date.now() / 1000) - 86400,
+    return { version: 1, roleId: 100001, serverId: 1, createdAt: Math.floor(clock() / 1000) - 86400,
       seedSource: 'offline captured early-game structural fixture; independent local test save',
       modules: template[2], rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
   }
-  const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec });
+  const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
   const heroTables = readHeroTables(), tables = readGameTables();
+  const calendar = createActivityCalendar({ tables, serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt, mode: activityMode, currentFishingActivityId, now: clock });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const ranks = createRankService({ codec });
@@ -52,27 +55,59 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger}):undefined;
-  const welfare=createWelfareService({store,codec,tables,wallet,logger});
+  const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
-  const sprint=createSprintService({store,codec,tables});
+  const sprint=createSprintService({store,codec,tables,calendar,now:clock});
   const itemBox=createItemBoxService({store,codec,tables,logger});
-  const activityRead=createActivityReadService({codec,store,tables,logger});
+  const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
   const accRecharge=createAccRechargeService({store,codec,tables,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     recruit.ensureLoginState();
+    const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     const state = store.state();
+    const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
     const modules = new Map(list.value);
-    const now = Math.floor(Date.now() / 1000);
-    const loginTime = pack('pb_login_time', { last_login: now, last_logout: now - 1, day_count: 1, create_time: state.createdAt, online_time: 0 });
+    const loginMilliseconds = clock();
+    const loginSeconds = Math.floor(loginMilliseconds / 1000);
+    const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: 1, create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, state.createdAt, binary('Local Server'), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
-    return encodeEtf([1, [Date.now(), 28800, 1], new E.OtpErlangList([...modules], false), false]);
+    let activity;
+    try {
+      activity = storedModules.get(92)
+        ? unpack('pb_act_login', rawBinary(storedModules.get(92)))
+        : { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+    } catch (error) {
+      logger({ event: 'activity_login_parse_failed', message: error.message });
+      activity = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+    }
+    const beforeActivityIds = new Set([
+      ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+      ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(state => Number(state.act_id)))
+    ]);
+    const schedule = calendar.applyLoginSchedule(activity, loginSeconds);
+    const afterActivityIds = new Set([
+      ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+      ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(state => Number(state.act_id)))
+    ]);
+    modules.set(92, binary(pack('pb_act_login', activity)));
+    logger({
+      event: 'activity_login_calendar_applied',
+      activityMode: calendar.mode,
+      serverOpenedAt: calendar.serverOpenedAt,
+      serverDay: serverDayNumber(calendar.serverOpenedAt, loginSeconds),
+      activeFishingActivityIds: schedule.fishingActivityIds,
+      fishingBenefitActivityId: fishingBenefits.actId,
+      removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
+      addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
+    });
+    return encodeEtf([1, [loginMilliseconds, 28800, 1], new E.OtpErlangList([...modules], false), false]);
   }
   async function mailArgument(data) {
     const decoded = await decodeEtf(data);
@@ -265,7 +300,8 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         try {
           const result = activityRead.execute(type, request.data);
           send(seq, result.data);
-          log({ event: type === 110305 ? 'fishing_map_unlock_committed' : 'activity_read_committed', type, seq, ...result.valueForLog });
+          const event = ({ 110301: 'fishing_cast_committed', 110302: 'fishing_collect_committed', 110305: 'fishing_map_unlock_committed', 110311: 'fishing_batch_collect_committed' })[type] ?? 'activity_read_committed';
+          log({ event, type, seq, ...result.valueForLog });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
@@ -333,6 +369,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           if (!product) throw new GameError(5, 'Unsupported voucher recharge product');
           const sku = voucher.sku();
           if (itemTid !== sku.item_tid) throw new GameError(5, 'Unsupported voucher item');
+          wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy });
           // Native 16004 carries the item id but no count. The client validation
           // only runs when it can cover the whole price, so use every available
           // voucher up to the order maximum and charge the remainder to balance.
@@ -502,7 +539,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher,
+    root, loginPayload, store, wallet, mail, voucher, calendar,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

@@ -60,7 +60,7 @@
     </section>
 
     <section id="vouchers-view" hidden>
-      <div class="section-title"><h2>代金券发放</h2><span class="muted">1 张 = ¥0.01 · 通过游戏邮件发放</span></div>
+      <div class="section-title"><h2>代金券发放</h2><span class="muted">1 张 = ¥1.00 · 通过游戏邮件发放</span></div>
       <div class="voucher-layout">
         <form id="voucher-form" class="voucher-form">
           <h2>发送到游戏邮件</h2>
@@ -71,7 +71,7 @@
           </div>
           <label>邮件标题<input id="voucher-title" maxlength="80" placeholder="代金券到账"></label>
           <label>备注（邮件正文）<textarea id="voucher-content" maxlength="1000" rows="3" placeholder="例如：活动补偿"></textarea></label>
-          <div class="issue-preview"><span>发放数量</span><strong id="voucher-preview">100 张</strong></div>
+          <div class="issue-preview"><span>发放数量</span><strong id="voucher-preview">1 张</strong></div>
           <button type="submit" class="primary">发送代金券邮件</button>
         </form>
         <aside class="voucher-note">
@@ -79,7 +79,7 @@
           <h2>领取与抵扣</h2>
           <p>管理端只创建邮件和发放记录，代金券不会直接进入背包。</p>
           <p>玩家登录游戏后，在邮件中领取，代金券作为道具进入背包；付款时由客户端按面值抵扣。</p>
-          <p>原生客户端按 <code>价格 ÷ score_token_rate</code> 计算张数，因此本机按 1 张 = 1 分钱记账。</p>
+          <p>原生客户端按 <code>价格 ÷ score_token_rate</code> 计算张数，因此本机按 1 张 = 1 元记账，使用代金券的订单按商品原价计入累充。</p>
         </aside>
       </div>
       <div class="section-title table-title"><h2>发放记录</h2><span class="muted">最近 100 条</span></div>

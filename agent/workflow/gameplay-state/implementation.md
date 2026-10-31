@@ -1,5 +1,13 @@
 # 本机养成状态与 SQLite（2026-10-25）
 
+## 2026-10-31 团长经验历史漏发补偿
+
+用户反馈团长等级仍为 9，确认上一轮“旅途胜利发放团长经验”的代码修复没有补发历史经验。SQLite 迁移基线为 `state.local-only.pre-sqlite-backup.local-only.json`：团长 `level=9`、等效 `exp=0`，旅途模块 `pass_count=9`；补发前当前存档 `pass_count=27`，即 SQLite 运行期间净完成 18 场旅途战斗。
+
+按 `RoleTable.Level.mission_award_num` 在实际等级逐场累加，并按 `reach_exp` 递归升级，18 场共补 1185 经验，结果应为 `level=16, exp=0`，依次经过 10、11、12、13、14、15、16 级。已在单一 `BEGIN IMMEDIATE` 事务中更新 `roles.profile_json` 并写入 `migrations` 审计项 `role-exp-backfill-20261031`，未改英雄、资源、编队、活动或任务状态。
+
+数据库回读 `level=16, exp=0`，`PRAGMA integrity_check=ok`。隔离 APK 重登后大厅左上角显示 16 级，体力由 140/140 提升到 180/180。补发前/后一致备份、计算明细、截图与 SHA256 见 `analysis/experiments/private-server-20261025/p3/role-level-backfill-20261031-1000/acceptance.local-only.json`；客户端截图同目录 `level-hall-20261031.png`。
+
 ## 2026-10-30 旅途经验与第 6 上阵位
 
 用户反馈旅途下一关需要 6 名伙伴，而第 6 格要求团长 10 级；当前存档团长只有 9 级，无法继续。客户端门槛本身正常：`FunOpenTable` 的 1102/1103 都以上阵位图标和 `tip_params=[[10]]` 开放第 6 格。问题在本机服没有结算旅途胜利的团长经验，先前战斗胜负和伤害模拟没有导致等级异常。

@@ -25,4 +25,11 @@
 ## 验收边界
 
 - 本次不修改 APK，未操作设备或服务，不需要更新 APK 快照。
-- 上述验收为组件、数据库与真实本机 TCP 网关测试；尚未重新部署运行服务，也不把测试通过扩大为真实客户端视觉验收。
+- 上述验收为组件、数据库与真实本机 TCP 网关测试，不把测试通过扩大为真实客户端视觉验收。
+
+## 2026-10-30 22:49 部署
+
+- 已停止旧实例并从 `main`（`b1650fc`）启动最新服务，运行 `PID 37484`，五个端口均只监听 `127.0.0.1`。
+- 启动前重新执行 `npm test --prefix personal-server`，**175/175 通过**。
+- 健康检查通过：管理页与 `/api/state` 返回 200，启动版本文件返回 200，SDK/区服/管理/游戏网关均可建立 TCP 连接。
+- 实时 PID 与端口以 `analysis/experiments/private-server-20261025/p3/runtime.local-only.data/server.local-only.json` 为准；启动日志为同目录 `server-latest-20261030-2249.local-only.*.log`。
