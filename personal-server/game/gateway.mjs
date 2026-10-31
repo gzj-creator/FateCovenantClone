@@ -28,6 +28,8 @@ import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
+import { createNorseRuneService } from './norse-rune-service.mjs';
+import { readNorseRuneTables } from '../config/norse-rune-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
 import { createWishTreasureService } from './wish-treasure-service.mjs';
 import { createWeekHuntService } from './week-hunt-service.mjs';
@@ -106,6 +108,7 @@ export function createLocalGame({
   });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
+  const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
@@ -128,6 +131,7 @@ export function createLocalGame({
     wishTreasure.ensureLoginState();
     weekHunt.ensureLoginState();
     destiny.ensureLoginState();
+    norseRune.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
     rechargeBonus.synchronize();
     const state = store.state();
@@ -666,6 +670,18 @@ export function createLocalGame({
         }
         return;
       }
+      if (norseRune.supports(type)) {
+        try {
+          const result = await norseRune.execute(type, request.data);
+          send(seq, result.data);
+          log({ event: 'norse_rune_committed', type, seq, wishLevel: result.value.level ?? undefined, exp: result.value.exp ?? undefined });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'norse_rune_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (type === 8000) {
         const requestData = unpack('pb_req_save_process', request.data);
         store.transaction(model => { for (const process of requestData.req_list ?? []) model.state.guides[process.key_id] = process.process_id; });
@@ -771,7 +787,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, tables,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, norseRune, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
