@@ -158,5 +158,5 @@ SlgRoleCampsite、SlgGuildCampsite、SlgRoleCampsiteHandler 等名称属于公�
 
 ## 发布状态
 
-本分支尚未合并、尚未部署。没有启动或停止实时服务，没有读写正式服务数据库，没有修改 ADB、模拟器、APK 或用户存档。
+本分支已合入 `feature/system-integration-20261031`，并随本轮整体验收合入 `main`；仍未部署。没有启动或停止实时服务，没有读写正式服务数据库，没有修改 ADB、模拟器、APK 或用户存档。
 

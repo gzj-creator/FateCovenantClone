@@ -1,5 +1,7 @@
 # Personal-server workflow
 
+2026-11-01：[图鉴与七个后期系统整体验收](system-completion/acceptance.md)。图鉴、团员名册、法阵、星魂卷轴、训练、船舱和时空神殿均已由独立 worktree 完成可证实现并合入集成分支；联合登录检查 module 10/24/114/156/157/159 无重复、互不覆盖，SQLite 重开后保持。合并最新 `main` 后全量 402/402。验收层级为组件、真实登录 ETF、临时 loopback TCP 和临时 SQLite；未部署实时服务，未操作 ADB/MuMu/APK，未做 UI/视觉验收，也未生成 APK 快照。时空神殿 8 个 C2S 请求仍缺数字命令证据，除登录态与 7801 推送外保持阻塞。
+
 2026-11-01：[船舱模块 114 解锁与上阵](cabin/implementation.md)。已实现 83201 req_unlock_cell、83202 re_place_hero 的一键多组提交、同批原子换位和登录模块 114 按等级重建；10 个服务测试和真实临时 TCP 网关测试通过，全量 326/326。尚未部署，未做 APK/UI 验收；房间升级、任务、交互、奖励领取和加速没有协议证据，保持未实现。
 
 2026-10-31：[限购礼包错误日志 ID 修复](fixes/purchase-limit-error.md)。`wallet-service` 原先先查余额后查限购，售罄且余额不足时 QuickSDK 误报 `301/80000`；现已调整为先限购后余额，真实本机 SDK 对已售罄 `40010` 返回 `307/80001`，全量 `275/275` 通过，实时服务 PID 以 `server.local-only.json` 为准。
