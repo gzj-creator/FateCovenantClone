@@ -55,6 +55,47 @@ test('ordinary configured box is consumed, awards configured draw results and pe
   assert.equal(decoded.changes.length, 2);
 });
 
+test('designated emoji box consumes each box and grants its complete fixed award list', t => {
+  const env = setup(t);
+  addBox(env, 1501200, 2);
+  const rule = env.service.rule(1501200);
+  assert.equal(rule.kind, 'designated');
+  assert.deepEqual(rule.awards, [[381002, 1], [389002, 1]]);
+
+  const result = env.service.open([{ tid: 1501200, num: 2 }]);
+  const changes = codec.unpack('pb_res_to_client', result.data).changes;
+  assert.equal(changes.find(change => change.tid === '1501200').diff_num, '-2');
+  assert.equal(changes.find(change => change.tid === '381002').diff_num, '2');
+  assert.equal(changes.find(change => change.tid === '389002').diff_num, '2');
+  assert.equal(env.store.read().resources.get('1501200').num, '0');
+  assert.equal(env.store.read().resources.get('381002').num, '2');
+  assert.equal(env.store.read().resources.get('389002').num, '2');
+  assert.deepEqual(env.store.read().resources.get('381002').location.slice(0, 2), [6, 0]);
+  assert.deepEqual(env.store.read().resources.get('389002').location.slice(0, 2), [6, 0]);
+
+  env.reopen();
+  assert.equal(env.store.read().resources.get('1501200').num, '0');
+  assert.equal(env.store.read().resources.get('381002').num, '2');
+  assert.equal(env.store.read().resources.get('389002').num, '2');
+});
+
+test('designated boxes take precedence over optional rows and reject selection use', t => {
+  const env = setup(t);
+  addBox(env, 1501200, 1);
+  assert.equal(env.service.rule(1501200).kind, 'designated');
+  assert.equal(env.service.rule(1151200).kind, 'designated');
+  const before = env.store.state();
+  assert.throws(
+    () => env.service.openSelected({ tid: 1501200, num: 1, selected: [{ index: 1, num: 1 }] }),
+    error => error.code === 5
+  );
+  assert.throws(
+    () => env.service.openSelected({ tid: 1151200, num: 1, selected: [{ index: 1, num: 1 }] }),
+    error => error.code === 5
+  );
+  assert.deepEqual(env.store.state(), before);
+});
+
 test('box use refuses unverified rules, missing stock and over-use without touching state', t => {
   const env = setup(t);
   const before = env.store.state();
@@ -136,5 +177,14 @@ test('optional box transaction rolls back when award encoding fails', t => {
   const before = env.store.state();
   const broken = createItemBoxService({ store: env.store, codec: { ...codec, pack: (name, object) => { if (name === 'pb_res_to_client') throw new Error('encode fail'); return codec.pack(name, object); } }, tables, random: () => 0 });
   assert.throws(() => broken.openSelected({ tid: 71200, num: 1, selected: [{ index: 1, num: 1 }] }), /encode fail/);
+  assert.deepEqual(env.store.state(), before);
+});
+
+test('designated box transaction rolls back when award encoding fails', t => {
+  const env = setup(t);
+  addBox(env, 1501200, 1);
+  const before = env.store.state();
+  const broken = createItemBoxService({ store: env.store, codec: { ...codec, pack: (name, object) => { if (name === 'pb_res_to_client') throw new Error('encode fail'); return codec.pack(name, object); } }, tables, random: () => 0 });
+  assert.throws(() => broken.open([{ tid: 1501200, num: 1 }]), /encode fail/);
   assert.deepEqual(env.store.state(), before);
 });

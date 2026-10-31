@@ -5,8 +5,10 @@ import { grantResources } from './resources.mjs';
 const TASK_MODULE = 90;
 const MISSION_MODULE = 8;
 const STATISTICS_MODULE = 21;
+const DESTINY_MODULE = 107;
 const ROLE_STATISTICS_TYPE = 0;
 const MAIN_LINEAR_TASK_PROGRESS = 1201;
+const DESTINY_REAL_STAGE_PROGRESS = 155;
 
 function taskGroupIndex(config) {
   const groupType = Number(config.type);
@@ -47,6 +49,31 @@ function totalStatisticProgress(model, config, codec, tables) {
   return Number(total);
 }
 
+function destinyStageProgress(model, codec) {
+  const module = new Map(model.state.modules.value).get(DESTINY_MODULE);
+  if (!module) throw new GameError(5, 'Destiny login module is missing');
+
+  let bytes;
+  try {
+    bytes = rawBinary(module);
+  } catch {
+    throw new GameError(5, 'Destiny login module is invalid');
+  }
+  if (!bytes.length) throw new GameError(5, 'Destiny login module is missing');
+
+  let data;
+  try {
+    data = codec.unpack('pb_destiny_data', bytes);
+  } catch {
+    throw new GameError(5, 'Destiny login module is invalid');
+  }
+  // DestinyMgr.RealStage returns the raw saved current stage. The client's
+  // visible "stage 0" label is a separate display normalization.
+  const stage = Number(data.cur_stage ?? 0);
+  if (!Number.isSafeInteger(stage) || stage < 1) throw new GameError(5, 'Destiny login module is invalid');
+  return stage;
+}
+
 function currentProgress(model, config, codec, tables) {
   const taskType = Number(config.task_type);
   if (taskType === MAIN_LINEAR_TASK_PROGRESS) {
@@ -55,7 +82,11 @@ function currentProgress(model, config, codec, tables) {
     const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
     return Number(mission.mission_id ?? 0);
   }
-  if (tables.TaskType.get(taskType)?.progress_type === 2) return totalStatisticProgress(model, config, codec, tables);
+  const typeConfig = tables.TaskType.get(taskType);
+  if (typeConfig?.progress_type === 2) return totalStatisticProgress(model, config, codec, tables);
+  if (typeConfig?.progress_type === 1 && Number(typeConfig.progress_fun) === DESTINY_REAL_STAGE_PROGRESS) {
+    return destinyStageProgress(model, codec);
+  }
   throw new GameError(5, 'Linear task progress is not implemented');
 }
 

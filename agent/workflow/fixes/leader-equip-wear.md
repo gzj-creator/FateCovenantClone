@@ -22,7 +22,7 @@
 ## 验证
 
 - 专项测试：`node --test test/leader-equip-service.test.mjs test/gameplay-gateway.test.mjs`，`8/8` 通过。
-- 全量测试：`npm test`，`301/301` 通过。
+- 全量测试：`npm test`，合并最新 `main` 后 `315/315` 通过。
 - 真实 TCP 用例验证 `98401` 不再返回 `305`，回包可解出槽位、移出装备，模块 175 同步保存，重新打开数据库后状态保留。
 - 用当前运行库的一致性副本实测：背包 `10 -> 9`，`uid=1/tid=2005018/type=5` 进入槽位 5；重开数据库状态一致，其他登录模块哈希不变，`max_uid` 不变。副本与结果在 `analysis/experiments/private-server-20261025/p3/leader-equip-wear-20261031/`。
 - 语法检查与 `git diff --check` 通过。
