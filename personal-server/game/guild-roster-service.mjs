@@ -67,6 +67,12 @@ function writeModule(model, codec, value) {
   model.state.modules.value = [...modules];
 }
 
+function writeModuleBytes(model, bytes) {
+  const modules = new Map(model.state.modules.value);
+  modules.set(GUILD_MODULE_ID, serializedBinary(bytes));
+  model.state.modules.value = [...modules];
+}
+
 function isUninitialized(module, codec) {
   if (!module) return true;
   const bytes = rawBinary(module);
@@ -98,7 +104,7 @@ function memberById(guild, roleId) {
 }
 
 function actorMember(model, guild) {
-  return memberById(guild, idText(model.state.roleId, 'role id'));
+  return memberById(guild, idText((model.state ?? model).roleId, 'role id'));
 }
 
 function assertGuildMatches(value, guildId) {
@@ -106,7 +112,7 @@ function assertGuildMatches(value, guildId) {
   if (supplied && supplied !== guildId) fail(5, 'Guild id does not match the current guild');
 }
 
-export function createGuildRosterService({ store, codec, now = () => Math.floor(Date.now() / 1000) }) {
+export function createGuildRosterService({ store, codec, now = () => Math.floor(Date.now() / 1000), encodeResponse = encodeEtf }) {
   const nowSeconds = () => Math.max(0, Math.trunc(Number(now())));
 
   function ensureLoginState() {
@@ -191,36 +197,61 @@ export function createGuildRosterService({ store, codec, now = () => Math.floor(
     });
   }
 
-  async function leave(input) {
-    const result = store.transaction(model => {
-      const { login, guildId, guild } = currentGuild(model, codec);
-      assertGuildMatches(input, guildId);
-      const actor = actorMember(model, guild);
-      if (!actor) fail(5, 'Current role is not a guild member');
-      if (Number(actor.job) === GUILD_JOB.PRESIDENT) fail(5, 'The president cannot leave without transferring leadership');
-      const actorId = idText(model.state.roleId, 'role id');
-      guild.member_list = guild.member_list.filter(member => idText(member.role_id, 'member role id') !== actorId);
-      const previous = login.leave_count?.length ? codec.unpack('pb_guild_leave', Buffer.from(login.leave_count, 'base64')) : { count: 0, reset_day: 0 };
-      const leaveInfo = { count: Number(previous.count ?? 0) + 1, reset_day: Number(previous.reset_day ?? 0) };
-      login.guildId = '0';
-      login.last_leave_time = nowSeconds();
-      login.leave_count = codec.pack('pb_guild_leave', leaveInfo);
-      delete login.guild;
-      login.guild_applies = [];
-      writeModule(model, codec, login);
-      const members = structuredClone(guild.member_list);
-      return {
-        leaveInfo,
-        members,
-        data: codec.pack('pb_guild_leave', leaveInfo),
-        pushData: codec.pack('pb_res_guild_member_change', { member_list: members, log_list: [] })
-      };
-    });
+  function planLeave(model, input, leaveTime) {
+    const { login, guildId, guild } = currentGuild(model, codec);
+    assertGuildMatches(input, guildId);
+    const actor = actorMember(model, guild);
+    if (!actor) fail(5, 'Current role is not a guild member');
+    if (Number(actor.job) === GUILD_JOB.PRESIDENT) fail(5, 'The president cannot leave without transferring leadership');
+    const sourceBytes = codec.pack('pb_res_guild_login', login);
+    const actorId = idText((model.state ?? model).roleId, 'role id');
+    guild.member_list = guild.member_list.filter(member => idText(member.role_id, 'member role id') !== actorId);
+    const previous = login.leave_count?.length ? codec.unpack('pb_guild_leave', Buffer.from(login.leave_count, 'base64')) : { count: 0, reset_day: 0 };
+    const leaveInfo = { count: Number(previous.count ?? 0) + 1, reset_day: Number(previous.reset_day ?? 0) };
+    login.guildId = '0';
+    login.last_leave_time = leaveTime;
+    login.leave_count = codec.pack('pb_guild_leave', leaveInfo);
+    delete login.guild;
+    login.guild_applies = [];
+    const members = structuredClone(guild.member_list);
     return {
-      data: await encodeEtf([binary(result.data)]),
-      value: { leave_info: result.leaveInfo, members: result.members },
-      pushes: [{ type: 2305, data: result.pushData }]
+      leaveInfo,
+      members,
+      sourceBytes,
+      loginBytes: codec.pack('pb_res_guild_login', login),
+      data: codec.pack('pb_guild_leave', leaveInfo),
+      pushData: codec.pack('pb_res_guild_member_change', { member_list: members, log_list: [] })
     };
+  }
+
+  async function leave(input) {
+    const leaveTime = nowSeconds();
+    // ETF serialization is asynchronous while game-store transactions are
+    // synchronous. Encode the prospective response first, then use module 24's
+    // canonical bytes as a compare-and-swap token inside the write transaction.
+    // A concurrent roster change invalidates the plan and is retried from fresh
+    // state instead of committing a stale response.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const planned = planLeave(store.state(), input, leaveTime);
+      const responseData = await encodeResponse([binary(planned.data)]);
+      const commit = store.transaction(model => {
+        const current = planLeave(model, input, leaveTime);
+        if (!current.sourceBytes.equals(planned.sourceBytes)) return null;
+        writeModuleBytes(model, current.loginBytes);
+        return {
+          leaveInfo: current.leaveInfo,
+          members: current.members,
+          pushData: current.pushData
+        };
+      });
+      if (!commit) continue;
+      return {
+        data: responseData,
+        value: { leave_info: commit.leaveInfo, members: commit.members },
+        pushes: [{ type: 2305, data: commit.pushData }]
+      };
+    }
+    fail(5, 'Guild state changed concurrently');
   }
 
   return {
