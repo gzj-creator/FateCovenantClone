@@ -17,6 +17,7 @@
 | W3 | 首充购买后仍显示 ¥6 | [first-recharge-status.md](first-recharge-status.md) | 历史订单状态已修复；自动回填与 TCP 测试通过，首充面板待用户确认 |
 | W4 | 限购礼包错误日志 ID | [purchase-limit-error.md](purchase-limit-error.md) | 限购先于余额校验；真实 QuickSDK 返回 307/80001，275/275 测试通过 |
 | P1 | 636/82601/640/503 后期养成与扫荡 | [endgame-progression.md](endgame-progression.md) | 四接口已实现并集成部署；228/228 测试通过；四项 APK 操作与视觉验收待完成 |
+| F5 | 线性任务缺少星火阶段进度 | [f5-linear-task-destiny-progress.md](f5-linear-task-destiny-progress.md) | 5901/155 读取模块 107 的原始 `cur_stage`；六个任务、临时 TCP 与 307/307 测试通过；未部署、未做 APK 验收 |
 
 验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**本轮为限购修复，已重启本机服务部署；未由 agent 点击客户端界面，也未修改 ADB reverse/UID 隔离。**
 

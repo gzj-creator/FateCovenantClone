@@ -24,6 +24,29 @@ async function loginActivities(payload) {
   return codec.unpack('pb_act_login', Buffer.from(entry[1].value));
 }
 
+function loginModuleBytes(login, moduleId) {
+  const entry = login[2].value.find(value => Number(value[0]) === moduleId);
+  assert.ok(entry, `login module ${moduleId} is present`);
+  const value = entry[1].value;
+  if (Array.isArray(value)) {
+    assert.ok(value[0], `login module ${moduleId} has its first slot`);
+    return Buffer.from(value[0].value);
+  }
+  return Buffer.from(value);
+}
+
+function setDestiny(store, value) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    modules.set(107, serializedBinary(codec.pack('pb_destiny_data', value)));
+    model.state.modules.value = [...modules];
+  });
+}
+
+function storedLinearTask(store) {
+  return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[0]));
+}
+
 function addResource(store, tid, num, group = 1) {
   store.transaction(model => {
     const groups = new Map(model.state.modules.value).get(6).value;
@@ -315,6 +338,66 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(currentIds.some(id => id >= 1074001 && id <= 1074011), false);
   assert.equal(currentIds.includes(83028), false);
   assert.equal(currentActivity.act_custom_list.some(entry => Number(entry.act_id) === 83028), false);
+});
+
+test('gateway claims a destiny-stage linear task through 9010 and persists it across restart', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-destiny-linear-task-'));
+  const options = {
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => GAME_NOW
+  };
+  fs.copyFileSync(backup, options.databasePath);
+  let game = createLocalGame(options), socket;
+  t.after(async () => {
+    socket?.destroy();
+    if (game) await game.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  setDestiny(game.store, { cur_stage: 2, slot_state: Buffer.alloc(13) });
+  const diamondsBefore = BigInt(game.store.read().resources.get('201500').num);
+  const response = await request(9010, 2, await encodeEtf([10004]));
+  assert.equal(response.err, undefined);
+  const claim = codec.unpack('pb_linear_task_receive_back', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(claim.task, { type: 1, receive_tid: 10004 });
+  assert.deepEqual(claim.res_change.changes.map(change => [change.tid, change.diff_num]), [['201500', '2000']]);
+  assert.equal(BigInt(game.store.read().resources.get('201500').num), diamondsBefore + 2000n);
+  assert.deepEqual(storedLinearTask(game.store).task_list, [{ type: 1, receive_tid: 10004 }]);
+  assert.equal(game.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='linear_task' AND claim_key='10004'").get().n), 1);
+
+  let delivered = await decodeEtf(await game.loginPayload());
+  assert.deepEqual(storedLinearTask(game.store).task_list, [{ type: 1, receive_tid: 10004 }]);
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
+
+  socket.destroy(); socket = null;
+  await game.close(); game = null;
+  game = createLocalGame(options);
+  delivered = await decodeEtf(await game.loginPayload());
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
+  assert.equal(BigInt(game.store.read().resources.get('201500').num), diamondsBefore + 2000n);
 });
 
 test('all-open mode returns every stored activity and forces test-visible states', async t => {
