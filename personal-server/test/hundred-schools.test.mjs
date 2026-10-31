@@ -470,7 +470,7 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   response = await env.request(16004, 25, await encodeEtf([40010, 1, 0]));
   // Do not leave the client waiting for a 1900 push that will never follow.
   // A repeated gift reports its configured limit and the original purchase stays intact.
-  assert.equal(response.err.err, 307);
+  assert.equal(response.err.err, 16016);
   assert.equal(env.game.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40010 AND kind='gift'").get(ACTIVITY_ID).n), 1);
 
   response = await env.request(85901, 30, codec.pack('pb_recommend_gift_active_req', {
