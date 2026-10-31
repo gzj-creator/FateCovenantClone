@@ -54,7 +54,7 @@ test('recommend gift list reports stored purchase counts so limited offers stop 
   assert.deepEqual(rsp.gift_list[0].buy_list.map(buy => [buy.recharge_tid, buy.buy_times ?? 0]), [[40008, 1], [46003, 0]]);
 });
 
-test('repeat voucher purchase at the limit is acknowledged without a client error', async t => {
+test('repeat voucher purchase at the limit returns a protocol error instead of waiting for 1900', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-recharge-repeat-'));
   const databasePath = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, databasePath);
@@ -91,7 +91,7 @@ test('repeat voucher purchase at the limit is acknowledged without a client erro
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
   const response = await request(16004, 2, await encodeEtf([40008, binary(Buffer.from('[]')), 701500]));
-  assert.equal(response.err, undefined);
+  assert.equal(response.err.err, 307);
   game.store.inspect(db => {
     const count = db.prepare("SELECT count(*) n FROM recharge_orders WHERE product_id=40008").get().n;
     assert.equal(count, 1);
@@ -125,7 +125,9 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 2, data: await encodeEtf([40010, binary(Buffer.from('[]')), 701500]) }));
-  const frames = [codec.unpack('pb_s2c', await next()), codec.unpack('pb_s2c', await next())];
+  const frames = [];
+  while (!frames.some(frame => frame.seq === 2)) frames.push(codec.unpack('pb_s2c', await next()));
+  assert.equal(frames.find(frame => frame.seq === 2)?.err, undefined);
   const notification = frames.find(frame => frame.type === 1900);
   assert.ok(notification);
   const push = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
@@ -137,7 +139,9 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
 
   const options = JSON.stringify([{ ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' }, [true, 1, 20754]]);
   send(codec.pack('pb_c2s', { type: 16004, seq: 3, data: await encodeEtf([40010, binary(Buffer.from(options)), 701500]) }));
-  const additionalFrames = [codec.unpack('pb_s2c', await next()), codec.unpack('pb_s2c', await next())];
+  const additionalFrames = [];
+  while (!additionalFrames.some(frame => frame.seq === 3)) additionalFrames.push(codec.unpack('pb_s2c', await next()));
+  assert.equal(additionalFrames.find(frame => frame.seq === 3)?.err, undefined);
   const additionalNotification = additionalFrames.find(frame => frame.type === 1900);
   assert.ok(additionalNotification);
   const additionalPush = codec.unpack('res_recharge_success', Buffer.from(additionalNotification.data, 'base64'));
@@ -182,20 +186,21 @@ test('native 16004 batch offer updates all limited rows, rejects components and 
   const ordersBefore = game.store.inspect(db => db.prepare('SELECT count(*) n FROM recharge_orders').get().n);
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 2, data: await encodeEtf([46003, binary(Buffer.from('[]')), 701500]) }));
-  const frames = [codec.unpack('pb_s2c', await next()), codec.unpack('pb_s2c', await next())];
+  const frames = [];
+  while (!frames.some(frame => frame.seq === 2)) frames.push(codec.unpack('pb_s2c', await next()));
   const notification = frames.find(frame => frame.type === 1900);
   assert.ok(notification);
-  assert.equal(frames.find(frame => frame.type !== 1900)?.err, undefined);
+  assert.equal(frames.find(frame => frame.seq === 2)?.err, undefined);
   const purchase = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
   const pushed = codec.unpack('pb_daily_discount_all', Buffer.from(purchase.extra_ret_list.find(entry => entry.flag === 40).data, 'base64'));
   assert.deepEqual([6, 2, 5].map(tid => pushed.daily_discount_list.find(row => row.recharge_tid === tid)?.buy_times ?? 0), [1, 1, 1]);
 
   for (const [seq, productId] of [[3, 40009], [4, 46002], [5, 46003]]) {
     const response = await request(16004, seq, await encodeEtf([productId, binary(Buffer.from('[]')), 701500]));
-    assert.equal(response.err, undefined);
+    assert.equal(response.err.err, 307);
     assert.equal(game.store.inspect(db => db.prepare('SELECT count(*) n FROM recharge_orders').get().n), ordersBefore + 1);
   }
-  assert.equal(logs.filter(event => event.event === 'voucher_recharge_already_owned').length, 3);
+  assert.equal(logs.filter(event => event.event === 'voucher_recharge_rejected' && event.code === 307).length, 3);
 
   const acknowledged = await request(16003, 6, await encodeEtf(binary(purchase.order)));
   assert.equal(acknowledged.err, undefined);

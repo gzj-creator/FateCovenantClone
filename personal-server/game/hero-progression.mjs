@@ -43,8 +43,11 @@ export function createHeroProgression({ store, codec, tables }) {
     const level = cell.level ?? 1, target = level + count;
     if (target > 300) fail(3010, 'Hero is at maximum level');
     if (target > model.role.level * tables.DevelopConst.get(1).hero_lv_rate) fail(3023, 'Hero level exceeds role level');
-    const stage = tables.UpStage.get(cell.break_level ?? 0);
-    if (stage && target > stage.need_hero_lv) fail(331, 'Hero breakthrough required');
+    // UpStage rows describe the level gate for the next breakthrough. The row
+    // for the current break level is the gate that has already been met (and
+    // row 0 is level 1), so using it here rejects the very first upgrade.
+    const nextStage = tables.UpStage.get((cell.break_level ?? 0) + 1);
+    if (nextStage && target > nextStage.need_hero_lv) fail(331, 'Hero breakthrough required');
     const costs = [];
     for (let current = level; current < target; current++) {
       const config = tables.UpLevel.get(current);
@@ -83,11 +86,57 @@ export function createHeroProgression({ store, codec, tables }) {
     hero.star_progress = (progress + count) % 6;
     return { schema: 'pb_hero_up_star_ret', value: { res, new_hero: hero } };
   }
+  function wake(model, request) {
+    const heroTid = Number(request?.hero_tid ?? 0);
+    if (!Number.isSafeInteger(heroTid) || heroTid <= 0) fail(1, 'Invalid awakened hero');
+    const hero = model.heroInfo.hero_list.find(value => Number(value.tid) === heroTid);
+    if (!hero) fail(3001, 'Hero does not exist');
+    const config = tables.Hero.get(heroTid);
+    if (!config) fail(5, 'Hero configuration missing');
+    const current = Math.max(Number(hero.star ?? 0), Number(config.star ?? 0));
+    if (current < 5) fail(3021, 'Hero has not reached the awakened star stage');
+    if (current >= Number(config.max_star ?? 10)) fail(305, 'Hero star limit reached');
+    const cost = tables.UpStarCost.get(Number(config.quality) * 100 + current);
+    if (!cost || !config.chip) fail(5, 'Hero awakening cost missing');
+
+    const stoneConfig = tables.UpStarStone.get(Number(config.camp) * 1000 + Number(config.quality));
+    const allowedStones = new Set((stoneConfig?.item ?? []).map(Number));
+    if (!allowedStones.size || allowedStones.has(NaN)) fail(5, 'Hero awakening stone configuration missing');
+    const stoneCount = Number(cost.stone_num ?? 0);
+    if (!Number.isSafeInteger(stoneCount) || stoneCount <= 0) fail(5, 'Hero awakening stone count configuration missing');
+    if (!Array.isArray(request.res)) fail(1, 'Awakening stone selection is required');
+    const totals = new Map();
+    for (const entry of request.res) {
+      const tid = Number(entry?.tid ?? 0);
+      if (!Number.isSafeInteger(tid) || tid <= 0 || !allowedStones.has(tid)) fail(1, 'Invalid awakening stone');
+      if (totals.has(String(tid))) fail(1, 'Duplicate awakening stone type');
+      let requested;
+      try { requested = BigInt(entry?.num ?? 0); } catch { fail(1, 'Invalid awakening stone quantity'); }
+      // The client carries the selected stone type and leaves pb_res_obj.num at
+      // its protobuf default. The authoritative quantity comes from
+      // UpStarCost.stone_num; accept an explicitly matching quantity for older
+      // callers but never let it change the configured cost.
+      if (requested !== 0n && requested !== BigInt(stoneCount)) fail(1, 'Invalid awakening stone quantity');
+      totals.set(String(tid), BigInt(stoneCount));
+    }
+    if (totals.size !== 1) fail(1, 'Exactly one awakening stone type must be selected');
+
+    const chip = consume(model, [[Number(config.chip), Number(cost.piece_num ?? 0)]], 3006);
+    const stones = consume(model, [...totals].map(([tid, count]) => [Number(tid), Number(count)]), 301);
+    const changes = [...chip.changes, ...stones.changes];
+    hero.star = current + 1;
+    hero.star_progress = 0;
+    hero.up_star_high_consume = [...(hero.up_star_high_consume ?? []), {
+      star: hero.star,
+      up_star_high_consume_list: changes.map(change => ({ tid: String(change.tid), num: String(-BigInt(change.diff_num)) }))
+    }];
+    return { schema: 'pb_hero_up_star_ret', value: { res: { changes, is_overflow: false }, new_hero: hero } };
+  }
   return {
-    supports: type => [636, 638, 639].includes(type),
+    supports: type => [636, 638, 639, 640].includes(type),
     execute(type, request) {
       return store.transaction(model => {
-        const response = type === 636 ? upgrade(model, request) : type === 638 ? breakthrough(model, request) : type === 639 ? star(model, request) : fail(1, 'Invalid hero command');
+        const response = type === 636 ? upgrade(model, request) : type === 638 ? breakthrough(model, request) : type === 639 ? star(model, request) : type === 640 ? wake(model, request) : fail(1, 'Invalid hero command');
         // Encoding must succeed before the transaction commits.
         return { ...response, data: codec.pack(response.schema, response.value) };
       });

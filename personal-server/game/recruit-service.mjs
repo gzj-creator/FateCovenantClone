@@ -160,7 +160,7 @@ function module10(model) {
   return { modules, module };
 }
 
-export function createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, random = Math.random, now = () => Math.floor(Date.now() / 1000) }) {
+export function createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, random = Math.random, now = () => Math.floor(Date.now() / 1000), onDraw = null }) {
   const pools = buildRecruitPoolCatalog(heroTables);
   const drawConfigs = new Map();
   for (const [lib, pool] of pools) {
@@ -188,7 +188,9 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     if (!heroTables.DrawAchievementLib.has(awardLib)) throw new Error(`Recruitment achievement tier ${awardLib} is missing`);
   }
   const demigodBuyConfig = fantasyEquipTables?.DrawNormal?.get(DEMIGOD_DRAW_NORMAL_TID);
-  if (!demigodBuyConfig) throw new Error('Demigod resident draw purchase configuration is missing');
+  function requireDemigodConfig() {
+    if (!fantasyEquipTables || !demigodBuyConfig) fail(5, 'Demigod resident draw purchase configuration is missing');
+  }
 
   function readState(model) {
     const { modules, module } = module10(model);
@@ -371,6 +373,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
   }
 
   function demigodDrawState(model, seconds) {
+    requireDemigodConfig();
     const { modules, module } = demigodModule(model);
     const drawBytes = Buffer.from(module.value[DEMIGOD_DRAW_INDEX]?.value?.data ?? []);
     // The shipped FantasyEquipMgr.LoginParse turns value[2] into
@@ -439,11 +442,13 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
   }
 
   function demigodWishSlots(totalDrawTimes) {
+    requireDemigodConfig();
     return [...fantasyEquipTables.DrawNormalWish.values()]
       .filter(row => totalDrawTimes >= Number(row.draw_times)).length;
   }
 
   function demigodUnlockedEquips(totalDrawTimes) {
+    requireDemigodConfig();
     return [...fantasyEquipTables.DrawUnlock.values()]
       .filter(row => totalDrawTimes >= Number(row.draw_times))
       .map(row => ({ tid: Number(row.tid), weight: Math.max(1, Number(fantasyEquipTables.FantasyEquip.get(Number(row.tid))?.lucky_value ?? 1)) }))
@@ -451,6 +456,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
   }
 
   function chooseDemigodEquip(state, equipRes, seconds) {
+    requireDemigodConfig();
     const total = n(state.draw.total_draw_times);
     const unlocked = demigodUnlockedEquips(total);
     if (!unlocked.length) fail(5, 'Demigod draw pool is unavailable');
@@ -491,6 +497,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
   }
 
   function buyDemigodDraw(model, input, seconds) {
+    requireDemigodConfig();
     const request = demigodRequest(input);
     const buyCount = integer(request.buyCount, 0, 5, 'Invalid demigod ticket purchase quantity');
     const ticketTid = Number(demigodBuyConfig.buy_award);
@@ -589,7 +596,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     const magic = buyInfoFor(model, 'magic', seconds, { daily_max: tablesHeroDrawConst().magic_buy_daily_max_num, absolute_max: tablesHeroDrawConst().magic_buy_max_num });
     writeBuyInfo(model, 9, normal);
     writeBuyInfo(model, 10, magic);
-    writeDemigodDrawState(model, demigodDrawState(model, seconds));
+    if (fantasyEquipTables && demigodBuyConfig) writeDemigodDrawState(model, demigodDrawState(model, seconds));
     return { draw: readState(model), normal, magic };
   }
 
@@ -755,6 +762,9 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     const pushes = statistics.changed ? [drawStatisticsPush(statistics, lib)] : [];
     const achievementData = drawAchievementData(state, seconds);
     if (achievementData.list.length) pushes.push(drawAchievementPush(achievementData));
+    // Activity progress belongs to the same SQLite transaction as the draw. A
+    // callback failure therefore rolls back both the recruitment and activity.
+    const activityProgress = onDraw?.(model, { lib, count, seconds }) ?? null;
     return {
       schema: 'hero_draw_back',
       value: {
@@ -769,6 +779,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
         count,
         ruleVersion: RECRUIT_RULE_VERSION,
         newHeroes: newHeroes.map(hero => hero.tid),
+        activityProgress,
         results: results.map(result => ({ tid: result.tid, quality: result.quality, guaranteed: result.guaranteed, wishHero: result.wishHero }))
       }
     };

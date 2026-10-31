@@ -7,7 +7,9 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('ItemTable.data.lua.json', base), ['Item', 'Type', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box']),
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
     ...pick(readGeneratedTables(new URL('DrawTable.data.lua.json', base), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
-    ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), ['Recharge', 'Param'])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
+    ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), [
+      'Recharge', 'Param', 'BuyCycleLimit', 'ExtraReward', 'ExtraFixReward', 'ExtraRewardConst'
+    ])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
     ...readGeneratedTables(new URL('OpenServerSprintTable.data.lua.json', base), ['SprintRankTask', 'SprintType']),
     // Monthly pass products are RechargeTable type=130 rows; the matching Gear row
     // binds a product to the activity version that owns its pay_list entry.
@@ -57,6 +59,18 @@ export function readGameTables() {
       'CureWoundState', 'CureFavor', 'Cure', 'PetExclusiveShop', 'PetDraw',
       'GiftShop', 'PetActivity', 'Exchange'
     ]),
+    // The hero-draw activity owns the hundred-schools genre selection, draw and
+    // star tasks, four genre rankings, and its recharge gift family.
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/activity-decompiled/HeroDrawActTable.data.lua.json', import.meta.url), [
+      'GenreRank', 'Task', 'TaskType', 'Const', 'RankReward', 'Gift'
+    ]), {
+      GenreRank: 'HeroDrawActGenreRank',
+      Task: 'HeroDrawActTask',
+      TaskType: 'HeroDrawActTaskType',
+      Const: 'HeroDrawActConst',
+      RankReward: 'HeroDrawActRankReward',
+      Gift: 'HeroDrawActGift'
+    }),
     ...pick(readGeneratedTables(new URL('../../analysis/tmp/activity-decompiled/ShopTable.data.lua.json', import.meta.url), [
       'Item', 'Period', 'AutoRefresh', 'Main'
     ]), {
@@ -81,9 +95,35 @@ export function readGameTables() {
     }),
     // RoleTable.Level is the authoritative role experience curve consumed by
     // RoleMgr.CalcLvAndExp and the post-battle RoleExpUpForm.
-    ...pick(readGeneratedTables(new URL('RoleTable.data.lua.json', base), ['Level', 'LevelSetting']), {
+    ...pick(readGeneratedTables(new URL('RoleTable.data.lua.json', base), [
+      'Level', 'LevelSetting', 'FigureHead', 'FigureFrame', 'FigureTitle', 'FigureChatBubble'
+    ]), {
       Level: 'RoleLevel',
-      LevelSetting: 'RoleLevelSetting'
+      LevelSetting: 'RoleLevelSetting',
+      FigureHead: 'FigureHead',
+      FigureFrame: 'FigureFrame',
+      FigureTitle: 'FigureTitle',
+      FigureChatBubble: 'FigureChatBubble'
+    }),
+    ...pick(readGeneratedTables(new URL('HeroTable.data.lua.json', base), ['Hero']), { Hero: 'Hero' }),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/7289607387164353000-FirstRechargeTable.data.json', import.meta.url), ['FirstRecharge', 'Award']), {
+      FirstRecharge: 'FirstRecharge',
+      Award: 'FirstRechargeAward'
+    }),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/14863431925290164000-RechargeBonusTable.data.json', import.meta.url), ['RechargeBonus', 'Group', 'Award']), {
+      RechargeBonus: 'RechargeBonus',
+      Group: 'RechargeBonusGroup',
+      Award: 'RechargeBonusAward'
+    }),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/7806056895365336000-RechargeRebateResetTable.data.json', import.meta.url), ['Act']), {
+      Act: 'RechargeRebateResetAct'
+    }),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/LineFirstRechargeTable.data.json', import.meta.url), [
+      'Group', 'Choose', 'LineFirstRecharge'
+    ]), {
+      Group: 'LineFirstRechargeGroup',
+      Choose: 'LineFirstRechargeChoose',
+      LineFirstRecharge: 'LineFirstRecharge'
     })
   };
 }

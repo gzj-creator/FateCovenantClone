@@ -231,6 +231,26 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(missionOnly.report.finish, true);
   assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30203');
 
+  // 503 is the mission sweep command emitted by MissionSweepMgr. It returns
+  // the final resource changes plus one award group per repeated clear.
+  addResource(game.store, 100012900, 5);
+  response = await request(503, 60, codec.pack('pb_mission_sweep_passed_req', { tid: 30202, times: 1 }));
+  assert.equal(response.err, undefined);
+  const sweep = codec.unpack('pb_mission_sweep_passed_rsp', Buffer.from(response.data, 'base64'));
+  assert.equal(sweep.sweep_award.length, 1);
+  assert.deepEqual(sweep.sweep_award[0].award, [
+    { tid: '201500', num: '200' },
+    { tid: '101800', num: '100' },
+    { tid: '122802', num: '1' }
+  ]);
+  assert.deepEqual(sweep.changes.changes.map(change => [change.tid, change.diff_num]), [
+    ['100012900', '-5'],
+    ['201500', '200'],
+    ['101800', '100'],
+    ['122802', '1']
+  ]);
+  assert.equal(game.store.read().resources.get('100012900').num, '0');
+
   // 508 req_mission_custom continues the chapter-3 story node. The client sends
   // an ETF single-element list carrying sectionTid, then expects pb_mission_rsp.
   game.store.transaction(model => {

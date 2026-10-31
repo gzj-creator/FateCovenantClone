@@ -11,7 +11,7 @@ export function readHeroTables(file = defaultPath) {
     'Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star',
     'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
-    'DrawAchievementLib'
+    'DrawAchievementLib', 'NormalDrawExchangeLineup'
   ];
   if (file === defaultPath) return defaultCache ??= readGeneratedTables(file, names);
   return readGeneratedTables(file, names);

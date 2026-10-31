@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { createGameCodec } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
@@ -19,6 +20,17 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-fishing-'));
   const file = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, file);
+  // The handoff database is also used for manual acceptance and can carry a
+  // later server-opening timestamp. Normalize the disposable fixture so this
+  // test remains deterministic without changing the shared evidence file.
+  const fixture = new DatabaseSync(file);
+  const update = fixture.prepare('UPDATE roles SET metadata_json=? WHERE role_id=?');
+  for (const row of fixture.prepare('SELECT role_id,metadata_json FROM roles').all()) {
+    const metadata = JSON.parse(row.metadata_json);
+    metadata.serverOpenedAt = SERVER_OPENED_AT;
+    update.run(JSON.stringify(metadata), row.role_id);
+  }
+  fixture.close();
   let nowSeconds = initialSeconds;
   const openStore = () => {
     const opened = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
@@ -132,7 +144,7 @@ test('grants version bait once, unlocks the correct first island and persists', 
   const reopened = codec.unpack('pb_fishing_act_data_res', unlock(env.service, 1074003, 201).data);
   assert.deepEqual(reopened.data.unlock_map_list, ['201']);
   assert.deepEqual(reopened.res.changes, []);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 9);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 10);
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('fishing-activity-state-v6')));
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('activity-calendar-server-open-v7')));
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('pet-activity-commerce-v8')));
@@ -163,7 +175,7 @@ test('batch fishing consumes available bait and records every catch atomically',
   );
 });
 
-test('rejects closed, cross-version, locked and unsupported-reward requests atomically', t => {
+test('rejects closed, cross-version and locked requests without partial state', t => {
   const env = setup(t);
   const rejects = (fn, code) => assert.throws(fn, error => error.code === code);
   rejects(() => unlock(env.service, 89001, 201), 1);
@@ -174,11 +186,13 @@ test('rejects closed, cross-version, locked and unsupported-reward requests atom
 
   unlock(env.service, 1074003, 201);
   env.store.inspect(db => db.prepare('UPDATE fishing_activity_state SET score=100000 WHERE act_id=1074003').run());
-  rejects(() => unlock(env.service, 1074003, 204), 5);
+  const supportedReward = unlock(env.service, 1074003, 204).value;
+  assert.deepEqual(supportedReward.res.changes.map(change => change.tid), ['4040301', '101500']);
   const row = env.store.inspect(db => db.prepare('SELECT unlock_map_list_json,score FROM fishing_activity_state WHERE act_id=1074003').get());
-  assert.deepEqual(JSON.parse(row.unlock_map_list_json), [201]);
+  assert.deepEqual(JSON.parse(row.unlock_map_list_json), [201, 204]);
   assert.equal(row.score, '100000');
   assert.equal(env.store.read().resources.has('4040301'), false);
+  assert.equal(env.store.read().heroInfo.hero_list.some(hero => Number(hero.tid) === 4040301), true);
 
   env.setNow(SERVER_OPENED_AT + 7 * DAY);
   rejects(() => unlock(env.service, 1074003, 201), 309);

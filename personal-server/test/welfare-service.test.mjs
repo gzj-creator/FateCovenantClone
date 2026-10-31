@@ -5,11 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf, rawBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from '../game/wallet-service.mjs';
 import { createWelfareService } from '../game/welfare-service.mjs';
+import { grantResources } from '../game/resources.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -122,7 +123,25 @@ test('gift purchase records the purchase without adding it to recharge totals', 
   assert.deepEqual(login.recharge_record?.recent_record ?? [], []);
   e.reopen();
   await assert.rejects(() => buy(40006, 6), x => x.code === 307);
-  await assert.rejects(() => e.service.execute(16005, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 11, buy_num: 1 }), { connection: 'test', seq: 7 }), x => x.code === 5);
+  await assert.rejects(() => e.service.execute(16005, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 999999999, buy_num: 1 }), { connection: 'test', seq: 7 }), x => x.code === 5);
+});
+
+test('ordinary resource-priced 16005 gifts use the same order, cycle and restart path', async t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[401500, 5000]], tables));
+  const buy = seq => run(e.service, 16005, 'pb_recharge_buy_or_rev_req', {
+    recharge_id: 111003,
+    extra_param: '[[false,0,0]]',
+    buy_num: 1
+  }, seq);
+  const result = await buy(1);
+  assert.equal(result.value.res.changes.find(change => change.tid === '401500').diff_num, '-800');
+  assert.equal(result.value.res.changes.find(change => change.tid === '181200').diff_num, '6');
+  assert.equal(e.wallet.snapshot().accounts[0].balance_cents, 0);
+  assert.equal(e.wallet.snapshot().orders[0].price_cents, 0);
+  await assert.rejects(() => buy(2), error => error.code === 307);
+  e.reopen();
+  await assert.rejects(() => buy(3), error => error.code === 307);
 });
 
 test('real gateway routes welfare claims and gift purchase without LOCAL_NOT_IMPLEMENTED', async t => {
@@ -132,6 +151,7 @@ test('real gateway routes welfare claims and gift purchase without LOCAL_NOT_IMP
     statePath: path.join(directory, 'absent.json'),
     capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
     localWallet: true,
+    now: () => fixedNow,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
   });
   let socket;
@@ -165,9 +185,14 @@ test('real gateway routes welfare claims and gift purchase without LOCAL_NOT_IMP
   response = await request(16005, 23, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 40006, extra_param: '[[false,0,0]]', buy_num: 1 }));
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('res_buy_or_Rev_gift', Buffer.from(response.data, 'base64')).res.changes.find(x => x.tid === '101500').diff_num, '30');
-  response = await request(16005, 24, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 40008, buy_num: 1 }));
+  response = await request(16005, 24, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 140002, buy_num: 1 }));
   assert.equal(response.err.err, 301);
-  response = await request(117005, 25, codec.pack('pb_hundred_draw_act_marquee_req', { act_id: 1102010, start_range: 1, end_range: 10 }));
+  response = await request(97101, 25, await encodeEtf([1013]));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_wish_treasure_rev_back', Buffer.from(response.data, 'base64')).res.changes.find(change => change.tid === '134817').diff_num, '1');
+  response = await request(97101, 26, await encodeEtf([1013]));
+  assert.equal(response.err.err, 310);
+  response = await request(117005, 27, codec.pack('pb_hundred_draw_act_marquee_req', { act_id: 1102010, start_range: 1, end_range: 10 }));
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_hundred_draw_act_marquee_rsp', Buffer.from(response.data, 'base64')).data.data, []);
 });
