@@ -23,6 +23,7 @@ import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
+import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -50,6 +51,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const ranks = createRankService({ codec });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({ store, codec, tables, heroTables });
+  const handbook = createHeroHandbookService({ store, codec, heroTables });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
@@ -65,6 +67,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   async function loginPayload() {
     recruit.ensureLoginState();
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
+    handbook.ensureLoginState();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
@@ -539,7 +542,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
