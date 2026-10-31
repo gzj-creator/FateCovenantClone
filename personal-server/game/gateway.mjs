@@ -27,6 +27,7 @@ import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
+import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -69,19 +70,27 @@ export function createLocalGame({
     currentFishingActivityId,
     now: clock
   });
+  const heroDrawActivity = createHeroDrawActivityService({ store, codec, tables, heroTables, calendar, now: clock, logger });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const ranks = createRankService({ codec });
   const features = createFeatureService({ store, codec, sprintPreview });
-  const recruit = createRecruitService({ store, codec, tables, heroTables });
+  const recruit = createRecruitService({
+    store,
+    codec,
+    tables,
+    heroTables,
+    now: () => Math.floor(clock() / 1000),
+    onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
+  });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
-  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger,petActivity,now:() => Math.floor(clock() / 1000)}):undefined;
+  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,now:() => Math.floor(clock() / 1000)}):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -122,6 +131,7 @@ export function createLocalGame({
     ]);
     const schedule = calendar.applyLoginSchedule(activity, loginSeconds);
     const petLogin = await petActivity.synchronizeLogin(activity, loginSeconds);
+    const heroDrawLogin = heroDrawActivity.synchronizeLogin(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -138,6 +148,9 @@ export function createLocalGame({
       fishingBenefitActivityId: fishingBenefits.actId,
       petActivityId: petLogin?.actId ?? null,
       petShopId: petLogin?.shopId ?? null,
+      heroDrawActivityId: heroDrawLogin?.actId ?? null,
+      heroDrawCount: heroDrawLogin?.drawData?.role_data?.draw_count ?? null,
+      heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -155,6 +168,7 @@ export function createLocalGame({
     throw new GameError(1, 'Invalid mail command payload');
   }
   function rechargeOptions(value) {
+    if (Number.isSafeInteger(value) && value > 0) return { activity_version: value };
     let bytes = null;
     if (Buffer.isBuffer(value)) bytes = value;
     else if (value?.value?.type === 'Buffer' && Array.isArray(value.value.data)) bytes = Buffer.from(value.value.data);
@@ -369,6 +383,22 @@ export function createLocalGame({
         }
         return;
       }
+      if (heroDrawActivity.supports(type)) {
+        let activityId;
+        try {
+          activityId = await singleIdArgument(request.data, type === 100301 ? 'Invalid hero draw activity task' : 'Invalid hero draw genre');
+          const result = type === 100301
+            ? heroDrawActivity.claimTask(activityId)
+            : heroDrawActivity.selectGenre(activityId);
+          if (result.data.length) send(seq, result.data); else send(seq);
+          log({ event: type === 100301 ? 'hero_draw_task_claimed' : 'hero_draw_genre_selected', type, seq, activityId, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hero_draw_activity_rejected', type, seq, activityId, code, message: error.message });
+        }
+        return;
+      }
       if (welfare.supports(type)) {
         try {
           const result = await welfare.execute(type, request.data, { connection: id, seq });
@@ -400,11 +430,11 @@ export function createLocalGame({
           const options = rechargeOptions(args[1]);
           const itemTid = Number(args[2]);
           if (!Number.isSafeInteger(itemTid) || itemTid < 0) throw new GameError(1, 'Invalid recharge payment item');
-          wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy });
+          wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy, activity_version: options.activity_version });
           let order;
           if (itemTid === 0) {
             // RechargeMgr sends zero for normal balance payment.
-            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, extra_buy: options.is_extra_buy });
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, extra_buy: options.is_extra_buy, activity_version: options.activity_version });
           } else {
             const product = wallet.snapshot().products.find(value => value.id === productId);
             if (!product) throw new GameError(5, 'Unsupported voucher recharge product');
@@ -416,7 +446,7 @@ export function createLocalGame({
             const maximum = voucher.autoCount(product.price_cents);
             const voucherCount = Math.min(available, maximum);
             if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
-            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy });
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy, activity_version: options.activity_version });
           }
           send(seq);
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
@@ -581,14 +611,17 @@ export function createLocalGame({
             const actId = Number(active.act_tid);
             if (!runningIds.has(actId) || pausedIds.has(actId) || !calendar.isActivityRunning(actId, null, activityState)) return [];
             const petCfg = tables.PetActivity?.get(actId);
-            const configuredGifts = petCfg ? new Set((tables.GiftShop?.get(Number(petCfg.gift))?.gift ?? []).map(Number)) : null;
+            const heroDraw = actId === heroDrawActivity.activityId;
+            const configuredGifts = heroDraw
+              ? new Set(heroDrawActivity.giftIds())
+              : petCfg ? new Set((tables.GiftShop?.get(Number(petCfg.gift))?.gift ?? []).map(Number)) : null;
             const requestedGifts = (active.gift_id ?? []).map(Number).filter(id => !configuredGifts || configuredGifts.has(id));
             if (!requestedGifts.length) return [];
             return [{
               act_tid: actId,
               buy_list: requestedGifts.map(rechargeTid => ({
                 recharge_tid: rechargeTid,
-                buy_times: petCfg ? petActivity.giftPurchaseCount(rechargeTid) : (buyCounts.get(rechargeTid) ?? 0)
+                buy_times: heroDraw ? heroDrawActivity.giftPurchaseCount(rechargeTid) : petCfg ? petActivity.giftPurchaseCount(rechargeTid) : (buyCounts.get(rechargeTid) ?? 0)
               }))
             }];
           });
@@ -622,7 +655,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, tables,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

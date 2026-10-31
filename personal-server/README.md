@@ -1,5 +1,7 @@
 # 本机客户端兼容组件原型
 
+2026-10-31 百派争鸣活动 `117001`：在 `feature/hundred-schools` 实现流派选择 `100302`、任务领奖 `100301`、34 条三类任务、13 个免费/资源/现金礼包、模块 92 登录数据与限购回填、`85901` 推荐礼包及 `180..183` 榜单空数据。同时修复宠物平行活动误送 `pb_pet_act_begin` 导致模块 92 解析失败，以及终身限购在活动周期切换后错误归零。全量测试 **206/206** 通过，修复版已部署到本机五端口；真实 APK 逐页视觉验收待重新登录后完成。详见[实现记录](../agent/workflow/hundred-schools/implementation.md)。
+
 2026-10-31 活动修复 worktree：新增配置文件驱动的开服活动日历，并将超凡魔灵活动 `83028` 的登录数据、`module 83`、专属商城 `5070005`、九款现世礼包和 `85901` 推荐礼包状态接到同一活动开关。当前 `personal-server/config/activity-calendar.json` 使用 `all-open` 供测试；改为 `schedule` 后按 `serverOpenedAt` 和活动表的时间字段过滤。免费、资源与钱包礼包均支持限购和幂等。组件及临时 TCP 已验证，尚未部署到实时服务，真实 APK 待验收；详见[实现记录](../agent/workflow/pet-activity/implementation.md)。
 
 2026-10-28 更新：新增代金券机制（分支 `feature/voucher-mail`）。管理端可通过游戏邮件发放代金券，玩家在游戏内领取后道具 `701500` 进入背包；原生 `16004 req_recharge_by_token` 按 `price / score_token_rate` 自动计算张数并抵扣，管理端 `/api/purchase` 支持按金额部分抵扣。SQLite schema v3 新增 `voucher_skus`、`game_mails`、`voucher_grants`、`voucher_redemptions`；组件测试 **112/112** 通过。真实 APK 的邮件领取与 16004 支付尚未验收。方案、协议证据、接口与限制见[代金券邮件与抵扣实现](../agent/workflow/voucher-mail/implementation.md)。
