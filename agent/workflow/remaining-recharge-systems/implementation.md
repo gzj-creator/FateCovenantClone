@@ -50,7 +50,26 @@
 ## 部署与真机验收边界
 
 - 部署前必须备份实时 `game.local-only.sqlite`、`-wal` 和 `-shm`。
-- 新服务必须从本 worktree 的绝对入口启动，工作目录为项目主根目录。
+- 合并到 `main` 后，新服务必须从主仓库入口的绝对路径启动，工作目录为项目根目录。
 - 启动后核对 `server.local-only.json`、进程命令行、五个 loopback 端口及 ready 日志。
 - 用户真机验收：特惠返利可点击并到账，重登后领取次数保持；`16004/16005` 不再服务器错误；日志无 `unsupported_command type=97101`，且购买推送顺序为 `9132 -> 1900`。
 - 本轮未修改 APK，不需要创建新的 APK 快照；原版 `com.jzyx.my` 不操作。
+
+## 2026-10-31 合并与部署
+
+- 商城修复提交 `d08dca9`，随后合并最新 `main`；`v10` 待发奖励兼容和显式奖励处理器修复提交为
+  `105f2de`，并已快进合入 `main`。
+- `main` 全量测试 **248/248 通过**。
+- 最终部署前一致备份为
+  `analysis/experiments/private-server-20261025/p3/remaining-recharge-20261031-164316/game.before-final-recharge-deploy.local-only.sqlite`，
+  SHA256 `13068b3d5bf31879df0b5aed96dc0234a6432f105f7d6a3da5e1f71bc2672b9f`，
+  `integrity_check=ok`、`user_version=10`，`pending_rewards` 表存在。
+- 初次切换发现实时库已是 `v10`，而分支合并后的存储层只接受 `v9`，新进程拒绝启动；已立即恢复旧主入口，
+  将未提交的 `v10` 改动纳入分支并按显式奖励处理器适配后重新验证。
+- 最终服务 PID `44160`，工作目录 `F:\projects\FateCovenantClone`，入口为绝对路径
+  `F:\projects\FateCovenantClone\personal-server\local-server.mjs`；
+  `18880/18881/18882/18883/19090` 均由该进程监听且只监听 `127.0.0.1`，stderr 为 0。
+- 最终启动日志、部署结果、失败切换日志及恢复记录位于同目录 `server-final-recharge.*.log`、
+  `final-deploy-result.local-only.json` 和 `recovery-main-result.local-only.json`。
+- 自动化、真实 TCP、SQLite 重开均通过，但隔离 APK 的“特惠返利可点击/到账、重登保留”和
+  “一键购买/礼包购买不再服务器错误”仍需用户实际点击确认，不能仅凭本记录标为真机验收完成。
