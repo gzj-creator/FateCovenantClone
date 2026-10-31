@@ -5,8 +5,9 @@ import { createProtobufJsCodec, SERVER_SCHEMA_SHA256 } from '../server-list-code
 import { buildLocalServer, buildServerListMessage, createServerListService, encodeServerListRequest, signServerListParameters } from '../server-list.mjs';
 
 const NOW = 1_790_000_000;
+const SERVER_OPENED_AT = NOW - 8 * 86400;
 const KEY = 'local signing key with spaces';
-const serverConfig = { id: 1, name: 'S1 本地测试服', extranetIp: '127.0.0.1:19090' };
+const serverConfig = { id: 1, name: 'S1 本地测试服', extranetIp: '127.0.0.1:19090', releaseTime: SERVER_OPENED_AT };
 const params = { channel_id: 'local-channel', channel_uid: 'local-account', device_label: 'local device' };
 const digest = value => createHash('md5').update(value, 'utf8').digest('hex');
 const codec = createProtobufJsCodec();
@@ -38,18 +39,21 @@ test('server-list signing uses original sorted params and preserves ASCII spaces
   assert.equal(form.get('sign'), signServerListParameters(values, KEY));
 });
 
-test('strict local message constructors require explicit IPv4:port and past timestamps', () => {
+test('strict local message constructors require explicit IPv4:port and opening time', () => {
   const server = buildLocalServer(serverConfig, NOW);
   assert.equal(server.state, 0);
   assert.equal(server.show_state, 1);
-  assert(server.show_time < NOW && server.release_time < NOW);
+  assert.equal(server.show_time, SERVER_OPENED_AT);
+  assert.equal(server.release_time, SERVER_OPENED_AT);
   assert.equal(server.start_maintain_time, 0);
   assert.equal(server.stop_maintain_time, 0);
   const message = buildServerListMessage(serverConfig, params, NOW);
+  assert.equal(message.open_time, SERVER_OPENED_AT);
   assert.deepEqual(message.roles, []);
   assert.equal(message.limit_login, false);
   assert.equal(message.channel_id.toString('utf8'), params.channel_id);
   for (const extranetIp of [undefined, '', 'localhost:19090', '127.0.0.1', '::1:19090', '127.0.0.1:65536']) assert.throws(() => buildLocalServer({ ...serverConfig, extranetIp }, NOW));
+  assert.throws(() => buildLocalServer({ ...serverConfig, releaseTime: undefined }, NOW), /releaseTime/);
   assert.throws(() => buildLocalServer({ ...serverConfig, releaseTime: NOW }, NOW));
   assert.throws(() => buildLocalServer({ ...serverConfig, id: 0 }, NOW));
 });
@@ -86,6 +90,8 @@ test('HTTP channel and preferred server lists return protobuf binary that revers
     assert.equal(decoded.servers.length, 1);
     assert.equal(decoded.servers[0].extranet_ip, serverConfig.extranetIp);
     assert.equal(decoded.now_sec, String(NOW));
+    assert.equal(decoded.servers[0].release_time, SERVER_OPENED_AT);
+    assert.equal(decoded.open_time, String(SERVER_OPENED_AT));
     assert.equal(decoded.limit_login, false);
     assert.deepEqual(decoded.roles, []);
   }
@@ -95,7 +101,9 @@ test('HTTP single-server request returns pb_login_server and rejects unknown or 
   const f = await fixture(t);
   const response = await f.post('login_server', { server_id: 1 });
   assert.equal(response.status, 200);
-  assert.equal(codec.decode('pb_login_server', response.bytes).id, 1);
+  const decoded = codec.decode('pb_login_server', response.bytes);
+  assert.equal(decoded.id, 1);
+  assert.equal(decoded.release_time, SERVER_OPENED_AT);
   const unknown = await f.post('login_server', { server_id: 2 });
   assert.equal(unknown.status, 404);
   assert.equal(unknown.json().error, 'unknown_server');

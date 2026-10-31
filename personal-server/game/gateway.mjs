@@ -167,7 +167,7 @@ export function createLocalGame({
     const loginMilliseconds = clock();
     const loginSeconds = Math.floor(loginMilliseconds / 1000);
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
-    modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, state.createdAt, binary('Local Server'), binary(''), 0]);
+    modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary('Local Server'), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));

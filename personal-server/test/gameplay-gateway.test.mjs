@@ -17,11 +17,16 @@ const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wa
 const SERVER_OPENED_AT = 1792789200;
 const GAME_NOW = (SERVER_OPENED_AT + 3600) * 1000;
 
-async function loginActivities(payload) {
+async function loginModule(payload, moduleId) {
   const login = await decodeEtf(payload);
-  const entry = login[2].value.find(value => Number(value[0]) === 92);
-  assert.ok(entry, 'login module 92 is present');
-  return codec.unpack('pb_act_login', Buffer.from(entry[1].value));
+  const entry = login[2].value.find(value => Number(value[0]) === moduleId);
+  assert.ok(entry, `login module ${moduleId} is present`);
+  return entry[1];
+}
+
+async function loginActivities(payload) {
+  const entry = await loginModule(payload, 92);
+  return codec.unpack('pb_act_login', Buffer.from(entry.value));
 }
 
 function loginModuleBytes(login, moduleId) {
@@ -446,12 +451,17 @@ test('all-open mode returns every stored activity and forces test-visible states
   });
   t.after(async () => { await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
 
-  const stored = codec.unpack('pb_act_login', rawBinary(new Map(game.store.state().modules.value).get(92)));
+  const state = game.store.state();
+  const stored = codec.unpack('pb_act_login', rawBinary(new Map(state.modules.value).get(92)));
   const storedIds = [
     ...stored.act_list.map(entry => Number(entry.state_data?.act_id)),
     ...stored.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))
   ];
-  const activity = await loginActivities(await game.loginPayload());
+  const payload = await game.loginPayload();
+  const serverInfo = await loginModule(payload, 1);
+  assert.equal(Number(serverInfo[4]), SERVER_OPENED_AT);
+  assert.notEqual(Number(serverInfo[4]), state.createdAt);
+  const activity = await loginActivities(payload);
   const returnedIds = new Set([
     ...activity.act_list.map(entry => Number(entry.state_data?.act_id)),
     ...activity.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))

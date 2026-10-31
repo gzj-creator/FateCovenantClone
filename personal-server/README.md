@@ -58,6 +58,8 @@ node .\personal-server\server-list.mjs
 
 `LOCAL_SERVER_EXTRANET_IP` 必须显式配置成自有 IPv4:port；示例地址仅是测试配置，没有自动启动对应游戏网关。服务始终只绑定 `127.0.0.1`，支持端口 `0`，按 Ctrl+C 关闭。签名 key 由本地配置注入，没有恢复或输出 APK 内的真实 key。
 
+区服列表的 `show_time`、`release_time` 和列表级 `open_time` 取同一个开服时间。独立启动时默认读取 `personal-server/config/activity-calendar.json` 的 `serverOpenedAt`，也可用 `FC_ACTIVITY_CALENDAR_CONFIG` 或 `FC_SERVER_OPENED_AT` 覆盖；不能再用请求到达时间伪造开服时间。
+
 请求表单字段为 `method,json,sign`，`json` 是原参数 JSON 的 UTF-8 Base64。签名仅对原参数按键升序拼接 `key=value&...&key=<signingKey>` 再取小写 MD5，保留 ASCII 空格；外层三个表单字段不进入签名。使用导出的 `encodeServerListRequest` 可构造本地测试请求。表单 MIME 依照当前本地实现选择，原客户端 C# 重载的具体编码仍需独立联调验证。
 
 配置服的 `state=0`、`show_state=1`、维护时间为 0，显示/开放时间早于当前时间；角色列表为空，`limit_login=false`。这些是符合静态可见性谓词的本地设计值，不是原服务端事实。未知区服、错误签名、非法字段或未知操作明确报错。日志只记录固定操作名和状态，不记录请求身份、签名或原始 URL。
