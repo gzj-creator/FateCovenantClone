@@ -59,6 +59,11 @@
   `pb_mission_sweep_passed_rsp`。
 - 校验请求节点已通关、次数合法、`Sweep` 奖励和 `SweepConst` 消耗配置有效。
 - 在单一事务内扣除扫荡券并发放配置奖励，返回最终资源变化和逐次奖励组。
+- 客户端 `MissionSweepMgr.lua` 将 `DEFAULT_MULTI_SWEEP_COUNT` 编译为常量 `10`，
+  `MissionSweepSweepForm._CalcSweepCount()` 原样返回该值，`_SweepOneKey` 用它发起
+  一键扫荡；`SweepMission` 还会按体力把请求降为可支付次数。`SweepConst` 表本身
+  没有次数上限字段，因此服务端把当前 APK 的允许边界设为 1–10；该值属于当前客户端
+  兼容边界，不声明为所有未来客户端的永久协议上限。
 - 当前表内 76 个可扫荡节点都是确定性奖励；存在随机奖励配置时明确拒绝，不伪造掉落。
 
 ## 验证

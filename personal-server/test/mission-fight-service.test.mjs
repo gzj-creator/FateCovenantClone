@@ -363,6 +363,7 @@ test('mission sweep rejects invalid, unswept and unaffordable requests without m
   const request = (tid, times) => codec.pack('pb_mission_sweep_passed_req', { tid, times });
 
   assert.throws(() => env.service.execute(503, request(30202, 0)), error => error.code === 1);
+  assert.throws(() => env.service.execute(503, request(30202, 11)), error => error.code === 1);
   assert.throws(() => env.service.execute(503, request(30202, 100)), error => error.code === 1);
   assert.throws(() => env.service.execute(503, request(999999, 1)), error => error.code === 5);
   assert.throws(() => env.service.execute(503, request(30202, 1)), error => error.code === 5);
@@ -389,6 +390,18 @@ test('mission sweep response encoding failure rolls back stamina and rewards', t
   const broken = createMissionFightService({ store: env.store, codec: brokenCodec, playbackEnabled: true });
   assert.throws(() => broken.execute(503, codec.pack('pb_mission_sweep_passed_req', { tid: 30202, times: 1 })), /sweep encode fail/);
   assert.deepEqual(env.store.state(), before);
+});
+
+test('mission sweep applies the current client one-key boundary', t => {
+  const env = setup(t);
+  setMission(env.store, 40210);
+  addResource(env.store, 100012900, 50);
+  const request = times => codec.pack('pb_mission_sweep_passed_req', { tid: 30202, times });
+
+  const response = codec.unpack('pb_mission_sweep_passed_rsp', env.service.execute(503, request(10)).data);
+  assert.equal(response.sweep_award.length, 10);
+  assert.equal(env.store.read().resources.get('100012900').num, '0');
+  assert.throws(() => env.service.execute(503, request(11)), error => error.code === 1);
 });
 
 test('mission fight playback stays disabled until a real action stream exists', t => {

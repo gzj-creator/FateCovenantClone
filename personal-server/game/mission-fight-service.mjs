@@ -33,7 +33,11 @@ const ACTION_SHIELD = 109;
 const ACTION_ROUND_OVER = 112;
 const ACTION_FIGHTER_RELIVE = 114;
 const ACTION_FAT_ATTR_SYNC = 116;
-const MAX_SWEEP_TIMES = 99;
+// This APK fixes MissionSweepMgr.DEFAULT_MULTI_SWEEP_COUNT at 10 and
+// MissionSweepSweepForm._SweepOneKey sends that value. SweepMission may lower
+// it to the affordable count, so this client emits values from 1 through 10.
+// This is a current-client boundary, not a field in MissionTable.SweepConst.
+const CURRENT_CLIENT_MAX_SWEEP_TIMES = 10;
 
 let missionOrderCache = null;
 
@@ -616,7 +620,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     const request = codec.unpack('pb_mission_sweep_passed_req', bytes);
     const tid = Number(request.tid), times = Number(request.times);
     if (!Number.isSafeInteger(tid) || tid <= 0) throw new GameError(1, 'Invalid mission sweep id');
-    if (!Number.isSafeInteger(times) || times <= 0 || times > MAX_SWEEP_TIMES) throw new GameError(1, 'Invalid mission sweep count');
+    if (!Number.isSafeInteger(times) || times <= 0 || times > CURRENT_CLIENT_MAX_SWEEP_TIMES) throw new GameError(1, 'Invalid mission sweep count');
     const sweep = missionTables.sweeps.get(tid);
     if (!sweep) throw new GameError(5, 'Mission sweep configuration missing');
     const awards = configuredSweepAwards(sweep);
