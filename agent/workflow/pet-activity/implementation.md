@@ -38,7 +38,7 @@
 
 ## 持久化与幂等
 
-- SQLite schema v7 持久化开服时间，v8 新增 `activity_purchases`，按角色、活动、商城/礼包、商品和请求 ID 记录数量。
+- SQLite schema v7 持久化开服时间，v8 新增 `activity_purchases`（按角色、活动、商城/礼包、商品和请求 ID 记录数量），v9 对齐英雄 `uid` 与 `tid`。
 - 礼包限购读取 `activity_purchases`；16005 响应和 16004 推送 `1900` 的 `flag=65` 都携带最新 `pb_recharge_limit_info`。
 - 相同连接与序号重试复用原订单，不重复扣款或发奖。JSON 存储会把 Buffer 转为 `{type:"Buffer",data":[...]}`，重放前已恢复为 Buffer，避免 protobuf 编码失败。
 - 关闭活动后：登录响应没有 `module 83` 和 `83028`；1202 返回空商城组；16005/16004 拒绝；85901 不返回该活动礼包。

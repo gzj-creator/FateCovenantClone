@@ -1,5 +1,15 @@
 import { encodeEtfInteger, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
+import {
+  RECRUIT_RULE_VERSION,
+  SUPPORTED_RECRUIT_LIBS,
+  buildRecruitPoolCatalog,
+  choosePoolHero,
+  completedDrawCounts,
+  isPoolUnlocked,
+  isWishUnlocked,
+  pickQuality
+} from './recruit-pool-rules.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 
 const fail = (code, message) => { throw new GameError(code, message); };
@@ -9,9 +19,7 @@ const integer = (value, min, max, message = 'Invalid recruitment value') => {
 };
 const n = value => Number(value ?? 0);
 const DAY_SECONDS = 86400;
-const supportedLibs = new Set([1, 2, 3, 10]);
-// The shipped Group rows are empty, so this deterministic local distribution replaces unavailable original odds.
-const qualityWeights = [[30, 5000], [40, 3000], [50, 1500], [60, 450], [70, 50]];
+const supportedLibs = new Set(SUPPORTED_RECRUIT_LIBS);
 
 function startOfUtcDay(seconds) {
   return Math.floor(seconds / DAY_SECONDS) * DAY_SECONDS;
@@ -72,27 +80,6 @@ function normalizeRecruit(info, lib) {
   return info;
 }
 
-function weightedQuality(random) {
-  const roll = Math.max(0, Math.min(0.999999999999, Number(random())));
-  let point = roll * 10000;
-  for (const [quality, weight] of qualityWeights) {
-    point -= weight;
-    if (point < 0) return quality;
-  }
-  return qualityWeights.at(-1)[0];
-}
-
-function weightedGuaranteedQuality(random) {
-  const choices = qualityWeights.filter(([quality]) => quality >= 50);
-  const total = choices.reduce((sum, [, weight]) => sum + weight, 0);
-  let point = Math.max(0, Math.min(0.999999999999, Number(random()))) * total;
-  for (const [quality, weight] of choices) {
-    point -= weight;
-    if (point < 0) return quality;
-  }
-  return 50;
-}
-
 function module10(model) {
   const modules = new Map(model.state.modules.value);
   const module = modules.get(10);
@@ -101,13 +88,19 @@ function module10(model) {
 }
 
 export function createRecruitService({ store, codec, tables, heroTables, random = Math.random, now = () => Math.floor(Date.now() / 1000) }) {
-  const byQuality = new Map(qualityWeights.map(([quality]) => [quality, []]));
-  for (const [tid, hero] of [...heroTables.Hero.entries()].sort(([a], [b]) => a - b)) {
-    const quality = Number(hero.quality);
-    if (Number(hero.chip) > 0 && byQuality.has(quality)) byQuality.get(quality).push({ tid: Number(tid), chip: Number(hero.chip), quality });
+  const pools = buildRecruitPoolCatalog(heroTables);
+  const drawConfigs = new Map();
+  for (const [lib, pool] of pools) {
+    const drawConfig = heroTables.Draw.get(lib);
+    const guaranteedConfig = heroTables.Guaranteed.get(Number(drawConfig?.guaranteed));
+    if (!drawConfig || !guaranteedConfig || !(Number(guaranteedConfig.guaranteed_num) > 0)) {
+      throw new Error(`Recruitment configuration is missing for draw library ${lib}`);
+    }
+    if (Number(guaranteedConfig.guaranteed_special ?? 0) !== Number(pool.rule.guaranteeSpecial)) {
+      throw new Error(`Recruitment guarantee mapping does not match draw library ${lib}`);
+    }
+    drawConfigs.set(lib, { drawConfig, guaranteedConfig });
   }
-  const pool = [...byQuality.values()].flat();
-  if (!pool.length) throw new Error('Recruitment hero pool is empty');
 
   function readState(model) {
     const { modules, module } = module10(model);
@@ -245,15 +238,25 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
     };
   }
 
-  function drawOne(model, state, lib, drawConfig) {
-    const guaranteedConfig = heroTables.Guaranteed.get(Number(drawConfig.guaranteed));
-    const threshold = Number(guaranteedConfig?.guaranteed_num ?? 0);
+  function drawOne(state, lib, progress) {
+    const pool = pools.get(lib);
+    const { guaranteedConfig } = drawConfigs.get(lib);
+    const threshold = Number(guaranteedConfig.guaranteed_num);
     const nextCount = Number(state.guaranteed_count ?? 0) + 1;
     const guaranteed = threshold > 0 && nextCount >= threshold;
-    const quality = guaranteed ? weightedGuaranteedQuality(random) : weightedQuality(random);
-    const heroes = byQuality.get(quality);
-    if (!heroes?.length) fail(5, 'Recruitment quality pool is empty');
-    const hero = heroes[Math.min(heroes.length - 1, Math.floor(Math.max(0, Math.min(0.999999999999, Number(random()))) * heroes.length))];
+    const quality = pickQuality(pool.rule, progress, guaranteed, random);
+    let wishHero = false;
+    let candidates = null;
+    if (isWishUnlocked(pool.rule, progress) && (quality === 50 || quality === 60)) {
+      candidates = [];
+      for (const item of state.wish_hero_list ?? []) {
+        const hero = pool.byTid.get(Number(item.tid));
+        if (!hero || hero.quality !== quality) continue;
+        candidates.push({ ...hero, weight: Number(item.weight) > 0 ? Number(item.weight) : 1 });
+      }
+      wishHero = candidates.length > 0;
+    }
+    const hero = choosePoolHero(pool, quality, random, wishHero ? candidates : null);
     if (quality >= 50) {
       state.guaranteed_count = 0;
       state.high_guaranteed_count = 0;
@@ -264,7 +267,9 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
     }
     state.latest_more_draw_list.push(quality);
     if (state.latest_more_draw_list.length > 10) state.latest_more_draw_list.shift();
-    return { ...hero, guaranteed, lib };
+    state.is_guaranteed_wish_hero = wishHero;
+    state.draw_count = Number(state.draw_count ?? 0) + 1;
+    return { ...hero, guaranteed, wishHero, lib };
   }
 
   function draw(model, request, seconds) {
@@ -283,13 +288,15 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
     const state = readState(model);
     const info = state.byLib.get(lib);
     refreshDailyState(info, lib, seconds);
+    const progress = completedDrawCounts(state.byLib);
+    if (!isPoolUnlocked(pools.get(lib).rule, info, progress)) fail(305, 'Draw library is not unlocked');
     if (heroTables.DrawNumLimit.has(lib) && Number(info.daily_can_draw_num ?? 0) < count) fail(305, 'Daily draw limit reached');
     const spent = consumeResources(model, costs.map(cost => [cost.tid, cost.amount]), 301);
     const changes = [...spent.changes];
     const newHeroes = [];
     const results = [];
     for (let index = 0; index < count; index++) {
-      const result = drawOne(model, info, lib, config);
+      const result = drawOne(info, lib, completedDrawCounts(state.byLib));
       results.push(result);
       const owned = model.heroInfo.hero_list.some(hero => Number(hero.tid) === result.tid);
       // The client's HeroDrawUILogic.FilterAwards splits one chip award into
@@ -312,7 +319,6 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
       }
       changes.push(change);
     }
-    info.draw_count = (info.draw_count ?? 0) + count;
     info.daily_draw_count = (info.daily_draw_count ?? 0) + count;
     if (heroTables.DrawNumLimit.has(lib)) info.daily_can_draw_num = Number(info.daily_can_draw_num ?? 0) - count;
     const drawTypeKey = n(request.draw_type);
@@ -331,24 +337,51 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
         decompose_args: [],
         pre_args: []
       },
-      valueForLog: { lib, count, newHeroes: newHeroes.map(hero => hero.tid), results: results.map(result => ({ tid: result.tid, quality: result.quality, guaranteed: result.guaranteed })) }
+      valueForLog: {
+        lib,
+        count,
+        ruleVersion: RECRUIT_RULE_VERSION,
+        newHeroes: newHeroes.map(hero => hero.tid),
+        results: results.map(result => ({ tid: result.tid, quality: result.quality, guaranteed: result.guaranteed, wishHero: result.wishHero }))
+      }
     };
   }
 
   function chooseWish(model, request, extra, seconds) {
     const lib = integer(n(request.draw_lib), 1, 1000000, 'Invalid wish library');
     if (!supportedLibs.has(lib)) fail(5, 'Wish library is not available on the local server');
+    const pool = pools.get(lib);
+    const field = extra ? 'extra_wish_list' : 'wish_hero_list';
+    if (!pool.rule.wish || !pool.rule.wish.fields.includes(field)) fail(5, 'Wish selection is not supported by this draw library');
     const state = readState(model);
     const info = state.byLib.get(lib);
-    const field = extra ? 'extra_wish_list' : 'wish_hero_list';
+    refreshDailyState(info, lib, seconds);
+    const progress = completedDrawCounts(state.byLib);
+    if (!isWishUnlocked(pool.rule, progress)) fail(305, 'Wish list is not unlocked');
     const previous = new Map((info[field] ?? []).map(item => [Number(item.tid), item]));
     const seen = new Set();
+    const seenIndexes = new Set();
+    const qualityCounts = new Map();
     const list = [];
-    for (const item of request.choose_item_list ?? []) {
+    const requested = request.choose_item_list ?? [];
+    if (!Array.isArray(requested)) fail(1, 'Invalid wish selection');
+    if (requested.length > [...pool.rule.wish.maxByQuality].reduce((sum, [, limit]) => sum + limit, 0)) {
+      fail(5, 'Too many wish heroes');
+    }
+    for (const item of requested) {
       const index = integer(n(item.index), 0, 9999, 'Invalid wish slot');
       const tid = integer(n(item.hero_tid), 1, 999999999, 'Invalid wish hero');
-      if (seen.has(tid) || !pool.some(hero => hero.tid === tid)) fail(5, 'Wish hero is not in the local pool');
+      const hero = pool.byTid.get(tid);
+      if (seen.has(tid) || seenIndexes.has(index)) fail(5, 'Wish hero or slot is duplicated');
+      if (!hero || !pool.rule.wish.maxByQuality.some(([quality]) => quality === hero.quality)) {
+        fail(5, 'Wish hero is not eligible for this draw library');
+      }
+      const count = (qualityCounts.get(hero.quality) ?? 0) + 1;
+      const max = Number(pool.rule.wish.maxByQuality.find(([quality]) => quality === hero.quality)?.[1] ?? 0);
+      if (count > max) fail(5, 'Wish hero quality limit reached');
+      qualityCounts.set(hero.quality, count);
       seen.add(tid);
+      seenIndexes.add(index);
       list.push({ tid: String(tid), index, draw_num: previous.get(tid)?.draw_num ?? 0, weight: previous.get(tid)?.weight ?? 0 });
     }
     info[field] = list;
@@ -358,12 +391,12 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
 
   function takeoffWish(model, input, extra) {
     const raw = input?.value ?? input;
-    let lib = 1, index, tid;
+    let lib = 2, index, tid;
     if (Array.isArray(raw)) {
       if (supportedLibs.has(n(raw[0])) && raw.length > 1) { lib = n(raw[0]); index = n(raw[1]); }
       else if (raw.length) { const value = n(raw[0]); if (value >= 100000) tid = value; else index = value; }
     } else if (raw && typeof raw === 'object') {
-      lib = n(raw.draw_lib ?? raw.lib ?? 1); if (!supportedLibs.has(lib)) lib = 1;
+      lib = n(raw.draw_lib ?? raw.lib ?? 2); if (!supportedLibs.has(lib)) lib = 2;
       index = raw.index === undefined ? undefined : n(raw.index);
       tid = raw.hero_tid === undefined && raw.tid === undefined ? undefined : n(raw.hero_tid ?? raw.tid);
     } else {
@@ -372,6 +405,7 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
     const state = readState(model);
     const info = state.byLib.get(lib);
     const field = extra ? 'extra_wish_list' : 'wish_hero_list';
+    if (!pools.get(lib).rule.wish || !pools.get(lib).rule.wish.fields.includes(field)) fail(5, 'Wish removal is not supported by this draw library');
     info[field] = (info[field] ?? []).filter(item => index !== undefined ? Number(item.index ?? 0) !== index : tid !== undefined ? Number(item.tid) !== tid : false);
     writeDrawInfo(model, state);
     return { schema: 'pb_hero_recruit', value: info };

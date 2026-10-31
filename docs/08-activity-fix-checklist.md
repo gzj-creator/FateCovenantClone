@@ -13,7 +13,7 @@
   - 失败证据：2026-10-30 12:22:51、12:22:53 客户端两次发送 `req_fishing_act_unlock_map`，服务返回业务错误 5；日志同时记录 `FishingActIslandMainForm._ctnClick`。
   - 根因：客户端点击岛屿发送 `pb_fishing_act_common_req{act_id,value=map_id}`，旧网关把 110305 固定标为未实现。89001 是百媚之约，不是钓鱼活动 ID。
   - 已实现：按 `ActFrameTable.Act.version` 映射 `FishingActTable.Version.island_version`，校验 `Island.belonging_version`；按钓鱼积分和 `FishingActTable.Level` 计算等级；校验 `unlock_level_condition`；首次解锁按 `unlock_reward` 发奖；SQLite 持久化 `unlock_map_list`，重复请求幂等。
-  - 存档：schema v6 新增 `fishing_activity_state`，schema v7 持久化开服时间，schema v8 新增活动商城与礼包购买记录；首次与重复解锁、进程重开和奖励去重均有测试。
+  - 存档：schema v6 新增 `fishing_activity_state`，schema v7 持久化开服时间，schema v8 新增活动商城与礼包购买记录，schema v9 对齐英雄 `uid` 与 `tid`；首次与重复解锁、进程重开和奖励去重均有测试。
   - 验收：组件与临时 TCP 通过；真实登录已收到过滤后的活动列表；下次活动开放后的 APK 请求和用户视觉仍待确认。
 
 - [x] **活动日历 / 开服相对日（module 92）**

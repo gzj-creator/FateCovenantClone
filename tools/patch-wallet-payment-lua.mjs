@@ -3,10 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const EXPECTED_SOURCE_SHA256 = '5ec9f6c2aaaf83ade362f40596fea4e8875631efdc08d5f05a9b646a6a271ada';
-const TARGET_PROTOTYPE = 12;
-const TARGET_INSTRUCTION_COUNT = 46;
-const EXPECTED_GC_CONSTANTS = 20;
+const EXPECTED_SOURCE_SHA256 = '721e98f2880b4ab6079e876f54707400db5508511ec354001743188d28a6ace3';
+const PRICE_PROTOTYPE = 11;
+const PRICE_INSTRUCTION_COUNT = 24;
+const PRICE_GC_CONSTANTS = 13;
+const ONE_KEY_PROTOTYPE = 12;
+const ONE_KEY_INSTRUCTION_COUNT = 46;
+const ONE_KEY_GC_CONSTANTS = 20;
 const ABC_INSTRUCTIONS = new Set([
   'ADDVN', 'SUBVN', 'MULVN', 'DIVVN', 'MODVN', 'ADDNV', 'SUBNV', 'MULNV', 'DIVNV', 'MODNV',
   'ADDVV', 'SUBVV', 'MULVV', 'DIVVV', 'MODVV', 'POW', 'CAT', 'TGETV', 'TGETS', 'TGETB', 'TGETR',
@@ -80,32 +83,54 @@ function encodeInstructions(prototype) {
   return bytes;
 }
 
-function makeReplacementConstants(originalConstantsBytes) {
-  const named = [
-    { type: 'string', value: 'RechargeMgr' },
-    { type: 'string', value: 'RechargeOrBuyGift' },
-    { type: 'string', value: 'DailyDiscountMgr' },
-    { type: 'string', value: 'IS_EXTRA_BUY' },
-    { type: 'table', array: [null, null, 0, 0], hash: [] }
-  ];
+function makeReplacementConstants(named, targetCount, targetBytes) {
+  const paddingCount = targetCount - named.length;
+  if (paddingCount <= 0) throw new Error('Replacement constants leave no padding slots.');
+  const nameBytes = encodeConstants(named).length;
+  let remaining = targetBytes - nameBytes - paddingCount * 6; // five-byte string plus ULEB length
+  if (remaining < 0) throw new Error('Replacement constants exceed the original byte length.');
+
   // The prototype length includes its debug metadata. Keep the original GC
-  // count and use unreachable string constants as length-preserving padding.
-  // Twelve names are twelve bytes and three are thirteen bytes. Together they
-  // keep the full constant stream at 267 bytes without moving debug data or
-  // any following prototype.
-  const padding = Array.from({ length: 12 }, (_, index) => ({
-    type: 'string',
-    value: `PadNode${String(index).padStart(4, '0')}X`
-  }));
-  for (let index = 12; index < 15; index++) {
-    padding.push({ type: 'string', value: `PadNode${String(index).padStart(5, '0')}X` });
-  }
+  // count and use unreachable, distinct string constants as length-preserving
+  // padding so debug data and all following prototypes stay byte-stable.
+  const padding = Array.from({ length: paddingCount }, (_, index) => {
+    const extra = index === paddingCount - 1 ? remaining : Math.min(remaining, index % 3);
+    remaining -= extra;
+    const length = 5 + extra;
+    const prefix = `Pad${String(index).padStart(3, '0')}`;
+    return { type: 'string', value: prefix.padEnd(length, 'X').slice(0, length) };
+  });
+  if (remaining !== 0) throw new Error('Replacement constant padding could not be balanced.');
+
   const result = [...named, ...padding];
-  if (result.length !== EXPECTED_GC_CONSTANTS) throw new Error('Replacement GC constant count changed.');
-  if (encodeConstants(result).length !== originalConstantsBytes.length) {
+  if (result.length !== targetCount) throw new Error('Replacement GC constant count changed.');
+  if (encodeConstants(result).length !== targetBytes) {
     throw new Error('Replacement constants do not preserve the original byte length.');
   }
   return result;
+}
+
+function patchPrototype(source, prototype, targetInstructions, replacementConstants) {
+  if (prototype.instructions.length !== targetInstructions.length) throw new Error('Replacement instruction count changed.');
+  const instructionsStart = prototype.instructions[0].offset;
+  const lastInstruction = prototype.instructions.at(-1);
+  const instructionsEnd = lastInstruction.offset + 4;
+  if (instructionsEnd - instructionsStart !== targetInstructions.length * 4) throw new Error('Unexpected target instruction span.');
+
+  const originalConstantsBytes = encodeConstants(prototype.constants);
+  const sourceConstants = source.subarray(instructionsEnd, instructionsEnd + originalConstantsBytes.length);
+  if (!sourceConstants.equals(originalConstantsBytes)) throw new Error('Original constant bytes did not round-trip at the target offset.');
+  const replacementInstructions = encodeInstructions({ instructions: targetInstructions });
+  const replacementConstantsBytes = encodeConstants(replacementConstants);
+  if (replacementInstructions.length !== encodeInstructions(prototype).length
+    || replacementConstantsBytes.length !== originalConstantsBytes.length) {
+    throw new Error('Replacement instruction/constant region changed length.');
+  }
+
+  const output = Buffer.from(source);
+  replacementInstructions.copy(output, instructionsStart);
+  replacementConstantsBytes.copy(output, instructionsEnd);
+  return { output, replacementInstructions, replacementConstantsBytes, debugBytes: prototype.length - targetInstructions.length * 4 - originalConstantsBytes.length };
 }
 
 export function patchWalletPaymentLua(sourcePath, outputPath) {
@@ -116,17 +141,24 @@ export function patchWalletPaymentLua(sourcePath, outputPath) {
 
   const parsed = loadParser()(source);
   if (parsed.flags & 2) throw new Error('Expected a dump with intact debug metadata.');
-  const prototype = parsed.prototypes.find(value => value.index === TARGET_PROTOTYPE);
-  if (!prototype) throw new Error('Target prototype is absent.');
-  if (prototype.instructions.length !== TARGET_INSTRUCTION_COUNT) throw new Error('Unexpected target instruction count.');
-  const expectedStrings = [
+  const pricePrototype = parsed.prototypes.find(value => value.index === PRICE_PROTOTYPE);
+  const oneKeyPrototype = parsed.prototypes.find(value => value.index === ONE_KEY_PROTOTYPE);
+  if (!pricePrototype || !oneKeyPrototype) throw new Error('Target prototype is absent.');
+  if (pricePrototype.instructions.length !== PRICE_INSTRUCTION_COUNT) throw new Error('Unexpected price prototype instruction count.');
+  if (oneKeyPrototype.instructions.length !== ONE_KEY_INSTRUCTION_COUNT) throw new Error('Unexpected one-key prototype instruction count.');
+  const expectedPriceStrings = [
+    'DailyDiscountTable', 'RechargeValueIndex', 'recharge_id', 'Recharge', 'rechargeTid', 'buyFunc', null,
+    'remindTime', 'isShowNumSelect', 'resTidL', 'resNumL', 'CommerceBuyPopupForm', 'Open'
+  ];
+  const expectedOneKeyStrings = [
     'DailyDiscountTable', 'Recharge', 'TID_DAILY_DISCOUNT_ONE_KEY', 'WeekHuntDataMgr', 'IsTodayGiftCanBuy',
     'recharge_id', 'RechargeTable', 'UIKit', 'ShowMsg', 'LocalizeTable', 'DAILY_SELECTION_HAS_BUY',
     'period', 'GetCurPeriod', 'day', 'FlushTime', 'GetDayIndex', 'isExtraBuy', 'DailyDiscountMgr',
     'IS_EXTRA_BUY', 'RechargeGift'
   ];
-  const actualStrings = prototype.constants.map(value => value.value);
-  if (JSON.stringify(actualStrings) !== JSON.stringify(expectedStrings)) throw new Error('Unexpected target constants.');
+  const valuesOf = prototype => prototype.constants.map(value => value.type === 'child' ? null : value.value);
+  if (JSON.stringify(valuesOf(pricePrototype)) !== JSON.stringify(expectedPriceStrings)) throw new Error('Unexpected price constants.');
+  if (JSON.stringify(valuesOf(oneKeyPrototype)) !== JSON.stringify(expectedOneKeyStrings)) throw new Error('Unexpected one-key constants.');
 
   const opcodes = new Map();
   for (const item of parsed.prototypes) for (const instruction of item.instructions) opcodes.set(instruction.name, instruction.op);
@@ -144,72 +176,100 @@ export function patchWalletPaymentLua(sourcePath, outputPath) {
     };
   };
 
-  // This mirrors the normal priced-gift callback in prototype 7. The tid is
-  // assembled numerically because the target prototype has no real upvalues.
-  // RechargeOrBuyGift opens payment confirmation first; the network request is
-  // sent only after the player confirms.
-  const targetInstructions = [
+  const priceConstants = makeReplacementConstants([
+    { type: 'string', value: 'RechargeMgr' },
+    { type: 'string', value: 'RechargeOrBuyGift' },
+    { type: 'string', value: 'DailyDiscountMgr' },
+    { type: 'string', value: 'IS_EXTRA_BUY' },
+    { type: 'table', array: [null, null, 0, 0], hash: [] },
+    // This unreachable child entry preserves the prototype nesting encoded by
+    // the original constant stream; removing it disconnects prototype 10.
+    { type: 'child' }
+  ], PRICE_GC_CONSTANTS, encodeConstants(pricePrototype.constants).length);
+  const priceInstructions = [
     instruction(1, 'GGET', { a: 0, d: 0 }),
     instruction(2, 'TGETS', { a: 0, b: 0, c: 1 }),
-    instruction(3, 'KSHORT', { a: 2, d: 30000 }),
-    instruction(4, 'KSHORT', { a: 4, d: 16003 }),
-    instruction(5, 'ADDVV', { a: 2, b: 2, c: 4 }),
-    instruction(6, 'TDUP', { a: 3, d: 4 }),
-    instruction(7, 'GGET', { a: 4, d: 2 }),
-    instruction(8, 'TGETS', { a: 4, b: 4, c: 3 }),
-    instruction(9, 'NOT', { a: 4, d: 4 }),
-    instruction(10, 'TSETB', { a: 4, b: 3, c: 1 }),
-    instruction(11, 'CALL', { a: 0, b: 1, c: 3 }),
-    instruction(12, 'RET0', { a: 0, d: 1 })
+    instruction(3, 'MOV', { a: 2, d: 1 }),
+    instruction(4, 'TDUP', { a: 3, d: 4 }),
+    instruction(5, 'GGET', { a: 4, d: 2 }),
+    instruction(6, 'TGETS', { a: 4, b: 4, c: 3 }),
+    instruction(7, 'NOT', { a: 4, d: 4 }),
+    instruction(8, 'TSETB', { a: 4, b: 3, c: 1 }),
+    instruction(9, 'CALL', { a: 0, b: 1, c: 3 }),
+    instruction(10, 'RET0', { a: 0, d: 1 })
   ];
-  while (targetInstructions.length < TARGET_INSTRUCTION_COUNT) {
-    targetInstructions.push(instruction(targetInstructions.length + 1, 'MOV', { a: 0, d: 0 }));
+  while (priceInstructions.length < PRICE_INSTRUCTION_COUNT) {
+    priceInstructions.push(instruction(priceInstructions.length + 1, 'MOV', { a: 0, d: 0 }));
   }
+
+  // Preserve the original daily-limit guard, then route the actual payment
+  // through RechargeOrBuyGift so voucher confirmation appears before 16004.
+  const oneKeyInstructions = oneKeyPrototype.instructions.slice(0, 27).map(value => ({ ...value }));
+  oneKeyInstructions.push(
+    instruction(28, 'TDUP', { a: 3, d: 15 }),
+    instruction(29, 'GGET', { a: 0, d: 11 }),
+    instruction(30, 'TGETS', { a: 0, b: 0, c: 12 }),
+    instruction(31, 'KSHORT', { a: 2, d: 30000 }),
+    instruction(32, 'KSHORT', { a: 4, d: 16003 }),
+    instruction(33, 'ADDVV', { a: 2, b: 2, c: 4 }),
+    instruction(34, 'GGET', { a: 4, d: 13 }),
+    instruction(35, 'TGETS', { a: 4, b: 4, c: 14 }),
+    instruction(36, 'NOT', { a: 4, d: 4 }),
+    instruction(37, 'TSETB', { a: 4, b: 3, c: 1 }),
+    instruction(38, 'CALL', { a: 0, b: 1, c: 3 }),
+    instruction(39, 'RET0', { a: 0, d: 1 })
+  );
+  while (oneKeyInstructions.length < ONE_KEY_INSTRUCTION_COUNT) {
+    oneKeyInstructions.push(instruction(oneKeyInstructions.length + 1, 'MOV', { a: 0, d: 0 }));
+  }
+  const oneKeyConstants = makeReplacementConstants([
+    ...oneKeyPrototype.constants.slice(0, 11),
+    { type: 'string', value: 'RechargeMgr' },
+    { type: 'string', value: 'RechargeOrBuyGift' },
+    { type: 'string', value: 'DailyDiscountMgr' },
+    { type: 'string', value: 'IS_EXTRA_BUY' },
+    { type: 'table', array: [null, null, 0, 0], hash: [] }
+  ], ONE_KEY_GC_CONSTANTS, encodeConstants(oneKeyPrototype.constants).length);
+
   if (opcodes.get('MOV') == null || opcodes.get('RET0') == null) throw new Error('Required LuaJIT opcode is absent.');
 
-  const instructionsStart = prototype.instructions[0].offset;
-  const lastInstruction = prototype.instructions.at(-1);
-  const instructionsEnd = lastInstruction.offset + 4;
-  if (instructionsEnd - instructionsStart !== TARGET_INSTRUCTION_COUNT * 4) throw new Error('Unexpected target instruction span.');
-
-  const originalConstantsBytes = encodeConstants(prototype.constants);
-  const sourceConstants = source.subarray(instructionsEnd, instructionsEnd + originalConstantsBytes.length);
-  if (!sourceConstants.equals(originalConstantsBytes)) throw new Error('Original constant bytes did not round-trip at the target offset.');
-  const debugStart = instructionsEnd + originalConstantsBytes.length;
-  const prototypeEnd = prototype.offset + prototype.length;
-  const debugTail = source.subarray(debugStart, prototypeEnd);
-  if (debugTail.length === 0) throw new Error('Target prototype has no debug tail.');
-
-  const replacementConstants = makeReplacementConstants(originalConstantsBytes);
-  const replacementInstructions = encodeInstructions({ instructions: targetInstructions });
-  const replacementConstantsBytes = encodeConstants(replacementConstants);
-  if (replacementInstructions.length + replacementConstantsBytes.length !== originalConstantsBytes.length + TARGET_INSTRUCTION_COUNT * 4) {
-    throw new Error('Replacement instruction/constant region changed length.');
-  }
-  const output = Buffer.concat([
-    source.subarray(0, instructionsStart),
-    replacementInstructions,
-    replacementConstantsBytes,
-    debugTail,
-    source.subarray(prototypeEnd)
-  ]);
+  const pricePatch = patchPrototype(source, pricePrototype, priceInstructions, priceConstants);
+  const oneKeyPatch = patchPrototype(pricePatch.output, oneKeyPrototype, oneKeyInstructions, oneKeyConstants);
+  const output = oneKeyPatch.output;
   if (output.length !== source.length) throw new Error('Patched dump length changed.');
-  if (!output.subarray(debugStart, prototypeEnd).equals(debugTail)) throw new Error('Debug metadata changed during patch construction.');
+  if (process.env.FC_WALLET_PATCH_DEBUG_DIR) {
+    fs.mkdirSync(process.env.FC_WALLET_PATCH_DEBUG_DIR, { recursive: true });
+    fs.writeFileSync(path.join(process.env.FC_WALLET_PATCH_DEBUG_DIR, 'after-price.lua.bin'), pricePatch.output);
+    fs.writeFileSync(path.join(process.env.FC_WALLET_PATCH_DEBUG_DIR, 'after-one-key.lua.bin'), output);
+  }
 
   const reparsed = loadParser()(output);
-  const verified = reparsed.prototypes.find(value => value.index === TARGET_PROTOTYPE);
-  if (!verified) throw new Error('Patched target prototype is absent.');
+  const verifiedPrice = reparsed.prototypes.find(value => value.index === PRICE_PROTOTYPE);
+  const verifiedOneKey = reparsed.prototypes.find(value => value.index === ONE_KEY_PROTOTYPE);
+  if (!verifiedPrice || !verifiedOneKey) throw new Error('Patched target prototype is absent.');
   const stableFields = ['offset', 'length', 'flags', 'parameters', 'frameSize', 'rawHeaderUpvalueCount', 'firstLine', 'lineCount'];
-  for (const field of stableFields) {
-    if (verified[field] !== prototype[field]) throw new Error(`Target prototype field changed: ${field}`);
+  for (const [verified, prototype] of [[verifiedPrice, pricePrototype], [verifiedOneKey, oneKeyPrototype]]) {
+    for (const field of stableFields) {
+      if (verified[field] !== prototype[field]) throw new Error(`Target prototype field changed: ${field}`);
+    }
   }
-  if (verified.instructions.length !== TARGET_INSTRUCTION_COUNT) throw new Error('Patched instruction count changed.');
-  if (verified.constants.length !== EXPECTED_GC_CONSTANTS || verified.numbers.length !== 0 || verified.upvalueCount !== 0) {
+  if (verifiedPrice.instructions.length !== PRICE_INSTRUCTION_COUNT || verifiedPrice.constants.length !== PRICE_GC_CONSTANTS) {
+    throw new Error('Patched price prototype structure changed.');
+  }
+  if (verifiedOneKey.instructions.length !== ONE_KEY_INSTRUCTION_COUNT || verifiedOneKey.constants.length !== ONE_KEY_GC_CONSTANTS) {
     throw new Error('Patched target constants or upvalues changed unexpectedly.');
   }
-  if (!encodeInstructions(verified).equals(replacementInstructions)) throw new Error('Patched Lua bytecode did not survive reparse.');
-  if (!encodeConstants(verified.constants).equals(replacementConstantsBytes)) throw new Error('Patched Lua constants did not survive reparse.');
-  if (JSON.stringify(verified.instructions.map(value => value.line)) !== JSON.stringify(prototype.instructions.map(value => value.line))) {
+  if (verifiedPrice.numbers.length !== 0 || verifiedPrice.upvalueCount !== 0 || verifiedOneKey.numbers.length !== 0 || verifiedOneKey.upvalueCount !== 0) {
+    throw new Error('Patched target constants or upvalues changed unexpectedly.');
+  }
+  if (!encodeInstructions(verifiedPrice).equals(pricePatch.replacementInstructions)
+    || !encodeConstants(verifiedPrice.constants).equals(pricePatch.replacementConstantsBytes)
+    || !encodeInstructions(verifiedOneKey).equals(oneKeyPatch.replacementInstructions)
+    || !encodeConstants(verifiedOneKey.constants).equals(oneKeyPatch.replacementConstantsBytes)) {
+    throw new Error('Patched Lua bytecode did not survive reparse.');
+  }
+  if (JSON.stringify(verifiedPrice.instructions.map(value => value.line)) !== JSON.stringify(pricePrototype.instructions.map(value => value.line))
+    || JSON.stringify(verifiedOneKey.instructions.map(value => value.line)) !== JSON.stringify(oneKeyPrototype.instructions.map(value => value.line))) {
     throw new Error('Target debug line table changed.');
   }
   if (!reparsed.prototypes.every(value => value.offset === parsed.prototypes[value.index].offset
@@ -217,7 +277,7 @@ export function patchWalletPaymentLua(sourcePath, outputPath) {
     throw new Error('Prototype offsets changed.');
   }
   for (let index = 0; index < parsed.prototypes.length; index++) {
-    if (index === TARGET_PROTOTYPE) continue;
+    if (index === PRICE_PROTOTYPE || index === ONE_KEY_PROTOTYPE) continue;
     const before = parsed.prototypes[index];
     const after = reparsed.prototypes[index];
     if (!output.subarray(after.offset, after.offset + after.length).equals(source.subarray(before.offset, before.offset + before.length))) {
@@ -234,17 +294,20 @@ export function patchWalletPaymentLua(sourcePath, outputPath) {
     sourceBytes: source.length,
     outputBytes: output.length,
     outputSha256: sha256(output),
-    prototype: TARGET_PROTOTYPE,
-    sourcePrototypeOffset: prototype.offset,
-    prototypeBytes: prototype.length,
-    instructionCount: targetInstructions.length,
-    constantCount: replacementConstants.length,
+    pricePrototype: PRICE_PROTOTYPE,
+    priceInstructionCount: priceInstructions.length,
+    priceConstantCount: priceConstants.length,
+    oneKeyPrototype: ONE_KEY_PROTOTYPE,
+    oneKeyInstructionCount: oneKeyInstructions.length,
+    oneKeyConstantCount: oneKeyConstants.length,
+    sourcePrototypeOffsets: { price: pricePrototype.offset, oneKey: oneKeyPrototype.offset },
+    prototypeBytes: { price: pricePrototype.length, oneKey: oneKeyPrototype.length },
     debugMetadata: 'preserved-byte-for-byte',
-    debugBytes: debugTail.length,
-    firstLine: verified.firstLine,
-    lineCount: verified.lineCount,
+    debugBytes: { price: pricePatch.debugBytes, oneKey: oneKeyPatch.debugBytes },
+    firstLine: { price: verifiedPrice.firstLine, oneKey: verifiedOneKey.firstLine },
+    lineCount: { price: verifiedPrice.lineCount, oneKey: verifiedOneKey.lineCount },
     rechargeTid: 46003,
-    rechargeMethodConstant: verified.constants[1].value
+    rechargeMethodConstant: verifiedPrice.constants[1].value
   };
 }
 

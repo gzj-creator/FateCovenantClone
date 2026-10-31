@@ -1,5 +1,7 @@
 # 累充活动奖励领取
 
+后续同类系统的实施顺序、依赖和验收门槛见 remaining-implementation-plan.md。
+
 ## 2026-10-30 服务器错误修复
 
 用户点击新服累充活动奖励时弹出“服务器错误”。根因不是活动配置或充值数据不足，而是客户端发送的 `98620 req_acc_recharge_act_get_award` 没有服务端路由；旧网关把它当作未知命令并返回 `err=-1 LOCAL_NOT_IMPLEMENTED:98620`。

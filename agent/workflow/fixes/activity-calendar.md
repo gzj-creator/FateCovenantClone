@@ -50,7 +50,7 @@
 - 登录时过滤 `act_list`、`act_parallel_list`、`act_pause_list` 和 `act_custom_list`，补入当前有效的 `107400x` 本服钓鱼活动。
 - `all-open` 模式不删除活动；只会规范登录响应的可展示状态，SQLite 原始 module 92 仍保持不改写。
 - 服务端暂停位继续生效，重新登录不会把管理员暂停的活动重新开放。
-- SQLite schema v7 把 `serverOpenedAt` 写入角色 metadata，迁移名为 `activity-calendar-server-open-v7`；合并魔灵商城后当前源码上限为 v8，迁移 `pet-activity-commerce-v8`。
+- SQLite schema v7 把 `serverOpenedAt` 写入角色 metadata，迁移名为 `activity-calendar-server-open-v7`；合并魔灵商城后 v8 为 `pet-activity-commerce-v8`，恢复英雄身份工作后当前源码上限为 v9，迁移 `hero-identity-v9`。
 - `FC_SERVER_OPENED_AT` 可覆盖默认开服时间，支持 Unix 秒、毫秒或 ISO 时间；默认值为 `1792789200`。
 - 登录响应只使用过滤后的 module 92，不覆写 SQLite 中的原始活动快照，避免一次过期过滤永久毁坏后续活动数据。
 - 福利活动和冲榜领取在执行时也会复查活动日历，不能只靠客户端隐藏入口。
