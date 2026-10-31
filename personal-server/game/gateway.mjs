@@ -32,6 +32,7 @@ import { createGuildRosterService } from './guild-roster-service.mjs';
 import { createHeroFavorService } from './hero-favor-service.mjs';
 import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
+import { createEliteMissionService } from './elite-mission-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -342,6 +343,7 @@ export function createLocalGame({
   });
   const teamSuggest = createTeamSuggestService({ store, codec, tables, heroTables, now: clock });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
+  const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -1276,6 +1278,24 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'hero_favour_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (eliteMission.supports(type)) {
+        try {
+          let input;
+          if (type === 87002) input = unpack('pb_elite_mission_box_award_req', request.data);
+          else if (request.data?.length) {
+            const decoded = await decodeEtf(request.data);
+            input = decoded?.value ?? decoded;
+          }
+          const result = await eliteMission.execute(type, input);
+          send(seq, result.data);
+          logger({ event: 'elite_mission_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          logger({ event: 'elite_mission_rejected', type, seq, code, message: error.message });
         }
         return;
       }
