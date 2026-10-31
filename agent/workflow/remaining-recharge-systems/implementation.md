@@ -73,3 +73,35 @@
   `final-deploy-result.local-only.json` 和 `recovery-main-result.local-only.json`。
 - 自动化、真实 TCP、SQLite 重开均通过，但隔离 APK 的“特惠返利可点击/到账、重登保留”和
   “一键购买/礼包购买不再服务器错误”仍需用户实际点击确认，不能仅凭本记录标为真机验收完成。
+
+## 2026-10-31 每日返利与周礼包补修
+
+业务提交：`576758c`，独立 worktree/branch 沿用上文；本节覆盖上一轮未实现的入口，不将旧部署记录当作本次已部署。
+
+- 每日钻石返利 `100201` 的真实参数是 ETF `[act_id, slot]`。原计划的“空请求”错误已更正。
+  `RechargeRebateResetActMgr.full.json` prototype 11 的 `ReqClaimAward` 构造两个参数；prototype 9 的
+  `GetAwardState` 检查 `openDay >= slot + 1`。slot 0 为 preview，1..3 为每日奖励，分别设置 MSB-first BitBlock。
+- 网关现在路由 `100201`，在同一事务发指定档奖励、保存模块 92 和 `reward_claims`；不能把全部开放档一次发出。
+  schedule 模式遵循活动窗口；本机 all-open 模式只选择 `118003`，不同时展示三个历史版本。
+- 新增 Week Hunt 模块 533 的订单同步，读取客户端 `WeekHuntTable.Period/Const`。
+  保留已有 `start_day`、任务和周期，前 7 天是购买记录日，数据保留 14 天；不通过移动开期制造新周期。
+- 修正购买响应 `extra_params` 的 ETF 外层列表，首项为 `[isExtraBuy, period, day]`。
+  旧 period 0 会使 `WeekHuntDataMgr.OnGiftRecharge` 找不到当前数据，购买成功但页面不更新。
+  一键和单独购买写 `discount_buy_list`，升级礼包写 `upgrade_list`；补买校验请求日期、周期和已购记录。
+- 补发配置的 `DailyDiscountRecharge.award`：40008 除 300 钻外发 5971200 x25，40010 发 x10；
+  46002 与 46003 的 batch_update 对应 1581200 x10。完整奖励、扣款、模块 108/533 和订单一起提交或回滚。
+- 重开时识别旧共享 SKU 订单的 flag 40，区别百校专属订单和每日礼包影子订单，避免每日次数漏回填。
+- 接入已有首充 16001、福利 88301/88302、线性首充 102101/102102；接入钻石/龙晶充值附加奖励 flag 1。
+  发专用资源后重新读取模块 map，防止后续充值状态写回覆盖刚获得的专用持有数据。
+
+验证：全量 **262/262 通过**，含精确 ETF 100201、真实 TCP 16004 -> 1900 -> 16003、40008 的 25 个额外箱子、
+重登模块 533、05:00 开放边界、补买日期/周期拒绝、整笔回滚及 SQLite 重开。修正旧测试里活动范围外的硬编码日期，
+并固定邮件防重测试的过期时间，避免两次请求跨秒而实际上使用不同参数。
+
+证据目录：`analysis/experiments/private-server-20261025/p3/recharge-rebate-weekhunt-20261031/`。
+`tests.local-only.txt` 是全量结果；`backup.local-only.json` 是实时库一致备份，integrity ok、user_version 10，
+SHA256 `20f27b6b5128334a09c8386b3cf25e03023e5a75515ff167c56e6ac5416dab8c`。
+`copy-login.local-only.json` 确认该副本返回 147 个模块、仅返利 118003、Week Hunt start_day 仍为 20745；
+11 类英雄、资源、编队、余额、订单与券表逐表哈希不变。原版应用及 APK 未修改。
+
+上述结果尚不等于隔离 APK 点击验收。仍需用户重登后点每日返利、一键购买及 30 元礼包，核对反馈、到账和重登保持。
