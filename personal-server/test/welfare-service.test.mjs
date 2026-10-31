@@ -101,7 +101,7 @@ test('daily discount selection persists and updates in place', async t => {
   await assert.rejects(() => run(e.service, 99300, 'pb_daily_discount_select_req', { recharge_tid: 40006, select_tid: 1, day_index: '20753' }), x => x.code === 5);
 });
 
-test('gift purchase grants free and paid rewards, enforces limits and records module 19', async t => {
+test('gift purchase records the purchase without adding it to recharge totals', async t => {
   const e = setup(t);
   const buy = (recharge_id, seq) => run(e.service, 16005, 'pb_recharge_buy_or_rev_req', { recharge_id, extra_param: '[[false,0,0]]', buy_num: 1 }, seq);
   let result = await buy(40006, 1);
@@ -118,6 +118,8 @@ test('gift purchase grants free and paid rewards, enforces limits and records mo
   const login = codec.unpack('res_recharge_login', rawBinary(moduleValue(e.store, 19)));
   const record = codec.unpack('pb_buy_gift_record_list', Buffer.from(login.buy_gift_record, 'base64'));
   assert.deepEqual(record.record_list.map(x => x.recharge_tid), [40006, 40008, 40009]);
+  assert.equal(login.total_amount ?? 0, 0);
+  assert.deepEqual(login.recharge_record?.recent_record ?? [], []);
   e.reopen();
   await assert.rejects(() => buy(40006, 6), x => x.code === 307);
   await assert.rejects(() => e.service.execute(16005, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 11, buy_num: 1 }), { connection: 'test', seq: 7 }), x => x.code === 5);

@@ -20,7 +20,14 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
   const file = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, file);
   let nowSeconds = initialSeconds;
-  let store = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
+  const openStore = () => {
+    const opened = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
+    // The saved fixture is already schema v8, so pin its persisted opening time
+    // instead of relying on the one-time v7 migration to replace the value.
+    opened.transaction(model => { model.state.serverOpenedAt = SERVER_OPENED_AT; });
+    return opened;
+  };
+  let store = openStore();
   const calendar = createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
   const make = () => createActivityReadService({
     codec,
@@ -38,7 +45,7 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
     setNow(seconds) { nowSeconds = seconds; },
     reopen() {
       store.close();
-      store = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
+      store = openStore();
       service = make();
     }
   };

@@ -9,6 +9,7 @@ import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } fr
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createHundredAccService } from '../game/hundred-acc-service.mjs';
+import { createWalletService } from '../game/wallet-service.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -28,7 +29,7 @@ function setRechargeTotal(store, total) {
   });
 }
 
-function setup(t, clock = () => 1761829200000) {
+function setup(t, clock = () => 1761829200000, serviceTables = tables) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-hundred-acc-'));
   const databasePath = path.join(directory, 'game.sqlite');
   const seed = () => ({
@@ -38,7 +39,7 @@ function setup(t, clock = () => 1761829200000) {
     guides: {}, lineups: null
   });
   let store = createGameStore({ databasePath, seed, codec });
-  const make = () => createHundredAccService({ store, codec, tables, now: clock });
+  const make = () => createHundredAccService({ store, codec, tables: serviceTables, now: clock });
   let service = make();
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
@@ -87,6 +88,45 @@ test('hundred cumulative recharge compares cent totals without a second conversi
   const activity = codec.unpack('pb_hundred_acc', rawBinary(new Map(e.store.state().modules.value).get(166)));
   assert.deepEqual(activity.reward_list.map(row => row.group_id), [2]);
   assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM activity_claims').get().n), 1);
+});
+
+test('every configured hundred cumulative tier uses the same cent total', t => {
+  // Replace reward payloads so this test isolates the monetary threshold from
+  // resource families whose dedicated inventory handlers are not implemented.
+  const thresholdTables = {
+    ...tables,
+    HundredAccReward: new Map([...tables.HundredAccReward].map(([groupId, reward]) => [
+      groupId,
+      { ...reward, reward: [[101500, 1]] }
+    ]))
+  };
+  const e = setup(t, undefined, thresholdTables);
+  const groups = [...tables.HundredAccGroup.keys()].sort((a, b) => a - b);
+  const maximum = Math.max(...groups.map(groupId => tables.HundredAccGroup.get(groupId).amount));
+  e.setRechargeTotal(maximum);
+
+  e.service.execute(groups);
+
+  const activity = codec.unpack('pb_hundred_acc', rawBinary(new Map(e.store.state().modules.value).get(166)));
+  assert.deepEqual(activity.reward_list.map(row => row.group_id), groups);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM activity_claims').get().n), groups.length);
+});
+
+test('a real wallet purchase records cents and satisfies the second cumulative tier', t => {
+  const e = setup(t);
+  e.setRechargeTotal(0);
+  const wallet = createWalletService({ store: e.store, codec, tables });
+  wallet.credit({ account_id: 'local-1', amount_cents: 600, request_id: 'hundred-tier-fund' });
+  const purchase = wallet.buy({ account_id: 'local-1', product_id: 11, request_id: 'hundred-tier-buy' });
+  assert.equal(purchase.price_cents, 600);
+  assert.equal(
+    codec.unpack('res_recharge_login', rawBinary(new Map(e.store.state().modules.value).get(19))).total_amount,
+    600
+  );
+
+  const response = codec.unpack('pb_res_to_client', e.service.execute([2]).data);
+  assert.equal(response.changes.find(change => change.tid === '101500').diff_num, '300');
+  assert.equal(response.changes.find(change => change.tid === '1501200').diff_num, '1');
 });
 
 test('real gateway routes ETF 92001 and returns the configured second-tier reward', async t => {
