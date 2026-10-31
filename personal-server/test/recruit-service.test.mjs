@@ -79,6 +79,19 @@ function drawInfo(env) {
   return codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
 }
 
+function setRecruitRecord(env, record) {
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value), module = modules.get(10);
+    const info = codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
+    info.recruit_list = (info.recruit_list ?? []).filter(entry =>
+      Number(entry.tid) !== Number(record.tid) && Number(entry.draw_lib) !== Number(record.draw_lib)
+    );
+    info.recruit_list.push(record);
+    module.value[2] = serializedBinary(codec.pack('pb_hero_draw_info', info));
+    model.state.modules.value = [...modules];
+  });
+}
+
 function loginItem(env, tid) {
   const module = new Map(env.store.state().modules.value).get(6);
   return module.value.flatMap(group => Array.isArray(group.value) ? group.value.map(item => codec.unpack('pb_res_obj', rawBinary(item))) : [])
@@ -222,6 +235,17 @@ test('special ticket purchases feed the special draw library end to end', t => {
   assert.equal(recruitInfo(env, 10).draw_count, 1);
 });
 
+test('special recruit uses the client record tid and updates its thirty-draw pity counter', t => {
+  const env = setup(t, () => 0);
+  env.seed(4002, 3);
+  const response = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 10, point_draw_num: 3 }).data);
+  assert.equal(Number(response.recruit_info.tid), 1011);
+  assert.equal(Number(response.recruit_info.draw_lib), 10);
+  assert.equal(Number(response.recruit_info.guaranteed_count), 3);
+  assert.equal(Number(recruitInfo(env, 10).tid), 1011);
+  assert.equal(Number(recruitInfo(env, 10).guaranteed_count), 3);
+});
+
 test('special ticket purchase encoding failure rolls back diamonds and tickets', t => {
   const env = setup(t);
   env.seed(101500, 10000);
@@ -244,9 +268,13 @@ test('demigod five draw buys and consumes tickets, emits real equips and survive
   env.seed(101500, 5000);
   const result = env.service.execute(87618, [5]);
   const response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', result.data);
-  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
-    ['101500', '-2000']
+  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+    ['101500', '-2000'],
+    ['808002', '0']
   ]);
+  const ticketAfterFive = codec.unpack('pb_res_obj', Buffer.from(response.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
+  assert.equal(ticketAfterFive.tid, '808002');
+  assert.equal(Number(ticketAfterFive.num ?? 0), 0);
   const equipChanges = response.res.changes.filter(change => change.extra);
   assert.equal(equipChanges.length, 5);
   assert.deepEqual(equipChanges.map(change => change.diff_num), ['1', '1', '1', '1', '1']);
@@ -275,9 +303,13 @@ test('demigod single draw purchases one ticket while an owned five-ticket draw s
   const single = setup(t);
   single.seed(101500, 1000);
   let response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', single.service.execute(87618, [1]).data);
-  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
-    ['101500', '-400']
+  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+    ['101500', '-400'],
+    ['808002', '0']
   ]);
+  const ticketAfterOne = codec.unpack('pb_res_obj', Buffer.from(response.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
+  assert.equal(ticketAfterOne.tid, '808002');
+  assert.equal(Number(ticketAfterOne.num ?? 0), 0);
   assert.equal(response.draw.total_draw_times, '1');
   assert.equal(response.draw.left_buy_times, 9);
   assert.equal(demigodEquips(single).equips.length, 1);
@@ -327,6 +359,27 @@ test('demigod wishes replace results, reset failure progress and expose the fort
   const tids = wished.res.changes.filter(change => change.extra).map(change => Number(decodeDemigodEquipExtra(change.extra).tid));
   assert.deepEqual(tids, [1202819, 1200819, 1200719, 1200819, 1200719]);
   assert.equal(wished.draw.wish_fail_times, '1');
+});
+
+test('demigod forty-draw pity forces the best unlocked equip and stays synced with module 10', t => {
+  const env = setup(t);
+  updateDemigodDraw(env, draw => { draw.total_draw_times = 39; draw.wish_list = []; });
+  env.seed(808002, 5);
+  const result = env.service.execute(87618, [0]);
+  assert.equal(result.valueForLog.results[0].guaranteed, true);
+  assert.equal(result.valueForLog.results[0].tid, 1200719);
+  assert.equal(demigodDraw(env).total_draw_times, '44');
+
+  let record = recruitInfo(env, 226);
+  assert.equal(Number(record.tid), 1049);
+  assert.equal(Number(record.draw_count), 44);
+  assert.equal(Number(record.guaranteed_count), 4);
+  assert.equal(Number(record.high_guaranteed_count), 4);
+
+  env.reopen();
+  record = recruitInfo(env, 226);
+  assert.equal(Number(record.draw_count), 44);
+  assert.equal(Number(record.guaranteed_count), 4);
 });
 
 test('demigod state migrates from metadata into module 518 and encoding failure rolls back', t => {
@@ -413,6 +466,32 @@ test('leader-equipment ten draw consumes tickets, returns real equipment and sur
   assert.equal(persisted.draw_info.lv, 1);
   env.reopen();
   assert.deepEqual(leaderEquipData(env), persisted);
+});
+
+test('leader-equipment libraries 116 through 121 share a persistent forty-draw pity record', t => {
+  const env = setup(t);
+  env.seed(2002, 100);
+  setRecruitRecord(env, { tid: 1031, draw_lib: '116', draw_count: '35', guaranteed_count: 35, high_guaranteed_count: 35 });
+
+  let result = env.service.execute(601, { draw_lib: 116, point_draw_num: 5 });
+  assert.equal(result.valueForLog.results[4].guaranteed, true);
+  assert.equal(result.valueForLog.results[4].tid, 5109018);
+  let record = drawInfo(env).recruit_list.find(entry => Number(entry.tid) === 1031);
+  assert.equal(Number(record.draw_count), 40);
+  assert.equal(Number(record.guaranteed_count ?? 0), 0);
+
+  result = env.service.execute(601, { draw_lib: 117, point_draw_num: 5 });
+  assert.equal(result.valueForLog.results.every(entry => entry.guaranteed === false), true);
+  record = drawInfo(env).recruit_list.find(entry => Number(entry.tid) === 1031);
+  assert.equal(Number(record.draw_lib), 117);
+  assert.equal(Number(record.draw_count), 45);
+  assert.equal(Number(record.guaranteed_count), 5);
+  assert.equal(drawInfo(env).recruit_list.filter(entry => Number(entry.tid) === 1031).length, 1);
+
+  env.reopen();
+  record = drawInfo(env).recruit_list.find(entry => Number(entry.tid) === 1031);
+  assert.equal(Number(record.draw_count), 45);
+  assert.equal(Number(record.guaranteed_count), 5);
 });
 
 test('draw statistics backfill historical counts and publish both draw and achievement totals', async t => {

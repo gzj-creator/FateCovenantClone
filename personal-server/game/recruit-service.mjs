@@ -67,19 +67,33 @@ function pickRandom(entries, random) {
   return entries.at(-1);
 }
 
-function mergeResourceChanges(changes) {
+function mergeResourceChanges(changes, model, codec) {
   const byTid = new Map();
   for (const change of changes) {
     const tid = String(change.tid);
     const previous = byTid.get(tid);
     if (previous) {
-      previous.diff_num = String(BigInt(previous.diff_num ?? 0) + BigInt(change.diff_num ?? 0));
-      previous.new_num = change.new_num;
+      byTid.set(tid, {
+        ...previous,
+        ...change,
+        tid,
+        diff_num: String(BigInt(previous.diff_num ?? 0) + BigInt(change.diff_num ?? 0))
+      });
     } else {
       byTid.set(tid, { ...change, tid, diff_num: String(change.diff_num ?? 0) });
     }
   }
-  return [...byTid.values()].filter(change => BigInt(change.diff_num) !== 0n);
+  return [...byTid.values()].flatMap(change => {
+    const newNum = model.resources.get(change.tid)?.num ?? change.new_num;
+    const merged = { ...change, new_num: newNum };
+    if (change.new_bin !== undefined) {
+      // A buy-and-draw request can net to zero. Keep this change so the client
+      // creates the inventory object, but advertise the transaction's final
+      // balance instead of the intermediate balance from the grant step.
+      merged.new_bin = codec.pack('pb_res_obj', { tid: change.tid, num: String(newNum) });
+    }
+    return BigInt(change.diff_num) === 0n && change.new_bin === undefined ? [] : [merged];
+  });
 }
 
 function achievementAwardIndex(awardLib) {
@@ -108,9 +122,9 @@ function setAchievementAward(awardState, awardLib) {
   return bytes;
 }
 
-function recruitDefaults(lib) {
+function recruitDefaults(lib, recordTid = lib) {
   return {
-    tid: lib,
+    tid: recordTid,
     draw_lib: String(lib),
     free_count: 0,
     daily_flush_time: 0,
@@ -143,14 +157,14 @@ function recruitDefaults(lib) {
   };
 }
 
-function normalizeRecruit(info, lib) {
-  const defaults = recruitDefaults(lib);
+function normalizeRecruit(info, lib, recordTid) {
+  const defaults = recruitDefaults(lib, recordTid);
   for (const key of ['wish_hero_list', 'wish_must_count', 'draw_num_kv_list', 'random_box_draw_list', 'latest_more_draw_list', 'extra_wish_list', 'hero_transfer_num']) {
     if (!Array.isArray(info[key])) info[key] = [];
   }
   for (const [key, value] of Object.entries(defaults)) if (info[key] === undefined || info[key] === null) info[key] = value;
   info.draw_num_kv_list = info.draw_num_kv_list.map(row => row.key === undefined || row.key === null ? { ...row, key: 0 } : row);
-  info.tid = lib;
+  info.tid = recordTid;
   info.draw_lib = String(lib);
   return info;
 }
@@ -207,6 +221,11 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     if (!fantasyEquipTables || !demigodBuyConfig) fail(5, 'Demigod resident draw purchase configuration is missing');
   }
 
+  function recruitRecordTid(lib) {
+    const draw = heroTables.Draw.get(lib);
+    return draw?.is_record_by_type ? Number(draw.draw_type) : lib;
+  }
+
   function readState(model) {
     const { modules, module } = module10(model);
     const drawInfo = codec.unpack('pb_hero_draw_info', Buffer.from(module.value[2]?.value?.data ?? []));
@@ -215,11 +234,11 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     const byLib = new Map();
     for (const info of drawInfo.recruit_list) {
       const lib = n(info.draw_lib) || Number(info.tid);
-      if (supportedLibs.has(lib)) byLib.set(lib, normalizeRecruit(info, lib));
+      if (supportedLibs.has(lib)) byLib.set(lib, normalizeRecruit(info, lib, recruitRecordTid(lib)));
     }
     for (const lib of supportedLibs) {
       if (!byLib.has(lib)) {
-        const info = recruitDefaults(lib);
+        const info = recruitDefaults(lib, recruitRecordTid(lib));
         drawInfo.recruit_list.push(info);
         byLib.set(lib, info);
       }
@@ -230,6 +249,45 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
   function writeDrawInfo(model, state) {
     state.module.value[2] = serializedBinary(codec.pack('pb_hero_draw_info', state.drawInfo));
     model.state.modules.value = [...state.modules];
+  }
+
+  function upsertDrawRecord(model, {
+    lib,
+    recordTid = recruitRecordTid(lib),
+    drawCount,
+    guaranteedCount,
+    dailyDrawCount = null,
+    dailyCanDrawNum = null
+  }) {
+    const { modules, module } = module10(model);
+    const drawInfo = codec.unpack('pb_hero_draw_info', Buffer.from(module.value[2]?.value?.data ?? []));
+    drawInfo.recruit_list ??= [];
+    const existing = drawInfo.recruit_list.find(info =>
+      Number(info.tid) === Number(recordTid) || Number(info.draw_lib) === Number(lib)
+    );
+    const info = normalizeRecruit(existing ?? recruitDefaults(lib, recordTid), lib, recordTid);
+    info.draw_count = nonNegativeInteger(drawCount);
+    info.guaranteed_count = nonNegativeInteger(guaranteedCount);
+    info.high_guaranteed_count = info.guaranteed_count;
+    if (dailyDrawCount !== null) info.daily_draw_count = nonNegativeInteger(dailyDrawCount);
+    if (dailyCanDrawNum !== null) info.daily_can_draw_num = nonNegativeInteger(dailyCanDrawNum);
+    info.data_version = 1;
+    drawInfo.recruit_list = drawInfo.recruit_list.filter(candidate =>
+      Number(candidate.tid) !== Number(recordTid) && Number(candidate.draw_lib) !== Number(lib)
+    );
+    drawInfo.recruit_list.push(info);
+    module.value[2] = serializedBinary(codec.pack('pb_hero_draw_info', drawInfo));
+    model.state.modules.value = [...modules];
+    return info;
+  }
+
+  function drawRecord(model, lib) {
+    const { module } = module10(model);
+    const drawInfo = codec.unpack('pb_hero_draw_info', Buffer.from(module.value[2]?.value?.data ?? []));
+    const recordTid = recruitRecordTid(lib);
+    return drawInfo.recruit_list?.find(info =>
+      Number(info.tid) === Number(recordTid) || Number(info.draw_lib) === Number(lib)
+    );
   }
 
   function readLeaderEquipState(model) {
@@ -493,17 +551,27 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     const total = n(state.draw.total_draw_times);
     const unlocked = demigodUnlockedEquips(total);
     if (!unlocked.length) fail(5, 'Demigod draw pool is unavailable');
+    const guaranteedConfig = heroTables.Guaranteed.get(Number(heroTables.Draw.get(DEMIGOD_DRAW_HERO_TID)?.guaranteed));
+    const guaranteeThreshold = nonNegativeInteger(guaranteedConfig?.guaranteed_num);
     const wishSet = new Set(state.draw.wish_list);
     const wishCandidates = unlocked.filter(row => wishSet.has(row.tid));
-    const guaranteed = total > 0 && (total + 1) % 40 === 0;
+    const guaranteed = guaranteeThreshold > 0 && (total + 1) % guaranteeThreshold === 0;
     let wished = false;
-    if (wishCandidates.length && demigodWishSlots(total) > 0) {
+    if (!guaranteed && wishCandidates.length && demigodWishSlots(total) > 0) {
       const ratios = (demigodBuyConfig.wish_ratio ?? []).map(Number).filter(value => Number.isFinite(value) && value >= 0);
       const index = Math.min(state.draw.wish_fail_times, Math.max(0, ratios.length - 1));
       const chance = ratios.length ? ratios[index] : 0;
       wished = chance >= 10000 || randomUnit(random) * 10000 < chance;
     }
-    const selected = pickRandom(wished ? wishCandidates : unlocked, random);
+    let selected;
+    if (guaranteed) {
+      const bestWeight = Math.max(...unlocked.map(row => row.weight));
+      selected = unlocked
+        .filter(row => row.weight === bestWeight)
+        .sort((left, right) => left.tid - right.tid)[0];
+    } else {
+      selected = pickRandom(wished ? wishCandidates : unlocked, random);
+    }
     if (wished) state.draw.wish_fail_times = 0;
     else if (state.draw.wish_list.length) state.draw.wish_fail_times += 1;
 
@@ -581,9 +649,15 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     }
     writeDemigodEquipState(model, state, equipRes);
     writeDemigodDrawState(model, state);
+    const demigodThreshold = Number(heroTables.Guaranteed.get(Number(heroDraw.guaranteed))?.guaranteed_num ?? 0);
+    upsertDrawRecord(model, {
+      lib: DEMIGOD_DRAW_HERO_TID,
+      drawCount: state.draw.total_draw_times,
+      guaranteedCount: demigodThreshold > 0 ? state.draw.total_draw_times % demigodThreshold : 0
+    });
     return {
       schema: 'pb_fantasy_equip_draw_buy_rsp',
-      value: { res: { changes: [...mergeResourceChanges(purchaseChanges), ...equipChanges] }, draw: state.draw },
+      value: { res: { changes: [...mergeResourceChanges(purchaseChanges, model, codec), ...equipChanges] }, draw: state.draw },
       valueForLog: {
         buyCount,
         drawCount,
@@ -614,6 +688,12 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
       return tid;
     });
     writeDemigodDrawState(model, state);
+    const demigodThreshold = Number(heroTables.Guaranteed.get(Number(heroTables.Draw.get(DEMIGOD_DRAW_HERO_TID)?.guaranteed))?.guaranteed_num ?? 0);
+    upsertDrawRecord(model, {
+      lib: DEMIGOD_DRAW_HERO_TID,
+      drawCount: state.draw.total_draw_times,
+      guaranteedCount: demigodThreshold > 0 ? state.draw.total_draw_times % demigodThreshold : 0
+    });
     return { schema: 'pb_fantasy_draw', value: state.draw };
   }
 
@@ -629,7 +709,16 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     const magic = buyInfoFor(model, 'magic', seconds, { daily_max: tablesHeroDrawConst().magic_buy_daily_max_num, absolute_max: tablesHeroDrawConst().magic_buy_max_num });
     writeBuyInfo(model, 9, normal);
     writeBuyInfo(model, 10, magic);
-    if (fantasyEquipTables && demigodBuyConfig) writeDemigodDrawState(model, demigodDrawState(model, seconds));
+    if (fantasyEquipTables && demigodBuyConfig) {
+      const demigod = demigodDrawState(model, seconds);
+      writeDemigodDrawState(model, demigod);
+      const demigodThreshold = Number(heroTables.Guaranteed.get(Number(heroTables.Draw.get(DEMIGOD_DRAW_HERO_TID)?.guaranteed))?.guaranteed_num ?? 0);
+      upsertDrawRecord(model, {
+        lib: DEMIGOD_DRAW_HERO_TID,
+        drawCount: demigod.draw.total_draw_times,
+        guaranteedCount: demigodThreshold > 0 ? demigod.draw.total_draw_times % demigodThreshold : 0
+      });
+    }
     return { draw: readState(model), normal, magic };
   }
 
@@ -749,13 +838,24 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     }
 
     const state = readLeaderEquipState(model);
+    const guaranteeThreshold = Number(heroTables.Guaranteed.get(Number(config.guaranteed))?.guaranteed_num ?? 0);
+    let guaranteeCount = nonNegativeInteger(drawRecord(model, lib)?.guaranteed_count) % Math.max(1, guaranteeThreshold);
     const spent = consumeResources(model, costs.map(cost => [cost.tid, cost.amount]), 301);
     const changes = [...spent.changes];
     let nextUid = BigInt(state.data.max_uid);
     for (const equip of state.data.equip_list) nextUid = nextUid > BigInt(equip.uid ?? 0) ? nextUid : BigInt(equip.uid ?? 0);
     const results = [];
     for (let index = 0; index < count; index++) {
-      const configItem = pickRandom(leaderDraw.items.map(item => ({ ...item, weight: 1 })), random);
+      guaranteeCount += 1;
+      const guaranteed = guaranteeThreshold > 0 && guaranteeCount >= guaranteeThreshold;
+      const bestScore = Math.max(...leaderDraw.items.map(item => Number(item.score ?? 0)));
+      const candidates = guaranteed
+        ? leaderDraw.items.filter(item => Number(item.score ?? 0) === bestScore).sort((left, right) => Number(left.tid) - Number(right.tid))
+        : leaderDraw.items;
+      const configItem = candidates[0] && guaranteed
+        ? candidates[0]
+        : pickRandom(candidates.map(item => ({ ...item, weight: 1 })), random);
+      if (guaranteed) guaranteeCount = 0;
       nextUid += 1n;
       const equip = {
         tid: String(configItem.tid),
@@ -775,16 +875,19 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
         extra: encoded.toString('base64')
       });
       state.data.equip_list.push(equip);
-      results.push({ tid: Number(equip.tid), uid: equip.uid, grade: Number(configItem.grade), drawLib: lib });
+      results.push({ tid: Number(equip.tid), uid: equip.uid, grade: Number(configItem.grade), drawLib: lib, guaranteed });
     }
     state.data.max_uid = nextUid.toString();
     writeLeaderEquipState(model, state);
-
-    const recruitInfo = recruitDefaults(lib);
-    recruitInfo.draw_count = count;
-    recruitInfo.daily_draw_count = count;
+    const previous = drawRecord(model, lib);
+    const recruitInfo = upsertDrawRecord(model, {
+      lib,
+      drawCount: nonNegativeInteger(previous?.draw_count) + count,
+      guaranteedCount: guaranteeCount,
+      dailyDrawCount: nonNegativeInteger(previous?.daily_draw_count) + count,
+      dailyCanDrawNum: 1000000
+    });
     recruitInfo.daily_can_draw_num = 1000000;
-    recruitInfo.data_version = 1;
     return {
       schema: 'hero_draw_back',
       value: {

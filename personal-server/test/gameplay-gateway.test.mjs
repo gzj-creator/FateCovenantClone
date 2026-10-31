@@ -246,7 +246,13 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(87618, 17, await encodeEtf([1]));
   assert.equal(response.err, undefined);
   const demigodPurchase = codec.unpack('pb_fantasy_equip_draw_buy_rsp', Buffer.from(response.data, 'base64'));
-  assert.deepEqual(demigodPurchase.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [['101500', '-400']]);
+  assert.deepEqual(demigodPurchase.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+    ['101500', '-400'],
+    ['808002', '0']
+  ]);
+  const demigodTicket = codec.unpack('pb_res_obj', Buffer.from(demigodPurchase.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
+  assert.equal(demigodTicket.tid, '808002');
+  assert.equal(Number(demigodTicket.num ?? 0), 0);
   assert.equal(demigodPurchase.res.changes.filter(change => change.extra).length, 1);
   assert.equal(demigodPurchase.draw.left_buy_times, 9);
   assert.equal(demigodPurchase.draw.total_draw_times, '1');
