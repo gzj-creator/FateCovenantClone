@@ -534,3 +534,69 @@ test('leader equipment wear equips gear through the gateway and persists it', { 
     type: 98401, seq: 2, slotTypes: [1], subUids: [uid]
   });
 });
+
+test('gateway draws WishTree rebates over real TCP, persists them, and rejects a second empty quota', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-wish-tree-gateway-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  fs.copyFileSync(backup, databasePath);
+  const wishNow = Date.parse('2026-10-31T06:00:00.000Z');
+  const game = createLocalGame({
+    databasePath,
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => wishNow
+  });
+  // Keep this test independent of sample orders shipped in the handoff DB.
+  game.store.inspect(db => db.prepare('DELETE FROM recharge_orders WHERE product_id IN (40008,40009,40010,46002,46003)').run());
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  const module165 = codec.unpack('pb_wish_tree_new', loginModuleBytes(await decodeEtf(Buffer.from(login.data, 'base64')), 165));
+  assert.equal(Number(module165.data_list.find(row => Number(row.type) === 2)?.can_wish_count ?? 0), 0);
+
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const info = codec.unpack('pb_wish_tree_new', rawBinary(modules.get(165)));
+    info.data_list.find(row => Number(row.type) === 2).can_wish_count = '1';
+    modules.set(165, serializedBinary(codec.pack('pb_wish_tree_new', info)));
+    model.state.modules.value = [...modules];
+  });
+
+  let response = await request(91701, 90, await encodeEtf([2]));
+  assert.equal(response.err, undefined);
+  const drawn = codec.unpack('pb_wish_tree_draw_back', Buffer.from(response.data, 'base64'));
+  assert.equal(drawn.award_tid, 2003);
+  assert.equal(drawn.tree_data.type, '2');
+  assert.equal(drawn.tree_data.normal_times, '1');
+  assert.equal(Number(drawn.tree_data.can_wish_count ?? 0), 0);
+  assert.equal(drawn.res.changes.find(change => change.tid === '3002').diff_num, '5');
+
+  response = await request(91701, 91, await encodeEtf([2]));
+  assert.equal(response.err.err, 310);
+  assert.equal(response.err.stacktrace, undefined);
+
+  const persistedLogin = await decodeEtf(await game.loginPayload());
+  const persisted = codec.unpack('pb_wish_tree_new', loginModuleBytes(persistedLogin, 165));
+  const persistedRow = persisted.data_list.find(row => Number(row.type) === 2);
+  assert.equal(persistedRow.normal_times, '1');
+  assert.equal(Number(persistedRow.can_wish_count ?? 0), 0);
+  assert.ok(Buffer.from(persistedRow.normal_bin, 'base64')[0] & 0x10);
+});

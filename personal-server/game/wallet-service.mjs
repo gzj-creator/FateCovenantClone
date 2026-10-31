@@ -49,7 +49,7 @@ function reviveJsonBuffers(value) {
 const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
 export function createWalletService({
   store, codec, tables, voucher, monthPermit, permitService, petActivity, heroDrawActivity,
-  wishTreasure, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward,
+  wishTreasure, wishTree, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward,
   accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000)
 }) {
   const log = event => { try { logger(event); } catch {} };
@@ -430,6 +430,8 @@ export function createWalletService({
       const weekPurchase = dailyPlan && weekHunt
         ? weekHunt.resolvePurchase({ modules: limitModules, product, extraBuy: dailyPlan.additional, period, dayIndex: day_index, at: purchasedAt })
         : null;
+      const day = dailyDay(purchasedAt);
+      const purchaseDay = weekPurchase?.day ?? (Number.isSafeInteger(day_index) && day_index > 0 ? day_index : day);
       const order = 'local-' + randomUUID();
       const createdAt = new Date(purchasedAt * 1000).toISOString();
       db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)').run(order,account_id,request_id,product_id,product.price,'{}',createdAt);
@@ -451,7 +453,6 @@ export function createWalletService({
       const total = (login.total_amount ?? 0) + product.price;
       if (total > 2147483647) throw new GameError(1, 'Recharge total limit reached');
       login.total_amount = total;
-      const day = dailyDay(purchasedAt);
       login.recharge_record ??= { recent_record: [], total_day: 0 };
       let daily = login.recharge_record.recent_record.find(row => row.day_index === day);
       if (!daily) { daily = { day_index: day, recharge_ids: [], amount: 0 }; login.recharge_record.recent_record.push(daily); login.recharge_record.total_day = (login.recharge_record.total_day ?? 0) + 1; }
@@ -467,6 +468,10 @@ export function createWalletService({
       const wishPurchase = dailyPlan && wishTreasure
         ? wishTreasure.recordPurchase({ modules, productId: product_id, at: purchasedAt * 1000 })
         : null;
+      // WishTree is a server-day ledger. RechargeMgr may retain a stale client
+      // day or a WeekHunt makeup day in extra_params; neither may move rebate
+      // purchases outside the current 14-day cycle.
+      wishTree?.recordPurchase({ modules, productId: product_id, day, at: purchasedAt * 1000 });
       if (petGift) {
         petActivity.recordGiftPurchase({
           model, db, activityId: petGift.activityId, productId: product_id, buyNum: 1,
@@ -509,7 +514,6 @@ export function createWalletService({
         extraRetList.push(...extra.extraRetList);
       }
       const purchasePeriod = weekPurchase?.period ?? (Number.isSafeInteger(period) ? period : 0);
-      const purchaseDay = weekPurchase?.day ?? (Number.isSafeInteger(day_index) && day_index > 0 ? day_index : day);
       const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: etfList([[dailyPlan?.additional === true, purchasePeriod, purchaseDay]]), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
@@ -647,6 +651,12 @@ export function createWalletService({
       addBuyGiftRecord(login, product_id, purchasedAt);
       modules.set(19, serializedBinary(codec.pack('res_recharge_login', login)));
       const dailyDiscount = dailyPlan ? setDailyDiscountInfo(modules, dailyPlan.info) : null;
+      wishTree?.recordPurchase({
+        modules,
+        productId: product_id,
+        day: wishTree?.supportsProduct?.(product_id) ? dailyDay(purchasedAt) : (normalizedDay > 0 ? normalizedDay : dailyDay(purchasedAt)),
+        at: purchasedAt * 1000
+      });
       model.state.modules.value = [...modules];
 
       // Pet gifts are refreshed by their activity-specific flag below. Adding
