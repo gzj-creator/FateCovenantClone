@@ -138,6 +138,43 @@ test('a duplicate token is pending until replace, then commits once and survives
   assert.deepEqual(storedState(env).token_list.find(token => token.token === 7), { token: 7, level: 1, quality: 2 });
 });
 
+test('a pending token rejects another draw without charging resources or changing module 156', t => {
+  const env = setup(t);
+  env.addCurrency(200);
+  env.setState({
+    token_list: [{ token: 7, level: 1, quality: 1 }],
+    type_list: [1, 2, 3, 4].map(type => ({ type, level: 0 })),
+    level: 1,
+    exp: 0
+  });
+  const first = env.service(() => 0.5).draw();
+  const pending = { token: 7, level: 1, quality: 2 };
+  assert.deepEqual(first.value.draw_token, pending);
+
+  const modules = new Map(env.store.state().modules.value);
+  const beforeState = env.store.state();
+  const beforeResource = env.store.read().resources.get('324002').num;
+  const beforeModule = Buffer.from(rawBinary(modules.get(MODULE)));
+  let randomCalls = 0;
+  rejected(() => env.service(() => { randomCalls++; return 0; }).draw(), 5);
+  assert.equal(randomCalls, 0);
+  assert.deepEqual(env.store.state(), beforeState);
+  assert.equal(env.store.read().resources.get('324002').num, beforeResource);
+  assert.deepEqual(Buffer.from(rawBinary(new Map(env.store.state().modules.value).get(MODULE))), beforeModule);
+  assert.deepEqual(storedState(env).draw_token, pending);
+  assert.equal(storedState(env).exp, 1000);
+
+  env.reopen();
+  assert.deepEqual(storedState(env).draw_token, pending);
+  const service = env.service();
+  assert.deepEqual(service.replace().value, pending);
+  assert.equal(storedState(env).draw_token, undefined);
+  assert.deepEqual(storedState(env).token_list.find(token => token.token === 7), pending);
+  const afterReplace = env.store.state();
+  rejected(() => service.replace(), 5);
+  assert.deepEqual(env.store.state(), afterReplace);
+});
+
 test('draw rejects insufficient currency and a full wish EXP bar without mutation', t => {
   const env = setup(t), service = env.service();
   service.ensureLoginState();
@@ -277,8 +314,20 @@ test('real TCP routes 90201-90204 and returns module 156 through login', { timeo
   });
   let response = await request(90201, 2, Buffer.alloc(0));
   assert.equal(response.err, undefined);
-  assert.deepEqual(codec.unpack('pb_norse_rune_draw_back', Buffer.from(response.data, 'base64')).draw_token, { token: 1, level: 1, quality: 1 });
-  response = await request(90202, 3, Buffer.alloc(0));
+  const pending = { token: 1, level: 1, quality: 1 };
+  assert.deepEqual(codec.unpack('pb_norse_rune_draw_back', Buffer.from(response.data, 'base64')).draw_token, pending);
+  const beforeDuplicate = {
+    state: game.store.state(),
+    resource: game.store.read().resources.get('324002').num,
+    module: Buffer.from(rawBinary(new Map(game.store.state().modules.value).get(MODULE)))
+  };
+  response = await request(90201, 3, Buffer.alloc(0));
+  assert.equal(response.err.err, 5);
+  assert.deepEqual(game.store.state(), beforeDuplicate.state);
+  assert.equal(game.store.read().resources.get('324002').num, beforeDuplicate.resource);
+  assert.deepEqual(Buffer.from(rawBinary(new Map(game.store.state().modules.value).get(MODULE))), beforeDuplicate.module);
+  assert.deepEqual(codec.unpack('pb_norse_rune', beforeDuplicate.module).draw_token, pending);
+  response = await request(90202, 4, Buffer.alloc(0));
   assert.deepEqual(codec.unpack('pb_norse_rune_token', Buffer.from(response.data, 'base64')), { token: 1, level: 1, quality: 1 });
   game.store.transaction(model => {
     const modules = new Map(model.state.modules.value);
@@ -287,9 +336,9 @@ test('real TCP routes 90201-90204 and returns module 156 through login', { timeo
     modules.set(MODULE, serializedBinary(codec.pack('pb_norse_rune', state)));
     model.state.modules.value = [...modules];
   });
-  response = await request(90203, 4, Buffer.alloc(0));
+  response = await request(90203, 5, Buffer.alloc(0));
   assert.deepEqual(codec.unpack('pb_norse_rune_wish_level_up_back', Buffer.from(response.data, 'base64')), { level: 2, res: { changes: [] } });
-  response = await request(90204, 5, await encodeEtf([1]));
+  response = await request(90204, 6, await encodeEtf([1]));
   assert.deepEqual(codec.unpack('pb_norse_rune_type', Buffer.from(response.data, 'base64')), { type: 1, level: 1 });
 
   socket.destroy(); socket = null;

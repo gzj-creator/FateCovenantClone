@@ -120,6 +120,7 @@ export function createNorseRuneService({ store, codec, tables, random = Math.ran
   function draw() {
     return store.transaction(model => {
       const { modules, state } = readState(model);
+      if (state.draw_token) fail(5, 'Norse rune draw already has a pending token');
       const config = tables.levels.get(state.level);
       if (!config) fail(5, 'Norse rune wish level configuration is missing');
       if (state.exp >= config.needExp) fail(5, 'Norse rune wish level upgrade is required before drawing');
