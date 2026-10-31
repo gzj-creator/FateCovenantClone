@@ -29,6 +29,13 @@ import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
 import { createWishTreasureService } from './wish-treasure-service.mjs';
+import { createWeekHuntService } from './week-hunt-service.mjs';
+import { createFirstRechargeService } from './first-recharge-service.mjs';
+import { createRechargeBonusService } from './recharge-bonus-service.mjs';
+import { createLineFirstRechargeService } from './line-first-recharge-service.mjs';
+import { createRechargeRebateResetService } from './recharge-rebate-reset-service.mjs';
+import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
+import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -74,6 +81,12 @@ export function createLocalGame({
   const heroDrawActivity = createHeroDrawActivityService({ store, codec, tables, heroTables, calendar, now: clock, logger });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
   const wishTreasure = createWishTreasureService({ store, codec, tables, calendar, now: clock, logger });
+  const weekHunt = createWeekHuntService({ store, codec, tables, now: clock });
+  const firstRecharge = createFirstRechargeService({ store, codec, tables, now: clock, logger });
+  const rechargeBonus = createRechargeBonusService({ store, codec, tables, calendar, now: clock, logger });
+  const lineFirstRecharge = createLineFirstRechargeService({ store, codec, tables, now: clock, logger });
+  const rechargeRebateReset = createRechargeRebateResetService({ store, codec, tables, calendar, now: clock, logger });
+  const rechargeExtraAward = createRechargeExtraAwardService({ codec, tables, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const ranks = createRankService({ codec });
@@ -93,7 +106,10 @@ export function createLocalGame({
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
-  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,wishTreasure,now:() => Math.floor(clock() / 1000)}):undefined;
+  const wallet=localWallet?createWalletService({
+    store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,wishTreasure,weekHunt,
+    rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
+  }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -106,14 +122,17 @@ export function createLocalGame({
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
     wishTreasure.ensureLoginState();
+    weekHunt.ensureLoginState();
     destiny.ensureLoginState();
+    lineFirstRecharge.ensureLoginState();
+    rechargeBonus.synchronize();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
     const modules = new Map(list.value);
     const loginMilliseconds = clock();
     const loginSeconds = Math.floor(loginMilliseconds / 1000);
-    const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: 1, create_time: state.createdAt, online_time: 0 });
+    const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, state.createdAt, binary('Local Server'), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
     // Cross-server membership is deliberately empty in this single local server.
@@ -136,6 +155,7 @@ export function createLocalGame({
     const schedule = calendar.applyLoginSchedule(activity, loginSeconds);
     const petLogin = await petActivity.synchronizeLogin(activity, loginSeconds);
     const heroDrawLogin = heroDrawActivity.synchronizeLogin(activity, loginSeconds);
+    const rebateLogin = rechargeRebateReset.synchronizeLogin(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -155,6 +175,7 @@ export function createLocalGame({
       heroDrawActivityId: heroDrawLogin?.actId ?? null,
       heroDrawCount: heroDrawLogin?.drawData?.role_data?.draw_count ?? null,
       heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
+      rechargeRebateResetId: rebateLogin?.actId ?? null,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -384,6 +405,62 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'hundred_acc_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+        }
+        return;
+      }
+      if (firstRecharge.supports(type)) {
+        try {
+          const result = firstRecharge.execute();
+          send(seq, result.data);
+          log({ event: 'first_recharge_claimed', type, seq, changes: result.value.res.changes.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'first_recharge_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (rechargeBonus.supports(type)) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const result = rechargeBonus.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'recharge_bonus_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'recharge_bonus_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (lineFirstRecharge.supports(type)) {
+        try {
+          let value;
+          if (type === 102101) value = await singleIdArgument(request.data, 'Invalid linear first-recharge choice');
+          else {
+            const decoded = await decodeEtf(request.data);
+            value = decoded?.value ?? decoded;
+          }
+          const result = lineFirstRecharge.execute(type, value);
+          send(seq, result.data);
+          log({ event: type === 102101 ? 'line_first_recharge_choice_committed' : 'line_first_recharge_award_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'line_first_recharge_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (rechargeRebateReset.supports(type)) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const result = rechargeRebateReset.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'recharge_rebate_reset_committed', type, seq, actId: result.value.act_info.act_id, changes: result.value.res.changes.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'recharge_rebate_reset_rejected', type, seq, code, message: error.message });
         }
         return;
       }

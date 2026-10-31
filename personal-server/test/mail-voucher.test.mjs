@@ -313,11 +313,12 @@ test('admin page serves voucher tools and issues/purchases through authenticated
   const post = (route, body) => fetch(url + route, { method: 'POST', headers, body: JSON.stringify(body) });
   const credit = await post('/api/credit', { account_id: 'local-1', amount_cents: 1000, request_id: 'admin-credit' });
   assert.equal(credit.status, 200);
-  const issue = await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: Math.floor(Date.now() / 1000) + 3600, title: '管理端发券' });
+  const mailRequest = { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: Math.floor(Date.now() / 1000) + 3600, title: '管理端发券' };
+  const issue = await post('/api/vouchers/issue', mailRequest);
   assert.equal(issue.status, 200);
   const issued = await issue.json();
   assert.equal(issued.quantity, 6);
-  assert.equal((await (await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: Math.floor(Date.now() / 1000) + 3600, title: '管理端发券' })).json()).duplicate, true);
+  assert.equal((await (await post('/api/vouchers/issue', mailRequest)).json()).duplicate, true);
 
   const state = await (await fetch(url + '/api/state', { headers: { Authorization: 'Bearer voucher-key' } })).json();
   assert.equal(state.vouchers.sku.item_tid, 701500);
@@ -385,10 +386,14 @@ test('gateway login module 93, mail claim, native 16004 voucher payment and 1600
   assert.equal(success.is_use_token, true);
   assert.equal(Number(success.use_item_tid), 701500);
   assert.equal(success.order.length > 0, true);
+  const extraAward = success.extra_ret_list.find(row => row.flag === 1);
+  assert.ok(extraAward);
+  const extraInfo = codec.unpack('pb_recharge_extra_award_info', Buffer.from(extraAward.data, 'base64'));
+  assert.equal(Number(extraInfo.buy_num_list.find(row => Number(row.key) === 11).value), 1);
   assert.equal(charged.seq, 3);
   assert.equal(charged.err, undefined);
   assert.equal(game.voucher.balance().quantity, 0);
-  assert.equal(game.store.read().resources.get('101500').num, '60');
+  assert.equal(game.store.read().resources.get('101500').num, '180');
 
   response = await request(16003, 4, await encodeEtf(binary(success.order)));
   assert.equal(response.err, undefined);

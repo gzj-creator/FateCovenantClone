@@ -450,9 +450,11 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   assert.equal(push.extra_ret_list.some(entry => entry.flag === 92), true);
   assert.equal(env.game.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40008 AND kind='gift'").get(ACTIVITY_ID).n), 1);
 
+  const week = codec.unpack('pb_week_hunt', rawBinary(new Map(env.game.store.state().modules.value).get(533))).week_period_info[0];
+  const giftDay = Math.min(Math.floor((env.clock.seconds + 10800) / 86400), week.start_day + 6);
   const dailyOptions = JSON.stringify([
     { ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' },
-    [false, 1, 20755]
+    [false, week.version, giftDay]
   ]);
   walletFrames = await env.requestWithWalletPush(23, await encodeEtf([40010, binary(Buffer.from(dailyOptions)), 0]));
   assert.equal(walletFrames.ack.err, undefined);

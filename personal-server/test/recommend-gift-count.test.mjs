@@ -103,7 +103,7 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   const databasePath = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, databasePath);
   const logs = [];
-  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session', logger: event => logs.push(event) });
+  const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, localWallet: true, now: () => Date.parse('2026-10-31T04:00:00Z'), verifySession: (uid, code) => uid === 'local-user' && code === 'test-session', logger: event => logs.push(event) });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   game.store.transaction(model => grantResources(model, [[701500, 3000]], tables));
@@ -137,7 +137,9 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   assert.equal(info.daily_discount_list.find(row => row.recharge_tid === 3).buy_times, 1);
   assert.equal(codec.unpack('pb_daily_discount_all', rawBinary(new Map(game.store.state().modules.value).get(108))).daily_discount_list.find(row => row.recharge_tid === 3).buy_times, 1);
 
-  const options = JSON.stringify([{ ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' }, [true, 1, 20754]]);
+  const week = codec.unpack('pb_week_hunt', rawBinary(new Map(game.store.state().modules.value).get(533))).week_period_info[0];
+  const makeupDay = week.start_day + 5;
+  const options = JSON.stringify([{ ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' }, [true, week.version, makeupDay]]);
   send(codec.pack('pb_c2s', { type: 16004, seq: 3, data: await encodeEtf([40010, binary(Buffer.from(options)), 701500]) }));
   const additionalFrames = [];
   while (!additionalFrames.some(frame => frame.seq === 3)) additionalFrames.push(codec.unpack('pb_s2c', await next()));
@@ -149,6 +151,9 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   const additionalRow = additionalInfo.daily_discount_list.find(row => row.recharge_tid === 3);
   assert.equal(additionalRow.buy_times, 1);
   assert.equal(additionalRow.buy_additionally, 5);
+  const extraParams = await decodeEtf(Buffer.from(additionalPush.extra_params, 'base64'));
+  assert.deepEqual(extraParams.value[0].value, [true, week.version, makeupDay]);
+  assert.equal(additionalPush.res.changes.find(row => String(row.tid) === '5971200').diff_num, '10');
   assert.equal(logs.find(event => event.event === 'voucher_recharge_committed' && event.seq === 3)?.extraBuy, true);
   game.store.inspect(db => {
     const order = db.prepare('SELECT payload_json FROM recharge_orders WHERE product_id=? ORDER BY rowid DESC LIMIT 1').get(40010);
@@ -156,6 +161,23 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
     assert.equal(payload.daily_discount_additional, true);
     assert.equal(payload.requested_extra_buy, true);
   });
+
+  send(codec.pack('pb_c2s', { type: 16004, seq: 4, data: await encodeEtf([40008, binary(Buffer.from('[]')), 701500]) }));
+  const eliteFrames = [];
+  while (!eliteFrames.some(frame => frame.seq === 4)) eliteFrames.push(codec.unpack('pb_s2c', await next()));
+  assert.equal(eliteFrames.find(frame => frame.seq === 4)?.err, undefined);
+  const elite = codec.unpack('res_recharge_success', Buffer.from(eliteFrames.find(frame => frame.type === 1900).data, 'base64'));
+  assert.equal(elite.res.changes.find(row => String(row.tid) === '5971200').diff_num, '25');
+  const eliteParams = await decodeEtf(Buffer.from(elite.extra_params, 'base64'));
+  assert.deepEqual(eliteParams.value[0].value, [false, week.version, week.start_day + 4]);
+  const acknowledged = await request(16003, 5, await encodeEtf(binary(elite.order)));
+  assert.equal(acknowledged.err, undefined);
+  const relogin = await request(909103, 6, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  const reloginData = await decodeEtf(Buffer.from(relogin.data, 'base64'));
+  const returnedModules = new Map(reloginData[2].value);
+  const returnedWeek = codec.unpack('pb_week_hunt', Buffer.from(returnedModules.get(533).value));
+  assert.equal(returnedWeek.week_period_info[0].start_day, week.start_day);
+  assert.equal(returnedWeek.week_period_info[0].upgrade_list.some(row => row.day_index === week.start_day + 4 && row.recharge_id === 40008), true);
 });
 
 test('native 16004 batch offer updates all limited rows, rejects components and acknowledges through 16003', async t => {

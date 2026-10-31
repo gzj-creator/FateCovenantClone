@@ -4,7 +4,7 @@ import { consumeResources, grantResources, rewardHandlerFor } from './resources.
 import { GameError } from './hero-progression.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
 import { createPermitService } from './permit-service.mjs';
-import { rechargeCycleKey } from './recharge-rules.mjs';
+import { isDailyDiscountOrder, rechargeCycleKey } from './recharge-rules.mjs';
 const DAILY_DISCOUNT_RECHARGE = 46;
 const DAILY_DISCOUNT_HANDLE = 40;
 const DAILY_DISCOUNT_MODULE = 108;
@@ -49,7 +49,11 @@ function reviveJsonBuffers(value) {
   return value;
 }
 const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
-export function createWalletService({ store, codec, tables, voucher, monthPermit, permitService, petActivity, heroDrawActivity, wishTreasure, accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000) }) {
+export function createWalletService({
+  store, codec, tables, voucher, monthPermit, permitService, petActivity, heroDrawActivity,
+  wishTreasure, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward,
+  accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000)
+}) {
   const log = event => { try { logger(event); } catch {} };
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
   const standardPermits = permitService ?? createPermitService({ codec, tables });
@@ -185,7 +189,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       if (tables.Recharge.get(row.product_id)?.type !== DAILY_DISCOUNT_RECHARGE) return false;
       let payload = {};
       try { payload = JSON.parse(row.payload_json ?? '{}'); } catch {}
-      return Number(payload.hero_activity_id) !== Number(heroDrawActivity?.activityId);
+      return isDailyDiscountOrder(payload, codec);
     });
     if (modules.has(DAILY_DISCOUNT_MODULE) || hasDailyOrders) {
       const info = dailyDiscountInfo(modules), today = dailyDay(currentSeconds);
@@ -200,7 +204,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         try { payload = JSON.parse(row.payload_json ?? '{}'); } catch {}
         // A shared RechargeTable row such as 40008 can be bought from both the
         // daily-discount and hundred-schools UIs. Keep their counters separate.
-        if (Number(payload.hero_activity_id) === Number(heroDrawActivity?.activityId)) continue;
+        if (!isDailyDiscountOrder(payload, codec)) continue;
         // Additional buys share the daily row but do not consume its normal
         // `can_buy_times` allowance.
         if (payload.daily_discount_additional === true) continue;
@@ -238,7 +242,9 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     ? permits.supports(row)
     : row.type === 76
       ? Boolean(petActivity?.giftConfig(row.tid)) && ordinaryCashProduct(row)
-      : Boolean(heroDrawActivity?.giftConfig(row.tid)) && ordinaryCashProduct(row)
+      : row.type === 113
+        ? Boolean(lineFirstRecharge?.supportsProduct(row)) && ordinaryCashProduct(row)
+        : Boolean(heroDrawActivity?.giftConfig(row.tid)) && ordinaryCashProduct(row)
         || standardPermits.supports(row)
         || ordinaryCashProduct(row));
   const products = [...tables.Recharge.values()].filter(supported);
@@ -321,6 +327,14 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
   function assertPurchaseAvailable({ product_id, extra_buy = false, activity_version, period = 0, day_index = 0 } = {}) {
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
+    if (lineFirstRecharge?.supportsProduct(product)) {
+      lineFirstRecharge.assertPurchaseAvailable({
+        modules: new Map(store.state().modules.value),
+        product,
+        at: now()
+      });
+      return;
+    }
     const heroGift = heroGiftForPurchase(product_id, activity_version);
     if (heroGift) {
       if (![16, 46, 106].includes(Number(product.type)) || Number(product.pay_type) !== 0) throw new GameError(5, 'Hundred schools gift has an unsupported price');
@@ -336,7 +350,9 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     if (!(product.can_buy_times > 0)) return;
     if (product.type === DAILY_DISCOUNT_RECHARGE) {
       const modules = new Map(store.state().modules.value);
-      if (!planDailyDiscountPurchase(modules, product, now(), extra_buy === true)) throw new GameError(307, 'Product purchase limit reached');
+      const plan = planDailyDiscountPurchase(modules, product, now(), extra_buy === true);
+      if (!plan) throw new GameError(307, 'Product purchase limit reached');
+      weekHunt?.resolvePurchase({ modules, product, extraBuy: plan.additional, period, dayIndex: day_index, at: now() });
       return;
     }
     const purchaseCount = store.inspect(db => scopedPurchaseQuantity(
@@ -385,7 +401,9 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       const limitModules = new Map(model.state.modules.value);
       let dailyPlan = null;
       if (product.can_buy_times > 0) {
-        if (heroGift) {
+        if (lineFirstRecharge?.supportsProduct(product)) {
+          lineFirstRecharge.assertPurchaseAvailable({ modules: limitModules, product, at: purchasedAt });
+        } else if (heroGift) {
           if (!heroDrawActivity.giftPurchaseAllowed(product_id, 1, db, purchasedAt)) throw new GameError(307, 'Product purchase limit reached');
         } else if (product.type === 76) {
           const purchaseCount = petActivity.giftPurchaseCount(product_id, db);
@@ -404,12 +422,16 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
           if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
         }
       }
+      const weekPurchase = dailyPlan && weekHunt
+        ? weekHunt.resolvePurchase({ modules: limitModules, product, extraBuy: dailyPlan.additional, period, dayIndex: day_index, at: purchasedAt })
+        : null;
       const order = 'local-' + randomUUID();
       const createdAt = new Date(purchasedAt * 1000).toISOString();
       db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)').run(order,account_id,request_id,product_id,product.price,'{}',createdAt);
       const changes = [];
       if (quote.quantity > 0) changes.push(voucher.consume({ model, db, orderId: order, roleId: model.state.roleId, quantity: quote.quantity, amountCents: quote.amount_cents }));
-      changes.push(...grantResources(model, product.reward_tid.map((tid,i) => [tid,product.reward_count[i]]), tables).changes);
+      const dailyAwards = dailyPlan ? affectedDailyDiscountTids(product).flatMap(tid => dailyRechargeRowByTid.get(tid)?.award ?? []) : [];
+      changes.push(...grantResources(model, [...product.reward_tid.map((tid,i) => [tid,product.reward_count[i]]), ...dailyAwards], tables, { codec }).changes);
       const permit = product.type === 130
         ? permits.purchase({ model, product })
         : (standardPermits.supports(product) ? standardPermits.purchase({ model, product }) : null);
@@ -417,7 +439,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       // Resource and permit handlers may replace the module map directly.
       // Re-read it before layering recharge, daily-discount and wish-treasure
       // login state on top.
-      const modules = new Map(model.state.modules.value);
+      let modules = new Map(model.state.modules.value);
       const login = codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
       const total = (login.total_amount ?? 0) + product.price;
       if (total > 2147483647) throw new GameError(1, 'Recharge total limit reached');
@@ -434,6 +456,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       if (giftRecord) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord });
       const dailyDiscount = dailyPlan ? setDailyDiscountInfo(modules, dailyPlan.info) : null;
       if (dailyDiscount) extraRetList.push({ flag: DAILY_DISCOUNT_HANDLE, data: dailyDiscount });
+      weekHunt?.recordPurchase({ modules, context: weekPurchase });
       const wishPurchase = dailyPlan && wishTreasure
         ? wishTreasure.recordPurchase({ modules, productId: product_id, at: purchasedAt * 1000 })
         : null;
@@ -466,7 +489,21 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         });
         extraRetList.push(heroDrawActivity.rechargeExtra(heroGift.activityId, db));
       }
-      const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: etfList([[dailyPlan?.additional === true, 0, day]]), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
+      rechargeBonus?.recordRecharge({ model, modules, at: purchasedAt });
+      if (lineFirstRecharge?.supportsProduct(product)) {
+        const purchase = lineFirstRecharge.purchase({ modules, product, at: purchasedAt });
+        extraRetList.push(...purchase.extraRetList);
+      }
+      if (rechargeExtraAward) {
+        model.state.modules.value = [...modules];
+        const extra = rechargeExtraAward.recordRecharge({ model, login, product, at: purchasedAt });
+        modules = new Map(model.state.modules.value);
+        res.changes.push(...extra.changes);
+        extraRetList.push(...extra.extraRetList);
+      }
+      const purchasePeriod = weekPurchase?.period ?? (Number.isSafeInteger(period) ? period : 0);
+      const purchaseDay = weekPurchase?.day ?? (Number.isSafeInteger(day_index) && day_index > 0 ? day_index : day);
+      const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: etfList([[dailyPlan?.additional === true, purchasePeriod, purchaseDay]]), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
       login.tmp_recharge_record.tmp_record_list.push({ recharge_id: product_id, recharge_time: purchasedAt, order_no: order });
@@ -482,12 +519,14 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         balance_cents: balanceAfter, notification: data.toString('base64'),
         wish_treasure_notification: wishNotification,
         daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true,
-        period: Number.isSafeInteger(period) ? period : 0,
-        day_index: Number.isSafeInteger(day_index) ? day_index : 0,
+        daily_discount_purchase: Boolean(dailyPlan),
+        period: purchasePeriod,
+        day_index: purchaseDay,
+        ...(weekPurchase ? { week_hunt_period: purchasePeriod, week_hunt_day: purchaseDay } : {}),
         ...(heroGift || heroShadowRecorded ? { hero_activity_id: (heroGift ?? heroShadowGift).activityId } : {})
       };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(result),order);
-      db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order,account_id,'purchase',-quote.balance_cents,balanceAfter,createdAt,JSON.stringify({ product_id, order_id: order, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true, period: Number.isSafeInteger(period) ? period : 0, day_index: Number.isSafeInteger(day_index) ? day_index : 0 }));
+      db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order,account_id,'purchase',-quote.balance_cents,balanceAfter,createdAt,JSON.stringify({ product_id, order_id: order, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true, period: purchasePeriod, day_index: purchaseDay }));
       return { ...result, duplicate: false };
     });
     if (!result.duplicate) {
