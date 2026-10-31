@@ -13,7 +13,12 @@ export function readHeroTables(file = defaultPath) {
     'Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star',
     'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
-    'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant'
+    'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
+    // Hero favour/"training" (HeroFavorMgr): the login module stores the
+    // player's accumulated favour while these tables own gift values, level
+    // thresholds, rewards, break caps and playground eligibility.
+    'AllFavourLevel', 'FavourConst', 'FavourGift', 'FavourBreak',
+    'FavourLevel', 'PlaygroundUnlock', 'PlaygroundAward'
   ];
   if (file === defaultPath) return defaultCache ??= readGeneratedTables(file, names);
   return readGeneratedTables(file, names);
