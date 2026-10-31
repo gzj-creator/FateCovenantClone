@@ -2,6 +2,22 @@
 
 更新时间：2026-10-31
 
+## 2026-10-31 根因与修复
+
+- 用户在 main 服务上再次进入星火，仍显示第一阶段；页面截图为
+  `analysis/experiments/private-server-20261025/p3/destiny-current-user-20261031.png`。
+- 客户端 `ModuleTable.data.lua` 的 107 行注册 `DestinyMgr`，`ModuleMgr` 按模块 ID
+  获取登录数据；100 并非星火模块。此前服务误将进度写入 100，而客户端实际收到的
+  107 是空字节，因此登录后显示未激活状态。旧文中“页面读取 module 100”的说法有误。
+- `DestinyMgr.Init` 接收 `cur_stage=2` 后保持 `curStage=2`，从当前阶段的位图寻找
+  下一节点；`DestinyForm.InitStateForm` 将 `CurStage` 传入阶段选择。
+- 服务登录时优先使用非空 107；若 107 缺失或为空，则从旧 100 迁移，100 保留为
+  审计副本。此后升级只读写 107，避免旧副本覆盖新进度。非法非空 107 直接报错并
+  回滚，避免静默覆盖。
+- 隔离测试覆盖从 100 迁移 `cur_stage=2,slot_state=0x70`、登录 ETF 的 107 字节、
+  SQLite 重开、旧阶段及重复节点不扣费、204 只扣一次、第三阶段与最终阶段。
+  组件测试通过不等于客户端视觉验收；部署和用户确认另行记录。
+
 ## 工作区
 
 - Worktree：`F:\projects\FateCovenantClone\.worktree\destiny-star-stage`

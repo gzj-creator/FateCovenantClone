@@ -2,7 +2,8 @@ import { decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.m
 import { GameError } from './hero-progression.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
 
-const DESTINY_MODULE = 100;
+const DESTINY_MODULE = 107;
+const LEGACY_DESTINY_MODULE = 100;
 const STAGE_WIDTH = 100;
 const SLOT_BYTES = 13;
 const fail = (code, message) => { throw new GameError(code, message); };
@@ -91,7 +92,10 @@ export function createDestinyService({ store, codec, tables }) {
     return store.transaction(model => {
       const modules = new Map(model.state.modules.value);
       const previous = modules.get(DESTINY_MODULE);
-      const value = previous ? codec.unpack('pb_destiny_data', rawBinary(previous)) : undefined;
+      // Older local builds stored destiny under 100; the client dispatches 107.
+      // Keep the old payload as an audit copy and prefer 107 after migration.
+      const source = previous && rawBinary(previous).length ? previous : modules.get(LEGACY_DESTINY_MODULE);
+      const value = source ? codec.unpack('pb_destiny_data', rawBinary(source)) : undefined;
       const state = normalizeState(value, tables, stageCount);
       writeState(model, modules, state);
       return { curStage: state.cur_stage, slotBytes: state.slot_state.length };

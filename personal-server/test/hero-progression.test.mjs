@@ -467,7 +467,9 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
   const heroModule = new Map(login[2].value).get(10).value[0];
   const hero = codec.unpack('pb_hero_info', Buffer.from(heroModule.value)).hero_list.find(hero => hero.uid === '2020601');
   assert.equal(hero.level, 9); assert.equal(hero.star_progress, 3);
-  assert.equal(codec.unpack('pb_destiny_data', Buffer.from(loginModules.get(100).value)).cur_stage, 1);
+  const destinyLogin = codec.unpack('pb_destiny_data', Buffer.from(loginModules.get(107).value));
+  assert.equal(destinyLogin.cur_stage, 1);
+  assert.equal(Buffer.from(destinyLogin.slot_state, 'base64')[0], 0x60);
   game.wallet.credit({account_id:'local-1',amount_cents:1000,request_id:'tcp-fund'});
   const order=game.wallet.buy({product_id:11,request_id:'tcp-purchase'});
   const notification=codec.unpack('pb_s2c',await next());assert.equal(notification.type,1900);
