@@ -6,7 +6,7 @@ import test from 'node:test';
 import { createGameCodec, decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
-import { readFantasyEquipTables, readHeroTables } from '../config/hero-tables.mjs';
+import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createRecruitService } from '../game/recruit-service.mjs';
 import { createLineupService } from '../game/lineup-service.mjs';
@@ -21,6 +21,7 @@ const codec = createGameCodec();
 const tables = readGameTables();
 const heroTables = readHeroTables();
 const fantasyEquipTables = readFantasyEquipTables();
+const leaderEquipTables = readLeaderEquipTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
 const now = () => Date.UTC(2026, 9, 29, 12, 0, 0) / 1000;
 
@@ -42,7 +43,7 @@ function setup(t, random = () => 0) {
   const databasePath = path.join(directory, 'game.sqlite'), legacyStatePath = path.join(directory, 'legacy.json');
   fs.writeFileSync(legacyStatePath, JSON.stringify(fixture()));
   let store = createGameStore({ databasePath, legacyStatePath, codec });
-  const make = (override = {}) => createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, random, now, ...override });
+  const make = (override = {}) => createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, leaderEquipTables, random, now, ...override });
   let service = make();
   service.ensureLoginState();
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -161,6 +162,11 @@ function updateDemigodDraw(env, update) {
 
 function decodeDemigodEquipExtra(value) {
   return codec.unpack('pb_fantasy_equip', Buffer.from(value, 'base64'));
+}
+
+function leaderEquipData(env) {
+  const module = new Map(env.store.state().modules.value).get(175);
+  return codec.unpack('pb_leader_equips_data', rawBinary(module));
 }
 
 const rejected = (action, code) => assert.throws(action, error => error.code === code);
@@ -372,6 +378,43 @@ test('all four local draw libraries consume configured prices and return recruit
   rejected(() => env.service.execute(601, { draw_lib: 1, point_draw_num: 11 }), 1);
 });
 
+test('leader-equipment ten draw consumes tickets, returns real equipment and survives reopen', t => {
+  const env = setup(t);
+  env.seed(2002, 10);
+  const before = leaderEquipData(env);
+  const result = env.service.execute(601, { draw_lib: 116, point_draw_num: 10 });
+  const response = codec.unpack('hero_draw_back', result.data);
+  assert.equal(Number(response.recruit_info.draw_lib), 116);
+  assert.deepEqual(response.decompose_args, []);
+  assert.deepEqual(response.res.changes[0] && [response.res.changes[0].tid, response.res.changes[0].diff_num], ['2002', '-10']);
+
+  const equipChanges = response.res.changes.slice(1);
+  assert.equal(equipChanges.length, 10);
+  const decoded = equipChanges.map(change => {
+    assert.equal(change.diff_num, '1');
+    assert.equal(change.new_num, '1');
+    assert.equal(change.new_bin, change.extra);
+    const equip = codec.unpack('pb_leader_equip', Buffer.from(change.new_bin, 'base64'));
+    assert.equal(change.tid, equip.tid);
+    assert.equal(equip.level, 1);
+    // proto3 omits scalar zero values on the wire; the client treats an absent
+    // star field as zero.
+    assert.equal(equip.star ?? 0, 0);
+    assert.equal(leaderEquipTables.LeaderEquip.get(Number(equip.tid)).grade, 1);
+    return equip;
+  });
+  assert.equal(new Set(decoded.map(equip => equip.uid)).size, 10);
+  assert.deepEqual(result.valueForLog.results.map(entry => entry.tid), decoded.map(equip => Number(equip.tid)));
+
+  const persisted = leaderEquipData(env);
+  assert.equal(persisted.equip_list.length, before.equip_list.length + 10);
+  assert.deepEqual(persisted.equip_list.slice(-10), decoded);
+  assert.equal(persisted.max_uid, decoded.at(-1).uid);
+  assert.equal(persisted.draw_info.lv, 1);
+  env.reopen();
+  assert.deepEqual(leaderEquipData(env), persisted);
+});
+
 test('draw statistics backfill historical counts and publish both draw and achievement totals', async t => {
   const env = setup(t);
   setDrawCounts(env, { 1: 5, 2: 61 });
@@ -553,10 +596,10 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   assert.equal(newChange.diff_num, String(convertCount));
   // HeroDrawUILogic.FilterAwards renders floor(diff_num / convert_piece_new) cards.
   assert.equal(Number(newChange.diff_num) / convertCount, 1);
-  assert.equal(first.decompose_args.length, 1);
-  assert.equal(first.decompose_args[0].tid, String(newChange.tid));
-  assert.equal(first.decompose_args[0].num, String(convertCount));
-  assert.equal(await decodeEtf(Buffer.from(first.decompose_args[0].extra, 'base64')), 1010101);
+  // A first unlock is already represented by the full-chip resource change
+  // below. HeroDrawUILogic converts that change to one card; a decompose entry
+  // would add a second card for the same pull.
+  assert.deepEqual(first.decompose_args, []);
   const syncedHero = await decodeHeroExtra(newChange.extra);
   assert.equal(syncedHero.tid, '1010101');
   assert.equal(syncedHero.uid, '1010101');
@@ -585,6 +628,21 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   assert.deepEqual(second.decompose_args, []);
   assert.equal(duplicate.extra, undefined);
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
+});
+
+test('ten draws never add duplicate result cards for newly unlocked heroes', t => {
+  const env = setup(t);
+  env.seed(2002, 10);
+  const result = env.service.execute(601, { draw_lib: 1, point_draw_num: 10 });
+  const response = codec.unpack('hero_draw_back', result.data);
+  const cardChanges = response.res.changes.filter(change => Number(change.diff_num) > 0 && Number(change.tid) !== 2002);
+  assert.equal(cardChanges.length, 10);
+  const renderedCards = cardChanges.reduce((sum, change, index) => {
+    const convertCount = Number(heroTables.Quality.get(result.valueForLog.results[index].quality)?.convert_piece_new ?? 0);
+    return sum + (convertCount > 0 ? Math.floor(Number(change.diff_num) / convertCount) : 0);
+  }, response.decompose_args.length);
+  assert.equal(renderedCards, 10);
+  assert.deepEqual(response.decompose_args, []);
 });
 
 test('pity persists across reopen and forces a quality-five hero at the configured threshold', async t => {
