@@ -2,9 +2,17 @@ import { GameError } from './hero-progression.mjs';
 
 export function createRankService({ codec }) {
   return {
-    supports: type => [2000, 2008, 2011].includes(type),
+    supports: type => [2000, 2001, 2008, 2011].includes(type),
     execute(type, input) {
       const request = Array.isArray(input) ? input : input?.value ?? input;
+      if (type === 2001) {
+        if (!Array.isArray(request) || request.length !== 2 || request.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new GameError(1, 'Invalid rank info request');
+        const [rankId, roleId] = request;
+        // No local competition has been settled; preserve the target IDs and
+        // report an unranked entry.
+        const value = { id: String(roleId), rank_id: String(rankId), rank: 0, value: '0', extra: Buffer.alloc(0) };
+        return { schema: 'rank_info', value, data: codec.pack('rank_info', value) };
+      }
       const ids = type === 2008 ? [request] : request;
       if (![2000, 2008, 2011].includes(type) || !Array.isArray(ids) || ids.length > 100 || (type !== 2011 && ids.length !== 1) || ids.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new GameError(1, 'Invalid ranking list');
       // No archived competition has been run locally; return an explicit empty board per ID.

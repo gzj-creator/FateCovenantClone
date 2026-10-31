@@ -383,6 +383,20 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
     if (type === 2011) assert.deepEqual(board.client_list.map(value => value.rank_id), ['1001', '2002']);
     else assert.equal(board.rank_id, String(type === 2000 ? 1001 : 2002));
   }
+  response = await request(2001, 2001, Buffer.from('g2wAAAACYTViAAGGoWo=', 'base64'));
+  assert.equal(response.seq, 2001);
+  assert.equal(response.err, undefined);
+  const selfRank = codec.unpack('rank_info', Buffer.from(response.data, 'base64'));
+  assert.equal(selfRank.id, '100001');
+  assert.equal(selfRank.rank_id, '53');
+  assert.equal(selfRank.rank ?? 0, 0);
+  assert.equal(selfRank.value ?? '0', '0');
+  assert.equal(events.some(event => event.event === 'rank_sent' && event.type === 2001), true);
+  response = await request(2001, 2003, await encodeEtf([53]));
+  assert.equal(response.seq, 2003);
+  assert.equal(response.err.err, 1);
+  assert.equal(events.some(event => event.event === 'rank_rejected' && event.type === 2001 && event.code === 1), true);
+  assert.equal(events.some(event => event.event === 'unsupported_command' && event.type === 2001), false);
   response = await request(218, 5, await encodeEtf(0));
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('pb_edit_pre_lineup_rsp', Buffer.from(response.data, 'base64')).role_lineup.pre_lineups.length, 1);
