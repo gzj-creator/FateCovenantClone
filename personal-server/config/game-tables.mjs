@@ -2,9 +2,10 @@ import { readGeneratedTables } from './hero-tables.mjs';
 const base = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/', import.meta.url);
 let cached;
 export function readGameTables() {
-  return cached ??= {
+  if (cached) return cached;
+  const tables = {
     // Item box rules: the client picks the use command from ItemTable.Type.obj_class.
-    ...readGeneratedTables(new URL('ItemTable.data.lua.json', base), ['Item', 'Type', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box']),
+    ...readGeneratedTables(new URL('ItemTable.data.lua.json', base), ['Item', 'Type', 'Chip', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box']),
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
     ...pick(readGeneratedTables(new URL('DrawTable.data.lua.json', base), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
     ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), ['Recharge', 'Param', 'BuyCycleLimit'])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
@@ -69,6 +70,41 @@ export function readGameTables() {
       RankReward: 'HeroDrawActRankReward',
       Gift: 'HeroDrawActGift'
     }),
+    ...readGeneratedTables(new URL('../../analysis/work/relic-divine-activities/tables/ArtifactDrawActTable.data.json', import.meta.url), [
+      'ArtifactDrawRate', 'ArtifactDrawRound', 'ArtifactDrawTask', 'ArtifactDrawVersion',
+      'ArtifactDrawConst', 'ArtifactDrawGift', 'TrialsBuff', 'TrialsTask', 'TrialsChallenge',
+      'TrialsRankAward', 'TrialsVersion'
+    ]),
+    ...pick(readGeneratedTables(new URL('../../analysis/work/relic-divine-activities/tables/DemigodActTable.data.json', import.meta.url), [
+      'Shop', 'Show', 'DrawWish', 'Draw', 'DrawFantasy', 'DrawAward', 'Gift', 'DemigodAct',
+      'DemigodTrialDamage', 'DemigodTrialBless', 'DemigodTrialStar', 'DemigodTrialLevel', 'DemigodTrial'
+    ]), {
+      Shop: 'DemigodShop', Show: 'DemigodShow', DrawWish: 'DemigodDrawWish', Draw: 'DemigodDraw',
+      DrawFantasy: 'DemigodDrawFantasy', DrawAward: 'DemigodDrawAward', Gift: 'DemigodGift',
+      DemigodAct: 'DemigodAct', DemigodTrialDamage: 'DemigodTrialDamage',
+      DemigodTrialBless: 'DemigodTrialBless', DemigodTrialStar: 'DemigodTrialStar',
+      DemigodTrialLevel: 'DemigodTrialLevel', DemigodTrial: 'DemigodTrial'
+    }),
+    ...pick(readGeneratedTables(new URL('../../analysis/recruitment-debug/bytecode/FantasyEquipTable.data.json', import.meta.url), [
+      'FantasyEquip', 'DrawNormal', 'DrawNormalWish', 'DrawUnlock',
+      'Const', 'QualityUp', 'StarUp', 'SpStarUp', 'Material', 'LevelUp',
+      'BreakUp', 'StarAdd', 'MaxStar', 'Type', 'Skill', 'BlessAdd',
+      'BlessAttr', 'FantasyFightDisplay', 'FantasyStarStoneTid', 'SpSlot'
+    ]), {
+      FantasyEquip: 'FantasyEquip', DrawNormal: 'FantasyDrawNormal',
+      DrawNormalWish: 'FantasyDrawNormalWish', DrawUnlock: 'FantasyDrawUnlock',
+      Const: 'FantasyEquipConst', QualityUp: 'FantasyQualityUp',
+      StarUp: 'FantasyStarUp', SpStarUp: 'FantasySpStarUp',
+      Material: 'FantasyMaterial', LevelUp: 'FantasyLevelUp',
+      BreakUp: 'FantasyBreakUp', StarAdd: 'FantasyStarAdd',
+      MaxStar: 'FantasyMaxStar', Type: 'FantasyType', Skill: 'FantasySkill',
+      BlessAdd: 'FantasyBlessAdd', BlessAttr: 'FantasyBlessAttr',
+      FantasyFightDisplay: 'FantasyFightDisplay',
+      FantasyStarStoneTid: 'FantasyStarStoneTid', SpSlot: 'FantasySpSlot'
+    }),
+    ...readGeneratedTables(new URL('../../analysis/work/relic-divine-activities/MiniGameTable.data.json', import.meta.url), [
+      'MarblesConst', 'Marbles'
+    ]),
     ...pick(readGeneratedTables(new URL('../../analysis/tmp/activity-decompiled/ShopTable.data.lua.json', import.meta.url), [
       'Item', 'Period', 'AutoRefresh', 'Main'
     ]), {
@@ -98,5 +134,38 @@ export function readGameTables() {
       LevelSetting: 'RoleLevelSetting'
     })
   };
+  cached = { ...tables, ...buildFantasyChipIndexes(tables.Chip, tables.FantasyEquip, tables.Item) };
+  return cached;
 }
 function pick(tables, names) { return Object.fromEntries(Object.entries(names).map(([from, to]) => [to, tables[from]])); }
+
+export function buildFantasyChipIndexes(chipTable, equipTable, itemTable) {
+  if (!(chipTable instanceof Map) || !(equipTable instanceof Map) || !(itemTable instanceof Map)) {
+    throw new Error('Fantasy chip configuration is missing');
+  }
+  const byPointItem = new Map(), byTid = new Map();
+  const positiveInt = (value, field) => {
+    const number = Number(value);
+    if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) {
+      throw new Error(`Invalid fantasy chip ${field}`);
+    }
+    return number;
+  };
+  for (const [key, row] of chipTable) {
+    if (Number(row?.type) !== 223) continue;
+    const tid = positiveInt(row.tid ?? key, 'tid');
+    const pointItem = positiveInt(row.point_item, 'point_item');
+    const needNum = positiveInt(row.need_num, 'need_num');
+    const chipItem = itemTable.get(tid), targetItem = itemTable.get(pointItem), target = equipTable.get(pointItem);
+    if (!chipItem || !targetItem || !target || Number(target.tid) !== pointItem || Number(targetItem.type) !== 223) {
+      throw new Error(`Fantasy chip ${tid} has an invalid point_item ${pointItem}`);
+    }
+    if (byTid.has(tid) || byPointItem.has(pointItem)) {
+      throw new Error(`Duplicate fantasy chip mapping for tid ${tid} or point_item ${pointItem}`);
+    }
+    const entry = Object.freeze({ tid, point_item: pointItem, need_num: needNum });
+    byTid.set(tid, entry);
+    byPointItem.set(pointItem, entry);
+  }
+  return { FantasyChipByPointItem: byPointItem, FantasyChipByTid: byTid };
+}

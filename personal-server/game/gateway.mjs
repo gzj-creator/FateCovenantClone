@@ -17,7 +17,7 @@ import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
-import { createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
+import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
@@ -28,6 +28,17 @@ import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
+import { createFantasyDrawService } from './fantasy-draw-service.mjs';
+import { createFantasyEquipmentService } from './fantasy-equipment-service.mjs';
+import { createFantasySharedDrawService } from './fantasy-shared-draw-service.mjs';
+import { createArtifactDrawPool } from './artifact-draw-pool.mjs';
+import { createDemigodDrawPool } from './demigod-draw-pool.mjs';
+import { createResidentFantasyDrawPool } from './resident-fantasy-draw-pool.mjs';
+import { createArtifactDrawActService } from './artifact-draw-act-service.mjs';
+import { loadFantasyActTables } from './fantasy-act-tables.mjs';
+import { createDemigodActService } from './demigod-act-service.mjs';
+import { createFantasyEquipActService } from './fantasy-equip-act-service.mjs';
+import { mergeRelicLoginContainer, RELIC_ACTIVITY_LOGIN_MODULE_ID } from './relic-divine-login.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -40,6 +51,10 @@ export function createLocalGame({
   serverOpenedAt,
   activityMode = 'schedule',
   currentFishingActivityId,
+  currentArtifactActivityId,
+  currentDemigodActivityId,
+  currentFantasyActivityId,
+  relicDrawGroupResolver,
   sprintPreview = false,
   localWallet = false,
   missionFightPlayback = false,
@@ -63,6 +78,8 @@ export function createLocalGame({
   }
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
   const heroTables = readHeroTables(), tables = readGameTables();
+  const fantasyActTables = loadFantasyActTables();
+  const relicTables = { ...tables, ...fantasyActTables };
   const calendar = createActivityCalendar({
     tables,
     serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt,
@@ -70,7 +87,208 @@ export function createLocalGame({
     currentFishingActivityId,
     now: clock
   });
+  const secondsClock = () => Math.floor(clock() / 1000);
+  if (relicDrawGroupResolver !== undefined && typeof relicDrawGroupResolver !== 'function') {
+    throw new Error('relicDrawGroupResolver must be a function');
+  }
+  const artifactActivityRows = new Map([...tables.Activity.values()]
+    .filter(row => Number(row?.func) === 159)
+    .map(row => [Number(row.tid), row]));
+  const relicActivityOverrides = new Map();
+  for (const [kind, value] of [
+    ['artifact', currentArtifactActivityId],
+    ['demigod', currentDemigodActivityId],
+    ['fantasy', currentFantasyActivityId]
+  ]) {
+    if (value == null) continue;
+    const id = Number(value);
+    if (!Number.isSafeInteger(id) || id < 1) throw new Error(`Invalid ${kind} activity id`);
+    relicActivityOverrides.set(kind, id);
+  }
+
+  function parseActivityLogin(model = null) {
+    try {
+      const source = model ? model.state.modules : store.state().modules;
+      const entry = new Map(source.value).get(92);
+      return entry ? unpack('pb_act_login', rawBinary(entry)) : { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+    } catch (error) {
+      logger({ event: 'relic_activity_login_parse_failed', message: error.message });
+      return { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+    }
+  }
+
+  function activityStateRows(activity) {
+    return [
+      ...(activity.act_list ?? []).map(entry => ({ state: entry.state_data, data: entry })),
+      ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(state => ({ state, data: state })))
+    ];
+  }
+
+  function stateDataFor(activity, actTid) {
+    const id = Number(actTid);
+    return activityStateRows(activity).find(row => Number(row.state?.act_id) === id)?.state ?? null;
+  }
+
+  function relicActivityConfig(kind, actTid) {
+    const id = Number(actTid);
+    if (kind === 'artifact') return artifactActivityRows.get(id) ?? null;
+    if (kind === 'demigod') return relicTables.DemigodActSchedule?.get(id) ?? null;
+    if (kind === 'fantasy') return relicTables.FantasyActSchedule?.get(id) ?? null;
+    return null;
+  }
+
+  function relicActivityIds(kind) {
+    if (kind === 'artifact') return [...artifactActivityRows.keys()].sort((left, right) => right - left);
+    if (kind === 'demigod') return [...(relicTables.DemigodActSchedule?.keys() ?? [])].sort((left, right) => right - left);
+    if (kind === 'fantasy') return [...(relicTables.FantasyActSchedule?.keys() ?? [])].sort((left, right) => right - left);
+    return [];
+  }
+
+  function activityKindForId(actTid) {
+    const id = Number(actTid);
+    if (artifactActivityRows.has(id)) return 'artifact';
+    if (relicTables.DemigodActSchedule?.has(id)) return 'demigod';
+    if (relicTables.FantasyActSchedule?.has(id)) return 'fantasy';
+    return null;
+  }
+
+  function activityIsOpen(kind, actTid, model = null, seconds = secondsClock()) {
+    const id = Number(actTid);
+    const config = relicActivityConfig(kind, id);
+    if (!config) return false;
+    const activity = parseActivityLogin(model);
+    return calendar.isActivityRunning(id, stateDataFor(activity, id), activity, seconds);
+  }
+
+  function currentRelicActivityId(kind, model = null, seconds = secondsClock()) {
+    const override = relicActivityOverrides.get(kind);
+    if (override !== undefined) return override;
+    const activity = parseActivityLogin(model);
+    const fromLogin = activityStateRows(activity)
+      .filter(row => activityKindForId(row.state?.act_id) === kind)
+      .filter(row => activityIsOpen(kind, row.state?.act_id, model, seconds))
+      .map(row => Number(row.state.act_id));
+    if (fromLogin.length) return fromLogin.at(-1);
+    return relicActivityIds(kind).find(id => activityIsOpen(kind, id, model, seconds)) ?? null;
+  }
+
+  function relicActivityWindow(actTid) {
+    const id = Number(actTid), config = tables.Activity?.get(id);
+    if (!config) throw new GameError(5, `Activity ${id} is missing for module 183`);
+    const window = activityWindow(config, calendar.serverOpenedAt);
+    if (!window) throw new GameError(5, `Activity ${id} has no reproducible login window`);
+    return window;
+  }
+
+  function ensureRelicActivityLoginEntry(activity, actTid, seconds) {
+    const id = Number(actTid);
+    if (!id) return;
+    const config = relicActivityConfig(activityKindForId(id), id);
+    if (!config) throw new GameError(5, `Activity ${id} is not configured`);
+    if (stateDataFor(activity, id)) return;
+    const window = relicActivityWindow(id);
+    activity.act_list.push({
+      state_data: {
+        act_id: id,
+        cur_state_id: 50,
+        history_time: [{ state_id: 50, enter_time: Math.max(Number(window.start), Number(seconds)) }]
+      },
+      module_login_data: Buffer.alloc(0)
+    });
+  }
+
   const heroDrawActivity = createHeroDrawActivityService({ store, codec, tables, heroTables, calendar, now: clock, logger });
+  const fantasyDraw = createFantasyDrawService({ store, codec, tables, now: secondsClock });
+  let demigodAct, fantasyEquipAct;
+  const fantasyEquipment = createFantasyEquipmentService({
+    store, codec, tables,
+    extraReferences: (model, uid) => [
+      ...(demigodAct?.shared.activityReferences(model) ?? []),
+      ...(fantasyEquipAct?.shared.activityReferences(model) ?? [])
+    ].filter(reference => Number(reference.uid) === Number(uid))
+  });
+  const artifactDrawAct = createArtifactDrawActService({
+    store, codec, tables: relicTables, heroTables, inventory: fantasyEquipment.inventory,
+    now: secondsClock, random, logger,
+    assertOpen: ({ actTid, seconds, model }) => activityIsOpen('artifact', actTid, model, seconds)
+  });
+  const dynamicDemigodActivity = { valueOf: () => currentRelicActivityId('demigod') };
+  const dynamicFantasyActivity = { valueOf: () => currentRelicActivityId('fantasy') };
+  const relicActivityGate = ({ kind, actTid, seconds, model }) => activityIsOpen(kind, actTid, model, seconds);
+  demigodAct = createDemigodActService({
+    store, codec, tables: relicTables, fantasyTables: fantasyActTables,
+    now: secondsClock, activityTid: dynamicDemigodActivity, assertOpen: relicActivityGate,
+    marblesRandom: random, logger
+  });
+  fantasyEquipAct = createFantasyEquipActService({
+    store, codec, tables: relicTables, fantasyTables: fantasyActTables,
+    now: secondsClock, activityTid: dynamicFantasyActivity, assertOpen: relicActivityGate,
+    marblesRandom: random, logger
+  });
+  const artifactDrawPool = createArtifactDrawPool({
+    tables: relicTables, heroTables, random,
+    resolveVersion: ({ drawLib, model, seconds }) => {
+      const actTid = currentRelicActivityId('artifact', model, seconds);
+      const row = actTid ? artifactActivityRows.get(actTid) : null;
+      const version = relicTables.ArtifactDrawVersion.get(Number(row?.version));
+      return Number(version?.draw_lib) === Number(drawLib) ? version?.tid : null;
+    },
+    assertOpen: ({ version, model, seconds }) => {
+      const actTid = currentRelicActivityId('artifact', model, seconds);
+      const row = actTid ? artifactActivityRows.get(actTid) : null;
+      return Number(row?.version) === Number(version?.tid) && activityIsOpen('artifact', actTid, model, seconds);
+    }
+  });
+  const demigodDrawPool = createDemigodDrawPool({
+    tables: relicTables, heroTables, inventory: fantasyEquipment.inventory, codec, random,
+    ...(relicDrawGroupResolver ? {
+      resolveGroup: groupId => relicDrawGroupResolver({ kind: 'demigod', groupId: Number(groupId), tables: relicTables })
+    } : {}),
+    resolveVersion: ({ drawLib, model, seconds }) => {
+      const actTid = currentRelicActivityId('demigod', model, seconds);
+      const row = actTid ? relicTables.DemigodActSchedule?.get(actTid) : null;
+      const version = relicTables.DemigodDraw.get(Number(row?.version));
+      return Number(version?.draw_lib) === Number(drawLib) ? version?.tid : null;
+    },
+    assertOpen: ({ version, model, seconds }) => {
+      const actTid = currentRelicActivityId('demigod', model, seconds);
+      const row = actTid ? relicTables.DemigodActSchedule?.get(actTid) : null;
+      return Number(row?.version) === Number(version?.tid) && activityIsOpen('demigod', actTid, model, seconds);
+    }
+  });
+  const residentFantasyDrawPool = createResidentFantasyDrawPool({
+    tables: relicTables, heroTables, inventory: fantasyEquipment.inventory, codec, random,
+    ...(relicDrawGroupResolver ? {
+      resolveGroup: groupId => relicDrawGroupResolver({ kind: 'resident_fantasy', groupId: Number(groupId), tables: relicTables })
+    } : {}),
+    assertOpen: () => true
+  });
+  const fantasySharedDraw = createFantasySharedDrawService({
+    store, codec, now: secondsClock,
+    pools: [artifactDrawPool, demigodDrawPool, residentFantasyDrawPool],
+    onDraw: (model, detail) => {
+      const pushEvents = [];
+      if (detail.pool === 'artifact') {
+        artifactDrawAct.onFantasyDraw(model, { ...detail, version: detail.event?.version });
+        const drawConfig = heroTables.Draw.get(Number(detail.event?.drawLib));
+        const guarantee = heroTables.Guaranteed.get(Number(drawConfig?.guaranteed));
+        const pushValue = {
+          wish_tid: 0,
+          normal_guarantee_times: Number(guarantee?.guaranteed_num ?? 0),
+          guarantee_progress: Number(detail.poolState?.guaranteed_count ?? 0),
+          all_guarantee_times: Number(detail.poolState?.total_draw_count ?? 0)
+        };
+        pushEvents.push({ kind: 'fantasy_act_draw_update', pushType: 7001, schema: 'pb_fantasy_equip_act_draw', value: pushValue, data: codec.pack('pb_fantasy_equip_act_draw', pushValue) });
+      } else if (detail.pool === 'demigod') {
+        const draw = demigodAct.recordDraw(model, { count: detail.count }, detail.event?.version);
+        const pushValue = { draw_num: Number(draw.draw_num ?? 0), wish_list: [], version_draw_num: String(draw.version_draw_num ?? '0') };
+        pushEvents.push({ kind: 'demigod_act_draw_update', pushType: 9160, schema: 'pb_demigod_act_draw_back', value: pushValue, data: codec.pack('pb_demigod_act_draw_back', pushValue) });
+      } else if (detail.pool === 'resident_fantasy') {
+        fantasyEquipAct.recordDraw(model, { count: detail.count }, currentRelicActivityId('fantasy', model, detail.seconds));
+      }
+      return { pushEvents };
+    }
+  });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
@@ -87,7 +305,7 @@ export function createLocalGame({
   const handbook = createHeroHandbookService({ store, codec, heroTables });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const subscribers=new Set();
-  const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
+  const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch(error){logger({event:'realtime_push_failed',type,message:error.message});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger,petActivity,heroDrawActivity,now:() => Math.floor(clock() / 1000)}):undefined;
@@ -100,6 +318,8 @@ export function createLocalGame({
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     recruit.ensureLoginState();
+    fantasyDraw.ensureLoginState();
+    fantasyEquipment.ensureLoginState();
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
     destiny.ensureLoginState();
@@ -132,6 +352,12 @@ export function createLocalGame({
     const schedule = calendar.applyLoginSchedule(activity, loginSeconds);
     const petLogin = await petActivity.synchronizeLogin(activity, loginSeconds);
     const heroDrawLogin = heroDrawActivity.synchronizeLogin(activity, loginSeconds);
+    const currentArtifactId = currentRelicActivityId('artifact', null, loginSeconds);
+    const currentDemigodId = currentRelicActivityId('demigod', null, loginSeconds);
+    const currentFantasyId = currentRelicActivityId('fantasy', null, loginSeconds);
+    for (const actTid of [currentArtifactId, currentDemigodId, currentFantasyId]) {
+      if (actTid) ensureRelicActivityLoginEntry(activity, actTid, loginSeconds);
+    }
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -139,6 +365,46 @@ export function createLocalGame({
     modules.set(92, binary(pack('pb_act_login', activity)));
     if (petLogin) modules.set(petActivity.moduleId, binary(petLogin.module));
     else modules.delete(petActivity.moduleId);
+    const artifactIds = [...new Set([
+      ...activityStateRows(activity)
+        .filter(row => artifactActivityRows.has(Number(row.state?.act_id)))
+        .map(row => Number(row.state.act_id)),
+      ...(currentArtifactId ? [currentArtifactId] : [])
+    ])].filter(id => activityIsOpen('artifact', id, null, loginSeconds));
+    const artifactLogin = artifactIds.length ? artifactDrawAct.loginPayloads({ actTids: artifactIds }) : null;
+    const demigodLogin = currentDemigodId ? (() => {
+      demigodAct.ensureLoginState();
+      return demigodAct.serializeLoginBlocks();
+    })() : null;
+    const fantasyLogin = currentFantasyId ? (() => {
+      fantasyEquipAct.ensureLoginState();
+      return fantasyEquipAct.serializeLoginBlocks();
+    })() : null;
+    const loginActivities = [];
+    if (artifactLogin) {
+      for (const player of artifactLogin.playerList.value.act_data_list ?? []) {
+        const actTid = Number(player.act_tid);
+        const window = relicActivityWindow(actTid);
+        loginActivities.push({
+          actTid, startTime: window.start, endTime: window.end,
+          blocks: [codec.pack('pb_artifact_draw_player_list', { act_data_list: [player] })]
+        });
+      }
+    }
+    for (const payload of [demigodLogin, fantasyLogin].filter(Boolean)) {
+      const actTid = Number(payload.act_tid);
+      const window = relicActivityWindow(actTid);
+      loginActivities.push({ actTid, startTime: window.start, endTime: window.end, blocks: payload.blocks });
+    }
+    if (loginActivities.length) {
+      const merged = mergeRelicLoginContainer({
+        codec,
+        entry: storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null,
+        activities: loginActivities,
+        serverRows: artifactLogin?.serverList.value.act_data_list ?? []
+      });
+      modules.set(RELIC_ACTIVITY_LOGIN_MODULE_ID, revive({ value: merged.values, improper: false }));
+    }
     logger({
       event: 'activity_login_calendar_applied',
       activityMode: calendar.mode,
@@ -149,6 +415,10 @@ export function createLocalGame({
       petActivityId: petLogin?.actId ?? null,
       petShopId: petLogin?.shopId ?? null,
       heroDrawActivityId: heroDrawLogin?.actId ?? null,
+      artifactActivityIds: artifactIds,
+      demigodActivityId: currentDemigodId,
+      fantasyActivityId: currentFantasyId,
+      relicLoginActivityIds: loginActivities.map(value => value.actTid),
       heroDrawCount: heroDrawLogin?.drawData?.role_data?.draw_count ?? null,
       heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
@@ -195,6 +465,49 @@ export function createLocalGame({
     if (!Number.isSafeInteger(id) || id <= 0) throw new GameError(1, message);
     return id;
   }
+  function unpackRequest(schema, data) {
+    try {
+      return unpack(schema, data ?? Buffer.alloc(0));
+    } catch {
+      throw new GameError(1, 'Invalid protobuf request for ' + schema);
+    }
+  }
+  async function etfArgument(data, message, { optional = false } = {}) {
+    if (!data?.length) {
+      if (optional) return null;
+      throw new GameError(1, message);
+    }
+    let decoded;
+    try {
+      decoded = await decodeEtf(data);
+    } catch {
+      throw new GameError(1, message);
+    }
+    const value = decoded?.value ?? decoded;
+    if (optional && (value == null || (Array.isArray(value) && value.length === 0))) return null;
+    return Array.isArray(value) && value.length === 1 ? value[0] : value;
+  }
+  const artifactDrawActSchemas = Object.freeze({
+    101801: 'pb_req_artifact_trials_daily_reward_req',
+    101802: 'pb_artifact_draw_task_award_req',
+    101803: 'pb_artifact_fragments_draw_req',
+    101804: 'pb_artifact_fragments_new_turn_req',
+    101805: 'pb_artifact_fragments_claim_req',
+    101806: 'pb_artifact_fragments_synthesis_req'
+  });
+  const demigodActSchemas = Object.freeze({
+    98303: 'pb_demigod_act_receive_trial_req',
+    98304: 'pb_demigod_act_wear_equip_req',
+    98305: 'pb_demigod_act_wear_bless_req'
+  });
+  const fantasyEquipActSchemas = Object.freeze({
+    88928: 'pb_fantasy_act_receive_trial_req',
+    88929: 'pb_fantasy_act_wear_equip_req',
+    88930: 'pb_fantasy_act_wear_bless_req',
+    88932: 'pb_fantasy_act_task_reward_req'
+  });
+  const noParameterEtfCommands = new Set([98301, 98302, 98307, 88922, 88927]);
+  const scalarEtfActivityCommands = new Set([98306, 98308, 88924, 88931]);
   const storyMissionArgument = data => singleIdArgument(data, 'Invalid story mission payload');
   const sockets = new Set();
   const wireDumpDirectory = process.env.FATE_COVENANT_WIRE_DUMP_DIR;
@@ -496,6 +809,116 @@ export function createLocalGame({
         }
         return;
       }
+      if (artifactDrawAct.supports(type)) {
+        try {
+          const input = unpackRequest(artifactDrawActSchemas[type], request.data);
+          const result = artifactDrawAct.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'artifact_draw_act_committed', type, seq, actTid: input?.act_tid ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'artifact_draw_act_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (demigodAct.supports(type) || fantasyEquipAct.supports(type)) {
+        try {
+          const service = demigodAct.supports(type) ? demigodAct : fantasyEquipAct;
+          let input = null;
+          if (noParameterEtfCommands.has(Number(type))) {
+            const unexpected = await etfArgument(request.data, 'Invalid fantasy activity payload', { optional: true });
+            if (unexpected !== null) throw new GameError(1, 'Fantasy activity command takes no parameters');
+          } else if (scalarEtfActivityCommands.has(Number(type))) {
+            input = await etfArgument(request.data, 'Invalid fantasy activity scalar');
+          } else {
+            const schema = demigodActSchemas[type] ?? fantasyEquipActSchemas[type];
+            input = unpackRequest(schema, request.data);
+          }
+          const result = service.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'relic_activity_committed', type, seq, schema: result.schema });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'relic_activity_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (type === 601) {
+        let drawRequest;
+        try {
+          drawRequest = unpackRequest('pb_draw_hero', request.data);
+        } catch (error) {
+          send(seq, Buffer.alloc(0), { err: error.code ?? 1 });
+          log({ event: 'fantasy_shared_draw_rejected', type, seq, code: error.code ?? 1, message: error.message });
+          return;
+        }
+        if (fantasySharedDraw.supports601(drawRequest.draw_lib)) {
+          try {
+            const result = fantasySharedDraw.execute601(drawRequest);
+            send(seq, result.data);
+            const pushes = Array.isArray(result.pushEvents) ? result.pushEvents : [];
+            for (const event of pushes) {
+              if (!Number.isSafeInteger(Number(event?.pushType)) || !Buffer.isBuffer(event?.data)) {
+                logger({ event: 'realtime_push_skipped', sourceType: type, pushType: event?.pushType ?? null });
+                continue;
+              }
+              publish(Number(event.pushType), event.data);
+            }
+            log({ event: 'fantasy_shared_draw_committed', type, seq, pool: result.pool, pushTypes: pushes.map(event => Number(event.pushType)), ...result.valueForLog });
+          } catch (error) {
+            const code = error instanceof GameError ? error.code : 2;
+            send(seq, Buffer.alloc(0), { err: code });
+            log({ event: 'fantasy_shared_draw_rejected', type, seq, code, message: error.message });
+          }
+          return;
+        }
+      }
+      if (fantasyDraw.supports(type)) {
+        try {
+          const result = type === 87617
+            ? fantasyDraw.setWish(unpackRequest('pb_fantasy_equip_draw_wish_req', request.data))
+            : fantasyDraw.buyTickets(await singleIdArgument(request.data, 'Invalid fantasy ticket purchase'));
+          send(seq, result.data);
+          log({ event: 'fantasy_draw_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'fantasy_draw_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (fantasyEquipment.supports(type)) {
+        try {
+          const requests = new Map([
+            [87601, 'pb_fantasy_equip_put_on_req'],
+            [87603, 'pb_fantasy_equip_take_off_req'],
+            [87604, 'pb_fantasy_equip_bless_req'],
+            [87605, 'pb_fantasy_equip_id'],
+            [87606, 'pb_fantasy_equip_level_up_req'],
+            [87607, 'pb_fantasy_equip_composite_req'],
+            [87608, 'pb_fantasy_equip_dev_req'],
+            [87609, 'pb_fantasy_equip_composite_req'],
+            [87611, 'pb_fantasy_equip_lineup_custom_req'],
+            [87613, 'pb_fantasy_equip_lineup_one_key_req'],
+            [87614, 'pb_fantasy_formation_list'],
+            [87615, 'pb_fantasy_awakening_req'],
+            [87616, 'pb_fantasy_awakening_req']
+          ]);
+          const input = type === 87610
+            ? await etfArgument(request.data, 'Invalid fantasy equipment synthesis')
+            : unpackRequest(requests.get(type), request.data);
+          const result = fantasyEquipment.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'fantasy_equipment_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'fantasy_equipment_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (recruit.supports(type)) {
         try {
           let input;
@@ -655,7 +1078,8 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, tables,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity,
+    fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
