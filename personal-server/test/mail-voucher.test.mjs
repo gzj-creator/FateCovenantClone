@@ -279,7 +279,7 @@ test('voucher mail, grant and order state survive reopening the database', t => 
   assert.equal(codec.unpack('pb_rev_login_mail_info', e.mail.loginPayload()).mail_list[0].received, true);
 
   const db = new DatabaseSync(e.databasePath, { readOnly: true });
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 9);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 10);
   const names = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
   for (const name of ['voucher_skus', 'game_mails', 'voucher_grants', 'voucher_redemptions', 'reward_claims']) assert.ok(names.includes(name));
   assert.ok(db.prepare('SELECT name FROM migrations WHERE name=?').get('voucher-mail-v3'));
@@ -313,12 +313,11 @@ test('admin page serves voucher tools and issues/purchases through authenticated
   const post = (route, body) => fetch(url + route, { method: 'POST', headers, body: JSON.stringify(body) });
   const credit = await post('/api/credit', { account_id: 'local-1', amount_cents: 1000, request_id: 'admin-credit' });
   assert.equal(credit.status, 200);
-  const expireAt = Math.floor(Date.now() / 1000) + 3600;
-  const issue = await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: expireAt, title: '管理端发券' });
+  const issue = await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: Math.floor(Date.now() / 1000) + 3600, title: '管理端发券' });
   assert.equal(issue.status, 200);
   const issued = await issue.json();
   assert.equal(issued.quantity, 6);
-  assert.equal((await (await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: expireAt, title: '管理端发券' })).json()).duplicate, true);
+  assert.equal((await (await post('/api/vouchers/issue', { account_id: 'local-1', amount_cents: 600, request_id: 'admin-mail', expire_at: Math.floor(Date.now() / 1000) + 3600, title: '管理端发券' })).json()).duplicate, true);
 
   const state = await (await fetch(url + '/api/state', { headers: { Authorization: 'Bearer voucher-key' } })).json();
   assert.equal(state.vouchers.sku.item_tid, 701500);

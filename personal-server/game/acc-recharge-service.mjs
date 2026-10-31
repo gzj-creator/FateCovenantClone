@@ -2,7 +2,7 @@ import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { activityWindow } from './activity-calendar.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
-import { grantResources } from './resources.mjs';
+import { grantResources, partitionGrantableResources, releaseGrantablePendingRewards } from './resources.mjs';
 
 const MODULE_ID = 106;
 const ACT_TYPE = 106;
@@ -12,13 +12,13 @@ function rechargeDayIndex(timestampSeconds) {
   return Math.floor((timestampSeconds + 10800) / 86400);
 }
 
-function rechargeRangeTotal(modules, codec, activity, serverOpenedAt) {
+function rechargeRangeTotal(modules, codec, activity, serverOpenedAt, activityMode) {
   const window = activityWindow(activity, serverOpenedAt);
   if (!window || !Number.isSafeInteger(window.start) || !Number.isSafeInteger(window.end) || window.end < window.start) {
     throw new GameError(5, 'Cumulative-recharge activity window is invalid');
   }
-  const startDay = rechargeDayIndex(window.start);
-  const endDay = rechargeDayIndex(window.end);
+  const scheduledStartDay = rechargeDayIndex(window.start);
+  const scheduledEndDay = rechargeDayIndex(window.end);
   const module = modules.get(19);
   if (!module) return { totalCents: 0, startDay, endDay };
   const login = codec.unpack('res_recharge_login', rawBinary(module));
@@ -31,11 +31,15 @@ function rechargeRangeTotal(modules, codec, activity, serverOpenedAt) {
     if (!Number.isSafeInteger(dayIndex) || !Number.isSafeInteger(amountCents) || amountCents < 0) {
       throw new GameError(5, 'Cumulative-recharge record is invalid');
     }
-    if (dayIndex < startDay || dayIndex > endDay) continue;
+    if (activityMode !== 'all-open' && (dayIndex < scheduledStartDay || dayIndex > scheduledEndDay)) continue;
     totalCents += amountCents;
     if (!Number.isSafeInteger(totalCents)) throw new GameError(5, 'Cumulative-recharge range total is invalid');
   }
-  return { totalCents, startDay, endDay };
+  return {
+    totalCents,
+    startDay: activityMode === 'all-open' ? (records.length ? Math.min(...records.map(record => Number(record.day_index))) : null) : scheduledStartDay,
+    endDay: activityMode === 'all-open' ? (records.length ? Math.max(...records.map(record => Number(record.day_index))) : null) : scheduledEndDay
+  };
 }
 
 function recharges(module, codec) {
@@ -54,6 +58,7 @@ function awardStateBytes(value) {
 export function createAccRechargeService({ store, codec, tables, calendar, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
   const serverOpenedAt = Number(calendar?.serverOpenedAt ?? store.serverOpenedAt);
+  const activityMode = calendar?.mode ?? 'schedule';
 
   // The first implementation treated award_state as one byte per tier. The
   // client reads it through Core.BitBlock, so legacy claims need a one-time
@@ -78,10 +83,10 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
       const period = 'v' + Number(act.version);
       const matching = claims.filter(claim => Number(claim.act_id) === actId && claim.period === period);
       if (!matching.length) continue;
-      let bits = Buffer.alloc(AWARD_STATE_WIDTH);
+      const bits = Buffer.alloc(AWARD_STATE_WIDTH);
       for (const claim of matching) {
         const bit = Number(claim.task_id) % AWARD_STATE_WIDTH;
-        if (bit > 0) bits = setBit(bits, bit);
+        if (bit > 0) setBit(bits, bit);
       }
       if (!awardStateBytes(row.award_state).equals(bits)) repairs.set(actId, bits);
     }
@@ -107,6 +112,23 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
   }
 
   repairAwardStates();
+
+  function releaseEligiblePendingRewards() {
+    const hasPending = store.inspect(db => Boolean(db.prepare(
+      "SELECT 1 FROM pending_rewards WHERE role_id=? AND status='pending' AND source_key LIKE 'acc_recharge:%' LIMIT 1"
+    ).get(store.state().roleId)));
+    if (!hasPending) return;
+    try {
+      const result = store.transaction((model, db) => releaseGrantablePendingRewards(
+        model, db, tables, { sourcePrefix: 'acc_recharge:' }
+      ));
+      if (result.released.length) log({ event: 'acc_recharge_pending_rewards_released', released: result.released });
+    } catch (error) {
+      log({ event: 'acc_recharge_pending_rewards_release_failed', error: error?.message ?? String(error) });
+    }
+  }
+
+  releaseEligiblePendingRewards();
 
   function execute(data) {
     const request = codec.unpack('pb_acc_recharge_award_req', data);
@@ -137,31 +159,61 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
         dataRows.list.push(entry);
       }
       const awardState = awardStateBytes(entry.award_state);
-      if (hasBit(awardState, slot)) throw new GameError(310, 'Reward already claimed');
+      const period = 'v' + act.version;
+      const existingClaim = db.prepare(
+        'SELECT 1 FROM activity_claims WHERE role_id=? AND act_id=? AND task_id=? AND period=?'
+      ).get(model.state.roleId, actId, awardTid, period);
+      if (existingClaim || hasBit(awardState, slot)) {
+        // AccRechargeActMgr sets the item's in-memory isAwarded flag before
+        // parsing changes. An empty successful response therefore clears old
+        // clickable rows without issuing the reward a second time.
+        if (!hasBit(awardState, slot)) {
+          setBit(awardState, slot);
+          entry.award_state = awardState.toString('base64');
+          const repaired = new Map(model.state.modules.value);
+          repaired.set(MODULE_ID, serializedBinary(codec.pack('pb_acc_recharge_list', dataRows)));
+          model.state.modules.value = [...repaired];
+        }
+        const res = { changes: [] };
+        log({ event: 'acc_recharge_duplicate_acknowledged', actId, awardTid, slot, claimRecord: Boolean(existingClaim) });
+        return { value: { res }, data: codec.pack('pb_res_to_client', res) };
+      }
 
       // The client compares this activity's inclusive day range from the recharge
       // records, and both record amounts and award.acc_cnt are stored in cents.
-      const { totalCents, startDay, endDay } = rechargeRangeTotal(freshModules, codec, act, serverOpenedAt);
+      const { totalCents, startDay, endDay } = rechargeRangeTotal(freshModules, codec, act, serverOpenedAt, activityMode);
       const requiredCents = Number(award.acc_cnt);
       if (!Number.isSafeInteger(requiredCents) || requiredCents <= 0) {
         throw new GameError(5, 'Cumulative-recharge threshold is invalid');
       }
       if (totalCents < requiredCents) throw new GameError(311, 'Cumulative recharge amount is insufficient');
-      if (db.prepare('SELECT 1 FROM activity_claims WHERE role_id=? AND act_id=? AND task_id=? AND period=?').get(model.state.roleId, actId, awardTid, 'v' + act.version)) {
-        throw new GameError(310, 'Reward already claimed');
-      }
 
-      const nextAwardState = setBit(awardState, slot);
-      entry.award_state = nextAwardState.toString('base64');
-      const res = grantResources(model, award.award, tables);
+      setBit(awardState, slot);
+      entry.award_state = awardState.toString('base64');
+      const partitioned = partitionGrantableResources(award.award, tables);
+      const res = grantResources(model, partitioned.grantable, tables);
       const nextModule = serializedBinary(codec.pack('pb_acc_recharge_list', dataRows));
       const updated = new Map(model.state.modules.value);
       updated.set(MODULE_ID, nextModule);
       model.state.modules.value = [...updated];
-      db.prepare('INSERT INTO activity_claims VALUES (?,?,?,?,?)').run(
-        model.state.roleId, actId, awardTid, 'v' + act.version, new Date().toISOString()
+      const createdAt = new Date().toISOString();
+      const sourceKey = ['acc_recharge', actId, awardTid, period].join(':');
+      const insertPending = db.prepare(
+        'INSERT INTO pending_rewards(role_id,source_key,item_tid,quantity,res_type,reason,status,created_at) VALUES (?,?,?,?,?,?,\'pending\',?)'
       );
-      log({ event: 'acc_recharge_claim_committed', actId, awardTid, total: totalCents, startDay, endDay, slot, changes: res.changes.length });
+      for (const reward of partitioned.pending) {
+        insertPending.run(
+          model.state.roleId, sourceKey, reward.tid, reward.quantity, reward.resType,
+          reward.resType === null ? reward.reason : `${reward.reason}:${reward.resType}`, createdAt
+        );
+      }
+      db.prepare('INSERT INTO activity_claims VALUES (?,?,?,?,?)').run(
+        model.state.roleId, actId, awardTid, period, createdAt
+      );
+      log({
+        event: 'acc_recharge_claim_committed', actId, awardTid, total: totalCents, startDay, endDay, slot,
+        changes: res.changes.length, pending: partitioned.pending.map(reward => reward.tid)
+      });
       return { value: { res }, data: codec.pack('pb_res_to_client', res) };
     });
   }

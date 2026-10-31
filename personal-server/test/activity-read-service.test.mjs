@@ -16,7 +16,7 @@ const tables = readGameTables();
 const SERVER_OPENED_AT = 1792789200;
 const DAY = 86400;
 
-function setup(t, initialSeconds = SERVER_OPENED_AT + 3600, serviceTables = tables) {
+function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-fishing-'));
   const file = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, file);
@@ -40,11 +40,11 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600, serviceTables = tabl
     return opened;
   };
   let store = openStore();
-  const calendar = createActivityCalendar({ tables: serviceTables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
+  const calendar = createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
   const make = () => createActivityReadService({
     codec,
     store,
-    tables: serviceTables,
+    tables,
     calendar,
     now: () => nowSeconds * 1000,
     random: () => 0.5
@@ -144,7 +144,7 @@ test('grants version bait once, unlocks the correct first island and persists', 
   const reopened = codec.unpack('pb_fishing_act_data_res', unlock(env.service, 1074003, 201).data);
   assert.deepEqual(reopened.data.unlock_map_list, ['201']);
   assert.deepEqual(reopened.res.changes, []);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 9);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 10);
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('fishing-activity-state-v6')));
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('activity-calendar-server-open-v7')));
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('pet-activity-commerce-v8')));
@@ -175,12 +175,8 @@ test('batch fishing consumes available bait and records every catch atomically',
   );
 });
 
-test('rejects closed, cross-version, locked and unsupported-reward requests atomically', t => {
-  // Keep this regression test explicit even though 4040301 became a supported
-  // HeroTable reward when the generic reward dispatcher was introduced.
-  const restrictedTables = { ...tables, FishingIsland: new Map(tables.FishingIsland) };
-  restrictedTables.FishingIsland.set(204, { ...tables.FishingIsland.get(204), unlock_reward: [[999999999, 1]] });
-  const env = setup(t, SERVER_OPENED_AT + 3600, restrictedTables);
+test('rejects closed, cross-version and locked requests without partial state', t => {
+  const env = setup(t);
   const rejects = (fn, code) => assert.throws(fn, error => error.code === code);
   rejects(() => unlock(env.service, 89001, 201), 1);
   rejects(() => unlock(env.service, 1074003, 999), 1);
@@ -190,11 +186,13 @@ test('rejects closed, cross-version, locked and unsupported-reward requests atom
 
   unlock(env.service, 1074003, 201);
   env.store.inspect(db => db.prepare('UPDATE fishing_activity_state SET score=100000 WHERE act_id=1074003').run());
-  rejects(() => unlock(env.service, 1074003, 204), 5);
+  const supportedReward = unlock(env.service, 1074003, 204).value;
+  assert.deepEqual(supportedReward.res.changes.map(change => change.tid), ['4040301', '101500']);
   const row = env.store.inspect(db => db.prepare('SELECT unlock_map_list_json,score FROM fishing_activity_state WHERE act_id=1074003').get());
-  assert.deepEqual(JSON.parse(row.unlock_map_list_json), [201]);
+  assert.deepEqual(JSON.parse(row.unlock_map_list_json), [201, 204]);
   assert.equal(row.score, '100000');
   assert.equal(env.store.read().resources.has('4040301'), false);
+  assert.equal(env.store.read().heroInfo.hero_list.some(hero => Number(hero.tid) === 4040301), true);
 
   env.setNow(SERVER_OPENED_AT + 7 * DAY);
   rejects(() => unlock(env.service, 1074003, 201), 309);

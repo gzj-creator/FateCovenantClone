@@ -25,6 +25,15 @@ export function roleLoginDayCount(createdAt, at) {
   return Math.max(1, rechargeDayIndex(at) - rechargeDayIndex(created) + 1);
 }
 
+// Server-scoped activities count their activation day as day 1. Unlike the
+// general activity calendar, recharge features reset at 05:00 Asia/Shanghai,
+// so this must use the same shifted epoch as rechargeDayIndex.
+export function rechargeServerDayNumber(serverOpenedAt, at) {
+  const opened = timestampSeconds(serverOpenedAt);
+  if (!opened) return 1;
+  return Math.max(1, rechargeDayIndex(at) - rechargeDayIndex(opened) + 1);
+}
+
 export function requireCentAmount(value, label = 'amount', { allowZero = false } = {}) {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < (allowZero ? 0 : 1)) {
     throw new TypeError(`${label} must be an exact integer number of cents`);

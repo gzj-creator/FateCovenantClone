@@ -48,7 +48,7 @@ function setAwardState(store, actId, bytes) {
   });
 }
 
-function setup(t, serviceTables = tables) {
+function setup(t, initialTables = tables, calendarMode = null) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-acc-recharge-'));
   const databasePath = path.join(directory, 'game.sqlite');
   const seed = () => ({
@@ -58,24 +58,39 @@ function setup(t, serviceTables = tables) {
     guides: {}, lineups: null
   });
   let store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
-  const calendar = { serverOpenedAt: SERVER_OPENED_AT };
-  const make = () => createAccRechargeService({ store, codec, tables: serviceTables, calendar });
+  const calendar = { serverOpenedAt: SERVER_OPENED_AT, ...(calendarMode ? { mode: calendarMode } : {}) };
+  let activeTables = initialTables;
+  const logs = [];
+  const make = () => createAccRechargeService({ store, codec, tables: activeTables, calendar, logger: event => logs.push(event) });
   let service = make();
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
     get store() { return store; },
     get service() { return service; },
+    get logs() { return logs; },
     setRechargeRecords: (records, total) => setRechargeRecords(store, records, total),
-    reopen() {
+    reopen(nextTables = activeTables) {
       store.close();
+      activeTables = nextTables;
       store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
       service = make();
     }
   };
 }
 
-const claim = (service, awardTid = 36001101) => service.execute(
-  codec.pack('pb_acc_recharge_award_req', { act_id: 106036, award_tid: awardTid })
+function unsupportedFeatureTables() {
+  const items = new Map(tables.Item);
+  const types = new Map(tables.Type);
+  types.set(999001, { ...tables.Type.get(191), tid: 999001, obj_class: { reference: 'UnsupportedElves' } });
+  types.set(999002, { ...tables.Type.get(244), tid: 999002, obj_class: { reference: 'UnsupportedSpiritCourtyard' } });
+  for (const id of [400420, 10014100]) {
+    items.set(id, { ...items.get(id), type: id === 400420 ? 999001 : 999002 });
+  }
+  return { ...tables, Item: items, Type: types };
+}
+
+const claim = (service, awardTid = 36001101, actId = 106036) => service.execute(
+  codec.pack('pb_acc_recharge_award_req', { act_id: actId, award_tid: awardTid })
 );
 
 test('cumulative recharge claims persist award slots and grant configured rewards', t => {
@@ -83,7 +98,8 @@ test('cumulative recharge claims persist award slots and grant configured reward
   e.setRechargeRecords([{ day_index: startDay, recharge_ids: [11], amount: 20400 }]);
   let result = claim(e.service, 36001101);
   assert.equal(codec.unpack('pb_res_to_client', result.data).changes.find(x => x.tid === '807002').diff_num, '10');
-  assert.throws(() => claim(e.service, 36001101), x => x.code === 310);
+  result = claim(e.service, 36001101);
+  assert.deepEqual(codec.unpack('pb_res_to_client', result.data).changes, []);
   result = claim(e.service, 36001102);
   assert.equal(codec.unpack('pb_res_to_client', result.data).changes.find(x => x.tid === '807002').diff_num, '10');
   result = claim(e.service, 36001103);
@@ -102,7 +118,8 @@ test('cumulative recharge claims persist award slots and grant configured reward
   assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM activity_claims').get().n), 3);
 
   e.reopen();
-  assert.throws(() => claim(e.service, 36001101), x => x.code === 310);
+  result = claim(e.service, 36001101);
+  assert.deepEqual(codec.unpack('pb_res_to_client', result.data).changes, []);
   module = codec.unpack('pb_acc_recharge_list', rawBinary(new Map(e.store.state().modules.value).get(106)));
   row = module.list.find(x => Number(x.act_id) === 106036);
   assert.equal(hasBit(Buffer.from(row.award_state, 'base64'), 3), true);
@@ -166,6 +183,15 @@ test('cumulative recharge uses inclusive activity-window records instead of life
   assert.equal(codec.unpack('pb_res_to_client', result.data).changes.find(change => change.tid === '807002').diff_num, '10');
 });
 
+test('all-open cumulative recharge uses account-wide records for a future-scheduled activity', t => {
+  const e = setup(t, tables, 'all-open');
+  const award = tables.AccRechargeAward.get(37001105);
+  e.setRechargeRecords([{ day_index: startDay, recharge_ids: [11], amount: Number(award.acc_cnt) }]);
+  const result = claim(e.service, 37001105, 106037);
+  assert.equal(codec.unpack('pb_res_to_client', result.data).changes.find(change => change.tid === '494002').diff_num, '10');
+  assert.equal(e.store.inspect(db => db.prepare("SELECT count(*) n FROM activity_claims WHERE act_id=106037 AND task_id=37001105 AND period='v37'").get().n), 1);
+});
+
 test('wallet purchases accumulate in the 98620 activity day range', t => {
   const e = setup(t);
   const wallet = createWalletService({ store: e.store, codec, tables, now: () => WINDOW.start });
@@ -202,7 +228,83 @@ test('repairs legacy byte-index award states from persisted claims', t => {
   assert.equal(hasBit(state, 1), true);
   assert.equal(hasBit(state, 2), true);
   assert.equal(hasBit(state, 3), true);
-  assert.throws(() => claim(e.service, 36001101), x => x.code === 310);
+  const duplicate = claim(e.service, 36001101);
+  assert.deepEqual(codec.unpack('pb_res_to_client', duplicate.data).changes, []);
+});
+
+test('648 tier grants supported inventory and retains feature-domain rewards', t => {
+  const e = setup(t, unsupportedFeatureTables());
+  const award = tables.AccRechargeAward.get(37001105);
+  assert.deepEqual(award.award, [[400420, 1], [494002, 10], [10014100, 1]]);
+  const activity = tables.ActFrameAct.get(106037);
+  const range = activityWindow(activity, SERVER_OPENED_AT);
+  e.setRechargeRecords([{ day_index: dayIndex(range.start), recharge_ids: [11], amount: Number(award.acc_cnt) }]);
+  const before = BigInt(e.store.inspect(db => db.prepare("SELECT amount FROM resources WHERE tid='494002'").get()?.amount ?? '0'));
+
+  let result = claim(e.service, 37001105, 106037);
+  let changes = codec.unpack('pb_res_to_client', result.data).changes;
+  assert.deepEqual(changes, [{ tid: '494002', new_num: String(before + 10n), diff_num: '10' }]);
+  const after = BigInt(e.store.inspect(db => db.prepare("SELECT amount FROM resources WHERE tid='494002'").get().amount));
+  assert.equal(after, before + 10n);
+  assert.deepEqual(e.store.inspect(db => db.prepare(
+    'SELECT item_tid,quantity,res_type,status FROM pending_rewards ORDER BY item_tid'
+  ).all().map(row => ({ ...row }))), [
+    { item_tid: 400420, quantity: 1, res_type: 20, status: 'pending' },
+    { item_tid: 10014100, quantity: 1, res_type: 4100, status: 'pending' }
+  ]);
+  assert.equal(e.store.inspect(db => db.prepare("SELECT count(*) n FROM resources WHERE tid IN ('400420','10014100')").get().n), 0);
+  assert.equal(e.store.inspect(db => db.prepare("SELECT count(*) n FROM activity_claims WHERE act_id=106037 AND task_id=37001105 AND period='v37'").get().n), 1);
+  let module = codec.unpack('pb_acc_recharge_list', rawBinary(new Map(e.store.state().modules.value).get(106)));
+  const state = Buffer.from(module.list.find(row => Number(row.act_id) === 106037).award_state, 'base64');
+  assert.equal(hasBit(state, 5), true);
+
+  result = claim(e.service, 37001105, 106037);
+  assert.deepEqual(codec.unpack('pb_res_to_client', result.data).changes, []);
+  assert.equal(BigInt(e.store.inspect(db => db.prepare("SELECT amount FROM resources WHERE tid='494002'").get().amount)), after);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM pending_rewards').get().n), 2);
+
+  e.reopen();
+  assert.equal(e.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 10);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM pending_rewards').get().n), 2);
+  result = claim(e.service, 37001105, 106037);
+  assert.deepEqual(codec.unpack('pb_res_to_client', result.data).changes, []);
+});
+
+test('pending feature-domain rewards move to inventory once their handler is supported', t => {
+  const e = setup(t, unsupportedFeatureTables());
+  const award = tables.AccRechargeAward.get(37001105);
+  const range = activityWindow(tables.ActFrameAct.get(106037), SERVER_OPENED_AT);
+  e.setRechargeRecords([{ day_index: dayIndex(range.start), recharge_ids: [11], amount: Number(award.acc_cnt) }]);
+  claim(e.service, 37001105, 106037);
+
+  e.reopen(tables);
+  assert.equal(e.logs.some(event => event.event === 'acc_recharge_pending_rewards_released'), true);
+  assert.deepEqual(e.store.inspect(db => db.prepare(
+    'SELECT item_tid,status FROM pending_rewards ORDER BY item_tid'
+  ).all().map(row => ({ ...row }))), [
+    { item_tid: 400420, status: 'released' },
+    { item_tid: 10014100, status: 'released' }
+  ]);
+  const duplicate = claim(e.service, 37001105, 106037);
+  assert.deepEqual(codec.unpack('pb_res_to_client', duplicate.data).changes, []);
+});
+
+test('invalid configured reward rolls back claim, module, resources, and pending rows', t => {
+  const brokenTables = {
+    ...tables,
+    AccRechargeAward: new Map([...tables.AccRechargeAward].map(([awardTid, award]) => [
+      awardTid,
+      Number(awardTid) === 36001101 ? { ...award, award: [[999999999, 1]] } : award
+    ]))
+  };
+  const e = setup(t, brokenTables);
+  e.setRechargeRecords([{ day_index: startDay, recharge_ids: [11], amount: 20400 }]);
+  assert.throws(() => claim(e.service, 36001101), error => error.code === 5);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM activity_claims').get().n), 0);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM pending_rewards').get().n), 0);
+  const module = codec.unpack('pb_acc_recharge_list', rawBinary(new Map(e.store.state().modules.value).get(106)));
+  const row = module.list.find(row => Number(row.act_id) === 106036);
+  assert.equal(row ? hasBit(Buffer.from(row.award_state, 'base64'), 1) : false, false);
 });
 
 test('real gateway routes 98620 instead of returning LOCAL_NOT_IMPLEMENTED', async t => {

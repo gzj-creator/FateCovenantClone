@@ -84,6 +84,54 @@ export function rewardHandlerFor(itemId, tables) {
   return handlerFor(Number(itemId), tables);
 }
 
+export function isGrantableResource(itemId, tables) {
+  return Boolean(handlerFor(Number(itemId), tables));
+}
+
+export function partitionGrantableResources(awards, tables) {
+  const totals = totalsOf(awards);
+  const grantable = [], pending = [];
+  for (const [rawId, total] of totals) {
+    if (total > BigInt(Number.MAX_SAFE_INTEGER)) throw new GameError(1, 'Resource amount is too large');
+    const tid = Number(rawId);
+    const item = tables.Item?.get(tid);
+    const handler = handlerFor(tid, tables);
+    if (!item && !handler) throw new GameError(5, 'Unsupported reward resource');
+    const count = Number(total);
+    if (handler) grantable.push([tid, count]);
+    else pending.push({
+      tid,
+      quantity: count,
+      resType: item ? (Number(typeOf(item, tables)?.res_type) || null) : null,
+      reason: 'reward_handler_not_implemented'
+    });
+  }
+  return { grantable, pending };
+}
+
+export function releaseGrantablePendingRewards(model, db, tables, { sourcePrefix = null } = {}) {
+  let query = "SELECT source_key,item_tid,quantity FROM pending_rewards WHERE role_id=? AND status='pending'";
+  const parameters = [model.state.roleId];
+  if (sourcePrefix) {
+    query += ' AND source_key LIKE ?';
+    parameters.push(sourcePrefix.endsWith('%') ? sourcePrefix : sourcePrefix + '%');
+  }
+  const pending = db.prepare(query + ' ORDER BY created_at,source_key,item_tid').all(...parameters);
+  const releasable = pending.filter(reward => isGrantableResource(reward.item_tid, tables));
+  if (!releasable.length) return { changes: [], released: [] };
+
+  const res = grantResources(model, releasable.map(reward => [reward.item_tid, reward.quantity]), tables);
+  const releasedAt = new Date().toISOString();
+  const update = db.prepare(
+    "UPDATE pending_rewards SET status='released',released_at=? WHERE role_id=? AND source_key=? AND item_tid=? AND status='pending'"
+  );
+  for (const reward of releasable) update.run(releasedAt, model.state.roleId, reward.source_key, reward.item_tid);
+  return {
+    changes: res.changes,
+    released: releasable.map(reward => ({ sourceKey: reward.source_key, tid: reward.item_tid, quantity: reward.quantity }))
+  };
+}
+
 function appendItemLocation(model, modules, group) {
   const module = modules.get(6);
   if (!module || !Array.isArray(module.value)) throw new GameError(5, 'Item inventory module is unavailable');

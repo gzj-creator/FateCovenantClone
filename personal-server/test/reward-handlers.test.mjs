@@ -13,6 +13,14 @@ const codec = createGameCodec();
 const tables = readGameTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
 
+function itemWithObjClass(objClass) {
+  for (const item of tables.Item.values()) {
+    const type = tables.Type.get(Number(item.type));
+    if (type?.obj_class?.reference === objClass) return Number(item.tid);
+  }
+  throw new Error(`No ItemTable row uses obj_class ${objClass}`);
+}
+
 function configuredRechargeAwards() {
   const rows = [];
   const add = (source, list) => rows.push({ source, list: list ?? [] });
@@ -49,7 +57,7 @@ test('every configured recharge award maps to exactly one explicit handler', () 
   assert.match(rewardHandlerFor(1012002, tables).key, /SpRelicItem:item-container/);
 });
 
-test('preflight rejects unknown rewards and grants all dedicated families without using module 6', t => {
+test('preflight rejects unknown rewards and grants every dedicated family through its explicit module 6 container', t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-reward-handlers-'));
   const seed = () => ({
     version: 1, roleId: 100001, serverId: 1, createdAt: 1700000000,
@@ -64,9 +72,18 @@ test('preflight rejects unknown rewards and grants all dedicated families withou
   assert.throws(() => store.transaction(model => grantResources(model, [[999999999, 1]], tables)), error => error.code === 5);
   assert.deepEqual(store.state(), before);
 
+  const dedicatedContainerIds = [
+    itemWithObjClass('FantasyEquipChip'),
+    itemWithObjClass('SpRelicItem'),
+    itemWithObjClass('EmojiItem'),
+    itemWithObjClass('ItemRoleSkin')
+  ];
+  for (const id of dedicatedContainerIds) assert.match(rewardHandlerFor(id, tables).key, /^2:.*:item-container:0$/);
+
   const awards = [
     [3030501, 1], [300610, 1], [157112, 1], [400313, 1], [141717, 1],
-    [1202919, 1], [400220, 1], [1030922, 2], [10063200, 1], [355708, 1], [400108, 1]
+    [1202919, 1], [400220, 1], [1030922, 2], [10063200, 1], [355708, 1], [400108, 1],
+    ...dedicatedContainerIds.map(id => [id, 1])
   ];
   store.transaction(model => grantResources(model, awards, tables, { codec }));
   store.transaction(model => grantResources(model, [[141717, 1]], tables, { codec }));
@@ -85,6 +102,7 @@ test('preflight rejects unknown rewards and grants all dedicated families withou
   assert.ok(codec.unpack('pb_elves_develop', rawBinary(modules.get(538))).elves.some(row => Number(row.tid) === 400220));
   assert.equal(codec.unpack('pb_elves_bead_data', rawBinary(modules.get(539))).elves_beads.filter(row => Number(row.tid) === 1030922).length, 2);
   assert.equal(codec.unpack('pb_house_assistant_info', rawBinary(modules.get(148).value[0])).res.find(row => Number(row.tid) === 10063200).num, '1');
+  for (const id of dedicatedContainerIds) assert.equal(store.read().resources.get(String(id))?.location?.[0], 6);
 
   const role = codec.unpack('to_client_role_info', Buffer.from(store.state().rolePb, 'base64'));
   assert.equal(hasBit(Buffer.from(role.figure_have_info.stable_title_info, 'base64'), 557), true);

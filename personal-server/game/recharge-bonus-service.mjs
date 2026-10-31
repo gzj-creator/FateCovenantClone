@@ -1,8 +1,7 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
-import { serverDayNumber } from './activity-calendar.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
 import { GameError } from './hero-progression.mjs';
-import { rechargeClaimKey, rechargeDayIndex, requireRechargeRequestTuple } from './recharge-rules.mjs';
+import { rechargeClaimKey, rechargeDayIndex, rechargeServerDayNumber, requireRechargeRequestTuple } from './recharge-rules.mjs';
 import { grantResources } from './resources.mjs';
 
 const MODULE_ID = 149;
@@ -20,7 +19,7 @@ function writeInfo(modules, info, codec) {
 }
 
 function currentRound(tables, serverOpenedAt, atSeconds) {
-  const serverDay = serverDayNumber(serverOpenedAt, atSeconds);
+  const serverDay = rechargeServerDayNumber(serverOpenedAt, atSeconds);
   return [...tables.RechargeBonus.values()]
     .filter(row => Number(row.open_day) <= serverDay)
     .sort((a, b) => Number(b.open_day) - Number(a.open_day) || Number(b.tid) - Number(a.tid))[0] ?? null;
