@@ -4,7 +4,7 @@
 
 - 日期：2026-10-31
 - Worktree：`F:\projects\FateCovenantClone\.worktree\hundred-schools`
-- 分支：`feature/hundred-schools`
+- 实现分支：`feature/hundred-schools`（集成部署在 `main`）
 - 活动：`117001`（function `117`，登录模块 `92`）
 - 本机测试模式：`all-open`
 - 未修改 APK；本次只有个人服务器代码和测试变化，因此没有生成新的 APK 快照。
@@ -29,7 +29,7 @@
    - 免费和资源礼包走 `16005`；现金礼包走 `16004 -> 1900 -> 16003`。
    - 当前 13 个礼包支持类型 `16/46/106`，购买扣费、奖励、活动次数和 `flag 92` 在同一事务内提交。
    - 模式 6“终身限购”不再在新活动周期归零；模式 1 按每日、2/3 按每周、4/5/7 按活动期统计。
-   - 共享商品 `40008/40010` 的百派购买与 DailyDiscount 计数隔离，避免互相误判限购。
+   - 共享商品 `40008/40010` 由客户端走 `DailyDiscountMgr.RechargeGift`，购买请求携带 JSON 元组而不是百派版本号；提交后同时更新 DailyDiscount 与百派礼包状态，并在 `1900` 中返回 `flag 40/92`。DailyDiscount 额外购买不会生成第二条百派记录，百派直接购买也不会占用 DailyDiscount 配额。
 6. 榜单页和推荐礼包页缺少可解析数据。
    - `180/181/182/183` 的 `2008/2011` 查询返回结构化空榜，`85901` 返回百派礼包实时购买次数。
 7. 登录公共活动解析还存在一个独立客户端截断问题。
@@ -48,7 +48,7 @@
 ## 验证
 
 - 定向测试：`node --test personal-server/test/pet-activity.test.mjs personal-server/test/hundred-schools.test.mjs`，9/9 通过。
-- 全量测试：`npm test --prefix personal-server`，206/206 通过。
+- 集成 `main` 全量测试：`npm test --prefix personal-server`，230/230 通过。
 - 34 个任务逐条领取、奖励位写入和重复领取拒绝通过。
 - 13 个礼包的免费、资源、现金购买、限购、重开恢复和现金通知通过。
 - 选流派、601 招募计数、任务、礼包、`85901`、`2008/2011` 通过真实临时 TCP 帧。
@@ -57,19 +57,25 @@
 ## 部署与数据保护
 
 - 切换前一致性备份：
+  - `analysis/experiments/private-server-20261025/p3/hundred-schools-shared-gift-20261031/game.local-only.pre-shared-gift-sync.sqlite`
+  - 大小 `331776` 字节
+  - SHA256 `663C990EBB4EB8911F72FB1A5A63B42EB7E2236CD1DB07EF0767C472CD1BAC68`
+  - `PRAGMA integrity_check=ok`，`user_version=9`
+- 活动首次实现前的一致性备份：
   - `analysis/experiments/private-server-20261025/p3/runtime.local-only.data/game.local-only.pre-hundred-schools-pet-fix-20261031.sqlite`
   - 大小 `319488` 字节
   - SHA256 `2D6FDA06D794C75E2188FFEB442D4AB37DD284EB3ECE65128695174D72BF471F`
   - `PRAGMA integrity_check=ok`，`user_version=9`
-- 最终修复版服务 PID `3180`，入口为本 worktree 的 `personal-server/local-server.mjs`，工作目录为主仓库根目录。
+- 最终集成版服务 PID `32972`，入口为主仓库 `personal-server/local-server.mjs`，工作目录为主仓库根目录，启动时间 `2026-10-31T06:54:15.797Z`。
 - `18880/18881/18882/18883/19090` 均确认仅监听 `127.0.0.1`。
 - 最终日志：
-  - `analysis/experiments/private-server-20261025/p3/hundred-schools-20261031/local-server.final.stdout.log`
-  - `analysis/experiments/private-server-20261025/p3/hundred-schools-20261031/local-server.final.stderr.log`
+  - `analysis/experiments/private-server-20261025/p3/hundred-schools-shared-gift-20261031/local-server.main-deploy.stdout.log`
+  - `analysis/experiments/private-server-20261025/p3/hundred-schools-shared-gift-20261031/local-server.main-deploy.stderr.log`
   - stderr 为空。
+- 代码提交：实现 `4497043`；共享礼包修复 `04072af`（在 `main` 上为 `7bf12bc`）。
 
 ## 真实客户端状态
 
-服务器侧完整协议、事务与页面所需数据已通过组件和临时 TCP 测试。最终版重启后，隔离客户端已完成一次真实重连和登录：服务端在 `2026-10-31T06:18:27.347Z` 收到 `909103/seq 1`，在 `06:18:27.398Z` 记录 `hero_draw_activity_login_synchronized`，随后发送 `19794` 字节、`146` 个模块的登录响应并记录 `login_sent`。新客户端进程 PID `24933` 的 logcat 已进入大厅，最终登录后未再出现 `PetActivityMgr`、`type mismatch`、`unsupported_command 100301/100302`、`hero_draw_activity_rejected` 或 `handler_error`。
+服务器侧完整协议、事务与页面所需数据已通过组件和临时 TCP 测试。集成版重启后，隔离客户端进程 PID `24933` 已完成一次真实重连和登录：服务端在 `2026-10-31T06:54:28.520Z` 记录 `hero_draw_activity_login_synchronized`（`actId=117001`），随后记录 `login_sent`，返回 `146` 个模块。部署后的 `64` 条日志中 `handler_error=0`、`hero_draw_activity_rejected=0`、`unsupported_command 100301/100302=0`；客户端 logcat 也未命中 `PetActivityMgr`、protobuf `type mismatch` 或 `handler_error`。唯一未支持命令是 CMS `89501`，不属于本活动。
 
 真实 APK 的逐页视觉验收仍需在用户操作后按顺序检查流派选择/命格、任务、限时招募礼包、推荐礼包和四个榜单；本次未代替用户点击活动页面，因此不能把组件、真实 TCP 和登录成功扩大表述为逐页人工验收完成。

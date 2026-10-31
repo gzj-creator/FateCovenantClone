@@ -281,6 +281,14 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     }
     return gift;
   }
+  function heroGiftShadowForDailyPurchase(productId) {
+    // HeroDrawActGiftItemNode sends type 46 gifts through DailyDiscountMgr:
+    // RechargeGift instead of HeroDrawActMgr.ReqBuyRechargeGift. The server
+    // still has to count that shared SKU for Hundred Schools and publish flag 92,
+    // otherwise the gift page and recommendation page remain stale until relogin.
+    if (!dailyDiscountProductIds.has(Number(productId))) return null;
+    return heroDrawActivity?.giftConfig(productId) ?? null;
+  }
   function snapshot() {
     return store.inspect(db => ({
       accounts: db.prepare('SELECT account_id,role_id,balance_cents FROM local_wallets ORDER BY account_id').all().map(row => ({ ...row, phone: row.account_id === accountId ? phone : '', nickname: store.read().role.nick_name ? Buffer.from(store.read().role.nick_name, 'base64').toString() : '' })),
@@ -345,6 +353,7 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
     const heroGift = heroGiftForPurchase(product_id, activity_version);
+    const heroShadowGift = heroGift ? null : heroGiftShadowForDailyPurchase(product_id);
     const petGift = !heroGift && product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
     if ((voucher_item_tid !== undefined || voucher_amount_cents !== undefined || voucher_count !== 0) && !voucher) throw new GameError(5, 'Voucher payment is not configured');
     const purchasedAt = now();
@@ -436,6 +445,19 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
         });
         extraRetList.push(petActivity.rechargeExtra(petGift.activityId, db));
       }
+      let heroShadowRecorded = false;
+      if (heroShadowGift && dailyPlan && heroDrawActivity.giftPurchaseAllowed(product_id, 1, db, purchasedAt)) {
+        heroDrawActivity.recordGiftPurchase({
+          model, db, activityId: heroShadowGift.activityId, productId: product_id, buyNum: 1,
+          priceItemTid: 0, priceAmount: product.price, requestId: request_id,
+          payload: {
+            product_id, activity_id: heroShadowGift.activityId, wallet_purchase: true,
+            hero_activity_id: heroShadowGift.activityId, source: 'daily_discount'
+          }
+        });
+        extraRetList.push(heroDrawActivity.rechargeExtra(heroShadowGift.activityId, db));
+        heroShadowRecorded = true;
+      }
       if (heroGift) {
         heroDrawActivity.recordGiftPurchase({
           model, db, activityId: heroGift.activityId, productId: product_id, buyNum: 1,
@@ -454,7 +476,16 @@ export function createWalletService({ store, codec, tables, voucher, monthPermit
       const wishNotification = wishPurchase?.item_list?.length
         ? codec.pack('pb_wish_treasure_push', { item_list: wishPurchase.item_list }).toString('base64')
         : null;
-      const result = { order_id: order, product_id, price_cents: product.price, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, balance_paid_cents: quote.balance_cents, balance_cents: balanceAfter, notification: data.toString('base64'), wish_treasure_notification: wishNotification, daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true, period: Number.isSafeInteger(period) ? period : 0, day_index: Number.isSafeInteger(day_index) ? day_index : 0, ...(heroGift ? { hero_activity_id: heroGift.activityId } : {}) };
+      const result = {
+        order_id: order, product_id, price_cents: product.price, voucher_quantity: quote.quantity,
+        voucher_amount_cents: quote.amount_cents, balance_paid_cents: quote.balance_cents,
+        balance_cents: balanceAfter, notification: data.toString('base64'),
+        wish_treasure_notification: wishNotification,
+        daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true,
+        period: Number.isSafeInteger(period) ? period : 0,
+        day_index: Number.isSafeInteger(day_index) ? day_index : 0,
+        ...(heroGift || heroShadowRecorded ? { hero_activity_id: (heroGift ?? heroShadowGift).activityId } : {})
+      };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(result),order);
       db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order,account_id,'purchase',-quote.balance_cents,balanceAfter,createdAt,JSON.stringify({ product_id, order_id: order, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true, period: Number.isSafeInteger(period) ? period : 0, day_index: Number.isSafeInteger(day_index) ? day_index : 0 }));
       return { ...result, duplicate: false };

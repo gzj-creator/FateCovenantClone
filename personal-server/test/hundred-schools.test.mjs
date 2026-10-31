@@ -137,6 +137,17 @@ function addResource(store, tid, amount) {
   store.transaction(model => grantResources(model, [[tid, amount]], tables));
 }
 
+function unlockEliteRecruit(store) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(10);
+    const drawInfo = codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
+    drawInfo.recruit_list.find(info => Number(info.draw_lib) === 1).draw_count = 30;
+    module.value[2] = serializedBinary(codec.pack('pb_hero_draw_info', drawInfo));
+    model.state.modules.value = [...modules];
+  });
+}
+
 async function gatewayFixture(t, logger = () => {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-hundred-schools-gateway-'));
   const databasePath = path.join(directory, 'game.sqlite');
@@ -257,7 +268,7 @@ test('genre selection persists and the star task uses the selected lineup id', t
 test('recruit draws update hundred-school counters atomically and exclude paid-library draws', t => {
   const env = directFixture(t);
   for (const tid of [2002, 3002, 401900, 4002]) addResource(env.store, tid, 10000);
-  setRecruitDrawCount(env.store, 2, 1);
+  unlockEliteRecruit(env.store);
   for (const lib of [1, 2, 3, 10]) {
     const result = env.recruit.execute(601, { draw_lib: lib, point_draw_num: 2 });
     assert.equal(result.data.length > 0, true);
@@ -342,6 +353,30 @@ test('buy-cycle 6 remains a lifetime limit across activity periods', t => {
   }
 });
 
+test('shared daily-discount products also update Hundred Schools without exceeding its purchase limit', t => {
+  const env = directFixture(t);
+  env.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'shared-daily-credit' });
+
+  let result = env.wallet.buy({ product_id: 40008, request_id: 'shared-daily-first' });
+  assert.equal(result.hero_activity_id, ACTIVITY_ID);
+  assert.equal(env.heroDraw.giftPurchaseCount(40008), 1);
+
+  // DailyDiscount additional purchases remain available, but the shared SKU
+  // cannot create a second Hundred Schools purchase record or reward slot.
+  result = env.wallet.buy({ product_id: 40008, request_id: 'shared-daily-additional', extra_buy: true });
+  assert.equal(result.daily_discount_additional, true);
+  assert.equal(env.heroDraw.giftPurchaseCount(40008), 1);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40008 AND kind='gift'").get(ACTIVITY_ID).n), 1);
+
+  env.reopen();
+  assert.equal(env.heroDraw.giftPurchaseCount(40008), 1);
+  assert.throws(() => env.wallet.buy({
+    product_id: 40008,
+    request_id: 'shared-direct-after-daily',
+    activity_version: 1
+  }), error => error.code === 307);
+});
+
 test('all configured personal, server and selected-genre star tasks can be claimed', t => {
   const env = directFixture(t);
   env.heroDraw.selectGenre(4);
@@ -382,7 +417,7 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   assert.equal(Number(loginDraw.role_data.draw_exchange_id ?? 0), 0);
 
   for (const tid of [2002, 3002, 401900, 4002, 101500, 401500]) addResource(env.game.store, tid, 100000);
-  setRecruitDrawCount(env.game.store, 2, 1);
+  unlockEliteRecruit(env.game.store);
   env.game.wallet.credit({ account_id: 'local-1', amount_cents: 100000, request_id: 'hundred-schools-tcp-credit' });
 
   let response = await env.request(100302, 10, await encodeEtf([4]));
@@ -416,18 +451,22 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
     { ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' },
     [false, 1, 20755]
   ]);
-  walletFrames = await env.requestWithWalletPush(23, await encodeEtf([40008, binary(Buffer.from(dailyOptions)), 0]));
+  walletFrames = await env.requestWithWalletPush(23, await encodeEtf([40010, binary(Buffer.from(dailyOptions)), 0]));
   assert.equal(walletFrames.ack.err, undefined);
   const dailyModule = new Map(env.game.store.state().modules.value).get(108);
-  assert.equal(codec.unpack('pb_daily_discount_all', rawBinary(dailyModule)).daily_discount_list.find(row => row.recharge_tid === 4).buy_times, 1);
-  assert.equal(env.game.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40008 AND kind='gift'").get(ACTIVITY_ID).n), 1);
+  assert.equal(codec.unpack('pb_daily_discount_all', rawBinary(dailyModule)).daily_discount_list.find(row => row.recharge_tid === 3).buy_times, 1);
+  push = codec.unpack('res_recharge_success', Buffer.from(walletFrames.notification.data, 'base64'));
+  assert.equal(push.extra_ret_list.some(entry => entry.flag === 40), true);
+  assert.equal(push.extra_ret_list.some(entry => entry.flag === 92), true);
+  assert.equal(env.game.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40010 AND kind='gift'").get(ACTIVITY_ID).n), 1);
 
   response = await env.request(16004, 24, await encodeEtf([40010, 2, 0]));
   assert.equal(response.err.err, 5);
-  walletFrames = await env.requestWithWalletPush(25, await encodeEtf([40010, 1, 0]));
-  assert.equal(walletFrames.ack.err, undefined);
-  push = codec.unpack('res_recharge_success', Buffer.from(walletFrames.notification.data, 'base64'));
-  assert.equal(push.extra_ret_list.some(entry => entry.flag === 92), true);
+  response = await env.request(16004, 25, await encodeEtf([40010, 1, 0]));
+  // Do not leave the client waiting for a 1900 push that will never follow.
+  // A repeated gift reports its configured limit and the original purchase stays intact.
+  assert.equal(response.err.err, 307);
+  assert.equal(env.game.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40010 AND kind='gift'").get(ACTIVITY_ID).n), 1);
 
   response = await env.request(85901, 30, codec.pack('pb_recommend_gift_active_req', {
     actives: [{ act_tid: ACTIVITY_ID, gift_id: [880101, 40008, 40010] }]

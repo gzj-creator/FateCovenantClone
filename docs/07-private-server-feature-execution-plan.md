@@ -156,3 +156,12 @@ G3 现已实现：
 - 全量测试 192/192 通过，覆盖真实 TCP 16004、1900、16003、重复/组件拒绝、不扣款和重启保持。运行库 schema v7、integrity_check=ok，修复前 6/2/5=1/0/0，修复后为 1/1/1。
 - 服务 PID 8100 的五个端口均仅监听 127.0.0.1；隔离客户端已自动重连并完成 145 模块登录。证据见 analysis/experiments/private-server-20261025/p3/daily-discount-batch-20261031/。
 - 当前可用 APK 快照为 apk/com.jzyx.ps.v9-working.apk，Hash 见 apk/README.md；SubDownloadFinish=1 前置条件不变。
+
+## 2026-10-31 后期养成与扫荡接口检查点
+
+`fix/endgame-progression-fixes` 已实现 type 636 升级门槛修正、82601 星火节点、
+640 非凡觉醒和 503 主线扫荡。640 的真实请求只携带材料类型，数量由配置
+`stone_num` 决定。与最新 main、hundred-schools 集成后服务全量测试为 228/228 通过，
+包含真实 TCP、事务回滚和 SQLite 重开。集成服务已部署，隔离客户端自动重连登录成功；
+四项业务操作与视觉验收待用户实际触发。详细证据见
+[后期养成与扫荡修复](../agent/workflow/fixes/endgame-progression.md)。
