@@ -17,6 +17,17 @@ export function rechargeDayStart(value) {
   return rechargeDayIndex(value) * DAY_SECONDS - RECHARGE_RESET_OFFSET_SECONDS;
 }
 
+export function isDailyDiscountOrder(payload, codec) {
+  if (typeof payload.daily_discount_purchase === 'boolean') return payload.daily_discount_purchase;
+  if (!payload.hero_activity_id) return true;
+  // Older shared-SKU orders only identify their daily-discount origin in the
+  // persisted success notification; flag 40 carries that module's update.
+  try {
+    const notification = codec.unpack('res_recharge_success', Buffer.from(payload.notification, 'base64'));
+    return notification.extra_ret_list?.some(entry => Number(entry.flag) === 40) ?? false;
+  } catch { return false; }
+}
+
 // RoleMgr.GetLoginDayCount uses the role's creation day in the same 05:00
 // cycle. The first partial day and the creation day itself both count as day 1.
 export function roleLoginDayCount(createdAt, at) {

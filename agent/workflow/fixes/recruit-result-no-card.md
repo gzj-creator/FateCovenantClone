@@ -1,6 +1,6 @@
 # R1 招募完成后没有角色卡
 
-状态：服务端根因已修复；组件测试与临时 TCP 集成通过，**真实 APK 复验待用户再次招募**（2026-10-30）。
+状态：服务端根因已修复，组件测试与临时 TCP 集成通过；**2026-10-31 扩展修复待部署及真实 APK 复验**。
 
 工作分支：`feature/recruit-hero-grant`  
 工作目录：`F:\projects\FateCovenantClone\.worktree\recruit-hero-grant`
@@ -39,17 +39,25 @@ input\HeroGetDisplayForm.lua.txt:287: in function '_Close'
 `personal-server/game/recruit-service.mjs`：
 
 - `draw()` 中所有抽到的英雄，无论新英雄还是重复英雄，都发放 `Quality.convert_piece_new` 个该英雄碎片。
-- 新英雄仍设置 `change.extra = encodeEtfInteger(result.tid)` 并写入 `hero_list`；客户端 `HeroMgr.HandleNewHeroes` 通过 ETF 编码的 extra 创建英雄。
-- `decompose_args` 改为 `[]`。原服 601 抓包只有 `res`/`recruit_info`，没有 `decompose_args`；客户端 `HeroDrawMgr` 会把 `decompose_args` 逐项追加为额外 award，而 `res.changes` 已经能生成结果卡，保留该字段会重复出卡。
+- `pb_res_change.extra` 改为 ETF 二进制列表，列表元素为 protobuf `hero`。客户端 `HeroRes.ResChange` 会逐项 `Codec.DecodeErl` / `DecodePB("hero")`，再调用 `HeroMgr.AddHeroes`；旧实现误用裸 ETF 整数，英雄要等下次登录才出现。
+- 新英雄 `uid` 与 `tid` 使用同一字符串。客户端英雄缓存按 `uid` 建索引、按 `tid` 查询；两者不一致时，英雄虽在登录模块 10 中存在，小队界面仍无法解析。
+- `decompose_args` 只记录本次首次解锁的英雄：碎片 `tid`、完整 `convert_piece_new` 数量和 ETF 整数英雄 `tid`。重复英雄及普通碎片奖励不写该字段。
+- 招募库的 `draw_count`、`daily_draw_count`、对应 `draw_num_kv_list`、模块 21 统计 1、自定义统计 75/77901 和招募成就进度均在同一 SQLite 事务中更新。
 - 仅修改服务端，不改 APK、客户端资源或加密；不需要 APK 快照。
 
 ## 测试
 
-- `personal-server/test/recruit-service.test.mjs`：新英雄碎片数断言为 `convert_piece_new`（1010101、quality 30 → 10），并断言 `diff_num / convert_piece_new == 1`、`decompose_args == []`；重复英雄仍为 `convert_piece_new`。
-- `npm test --prefix .\personal-server`：worktree 内 **157/157 通过**。
+- `personal-server/test/recruit-service.test.mjs`：新英雄碎片数断言为 `convert_piece_new`（1010101、quality 30 → 10），并断言 `diff_num / convert_piece_new == 1`、首次解锁 `decompose_args` 内容和 ETF 英雄 TID；重复英雄仍为 `convert_piece_new` 且不重复写英雄。
+- 招募专项和真实 loopback 网关定向测试 **21/21 通过**；`npm test --prefix .\personal-server` 全量 **220/220 通过**，`git diff --check` 通过。
 - `personal-server/test/gameplay-gateway.test.mjs` 的真实 loopback `600 -> 601` 流程通过；该流程只校验抽卡响应可解码和资源扣除，不校验碎片 bundle 大小。
 
-## 部署
+## 2026-10-31 修复分支
+
+- worktree：`F:\projects\FateCovenantClone\.worktree\recruitment-bugfix-20261031`
+- 分支：`fix/recruitment-bugfix-20261031`
+- 本轮部署前会先对 `runtime.local-only.data/game.local-only.sqlite` 做一致备份；部署时只重启个人服务，不停止、重启或点击客户端。
+
+## 历史部署
 
 - `feature/recruit-hero-grant` 以 `8112198` fast-forward 合入 `main`；主工作树完整测试 **161/161 通过**（包含当时主工作树内其他未提交修复的测试）。
 - 个人服务已重启并通过 `server.local-only.json` 确认五端口 `18880/18881/18882/18883/19090` 均在 `127.0.0.1` 监听；客户端心跳在重启后恢复。
@@ -58,8 +66,8 @@ input\HeroGetDisplayForm.lua.txt:287: in function '_Close'
 ## 边界与待验
 
 - 修复只改变“每次抽到英雄时发放给客户端的碎片 bundle 大小”，不改变抽卡概率、保底、英雄品质或已有存档。
-- 失败的那次抽卡已经给账号留下了 1030101 和 1 个碎片；这 1 个碎片保留，不删除。下一次抽到已拥有英雄会获得完整 `convert_piece_new` 碎片并显示 1 张卡。
-- 这不是客户端显示层的临时绕过；未在真实 APK 上再次招募并确认结果页出现角色卡前，不标记“可玩验收通过”。
+- 失败的那次抽卡已经给账号留下了 1030101 和 1 个碎片；这 1 个碎片保留，不删除。修复后新英雄会同时获得完整 `convert_piece_new` 碎片包、即时英雄对象和招募统计，不再依赖重新登录刷新。
+- 在真实 APK 上确认结果页出现角色卡、英雄库和小队即时可见，并核对次数、积分及重登持久化前，不标记“可玩验收通过”。
 
 ## 复现
 
@@ -67,3 +75,10 @@ input\HeroGetDisplayForm.lua.txt:287: in function '_Close'
 cd F:\projects\FateCovenantClone\.worktree\recruit-hero-grant
 npm test --prefix .\personal-server
 ```
+
+## 2026-10-31 main 合并与运行部署
+
+- `main@f32e4ac` 已合入修复分支，合并提交 `d0cb52a`；合并后招募+百院+网关定向 `28/28`、全量 `257/257` 通过。
+- 招募事务保留 main 的百院进度回调，并同时更新模块 21 招募统计和 type 2000 推送。真实 TCP 测试现已按序号读取命令回包，避免把主动统计推送误判为下一次任务回包。
+- 部署前一致备份：`analysis/experiments/private-server-20261025/p3/recruitment-bugfix-20261031/game.before-main-merge-deploy.local-only.sqlite`，SHA256 `4fb26305268c72990d44d33e652e7dcf248966673d7ead418d7ec2fbb162a7d0`，schema v10，完整性 `ok`。
+- 合并版本已部署，实时 PID `43432`，五端口 loopback 正常，客户端链路已自动恢复。真实 APK 的结果卡、小队展示、次数/积分和补券验收仍待用户操作。

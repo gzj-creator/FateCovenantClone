@@ -328,7 +328,15 @@ export function grantResources(model, awards, tables, options = {}) {
       case 'roleExp': newNum = grantRoleExp(model, amount); break;
       case 'currency': newNum = grantCurrency(model, modules, id, amount, 5, null, codec); break;
       case 'artifactCurrency': newNum = grantCurrency(model, modules, id, amount, 10, 1, codec); break;
-      case 'item': newNum = grantItem(model, modules, id, amount, handler); break;
+      case 'item':
+        newNum = grantItem(model, modules, id, amount, handler);
+        changeExtra = {
+          new_bin: codec.pack('pb_res_obj', {
+            tid: String(id),
+            num: String(newNum)
+          })
+        };
+        break;
       case 'hero': newNum = grantRawHero(model, id, amount, tables); break;
       case 'figure': newNum = grantFigure(model, id, amount, handler); break;
       case 'artifact': newNum = grantArtifact(modules, id, amount, codec); break;

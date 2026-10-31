@@ -83,6 +83,12 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('PrincessTable.data.lua.json', base), ['EnergyAward', 'Gift', 'LoginAward', 'HolidayAward']),
     // Daily-discount rotation maps its short row ids (1..6) to real RechargeTable ids.
     ...pick(readGeneratedTables(new URL('DailyDiscountTable.data.lua.json', base), ['Recharge', 'Select', 'DailyGiftAward']), { Recharge: 'DailyDiscountRecharge', Select: 'DailyDiscountSelect', DailyGiftAward: 'DailyDiscountAward' }),
+    // Week Hunt reuses the daily-discount products for its 14-day gift track.
+    // The generated Period/Const tables define the active gift ids and cadence.
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/WeekHuntTable.data.bytecode.json', import.meta.url), ['Period', 'Const']), {
+      Period: 'WeekHuntPeriod',
+      Const: 'WeekHuntConst'
+    }),
     // Task progress uses these rows to map TaskType.data back to the compact
     // role-statistics payload stored in login module 21.
     ...pick(readGeneratedTables(new URL('CountStatisticsTable.data.lua.json', base), ['CountStatistics']), {
