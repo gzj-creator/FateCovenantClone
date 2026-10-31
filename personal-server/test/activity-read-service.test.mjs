@@ -175,7 +175,7 @@ test('batch fishing consumes available bait and records every catch atomically',
   );
 });
 
-test('rejects closed, cross-version, locked and unsupported-reward requests atomically', t => {
+test('rejects closed, cross-version and locked requests without partial state', t => {
   const env = setup(t);
   const rejects = (fn, code) => assert.throws(fn, error => error.code === code);
   rejects(() => unlock(env.service, 89001, 201), 1);
@@ -186,11 +186,13 @@ test('rejects closed, cross-version, locked and unsupported-reward requests atom
 
   unlock(env.service, 1074003, 201);
   env.store.inspect(db => db.prepare('UPDATE fishing_activity_state SET score=100000 WHERE act_id=1074003').run());
-  rejects(() => unlock(env.service, 1074003, 204), 5);
+  const supportedReward = unlock(env.service, 1074003, 204).value;
+  assert.deepEqual(supportedReward.res.changes.map(change => change.tid), ['4040301', '101500']);
   const row = env.store.inspect(db => db.prepare('SELECT unlock_map_list_json,score FROM fishing_activity_state WHERE act_id=1074003').get());
-  assert.deepEqual(JSON.parse(row.unlock_map_list_json), [201]);
+  assert.deepEqual(JSON.parse(row.unlock_map_list_json), [201, 204]);
   assert.equal(row.score, '100000');
   assert.equal(env.store.read().resources.has('4040301'), false);
+  assert.equal(env.store.read().heroInfo.hero_list.some(hero => Number(hero.tid) === 4040301), true);
 
   env.setNow(SERVER_OPENED_AT + 7 * DAY);
   rejects(() => unlock(env.service, 1074003, 201), 309);

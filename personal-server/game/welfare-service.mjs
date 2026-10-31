@@ -1,6 +1,7 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
+import { parseRechargeExtraParam } from './recharge-rules.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 
 // All activity day counters use the same 04:00 UTC+8 reset as the existing sprint service.
@@ -64,9 +65,9 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
     const period = 'v' + version;
     for (const day of days) if (hasBit(bits, day)) throw new GameError(310, 'Reward already claimed');
     const expectedModule = JSON.stringify(modules.get(92));
-    const nextBits = Buffer.alloc(Math.max(bits.length, Math.floor(Math.max(...days) / 8) + 1));
+    let nextBits = Buffer.alloc(Math.max(bits.length, Math.floor(Math.max(...days) / 8) + 1));
     bits.copy(nextBits);
-    for (const day of days) setBit(nextBits, day);
+    for (const day of days) nextBits = setBit(nextBits, day);
     entry.module_login_data = (await encodeBitBlock(nextBits)).toString('base64');
     const moduleBytes = serializedBinary(codec.pack('pb_act_login', activity));
 
@@ -145,7 +146,17 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
     if (!wallet?.purchaseGift) throw new GameError(5, 'Local wallet is not configured');
     const productId = Number(request.recharge_id), buyNum = Number(request.buy_num ?? 1);
     if (!Number.isSafeInteger(productId) || !Number.isSafeInteger(buyNum) || buyNum < 1) throw new GameError(1, 'Invalid gift purchase');
-    const result = wallet.purchaseGift({ product_id: productId, request_id: 'gift:' + context.connection + ':' + context.seq, buy_num: buyNum });
+    let options;
+    try { options = parseRechargeExtraParam(request.extra_param); }
+    catch (error) { throw new GameError(1, error.message); }
+    const result = wallet.purchaseGift({
+      product_id: productId,
+      request_id: 'gift:' + context.connection + ':' + context.seq,
+      buy_num: buyNum,
+      extra_buy: options.is_extra_buy,
+      period: options.period,
+      day_index: options.day_index
+    });
     const value = { recharge_id: productId, time: result.time, res: result.res, extra_ret_list: result.extra_ret_list ?? [] };
     return { value, data: codec.pack('res_buy_or_Rev_gift', value) };
   }

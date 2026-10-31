@@ -1,4 +1,5 @@
 import { readGeneratedTables } from './hero-tables.mjs';
+import { wishTreeTables } from './wish-tree-tables.mjs';
 const base = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/', import.meta.url);
 let cached;
 export function readGameTables() {
@@ -8,7 +9,9 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('ItemTable.data.lua.json', base), ['Item', 'Type', 'Chip', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box']),
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
     ...pick(readGeneratedTables(new URL('DrawTable.data.lua.json', base), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
-    ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), ['Recharge', 'Param', 'BuyCycleLimit'])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
+    ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), [
+      'Recharge', 'Param', 'BuyCycleLimit', 'ExtraReward', 'ExtraFixReward', 'ExtraRewardConst'
+    ])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
     ...readGeneratedTables(new URL('OpenServerSprintTable.data.lua.json', base), ['SprintRankTask', 'SprintType']),
     // Monthly pass products are RechargeTable type=130 rows; the matching Gear row
     // binds a product to the activity version that owns its pay_list entry.
@@ -117,6 +120,12 @@ export function readGameTables() {
     ...readGeneratedTables(new URL('PrincessTable.data.lua.json', base), ['EnergyAward', 'Gift', 'LoginAward', 'HolidayAward']),
     // Daily-discount rotation maps its short row ids (1..6) to real RechargeTable ids.
     ...pick(readGeneratedTables(new URL('DailyDiscountTable.data.lua.json', base), ['Recharge', 'Select', 'DailyGiftAward']), { Recharge: 'DailyDiscountRecharge', Select: 'DailyDiscountSelect', DailyGiftAward: 'DailyDiscountAward' }),
+    // Week Hunt reuses the daily-discount products for its 14-day gift track.
+    // The generated Period/Const tables define the active gift ids and cadence.
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/WeekHuntTable.data.bytecode.json', import.meta.url), ['Period', 'Const']), {
+      Period: 'WeekHuntPeriod',
+      Const: 'WeekHuntConst'
+    }),
     // Task progress uses these rows to map TaskType.data back to the compact
     // role-statistics payload stored in login module 21.
     ...pick(readGeneratedTables(new URL('CountStatisticsTable.data.lua.json', base), ['CountStatistics']), {
@@ -129,9 +138,39 @@ export function readGameTables() {
     }),
     // RoleTable.Level is the authoritative role experience curve consumed by
     // RoleMgr.CalcLvAndExp and the post-battle RoleExpUpForm.
-    ...pick(readGeneratedTables(new URL('RoleTable.data.lua.json', base), ['Level', 'LevelSetting']), {
+    ...pick(readGeneratedTables(new URL('RoleTable.data.lua.json', base), [
+      'Level', 'LevelSetting', 'FigureHead', 'FigureFrame', 'FigureTitle', 'FigureChatBubble'
+    ]), {
       Level: 'RoleLevel',
-      LevelSetting: 'RoleLevelSetting'
+      LevelSetting: 'RoleLevelSetting',
+      FigureHead: 'FigureHead',
+      FigureFrame: 'FigureFrame',
+      FigureTitle: 'FigureTitle',
+      FigureChatBubble: 'FigureChatBubble'
+    }),
+    ...pick(readGeneratedTables(new URL('HeroTable.data.lua.json', base), ['Hero']), { Hero: 'Hero' }),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/7289607387164353000-FirstRechargeTable.data.json', import.meta.url), ['FirstRecharge', 'Award']), {
+      FirstRecharge: 'FirstRecharge',
+      Award: 'FirstRechargeAward'
+    }),
+    // WishTree (rebate) is a login-module table rather than an activity. Its
+    // gift groups and award rows are small enough to keep as reviewed static
+    // configuration; module 165 still stores every mutable field.
+    ...wishTreeTables,
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/14863431925290164000-RechargeBonusTable.data.json', import.meta.url), ['RechargeBonus', 'Group', 'Award']), {
+      RechargeBonus: 'RechargeBonus',
+      Group: 'RechargeBonusGroup',
+      Award: 'RechargeBonusAward'
+    }),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/7806056895365336000-RechargeRebateResetTable.data.json', import.meta.url), ['Act']), {
+      Act: 'RechargeRebateResetAct'
+    }),
+    ...pick(readGeneratedTables(new URL('../../analysis/tmp/recharge-remaining-plan/LineFirstRechargeTable.data.json', import.meta.url), [
+      'Group', 'Choose', 'LineFirstRecharge'
+    ]), {
+      Group: 'LineFirstRechargeGroup',
+      Choose: 'LineFirstRechargeChoose',
+      LineFirstRecharge: 'LineFirstRecharge'
     })
   };
   cached = { ...tables, ...buildFantasyChipIndexes(tables.Chip, tables.FantasyEquip, tables.Item) };

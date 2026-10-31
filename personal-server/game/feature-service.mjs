@@ -30,10 +30,11 @@ export function createFeatureService({ store, codec, sprintPreview = false }) {
     });
   }
   // Local test policy: the already visible sprint banners can open their detail UI.
-  // These two entry gates normally require story progress; no gameplay rewards are granted.
+  // Leader-equipment draw 1348 must also be open or HeroDrawForm resolves an empty
+  // current library and falls back to the ordinary adventure library.
   if (sprintPreview) {
     const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3)));
-    const ids = [1039, 1537].filter(id => {
+    const ids = [1039, 1322, 1348, 1537].filter(id => {
       const [targetId, index] = splitId(id);
       const target = login.target_list.find(target => target.target_tid === targetId);
       return !(Buffer.from(target?.fun_open_state ?? '', 'base64')[Math.floor(index / 8)] & (128 >> (index % 8)));

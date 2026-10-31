@@ -17,11 +17,39 @@ const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wa
 const SERVER_OPENED_AT = 1792789200;
 const GAME_NOW = (SERVER_OPENED_AT + 3600) * 1000;
 
-async function loginActivities(payload) {
+async function loginModule(payload, moduleId) {
   const login = await decodeEtf(payload);
-  const entry = login[2].value.find(value => Number(value[0]) === 92);
-  assert.ok(entry, 'login module 92 is present');
-  return codec.unpack('pb_act_login', Buffer.from(entry[1].value));
+  const entry = login[2].value.find(value => Number(value[0]) === moduleId);
+  assert.ok(entry, `login module ${moduleId} is present`);
+  return entry[1];
+}
+
+async function loginActivities(payload) {
+  const entry = await loginModule(payload, 92);
+  return codec.unpack('pb_act_login', Buffer.from(entry.value));
+}
+
+function loginModuleBytes(login, moduleId) {
+  const entry = login[2].value.find(value => Number(value[0]) === moduleId);
+  assert.ok(entry, `login module ${moduleId} is present`);
+  const value = entry[1].value;
+  if (Array.isArray(value)) {
+    assert.ok(value[0], `login module ${moduleId} has its first slot`);
+    return Buffer.from(value[0].value);
+  }
+  return Buffer.from(value);
+}
+
+function setDestiny(store, value) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    modules.set(107, serializedBinary(codec.pack('pb_destiny_data', value)));
+    model.state.modules.value = [...modules];
+  });
+}
+
+function storedLinearTask(store) {
+  return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[0]));
 }
 
 function addResource(store, tid, num, group = 1) {
@@ -125,6 +153,26 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(game.store.read().resources.get('71200').num, '0');
   assert.equal(game.store.read().resources.get('21300104').num, '1');
 
+  // Designated emoji box: both one-key (159) and single use (151) must go
+  // through the same fixed award list as the client's ItemBox callback.
+  addResource(game.store, 1501200, 2);
+  response = await request(159, 51, codec.pack('pb_one_key_use', { use: [{ tid: 1501200, num: 2 }] }));
+  assert.equal(response.err, undefined);
+  const designatedChanges = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(designatedChanges.find(change => change.tid === '1501200').diff_num, '-2');
+  assert.equal(designatedChanges.find(change => change.tid === '381002').diff_num, '2');
+  assert.equal(designatedChanges.find(change => change.tid === '389002').diff_num, '2');
+  addResource(game.store, 1501200, 1);
+  response = await request(151, 52, codec.pack('simple_use', { tid: 1501200, num: 1 }));
+  assert.equal(response.err, undefined);
+  const designatedSingle = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(designatedSingle.find(change => change.tid === '1501200').diff_num, '-1');
+  assert.equal(designatedSingle.find(change => change.tid === '381002').diff_num, '1');
+  assert.equal(designatedSingle.find(change => change.tid === '389002').diff_num, '1');
+  assert.equal(game.store.read().resources.get('1501200').num, '0');
+  assert.deepEqual(game.store.read().resources.get('381002').location.slice(0, 2), [6, 0]);
+  assert.deepEqual(game.store.read().resources.get('389002').location.slice(0, 2), [6, 0]);
+
   // Activity reads answer, activity mutations stay refused.
   response = await request(110308, 6, Buffer.alloc(0));
   assert.equal(response.err, undefined);
@@ -183,6 +231,49 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(draw.recruit_info.draw_count, 3);
   assert.ok(draw.res.changes.some(change => change.tid === '2002' && change.diff_num === '-2'));
   assert.equal(game.store.read().resources.get('2002').num, String(ticketsBeforeRecruitment));
+  const drawStatistics = codec.unpack('pb_s2c', await next());
+  assert.equal(drawStatistics.type, 2000);
+  const statisticsPush = codec.unpack('pb_count_statics_send_list', Buffer.from(drawStatistics.data, 'base64'));
+  assert.equal(statisticsPush.data_list.length, 1);
+  assert.equal(statisticsPush.data_list[0].stat_tid, 1);
+  assert.deepEqual(statisticsPush.data_list[0].expand_id_list, ['1']);
+  assert.equal(Number(statisticsPush.data_list[0].data.list.find(row => Number(row.id) === 1).total), 3);
+  const achievementStatistics = codec.unpack('pb_s2c', await next());
+  assert.equal(achievementStatistics.type, 2000);
+  const achievementPush = codec.unpack('pb_count_statics_send_list', Buffer.from(achievementStatistics.data, 'base64'));
+  assert.equal(achievementPush.data_list.length, 1);
+  assert.equal(achievementPush.data_list[0].stat_tid, 75);
+
+  // Demigod resident recruitment buys the missing ticket and performs the
+  // requested draw atomically. AwardKit reads the result from pb_res_to_client;
+  // there is no separate 10101 state push in this protocol.
+  game.store.transaction(model => { model.resources.get('101500').num = '2000'; });
+  response = await request(87618, 17, await encodeEtf([1]));
+  assert.equal(response.err, undefined);
+  const demigodPurchase = codec.unpack('pb_fantasy_equip_draw_buy_rsp', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(demigodPurchase.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+    ['101500', '-400'],
+    ['808002', '0']
+  ]);
+  const demigodTicket = codec.unpack('pb_res_obj', Buffer.from(demigodPurchase.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
+  assert.equal(demigodTicket.tid, '808002');
+  assert.equal(Number(demigodTicket.num ?? 0), 0);
+  assert.equal(demigodPurchase.res.changes.filter(change => change.extra).length, 1);
+  assert.equal(demigodPurchase.draw.left_buy_times, 9);
+  assert.equal(demigodPurchase.draw.total_draw_times, '1');
+  const demigodModule = new Map(game.store.state().modules.value).get(518);
+  assert.equal(codec.unpack('pb_fantasy_draw', rawBinary(demigodModule.value[2])).total_draw_times, '1');
+  assert.equal(codec.unpack('pb_fantasy_equip_res', rawBinary(demigodModule.value[0])).equips.length, 1);
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value), module = modules.get(518);
+    const draw = codec.unpack('pb_fantasy_draw', rawBinary(module.value[2]));
+    draw.total_draw_times = '100';
+    module.value[2] = serializedBinary(codec.pack('pb_fantasy_draw', draw));
+    model.state.modules.value = [...modules];
+  });
+  response = await request(87617, 18, codec.pack('pb_fantasy_equip_draw_wish_req', { wish_list: [1200719, 1200819] }));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(codec.unpack('pb_fantasy_draw', Buffer.from(response.data, 'base64')).wish_list, [1200719, 1200819]);
 
   // The real MissionUIMgr encoder omits chapter_tid/section_idx; mission_id alone must settle.
   response = await request(201, 11, codec.pack('pb_fight_request', {
@@ -245,7 +336,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(boxClaim.res_change.changes.find(change => change.tid === '101500').diff_num, '30');
   assert.equal(BigInt(game.store.read().resources.get('101500').num), boxDiamonds + 30n);
   response = await request(506, 15, await encodeEtf([1]));
-  assert.equal(response.err.err, 310);
+  assert.equal(response.err, undefined);
+  const repeatedBoxClaim = codec.unpack('pb_mission_rsp', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(repeatedBoxClaim.res_change.changes, []);
+  assert.equal(repeatedBoxClaim.mission.box_award, boxClaim.mission.box_award);
+  assert.equal(BigInt(game.store.read().resources.get('101500').num), boxDiamonds + 30n);
 
   // Linear task 10001 completes at journey mission 30204. The story request
   // above advances past that milestone, so claim it through the real ETF shape.
@@ -280,6 +375,66 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(currentActivity.act_custom_list.some(entry => Number(entry.act_id) === 83028), false);
 });
 
+test('gateway claims a destiny-stage linear task through 9010 and persists it across restart', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-destiny-linear-task-'));
+  const options = {
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => GAME_NOW
+  };
+  fs.copyFileSync(backup, options.databasePath);
+  let game = createLocalGame(options), socket;
+  t.after(async () => {
+    socket?.destroy();
+    if (game) await game.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  setDestiny(game.store, { cur_stage: 2, slot_state: Buffer.alloc(13) });
+  const diamondsBefore = BigInt(game.store.read().resources.get('201500').num);
+  const response = await request(9010, 2, await encodeEtf([10004]));
+  assert.equal(response.err, undefined);
+  const claim = codec.unpack('pb_linear_task_receive_back', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(claim.task, { type: 1, receive_tid: 10004 });
+  assert.deepEqual(claim.res_change.changes.map(change => [change.tid, change.diff_num]), [['201500', '2000']]);
+  assert.equal(BigInt(game.store.read().resources.get('201500').num), diamondsBefore + 2000n);
+  assert.deepEqual(storedLinearTask(game.store).task_list, [{ type: 1, receive_tid: 10004 }]);
+  assert.equal(game.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='linear_task' AND claim_key='10004'").get().n), 1);
+
+  let delivered = await decodeEtf(await game.loginPayload());
+  assert.deepEqual(storedLinearTask(game.store).task_list, [{ type: 1, receive_tid: 10004 }]);
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
+
+  socket.destroy(); socket = null;
+  await game.close(); game = null;
+  game = createLocalGame(options);
+  delivered = await decodeEtf(await game.loginPayload());
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
+  assert.equal(BigInt(game.store.read().resources.get('201500').num), diamondsBefore + 2000n);
+});
+
 test('all-open mode returns every stored activity and forces test-visible states', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-all-open-'));
   const databasePath = path.join(directory, 'game.sqlite');
@@ -296,12 +451,17 @@ test('all-open mode returns every stored activity and forces test-visible states
   });
   t.after(async () => { await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
 
-  const stored = codec.unpack('pb_act_login', rawBinary(new Map(game.store.state().modules.value).get(92)));
+  const state = game.store.state();
+  const stored = codec.unpack('pb_act_login', rawBinary(new Map(state.modules.value).get(92)));
   const storedIds = [
     ...stored.act_list.map(entry => Number(entry.state_data?.act_id)),
     ...stored.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))
   ];
-  const activity = await loginActivities(await game.loginPayload());
+  const payload = await game.loginPayload();
+  const serverInfo = await loginModule(payload, 1);
+  assert.equal(Number(serverInfo[4]), SERVER_OPENED_AT);
+  assert.notEqual(Number(serverInfo[4]), state.createdAt);
+  const activity = await loginActivities(payload);
   const returnedIds = new Set([
     ...activity.act_list.map(entry => Number(entry.state_data?.act_id)),
     ...activity.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))
@@ -315,4 +475,217 @@ test('all-open mode returns every stored activity and forces test-visible states
   assert.ok(storedIds.every(id => returnedIds.has(id)));
   assert.equal(returnedIds.has(83028), true);
   assert.equal(returnedIds.has(1074011), true);
+});
+
+test('leader equipment wear equips gear through the gateway and persists it', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-leader-equip-wear-'));
+  const events = [];
+  const game = createLocalGame({
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    logger: event => events.push(event)
+  });
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  const uid = '910001';
+  let previousEquip;
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(175);
+    const data = module && module.value?.data?.length
+      ? codec.unpack('pb_leader_equips_data', rawBinary(module))
+      : { slots: [], equip_list: [], max_uid: '0', draw_info: { lv: 1 }, dismiss: '' };
+    data.slots = Array.isArray(data.slots) ? data.slots : [];
+    data.equip_list = Array.isArray(data.equip_list) ? data.equip_list : [];
+    const oldSlot = data.slots.find(slot => Number(slot.type) === 1);
+    previousEquip = oldSlot?.equip;
+    if (previousEquip) data.equip_list.push(previousEquip);
+    data.slots = data.slots.filter(slot => Number(slot.type) !== 1);
+    data.equip_list = data.equip_list.filter(equip => String(equip.uid) !== uid);
+    data.equip_list.push({ tid: '2001018', uid, star: 0, level: 1, intensify_info: { intensify_level: 0, intensify_times: 0 } });
+    data.max_uid = '910001';
+    modules.set(175, serializedBinary(codec.pack('pb_leader_equips_data', data)));
+    model.state.modules.value = [...modules];
+  });
+
+  const response = await request(98401, 2, codec.pack('pb_leader_equip_wear_req', { wear_list: [{ uid, type: 1 }] }));
+  assert.equal(response.err, undefined);
+  const back = codec.unpack('pb_leader_equip_wear_back', Buffer.from(response.data, 'base64'));
+  assert.equal(back.slots.length, 1);
+  assert.equal(back.slots[0].type, 1);
+  assert.equal(back.slots[0].equip.uid, uid);
+  assert.equal(back.slots[0].equip.tid, '2001018');
+  assert.deepEqual(back.sub_equip_list.map(equip => equip.uid), [uid]);
+  assert.deepEqual(back.add_equip_list.map(equip => equip.uid), previousEquip ? [String(previousEquip.uid)] : []);
+
+  const after = codec.unpack('pb_leader_equips_data', rawBinary(new Map(game.store.state().modules.value).get(175)));
+  assert.equal(after.equip_list.some(equip => String(equip.uid) === uid), false);
+  assert.deepEqual(after.slots.find(slot => Number(slot.type) === 1), back.slots[0]);
+
+  assert.equal(events.some(event => event.event === 'unsupported_command' && event.type === 98401), false);
+  const committed = events.find(event => event.event === 'leader_equip_wear_committed');
+  assert.ok(committed?.connection);
+  assert.deepEqual({ type: committed.type, seq: committed.seq, slotTypes: committed.slotTypes, subUids: committed.subUids }, {
+    type: 98401, seq: 2, slotTypes: [1], subUids: [uid]
+  });
+});
+
+test('cabin unlock, hero placement and atomic swap use real gateway framing and persist module 114', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-cabin-gateway-'));
+  const events = [];
+  const game = createLocalGame({
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    logger: event => events.push(event)
+  });
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  game.store.transaction(model => { model.role.level = 46; });
+  addResource(game.store, '101500', 1000);
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  const loginValue = await decodeEtf(Buffer.from(login.data, 'base64'));
+  const cabin = codec.unpack('pb_campsite_data', loginModuleBytes(loginValue, 114));
+  assert.deepEqual(cabin.groups_data.map(group => Number(group.group_id)), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(Buffer.from(cabin.groups_data[0].cell_states, 'base64').toString('hex'), '70');
+
+  let response = await request(83201, 2, await encodeEtf([1, 4]));
+  assert.equal(response.err, undefined);
+  const changes = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.deepEqual(changes.map(change => [change.tid, change.diff_num]), [['101500', '-1000']]);
+  assert.equal(game.store.read().resources.get('101500').num, '0');
+
+  response = await request(83202, 3, codec.pack('pb_campsite_place', {
+    place_groups: [{ group_id: 1, cell_index_list: [1], hero_uid_list: ['1020601'] }]
+  }));
+  assert.equal(response.err, undefined);
+  const placed = codec.unpack('pb_campsite_data', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(placed.groups_data[0].hero_list, ['1020601', '0', '0', '0']);
+  const persisted = codec.unpack('pb_campsite_data', rawBinary(new Map(game.store.state().modules.value).get(114)));
+  const group = persisted.groups_data.find(value => Number(value.group_id) === 1);
+  assert.equal(Buffer.from(group.cell_states, 'base64').toString('hex'), '78');
+  assert.deepEqual(group.hero_list, ['1020601', '0', '0', '0']);
+
+  response = await request(83202, 4, codec.pack('pb_campsite_place', {
+    place_groups: [{ group_id: 1, cell_index_list: [2], hero_uid_list: ['1020301'] }]
+  }));
+  assert.equal(response.err, undefined);
+
+  response = await request(83202, 5, codec.pack('pb_campsite_place', {
+    place_groups: [{ group_id: 1, cell_index_list: [1, 2], hero_uid_list: ['1020301', '1020601'] }]
+  }));
+  assert.equal(response.err, undefined);
+  const swapped = codec.unpack('pb_campsite_data', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(swapped.groups_data[0].hero_list, ['1020301', '1020601', '0', '0']);
+  const swappedPersisted = codec.unpack('pb_campsite_data', rawBinary(new Map(game.store.state().modules.value).get(114)));
+  const swappedGroup = swappedPersisted.groups_data.find(value => Number(value.group_id) === 1);
+  assert.deepEqual(swappedGroup.hero_list, ['1020301', '1020601', '0', '0']);
+
+  assert.equal(events.some(event => event.event === 'unsupported_command' && [83201, 83202].includes(event.type)), false);
+  assert.deepEqual(events.filter(event => event.event === 'cabin_committed').map(event => event.type), [83201, 83202, 83202, 83202]);
+});
+
+test('gateway draws WishTree rebates over real TCP, persists them, and rejects a second empty quota', { timeout: 10000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-wish-tree-gateway-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  fs.copyFileSync(backup, databasePath);
+  const wishNow = Date.parse('2026-10-31T06:00:00.000Z');
+  const game = createLocalGame({
+    databasePath,
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => wishNow
+  });
+  // Keep this test independent of sample orders shipped in the handoff DB.
+  game.store.inspect(db => db.prepare('DELETE FROM recharge_orders WHERE product_id IN (40008,40009,40010,46002,46003)').run());
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  const module165 = codec.unpack('pb_wish_tree_new', loginModuleBytes(await decodeEtf(Buffer.from(login.data, 'base64')), 165));
+  assert.equal(Number(module165.data_list.find(row => Number(row.type) === 2)?.can_wish_count ?? 0), 0);
+
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const info = codec.unpack('pb_wish_tree_new', rawBinary(modules.get(165)));
+    info.data_list.find(row => Number(row.type) === 2).can_wish_count = '1';
+    modules.set(165, serializedBinary(codec.pack('pb_wish_tree_new', info)));
+    model.state.modules.value = [...modules];
+  });
+
+  let response = await request(91701, 90, await encodeEtf([2]));
+  assert.equal(response.err, undefined);
+  const drawn = codec.unpack('pb_wish_tree_draw_back', Buffer.from(response.data, 'base64'));
+  assert.equal(drawn.award_tid, 2003);
+  assert.equal(drawn.tree_data.type, '2');
+  assert.equal(drawn.tree_data.normal_times, '1');
+  assert.equal(Number(drawn.tree_data.can_wish_count ?? 0), 0);
+  assert.equal(drawn.res.changes.find(change => change.tid === '3002').diff_num, '5');
+
+  response = await request(91701, 91, await encodeEtf([2]));
+  assert.equal(response.err.err, 310);
+  assert.equal(response.err.stacktrace, undefined);
+
+  const persistedLogin = await decodeEtf(await game.loginPayload());
+  const persisted = codec.unpack('pb_wish_tree_new', loginModuleBytes(persistedLogin, 165));
+  const persistedRow = persisted.data_list.find(row => Number(row.type) === 2);
+  assert.equal(persistedRow.normal_times, '1');
+  assert.equal(Number(persistedRow.can_wish_count ?? 0), 0);
+  assert.ok(Buffer.from(persistedRow.normal_bin, 'base64')[0] & 0x10);
 });

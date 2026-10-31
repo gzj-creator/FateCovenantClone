@@ -32,6 +32,19 @@ export function encodeEtfIntegerTuple(values) {
   header[0] = 131; header[1] = 104; header[2] = values.length;
   return Buffer.concat([header, ...values.map(value => encodeEtfInteger(value).subarray(1))]);
 }
+export function encodeEtfBinaryList(values) {
+  if (!Array.isArray(values) || values.length > 0xffffffff) throw new RangeError('ETF binary list must be an array');
+  const items = values.map(value => {
+    const bytes = Buffer.from(value);
+    if (bytes.length > 0xffffffff) throw new RangeError('ETF binary item is too large');
+    const header = Buffer.alloc(5);
+    header[0] = 109; header.writeUInt32BE(bytes.length, 1);
+    return Buffer.concat([header, bytes]);
+  });
+  const listHeader = Buffer.alloc(6);
+  listHeader[0] = 131; listHeader[1] = 108; listHeader.writeUInt32BE(items.length, 2);
+  return Buffer.concat([listHeader, ...items, Buffer.from([106])]);
+}
 export const binary = value => new E.OtpErlangBinary(Buffer.from(value));
 export const rawBinary = object => Buffer.from(object.value.data);
 export const serializedBinary = value => ({ value: Buffer.from(value).toJSON(), bits: 8 });

@@ -425,7 +425,11 @@ test('87608 rejects a repeated request at max star without charging chip or ston
   const chip = tables.FantasyChipByPointItem.get(UNIQUE_MATCH_4030801);
   const row = tables.FantasySpStarUp.get(50005);
   const equipConfig = tables.FantasyEquip.get(UNIQUE_MATCH_4030801);
-  const campStones = tables.FantasyStarStoneTid.get(Number(equipConfig.profession)).item;
+  // HeroTable.Hero overrides the legacy generic table in game-tables; use the
+  // same hero camp selection as FantasyEquipMgr when the equipment is unique.
+  const hero = tables.Hero.get(Number(equipConfig.hero));
+  const camp = Number(hero?.camp ?? equipConfig.profession);
+  const campStones = tables.FantasyStarStoneTid.get(camp).item;
   addResources(f, [
     [chip.tid, Number(row.cost_num) * 2],
     ...campStones.map(tid => [tid, Number(row.stone_num) * 2])

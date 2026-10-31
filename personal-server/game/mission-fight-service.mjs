@@ -570,34 +570,39 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
       if (chapter > currentChapter) return 0;
       const rows = [...missionTables.sections.values()].filter(section => Number(section.belong_chapter) === chapter);
       if (chapter < currentChapter) return rows.length;
-      return rows.filter(section => Number(section.index) <= Number(currentSection.index)).length;
+      // mission_id is the first unpassed section. The current section itself
+      // does not count until the server advances the mission cursor.
+      return rows.filter(section => Number(section.index) < Number(currentSection.index)).length;
     };
-    for (const box of boxes) {
-      if (chapterPasses(Number(box.belong_chapter)) < Number(box.need_pass)) throw new GameError(5, 'Mission box is not unlocked');
-    }
-
     const bits = await decodeBitBlock(Buffer.from(current.box_award ?? '', 'base64'));
-    if (boxes.some(box => hasBit(bits, Number(box.tid)))) throw new GameError(310, 'Mission box reward already claimed');
     const requiredBytes = Math.floor(Math.max(...boxes.map(box => Number(box.tid))) / 8) + 1;
-    const nextBits = Buffer.alloc(Math.max(bits.length, requiredBytes));
+    let nextBits = Buffer.alloc(Math.max(bits.length, requiredBytes));
     bits.copy(nextBits);
-    for (const box of boxes) setBit(nextBits, Number(box.tid));
+    for (const box of boxes) nextBits = setBit(nextBits, Number(box.tid));
     const nextMission = { ...current, box_award: (await encodeBitBlock(nextBits)).toString('base64') };
     const moduleBytes = serializedBinary(codec.pack('pb_mission', nextMission));
     const expectedModule = JSON.stringify(module);
-    const awards = boxes.flatMap(configuredBoxAwards);
 
     return store.transaction((model, db) => {
       const fresh = new Map(model.state.modules.value);
       if (JSON.stringify(fresh.get(MISSION_MODULE)) !== expectedModule) throw new GameError(1, 'Mission data changed; retry box claim');
-      for (const id of boxTids) {
-        if (db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'mission_box', String(id))) {
-          throw new GameError(310, 'Mission box reward already claimed');
+      const newlyGranted = [];
+      for (const box of boxes) {
+        const id = Number(box.tid);
+        const moduleClaimed = hasBit(bits, id);
+        const recordedClaim = db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'mission_box', String(id));
+        // A retry may name boxes that were already claimed under older chapter
+        // boundary logic. Keep that retry idempotent; only a box that would
+        // actually grant now must satisfy the current unlock threshold.
+        if (!moduleClaimed && !recordedClaim && chapterPasses(Number(box.belong_chapter)) < Number(box.need_pass)) {
+          throw new GameError(5, 'Mission box is not unlocked');
         }
+        if (!moduleClaimed && !recordedClaim) newlyGranted.push(box);
+        // A one-key claim can overlap a previous partial claim. Reconcile both
+        // stores without granting again, and let an all-claimed retry succeed.
+        if (!recordedClaim) db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'mission_box', String(id), new Date(now()).toISOString());
       }
-      for (const id of boxTids) {
-        db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'mission_box', String(id), new Date(now()).toISOString());
-      }
+      const awards = newlyGranted.flatMap(configuredBoxAwards);
       const reward = grantResources(model, awards, gameTables);
       const updated = new Map(model.state.modules.value);
       updated.set(MISSION_MODULE, { ...module, value: [moduleBytes] });

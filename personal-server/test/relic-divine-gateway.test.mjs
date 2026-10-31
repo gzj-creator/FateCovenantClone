@@ -366,7 +366,8 @@ test('gateway preserves login blocks, routes every relic command, and pushes aft
     response = await client.request(type, seq++, data);
     assert.notEqual(response.err?.err, -1, `command ${type} must be routed`);
     assert.ok(logs.some(event => Number(event.type) === type && (
-      String(event.event).startsWith('fantasy_equipment_') || String(event.event).startsWith('fantasy_draw_')
+      String(event.event).startsWith('fantasy_equipment_') || String(event.event).startsWith('fantasy_draw_') ||
+      (type === 87618 && String(event.event).startsWith('recruit_'))
     )), `command ${type} must reach its service`);
   }
 

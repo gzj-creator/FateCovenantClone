@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {createCipheriv} from 'node:crypto';
 import {createGameCodec,rawBinary,decodeEtf} from '../protocol/game-codec.mjs';
 import {createGameStore} from '../storage/game-store.mjs';
 import {readGameTables} from '../config/game-tables.mjs';
@@ -11,6 +12,7 @@ import {createSprintService} from '../game/sprint-service.mjs';
 import {createAdminService} from '../admin/server.mjs';
 import {createSdkService} from '../sdk-service.mjs';
 import {signSdkParameters} from '../sdk-signing.mjs';
+import {signQuickSdk} from '../quick-sdk.mjs';
 const codec=createGameCodec(),tables=readGameTables();
 const capture=JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json',import.meta.url)));
 function setup(t){
@@ -81,6 +83,29 @@ test('SDK balance payment authenticates signed local sessions and debits SQLite 
   e.reopen();assert.equal(e.wallet.snapshot().accounts[0].balance_cents,3800);assert.equal(e.wallet.snapshot().orders.length,2);
 });
 
+test('QuickSDK order payment reports an exhausted gift limit instead of insufficient balance',async t=>{
+  const e=setup(t),quickSdk={productCode:'fc-local',productKey:'fclocal1'},now=1790000000;
+  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',quickSdk,account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},nowSeconds:()=>now,sessionTtlSeconds:60});
+  sdk.attachWallet(e.wallet);const address=await sdk.listen(0);t.after(()=>sdk.close());
+  const post=async(route,fields)=>{const form=new URLSearchParams({...fields,sign:signSdkParameters(fields,'test-key')});const response=await fetch(address.url+route,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:form});return{status:response.status,body:await response.json()};};
+  const login=await post('/user/phoneLogin',{appid:'test-sdk',phone:'19900000000',verifyCode:'1234'});assert.equal(login.status,200);
+  e.wallet.credit({account_id:'local-1',amount_cents:1200,request_id:'quick-limit-fund'});
+  const pay=async cpOrderId=>{
+    const payment={uid:'local-1',token:login.body.result.token,goods_id:40010,cp_order_id:cpOrderId,price:12,amount:12,count:1,extras_params:JSON.stringify({goodsID:40010,productID:40010}),game_role_info:Buffer.from(JSON.stringify({server_id:'1',game_role_id:'100001'})).toString('base64')};
+    const key=Buffer.from(quickSdk.productKey),cipher=createCipheriv('des-ede3',Buffer.concat([key,key,key]),null);
+    const json_data=Buffer.concat([cipher.update(JSON.stringify(payment),'utf8'),cipher.final()]).toString('base64');
+    const fields=new Map([['product_code',quickSdk.productCode],['json_data',json_data]]);
+    const response=await fetch(address.url+'/v1/order/orderpay',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:new URLSearchParams([...fields,['sign',signQuickSdk(fields,quickSdk.productKey)]]).toString()});
+    return{status:response.status,body:await response.json()};
+  };
+  assert.equal((await pay('quick-limit-first')).body.result,true);
+  assert.equal(e.wallet.snapshot().accounts[0].balance_cents,0);
+  const exhausted=await pay('quick-limit-repeat');
+  assert.equal(exhausted.status,200);
+  assert.deepEqual(exhausted.body,{result:false,error:{code:307,id:'80001',message:'该商品今日购买次数已用完'},data:{}});
+  assert.equal(e.wallet.snapshot().orders.length,1);
+});
+
 test('wallet order confirms an existing QuickSDK order without buying or notifying twice',async t=>{
   const e=setup(t),now=1790000000;
   const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',platform:{appId:'test-platform',appKey:'platform-key'},account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},nowSeconds:()=>now,sessionTtlSeconds:60});
@@ -134,13 +159,15 @@ test('daily discount batch purchase consumes every included offer and survives r
   const result=e.wallet.buy({product_id:46003,request_id:'daily-batch-first'});
   assert.equal(result.balance_paid_cents,900);
   const push=codec.unpack('res_recharge_success',e.pushes[0].data);
+  assert.equal(push.res.changes.find(change=>change.tid==='101500').diff_num,'150');
   const pushed=codec.unpack('pb_daily_discount_all',Buffer.from(push.extra_ret_list.find(entry=>entry.flag===40).data,'base64'));
-  const assertConsumed=info=>assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1]);
+  const assertConsumed=info=>assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
   assertConsumed(pushed);
   assertConsumed(codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108))));
   for(const [productId,requestId] of [[46003,'daily-batch-repeat'],[40009,'daily-batch-component-a'],[46002,'daily-batch-component-b']]) {
     assert.throws(()=>e.wallet.buy({product_id:productId,request_id:requestId}),error=>error.code===307);
   }
+  assert.throws(()=>e.wallet.purchaseGift({product_id:40006,request_id:'daily-batch-free'}),error=>error.code===307);
   assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9100);assert.equal(e.pushes.length,1);
 
   e.reopen();
@@ -154,8 +181,38 @@ test('daily discount batch offer is unavailable after one included component is 
   e.wallet.buy({product_id:40009,request_id:'daily-component-first'});
   assert.throws(()=>e.wallet.buy({product_id:46003,request_id:'daily-component-bundle'}),error=>error.code===307);
   const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
-  assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[0,1,0]);
+  assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[0,1,0,0]);
   assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9400);
+});
+
+test('free daily gift bought first remains part of the sold-out batch state without duplicate reward',t=>{
+  const e=setup(t);
+  const before=BigInt(e.store.read().resources.get('101500')?.num??0);
+  e.wallet.purchaseGift({product_id:40006,request_id:'daily-free-first'});
+  assert.equal(BigInt(e.store.read().resources.get('101500').num)-before,30n);
+  e.wallet.credit({account_id:'local-1',amount_cents:1000,request_id:'daily-free-bundle-fund'});
+  const bundle=e.wallet.buy({product_id:46003,request_id:'daily-free-bundle'});
+  assert.equal(bundle.balance_cents,100);
+  assert.equal(BigInt(e.store.read().resources.get('101500').num)-before,150n);
+  const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
+  assert.throws(()=>e.wallet.purchaseGift({product_id:40006,request_id:'daily-free-repeat'}),error=>error.code===307);
+  e.reopen();
+  const reopened=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.deepEqual([6,2,5,1].map(tid=>reopened.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
+});
+
+test('sold-out purchase limit wins over an empty wallet balance',t=>{
+  const e=setup(t);
+  e.wallet.credit({account_id:'local-1',amount_cents:1200,request_id:'limit-fund'});
+  const first=e.wallet.buy({product_id:40010,request_id:'limit-first'});
+  assert.equal(first.balance_cents,0);
+  assert.throws(()=>e.wallet.buy({product_id:40010,request_id:'limit-repeat'}),error=>error.code===307);
+
+  e.wallet.credit({account_id:'local-1',amount_cents:1500,request_id:'gift-fund'});
+  const gift=e.wallet.purchaseGift({product_id:240003,request_id:'gift-first'});
+  assert.equal(gift.balance_cents,0);
+  assert.throws(()=>e.wallet.purchaseGift({product_id:240003,request_id:'gift-repeat'}),error=>error.code===307);
 });
 
 test('daily discount additional purchases are finite and survive restart',t=>{
@@ -187,7 +244,7 @@ test('daily discount purchase counts are rebuilt from orders on restart',t=>{
   createWalletService({store:e.store,codec,tables,now:()=>now});
   const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
   assert.equal(info.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
-  assert.deepEqual([6,2,5].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1]);
+  assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
 });
 
 test('wallet logging failures cannot reject committed credits or purchases',t=>{

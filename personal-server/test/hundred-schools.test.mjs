@@ -119,6 +119,20 @@ function storedDraw(store) {
   return unwrapDrawPayload(entry);
 }
 
+function setRecruitDrawCount(store, lib, count) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(10);
+    assert.ok(module);
+    const info = codec.unpack('pb_hero_draw_info', rawBinary(module.value[2]));
+    const row = info.recruit_list.find(entry => Number(entry.draw_lib) === lib);
+    assert.ok(row);
+    row.draw_count = count;
+    module.value[2] = serializedBinary(codec.pack('pb_hero_draw_info', info));
+    model.state.modules.value = [...modules];
+  });
+}
+
 function addResource(store, tid, amount) {
   store.transaction(model => grantResources(model, [[tid, amount]], tables));
 }
@@ -183,15 +197,19 @@ async function gatewayFixture(t, logger = () => {}) {
 
   const request = async (type, seq, data) => {
     send(codec.pack('pb_c2s', { type, seq, data }));
-    return codec.unpack('pb_s2c', await next());
+    while (true) {
+      const frame = codec.unpack('pb_s2c', await next());
+      if (frame.seq === seq) return frame;
+    }
   };
   const requestWithWalletPush = async (seq, data) => {
     send(codec.pack('pb_c2s', { type: 16004, seq, data }));
     const frames = [];
-    while (frames.length < 2) frames.push(codec.unpack('pb_s2c', await next()));
+    while (!frames.some(frame => frame.seq === seq)) frames.push(codec.unpack('pb_s2c', await next()));
     return {
       ack: frames.find(frame => frame.seq === seq),
-      notification: frames.find(frame => frame.type === 1900)
+      notification: frames.find(frame => frame.type === 1900),
+      wishNotification: frames.find(frame => frame.type === 9132)
     };
   };
   const loginResponse = await request(909103, 1, codec.pack('login', {
@@ -230,10 +248,13 @@ test('genre selection persists and the star task uses the selected lineup id', t
   assert.equal(storedDraw(env.store).role_data.draw_count, 400);
   assert.equal(storedDraw(env.store).server_draw_count, 400);
 
-  const gapBefore = BigInt(env.store.read().resources.get('200110')?.num ?? 0);
   const personal = env.heroDraw.claimTask(7);
   assert.equal(hasBit(Buffer.from(personal.value.reward_bytes), 7), true);
-  assert.equal(BigInt(env.store.read().resources.get('200110').num), gapBefore + 1n);
+  const artifactChange = personal.value.res.changes.find(row => row.tid === '200110');
+  assert.equal(Number(artifactChange.diff_num), 1);
+  const artifactModule = new Map(env.store.state().modules.value).get(50);
+  const artifacts = codec.unpack('pb_artifact_info', rawBinary(artifactModule.value[0]));
+  assert.equal(Number(artifacts.artifact_list.find(row => Number(row.tid) === 200110).num), Number(artifactChange.new_num));
   assert.doesNotThrow(() => env.heroDraw.claimTask(24));
   assert.doesNotThrow(() => env.heroDraw.claimTask(25));
   assert.throws(() => env.heroDraw.claimTask(7), error => error.code === 310);
@@ -429,9 +450,11 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   assert.equal(push.extra_ret_list.some(entry => entry.flag === 92), true);
   assert.equal(env.game.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40008 AND kind='gift'").get(ACTIVITY_ID).n), 1);
 
+  const week = codec.unpack('pb_week_hunt', rawBinary(new Map(env.game.store.state().modules.value).get(533))).week_period_info[0];
+  const giftDay = Math.min(Math.floor((env.clock.seconds + 10800) / 86400), week.start_day + 6);
   const dailyOptions = JSON.stringify([
     { ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' },
-    [false, 1, 20755]
+    [false, week.version, giftDay]
   ]);
   walletFrames = await env.requestWithWalletPush(23, await encodeEtf([40010, binary(Buffer.from(dailyOptions)), 0]));
   assert.equal(walletFrames.ack.err, undefined);
@@ -445,9 +468,9 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   response = await env.request(16004, 24, await encodeEtf([40010, 2, 0]));
   assert.equal(response.err.err, 5);
   response = await env.request(16004, 25, await encodeEtf([40010, 1, 0]));
-  // RechargeMgr renders 307 as a generic server-fault popup, so the gateway
-  // acknowledges an already-owned gift while leaving the original purchase intact.
-  assert.equal(response.err, undefined);
+  // Do not leave the client waiting for a 1900 push that will never follow.
+  // A repeated gift reports its configured limit and the original purchase stays intact.
+  assert.equal(response.err.err, 16016);
   assert.equal(env.game.store.inspect(db => db.prepare("SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=40010 AND kind='gift'").get(ACTIVITY_ID).n), 1);
 
   response = await env.request(85901, 30, codec.pack('pb_recommend_gift_active_req', {

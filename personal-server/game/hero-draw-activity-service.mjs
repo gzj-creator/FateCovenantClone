@@ -317,9 +317,9 @@ export function createHeroDrawActivityService({
         fail(310, 'Hero draw activity reward was already claimed');
       }
       const res = grantResources(model, (task.award_list ?? []).map(([tid, count]) => [Number(tid), Number(count)]), tables);
-      const nextBits = Buffer.alloc(Math.max(bits.length, Math.floor(id / 8) + 1));
+      let nextBits = Buffer.alloc(Math.max(bits.length, Math.floor(id / 8) + 1));
       bits.copy(nextBits);
-      setBit(nextBits, id);
+      nextBits = setBit(nextBits, id);
       data.role_data.reward_bytes = nextBits;
       writeDrawData(context.entry, data);
       writeModule(model, codec.pack('pb_act_login', context.activity));

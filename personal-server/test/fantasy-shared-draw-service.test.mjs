@@ -145,6 +145,16 @@ function resource(store, tid) {
   return BigInt(store.read().resources.get(String(tid))?.num ?? 0);
 }
 
+function artifactCount(store, tid) {
+  const module = new Map(store.state().modules.value).get(50);
+  const bytes = module ? Buffer.from(rawBinary(module.value?.[0])) : Buffer.alloc(0);
+  const data = bytes.length
+    ? codec.unpack('pb_artifact_info', bytes)
+    : { artifact_list: [], skill_list: [] };
+  const row = (data.artifact_list ?? []).find(value => Number(value.tid) === Number(tid));
+  return BigInt(row?.num ?? 0);
+}
+
 function moduleBlocks(store) {
   const module = new Map(store.state().modules.value).get(518);
   return module?.value.map(rawBinary) ?? [];
@@ -230,7 +240,7 @@ test('artifact draw validates draw counts and persists ten-draw and guarantee st
   assert.equal(ten.valueForLog.draw_count, 10);
   assert.equal(f.store.read().state.fantasyDrawPools.pools['artifact:1:181'].guaranteed_count, '10');
 
-  const beforeGuarantee = resource(f.store, 300610);
+  const beforeGuarantee = artifactCount(f.store, 300610);
   f.setRandom([]);
   f.service.execute601({ draw_lib: 181, point_draw_num: 29 });
   assert.equal(f.store.read().state.fantasyDrawPools.pools['artifact:1:181'].guaranteed_count, '39');
@@ -238,7 +248,7 @@ test('artifact draw validates draw counts and persists ten-draw and guarantee st
   const fortieth = f.service.execute601({ draw_lib: 181, point_draw_num: 1 });
   assert.equal(fortieth.valueForLog.group_ids[0], 901);
   assert.deepEqual(fortieth.valueForLog.awards, [{ tid: 300610, num: 1 }]);
-  assert.equal(resource(f.store, 300610), beforeGuarantee + 1n);
+  assert.equal(artifactCount(f.store, 300610), beforeGuarantee + 1n);
   assert.equal(f.store.read().state.fantasyDrawPools.pools['artifact:1:181'].guaranteed_count, '0');
 });
 

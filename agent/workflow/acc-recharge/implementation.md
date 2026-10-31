@@ -165,3 +165,32 @@
 ### 验收边界
 
 当前服务 PID 38544 仍运行旧代码，修复尚未部署，因此真实客户端再次点击档位 2 仍会命中旧行为。部署后从本 worktree 重启服务，并由用户重新登录、点击档位 2 后，才能记录为真实客户端验收；预期看到档位 2 领取成功、模块 166 新增 `group_id=2`、`activity_claims` 新增 `task_id=2`，以及上述两项奖励变化。本次仅修改服务端，不修改 APK，不需要更新 APK 快照或 `apk/README.md`。
+
+## 2026-10-31 重新登录后累充档位仍显示可领取
+
+用户确认领取后的按钮当下会变灰，但重新登录后所有档位又显示“领取”。本轮在独立 worktree `F:\projects\FateCovenantClone\.worktree\acc-recharge-display-fix`（分支 `fix/acc-recharge-display-20261031`）修复，并按用户要求将当时最新 `main` 合入后重新部署。
+
+### 根因
+
+运行库模块 106 的领取位本身正确：`106036` 的 `award_state` 前四字节为 `70 00 00 00`，`106037` 为 `78 00 00 00`；`activity_claims` 也保留了 `36001101` 至 `36001103`、`37001101` 至 `37001104`。真实重复领取请求均命中幂等确认，服务端没有丢失领取记录。
+
+问题在登录配置：模块 92 的 `pb_act_login.act_list` 没有 `106036` 或 `106037` 的活动状态条目。客户端打开活动时因此没有拿到对应的活动实体和模块 106 数据，档位回到默认可领取状态。
+
+### 修复
+
+- `personal-server/game/acc-recharge-service.mjs` 新增 `synchronizeLogin()`：每次登录从模块 106 的持久领取位重建 `106xxx` 活动条目，写入 `cur_state_id=50`、运行态历史和 `module_login_data=ETF(BINARY(pb_acc_recharge{act_id,award_state}))`。同步幂等，会去除模块 92 中的同活动重复条目。
+- `personal-server/game/gateway.mjs` 在活动日历、宠物、百派和充值返利同步之后调用该函数，再编码模块 92。登录日志新增 `acc_recharge_login_synchronized` 和 `accRechargeActivityIds`。
+- `personal-server/test/acc-recharge-service.test.mjs` 新增登录同步回归，覆盖两个活动、`70/78` 领取位、ETF 包装、模块 92 往返编码和重复调用去重。
+
+### 合并、验证与部署
+
+- 功能提交为 `da2ae50`；随后合入最新 `main`，合并提交为 `332b7ce`。
+- `node --test test/acc-recharge-service.test.mjs`：12/12 通过。
+- 合入 `main` 后 `npm test`：286/286 通过。
+- 部署前使用 `analysis/tools/backup-sqlite.mjs` 对运行库做一致备份，`integrity_check=ok`、`user_version=10`，SHA256 为 `8891f8cf20def1abc42eeaee41dceff9c7cdf07f755f2614169ef915b1e6428f`。
+- 在备份副本上重建完整登录载荷并解码，模块 92 包含 `106036`、`106037` 各一次，`award_state` 分别为 `70000000`、`78000000`。证据为 `analysis/experiments/private-server-20261025/p3/acc-recharge-login-sync-20261031-1953/login-payload-check.local-only.json`。
+- 新服务从修复 worktree 启动，PID `9784`；`18880/18881/18882/18883/19090` 均由该进程监听在 `127.0.0.1`。部署后客户端自动重连并发送一次真实登录，日志记录 `acc_recharge_login_synchronized actIds=[106036,106037] awardedStates=[70000000,78000000]`。
+
+### 验收边界
+
+登录载荷和真实客户端重连日志已确认正确修复，仍需用户打开累充活动页面做最终视觉验收。本轮未操作客户端页面，未修改 APK，因此不需要更新 APK 快照或 `apk/README.md`。

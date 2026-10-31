@@ -2,7 +2,8 @@ import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 
 // Backpack boxes. Only rules fully described by shipped configuration are executed:
-// ItemTable.Random_Box -> DrawTable lib (weighted group + weighted award) without guarantee state.
+// ItemTable.Random_Box -> DrawTable lib (weighted group + weighted award), including configured guarantees.
+// ItemTable.Designated_Box -> the configured fixed award list (151/157/159 use paths).
 // ItemTable.OptionalBox -> the player's selected range entries (type 152 use_selected_box).
 // Pay, repeat and lottery boxes stay unsupported on purpose.
 const MAX_USE = 999;
@@ -24,12 +25,21 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
     if (!draw) return null;
     const lib = tables.DrawLibWeight.get(draw.draw_lib);
     if (!lib) throw new GameError(5, 'Box draw library is missing from configuration');
-    const guarantees = (lib.guaranteed_weight?.length ?? 0) > 0 || (lib.guaranteed_group?.length ?? 0) > 0
-      || (lib.counter_guaranteed_group?.length ?? 0) > 0 || (lib.against_guaranteed_group_num ?? 0) > 0;
-    if (guarantees) throw new GameError(5, 'Box draw guarantee state is not implemented');
     const groups = [...(lib.weight_group ?? [])].map(([weight, groupId]) => ({ weight, group: tables.DrawGroup.get(groupId) }));
     if (!groups.length || groups.some(entry => !entry.group)) throw new GameError(5, 'Box draw groups are missing from configuration');
-    return { kind: 'random', groups };
+    const groupEntries = ids => [...(ids ?? [])].map(groupId => {
+      const group = tables.DrawGroup.get(groupId);
+      if (!group) throw new GameError(5, 'Box guarantee group is missing from configuration');
+      return { weight: 1, group };
+    });
+    const guaranteedGroups = groupEntries(lib.guaranteed_group);
+    const counterGuaranteedGroups = groupEntries(lib.counter_guaranteed_group);
+    const totalWeight = groups.reduce((sum, entry) => sum + Number(entry.weight ?? 0), 0);
+    const guaranteedWeight = Number(lib.guaranteed_weight?.[0] ?? 0);
+    const guaranteeThreshold = guaranteedGroups.length && guaranteedWeight > 0
+      ? Math.max(1, Math.ceil(totalWeight / guaranteedWeight))
+      : 0;
+    return { kind: 'random', groups, guaranteedGroups, counterGuaranteedGroups, guaranteeThreshold };
   }
 
   function optionalRule(tid) {
@@ -51,13 +61,32 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
     return { kind: 'optional', optionalNum, options };
   }
 
+  function designatedRule(tid) {
+    const designated = tables.Designated_Box.get(tid);
+    if (!designated) return null;
+    const list = Array.isArray(designated.res_list) ? designated.res_list : [];
+    if (!list.length) throw new GameError(5, 'Designated box configuration is invalid');
+    const awards = list.map(entry => {
+      if (!Array.isArray(entry) || entry.length < 2) throw new GameError(5, 'Designated box award is invalid');
+      const rewardTid = Number(entry[0]), rewardNum = Number(entry[1]);
+      if (!Number.isSafeInteger(rewardTid) || !Number.isSafeInteger(rewardNum) || rewardNum <= 0 || !tables.Item.has(rewardTid)) {
+        throw new GameError(5, 'Designated box award is invalid');
+      }
+      return [rewardTid, rewardNum];
+    });
+    return { kind: 'designated', awards };
+  }
+
   function rule(tid) {
     boxItem(tid);
+    // Some legacy rows also appear in OptionalBox. The client checks the
+    // fixed Designated_Box list before the random and optional rows.
+    const designated = designatedRule(tid);
+    if (designated) return designated;
     const random = randomRule(tid);
     if (random) return random;
     const optional = optionalRule(tid);
     if (optional) return optional;
-    if (tables.Designated_Box.get(tid)) throw new GameError(5, 'Designated box rule is not implemented');
     if (tables.Pay_Box.get(tid)) throw new GameError(5, 'Paid box requires a recharge handler');
     if (tables.BoxRepeat.get(tid)) throw new GameError(5, 'Repeatable box state is not implemented');
     throw new GameError(5, 'Box award rule is missing from configuration');
@@ -71,8 +100,28 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
     return entries[entries.length - 1];
   }
 
-  function roll(box) {
-    const group = pickWeighted(box.groups, entry => entry.weight).group;
+  function guaranteeState(model, tid) {
+    model.state.boxGuarantees ??= {};
+    const key = String(tid);
+    const state = model.state.boxGuarantees[key] ??= {};
+    for (const field of ['noGuaranteeCount', 'openCount', 'counterGuaranteeCount', 'openTotalCount']) {
+      state[field] = Number.isSafeInteger(Number(state[field])) && Number(state[field]) > 0 ? Number(state[field]) : 0;
+    }
+    state.tid = tid;
+    model.state.boxGuarantees[key] = state;
+    return state;
+  }
+
+  function roll(box, state) {
+    const forceGuarantee = box.guaranteeThreshold > 0 && state.noGuaranteeCount + 1 >= box.guaranteeThreshold;
+    const group = pickWeighted(forceGuarantee ? box.guaranteedGroups : box.groups, entry => entry.weight).group;
+    const guaranteedIds = new Set(box.guaranteedGroups.map(entry => Number(entry.group.tid)));
+    const counterIds = new Set(box.counterGuaranteedGroups.map(entry => Number(entry.group.tid)));
+    const hitGuarantee = guaranteedIds.has(Number(group.tid));
+    state.noGuaranteeCount = hitGuarantee ? 0 : state.noGuaranteeCount + 1;
+    state.openCount += 1;
+    state.openTotalCount += 1;
+    if (counterIds.has(Number(group.tid))) state.counterGuaranteeCount += 1;
     const ranges = [...(group.lib_range ?? [])];
     if (!ranges.length) throw new GameError(5, 'Box draw award list is empty');
     const [, tid, num] = pickWeighted(ranges, entry => entry[0]);
@@ -99,7 +148,7 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
     });
     // Type 151/157/159 are the non-selective use paths. Never consume an OptionalBox
     // without a selection: that would silently discard the box and award nothing.
-    if (requests.some(request => request.rule.kind !== 'random')) throw new GameError(5, 'Optional box requires a selection request');
+    if (requests.some(request => request.rule.kind === 'optional')) throw new GameError(5, 'Optional box requires a selection request');
     const result = store.transaction(model => {
       const consumed = new Map(), awards = [];
       for (const request of requests) {
@@ -107,7 +156,12 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
         const need = (consumed.get(request.tid) ?? 0) + request.num;
         if (!held || BigInt(held.num) < BigInt(need)) throw new GameError(1, 'Not enough boxes');
         consumed.set(request.tid, need);
-        if (request.rule.kind === 'random') for (let n = 0; n < request.num; n++) awards.push(roll(request.rule));
+        if (request.rule.kind === 'random') {
+          const guarantee = guaranteeState(model, request.tid);
+          for (let n = 0; n < request.num; n++) awards.push(roll(request.rule, guarantee));
+        } else if (request.rule.kind === 'designated') {
+          for (let n = 0; n < request.num; n++) awards.push(...request.rule.awards);
+        }
       }
       const changes = [];
       for (const [tid, num] of consumed) {

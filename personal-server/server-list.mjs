@@ -4,6 +4,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 import { md5Hex } from './sdk-signing.mjs';
 import { createProtobufJsCodec } from './server-list-codec.mjs';
+import { loadActivityCalendarConfig, parseActivityCalendarTimestamp } from './config/activity-calendar-config.mjs';
 
 const HOST = '127.0.0.1';
 const BODY_LIMIT = 16 * 1024;
@@ -51,7 +52,7 @@ export function buildLocalServer(config, now) {
   text(config.extranetIp, 'server.extranetIp');
   const parts = config.extranetIp.split(':');
   if (parts.length !== 2 || isIP(parts[0]) !== 4 || !/^[1-9][0-9]{0,4}$/.test(parts[1]) || Number(parts[1]) > 65535) throw new TypeError('server.extranetIp must be an explicitly configured IPv4:port');
-  const releaseTime = config.releaseTime ?? now - 1;
+  const releaseTime = config.releaseTime;
   integer(releaseTime, 'server.releaseTime', 0, now - 1);
   return {
     id: config.id, name: config.name, state: 0, label: 1, show_state: 1,
@@ -200,8 +201,12 @@ if (import.meta.main) {
   let service;
   try {
     const codec = createProtobufJsCodec(process.env.PROTOBUFJS_PACKAGE_JSON);
+    const activityCalendar = loadActivityCalendarConfig(process.env.FC_ACTIVITY_CALENDAR_CONFIG);
+    const releaseTime = process.env.FC_SERVER_OPENED_AT
+      ? parseActivityCalendarTimestamp(process.env.FC_SERVER_OPENED_AT)
+      : activityCalendar.serverOpenedAt;
     service = createServerListService({ signingKey: process.env.SERVER_LIST_SIGNING_KEY,
-      server: { id: Number(process.env.LOCAL_SERVER_ID), name: process.env.LOCAL_SERVER_NAME, extranetIp: process.env.LOCAL_SERVER_EXTRANET_IP },
+      server: { id: Number(process.env.LOCAL_SERVER_ID), name: process.env.LOCAL_SERVER_NAME, extranetIp: process.env.LOCAL_SERVER_EXTRANET_IP, releaseTime },
       codec, logger: event => console.log(JSON.stringify(event)) });
     await service.listen(process.env.SERVER_LIST_PORT === undefined ? 18881 : Number(process.env.SERVER_LIST_PORT));
     for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => { await service.close(); });

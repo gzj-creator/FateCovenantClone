@@ -1,17 +1,53 @@
 import fs from 'node:fs';
 
 const defaultPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/HeroTable.data.lua.json', import.meta.url);
+const defaultFantasyEquipPath = new URL('../../analysis/recruitment-debug/bytecode/FantasyEquipTable.data.json', import.meta.url);
+const defaultLeaderEquipPath = new URL('../../analysis/recruitment-debug/bytecode/LeaderEquipTable.data.lua.json', import.meta.url);
 let defaultCache;
+let defaultFantasyEquipCache;
+let defaultLeaderEquipCache;
 
 // Interpret generated, straight-line table constructors without executing Lua.
 export function readHeroTables(file = defaultPath) {
-  const names = ['Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star', 'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst', 'DrawNumLimit', 'Guaranteed', 'Quality', 'NormalDrawExchangeLineup'];
+  const names = [
+    'Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star',
+    'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
+    'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
+    'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
+    'TeamSuggest', 'TeamSuggestAward', 'TeamSuggestType', 'TeamSuggestTeamType',
+    // Hero favour/"training" (HeroFavorMgr): the login module stores the
+    // player's accumulated favour while these tables own gift values, level
+    // thresholds, rewards, break caps and playground eligibility.
+    'AllFavourLevel', 'FavourConst', 'FavourGift', 'FavourBreak',
+    'FavourLevel', 'PlaygroundUnlock', 'PlaygroundAward'
+  ];
   if (file === defaultPath) return defaultCache ??= readGeneratedTables(file, names);
   return readGeneratedTables(file, names);
 }
 
+export function readFantasyEquipTables(file = defaultFantasyEquipPath) {
+  if (file === defaultFantasyEquipPath && defaultFantasyEquipCache) return defaultFantasyEquipCache;
+  const tables = readGeneratedTables(file, ['DrawNormal', 'DrawNormalWish', 'DrawUnlock', 'FantasyEquip']);
+  if (file === defaultFantasyEquipPath) defaultFantasyEquipCache = tables;
+  return tables;
+}
+
+export function readLeaderEquipTables(file = defaultLeaderEquipPath) {
+  if (file === defaultLeaderEquipPath && defaultLeaderEquipCache) return defaultLeaderEquipCache;
+  const tables = readGeneratedTables(file, ['LeaderEquip', 'Grade']);
+  if (file === defaultLeaderEquipPath) defaultLeaderEquipCache = tables;
+  return tables;
+}
+
 export function readGeneratedTables(file, names) {
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return readGeneratedDump(parsed, names);
+}
+
+// Some extracted table families only ship as LuaJIT bytecode. Keep the
+// interpreter reusable so callers can parse a dump in memory instead of
+// requiring a generated JSON copy beside it.
+export function readGeneratedDump(parsed, names) {
   const root = parsed.prototypes[parsed.rootPrototype];
   const constructors = new Map();
   for (let n = 0; n < root.instructions.length - 1; n++) {
