@@ -91,7 +91,7 @@ test('repeat voucher purchase at the limit returns a protocol error instead of w
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
   const response = await request(16004, 2, await encodeEtf([40008, binary(Buffer.from('[]')), 701500]));
-  assert.equal(response.err.err, 307);
+  assert.equal(response.err.err, 16016);
   game.store.inspect(db => {
     const count = db.prepare("SELECT count(*) n FROM recharge_orders WHERE product_id=40008").get().n;
     assert.equal(count, 1);
@@ -138,6 +138,7 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   assert.equal(codec.unpack('pb_daily_discount_all', rawBinary(new Map(game.store.state().modules.value).get(108))).daily_discount_list.find(row => row.recharge_tid === 3).buy_times, 1);
 
   const week = codec.unpack('pb_week_hunt', rawBinary(new Map(game.store.state().modules.value).get(533))).week_period_info[0];
+  const currentDay = week.start_day + 12;
   const makeupDay = week.start_day + 5;
   const options = JSON.stringify([{ ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' }, [true, week.version, makeupDay]]);
   send(codec.pack('pb_c2s', { type: 16004, seq: 3, data: await encodeEtf([40010, binary(Buffer.from(options)), 701500]) }));
@@ -169,7 +170,7 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   const elite = codec.unpack('res_recharge_success', Buffer.from(eliteFrames.find(frame => frame.type === 1900).data, 'base64'));
   assert.equal(elite.res.changes.find(row => String(row.tid) === '5971200').diff_num, '25');
   const eliteParams = await decodeEtf(Buffer.from(elite.extra_params, 'base64'));
-  assert.deepEqual(eliteParams.value[0].value, [false, week.version, week.start_day + 4]);
+  assert.deepEqual(eliteParams.value[0].value, [false, week.version, currentDay]);
   const acknowledged = await request(16003, 5, await encodeEtf(binary(elite.order)));
   assert.equal(acknowledged.err, undefined);
   const relogin = await request(909103, 6, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
@@ -177,7 +178,7 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   const returnedModules = new Map(reloginData[2].value);
   const returnedWeek = codec.unpack('pb_week_hunt', Buffer.from(returnedModules.get(533).value));
   assert.equal(returnedWeek.week_period_info[0].start_day, week.start_day);
-  assert.equal(returnedWeek.week_period_info[0].upgrade_list.some(row => row.day_index === week.start_day + 4 && row.recharge_id === 40008), true);
+  assert.equal(returnedWeek.week_period_info[0].upgrade_list.some(row => row.day_index === currentDay && row.recharge_id === 40008), true);
 });
 
 test('native 16004 batch offer updates all limited rows, rejects components and acknowledges through 16003', async t => {
@@ -219,10 +220,10 @@ test('native 16004 batch offer updates all limited rows, rejects components and 
 
   for (const [seq, productId] of [[3, 40009], [4, 46002], [5, 46003]]) {
     const response = await request(16004, seq, await encodeEtf([productId, binary(Buffer.from('[]')), 701500]));
-    assert.equal(response.err.err, 307);
+    assert.equal(response.err.err, 16016);
     assert.equal(game.store.inspect(db => db.prepare('SELECT count(*) n FROM recharge_orders').get().n), ordersBefore + 1);
   }
-  assert.equal(logs.filter(event => event.event === 'voucher_recharge_rejected' && event.code === 307).length, 3);
+  assert.equal(logs.filter(event => event.event === 'voucher_recharge_rejected' && event.code === 16016).length, 3);
 
   const acknowledged = await request(16003, 6, await encodeEtf(binary(purchase.order)));
   assert.equal(acknowledged.err, undefined);

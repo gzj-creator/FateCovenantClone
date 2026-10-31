@@ -7,6 +7,17 @@ import { grantResources, partitionGrantableResources, releaseGrantablePendingRew
 const MODULE_ID = 106;
 const ACT_TYPE = 106;
 const AWARD_STATE_WIDTH = 100;
+const RUNNING_STATE_ID = 50;
+
+function wrapEtfBinary(bytes) {
+  if (!Buffer.isBuffer(bytes)) bytes = Buffer.from(bytes);
+  if (bytes.length > 0xffffffff) throw new GameError(5, 'Cumulative-recharge activity payload is too large');
+  const header = Buffer.alloc(6);
+  header[0] = 0x83;
+  header[1] = 0x6d;
+  header.writeUInt32BE(bytes.length, 2);
+  return Buffer.concat([header, bytes]);
+}
 
 function rechargeDayIndex(timestampSeconds) {
   return Math.floor((timestampSeconds + 10800) / 86400);
@@ -130,6 +141,67 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
 
   releaseEligiblePendingRewards();
 
+  function synchronizeLogin(activity, at = Math.floor(Date.now() / 1000)) {
+    if (!activity || typeof activity !== 'object') {
+      throw new GameError(5, 'Activity login data is invalid');
+    }
+    const rows = recharges(new Map(store.state().modules.value).get(MODULE_ID), codec);
+    rows.list ??= [];
+    activity.act_list ??= [];
+    activity.act_parallel_list ??= [];
+
+    const synced = [];
+    for (const row of rows.list) {
+      const actId = Number(row?.act_id);
+      const act = tables.ActFrameAct?.get(actId);
+      if (!act || Number(act.type) !== ACT_TYPE) continue;
+      if (calendar?.isActivityRunning && !calendar.isActivityRunning(actId, null, activity, at)) continue;
+
+      let entry = activity.act_list.find(candidate => Number(candidate?.state_data?.act_id) === actId);
+      if (!entry) {
+        entry = { state_data: { act_id: actId }, module_login_data: '' };
+        activity.act_list.push(entry);
+      }
+      entry.state_data ??= {};
+      entry.state_data.act_id = actId;
+      entry.state_data.cur_state_id = RUNNING_STATE_ID;
+      entry.state_data.history_time ??= [];
+      if (!Array.isArray(entry.state_data.history_time)) entry.state_data.history_time = [];
+      let runningState = entry.state_data.history_time.find(item => Number(item?.state_id) === RUNNING_STATE_ID);
+      if (!runningState) {
+        const enterTime = Number(activityWindow(act, serverOpenedAt)?.start ?? at);
+        runningState = { state_id: RUNNING_STATE_ID, enter_time: enterTime };
+        entry.state_data.history_time.push(runningState);
+      }
+      const awardState = String(row.award_state ?? '');
+      entry.module_login_data = wrapEtfBinary(codec.pack('pb_acc_recharge', {
+        act_id: actId,
+        award_state: awardState
+      })).toString('base64');
+      synced.push({ actId, awardState });
+    }
+
+    const syncedIds = new Set(synced.map(item => item.actId));
+    const seen = new Set();
+    activity.act_list = activity.act_list.filter(entry => {
+      const actId = Number(entry?.state_data?.act_id);
+      if (!syncedIds.has(actId)) return true;
+      if (seen.has(actId)) return false;
+      seen.add(actId);
+      return true;
+    });
+    activity.act_parallel_list = activity.act_parallel_list.flatMap(group => {
+      const states = (group.states_data ?? []).filter(state => !syncedIds.has(Number(state?.act_id)));
+      return states.length ? [{ ...group, states_data: states }] : [];
+    });
+    log({
+      event: 'acc_recharge_login_synchronized',
+      actIds: synced.map(item => item.actId),
+      awardedStates: synced.map(item => Buffer.from(item.awardState, 'base64').subarray(0, 4).toString('hex'))
+    });
+    return { activityIds: synced.map(item => item.actId) };
+  }
+
   function execute(data) {
     const request = codec.unpack('pb_acc_recharge_award_req', data);
     const actId = Number(request.act_id);
@@ -218,5 +290,5 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
     });
   }
 
-  return { supports: type => type === 98620, execute };
+  return { supports: type => type === 98620, execute, synchronizeLogin };
 }

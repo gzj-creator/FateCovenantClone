@@ -25,8 +25,10 @@ export function createWeekHuntService({ store, codec, tables, now = Date.now }) 
     return null;
   };
   const inGiftDays = (week, day) => day >= Number(week.start_day) && day < Number(week.start_day) + periodDays;
+  const inActivityDays = (week, day) => day >= Number(week.start_day) && day < Number(week.start_day) + durationDays;
   const purchased = (week, day, kind, productId) => {
-    if (kind === 'upgrade') return (week.upgrade_list ?? []).some(row => Number(row.day_index) === day);
+    if (kind === 'upgrade') return (week.upgrade_list ?? []).some(row =>
+      Number(row.day_index) === day && Number(row.recharge_id) === Number(productId));
     const row = (week.discount_buy_list ?? []).find(row => Number(row.day_index) === day);
     if (!row) return false;
     return Boolean(row.one_buy_id) || (kind === 'one'
@@ -35,7 +37,10 @@ export function createWeekHuntService({ store, codec, tables, now = Date.now }) 
   };
 
   function addRecord(week, day, kind, productId) {
-    if (!inGiftDays(week, day)) return;
+    // The task week is seven days, while the retained activity stays open for
+    // fourteen. Daily offers can still be purchased after the task week and
+    // must remain visible to the client's same-day sellout check.
+    if (!inActivityDays(week, day)) return;
     if (kind === 'upgrade') {
       week.upgrade_list ??= [];
       if (!week.upgrade_list.some(row => Number(row.day_index) === day && Number(row.recharge_id) === productId)) {
@@ -61,7 +66,12 @@ export function createWeekHuntService({ store, codec, tables, now = Date.now }) 
         const at = Math.floor(Date.parse(order.created_at) / 1000);
         if (!Number.isSafeInteger(at)) continue;
         const period = Number(payload.week_hunt_period ?? payload.period ?? 0);
-        const day = Number(payload.week_hunt_day ?? payload.day_index ?? 0) || rechargeDayIndex(at);
+        const requestedExtra = payload.requested_extra_buy === true
+          || (payload.requested_extra_buy === undefined && payload.daily_discount_additional === true);
+        const day = requestedExtra
+          ? Number(payload.week_hunt_day ?? payload.day_index ?? 0)
+          : rechargeDayIndex(at);
+        if (!Number.isSafeInteger(day) || day <= 0) continue;
         for (const week of info.week_period_info ?? []) {
           if (period && period !== Number(week.version)) continue;
           const kind = kindFor(week, order.product_id);
@@ -91,18 +101,20 @@ export function createWeekHuntService({ store, codec, tables, now = Date.now }) 
       return null;
     }
     const kind = kindFor(week, product.tid);
-    let day = Number(dayIndex) || 0;
-    if (!day && (extraBuy || kind === 'upgrade')) {
+    // RechargeMgr can retain the final offer day from an earlier visit. A
+    // normal purchase belongs to the server's current day; only an explicit
+    // makeup purchase is allowed to select a retained past task day.
+    let day = extraBuy ? (Number(dayIndex) || 0) : today;
+    if (!day && extraBuy) {
       for (let candidate = Math.min(today, Number(week.start_day) + periodDays - 1); candidate >= Number(week.start_day); candidate--) {
         if (!purchased(week, candidate, kind, product.tid)) { day = candidate; break; }
       }
       if (!day) throw new GameError(307, 'Week Hunt gift purchase limit reached');
     }
-    day ||= today;
     // A daily offer can use today's allowance after the seven task days.
     // Makeup purchases must reference a past task day in the retained period.
-    if (day > today || (!inGiftDays(week, day) && (extraBuy || day !== today))) throw new GameError(1, 'Invalid Week Hunt gift day');
-    if (inGiftDays(week, day) && purchased(week, day, kind, product.tid)) throw new GameError(307, 'Week Hunt gift was already purchased');
+    if (day > today || !inActivityDays(week, day) || (extraBuy && !inGiftDays(week, day))) throw new GameError(1, 'Invalid Week Hunt gift day');
+    if (purchased(week, day, kind, product.tid)) throw new GameError(307, 'Week Hunt gift was already purchased');
     return { period: Number(week.version), day, kind, productId: Number(product.tid) };
   }
 

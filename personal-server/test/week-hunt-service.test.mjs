@@ -77,9 +77,45 @@ test('split offers and both upgrade offers retain their distinct product and rew
   assert.deepEqual(elite.tuple, [false, 1, day]);
   assert.equal(elite.notification.res.changes.find(row => String(row.tid) === '5971200').diff_num, '25');
   const upgrade = await purchaseParams(e, e.wallet.buy({ product_id: 40010, request_id: 'upgrade' }));
-  assert.deepEqual(upgrade.tuple, [false, 1, day - 1]);
+  assert.deepEqual(upgrade.tuple, [false, 1, day]);
   assert.equal(upgrade.notification.res.changes.find(row => String(row.tid) === '5971200').diff_num, '10');
-  assert.deepEqual(e.week().upgrade_list.map(row => [row.day_index, row.recharge_id]), [[day, 40008], [day - 1, 40010]]);
+  assert.deepEqual(e.week().upgrade_list.map(row => [row.day_index, row.recharge_id]), [[day, 40008], [day, 40010]]);
+});
+
+test('current-day purchases ignore stale client days and survive login reconstruction', async t => {
+  const e = setup(t), currentDay = startDay + 12, staleDay = startDay + 6;
+  e.advance(currentDay);
+
+  const result = e.wallet.buy({ product_id: 40008, request_id: 'stale-client-day', period: 1, day_index: staleDay });
+  assert.equal(result.week_hunt_day, currentDay);
+  assert.deepEqual((await purchaseParams(e, result)).tuple, [false, 1, currentDay]);
+  assert.deepEqual(e.week().upgrade_list.map(row => [row.day_index, row.recharge_id]), [[currentDay, 40008]]);
+  assert.throws(
+    () => e.wallet.buy({ product_id: 40008, request_id: 'stale-client-day-repeat', period: 1, day_index: staleDay }),
+    error => error.code === 307
+  );
+
+  // Reproduce the old broken order state: the UI/date payload retained the
+  // final offer day, while the activity module also only retained that day.
+  e.store.transaction((model, db) => {
+    const modules = new Map(model.state.modules.value);
+    const info = codec.unpack('pb_week_hunt', rawBinary(modules.get(533)));
+    info.week_period_info[0].upgrade_list = [{ day_index: staleDay, recharge_id: 40008 }];
+    modules.set(533, serializedBinary(codec.pack('pb_week_hunt', info)));
+    model.state.modules.value = [...modules];
+    const row = db.prepare('SELECT payload_json FROM recharge_orders WHERE order_id=?').get(result.order_id);
+    const payload = JSON.parse(row.payload_json);
+    payload.week_hunt_day = staleDay;
+    payload.day_index = staleDay;
+    payload.requested_extra_buy = false;
+    db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(payload), result.order_id);
+  });
+
+  e.reopen();
+  assert.deepEqual(
+    e.week().upgrade_list.map(row => [row.day_index, row.recharge_id]),
+    [[staleDay, 40008], [currentDay, 40008]]
+  );
 });
 
 test('makeup validates the requested day and period before any order, debit or reward', async t => {
@@ -91,10 +127,12 @@ test('makeup validates the requested day and period before any order, debit or r
   for (const [day_index, period, code] of [[day - 1, 1, 307], [day + 1, 1, 1], [startDay - 1, 1, 1], [day - 2, 2, 309]]) {
     assert.throws(() => e.wallet.buy({ product_id: 40008, request_id: 'bad-' + day_index + '-' + period, extra_buy: true, period, day_index }), error => error.code === code);
   }
-  assert.throws(() => e.wallet.buy({ product_id: 40010, request_id: 'other-upgrade-same-day', period: 1, day_index: day }), error => error.code === 307);
   assert.deepEqual(e.store.state(), state);
   assert.equal(e.wallet.snapshot().orders.length, count);
   assert.equal(e.wallet.snapshot().accounts[0].balance_cents, balance);
+  const other = await purchaseParams(e, e.wallet.buy({ product_id: 40010, request_id: 'other-upgrade-same-day', period: 1, day_index: day }));
+  assert.deepEqual(other.tuple, [false, 1, day]);
+  assert.deepEqual(e.week().upgrade_list.map(row => [row.day_index, row.recharge_id]), [[day, 40008], [day - 1, 40008], [day, 40010]]);
 });
 
 test('order reconstruction preserves the original cycle and task progress, including legacy shared SKUs', async t => {
@@ -125,7 +163,8 @@ test('order reconstruction preserves the original cycle and task progress, inclu
   assert.equal(e.week().upgrade_list.length, 2);
   const normal = await purchaseParams(e, e.wallet.buy({ product_id: 46003, request_id: 'after-task-week' }));
   assert.deepEqual(normal.tuple, [false, 1, startDay + 9]);
-  assert.equal(e.week().discount_buy_list.length, 1);
+  assert.equal(e.week().discount_buy_list.length, 2);
+  assert.equal(e.week().discount_buy_list.find(row => row.day_index === startDay + 9).one_buy_id, 46003);
 });
 
 test('retained activity closes after fourteen 05:00 days without creating a replacement cycle', t => {

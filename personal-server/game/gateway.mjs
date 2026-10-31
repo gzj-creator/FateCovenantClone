@@ -156,6 +156,7 @@ export function createLocalGame({
     const petLogin = await petActivity.synchronizeLogin(activity, loginSeconds);
     const heroDrawLogin = heroDrawActivity.synchronizeLogin(activity, loginSeconds);
     const rebateLogin = rechargeRebateReset.synchronizeLogin(activity, loginSeconds);
+    const accRechargeLogin = accRecharge.synchronizeLogin(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -176,6 +177,7 @@ export function createLocalGame({
       heroDrawCount: heroDrawLogin?.drawData?.role_data?.draw_count ?? null,
       heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
       rechargeRebateResetId: rebateLogin?.actId ?? null,
+      accRechargeActivityIds: accRechargeLogin.activityIds,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -546,7 +548,9 @@ export function createLocalGame({
           send(seq);
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
         } catch (error) {
-          const code = error instanceof GameError ? error.code : 2;
+          // The native recharge UI maps 16016 to RechargeErr.RECHARGE_COUNT_NOT_ENOUGH.
+          // Keep the wallet's internal 307 for QuickSDK, whose protocol uses 80001.
+          const code = error instanceof GameError ? (error.code === 307 ? 16016 : error.code) : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 160).toString('base64') });
         }
