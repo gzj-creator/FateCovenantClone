@@ -26,6 +26,7 @@ import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
+import { createHeroFavorService } from './hero-favor-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
@@ -105,6 +106,9 @@ export function createLocalGame({
     onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
   });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
+  const heroFavor = createHeroFavorService({
+    store, codec, heroTables, tables, now: () => Math.floor(clock() / 1000)
+  });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
@@ -125,6 +129,7 @@ export function createLocalGame({
     recruit.ensureLoginState();
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
+    heroFavor.ensureLoginState();
     wishTreasure.ensureLoginState();
     weekHunt.ensureLoginState();
     destiny.ensureLoginState();
@@ -666,6 +671,25 @@ export function createLocalGame({
         }
         return;
       }
+      if (heroFavor.supports(type)) {
+        try {
+          let input;
+          if (type === 646) input = unpack('pb_hero_favour_gift_req', request.data);
+          else if (type === 653) input = unpack('pb_hero_favour_level_award_req', request.data);
+          else {
+            const decoded = await decodeEtf(request.data);
+            input = decoded?.value ?? decoded;
+          }
+          const result = heroFavor.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'hero_favour_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hero_favour_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (type === 8000) {
         const requestData = unpack('pb_req_save_process', request.data);
         store.transaction(model => { for (const process of requestData.req_list ?? []) model.state.guides[process.key_id] = process.process_id; });
@@ -771,7 +795,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, tables,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, heroFavor, destiny, petActivity, heroDrawActivity, wishTreasure, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
