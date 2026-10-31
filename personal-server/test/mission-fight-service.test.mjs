@@ -270,10 +270,14 @@ test('mission chapter box grants configured rewards once and persists its BitBlo
   assert.equal(missionModule(env.store).box_award ?? '', '');
   for (const tid of ['25002', '101500', '201500']) assert.equal(BigInt(env.store.read().resources.get(tid).num), before[tid]);
   await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 1])), error => error.code === 1);
+  // 3-5 is still the first unpassed node. Its completion unlocks the chapter
+  // three box only after the mission cursor advances to 4-1.
+  await assert.rejects(() => claim(1), error => error.code === 5);
+  setMission(env.store, 40201);
 
   const result = await claim(1);
   const response = codec.unpack('pb_mission_rsp', result.data);
-  assert.equal(response.mission.mission_id, '30205');
+  assert.equal(response.mission.mission_id, '40201');
   assert.deepEqual(response.res_change.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
     { tid: '25002', diff_num: '1' },
     { tid: '101500', diff_num: '30' },
@@ -285,23 +289,26 @@ test('mission chapter box grants configured rewards once and persists its BitBlo
   assert.equal(BigInt(env.store.read().resources.get('201500').num), before['201500'] + 50000n);
   assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_box'").get().n), 1);
 
-  await assert.rejects(() => claim(1), error => error.code === 310);
+  const repeated = codec.unpack('pb_mission_rsp', (await claim(1)).data);
+  assert.deepEqual(repeated.res_change.changes, []);
+  assert.equal(repeated.mission.box_award, response.mission.box_award);
   env.reopen();
-  await assert.rejects(() => claim(1), error => error.code === 310);
+  assert.deepEqual(codec.unpack('pb_mission_rsp', (await claim(1)).data).res_change.changes, []);
   assert.equal(BigInt(env.store.read().resources.get('101500').num), before['101500'] + 30n);
 });
 
-test('mission chapter box claims the observed multiple-box ETF request atomically', async t => {
+test('mission one-key claim skips previously claimed boxes and is idempotent across reopen', async t => {
   const env = setup(t);
-  setMission(env.store, 40210);
+  setMission(env.store, 50201);
   const before = Object.fromEntries(['25002', '101500', '201500'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
 
+  await env.service.execute(506, await encodeEtf([1]));
   const result = await env.service.execute(506, await encodeEtf([1, 2, 3, 4]));
   const response = codec.unpack('pb_mission_rsp', result.data);
   assert.deepEqual(response.res_change.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
-    { tid: '25002', diff_num: '5' },
-    { tid: '101500', diff_num: '190' },
-    { tid: '201500', diff_num: '200000' }
+    { tid: '25002', diff_num: '4' },
+    { tid: '101500', diff_num: '160' },
+    { tid: '201500', diff_num: '150000' }
   ]);
   assert.deepEqual([...(await decodeEtf(Buffer.from(response.mission.box_award, 'base64'))).value], [0x78]);
   assert.equal(BigInt(env.store.read().resources.get('25002').num), before['25002'] + 5n);
@@ -309,7 +316,35 @@ test('mission chapter box claims the observed multiple-box ETF request atomicall
   assert.equal(BigInt(env.store.read().resources.get('201500').num), before['201500'] + 200000n);
   assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_box'").get().n), 4);
 
-  await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 2, 3, 4])), error => error.code === 310);
+  // The live save reached 4-10 after these boxes had already been claimed.
+  // Retrying the client's one-key [1,2,3,4] request must remain an empty
+  // success even though box 4 is not newly unlocked at this cursor.
+  setMission(env.store, 40210);
+  const repeated = codec.unpack('pb_mission_rsp', (await env.service.execute(506, await encodeEtf([1, 2, 3, 4]))).data);
+  assert.deepEqual(repeated.res_change.changes, []);
+  env.reopen();
+  assert.deepEqual(codec.unpack('pb_mission_rsp', (await env.service.execute(506, await encodeEtf([1, 2, 3, 4]))).data).res_change.changes, []);
+  assert.equal(BigInt(env.store.read().resources.get('101500').num), before['101500'] + 190n);
+});
+
+test('mission box reconciles a missing reward claim from the BitBlock without granting twice', async t => {
+  const env = setup(t);
+  setMission(env.store, 50201);
+  const before = BigInt(env.store.read().resources.get('101500').num);
+  const claim = async () => env.service.execute(506, await encodeEtf([1]));
+
+  const first = codec.unpack('pb_mission_rsp', (await claim()).data);
+  assert.deepEqual(first.res_change.changes.map(change => change.diff_num), ['1', '30', '50000']);
+  env.store.inspect(db => db.prepare("DELETE FROM reward_claims WHERE role_id=? AND claim_type='mission_box' AND claim_key='1'").run(env.store.state().roleId));
+
+  const reconciled = codec.unpack('pb_mission_rsp', (await claim()).data);
+  assert.deepEqual(reconciled.res_change.changes, []);
+  assert.equal(BigInt(env.store.read().resources.get('101500').num), before + 30n);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE role_id=? AND claim_type='mission_box' AND claim_key='1'").get(env.store.state().roleId).n), 1);
+
+  env.reopen();
+  assert.deepEqual(codec.unpack('pb_mission_rsp', (await claim()).data).res_change.changes, []);
+  assert.equal(BigInt(env.store.read().resources.get('101500').num), before + 30n);
 });
 
 test('mission sweep consumes configured stamina and repeats every reward group', t => {

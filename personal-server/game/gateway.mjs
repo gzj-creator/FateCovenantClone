@@ -123,6 +123,8 @@ export function createLocalGame({
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
+    const repairedLineups = lineups.ensureLoginState();
+    if (repairedLineups.length) logger({ event: 'shared_pre_lineups_repaired', types: repairedLineups });
     recruit.ensureLoginState();
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
