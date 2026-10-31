@@ -354,7 +354,7 @@ test('all-open mode returns every stored activity and forces test-visible states
   assert.equal(returnedIds.has(1074011), true);
 });
 
-test('leader equipment wear reports an unopened feature instead of a generic server error', { timeout: 10000 }, async t => {
+test('leader equipment wear equips gear through the gateway and persists it', { timeout: 10000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-leader-equip-wear-'));
   const events = [];
   const game = createLocalGame({
@@ -385,17 +385,45 @@ test('leader equipment wear reports an unopened feature instead of a generic ser
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
-  const before = codec.unpack('pb_leader_equips_data', rawBinary(new Map(game.store.state().modules.value).get(175)));
-  const response = await request(98401, 2, codec.pack('pb_leader_equip_wear_req', {}));
-  assert.equal(response.err.err, 305);
-  assert.equal(response.err.stacktrace, undefined);
+  const uid = '910001';
+  let previousEquip;
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(175);
+    const data = module && module.value?.data?.length
+      ? codec.unpack('pb_leader_equips_data', rawBinary(module))
+      : { slots: [], equip_list: [], max_uid: '0', draw_info: { lv: 1 }, dismiss: '' };
+    data.slots = Array.isArray(data.slots) ? data.slots : [];
+    data.equip_list = Array.isArray(data.equip_list) ? data.equip_list : [];
+    const oldSlot = data.slots.find(slot => Number(slot.type) === 1);
+    previousEquip = oldSlot?.equip;
+    if (previousEquip) data.equip_list.push(previousEquip);
+    data.slots = data.slots.filter(slot => Number(slot.type) !== 1);
+    data.equip_list = data.equip_list.filter(equip => String(equip.uid) !== uid);
+    data.equip_list.push({ tid: '2001018', uid, star: 0, level: 1, intensify_info: { intensify_level: 0, intensify_times: 0 } });
+    data.max_uid = '910001';
+    modules.set(175, serializedBinary(codec.pack('pb_leader_equips_data', data)));
+    model.state.modules.value = [...modules];
+  });
+
+  const response = await request(98401, 2, codec.pack('pb_leader_equip_wear_req', { wear_list: [{ uid, type: 1 }] }));
+  assert.equal(response.err, undefined);
+  const back = codec.unpack('pb_leader_equip_wear_back', Buffer.from(response.data, 'base64'));
+  assert.equal(back.slots.length, 1);
+  assert.equal(back.slots[0].type, 1);
+  assert.equal(back.slots[0].equip.uid, uid);
+  assert.equal(back.slots[0].equip.tid, '2001018');
+  assert.deepEqual(back.sub_equip_list.map(equip => equip.uid), [uid]);
+  assert.deepEqual(back.add_equip_list.map(equip => equip.uid), previousEquip ? [String(previousEquip.uid)] : []);
+
   const after = codec.unpack('pb_leader_equips_data', rawBinary(new Map(game.store.state().modules.value).get(175)));
-  assert.deepEqual(after, before);
+  assert.equal(after.equip_list.some(equip => String(equip.uid) === uid), false);
+  assert.deepEqual(after.slots.find(slot => Number(slot.type) === 1), back.slots[0]);
 
   assert.equal(events.some(event => event.event === 'unsupported_command' && event.type === 98401), false);
-  const rejection = events.find(event => event.event === 'leader_equip_wear_rejected');
-  assert.ok(rejection?.connection);
-  assert.deepEqual({ event: rejection.event, type: rejection.type, seq: rejection.seq, code: rejection.code, reason: rejection.reason }, {
-    event: 'leader_equip_wear_rejected', type: 98401, seq: 2, code: 305, reason: 'feature_not_open'
+  const committed = events.find(event => event.event === 'leader_equip_wear_committed');
+  assert.ok(committed?.connection);
+  assert.deepEqual({ type: committed.type, seq: committed.seq, slotTypes: committed.slotTypes, subUids: committed.subUids }, {
+    type: 98401, seq: 2, slotTypes: [1], subUids: [uid]
   });
 });

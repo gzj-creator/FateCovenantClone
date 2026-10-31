@@ -6,6 +6,7 @@ import { E, encodeEtf, decodeEtf, binary, revive, rawBinary, createGameCodec } f
 import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
 import { createLineupService } from './lineup-service.mjs';
+import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createRankService } from './rank-service.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -38,9 +39,6 @@ import { createRechargeExtraAwardService } from './recharge-extra-award-service.
 import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
-
-const LEADER_EQUIP_WEAR_TYPE = 98401;
-const FEATURE_NOT_OPEN_CODE = 305;
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
 export function createLocalGame({
@@ -93,6 +91,7 @@ export function createLocalGame({
   const rechargeExtraAward = createRechargeExtraAwardService({ codec, tables, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
+  const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const ranks = createRankService({ codec, store });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
@@ -593,12 +592,17 @@ export function createLocalGame({
         }
         return;
       }
-      if (type === LEADER_EQUIP_WEAR_TYPE) {
-        // Leader-equipment inventory is visible, but the wear/slot feature is
-        // not implemented yet. Return the client-known unopened-feature code
-        // so the native UI shows its business message instead of "server error".
-        send(seq, Buffer.alloc(0), { err: FEATURE_NOT_OPEN_CODE });
-        log({ event: 'leader_equip_wear_rejected', type, seq, code: FEATURE_NOT_OPEN_CODE, reason: 'feature_not_open' });
+      if (leaderEquip.supports(type)) {
+        try {
+          const input = request.data?.length ? unpack('pb_leader_equip_wear_req', request.data) : {};
+          const result = leaderEquip.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'leader_equip_wear_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'leader_equip_wear_rejected', type, seq, code, message: error.message });
+        }
         return;
       }
       if (recruit.supports(type)) {
