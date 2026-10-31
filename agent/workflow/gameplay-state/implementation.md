@@ -1,5 +1,13 @@
 # 本机养成状态与 SQLite（2026-10-25）
 
+## 2026-10-31 小队编辑恢复（真实 APK 已验收）
+
+用户反馈隔离客户端的小队选人页显示“暂无内容”且无法退出。根因是客户端 `HeroDataMgr` 按 `hero.uid` 缓存英雄、随后按 `hero.tid` 查询；本机服务曾为部分新招募英雄生成不同的 `40308xx` UID，导致 `HeroFetterMgr:219` 在排序时中断。同时，209/218 回包缺少 `custom_pre_lineup_list`，会触发 `PreLineupMgr:393`。
+
+修复后新招募英雄固定使用 `uid = tid`；209/218 回包提供与当前预设同步的模板编队，209 同步持久化该模板；数据库新增 v9 迁移，在一个事务内统一全部英雄身份，并改写预设编队、玩法编队、租借英雄和登录模块中的旧 UID，保留英雄养成、格子、资源及角色数据。迁移前一致备份为 `analysis/experiments/private-server-20261025/p3/lineup-bug-20261031/game.pre-v8.local-only.sqlite`，SHA256 `3ae1aea87c92ef7901fb69bf882a6e41373e4998fd582ad661ae48ff35a47e7c`，`PRAGMA integrity_check=ok`；预演迁移后 30 个英雄全部 `uid = tid`、0 个别名，养成与编队数据保留。
+
+`npm test` 200/200 通过。真实 APK 已显示完整主力、后备英雄列表，用户确认选择与退出正常，并明确回复“验证完毕，没什么问题”。服务日志记录 2026-10-31 10:55:17、11:00:32、11:08:02（Asia/Shanghai）三次 type209 提交，均紧接 `lineup_committed`；筛选 `HeroFetterMgr:219`、`PreLineupMgr:393`、`SelectExchangeListNode:466` 无异常。截图和迁移核验在 `analysis/experiments/private-server-20261025/p3/lineup-bug-20261031/`。验收时运行实例 PID 38544 已加载等价的 v8 UID 修复；工作区 v9 迁移是相对于随后合入主分支 v8 schema 的重编号，预演 9 项检查全部通过，下次服务重载时执行。本轮只改服务端，不生成新 APK 快照。
+
 ## 2026-10-31 团长经验历史漏发补偿
 
 用户反馈团长等级仍为 9，确认上一轮“旅途胜利发放团长经验”的代码修复没有补发历史经验。SQLite 迁移基线为 `state.local-only.pre-sqlite-backup.local-only.json`：团长 `level=9`、等效 `exp=0`，旅途模块 `pass_count=9`；补发前当前存档 `pass_count=27`，即 SQLite 运行期间净完成 18 场旅途战斗。

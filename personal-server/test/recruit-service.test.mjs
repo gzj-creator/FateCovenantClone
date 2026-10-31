@@ -131,7 +131,10 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   assert.equal(await decodeEtf(Buffer.from(newChange.extra, 'base64')), 1010101);
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
   const loginHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.state().modules.value).get(10).value[0]));
-  assert.ok(loginHeroes.hero_list.some(hero => Number(hero.tid) === 1010101));
+  const recruited = loginHeroes.hero_list.find(hero => Number(hero.tid) === 1010101);
+  assert.ok(recruited);
+  assert.equal(recruited.uid, recruited.tid);
+  assert.equal(recruited.uid, '1010101');
   env.reopen();
   const second = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
   const duplicate = second.res.changes.find(change => change.tid === '21100104');

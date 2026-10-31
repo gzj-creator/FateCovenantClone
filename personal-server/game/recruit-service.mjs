@@ -245,14 +245,6 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
     };
   }
 
-  function nextHeroUid(heroInfo) {
-    let value = 0n;
-    for (const hero of heroInfo.hero_list) {
-      try { value = value > BigInt(hero.uid) ? value : BigInt(hero.uid); } catch {}
-    }
-    return (value + 1n).toString();
-  }
-
   function drawOne(model, state, lib, drawConfig) {
     const guaranteedConfig = heroTables.Guaranteed.get(Number(drawConfig.guaranteed));
     const threshold = Number(guaranteedConfig?.guaranteed_num ?? 0);
@@ -311,8 +303,10 @@ export function createRecruitService({ store, codec, tables, heroTables, random 
       const change = granted.changes[0];
       if (!owned) {
         change.extra = encodeEtfInteger(result.tid);
-        const uid = nextHeroUid(model.heroInfo);
-        const hero = { tid: String(result.tid), uid, level: 1, star: 0, star_progress: 0, breakthrough_level: 0, quality: result.quality, source: lib };
+        // HeroDataMgr caches heroes by hero.uid but resolves them by hero.tid.
+        // The shipped client requires these identifiers to be identical.
+        const tid = String(result.tid);
+        const hero = { tid, uid: tid, level: 1, star: 0, star_progress: 0, breakthrough_level: 0, quality: result.quality, source: lib };
         model.heroInfo.hero_list.push(hero);
         newHeroes.push(hero);
       }

@@ -6,7 +6,7 @@ import net from 'node:net';
 import { once } from 'node:events';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
-import { createGameCodec, decodeEtf, encodeEtf, rawBinary, binary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, rawBinary, binary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { createHeroProgression } from '../game/hero-progression.mjs';
@@ -91,10 +91,47 @@ test('migrates once into relational SQLite tables, backs up JSON, and preserves 
   env.reopen();
   assert.equal(env.store.state().guides[55], 66);
   const db = new DatabaseSync(env.databasePath, { readOnly: true });
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 8);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 9);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reward_claims'").get());
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
   db.close();
+});
+
+test('version-nine migration aligns recruited hero ids with tids and rewrites every lineup reference', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-hero-id-migration-')), databasePath = path.join(directory, 'game.sqlite');
+  const legacyStatePath = path.join(directory, 'legacy.json'), state = fixture(), modules = new Map(state.modules.value);
+  const replace = value => value === '2010101' ? '4030802' : value;
+  const heroInfo = codec.unpack('pb_hero_info', rawBinary(modules.get(10).value[0]));
+  heroInfo.hero_list.find(hero => hero.uid === '2010101').uid = '4030802';
+  modules.get(10).value[0] = serializedBinary(codec.pack('pb_hero_info', heroInfo));
+  const login = codec.unpack('pb_lineup_login', rawBinary(modules.get(9)));
+  const roleLineup = codec.unpack('pb_role_lineup', Buffer.from(login.pre_lineup, 'base64'));
+  const replaceLineup = lineup => {
+    if (lineup.fighter_list) for (const fighter of lineup.fighter_list) fighter.hero_id = replace(fighter.hero_id);
+    for (const team of lineup.team_list ?? []) for (const fighter of team.fighter_list) fighter.hero_id = replace(fighter.hero_id);
+  };
+  for (const preset of roleLineup.pre_lineups) replaceLineup(preset.lineup);
+  login.pre_lineup = codec.pack('pb_role_lineup', roleLineup).toString('base64');
+  login.lineups = login.lineups.map(bytes => { const lineup = codec.unpack('pb_lineup', Buffer.from(bytes, 'base64')); replaceLineup(lineup); return codec.pack('pb_lineup', lineup).toString('base64'); });
+  const custom = codec.unpack('pb_custom_lineup_role', Buffer.from(login.custom_pre_lineup, 'base64'));
+  for (const item of custom.custom_pre_lineups) replaceLineup(item.lineup);
+  login.custom_pre_lineup = codec.pack('pb_custom_lineup_role', custom).toString('base64');
+  modules.set(9, serializedBinary(codec.pack('pb_lineup_login', login)));
+  state.modules.value = [...modules];
+  fs.writeFileSync(legacyStatePath, JSON.stringify(state));
+  const store = createGameStore({ databasePath, legacyStatePath, codec });
+  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  const model = store.read();
+  assert.ok(model.heroInfo.hero_list.every(hero => hero.uid === hero.tid));
+  assert.equal(model.heroInfo.hero_list.find(hero => hero.tid === '2010101').uid, '2010101');
+  assert.equal(model.heroInfo.hero_list.some(hero => hero.uid === '4030802'), false);
+  assert.equal(model.lineups.pre_lineups[0].lineup.fighter_list.find(fighter => fighter.index === 1).hero_id, '2010101');
+  assert.ok(model.playLineups.every(lineup => lineup.team_list.every(team => team.fighter_list.every(fighter => fighter.hero_id !== '4030802'))));
+  const migrated = codec.unpack('pb_lineup_login', rawBinary(new Map(store.state().modules.value).get(9)));
+  const migratedCustom = codec.unpack('pb_custom_lineup_role', Buffer.from(migrated.custom_pre_lineup, 'base64'));
+  assert.equal(migratedCustom.custom_pre_lineups[0].lineup.team_list[0].fighter_list.find(fighter => fighter.index === 1).hero_id, '2010101');
+  assert.equal(store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 9);
 });
 
 test('multi-level upgrade deducts summed experience, preserves hero fields, and survives reopen', t => {
@@ -208,9 +245,12 @@ test('squad version switching is idempotent and restores each saved layout after
   let result = codec.unpack('pb_edit_pre_lineup_rsp', service().execute(218, 0).data);
   assert.equal(result.role_lineup.version ?? 0, 0);
   assert.equal(result.role_lineup.pre_lineups[0].lineup.fighter_list.length, 4);
+  assert.equal(result.custom_pre_lineup_list.custom_pre_lineups.length, 1);
+  assert.equal(result.custom_pre_lineup_list.custom_pre_lineups[0].lineup.team_list[0].fighter_list.length, 4);
   const preset = structuredClone(result.role_lineup.pre_lineups[0]);
   preset.lineup.fighter_list[0].loc = 1;
-  service().execute(209, { pre_lineup_list: [preset], handle_types: ['0'] });
+  result = codec.unpack('pb_edit_pre_lineup_rsp', service().execute(209, { pre_lineup_list: [preset], handle_types: ['0'] }).data);
+  assert.equal(result.custom_pre_lineup_list.custom_pre_lineups[0].lineup.team_list[0].fighter_list[0].loc, 1);
   service().execute(218, 0);
   service().execute(218, 1);
   assert.equal(env.store.read().lineups.pre_lineups[0].lineup.fighter_list[0].loc, 6);
