@@ -43,6 +43,7 @@ import { createRechargeBonusService } from './recharge-bonus-service.mjs';
 import { createLineFirstRechargeService } from './line-first-recharge-service.mjs';
 import { createRechargeRebateResetService } from './recharge-rebate-reset-service.mjs';
 import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
+import { createTimeTempleService } from './time-temple-service.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
@@ -122,6 +123,7 @@ export function createLocalGame({
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
+  const timeTemple=createTimeTempleService({store,codec,publish});
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const wallet=localWallet?createWalletService({
@@ -146,6 +148,7 @@ export function createLocalGame({
     magicCircle.ensureLoginState();
     guildRoster.ensureLoginState();
     norseRune.ensureLoginState();
+    timeTemple.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
     cabin.ensureLoginState();
     rechargeBonus.synchronize();
@@ -891,7 +894,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, heroFavor, destiny, petActivity, heroDrawActivity, wishTreasure, tables, magicCircle, norseRune, cabin,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, heroFavor, destiny, petActivity, heroDrawActivity, wishTreasure, timeTemple, tables, magicCircle, norseRune, cabin,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

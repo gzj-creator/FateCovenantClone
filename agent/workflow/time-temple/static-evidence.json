@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-01",
+  "scope": "candidate APK decoded Lua/protobuf plus existing local login ETF fixture",
+  "artifacts": {
+    "cmdMappings": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_core.bundle/bytecode/Cmd.lua.json",
+      "bytes": 453972,
+      "sha256": "2bc60172a49d2f906ceaaaba9260581a253a5094bed5a5a28130a237fb453239"
+    },
+    "portHandlers": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_core.bundle/bytecode/Port.lua.json",
+      "bytes": 671416,
+      "sha256": "d132d842368242a03602127a015c82dc14537d1d23774744368aa9980e283ab5"
+    },
+    "connectionDispatch": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_core.bundle/bytecode/Connection.lua.json",
+      "bytes": 220416,
+      "sha256": "9245073190a0f60cb036a4a951e643f90f6dee68bed12fcdfa2132912bf66868"
+    },
+    "timeTempleCmd": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/3651244919936714000-TimeTempleCmd.lua.bin",
+      "sha256": "e66f7daae1a4e048afb3442aef158c1454a047d911fc84cee8aa2e09e69576bf"
+    },
+    "timeTempleMgr": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/10390582382448210000-TimeTempleMgr.lua.bin",
+      "sha256": "c62f7a1d96de7828de27644fd3df0cb2dd45d7d3da60429513bdfedb8c1a908b"
+    },
+    "stateSchema": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__protobuf.bundle/textassets/15517154393593717000-time_temple.db.proto.bin",
+      "bytes": 2500,
+      "sha256": "6b2a04cb8b5d7808b0da7ed565362db424f927c53f8170ebc7e928e8d94a73b0"
+    },
+    "requestSchema": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__protobuf.bundle/textassets/6693770432815011000-time_temple.net.proto.bin",
+      "bytes": 1668,
+      "sha256": "f4fe8342dc64e1af1ed92d8fce8920b163c6bb927ed6ce3fdab5885d7a9f2e92"
+    },
+    "configTable": {
+      "path": "analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/4716798729705819000-TimeTempleTable.data.lua.bin",
+      "sha256": "67984db75cdaf4338637edf3be33b451d90d11dd28cb2343bbbc1e7a3e8d4de4"
+    }
+  },
+  "loginModule": {
+    "moduleId": 159,
+    "fixtureMessageId": "game:tcp-69:s2c:103",
+    "observedEtfShape": "one-element list containing a binary",
+    "observedPayloadBytes": 0,
+    "decoded": {
+      "bond_data": [],
+      "runes_data": [],
+      "god_data": [],
+      "select_runes": []
+    },
+    "repackedPayloadBytes": 0,
+    "stateSchema": "pb_time_temple_data"
+  },
+  "stateSchema": {
+    "name": "pb_time_temple_data",
+    "fields": [
+      { "number": 1, "name": "bond_data", "type": "pb_time_temple_bond", "repeated": true },
+      { "number": 2, "name": "runes_data", "type": "pb_time_temple_runes", "repeated": true },
+      { "number": 3, "name": "god_data", "type": "pb_time_temple_god", "repeated": true },
+      { "number": 4, "name": "select_runes", "type": "pb_time_temple_season_runes", "repeated": true },
+      { "number": 5, "name": "draw_award_data", "type": "pb_time_temple_draw", "repeated": false },
+      { "number": 6, "name": "common_buy_gift_info", "type": "pb_recharge_limit_info", "repeated": false },
+      { "number": 7, "name": "limit_buy_gift_info", "type": "pb_time_temple_limit_gift", "repeated": false }
+    ]
+  },
+  "push": {
+    "type": 7801,
+    "name": "rev_time_tempe_draw_msg",
+    "envelope": "pb_s2c",
+    "schema": "pb_time_temple_draw",
+    "handler": "TimeTempleMgr.RevDrawUpdateMsg",
+    "fields": [
+      { "number": 1, "name": "season_id", "type": "uint32" },
+      { "number": 2, "name": "draw_num", "type": "uint32" },
+      { "number": 3, "name": "award_phase_num", "type": "uint32" },
+      { "number": 4, "name": "award_state", "type": "bytes" }
+    ],
+    "triggerObserved": false
+  },
+  "requestEncoders": [
+    { "name": "req_time_temple_embryo_up", "encoding": "etf", "numericType": null },
+    { "name": "req_time_temple_bond_up", "encoding": "etf", "numericType": null },
+    { "name": "req_time_temple_runes_collect", "encoding": "etf", "numericType": null },
+    { "name": "req_time_temple_runes_up", "encoding": "etf", "numericType": null },
+    { "name": "req_time_temple_runes_skill_select", "encoding": "protobuf", "schema": "pb_time_temple_select_runes_skills", "numericType": null },
+    { "name": "req_time_temple_god_up", "encoding": "etf", "numericType": null },
+    { "name": "req_time_temple_season_shop", "encoding": "etf", "numericType": null },
+    { "name": "req_time_temple_draw_award", "encoding": "etf", "numericType": null }
+  ],
+  "boundedNegativeSearch": {
+    "requestNamesFoundInRootMappings": false,
+    "rootMappingArtifactsSearched": [
+      "Cmd.lua.json",
+      "Port.lua.json",
+      "Connection.lua.json",
+      "other decoded Cmd.lua.json files"
+    ],
+    "requestNamesAlsoFoundIn": [
+      "3651244919936714000-TimeTempleCmd.lua.bin",
+      "assets__Android__script__lua__64_lua_project.bundle/member-0-strings.json"
+    ],
+    "conclusion": "No numeric c2s or c2s_index mapping is available in the downloaded candidate package for these encoder names."
+  }
+}
