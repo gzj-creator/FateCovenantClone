@@ -193,15 +193,17 @@ export function createPetActivityService({
     const current = findOpenPetActivity(activity, at);
     if (!current) return null;
     const player = actPlayer(current.actId);
-    const begin = codec.pack('pb_pet_act_begin', {
-      shop_info: shopInfo(current.config, current.actId),
-      act_player: player
-    });
+    // ActivityMgr.DecodeErl hands module_login_data directly to
+    // PetActivityMgr.LoginParse, whose protobuf schema is player_list rather
+    // than pb_pet_act_begin. Sending the begin message here makes the client
+    // read its varint field as a nested message and abort the shared module-92
+    // login parse.
+    const playerList = codec.pack('pb_pet_act_player_list', { act_data_list: [player] });
     const group = activityGroup(activity, current.actId);
-    if (group) group.module_login_data = (await encodeEtf(binary(begin))).toString('base64');
+    if (group) group.module_login_data = (await encodeEtf(binary(playerList))).toString('base64');
     return {
       actId: current.actId,
-      module: codec.pack('pb_pet_act_player_list', { act_data_list: [player] }),
+      module: playerList,
       shopId: exclusiveShopConfig(current.config).shopId
     };
   }

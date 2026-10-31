@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { createGameCodec } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
@@ -19,6 +20,17 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-fishing-'));
   const file = path.join(directory, 'game.sqlite');
   fs.copyFileSync(backup, file);
+  // The handoff database is also used for manual acceptance and can carry a
+  // later server-opening timestamp. Normalize the disposable fixture so this
+  // test remains deterministic without changing the shared evidence file.
+  const fixture = new DatabaseSync(file);
+  const update = fixture.prepare('UPDATE roles SET metadata_json=? WHERE role_id=?');
+  for (const row of fixture.prepare('SELECT role_id,metadata_json FROM roles').all()) {
+    const metadata = JSON.parse(row.metadata_json);
+    metadata.serverOpenedAt = SERVER_OPENED_AT;
+    update.run(JSON.stringify(metadata), row.role_id);
+  }
+  fixture.close();
   let nowSeconds = initialSeconds;
   let store = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
   const calendar = createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });

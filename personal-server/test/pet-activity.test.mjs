@@ -118,17 +118,13 @@ test('all-open pet activity synchronizes login data, shop, free/resource gifts a
   assert.ok(petGroup);
   assert.ok(modules.has(83));
 
-  const beginTuple = await decodeEtf(Buffer.from(petGroup.module_login_data, 'base64'));
-  const begin = codec.unpack('pb_pet_act_begin', Buffer.from(beginTuple.value));
-  assert.equal(begin.shop_info.id, PET_SHOP_ID);
-  assert.deepEqual(begin.shop_info.items_groups[0].item_list.map(item => Number(item.tid)), [
-    5070143001, 5070146001, 5070144001, 5070145001, 5070147001,
-    5070148001, 5070149001, 5070150001, 5070151001, 5070152001, 5070153001
-  ]);
-  const playerList = codec.unpack('pb_pet_act_player_list', Buffer.from(modules.get(83).value));
+  const playerTuple = await decodeEtf(Buffer.from(petGroup.module_login_data, 'base64'));
+  const playerList = codec.unpack('pb_pet_act_player_list', Buffer.from(playerTuple.value));
   assert.equal(playerList.act_data_list[0].act_tid, PET_ACT_ID);
   assert.equal(playerList.act_data_list[0].selected_pet_tid, 500313);
   assert.deepEqual(playerList.act_data_list[0].wounds.map(wound => wound.wound_tid), [98, 99, 100, 97]);
+  const standalonePlayerList = codec.unpack('pb_pet_act_player_list', Buffer.from(modules.get(83).value));
+  assert.deepEqual(standalonePlayerList, playerList);
 
   grant(env.game.store, PET_CURRENCY, 100000);
   grant(env.game.store, 101500, 100000);
