@@ -28,6 +28,52 @@ function uniqueIntegers(values, field, { min = 1, max = INT32_MAX } = {}) {
   return result;
 }
 
+/**
+ * Older local snapshots can contain blessing references that predate the
+ * inventory ownership checks. Keep the equipment itself and salvage the first
+ * valid owner for every referenced UID. This function is intentionally pure
+ * and deterministic so login repair can run again after a restart.
+ */
+export function repairFantasyBlessReferences(data) {
+  const repaired = { self: [], missing: [], duplicate: [], invalid: [] };
+  const equips = Array.isArray(data?.equips) ? data.equips : [];
+  const uids = new Set();
+  for (const equip of equips) {
+    const uid = Number(equip?.uid);
+    if (Number.isSafeInteger(uid) && uid >= 1 && uid <= INT32_MAX) uids.add(uid);
+  }
+
+  const owners = new Map();
+  for (const equip of equips) {
+    const uid = Number(equip?.uid);
+    if (!Number.isSafeInteger(uid) || uid < 1 || uid > INT32_MAX) continue;
+    const values = Array.isArray(equip.bless) ? equip.bless : [];
+    const retained = [];
+    for (const value of values) {
+      const blessUid = Number(value);
+      const issue = !Number.isSafeInteger(blessUid) || blessUid < 1 || blessUid > INT32_MAX
+        ? 'invalid'
+        : blessUid === uid
+          ? 'self'
+          : !uids.has(blessUid)
+            ? 'missing'
+            : owners.has(blessUid)
+              ? 'duplicate'
+              : null;
+      if (issue) {
+        repaired[issue].push({ uid, bless: value });
+        continue;
+      }
+      owners.set(blessUid, uid);
+      retained.push(blessUid);
+    }
+    equip.bless = retained;
+  }
+
+  const removed = Object.values(repaired).reduce((total, rows) => total + rows.length, 0);
+  return { changed: removed > 0, removed, ...repaired };
+}
+
 function chipIndexes(chipTable, equipTable, itemTable) {
   if (!(chipTable instanceof Map)) return { byPointItem: new Map(), byTid: new Map() };
   const byPointItem = new Map(), byTid = new Map();
@@ -162,7 +208,7 @@ export function createFantasyEquipmentInventory({
     return data;
   }
 
-  function read(model) {
+  function read(model, { repairBlessReferences = false } = {}) {
     const modules = new Map(model.state.modules.value);
     const stored = modules.get(FANTASY_EQUIP_MODULE_ID);
     const module = stored ? structuredClone(stored) : { value: [], improper: false };
@@ -175,9 +221,10 @@ export function createFantasyEquipmentInventory({
     } catch {
       fail(5, 'Fantasy equipment inventory cannot be decoded');
     }
+    const repairs = repairBlessReferences ? repairFantasyBlessReferences(data) : null;
     validate(data);
     modules.set(FANTASY_EQUIP_MODULE_ID, module);
-    return { modules, module, data, changes: [] };
+    return { modules, module, data, changes: [], repairs };
   }
 
   function save(model, current) {

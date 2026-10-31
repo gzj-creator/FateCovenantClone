@@ -364,7 +364,15 @@ export function createLocalGame({
     if (repairedLineups.length) logger({ event: 'shared_pre_lineups_repaired', types: repairedLineups });
     recruit.ensureLoginState();
     fantasyDraw.ensureLoginState();
-    fantasyEquipment.ensureLoginState();
+    const fantasyEquipmentRepairs = fantasyEquipment.ensureLoginState();
+    if (fantasyEquipmentRepairs?.changed) logger({
+      event: 'fantasy_equipment_bless_references_repaired',
+      removed: fantasyEquipmentRepairs.removed,
+      self: fantasyEquipmentRepairs.self,
+      missing: fantasyEquipmentRepairs.missing,
+      duplicate: fantasyEquipmentRepairs.duplicate,
+      invalid: fantasyEquipmentRepairs.invalid
+    });
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
     heroFavor.ensureLoginState();

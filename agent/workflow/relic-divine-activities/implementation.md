@@ -4,6 +4,18 @@
 
 基线：`feature/relic-divine-activities` / `45c0b21d59dddf8487b50489ba54cfaf0d1723f8`。任务开始前的工作区改动已登记并原样保留。
 
+## 2026-11-01 登录幻武护佑引用自愈
+
+状态：已部署，客户端重登成功。
+
+重启服务后，客户端反复完成 TCP 握手，但 `909103` 登录初始化在模块 518 校验时抛出 `Fantasy equipment cannot bless itself`，网关没有发送登录回包。旧库存有 10 件幻武，`max_equip_id=10`；其中 4 条护佑引用指向自身、2 条引用不存在的 UID 11、8 条把同一护佑 UID 重复分配给多件主装备。
+
+修复位于 `fantasy-equipment-inventory.mjs` / `fantasy-equipment-service.mjs`：`ensureLoginState()` 在严格校验前执行幂等引用修复，保留每个护佑 UID 的首个合法所有者，删除自引用、缺失 UID、重复 UID 和非法值。修复只改 `bless` 列表，保留全部装备主体、等级、星级、UID 水位线及模块 518 的编队/抽取块；同一状态第二次登录修复数为 0。
+
+- 回归：`npm test` 全量 **519/519** 通过；新增用例覆盖自引用、缺失 UID、单条与跨装备重复、装备字段和水位线保留、SQLite 重开及幂等性。
+- 实机：服务从 PID `41656` 切换到 PID `44688`，五个端口仍仅监听 `127.0.0.1`。客户端自动重连后，`18:16:33.693Z` 记录修复 14 条非法引用，`18:16:33.848Z` 发出 `login_sent`（146 模块），随后正常响应 8000/7000/1202 等命令；用户确认“连上了”。
+- 数据：修复前一致备份 `p3/equipment-login-fix-20261101/game.pre-fantasy-bless-repair.local-only.sqlite`，SHA256 `f0cf4fed21f37475c73c2c075b18a866276af02002d3c2fc28893513daa03caa`；修复后备份 `game.post-fantasy-bless-repair.local-only.sqlite`，SHA256 `0be806bea2349e026ae1513e509eed3ed94d2046ecde43d30a5df6dc261e9f9d`，`integrity_check=ok`，10 件装备与 `max_equip_id=10` 均保留。验收摘要见同目录 `acceptance.local-only.json`。
+
 ## M1 共享幻武库存
 
 状态：专项完成，等待 M2–M6 集成验收。

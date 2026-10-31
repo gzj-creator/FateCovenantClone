@@ -1219,3 +1219,42 @@ test('module 518 keeps blocks 0, 1, and 2 independent through a mutation and SQL
   assert.deepEqual(formationData(f).formation_list.map(row => Number(row.uid)), [Number(equip.uid)]);
   assert.equal(Number(f.store.read().heroInfo.hero_list.find(hero => Number(hero.tid) === HERO_2010201).fantasy_equip), Number(equip.uid));
 });
+
+test('login repairs legacy self, missing, and duplicate fantasy blessings without dropping equipment', t => {
+  const f = fixture(t);
+  const created = Array.from({ length: 5 }, () => grantEquipment(f, NORMAL_Q50));
+  const data = inventoryData(f);
+  const [first, second, third, fourth] = created;
+  data.equips.find(equip => Number(equip.uid) === Number(first.uid)).bless = [first.uid, 99999, second.uid, second.uid];
+  data.equips.find(equip => Number(equip.uid) === Number(third.uid)).bless = [second.uid, third.uid, fourth.uid];
+  data.equips.find(equip => Number(equip.uid) === Number(fourth.uid)).bless = [fourth.uid, created[4].uid];
+  setModuleBlocks(f, { inventory: codec.pack('pb_fantasy_equip_res', data) });
+
+  const before = data.equips.map(({ bless, ...equip }) => structuredClone(equip));
+  const repairs = f.service.ensureLoginState();
+  assert.equal(repairs.changed, true);
+  assert.equal(repairs.removed, 6);
+  assert.equal(repairs.self.length, 3);
+  assert.equal(repairs.missing.length, 1);
+  assert.equal(repairs.duplicate.length, 2);
+  assert.equal(repairs.invalid.length, 0);
+
+  const expectedBless = new Map([
+    [Number(first.uid), [Number(second.uid)]],
+    [Number(third.uid), [Number(fourth.uid)]],
+    [Number(fourth.uid), [Number(created[4].uid)]]
+  ]);
+  const repaired = inventoryData(f);
+  assert.deepEqual(repaired.equips.map(({ bless, ...equip }) => equip), before);
+  assert.deepEqual(repaired.equips.map(equip => [equip.uid, equip.bless]), repaired.equips.map(equip => [
+    equip.uid,
+    expectedBless.get(Number(equip.uid)) ?? []
+  ]));
+  assert.equal(Number(repaired.max_equip_id), Number(created[4].uid));
+
+  f.reopen();
+  const repeated = f.service.ensureLoginState();
+  assert.equal(repeated.changed, false);
+  assert.equal(repeated.removed, 0);
+  assert.deepEqual(inventoryData(f), repaired);
+});

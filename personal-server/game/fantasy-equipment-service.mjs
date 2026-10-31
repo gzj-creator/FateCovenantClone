@@ -865,11 +865,14 @@ export function createFantasyEquipmentService({
   }
 
   function ensureLoginState() {
+    let repairs = null;
     store.transaction(model => {
-      const current = inventory.read(model);
+      const current = inventory.read(model, { repairBlessReferences: true });
+      repairs = current.repairs;
       openFormation(current);
       inventory.save(model, current);
     });
+    return repairs;
   }
 
   function grantEquipment(model, tid, options = {}) {
