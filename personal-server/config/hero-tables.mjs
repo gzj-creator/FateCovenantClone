@@ -35,6 +35,13 @@ export function readLeaderEquipTables(file = defaultLeaderEquipPath) {
 
 export function readGeneratedTables(file, names) {
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return readGeneratedDump(parsed, names);
+}
+
+// Some extracted table families only ship as LuaJIT bytecode. Keep the
+// interpreter reusable so callers can parse a dump in memory instead of
+// requiring a generated JSON copy beside it.
+export function readGeneratedDump(parsed, names) {
   const root = parsed.prototypes[parsed.rootPrototype];
   const constructors = new Map();
   for (let n = 0; n < root.instructions.length - 1; n++) {

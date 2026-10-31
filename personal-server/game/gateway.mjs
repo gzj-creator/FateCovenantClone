@@ -27,6 +27,8 @@ import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
+import { createMagicCircleService } from './magic-circle-service.mjs';
+import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
 import { createHeroDrawActivityService } from './hero-draw-activity-service.mjs';
 import { createWishTreasureService } from './wish-treasure-service.mjs';
 import { createWeekHuntService } from './week-hunt-service.mjs';
@@ -107,6 +109,7 @@ export function createLocalGame({
   });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
+  const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
@@ -129,6 +132,7 @@ export function createLocalGame({
     wishTreasure.ensureLoginState();
     weekHunt.ensureLoginState();
     destiny.ensureLoginState();
+    magicCircle.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
     rechargeBonus.synchronize();
     const state = store.state();
@@ -650,6 +654,23 @@ export function createLocalGame({
         }
         return;
       }
+      if (magicCircle.supports(type)) {
+        try {
+          const input = type === 90402
+            ? unpack('pb_magic_circle_level_up_req', request.data)
+            : type === 90404
+              ? unpack('pb_magic_circle_active_point_req', request.data)
+              : await singleIdArgument(request.data, 'Invalid magic-circle id');
+          const result = magicCircle.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'magic_circle_committed', type, seq, ...result.valueForLog, changes: result.value.res_change.changes.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'magic_circle_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (destiny.supports(type)) {
         try {
           const result = await destiny.execute(type, request.data);
@@ -767,7 +788,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, tables,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, petActivity, heroDrawActivity, wishTreasure, tables, magicCircle,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
