@@ -12,11 +12,13 @@ import { readHeroTables } from '../config/hero-tables.mjs';
 import { createHeroProgression } from '../game/hero-progression.mjs';
 import { createLineupService } from '../game/lineup-service.mjs';
 import { createFeatureService } from '../game/feature-service.mjs';
+import { grantResources } from '../game/resources.mjs';
+import { readGameTables } from '../config/game-tables.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
-const codec = createGameCodec(), tables = readHeroTables();
+const codec = createGameCodec(), tables = readHeroTables(), gameTables = readGameTables();
 const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 function fixture() {
@@ -123,12 +125,30 @@ test('upgrade validates role cap, binding, count, materials and breakthrough wit
   rejected(() => env.progression.execute(636, { hero_uid: '2020601', cell_index: 4, up_lv_count: 2 }), 3023);
   rejected(() => env.progression.execute(636, { hero_uid: '2010101', cell_index: 4, up_lv_count: 1 }), 3001);
   rejected(() => env.progression.execute(636, { hero_uid: '2020601', cell_index: 4, up_lv_count: 0 }), 1);
-  rejected(() => env.progression.execute(636, { hero_uid: '2010101', cell_index: 1, up_lv_count: 1 }), 331);
   assert.deepEqual(env.store.state(), initial);
   env.store.transaction(model => { model.resources.get('101800').num = '0'; });
   const noExp = env.store.state();
   rejected(() => env.progression.execute(636, { hero_uid: '2020601', cell_index: 4, up_lv_count: 1 }), 301);
   assert.deepEqual(env.store.state(), noExp);
+});
+
+test('first upgrade uses the next breakthrough gate and enforces its boundary', t => {
+  const env = setup(t);
+  const first = codec.unpack('pb_hero_up_lv_ret', env.progression.execute(636, { hero_uid: '2010101', cell_index: 1, up_lv_count: 1 }).data);
+  assert.equal(first.new_lv, 2);
+  assert.equal(first.change_hero_list.find(hero => hero.uid === '2010101').level, 2);
+  assert.equal(env.store.read().heroInfo.cell_list.find(cell => cell.index === 1).level, 2);
+
+  env.store.transaction(model => {
+    model.heroInfo.cell_list.find(cell => cell.index === 1).level = 16;
+    for (const hero of model.heroInfo.hero_list.filter(hero => hero.uid === '2010101')) hero.level = 16;
+    model.role.level = 40;
+  });
+  const boundary = codec.unpack('pb_hero_up_lv_ret', env.progression.execute(636, { hero_uid: '2010101', cell_index: 1, up_lv_count: 1 }).data);
+  assert.equal(boundary.new_lv, 17);
+  const beforeRejected = env.store.state();
+  rejected(() => env.progression.execute(636, { hero_uid: '2010101', cell_index: 1, up_lv_count: 1 }), 331);
+  assert.deepEqual(env.store.state(), beforeRejected);
 });
 
 test('breakthrough atomically consumes two materials and synchronizes cell and hero', t => {
@@ -167,6 +187,49 @@ test('separate star trials cannot be bypassed through normal star advancement', 
   const env = setup(t);
   env.store.transaction(model => { model.heroInfo.hero_list.find(hero => hero.uid === '2020601').star = 5; });
   rejected(() => env.progression.execute(639, [2020601, 1]), 3021);
+});
+
+test('unrivaled awakening infers the configured stone quantity from the selected type and persists the star', t => {
+  const env = setup(t);
+  env.store.transaction(model => {
+    model.heroInfo.hero_list.push({ uid: '5040601', tid: '5040601', level: 1, star: 0, star_progress: 0, breakthrough_level: 0, quality: 70 });
+    grantResources(model, [[25500604, 160], [821502, 6], [22002, 4]], gameTables);
+  });
+  const response = codec.unpack('pb_hero_up_star_ret', env.progression.execute(640, {
+    hero_tid: 5040601,
+    res: [{ tid: '821502' }]
+  }).data);
+  assert.equal(response.new_hero.star, 6);
+  assert.equal(response.new_hero.star_progress ?? 0, 0);
+  assert.deepEqual(response.res.changes.map(change => [change.tid, change.diff_num]), [
+    ['25500604', '-160'], ['821502', '-5']
+  ]);
+  assert.equal(env.store.read().resources.get('25500604').num, '0');
+  assert.equal(env.store.read().resources.get('821502').num, '1');
+  assert.equal(env.store.read().resources.get('22002').num, '4');
+  const record = response.new_hero.up_star_high_consume.find(value => value.star === 6);
+  assert.deepEqual(record.up_star_high_consume_list.map(value => [value.tid, value.num]), [
+    ['25500604', '160'], ['821502', '5']
+  ]);
+  env.reopen();
+  assert.equal(env.store.read().heroInfo.hero_list.find(hero => hero.uid === '5040601').star, 6);
+});
+
+test('unrivaled awakening validates the captured selected stone type without trusting a missing quantity', t => {
+  const env = setup(t);
+  env.store.transaction(model => {
+    model.heroInfo.hero_list.push({ uid: '5040601', tid: '5040601', level: 1, star: 0, star_progress: 0, breakthrough_level: 0, quality: 70 });
+    grantResources(model, [[25500604, 160], [821502, 4]], gameTables);
+  });
+  const before = env.store.state();
+  rejected(() => env.progression.execute(640, { hero_tid: 5040601, res: [{ tid: '821502' }] }), 301);
+  assert.deepEqual(env.store.state(), before);
+  rejected(() => env.progression.execute(640, { hero_tid: 5040601, res: [{ tid: '821502', num: 4 }] }), 1);
+  rejected(() => env.progression.execute(640, { hero_tid: 5040601, res: [{ tid: '821502' }, { tid: '22002' }] }), 1);
+  rejected(() => env.progression.execute(640, { hero_tid: 5040601, res: [{ tid: '821502' }, { tid: '821502' }] }), 1);
+  rejected(() => env.progression.execute(640, { hero_tid: 5040601, res: [{ tid: '999999', num: 5 }] }), 1);
+  rejected(() => env.progression.execute(640, { hero_tid: 999, res: [] }), 3001);
+  assert.deepEqual(env.store.state(), before);
 });
 
 test('exception and response-encoding failure roll back resource and hero mutations', t => {
@@ -298,7 +361,16 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
   assert.equal(codec.unpack('pb_hero_up_star_ret', Buffer.from(response.data, 'base64')).new_hero.star_progress, 3);
   response = await request(639, 23, await encodeEtf([2020601, 1]));
   assert.equal(response.err.err, 3006);
-  send(codec.pack('pb_c2s', { type: -1, seq: 24, data: Buffer.alloc(0) }));
+  response = await request(82601, 24, await encodeEtf([101, 102]));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_destiny_up_back', Buffer.from(response.data, 'base64')).destiny.cur_stage, 1);
+  game.store.transaction(model => {
+    model.heroInfo.hero_list.push({ uid: '5040601', tid: '5040601', level: 1, star: 0, star_progress: 0, breakthrough_level: 0, quality: 70 });
+    grantResources(model, [[25500604, 160]], gameTables);
+  });
+  response = await request(640, 25, codec.pack('pb_hero_wake_req', { hero_tid: 5040601, res: [{ tid: '821502' }] }));
+  assert.equal(response.err.err, 301);
+  send(codec.pack('pb_c2s', { type: -1, seq: 26, data: Buffer.alloc(0) }));
   const login = await decodeEtf(await game.loginPayload());
   assert.ok(Math.abs(login[1][0] - Date.now()) < 5000);
   const loginModules = new Map(login[2].value);
@@ -317,6 +389,7 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
   const heroModule = new Map(login[2].value).get(10).value[0];
   const hero = codec.unpack('pb_hero_info', Buffer.from(heroModule.value)).hero_list.find(hero => hero.uid === '2020601');
   assert.equal(hero.level, 9); assert.equal(hero.star_progress, 3);
+  assert.equal(codec.unpack('pb_destiny_data', Buffer.from(loginModules.get(100).value)).cur_stage, 1);
   game.wallet.credit({account_id:'local-1',amount_cents:1000,request_id:'tcp-fund'});
   const order=game.wallet.buy({product_id:11,request_id:'tcp-purchase'});
   const notification=codec.unpack('pb_s2c',await next());assert.equal(notification.type,1900);

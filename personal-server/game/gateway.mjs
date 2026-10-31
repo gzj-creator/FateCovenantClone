@@ -25,6 +25,8 @@ import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
+import { createDestinyService } from './destiny-service.mjs';
+import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
@@ -74,6 +76,7 @@ export function createLocalGame({
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({ store, codec, tables, heroTables });
   const handbook = createHeroHandbookService({ store, codec, heroTables });
+  const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const subscribers=new Set();
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
@@ -90,6 +93,7 @@ export function createLocalGame({
     recruit.ensureLoginState();
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
+    destiny.ensureLoginState();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
@@ -484,7 +488,7 @@ export function createLocalGame({
       }
       if (progression.supports(type)) {
         try {
-          const input = type === 636 ? unpack('pb_hero_up_lv_req', request.data) : await decodeEtf(request.data);
+          const input = type === 636 ? unpack('pb_hero_up_lv_req', request.data) : type === 640 ? unpack('pb_hero_wake_req', request.data) : await decodeEtf(request.data);
           const result = progression.execute(type, input?.value ?? input);
           send(seq, result.data);
           const diagnostics = type === 636 ? {
@@ -501,6 +505,18 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'hero_progression_rejected', type, seq, code, errorName: error.name });
+        }
+        return;
+      }
+      if (destiny.supports(type)) {
+        try {
+          const result = await destiny.execute(type, request.data);
+          send(seq, result.data);
+          log({ event: 'destiny_node_committed', type, seq, curStage: result.value.destiny.cur_stage, changes: result.value.res_client.changes.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'destiny_node_rejected', type, seq, code, message: error.message });
         }
         return;
       }

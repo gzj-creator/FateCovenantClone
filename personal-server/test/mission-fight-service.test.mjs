@@ -40,6 +40,10 @@ const setMission = (store, missionId) => store.transaction(model => {
   modules.set(8, module);
   model.state.modules.value = [...modules];
 });
+const addResource = (store, tid, num, group = 1) => store.transaction(model => {
+  const entry = model.resources.size;
+  model.resources.set(String(tid), { tid: String(tid), num: String(num), location: [6, group, entry] });
+});
 const fightRequest = (mission, extra = {}) => codec.pack('pb_fight_request', {
   fight_tid: 301, stm_type: 1,
   req: codec.pack('mission_fight_req', { mission_id: mission }),
@@ -306,6 +310,85 @@ test('mission chapter box claims the observed multiple-box ETF request atomicall
   assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_box'").get().n), 4);
 
   await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 2, 3, 4])), error => error.code === 310);
+});
+
+test('mission sweep consumes configured stamina and repeats every reward group', t => {
+  const env = setup(t);
+  setMission(env.store, 40210);
+  addResource(env.store, 100012900, 20);
+  const before = Object.fromEntries(['201500', '101800', '122802'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
+  assert.equal(env.service.supports(503), true);
+
+  const request = times => codec.pack('pb_mission_sweep_passed_req', { tid: 30202, times });
+  const first = codec.unpack('pb_mission_sweep_passed_rsp', env.service.execute(503, request(1)).data);
+  assert.deepEqual(first.changes.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num, new_num: change.new_num })), [
+    { tid: '100012900', diff_num: '-5', new_num: '15' },
+    { tid: '201500', diff_num: '200', new_num: String(before['201500'] + 200n) },
+    { tid: '101800', diff_num: '100', new_num: String(before['101800'] + 100n) },
+    { tid: '122802', diff_num: '1', new_num: String(before['122802'] + 1n) }
+  ]);
+  assert.notEqual(first.changes.is_overflow, true);
+  assert.deepEqual(first.sweep_award, [{
+    award: [
+      { tid: '201500', num: '200' },
+      { tid: '101800', num: '100' },
+      { tid: '122802', num: '1' }
+    ]
+  }]);
+  assert.equal(env.store.read().resources.get('100012900').num, '15');
+
+  const second = codec.unpack('pb_mission_sweep_passed_rsp', env.service.execute(503, request(2)).data);
+  assert.equal(second.sweep_award.length, 2);
+  assert.deepEqual(second.sweep_award[0], second.sweep_award[1]);
+  assert.deepEqual(second.sweep_award[0].award, first.sweep_award[0].award);
+  assert.deepEqual(second.changes.changes.map(change => [change.tid, change.diff_num, change.new_num]), [
+    ['100012900', '-10', '5'],
+    ['201500', '400', String(before['201500'] + 600n)],
+    ['101800', '200', String(before['101800'] + 300n)],
+    ['122802', '2', String(before['122802'] + 3n)]
+  ]);
+  assert.equal(env.store.read().resources.get('100012900').num, '5');
+
+  env.reopen();
+  assert.equal(env.store.read().resources.get('100012900').num, '5');
+  assert.equal(BigInt(env.store.read().resources.get('201500').num), before['201500'] + 600n);
+  assert.equal(BigInt(env.store.read().resources.get('101800').num), before['101800'] + 300n);
+  assert.equal(BigInt(env.store.read().resources.get('122802').num), before['122802'] + 3n);
+});
+
+test('mission sweep rejects invalid, unswept and unaffordable requests without mutation', t => {
+  const env = setup(t);
+  addResource(env.store, 100012900, 4);
+  const before = env.store.state();
+  const request = (tid, times) => codec.pack('pb_mission_sweep_passed_req', { tid, times });
+
+  assert.throws(() => env.service.execute(503, request(30202, 0)), error => error.code === 1);
+  assert.throws(() => env.service.execute(503, request(30202, 100)), error => error.code === 1);
+  assert.throws(() => env.service.execute(503, request(999999, 1)), error => error.code === 5);
+  assert.throws(() => env.service.execute(503, request(30202, 1)), error => error.code === 5);
+  assert.deepEqual(env.store.state(), before);
+
+  setMission(env.store, 40210);
+  const cleared = env.store.state();
+  assert.throws(() => env.service.execute(503, request(30202, 1)), error => error.code === 301);
+  assert.deepEqual(env.store.state(), cleared);
+});
+
+test('mission sweep response encoding failure rolls back stamina and rewards', t => {
+  const env = setup(t);
+  setMission(env.store, 40210);
+  addResource(env.store, 100012900, 10);
+  const before = env.store.state();
+  const brokenCodec = {
+    ...codec,
+    pack(name, object) {
+      if (name === 'pb_mission_sweep_passed_rsp') throw new Error('sweep encode fail');
+      return codec.pack(name, object);
+    }
+  };
+  const broken = createMissionFightService({ store: env.store, codec: brokenCodec, playbackEnabled: true });
+  assert.throws(() => broken.execute(503, codec.pack('pb_mission_sweep_passed_req', { tid: 30202, times: 1 })), /sweep encode fail/);
+  assert.deepEqual(env.store.state(), before);
 });
 
 test('mission fight playback stays disabled until a real action stream exists', t => {

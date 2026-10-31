@@ -3,7 +3,7 @@ import { GameError } from './hero-progression.mjs';
 import { missionBattleConfig, readMissionTables } from '../config/mission-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
-import { grantResources } from './resources.mjs';
+import { consumeResources, grantResources } from './resources.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 
 // Ordinary journey (mission) fights.
@@ -33,6 +33,7 @@ const ACTION_SHIELD = 109;
 const ACTION_ROUND_OVER = 112;
 const ACTION_FIGHTER_RELIVE = 114;
 const ACTION_FAT_ATTR_SYNC = 116;
+const MAX_SWEEP_TIMES = 99;
 
 let missionOrderCache = null;
 
@@ -377,6 +378,34 @@ function configuredBoxAwards(box) {
   return result;
 }
 
+function configuredSweepAwards(sweep) {
+  if (Number(sweep?.rand_award ?? 0) !== 0) throw new GameError(5, 'Random mission sweep rewards are not implemented');
+  const awards = Array.isArray(sweep?.award) ? sweep.award : [];
+  const result = awards.map(pair => {
+    if (!Array.isArray(pair) || pair.length !== 2) throw new GameError(5, 'Mission sweep reward configuration is invalid');
+    const tid = Number(pair[0]), count = Number(pair[1]);
+    if (!Number.isSafeInteger(tid) || !Number.isSafeInteger(count) || count <= 0) throw new GameError(5, 'Mission sweep reward configuration is invalid');
+    return [tid, count];
+  });
+  if (!result.length) throw new GameError(5, 'Mission sweep has no configured rewards');
+  return result;
+}
+
+function combinedChanges(...groups) {
+  const changes = new Map();
+  for (const change of groups.flat()) {
+    const tid = String(change.tid);
+    const current = changes.get(tid);
+    if (current) {
+      current.new_num = String(change.new_num);
+      current.diff_num = (BigInt(current.diff_num) + BigInt(change.diff_num)).toString();
+    } else {
+      changes.set(tid, { tid, new_num: String(change.new_num), diff_num: String(change.diff_num) });
+    }
+  }
+  return [...changes.values()];
+}
+
 export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), now = Date.now, logger = () => {}, playbackEnabled = false }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, lastSettlement = null, fightIds = 0;
@@ -581,6 +610,44 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     });
   }
 
+  // MissionSweepMgr sends mission_sweep_passed and feeds response.changes to
+  // ResMgr.Parse while rendering one sweep_award group per repeated clear.
+  function sweepPassed(bytes) {
+    const request = codec.unpack('pb_mission_sweep_passed_req', bytes);
+    const tid = Number(request.tid), times = Number(request.times);
+    if (!Number.isSafeInteger(tid) || tid <= 0) throw new GameError(1, 'Invalid mission sweep id');
+    if (!Number.isSafeInteger(times) || times <= 0 || times > MAX_SWEEP_TIMES) throw new GameError(1, 'Invalid mission sweep count');
+    const sweep = missionTables.sweeps.get(tid);
+    if (!sweep) throw new GameError(5, 'Mission sweep configuration missing');
+    const awards = configuredSweepAwards(sweep);
+    const sections = missionTables.sections;
+    const sectionPosition = missionPosition(sections, tid);
+    if (sectionPosition < 0) throw new GameError(5, 'Mission sweep node configuration missing');
+    const costConfig = missionTables.sweepConst.get(1);
+    const costItem = Number(costConfig?.cost_item), costNum = Number(costConfig?.cost_num);
+    if (!Number.isSafeInteger(costItem) || costItem <= 0 || !Number.isSafeInteger(costNum) || costNum <= 0) {
+      throw new GameError(5, 'Mission sweep cost configuration is invalid');
+    }
+    const totalCost = costNum * times;
+    if (!Number.isSafeInteger(totalCost)) throw new GameError(1, 'Mission sweep count is too large');
+    const totalAwards = awards.map(([id, count]) => [id, count * times]);
+
+    return store.transaction((model, db) => {
+      const { value: current } = currentMission(model);
+      const currentPosition = missionPosition(sections, Number(current.mission_id));
+      if (currentPosition < 0 || sectionPosition >= currentPosition) throw new GameError(5, 'Mission sweep node is not cleared');
+      const spent = consumeResources(model, [[costItem, totalCost]]);
+      const reward = grantResources(model, totalAwards, gameTables);
+      const value = {
+        changes: { changes: combinedChanges(spent.changes, reward.changes), is_overflow: false },
+        sweep_award: Array.from({ length: times }, () => ({
+          award: awards.map(([id, count]) => ({ tid: String(id), num: String(count) }))
+        }))
+      };
+      return { value, data: codec.pack('pb_mission_sweep_passed_rsp', value) };
+    });
+  }
+
   // MissionUIMgr opens CatoonListForm for section rows with story > 0. Its
   // continue callback calls MissionMgr.ReqStoryAward(sectionTid), which sends
   // ETF [sectionTid] as type 508 req_mission_custom. The response is the same
@@ -624,10 +691,11 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
   }
 
   return {
-    supports: type => [201, 202, 203, 204, 207, 213, 506].includes(type),
+    supports: type => [201, 202, 203, 204, 207, 213, 503, 506].includes(type),
     passStory,
     execute(type, bytes) {
       if (type === 506) return claimBoxAwards(bytes);
+      if (type === 503) return sweepPassed(bytes);
       if (type === 201) return start(bytes);
       if (type === 202) return exit(bytes);
       if (type === 207) return settlement();
