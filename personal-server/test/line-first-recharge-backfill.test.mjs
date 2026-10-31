@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createGameCodec, rawBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createLineFirstRechargeService } from '../game/line-first-recharge-service.mjs';
@@ -29,20 +29,42 @@ test('login backfills a previously committed linear first-recharge order into mo
 
   store.transaction((model, db) => {
     db.prepare('INSERT INTO local_wallets(account_id,role_id) VALUES (?,?)').run('local-1', model.state.roleId);
+    db.prepare('INSERT INTO roles(role_id,server_id,created_at,profile_json,metadata_json) VALUES (?,?,?,?,?)')
+      .run(100002, 1, CREATED_AT, '{}', '{}');
+    db.prepare('INSERT INTO local_wallets(account_id,role_id) VALUES (?,?)').run('local-2', 100002);
     db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
-      .run('historical-line-first', 'local-1', 'historical-request', 600078, 600, '{}', '2026-10-30T10:30:00.000Z', 1);
+      .run('other-role-line-first', 'local-2', 'other-request', 600078, 600, '{}', '2026-10-29T10:30:00.000Z', 1);
+    db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
+      .run('older-group-line-first', 'local-1', 'older-request', 600078, 600, '{}', '2026-09-01T10:30:00.000Z', 1);
   });
 
   service.ensureLoginState();
   let info = codec.unpack('pb_line_first_recharge', rawBinary(new Map(store.state().modules.value).get(547)));
+  assert.equal(String(info.tid), '31');
+  assert.equal(info.buy_list.length, 0);
+
+  store.transaction((model, db) => {
+    db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at,acknowledged) VALUES (?,?,?,?,?,?,?,?)')
+      .run('historical-line-first', 'local-1', 'historical-request', 600078, 600, '{}', '2026-10-30T10:30:00.000Z', 1);
+  });
+  service.ensureLoginState();
+  info = codec.unpack('pb_line_first_recharge', rawBinary(new Map(store.state().modules.value).get(547)));
   assert.equal(String(info.tid), '32');
   assert.equal(String(info.choose_tid), '3102');
   assert.deepEqual(info.buy_list.map(entry => [String(entry.tid), String(entry.choose_tid)]), [['31', '3101']]);
+  assert.equal(Number(info.buy_list[0].buy_time), Date.parse('2026-10-30T10:30:00.000Z') / 1000);
 
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    info.buy_list[0].rev_bin = Buffer.from([0x40]);
+    modules.set(547, serializedBinary(codec.pack('pb_line_first_recharge', info)));
+    model.state.modules.value = [...modules];
+  });
   store.close();
   store = createGameStore({ databasePath, seed, codec, serverOpenedAt: CREATED_AT });
   service = make();
   service.ensureLoginState();
   info = codec.unpack('pb_line_first_recharge', rawBinary(new Map(store.state().modules.value).get(547)));
   assert.equal(info.buy_list.length, 1);
+  assert.deepEqual(Buffer.from(info.buy_list[0].rev_bin, 'base64'), Buffer.from([0x40]));
 });

@@ -66,7 +66,7 @@ function nextStage(stages, tid) {
   return stages.find(stage => Number(stage.tid) > Number(tid)) ?? null;
 }
 
-function backfillPurchases(db, info, group, stages, tables) {
+function backfillPurchases(db, roleId, info, group, stages, tables) {
   if (!db || !Array.isArray(info.buy_list)) return 0;
   const products = new Map();
   for (const stage of stages) {
@@ -78,7 +78,13 @@ function backfillPurchases(db, info, group, stages, tables) {
   const start = Number(group.start_time);
   const end = Number(group.end_time);
   let added = 0;
-  for (const order of db.prepare('SELECT product_id,created_at FROM recharge_orders ORDER BY rowid').all()) {
+  const orders = db.prepare(`
+    SELECT orders.product_id,orders.created_at
+    FROM recharge_orders AS orders
+    JOIN local_wallets AS wallets ON wallets.account_id=orders.account_id
+    WHERE wallets.role_id=? ORDER BY orders.rowid
+  `).all(roleId);
+  for (const order of orders) {
     const purchase = products.get(Number(order.product_id));
     if (!purchase || bought.has(purchase.stage)) continue;
     const buyTime = Math.floor(Date.parse(order.created_at) / 1000);
@@ -97,7 +103,7 @@ export function createLineFirstRechargeService({ store, codec, tables, now = Dat
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(now());
 
-  function normalizeState(modules, at, db = null) {
+  function normalizeState(modules, at, db = null, roleId = null) {
     const before = modules.get(MODULE_ID) ? JSON.stringify(readInfo(modules, codec)) : null;
     const group = activeGroup(tables, at);
     if (!group) return { info: readInfo(modules, codec), group: null, stages: [], changed: false };
@@ -115,7 +121,7 @@ export function createLineFirstRechargeService({ store, codec, tables, now = Dat
       };
     }
     info.buy_list = (info.buy_list ?? []).filter(row => stageIds.has(Number(row.tid)));
-    backfillPurchases(db, info, group, stages, tables);
+    backfillPurchases(db, roleId, info, group, stages, tables);
     const bought = new Set(info.buy_list.map(row => Number(row.tid)));
     let stage = stages.find(row => Number(row.tid) === Number(info.tid)) ?? stages.find(row => !bought.has(Number(row.tid))) ?? stages.at(-1) ?? null;
     if (stage && bought.has(Number(stage.tid))) {
@@ -134,7 +140,7 @@ export function createLineFirstRechargeService({ store, codec, tables, now = Dat
   function ensureLoginState() {
     return store.transaction((model, db) => {
       const modules = new Map(model.state.modules.value);
-      const result = normalizeState(modules, currentSeconds(), db);
+      const result = normalizeState(modules, currentSeconds(), db, model.state.roleId);
       if (result.changed) model.state.modules.value = [...modules];
       return result;
     });
