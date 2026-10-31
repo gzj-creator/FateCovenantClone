@@ -1,24 +1,39 @@
-# 英雄图鉴点亮
+# 图鉴升级、一键升级与拥有奖励 (644/645/655)
+
+## 结论
+
+本轮在 worktree `feature/interface-implementation-20261101` 完成 644/645/655 三条图鉴命令、登录同步和 655 奖励路径。`npm test --prefix personal-server` 343/343 通过。未部署、未操作设备、未改运行库或 APK。
+
+## 实现文件
+
+- `personal-server/game/hero-handbook-service.mjs`：从 system-hero-handbook worktree 移植完整实现（raiseOne / raiseOneKey / claimOwnAward / ensureLoginState）。
+- `personal-server/game/gateway.mjs`：新增 `handbook.supports(type)` 路由（644/645/655）。
+- `personal-server/config/hero-tables.mjs`：`readHeroTables` 新增 `HandbookConstant`。
+- `personal-server/test/hero-handbook.test.mjs`：移植 11 项测试。
 
 ## 协议与客户端消费
 
-- 英雄图鉴功能 ID 为 `10009`，不是 module 137 的陈列室；父登录模块是 module 10 `HeroDataMgr`。
-- `HeroDataMgr.LoginParse` 原型 3（源行 85）把 module 10 的第 4 项解码为 `pb_hero_all_handbook_record`，随后交给 `HeroHandbookMgr.ParseData`。本地存储数组下标为 3。
-- `HeroHandbookMgr.ParseData` 解码 `records` 和 `own_rev`；`GetHeroHandbookState` 在 record 不存在时返回 `UnActive`。因此只填 `pb_hero_info.hero_list` 不会点亮服务端登录响应中的图鉴。
-- record 字段为 `tid`、`quality`、`star`、`is_mutant`。客户端以 `HeroTable.Hero.not_in_guide` 区分玩家图鉴和内部角色。
+- 功能 ID `10009`，父登录模块 module 10 `HeroDataMgr`，slot 3 = `pb_hero_all_handbook_record`。
+- `pb_hero_handbook_record`：`tid`、`quality`、`star`、`is_mutant`。
+- `pb_hero_all_handbook_record`：`records`、`own_rev`（按 `HeroTable.Hero.index` 的位图，MSB 优先）。
+- `pb_hero_handbook_raise_one_key_req`：`repeated int32 hero_id`。
+- `pb_hero_handbook_raise_up_rsp`：`repeated pb_hero_handbook_record records`。
+- `pb_hero_handbook_own_award_back`：`bytes rev_bin`、`pb_res_to_client res_change`。
+- 644 与 655 都没有 protobuf 请求消息，参数是裸 ETF 标量；645 使用 protobuf 请求。
 
-## 实现
+## 关键实现要点
 
-- 新增 `personal-server/game/hero-handbook-service.mjs`。登录响应构建前，从关系型 `heroInfo.hero_list` 重建 module 10 / slot 3。
-- 排除配置缺失及 `not_in_guide=true` 的角色。同一 `tid` 有多条记录时选择更高 `star`；星级相同时选择更高 `quality`，并合并已有的变异状态，避免去重时降级或误删标记。
-- 招募、邮件、活动或其他入口只要最终写入同一 `heroInfo.hero_list`，下次登录就会点亮；SQLite 重开后仍可重建。
-- 已有 `own_rev` 原样保留。点亮流程不根据角色背包伪造“拥有奖励已领取”位图。
-- `loginPayload()` 在 `recruit.ensureLoginState()` 之后执行图鉴同步，真实登录 ETF 同时包含既有招募状态修复和生成后的图鉴槽位。
+- **type 644**：裸 ETF 英雄 tid；一次调用推进一步（star<5 先升 star；star==5 按 quality 阶梯；star>5 先升 star 再升 quality）；上限为拥有英雄的 star/quality；未拥有或隐藏英雄返回 3001；非法 tid 返回 1；无资源消耗。
+- **type 645**：protobuf `hero_id` 列表；去重；空列表或非法 id 返回 1；任一英雄未拥有返回 3001，整批不写入；单事务内每个英雄推进一步；响应全部记录。
+- **type 655**：裸 ETF 英雄 tid（可省略以领取全部）；按 `HeroTable.Hero.index` 位图防重；`HandbookConstant` 配置 award_item/award_count 时发放奖励；无奖励配置时 res_change 为空；幂等。
 
-## 验证
+## 测试
 
-- `node --test test/hero-handbook.test.mjs`：3/3 通过。覆盖既有英雄点亮、隐藏角色排除、重复记录合并、`own_rev` 保持、SQLite 重开、招募新英雄后点亮，以及真实 `loginPayload` ETF 的 module 10 / slot 3 反向解码。
-- `node --test test/hero-handbook.test.mjs test/recruit-service.test.mjs test/hero-progression.test.mjs test/gameplay-gateway.test.mjs`：24/24 通过。
-- 完整 `npm test`：179 项中 166 通过、13 失败。失败均属既有 voucher、month-permit、recommend-gift 金额配置差异，与本次图鉴改动无关；图鉴专项和相关回归均通过。
-- 本轮为服务端组件与协议级验证。尚未覆盖到正在运行的本机服务，也未取得 APK 内视觉验收，不能标记为设备可玩验收。本轮未修改 APK。
-- 644 图鉴升级、645 一键升级、655 拥有奖励领取不在“点亮”实现范围内；未用推测规则补接口。
+- `node --test test/hero-handbook.test.mjs`：11/11 通过。
+- `npm test`：343/343 通过。
+- 覆盖成功路径、幂等性、非法输入、资源不足（奖励配置）、事务回滚（SQLite 异常、编码异常）、重启持久化、真实 TCP 路径。
+
+## 验收分级
+
+- 组件测试 + 临时 TCP 测试通过。
+- 未部署到运行服务、未操作设备、未修改 APK。

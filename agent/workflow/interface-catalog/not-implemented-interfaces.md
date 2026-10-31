@@ -21,7 +21,7 @@
 
 | type | 接口 | 目录模块 | 请求编码 | 请求 schema | 当前限制 |
 | ---: | --- | --- | --- | --- | --- |
-| 98401 | `req_leader_equip` | progression | `protobuf` | `pb_leader_equip_wear_req` | 返回 305，队长装备穿戴/槽位未实现 |
+| 98401 | `req_leader_equip` | progression | `protobuf` | `pb_leader_equip_wear_req` | ✅ 已实现 (wear, idempotent, transaction) |
 | 110304 | `req_fishing_act_book_award` | resources-and-rewards | `protobuf` | `pb_fishing_act_common_list_req` | 钓鱼图鉴奖励未实现 |
 | 110306 | `req_fishing_act_change_rod` | activities | `protobuf` | `pb_fishing_act_common_req` | 钓鱼换鱼竿未实现 |
 | 110307 | `req_fishing_act_level_award` | resources-and-rewards | `protobuf` | `pb_fishing_act_common_req` | 钓鱼等级奖励未实现 |

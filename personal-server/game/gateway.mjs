@@ -105,7 +105,7 @@ export function createLocalGame({
     now: () => Math.floor(clock() / 1000),
     onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
   });
-  const handbook = createHeroHandbookService({ store, codec, heroTables });
+  const handbook = createHeroHandbookService({ store, codec, heroTables, tables });
   const teamSuggest = createTeamSuggestService({ store, codec, tables, heroTables, now: clock });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const subscribers=new Set();
@@ -647,6 +647,29 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'recruit_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (handbook.supports(type)) {
+        let heroId;
+        try {
+          let result;
+          if (type === 644) {
+            heroId = await singleIdArgument(request.data, 'Invalid hero handbook hero');
+            result = handbook.raiseOne(heroId);
+          } else if (type === 645) {
+            const input = unpack('pb_hero_handbook_raise_one_key_req', request.data);
+            result = handbook.raiseOneKey(input.hero_id ?? []);
+          } else {
+            heroId = request.data?.length ? await singleIdArgument(request.data, 'Invalid hero handbook hero') : undefined;
+            result = handbook.claimOwnAward(heroId);
+          }
+          send(seq, result.data);
+          log({ event: 'hero_handbook_committed', type, seq, heroId, recordCount: result.value.records?.length ?? 1, changedTids: result.value.changedTids });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hero_handbook_rejected', type, seq, heroId, code, message: error.message });
         }
         return;
       }
