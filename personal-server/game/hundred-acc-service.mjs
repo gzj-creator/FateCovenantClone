@@ -56,7 +56,10 @@ export function createHundredAccService({ store, codec, tables, now = Date.now, 
         ).get(model.state.roleId, CLAIM_ACT_ID, groupId, CLAIM_PERIOD)) {
           throw new GameError(310, 'Reward already claimed');
         }
-        const requiredCents = Number(group.amount) * 100;
+        // HundredAccTable.Group.amount is already stored in cents. The client
+        // renders it as amount / 100 and compares RechargeMgr.GetTotalAmount()
+        // (also cents) directly against this value.
+        const requiredCents = Number(group.amount);
         if (!Number.isSafeInteger(requiredCents) || requiredCents <= 0) {
           throw new GameError(5, 'Cumulative-recharge tier is invalid');
         }

@@ -121,3 +121,45 @@
 - 用 SQLite `-readonly` 备份当前运行库到临时副本后直接实例化修复后的服务：修复前两条状态均为 `01010100`，位 1/2/3 全为 false；修复日志只记录 `106036`、`106037` 两个活动，修复后均为 `70000000`，位 1/2/3 全为 true。运行中的原库未改动（`activity_claims` 仍为 6 条，模块 106 仍由真实服务持有）。
 
 当前服务 PID 24124 及五个 loopback 端口保持运行，未部署、未重启。实际生效需要在用户结束当前游玩后从本 worktree 重启一次服务，并让客户端重新登录以刷新模块 106；启动时的修复会自动纠正现有活动状态。修复只涉及服务端，不修改 APK。
+
+## 2026-10-31 累充宝藏领取显示“已过期”修复
+
+用户点击累充宝藏档位 2 时，客户端显示“已过期”，并反馈实际充值金额应该足够。本轮在独立 worktree `F:\projects\FateCovenantClone\.worktree\acc-recharge-expired-fix`（分支 `feature/acc-recharge-expired-fix`，基线 `22d3533`）定位并修复。未部署、未重启当前运行中的服务，也未操作客户端。
+
+### 根因
+
+真实运行日志在 2026-10-31 02:53:20 和 02:53:22 记录 `92001`、档位 2 请求返回 `311 Cumulative recharge amount is insufficient`。账号模块 19 的 `res_recharge_login.total_amount=21300`，单位是分，即累计充值 `¥213`；按正确口径，已经满足档位 1 至 5（`¥1`、`¥6`、`¥30`、`¥90`、`¥180`），档位 2 不应拒绝。客户端 ErrorTable 将 `311` 映射到内部文案 `OLD`（`200239`），所以界面表现为“已过期”。
+
+`HundredAccTable.Group.amount` 本身就是分：档位配置依次为 `100/600/3000/9000/18000/30000/50000/70000/100000/150000`，对应 `¥1/6/30/90/180/300/500/700/1000/1500`。客户端 `HundredAccNode` 用 `amount / 100` 显示元，`HundredAccDataMgr.CheckGroupCondition` 将 `RechargeMgr.GetTotalAmount()` 的分值直接与 `RechargeUtil.GetOverseaAmount(amount)` 比较。服务端此前执行 `Number(group.amount) * 100`，把档位 2 的错误门槛提高到 `60000` 分，即 `¥600`。
+
+### 修复
+
+- `personal-server/game/hundred-acc-service.mjs` 改为直接使用 `Number(group.amount)` 作为 `requiredCents`，移除重复的乘 100。
+- `personal-server/test/hundred-acc-service.test.mjs` 修正首档测试数据：总充值 `599` 分时档位 1 成功、档位 2 返回 311；新增分单位回归测试，确认档位 2 配置为 `600` 分，`21300` 分可领取并发放 `101500×300`、`1501200×1`。真实 TCP 网关测试同步改为领取档位 2，并核对模块 166。
+
+### 同类累充口径审计
+
+- `res_recharge_login.total_amount` 是 `int32` 分值，`recharge_record.amount` 是 `uint32` 分值。钱包购买路径按 `RechargeTable.price` 直接累加；配置中的 `¥6/¥30/¥68` 等价格分别以 `600/3000/6800` 分存储，没有再次放大。
+- 累计充值活动 `98620` 使用 `AccRechargeActTable.Award.acc_cnt`，其值同样是分，首档为 `6800` 而不是 `68`。客户端 `AccRechargeActMgr.GetAccRechargeCnt` 先取活动自身的起止时间，转换成日号后调用 `RechargeMgr.GetDayRangeAmount`；后者只累加 `recharge_record.recent_record` 中 `startDay <= day_index <= endDay` 的记录。服务端此前错误读取终身 `total_amount`，本轮改为按 `activityWindow()` 计算活动窗口，并按相同的 05:00 日界和包含两端的日号范围汇总分值。窗口无效时直接拒绝，不再回退终身总额。
+- 新增 98620 窗口与分单位回归：窗口内 `6799` 分时首档返回 311，`6800` 分时领取成功；窗口开始前和结束后的记录不计入；终身总额很高但窗口内不足时仍返回 311；活动首日和末日记录均计入。另新增真实钱包到 98620 的链路回归：在窗口内购买 `¥68` 商品（`price=6800` 分）后，`recent_record`、服务端校验和 98620 领取成功。新增钱包到 92001 的链路回归：真实购买 `¥6` 商品（`price=600` 分）后模块 19 的累计值为 `600`，随后档位 2 领取成功。
+- 当前活动版本 36 的 17 个实际 `acc_cnt` 已逐一走同一门槛分支回归；百元累充 10 个实际 `group.amount` 也已全部走同一门槛分支回归。两组测试只替换奖励载荷为受支持资源，以隔离奖励资源处理能力，验证的是每档配置值与钱包分值单位直接比较，没有另一套档位换算。
+- 月卡、普通月卡、代金券抵扣、每日折扣、宠物充值礼包等现有钱包购买路径均直接使用 `RechargeTable.price` 分值累加；相关测试覆盖 `600`、`3000`、`6800`、`19800` 等总充值增量，没有发现第二处重复换算。
+- SDK 支付入口中的人民币字符串乘 100 是入站元到分的正常换算；代金券面值本身固定为 `100` 分。生产代码中未发现其他累充门槛把分值再次乘 100。
+- `16005 BuyOrRevGift` 的客户端回调发 `EVT_BUY_OR_REV`，只有真正的充值成功路径 `DispatchRechargeEvent` 才发 `EVT_RECHARGE`；`RechargeBuyRecordMgr` 处理该事件时只更新 `buy_gift_record`。现有 `wallet.purchaseGift` 也只为 16005 写购买记录，不修改 `total_amount` 或 `recharge_record`，与客户端口径一致。不能把普通付费礼包直接并入侵吞终身累充或活动窗口累充。
+- 当前服务端已实现的累充领取处理器只有 `98620` 和 `92001`。首次充值、累充返利、充值赠礼选择等其他客户端活动尚无服务端领取处理器，不能标记为已修复或已验收；它们不在本次两个已实现累充处理器的单位修复范围内。
+- 98620 和 92001 的部分高档奖励还包含宠物、皮肤、圣器等尚无独立持久化处理器的资源类型。`grantResources` 会拒绝这些奖励并回滚整个领取事务，不会出现“扣领取状态或只发一部分奖励”的假成功；这是奖励系统覆盖边界，与本次金额和活动窗口口径修复分开记录。
+- `activity-read-service.test.mjs` 的 schema v8 备份夹具不会被 v7 迁移重新写入 `serverOpenedAt`，测试现会在副本上显式固定开服时间，消除依赖旧夹具状态的偶发失败。
+
+### 验证
+
+- `node --test test/acc-recharge-service.test.mjs`：7/7 通过。
+- `node --test test/hundred-acc-service.test.mjs`：5/5 通过。
+- `node --test test/welfare-service.test.mjs`：5/5 通过。
+- `npm test`：worktree 206/206 通过；合并到 main 后因并行新增迁移测试，合并结果 207/207 通过。
+- 使用 `analysis/tools/backup-sqlite.mjs` 对运行库做 SQLite 一致备份，`integrity_check=ok`、`user_version=8`，源备份 SHA256 为 `f12d6a9b7824d7613ad5a7e1e13e540932f63e66759c4c0b09b8608dec091c26`。备份前 `activity_claims` 仅有序号 1，与真实日志一致。
+- 在备份副本上实例化修复后的服务并领取档位 2：成功新增 `activity_claims.task_id=2`，模块 166 的 `reward_list` 变为档位 `[1,2]`，发放 `101500×300` 与 `1501200×1`。关闭并重开副本后重复领取档位 2 返回预期的 310。证据在 `analysis/experiments/private-server-20261025/p3/hundred-acc-expired-20261031-111901/simulation-check.local-only.json`。
+- 当前运行库仍只有 `activity_claims.task_id=1`，确认本次备份与仿真没有写入真实运行库。
+
+### 验收边界
+
+当前服务 PID 38544 仍运行旧代码，修复尚未部署，因此真实客户端再次点击档位 2 仍会命中旧行为。部署后从本 worktree 重启服务，并由用户重新登录、点击档位 2 后，才能记录为真实客户端验收；预期看到档位 2 领取成功、模块 166 新增 `group_id=2`、`activity_claims` 新增 `task_id=2`，以及上述两项奖励变化。本次仅修改服务端，不修改 APK，不需要更新 APK 快照或 `apk/README.md`。
