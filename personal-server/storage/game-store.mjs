@@ -64,7 +64,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 6) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 7) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -95,8 +95,16 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
       get_money_num TEXT NOT NULL DEFAULT '0', wait_fish_json TEXT NOT NULL DEFAULT '{}',
       buy_limit_info_json TEXT NOT NULL DEFAULT '{}', progress_state TEXT NOT NULL DEFAULT 'AA==',
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,act_id));
+    CREATE TABLE IF NOT EXISTS activity_purchases (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), activity_id INTEGER NOT NULL,
+      kind TEXT NOT NULL CHECK(kind IN ('gift','shop')), product_id INTEGER NOT NULL,
+      buy_num INTEGER NOT NULL CHECK(buy_num>0), price_item_tid INTEGER NOT NULL,
+      price_amount INTEGER NOT NULL CHECK(price_amount>=0), request_id TEXT NOT NULL,
+      payload_json TEXT NOT NULL, created_at TEXT NOT NULL,
+      PRIMARY KEY(role_id,kind,request_id));
     CREATE INDEX IF NOT EXISTS game_mails_role_idx ON game_mails(role_id,deleted,send_time);
     CREATE INDEX IF NOT EXISTS voucher_grants_role_idx ON voucher_grants(role_id,claimed_at);
+    CREATE INDEX IF NOT EXISTS activity_purchases_product_idx ON activity_purchases(role_id,activity_id,kind,product_id);
   `);
   const writeModel = model => {
     const { state, role, heroInfo, resources, lineups, playLineups } = model;
@@ -199,6 +207,14 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec }) 
         db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('fishing-activity-state-v6', 'add-persistent-fishing-island-state', new Date().toISOString());
         db.exec('PRAGMA user_version=6; COMMIT');
         version = 6;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 7) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('pet-activity-commerce-v7', 'add-activity-shop-and-gift-purchases', new Date().toISOString());
+        db.exec('PRAGMA user_version=7; COMMIT');
+        version = 7;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

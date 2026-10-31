@@ -140,9 +140,9 @@ export function createWelfareService({ store, codec, tables, wallet, now = Date.
   async function purchaseGift(request, context) {
     if (!wallet?.purchaseGift) throw new GameError(5, 'Local wallet is not configured');
     const productId = Number(request.recharge_id), buyNum = Number(request.buy_num ?? 1);
-    if (!Number.isSafeInteger(productId) || buyNum !== 1) throw new GameError(1, 'Invalid gift purchase');
+    if (!Number.isSafeInteger(productId) || !Number.isSafeInteger(buyNum) || buyNum < 1) throw new GameError(1, 'Invalid gift purchase');
     const result = wallet.purchaseGift({ product_id: productId, request_id: 'gift:' + context.connection + ':' + context.seq, buy_num: buyNum });
-    const value = { recharge_id: productId, time: result.time, res: result.res, extra_ret_list: [] };
+    const value = { recharge_id: productId, time: result.time, res: result.res, extra_ret_list: result.extra_ret_list ?? [] };
     return { value, data: codec.pack('res_buy_or_Rev_gift', value) };
   }
 

@@ -17,6 +17,8 @@ import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
+import { createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
+import { createPetActivityService } from './pet-activity-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
@@ -24,8 +26,22 @@ import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../ga
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
-export function createLocalGame({ databasePath, statePath, capturePath, verifySession, sprintPreview = false, localWallet = false, missionFightPlayback = false, logger = () => {} }) {
+export function createLocalGame({
+  databasePath,
+  statePath,
+  capturePath,
+  verifySession,
+  serverOpenedAt,
+  activityMode = 'all-open',
+  currentFishingActivityId,
+  sprintPreview = false,
+  localWallet = false,
+  missionFightPlayback = false,
+  now = Date.now,
+  logger = () => {}
+}) {
   const codec = createGameCodec(), { root, pack, unpack } = codec;
+  const clock = () => Number(now());
   function seed() {
     const capture = JSON.parse(fs.readFileSync(capturePath));
     const template = capture.privateFlows.find(x => x.messageId === 'game:tcp-69:s2c:103')?.decoded;
@@ -34,12 +50,20 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     const role = unpack('to_client_role_info', rawBinary(modules.get(2)));
     role.nick_name = Buffer.from('Local Adventurer');
     role.res = { changes: [] };
-    return { version: 1, roleId: 100001, serverId: 1, createdAt: Math.floor(Date.now() / 1000) - 86400,
+    return { version: 1, roleId: 100001, serverId: 1, createdAt: Math.floor(clock() / 1000) - 86400,
       seedSource: 'offline captured early-game structural fixture; independent local test save',
       modules: template[2], rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
   }
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec });
   const heroTables = readHeroTables(), tables = readGameTables();
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: serverOpenedAt ?? store.state().createdAt,
+    mode: activityMode,
+    currentFishingActivityId,
+    now: clock
+  });
+  const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const ranks = createRankService({ codec });
@@ -49,8 +73,8 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
   const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
-  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger}):undefined;
-  const welfare=createWelfareService({store,codec,tables,wallet,logger});
+  const wallet=localWallet?createWalletService({store,codec,tables,voucher,publish,logger,petActivity,now:() => Math.floor(clock() / 1000)}):undefined;
+  const welfare=createWelfareService({store,codec,tables,wallet,petActivity,logger,now:clock});
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables});
   const itemBox=createItemBoxService({store,codec,tables,logger});
@@ -60,15 +84,48 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     const state = store.state();
     const list = revive(state.modules);
     const modules = new Map(list.value);
-    const now = Math.floor(Date.now() / 1000);
-    const loginTime = pack('pb_login_time', { last_login: now, last_logout: now - 1, day_count: 1, create_time: state.createdAt, online_time: 0 });
+    const loginMilliseconds = clock();
+    const loginSeconds = Math.floor(loginMilliseconds / 1000);
+    const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: 1, create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, state.createdAt, binary('Local Server'), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
-    return encodeEtf([1, [Date.now(), 28800, 1], new E.OtpErlangList([...modules], false), false]);
+    let activity;
+    try {
+      const source = new Map(state.modules.value).get(92);
+      activity = source ? unpack('pb_act_login', rawBinary(source)) : { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+    } catch (error) {
+      logger({ event: 'activity_login_parse_failed', message: error.message });
+      activity = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+    }
+    const beforeActivityIds = new Set([
+      ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+      ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
+    ]);
+    const schedule = calendar.applyLoginSchedule(activity, loginSeconds);
+    const petLogin = await petActivity.synchronizeLogin(activity, loginSeconds);
+    const afterActivityIds = new Set([
+      ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+      ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
+    ]);
+    modules.set(92, binary(pack('pb_act_login', activity)));
+    if (petLogin) modules.set(petActivity.moduleId, binary(petLogin.module));
+    else modules.delete(petActivity.moduleId);
+    logger({
+      event: 'activity_login_calendar_applied',
+      activityMode: calendar.mode,
+      serverOpenedAt: calendar.serverOpenedAt,
+      serverDay: serverDayNumber(calendar.serverOpenedAt, loginSeconds),
+      fishingActivityIds: schedule.fishingActivityIds,
+      petActivityId: petLogin?.actId ?? null,
+      petShopId: petLogin?.shopId ?? null,
+      removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
+      addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
+    });
+    return encodeEtf([1, [loginMilliseconds, 28800, 1], new E.OtpErlangList([...modules], false), false]);
   }
   async function mailArgument(data) {
     const decoded = await decodeEtf(data);
@@ -298,7 +355,10 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           if (args.length < 3) throw new GameError(1, 'Invalid voucher recharge payload');
           productId = Number(args[0]);
           const options = rechargeOptions(args[1]);
-          const itemTid = Number(args[2]);
+          const requestedItemTid = Number(args[2]);
+          // RechargeMgr sends zero when the player chooses normal wallet
+          // payment. A positive value means vouchers were explicitly selected.
+          const itemTid = requestedItemTid > 0 ? requestedItemTid : undefined;
           const order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_item_tid: itemTid, extra_buy: options.is_extra_buy });
           send(seq);
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
@@ -398,17 +458,28 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
         send(seq, pack(responseType.name, { process_list: requestData.req_list })); return;
       }
       if (type === 1202) {
-        // Hall entry asks for shop ids. Answer the requested ids with empty local groups; local shop
-        // purchases stay unimplemented instead of inventing goods or prices.
         let shopIds = [];
         try {
           const decoded = await decodeEtf(request.data);
           const value = decoded?.value ?? decoded;
           if (Array.isArray(value)) shopIds = value.filter(id => Number.isSafeInteger(id) && id > 0).slice(0, 32);
         } catch {}
-        const shops = shopIds.map(id => ({ id, version: 0, items_groups: [] }));
+        const shops = petActivity.queryShops(shopIds);
         send(seq, pack('pb_query_shops_back', { shops }));
-        log({ event: 'shop_info_sent', type, seq, shopCount: shops.length }); return;
+        log({ event: 'shop_info_sent', type, seq, shopCount: shops.length, petShopId: shops.find(shop => Number(shop.id) === 5070005)?.id ?? null }); return;
+      }
+      if (type === 1201) {
+        try {
+          const requestData = unpack('pb_req_buy_shop_item', request.data);
+          const result = petActivity.purchaseShop(requestData, { connection: id, seq });
+          send(seq, result.data);
+          log({ event: 'pet_activity_shop_purchase_committed', type, seq, shopId: requestData.shop_id, itemId: requestData.shop_item_id, count: requestData.count, duplicate: result.duplicate });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'pet_activity_shop_purchase_rejected', type, seq, code, message: error.message });
+        }
+        return;
       }
       if (type === 85901) {
         try {
@@ -416,10 +487,27 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
           // buy_times drives the client's remaining-purchase badge. Mirror the
           // same recharge_orders count that wallet purchase limits enforce.
           const buyCounts = store.inspect(db => new Map(db.prepare('SELECT product_id, count(*) AS n FROM recharge_orders GROUP BY product_id').all().map(row => [Number(row.product_id), Number(row.n)])));
-          const gift_list = actives.map(active => ({
-            act_tid: active.act_tid,
-            buy_list: (active.gift_id ?? []).map(rechargeTid => ({ recharge_tid: rechargeTid, buy_times: buyCounts.get(Number(rechargeTid)) ?? 0 }))
-          }));
+          const activityState = petActivity.loginActivity();
+          const runningIds = new Set([
+            ...(activityState.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+            ...(activityState.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
+          ]);
+          const pausedIds = new Set((activityState.act_pause_list ?? []).map(Number));
+          const gift_list = actives.flatMap(active => {
+            const actId = Number(active.act_tid);
+            if (!runningIds.has(actId) || pausedIds.has(actId) || !calendar.isActivityRunning(actId, null, activityState)) return [];
+            const petCfg = tables.PetActivity?.get(actId);
+            const configuredGifts = petCfg ? new Set((tables.GiftShop?.get(Number(petCfg.gift))?.gift ?? []).map(Number)) : null;
+            const requestedGifts = (active.gift_id ?? []).map(Number).filter(id => !configuredGifts || configuredGifts.has(id));
+            if (!requestedGifts.length) return [];
+            return [{
+              act_tid: actId,
+              buy_list: requestedGifts.map(rechargeTid => ({
+                recharge_tid: rechargeTid,
+                buy_times: petCfg ? petActivity.giftPurchaseCount(rechargeTid) : (buyCounts.get(rechargeTid) ?? 0)
+              }))
+            }];
+          });
           send(seq, pack('pb_recommend_gift_active_rsp', { gift_list }));
           log({ event: 'recommend_gift_active_sent', type, seq, giftCount: gift_list.length, buyCount: gift_list.reduce((sum, gift) => sum + gift.buy_list.length, 0), boughtCount: gift_list.reduce((sum, gift) => sum + gift.buy_list.filter(buy => buy.buy_times > 0).length, 0) });
         } catch (error) {
@@ -450,7 +538,7 @@ export function createLocalGame({ databasePath, statePath, capturePath, verifySe
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher,
+    root, loginPayload, store, wallet, mail, voucher, calendar, petActivity, tables,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

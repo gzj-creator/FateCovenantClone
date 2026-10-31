@@ -1,0 +1,6 @@
+{
+  "_comment": "Use all-open for local feature testing; switch mode to schedule to restore server-day gating.",
+  "mode": "all-open",
+  "serverOpenedAt": "2026-10-24T05:00:00+08:00",
+  "currentFishingActivityId": 1074011
+}

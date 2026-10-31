@@ -1,5 +1,7 @@
 # 本机客户端兼容组件原型
 
+2026-10-31 活动修复 worktree：新增配置文件驱动的开服活动日历，并将超凡魔灵活动 `83028` 的登录数据、`module 83`、专属商城 `5070005`、九款现世礼包和 `85901` 推荐礼包状态接到同一活动开关。当前 `personal-server/config/activity-calendar.json` 使用 `all-open` 供测试；改为 `schedule` 后按 `serverOpenedAt` 和活动表的时间字段过滤。免费、资源与钱包礼包均支持限购和幂等。组件及临时 TCP 已验证，尚未部署到实时服务，真实 APK 待验收；详见[实现记录](../agent/workflow/pet-activity/implementation.md)。
+
 2026-10-28 更新：新增代金券机制（分支 `feature/voucher-mail`）。管理端可通过游戏邮件发放代金券，玩家在游戏内领取后道具 `701500` 进入背包；原生 `16004 req_recharge_by_token` 按 `price / score_token_rate` 自动计算张数并抵扣，管理端 `/api/purchase` 支持按金额部分抵扣。SQLite schema v3 新增 `voucher_skus`、`game_mails`、`voucher_grants`、`voucher_redemptions`；组件测试 **112/112** 通过。真实 APK 的邮件领取与 16004 支付尚未验收。方案、协议证据、接口与限制见[代金券邮件与抵扣实现](../agent/workflow/voucher-mail/implementation.md)。
 
 2026-10-26 部署后复修：用户实测“点击摆脱追兵显示配置出错了”“进入大厅显示服务器错误”。证据确认客户端 `Err.CONFIG_ERROR=5`（即该文案），且 `MissionUIMgr` 普通关卡只编码 `mission_fight_req{mission_id,is_assistant}`，`chapter_tid/section_idx` 不上线；201 校验已改为 `mission_id>0` 即普通关卡。大厅 1202 `req_shops_info` 按请求 shop id 返回空商品组，53002 活动阶段同步与 53001 一致返回空变更，消除进入大厅的未实现错误。统一测试 **103/103** 通过；证据、边界与未验收状态见[修复记录](../agent/workflow/fixes/mission-fight.md)与[hall-entry](../agent/workflow/fixes/hall-entry.md)。商店购买、真实活动阶段推进仍未实现。

@@ -91,7 +91,7 @@ test('unlocks a configured fishing island, grants its first reward and persists'
   assert.deepEqual(reopened.data.unlock_map_list, ['1']);
   assert.deepEqual(reopened.res.changes, []);
   assert.equal(resource(env.store, 101500), beforeDiamond + 1000n);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 6);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 7);
   assert.ok(env.store.inspect(db => db.prepare('SELECT name FROM migrations WHERE name=?').get('fishing-activity-state-v6')));
 });
 
