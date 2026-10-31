@@ -363,8 +363,7 @@ test('mission sweep rejects invalid, unswept and unaffordable requests without m
   const request = (tid, times) => codec.pack('pb_mission_sweep_passed_req', { tid, times });
 
   assert.throws(() => env.service.execute(503, request(30202, 0)), error => error.code === 1);
-  assert.throws(() => env.service.execute(503, request(30202, 11)), error => error.code === 1);
-  assert.throws(() => env.service.execute(503, request(30202, 100)), error => error.code === 1);
+  assert.throws(() => env.service.execute(503, request(30202, 601)), error => error.code === 1);
   assert.throws(() => env.service.execute(503, request(999999, 1)), error => error.code === 5);
   assert.throws(() => env.service.execute(503, request(30202, 1)), error => error.code === 5);
   assert.deepEqual(env.store.state(), before);
@@ -392,16 +391,21 @@ test('mission sweep response encoding failure rolls back stamina and rewards', t
   assert.deepEqual(env.store.state(), before);
 });
 
-test('mission sweep applies the current client one-key boundary', t => {
+test('mission sweep accepts the client stamina-derived count above the legacy ten-key batch', t => {
   const env = setup(t);
   setMission(env.store, 40210);
-  addResource(env.store, 100012900, 50);
+  addResource(env.store, 100012900, 3005);
   const request = times => codec.pack('pb_mission_sweep_passed_req', { tid: 30202, times });
 
-  const response = codec.unpack('pb_mission_sweep_passed_rsp', env.service.execute(503, request(10)).data);
-  assert.equal(response.sweep_award.length, 10);
-  assert.equal(env.store.read().resources.get('100012900').num, '0');
-  assert.throws(() => env.service.execute(503, request(11)), error => error.code === 1);
+  // EnergyConst.max is 3000 and SweepConst.cost_num is 5. The current client
+  // can therefore emit counts through 600, even though the legacy one-key
+  // form normally sends 10.
+  assert.throws(() => env.service.execute(503, request(601)), error => error.code === 1);
+  const first = codec.unpack('pb_mission_sweep_passed_rsp', env.service.execute(503, request(99)).data);
+  assert.equal(first.sweep_award.length, 99);
+  const second = codec.unpack('pb_mission_sweep_passed_rsp', env.service.execute(503, request(501)).data);
+  assert.equal(second.sweep_award.length, 501);
+  assert.equal(env.store.read().resources.get('100012900').num, '5');
 });
 
 test('mission fight playback stays disabled until a real action stream exists', t => {

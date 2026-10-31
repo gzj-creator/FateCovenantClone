@@ -59,17 +59,21 @@
   `pb_mission_sweep_passed_rsp`。
 - 校验请求节点已通关、次数合法、`Sweep` 奖励和 `SweepConst` 消耗配置有效。
 - 在单一事务内扣除扫荡券并发放配置奖励，返回最终资源变化和逐次奖励组。
-- 客户端 `MissionSweepMgr.lua` 将 `DEFAULT_MULTI_SWEEP_COUNT` 编译为常量 `10`，
-  `MissionSweepSweepForm._CalcSweepCount()` 原样返回该值，`_SweepOneKey` 用它发起
-  一键扫荡；`SweepMission` 还会按体力把请求降为可支付次数。`SweepConst` 表本身
-  没有次数上限字段，因此服务端把当前 APK 的允许边界设为 1–10；该值属于当前客户端
-  兼容边界，不声明为所有未来客户端的永久协议上限。
+- 客户端 `MissionSweepMgr.lua` 将旧版
+  `MissionSweepSweepForm` 的 `DEFAULT_MULTI_SWEEP_COUNT` 编译为常量 `10`；
+  `_CalcSweepCount()` 原样返回该值，`_SweepOneKey` 用它发起旧界面的固定十连。
+- 同一 APK 还有 `MissionNewSweepForm`。该界面没有数量滑块或 `99` 常量，而是由
+  `GetCanSweepTimes()` 按当前体力除单次消耗，再由 `StartLoopSweep()` 用
+  `math.min` 限制每次 `Sweep()`；旧界面的 `10` 不是全客户端的协议上限。
+- 当前配置 `EnergyConst[100012900].max=3000`、`SweepConst.cost_num=5`，因此新版
+  动态路径可达到 600 次。服务端边界改为从配置推导，覆盖 99 并拒绝超过 600 的次数；
+  protobuf 的 `uint32` 只能证明字段可编码 99，不能证明界面提供固定 99 次。
 - 当前表内 76 个可扫荡节点都是确定性奖励；存在随机奖励配置时明确拒绝，不伪造掉落。
 
 ## 验证
 
 - 四项功能提交后为 **210/210 通过**；合入最新 main 与 hundred-schools 后为
-  **228/228 通过**。
+  **228/228 通过**；修正扫荡动态上限后为 **229/229 通过**。
 - 定向测试覆盖真实 TCP 636、ETF 82601、PB 640、PB 503、SQLite 重开、资源不足、
   重复请求、非法配置和编码失败回滚。
 - 640 网关测试使用真实客户端的 `res:[{tid:"821502"}]` 形状。
@@ -105,3 +109,12 @@
 - `2026-10-31T06:40:52Z` 隔离客户端自动重连；握手、登录、module 146 下发及活动同步均成功，
   未见 `LOCAL_NOT_IMPLEMENTED`、`AddRemoteLoad` 或连接错误。部署本身未调用四项业务写接口，
   因此没有替用户消费资源。
+
+## 2026-10-31 扫荡次数边界修正
+
+- 发现旧 `1–10` 检查只覆盖了 `MissionSweepSweepForm`，会误拒新版
+  `MissionNewSweepForm` 按体力动态生成的批次；不能把旧界面按钮次数当作协议上限。
+- 服务端现在读取 `EnergyConst`，按 `floor(max / cost_num)` 得到当前配置上限
+  `floor(3000 / 5) = 600`。99 次有自动测试覆盖，601 次在扣资源和发奖前拒绝。
+- `mission-fight-service.test.mjs` 定向测试 16/16 通过，personal-server 全量测试
+  **229/229 通过**。
