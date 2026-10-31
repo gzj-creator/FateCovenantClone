@@ -7,6 +7,7 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
+import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
 import { createRankService } from './rank-service.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -97,6 +98,7 @@ export function createLocalGame({
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
+  const cabin = createCabinService({ store, codec, heroTables });
   const ranks = createRankService({ codec, store });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
@@ -140,6 +142,7 @@ export function createLocalGame({
     guildRoster.ensureLoginState();
     norseRune.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
+    cabin.ensureLoginState();
     rechargeBonus.synchronize();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
@@ -154,6 +157,7 @@ export function createLocalGame({
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
+    modules.set(CAMPSITE_MODULE_ID, binary(cabin.loginPayload()));
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
     let activity;
     try {
@@ -632,6 +636,19 @@ export function createLocalGame({
         }
         return;
       }
+      if (cabin.supports(type)) {
+        try {
+          const input = type === 83201 ? await decodeEtf(request.data) : unpack('pb_campsite_place', request.data);
+          const result = cabin.execute(type, input?.value ?? input);
+          send(seq, result.data);
+          log({ event: 'cabin_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'cabin_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (recruit.supports(type)) {
         try {
           let input;
@@ -850,7 +867,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, petActivity, heroDrawActivity, wishTreasure, tables, magicCircle, norseRune,
+    root, loginPayload, store, wallet, mail, voucher, calendar, handbook, guildRoster, petActivity, heroDrawActivity, wishTreasure, tables, magicCircle, norseRune, cabin,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

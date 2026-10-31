@@ -1,5 +1,7 @@
 # Personal-server workflow
 
+2026-11-01：[船舱模块 114 解锁与上阵](cabin/implementation.md)。已实现 83201 req_unlock_cell、83202 re_place_hero 的一键多组提交、同批原子换位和登录模块 114 按等级重建；10 个服务测试和真实临时 TCP 网关测试通过，全量 326/326。尚未部署，未做 APK/UI 验收；房间升级、任务、交互、奖励领取和加速没有协议证据，保持未实现。
+
 2026-10-31：[限购礼包错误日志 ID 修复](fixes/purchase-limit-error.md)。`wallet-service` 原先先查余额后查限购，售罄且余额不足时 QuickSDK 误报 `301/80000`；现已调整为先限购后余额，真实本机 SDK 对已售罄 `40010` 返回 `307/80001`，全量 `275/275` 通过，实时服务 PID 以 `server.local-only.json` 为准。
 
 2026-10-31：[特聘券购买扣钻但券不即显修复](fixes/recruit-purchase-ticket-sync.md)。type 599 购买已在服务端事务扣星钻并写入特聘券 `3002`，但物品发放的 `pb_res_change` 缺少 `new_bin`，客户端 `AwardKit.Parse` 无法即时建立或刷新资源对象。物品发放回包现附完整 `pb_res_obj { tid, num }`；普通/特聘买券回归均校验解码后的新数量，最新 `main@5e354e7` 合并后全量 `271/271` 通过，worktree 服务 PID `18688`，真实 APK 再次购买验收待用户操作。
