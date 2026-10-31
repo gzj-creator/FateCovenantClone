@@ -396,8 +396,6 @@ export function createWalletService({
         if (old.product_id !== product_id || (oldPayload.voucher_quantity ?? 0) !== quote.quantity) throw new GameError(1, 'Purchase request ID already used');
         return { ...oldPayload, duplicate: true };
       }
-      const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
-      if (balance < quote.balance_cents) throw new GameError(301, 'Account balance is insufficient');
       const limitModules = new Map(model.state.modules.value);
       let dailyPlan = null;
       if (product.can_buy_times > 0) {
@@ -422,6 +420,11 @@ export function createWalletService({
           if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
         }
       }
+      // Check the purchase allowance before the wallet. A sold-out gift must
+      // keep returning 307 even when the previous purchase left no balance;
+      // otherwise QuickSDK shows the unrelated insufficient-balance message.
+      const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
+      if (balance < quote.balance_cents) throw new GameError(301, 'Account balance is insufficient');
       const weekPurchase = dailyPlan && weekHunt
         ? weekHunt.resolvePurchase({ modules: limitModules, product, extraBuy: dailyPlan.additional, period, dayIndex: day_index, at: purchasedAt })
         : null;
@@ -602,7 +605,6 @@ export function createWalletService({
       if (!walletRow) throw new GameError(5, 'Local wallet is not configured');
       const balance = walletRow.balance_cents;
       const chargeCents = Number(product.pay_type) === 0 ? balancePrice : 0;
-      if (balance < chargeCents) throw new GameError(301, 'Account balance is insufficient');
 
       if (product.can_buy_times > 0) {
         if (heroGift) {
@@ -617,6 +619,7 @@ export function createWalletService({
           if (purchaseCount + buy_num > product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
         }
       }
+      if (balance < chargeCents) throw new GameError(301, 'Account balance is insufficient');
 
       const order = 'local-' + randomUUID();
       const createdAt = new Date(purchasedAt * 1000).toISOString();
