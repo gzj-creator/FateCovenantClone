@@ -86,7 +86,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 10) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 11) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -129,10 +129,26 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
       price_amount INTEGER NOT NULL CHECK(price_amount>=0), request_id TEXT NOT NULL,
       payload_json TEXT NOT NULL, created_at TEXT NOT NULL,
       PRIMARY KEY(role_id,kind,request_id));
+    CREATE TABLE IF NOT EXISTS cms_questions (
+      question_id TEXT PRIMARY KEY, cms_tid INTEGER NOT NULL CHECK(cms_tid>0),
+      title TEXT NOT NULL, link TEXT NOT NULL, award TEXT NOT NULL DEFAULT '',
+      start_time INTEGER NOT NULL CHECK(start_time>=0),
+      end_time INTEGER NOT NULL CHECK(end_time>start_time),
+      enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),
+      created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS guild_nation_assists (
+      assist_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL,
+      requester_role_id TEXT NOT NULL, target_type INTEGER NOT NULL,
+      target_id INTEGER NOT NULL, max_num INTEGER NOT NULL CHECK(max_num>0),
+      assist_num INTEGER NOT NULL DEFAULT 0 CHECK(assist_num>=0 AND assist_num<=max_num),
+      finish_time INTEGER NOT NULL CHECK(finish_time>0),
+      target_lv INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS game_mails_role_idx ON game_mails(role_id,deleted,send_time);
     CREATE INDEX IF NOT EXISTS voucher_grants_role_idx ON voucher_grants(role_id,claimed_at);
     CREATE INDEX IF NOT EXISTS activity_purchases_product_idx ON activity_purchases(role_id,activity_id,kind,product_id);
     CREATE INDEX IF NOT EXISTS pending_rewards_role_idx ON pending_rewards(role_id,status,item_tid);
+    CREATE INDEX IF NOT EXISTS cms_questions_active_idx ON cms_questions(cms_tid,enabled,start_time,end_time);
+    CREATE INDEX IF NOT EXISTS guild_nation_assists_active_idx ON guild_nation_assists(guild_id,finish_time,assist_num,max_num);
   `);
   const writeModel = model => {
     const { state, role, heroInfo, resources, lineups, playLineups } = model;
@@ -330,6 +346,14 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('pending-rewards-v10', 'retain rewards for unsupported gameplay domains', new Date().toISOString());
         db.exec('PRAGMA user_version=10; COMMIT');
         version = 10;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 11) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('login-business-reads-v11', 'add CMS questions and guild nation assist reads', new Date().toISOString());
+        db.exec('PRAGMA user_version=11; COMMIT');
+        version = 11;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

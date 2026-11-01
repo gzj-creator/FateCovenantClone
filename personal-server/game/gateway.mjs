@@ -21,6 +21,8 @@ import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
+import { createCmsService } from './cms-service.mjs';
+import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
@@ -366,6 +368,8 @@ export function createLocalGame({
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
   const itemBox=createItemBoxService({store,codec,tables,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
+  const cms=createCmsService({codec,store,tables,now:clock});
+  const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
@@ -777,6 +781,33 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'activity_read_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (cms.supports(type)) {
+        try {
+          const cmsTid = await singleIdArgument(request.data, 'Invalid CMS type');
+          const result = cms.execute(cmsTid);
+          send(seq, result.data);
+          log({ event: 'cms_questions_sent', type, seq, cmsTid, questionCount: result.value.question_list.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'cms_questions_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (guildNationAssist.supports(type)) {
+        try {
+          const unexpected = await etfArgument(request.data, 'Invalid guild nation assist-list payload', { optional: true });
+          if (unexpected !== null) throw new GameError(1, 'Guild nation assist list takes no parameters');
+          const result = guildNationAssist.execute(null);
+          send(seq, result.data);
+          log({ event: 'guild_nation_assist_list_sent', type, seq, guildId: result.guildId, assistCount: result.value.list.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guild_nation_assist_list_rejected', type, seq, code, message: error.message });
         }
         return;
       }
@@ -1465,6 +1496,7 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, monthPermit, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin,
+    cms, guildNationAssist,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

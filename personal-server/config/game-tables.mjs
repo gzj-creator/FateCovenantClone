@@ -63,6 +63,9 @@ export function readGameTables() {
     }),
     // Welfare activities expose their configuration through these generated tables.
     Activity: readGeneratedTables(new URL('ActivityTable.data.lua.json', base), ['Activity']).Activity,
+    // CMS type 1 is the questionnaire channel. The row supplies the protobuf
+    // schema used by the client; individual valid-time windows live in SQLite.
+    Cms: readGeneratedTables(new URL('CmsTable.data.lua.json', base), ['Cms']).Cms,
     // The pet activity owns both its exclusive currency shop and recharge gift
     // family. Keep the generated names explicit so those two code paths cannot
     // mix them with the ordinary mall tables.
