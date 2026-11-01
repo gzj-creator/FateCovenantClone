@@ -194,3 +194,24 @@
 ### 验收边界
 
 登录载荷和真实客户端重连日志已确认正确修复，仍需用户打开累充活动页面做最终视觉验收。本轮未操作客户端页面，未修改 APK，因此不需要更新 APK 快照或 `apk/README.md`。
+
+## 2026-11-01 all-open 累充进度始终为 0
+
+用户反馈最新一笔充值完成后，累充奖励页面仍显示 `0`。本轮在独立 worktree `F:\projects\FateCovenantClone\.worktree\acc-recharge-zero-20261101`（分支 `fix/acc-recharge-zero-20261101`，基线 `c9fe486`）处理；未停止或重启当前服务，也未操作用户客户端。
+
+### 账本与根因
+
+- 运行库模块 19 的权威累计值为 `417400` 分（`¥4174`）；最新真实订单 `local-29bf2425-ed4e-4957-bd41-8240ccf365eb`（商品 14、`19800` 分、代金券支付）已写入当日 `recharge_record`。因此充值流水和金额没有丢失，故障在客户端可见的活动日期区间。
+- 当前服务为 `all-open` 测试模式，但 `accRecharge.synchronizeLogin()` 新建活动运行态时仍使用配置中的计划开始时间。`106036`（新服累充 3 期）计划开始为 2026-11-06，`106037`（4 期）为 2026-11-13，均晚于当前 2026-11-01。
+- 客户端 `AccRechargeActMgr.GetAccRechargeCnt()` 把该运行态开始日作为下界，再用 `RechargeMgr.GetDayRangeAmount(startDay, today)` 汇总；未来开始日大于今天，区间为空，所以页面一直显示 0。领取处理器在 `all-open` 下直接汇总账号全部记录，故会出现“领取校验有金额、页面进度始终为 0”的不一致。
+
+### 修复与验证
+
+- `personal-server/game/acc-recharge-service.mjs` 在 `all-open` 模式把累充活动运行态 `enter_time` 固定为服务开服时间；已有未来计划开始时间的历史运行态也会在登录同步时纠正。schedule 模式继续使用真实配置窗口。
+- `personal-server/test/acc-recharge-service.test.mjs` 新增回归，覆盖首次同步生成可覆盖已有充值日的区间，以及已有未来开始时间被修复为开服时间。
+- `node --test personal-server/test/acc-recharge-service.test.mjs`：`13/13` 通过。
+- 当前 worktree 的全量命令仍暴露其他既有测试失败；本次变更相关的累充文件及其真实 TCP `98620` 用例全部通过，未将跨模块返回值误记为本修复失败。
+
+### 部署边界
+
+当前运行服务仍加载旧代码。部署后需要重启服务并让客户端重新登录，登录日志应出现 `acc_recharge_login_synchronized actIds=[106036,106037]`；打开累充活动应显示至少 `¥4174` 的可见进度。真实客户端视觉验收前，本次只记为组件与登录载荷修复完成。仅修改服务端，不修改 APK，无需更新 APK 快照或 `apk/README.md`。

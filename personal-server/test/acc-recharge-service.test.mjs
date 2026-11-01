@@ -208,6 +208,40 @@ test('all-open cumulative recharge uses account-wide records for a future-schedu
   assert.equal(e.store.inspect(db => db.prepare("SELECT count(*) n FROM activity_claims WHERE act_id=106037 AND task_id=37001105 AND period='v37'").get().n), 1);
 });
 
+test('all-open login exposes a populated date range for cumulative recharge progress', async t => {
+  const e = setup(t, tables, 'all-open');
+  setAwardState(e.store, 106036, Buffer.alloc(100));
+  setAwardState(e.store, 106037, Buffer.alloc(100));
+  const activity = loginActivity(e.store);
+  activity.act_list = activity.act_list.filter(entry => ![106036, 106037].includes(Number(entry.state_data?.act_id)));
+  activity.act_parallel_list = activity.act_parallel_list.flatMap(group => {
+    const states_data = (group.states_data ?? []).filter(state => ![106036, 106037].includes(Number(state.act_id)));
+    return states_data.length ? [{ ...group, states_data }] : [];
+  });
+  const at = WINDOW.start + 3600;
+  const record = { day_index: dayIndex(SERVER_OPENED_AT), recharge_ids: [11], amount: 6800 };
+  e.setRechargeRecords([record]);
+
+  await e.service.synchronizeLogin(activity, at);
+  const entries = activity.act_list.filter(entry => [106036, 106037].includes(Number(entry.state_data?.act_id)));
+  assert.equal(entries.length, 2);
+  for (const entry of entries) {
+    const rangeStartDay = dayIndex(Number(entry.state_data.history_time[0].enter_time));
+    const rangeEndDay = dayIndex(at);
+    assert.equal(rangeStartDay, dayIndex(SERVER_OPENED_AT));
+    assert.equal(rangeStartDay <= record.day_index && record.day_index <= rangeEndDay, true);
+  }
+
+  // A payload persisted before this fix may already contain the future
+  // scheduled start. Login synchronization must repair that stale value too.
+  for (const entry of entries) entry.state_data.history_time[0].enter_time = WINDOW.start;
+  await e.service.synchronizeLogin(activity, at);
+  for (const id of [106036, 106037]) {
+    const entry = activity.act_list.find(candidate => Number(candidate.state_data?.act_id) === id);
+    assert.equal(Number(entry.state_data.history_time[0].enter_time), SERVER_OPENED_AT);
+  }
+});
+
 test('wallet purchases accumulate in the 98620 activity day range', t => {
   const e = setup(t);
   const wallet = createWalletService({ store: e.store, codec, tables, now: () => WINDOW.start });

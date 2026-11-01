@@ -169,9 +169,18 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
       if (!Array.isArray(entry.state_data.history_time)) entry.state_data.history_time = [];
       let runningState = entry.state_data.history_time.find(item => Number(item?.state_id) === RUNNING_STATE_ID);
       if (!runningState) {
-        const enterTime = Number(activityWindow(act, serverOpenedAt)?.start ?? at);
+        const enterTime = activityMode === 'all-open'
+          ? serverOpenedAt
+          : Number(activityWindow(act, serverOpenedAt)?.start ?? at);
         runningState = { state_id: RUNNING_STATE_ID, enter_time: enterTime };
         entry.state_data.history_time.push(runningState);
+      } else if (activityMode === 'all-open') {
+        // Future-scheduled test activities still need a client date range that
+        // includes the account's existing recharge records. The claim handler
+        // intentionally sums account-wide records in all-open mode, so expose
+        // that same range from server opening to now instead of the future
+        // scheduled start (which made the progress display stay at zero).
+        runningState.enter_time = serverOpenedAt;
       }
       const awardState = String(row.award_state ?? '');
       entry.module_login_data = wrapEtfBinary(codec.pack('pb_acc_recharge', {
