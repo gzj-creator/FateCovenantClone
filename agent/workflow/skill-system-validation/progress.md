@@ -12,23 +12,22 @@
    - Created `tools/extract-skill-metadata.mjs`
    - Successfully parsed 76 heroes and 1062 skills from catalog
    - Generated `personal-server/config/skill-database.json`
-   - Generated `analysis/reports/skill-discrepancies.json` (1268 discrepancies)
-   - All discrepancies currently marked as MISSING_FROM_METHOD_TABLE
+   - Generated `analysis/reports/skill-discrepancies.json` (1268 discrepancies initially)
+   - All discrepancies initially marked as MISSING_FROM_METHOD_TABLE
 
-3. **Phase 2: MethodTable Parsing (In Progress)**
-   - Launched Agent a97d77e557ee3399e to parse MethodTable.data.lua.json
-   - Agent tasks:
-     - Analyze Lua bytecode structure
-     - Extract skill IDs and parameters
-     - Cross-reference with catalog
-     - Update skill database with implementation details
-     - Create reusable parsing tool `tools/parse-method-table.mjs`
-   - Expected deliverables:
-     - Updated skill-database.json with implementation details
-     - Refined skill-discrepancies.json
-     - MethodTable parsing tool
-     - Documentation: `agent/workflow/skill-system-validation/methodtable-parsing.md`
-     - Summary of findings
+3. **Phase 2: MethodTable Parsing (Completed)**
+   - ✅ Launched Agent a97d77e557ee3399e to parse MethodTable.data.lua.json
+   - ✅ **Key Finding**: MethodTable does NOT contain skill data - it contains UI/guide condition predicates (260 entries) and dynamic UI value definitions (308 entries)
+   - ✅ **Correction**: Real skill implementation data lives in FightTable.Ability (10466 rows) + FightTable.AbilityDes (5655 rows)
+   - ✅ **Cross-reference results**:
+     - 508 unique skill IDs in catalog
+     - 504 resolved in FightTable.Ability (only 4 normal-profession fallbacks missing)
+     - 437 resolved in FightTable.AbilityDes (71 missing, all 69100010xx ids)
+     - 0 type mismatches
+   - ✅ **Refined discrepancies**: 68 total (all MISSING_ABILITY_DESCRIPTION for 69100010xx skills + 4 fallbacks)
+   - ✅ **Updated skill-database.json**: All 1062 skill references now have implementation data (986 from FightTable, 76 project-fallback)
+   - ✅ **Created tool**: `tools/parse-method-table.mjs` with parseMethodTable() and parseSkillImplementation()
+   - ✅ **Created documentation**: `agent/workflow/skill-system-validation/methodtable-parsing.md`
 
 4. **Phase 3: Skill Effect System Design (Completed)**
    - Created comprehensive design document `agent/workflow/skill-system-validation/effect-system-design.md`
@@ -47,10 +46,13 @@
 
 ### ⏳ Pending
 
-1. **Phase 2 Completion** (Waiting for Agent)
-   - MethodTable parsing results
-   - Updated skill database
-   - Refined discrepancies report
+1. **Phase 2b: FightTable Deep Dive** (New)
+   - Parse FightTable.Effect (707 rows) to understand effect parameters
+   - Parse FightTable.Buff (5423 rows) to understand buff mechanics
+   - Correlate Effect/Buff tables to skills (discover join key)
+   - Extract damage/healing/shield multipliers from Effect table
+   - Extract buff durations, stacking, trigger timing from Buff table
+   - Resolve 71 missing 69100010xx descriptions (determine if they use different des table)
 
 2. **Phase 4: Skill Implementation by Hero Tier**
    - Tier 1: 16 core roster heroes
@@ -83,13 +85,20 @@
 
 ## Next Steps
 
-1. **Wait for MethodTable parsing agent** to complete
-2. **Review MethodTable parsing results**
-3. **Begin Phase 3 implementation** (effect system)
+1. **Phase 2b: FightTable Deep Dive** (Immediate priority)
+   - Parse FightTable.Effect to extract effect parameters and multipliers
+   - Parse FightTable.Buff to extract buff mechanics (duration, stacking, triggers)
+   - Discover join key between Effect/Buff tables and skills
+   - Resolve 71 missing 69100010xx descriptions
+   - Update skill-database.json with effect/buff data
+
+2. **Phase 3: Implement Effect System** (After FightTable deep dive)
    - Start with core effect types (damage, heal, shield)
    - Implement effect executor
    - Integrate with battle engine
-4. **Start Tier 1 hero implementation** (once effect system is ready)
+   - Add unit tests
+
+3. **Start Tier 1 Hero Implementation** (Once effect system is ready)
    - Begin with 吟游诗人 (1010101) as proof of concept
    - Validate against catalog
    - Roll out to remaining Tier 1 heroes
@@ -108,7 +117,19 @@
 - Total heroes: 76
 - Guide-visible heroes: 76
 - Total skills: 1062
-- Unique skill IDs: 530
-- Discrepancies identified: 1268 (all MISSING_FROM_METHOD_TABLE pending MethodTable parsing)
+- Unique skill IDs: 508
+- Skills with Ability data: 504 (98.4%)
+- Skills with AbilityDes data: 437 (86.0%)
+- Skills with full implementation data: 437 (86.0%)
+- Discrepancies: 68 (all MISSING_ABILITY_DESCRIPTION for 69100010xx skills)
+- Type mismatches: 0
 - Heroes with implemented skills: 0
-- Skills with implementation details: 0
+- Skills with effect system implementation: 0
+
+## Key Data Sources Discovered
+
+- **FightTable.Ability**: 10466 rows (tid, type, dmg_type, effect_type, run_type)
+- **FightTable.AbilityDes**: 5655 rows (tid, type_des, show_name, skill_icon, text, detail_text)
+- **FightTable.Effect**: 707 rows (effect parameters - not yet correlated)
+- **FightTable.Buff**: 5423 rows (buff mechanics - not yet correlated)
+- **MethodTable**: 260 Method entries + 308 DynamicArgs entries (UI/guide conditions, NOT skill data)
