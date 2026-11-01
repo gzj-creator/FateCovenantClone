@@ -375,6 +375,8 @@ function evaluateConditionKey(key, unit, allUnits, state) {
       return true;
     case 'round-3':
       return (state && (state.round === 3 || state.round === undefined));
+    case 'round-1':
+      return (state && (state.round === 1 || state.round === undefined));
     default:
       return true;
   }
