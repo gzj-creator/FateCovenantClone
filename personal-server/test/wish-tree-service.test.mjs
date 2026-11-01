@@ -213,3 +213,25 @@ test('purchaseGift records WishTree purchases on the server day', t => {
   assert.deepEqual(rowOf(env.store, 2).buy_day_list, [String(day(fixedAt))]);
   assert.equal(rowOf(env.store, 2).can_wish_count, '1');
 });
+
+test('ensureLoginState corrects can_wish_count when it exceeds the actual claimable quota', t => {
+  const env = setup(t);
+  insertOrders(env);
+  env.wishTree.ensureLoginState();
+  const type2 = rowOf(env.store, 2);
+  assert.equal(type2.can_wish_count, '3');
+
+  // Simulate a corrupted state where can_wish_count is artificially high
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const info = codec.unpack('pb_wish_tree_new', rawBinary(modules.get(WISH_TREE_MODULE)));
+    info.data_list.find(row => Number(row.type) === 2).can_wish_count = '10';
+    modules.set(WISH_TREE_MODULE, serializedBinary(codec.pack('pb_wish_tree_new', info)));
+    model.state.modules.value = [...modules];
+  });
+  assert.equal(rowOf(env.store, 2).can_wish_count, '10');
+
+  // ensureLoginState should correct the value back to the actual claimable quota
+  env.wishTree.ensureLoginState();
+  assert.equal(rowOf(env.store, 2).can_wish_count, '3');
+});

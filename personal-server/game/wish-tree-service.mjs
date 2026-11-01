@@ -175,7 +175,7 @@ export function createWishTreeService({ store, codec, tables, now = Date.now, lo
           changed = true;
         }
         const claimable = Math.max(0, normalizedDays.length - row.normal_times);
-        if (Number(row.can_wish_count) < claimable) {
+        if (Number(row.can_wish_count) !== claimable) {
           row.can_wish_count = String(claimable);
           changed = true;
         }
@@ -206,7 +206,8 @@ export function createWishTreeService({ store, codec, tables, now = Date.now, lo
     if (!row.buy_day_list.includes(String(purchaseDay))) {
       row.buy_day_list.push(String(purchaseDay));
       row.buy_day_list.sort((a, b) => Number(a) - Number(b));
-      row.can_wish_count = String(Number(row.can_wish_count) + 1);
+      const claimable = Math.max(0, row.buy_day_list.length - Number(row.normal_times));
+      row.can_wish_count = String(claimable);
       changed = true;
       log({ event: 'wish_tree_purchase_recorded', type, day: purchaseDay, canWishCount: row.can_wish_count });
     }
