@@ -6,6 +6,7 @@ Original client com.jzyx.my, version 1.55.090365 / 362155; device 127.0.0.1:1644
 - [Not implemented C2S interfaces](not-implemented-interfaces.md): current server routing audit, explicit refusals, placeholders and the complete unrouted backlog.
 - [Machine-readable catalog](interfaces.json): schemaVersion 2, with a recordings array preserving individual hashes, counters, sources and handshake modes.
 - [Equipment 1001/1002/1006 contract](equipment-1001-1002-1006.md): request/response fields for upgrade, forge and wear; static-only.
+- [Shop, equip and suit-box config tables](config-table-evidence.md): the tables behind 1001/1002/1006, 1203/1204/1206/1208 and 155, with what is now provable and what still needs runtime evidence.
 - [HTTP](http-interfaces.md), [TCP and controls](tcp-commands.md), [pushes](server-pushes.md).
 - [Static evidence](static-evidence.md), [login](../capture-workflow/login-decode.md), [battle and lineup](../capture-workflow/battle-and-lineup.md), [hero progression](../capture-workflow/hero-progression.md).
 - [Multiple recordings](../capture-workflow/multiple-recordings.md): registration, staging and acceptance.

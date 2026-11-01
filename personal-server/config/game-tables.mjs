@@ -6,7 +6,13 @@ export function readGameTables() {
   if (cached) return cached;
   const tables = {
     // Item box rules: the client picks the use command from ItemTable.Type.obj_class.
-    ...readGeneratedTables(new URL('ItemTable.data.lua.json', base), ['Item', 'Type', 'Chip', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box']),
+    // OptionalSuitBox/OptionalSuitRes drive the suit boxes whose use path is
+    // ItemCmd.use_selected_suit_box (155): the box row lists the selectable
+    // suits, each suit row owns the fixed award_list that gets granted.
+    ...readGeneratedTables(new URL('ItemTable.data.lua.json', base), [
+      'Item', 'Type', 'Chip', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box',
+      'OptionalSuitBox', 'OptionalSuitRes', 'OptionalSuitType'
+    ]),
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
     ...pick(readGeneratedTables(new URL('DrawTable.data.lua.json', base), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
     ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), [
