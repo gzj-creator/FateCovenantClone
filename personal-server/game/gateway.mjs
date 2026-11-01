@@ -1136,6 +1136,11 @@ export function createLocalGame({
           let input = {};
           if (type === 1001) input = unpack('pb_equip_level_up_req', request.data);
           else if (type === 1002) input = unpack('pb_equip_forge_req', request.data);
+          else if (type === 1003) {
+            const decoded = await decodeEtf(request.data);
+            input = decoded?.value ?? decoded;
+          } else if (type === 1004) input = unpack('pb_equip_refine_one_key_req', request.data);
+          else if (type === 1005) input = unpack('pb_equip_inscription_req', request.data);
           else if (type === 1006) input = unpack('pb_equip_wear_req', request.data);
           const result = equip.execute(type, input);
           send(seq, result.data);
