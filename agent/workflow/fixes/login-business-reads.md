@@ -1,6 +1,6 @@
 # 登录期 CMS 与公会国家协助读取
 
-状态：代码、数据库迁移、组件测试和临时 TCP 网关验证通过；待合入 `main` 后部署及客户端复验。
+状态：代码、数据库迁移、组件测试和真实 TCP 网关验证通过；已部署到隔离服务并完成客户端复验，代码已合入 `main`。
 
 ## 现象与证据
 
@@ -27,9 +27,18 @@
 - schema v11 测试同时验证旧 v10 备份可迁移，迁移标记存在。
 - `gameplay-gateway.test.mjs` 在本分支和同一 `main` 基点的对照 worktree 都得到相同的 3 个既有数据夹具失败（鱼饵 50/25、线性任务 `err=310`、WishTree 外键）；本功能使用独立真实 TCP 测试验证，不依赖这些失败用例。
 
-## 部署前置
+## 部署与验收
+
+- 部署前一致备份：`analysis/experiments/private-server-20261025/p3/login-business-reads-20261101/game.before-deploy.local-only.sqlite`，380,928 字节，SHA256 `9d322a6547b2e4a69fdbcf5a98378316e6e1fe20d815243eddeaae6903c4012b`；备份 schema v10，`integrity_check=ok`，未包含 v11 新表。
+- 部署后运行库 schema v11，存在 `cms_questions` 和 `guild_nation_assists`，`integrity_check=ok`。
+- 2026-11-01 21:23:59 启动隔离服务 PID 48212；`18880/18881/18882/18883/19090` 均只监听 `127.0.0.1`，监听进程均为 48212。
+- 客户端 21:24 自动重连后，服务日志记录 `99229` 的 `guild_nation_assist_list_sent`（当前公会 `900001`、0 条）和 `89501` 的 `cms_questions_sent`（CMS tid 1、0 条）；同连接未再出现这两条命令的 `unsupported_command` 或 `rejected`。
+- 针对 21:23:55 之后的 ADB logcat 检索，未发现目标命令的新 `业务请求服务器异常`、`SERVER ERROR` 或 `LOCAL_NOT_IMPLEMENTED`。截图 `analysis/experiments/private-server-20261025/p3/login-business-reads-20261101/client-after-fix-20261101.png` 显示登录已进入充值商店，没有错误弹窗。
+- 同次登录日志仍有与这两个业务读取无关的既有 Lua 登录完成异常（模块 538 精灵养成、`GuildExploreTaskMgr`、`GuildWarRedDotMgr`）；本次不把它们计作已修复，也未将其误判为 `89501/99229` 失败。
+- 本次只修改服务端，无需更新 APK 快照。
+
+## 后续部署复验
 
 - 部署前对运行库执行含 WAL 的一致备份并核对 `integrity_check=ok`。
-- 重启后必须确认 `18880/18881/18882/18883/19090` 只监听 loopback，服务日志不再出现 `unsupported_command 89501/99229`。
-- 客户端复验中不应再出现对应 `业务请求服务器异常` 或由这两条命令打开的新 `ShowMsgView`。
-- 本次只修改服务端，无需更新 APK 快照。
+- 重启后确认五个端口只监听 loopback，且日志没有目标两条命令的新 `unsupported_command`。
+- 客户端重登后确认没有由 `89501/99229` 触发的新 `业务请求服务器异常` 或错误弹窗。
