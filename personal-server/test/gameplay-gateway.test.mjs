@@ -244,26 +244,28 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(achievementPush.data_list.length, 1);
   assert.equal(achievementPush.data_list[0].stat_tid, 75);
 
-  // Demigod resident recruitment buys the missing ticket and performs the
-  // requested draw atomically. AwardKit reads the result from pb_res_to_client;
-  // there is no separate 10101 state push in this protocol.
+  // Demigod resident recruitment buys a ticket first. The client then emits
+  // 601/draw_lib=226 for the actual draw and animation path.
   game.store.transaction(model => { model.resources.get('101500').num = '2000'; });
+  const demigodModuleBefore = new Map(game.store.state().modules.value).get(518);
+  const demigodDrawBefore = codec.unpack('pb_fantasy_draw', rawBinary(demigodModuleBefore.value[2]));
+  const demigodEquipCountBefore = codec.unpack('pb_fantasy_equip_res', rawBinary(demigodModuleBefore.value[0])).equips.length;
   response = await request(87618, 17, await encodeEtf([1]));
   assert.equal(response.err, undefined);
   const demigodPurchase = codec.unpack('pb_fantasy_equip_draw_buy_rsp', Buffer.from(response.data, 'base64'));
-  assert.deepEqual(demigodPurchase.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+  assert.deepEqual(demigodPurchase.res.changes.map(change => [change.tid, change.diff_num]), [
     ['101500', '-400'],
-    ['808002', '0']
+    ['808002', '1']
   ]);
   const demigodTicket = codec.unpack('pb_res_obj', Buffer.from(demigodPurchase.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
   assert.equal(demigodTicket.tid, '808002');
-  assert.equal(Number(demigodTicket.num ?? 0), 0);
-  assert.equal(demigodPurchase.res.changes.filter(change => change.extra).length, 1);
-  assert.equal(demigodPurchase.draw.left_buy_times, 9);
-  assert.equal(demigodPurchase.draw.total_draw_times, '1');
+  assert.equal(Number(demigodTicket.num ?? 0), 1);
+  assert.equal(demigodPurchase.res.changes.some(change => change.extra), false);
+  assert.equal(demigodPurchase.draw.left_buy_times, demigodDrawBefore.left_buy_times - 1);
+  assert.equal(demigodPurchase.draw.total_draw_times, demigodDrawBefore.total_draw_times);
   const demigodModule = new Map(game.store.state().modules.value).get(518);
-  assert.equal(codec.unpack('pb_fantasy_draw', rawBinary(demigodModule.value[2])).total_draw_times, '1');
-  assert.equal(codec.unpack('pb_fantasy_equip_res', rawBinary(demigodModule.value[0])).equips.length, 1);
+  assert.equal(codec.unpack('pb_fantasy_draw', rawBinary(demigodModule.value[2])).total_draw_times, demigodDrawBefore.total_draw_times);
+  assert.equal(codec.unpack('pb_fantasy_equip_res', rawBinary(demigodModule.value[0])).equips.length, demigodEquipCountBefore);
   game.store.transaction(model => {
     const modules = new Map(model.state.modules.value), module = modules.get(518);
     const draw = codec.unpack('pb_fantasy_draw', rawBinary(module.value[2]));

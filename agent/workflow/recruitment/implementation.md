@@ -157,3 +157,14 @@ npm test --prefix .\personal-server
 - 部署前使用 `VACUUM INTO` 生成一致备份 `analysis/experiments/private-server-20261025/p3/recruit-pity-demigod-20261031/game.before-pity-demigod-fix.local-only.sqlite`：360,448 字节，SHA256 `032E7298B89725F56A5BF51D3EF4FBB9AE2E2F3DBF5C254CB8B410B69F32B3F0`，schema v10，`integrity_check=ok`。
 - 已从 worktree `F:\projects\FateCovenantClone\.worktree\recruitment-guarantee-demigod-20261031` 重启个人服务。未重启客户端；客户端自动重连。实时 PID `35640`，`startedAt=2026-10-31T14:41:31.479Z`，`18880/18881/18882/18883/19090` 均由该 PID 仅监听 `127.0.0.1`，stderr 为空。启动后数据库中的特聘记录已为 `tid=1011,draw_lib=10`，当前 `draw_count=9,guaranteed_count=0`；`4002=0`、`808002=0`、`101500=7050`，半神累计抽取 10 次。
 - 客户端视觉验收待用户完成：特聘连续普通品质抽取时保底剩余数应下降；特聘券购买后应立即显示；半神星钻补券并抽取后应显示幻武结果且招募按钮状态恢复。本次未修改 APK，按持久规则无需新增 APK 快照。
+
+## 2026-11-01 招募四项问题修复
+
+- 工作目录为 `.worktree/recruit-20261101`，分支 `fix/recruit-20261101`，修复基线已 rebase 到 `main@5297c28`。
+- 问题 1 按用户最终要求保留客户端原始展示逻辑，不修改 Lua、APK、重复 SSR 的结果展示或动画触发条件。
+- 问题 2 的最终规则限定在特聘池：只有本次抽中 `wish_hero_list` 中已选目标时，才清零 `guaranteed_count/high_guaranteed_count`；抽到非目标 SSR，或尚未选择目标时抽到 SSR，都继续累计。冒险、友情和独立心愿库仍按原品质规则刷新 SSR 保底。
+- 问题 3 将半神 `87618` 收紧为“仅购券”：按数量扣除星钻、增加 `808002`、更新 `left_buy_times`，不再在同一请求内消费券或生成幻武。购券成功后由客户端原有 `601/draw_lib=226` 路径消费券并触发招募展示；定向测试覆盖购券持久化、随后抽取、幻武 `extra`、模块 518 更新和 `10101` 推送。
+- 问题 4 的冲榜领取按 `TaskType.data` 定位模块 21 中对应的统计数据槽，并按 `stat_expand` 汇总指定 ID；日重置类型按当天 `count_list[0]`，其他类型按 `total`。活动开放时间仍统一使用 `calendar.serverOpenedAt`，详见 [sprint-claim-expired.md](../fixes/sprint-claim-expired.md)。
+- 回归验证：招募、半神共享抽取与圣器网关定向测试 `45/45`；钱包和冲榜领取定向测试 `18/18`；`git diff --check` 通过。全量测试此前存在与本轮无关的既有数据库基线失败，不能用全量失败否定上述定向结果。
+- 部署前使用 `VACUUM INTO` 备份数据库到 `analysis/experiments/private-server-20261025/p3/recruit-fixes-20261101/game-before.local-only.sqlite`；大小 376,832 字节，SHA256 `2938D351ADABC9D10C32E4CDA12F7CC8424C382472705FDE1866672B9BD7D742`，源库与备份的 `PRAGMA integrity_check` 均为 `ok`。
+- 问题 3 版本曾从本 worktree 以 PID `24048` 启动，五个端口均由该 PID 在 `127.0.0.1` 监听，隔离客户端自动完成握手和登录，stderr 为空。随后公共五端口被另一工作树的服务接管；最终问题 2 的代码已通过测试和提交，真实客户端视觉验收仍以实际接管的最终服务版本为准。

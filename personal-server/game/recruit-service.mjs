@@ -27,7 +27,6 @@ const ACHIEVEMENT_AWARD_INTERVAL = 1000;
 const DEMIGOD_DRAW_NORMAL_TID = 1;
 const DEMIGOD_DRAW_HERO_TID = 226;
 const DEMIGOD_MODULE_ID = 518;
-const DEMIGOD_EQUIP_RES_INDEX = 0;
 const DEMIGOD_FORMATION_INDEX = 1;
 const DEMIGOD_DRAW_INDEX = 2;
 const LEADER_EQUIP_MODULE_ID = 175;
@@ -505,31 +504,13 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
     model.state.demigodDraw = state.draw;
   }
 
-  function demigodEquipState(model, state) {
-    const bytes = Buffer.from(state.module.value[DEMIGOD_EQUIP_RES_INDEX]?.value?.data ?? []);
-    const value = bytes.length ? codec.unpack('pb_fantasy_equip_res', bytes) : {};
-    value.equips = Array.isArray(value.equips) ? value.equips : [];
-    value.raw_equips = Array.isArray(value.raw_equips) ? value.raw_equips : [];
-    value.max_equip_id = nonNegativeInteger(value.max_equip_id);
-    return value;
-  }
-
-  function writeDemigodEquipState(model, state, equipRes) {
-    state.module.value[DEMIGOD_EQUIP_RES_INDEX] = serializedBinary(codec.pack('pb_fantasy_equip_res', equipRes));
-    state.modules.set(DEMIGOD_MODULE_ID, state.module);
-    model.state.modules.value = [...state.modules];
-  }
-
   function demigodRequest(input) {
     const raw = input?.value ?? input;
     if (Array.isArray(raw)) return demigodRequest(raw[0] ?? {});
     if (raw && typeof raw === 'object') {
-      return {
-        buyCount: n(raw.buy_count ?? raw.buyCount ?? raw.count ?? raw.num ?? 0),
-        drawCount: raw.draw_count ?? raw.drawCount ?? raw.draw_num ?? raw.drawNum
-      };
+      return { buyCount: n(raw.buy_count ?? raw.buyCount ?? raw.count ?? raw.num ?? 0) };
     }
-    return { buyCount: n(raw), drawCount: undefined };
+    return { buyCount: n(raw) };
   }
 
   function demigodWishSlots(totalDrawTimes) {
@@ -546,134 +527,44 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
       .filter(row => fantasyEquipTables.FantasyEquip.has(row.tid));
   }
 
-  function chooseDemigodEquip(state, equipRes, seconds) {
-    requireDemigodConfig();
-    const total = n(state.draw.total_draw_times);
-    const unlocked = demigodUnlockedEquips(total);
-    if (!unlocked.length) fail(5, 'Demigod draw pool is unavailable');
-    const guaranteedConfig = heroTables.Guaranteed.get(Number(heroTables.Draw.get(DEMIGOD_DRAW_HERO_TID)?.guaranteed));
-    const guaranteeThreshold = nonNegativeInteger(guaranteedConfig?.guaranteed_num);
-    const wishSet = new Set(state.draw.wish_list);
-    const wishCandidates = unlocked.filter(row => wishSet.has(row.tid));
-    const guaranteed = guaranteeThreshold > 0 && (total + 1) % guaranteeThreshold === 0;
-    let wished = false;
-    if (!guaranteed && wishCandidates.length && demigodWishSlots(total) > 0) {
-      const ratios = (demigodBuyConfig.wish_ratio ?? []).map(Number).filter(value => Number.isFinite(value) && value >= 0);
-      const index = Math.min(state.draw.wish_fail_times, Math.max(0, ratios.length - 1));
-      const chance = ratios.length ? ratios[index] : 0;
-      wished = chance >= 10000 || randomUnit(random) * 10000 < chance;
-    }
-    let selected;
-    if (guaranteed) {
-      const bestWeight = Math.max(...unlocked.map(row => row.weight));
-      selected = unlocked
-        .filter(row => row.weight === bestWeight)
-        .sort((left, right) => left.tid - right.tid)[0];
-    } else {
-      selected = pickRandom(wished ? wishCandidates : unlocked, random);
-    }
-    if (wished) state.draw.wish_fail_times = 0;
-    else if (state.draw.wish_list.length) state.draw.wish_fail_times += 1;
-
-    let maxUid = equipRes.max_equip_id;
-    for (const equip of equipRes.equips) maxUid = Math.max(maxUid, nonNegativeInteger(equip.uid));
-    if (maxUid >= 2147483647) fail(5, 'Demigod equipment uid limit reached');
-    const uid = maxUid + 1;
-    equipRes.max_equip_id = uid;
-    const config = fantasyEquipTables.FantasyEquip.get(selected.tid);
-    const item = tables.Item.get(Number(selected.tid));
-    if (!config || !item) fail(5, 'Demigod equipment configuration is missing');
-    const equip = {
-      tid: String(selected.tid),
-      uid: String(uid),
-      level: '1',
-      star: '0',
-      star_node: '0',
-      break_level: '0',
-      quality: String(item.quality ?? 0),
-      // FantasyEquip.bless is the list of star levels that unlock blessing
-      // slots. The instance field stores owned blessing equipment uids, so a
-      // freshly drawn item starts with an empty list.
-      bless: [],
-      level_exp: '0'
-    };
-    equipRes.equips.push(equip);
-    state.draw.total_draw_times = total + 1;
-    return { equip, wished, guaranteed, tid: selected.tid };
-  }
-
   function buyDemigodDraw(model, input, seconds) {
     requireDemigodConfig();
     if (input === undefined || input === null) fail(1, 'Invalid demigod draw request');
     const request = demigodRequest(input);
-    const buyCount = integer(request.buyCount, 0, 5, 'Invalid demigod ticket purchase quantity');
+    const buyCount = integer(request.buyCount, 1, 5, 'Invalid demigod ticket purchase quantity');
     const ticketTid = Number(demigodBuyConfig.buy_award);
     const costTid = Number(demigodBuyConfig.buy_cost_item);
     const unitPrice = Number(demigodBuyConfig.buy_price);
     const dailyMax = Number(demigodBuyConfig.buy_daily_max_num);
     const totalMax = Number(demigodBuyConfig.buy_max_num);
-    const heroDraw = heroTables.Draw.get(DEMIGOD_DRAW_HERO_TID);
-    if (!ticketTid || !costTid || !(unitPrice > 0) || !(dailyMax > 0) || !(totalMax > 0) || Number(heroDraw?.cost_item?.[0]) !== ticketTid) {
+    if (!ticketTid || !costTid || !(unitPrice > 0) || !(dailyMax > 0) || !(totalMax > 0)) {
       fail(5, 'Demigod draw configuration is missing');
     }
 
     const state = demigodDrawState(model, seconds);
-    const ticketBalance = BigInt(model.resources.get(String(ticketTid))?.num ?? 0);
-    const drawCount = request.drawCount === undefined
-      ? (buyCount === 0 || ticketBalance + BigInt(buyCount) >= 5n ? 5 : 1)
-      : integer(n(request.drawCount), 1, 5, 'Invalid demigod draw count');
-    if (drawCount !== 1 && drawCount !== 5) fail(1, 'Invalid demigod draw count');
-
     const remainingDaily = Math.min(n(state.draw.left_buy_times), Math.max(0, dailyMax - state.purchases.daily));
     const remainingTotal = Math.max(0, totalMax - state.purchases.total);
     if (remainingDaily < buyCount || remainingTotal < buyCount) fail(305, 'Demigod ticket purchase limit reached');
-    if (ticketBalance + BigInt(buyCount) < BigInt(drawCount)) fail(301, 'Insufficient demigod draw ticket');
 
     const purchaseChanges = [];
-    if (buyCount > 0) {
-      purchaseChanges.push(...consumeResources(model, [[costTid, unitPrice * buyCount]], 301).changes);
-      purchaseChanges.push(...grantResources(model, [[ticketTid, buyCount]], tables).changes);
-      state.purchases.daily += buyCount;
-      state.purchases.total += buyCount;
-      state.draw.left_buy_times = remainingDaily - buyCount;
-      state.draw.refresh_stamp = startOfUtcDay(seconds);
-    }
-    purchaseChanges.push(...consumeResources(model, [[ticketTid, drawCount]], 301).changes);
-
-    const equipRes = demigodEquipState(model, state);
-    const results = [];
-    const equipChanges = [];
-    for (let index = 0; index < drawCount; index++) {
-      const result = chooseDemigodEquip(state, equipRes, seconds);
-      results.push(result);
-      equipChanges.push({
-        tid: String(result.tid),
-        new_num: '1',
-        diff_num: '1',
-        extra: codec.pack('pb_fantasy_equip', result.equip)
-      });
-    }
-    writeDemigodEquipState(model, state, equipRes);
+    purchaseChanges.push(...consumeResources(model, [[costTid, unitPrice * buyCount]], 301).changes);
+    purchaseChanges.push(...grantResources(model, [[ticketTid, buyCount]], tables).changes);
+    state.purchases.daily += buyCount;
+    state.purchases.total += buyCount;
+    state.draw.left_buy_times = remainingDaily - buyCount;
+    state.draw.refresh_stamp = startOfUtcDay(seconds);
     writeDemigodDrawState(model, state);
-    const demigodThreshold = Number(heroTables.Guaranteed.get(Number(heroDraw.guaranteed))?.guaranteed_num ?? 0);
-    upsertDrawRecord(model, {
-      lib: DEMIGOD_DRAW_HERO_TID,
-      drawCount: state.draw.total_draw_times,
-      guaranteedCount: demigodThreshold > 0 ? state.draw.total_draw_times % demigodThreshold : 0
-    });
     return {
       schema: 'pb_fantasy_equip_draw_buy_rsp',
-      value: { res: { changes: [...mergeResourceChanges(purchaseChanges, model, codec), ...equipChanges] }, draw: state.draw },
+      value: { res: { changes: mergeResourceChanges(purchaseChanges, model, codec), is_overflow: false }, draw: state.draw },
       valueForLog: {
         buyCount,
-        drawCount,
         ticketTid,
         costTid,
         unitPrice,
         leftBuyTimes: state.draw.left_buy_times,
         totalDrawTimes: state.draw.total_draw_times,
-        wishFailTimes: state.draw.wish_fail_times,
-        results: results.map(result => ({ tid: result.tid, uid: result.equip.uid, guaranteed: result.guaranteed, wished: result.wished }))
+        wishFailTimes: state.draw.wish_fail_times
       }
     };
   }
@@ -812,10 +703,13 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
       wishHero = candidates.length > 0;
     }
     const hero = choosePoolHero(pool, quality, random, wishHero ? candidates : null);
-    if (quality >= 50) {
+    // A targeted pool advances its pity only when the selected adventurer is
+    // actually drawn. Other pools keep their normal quality-based pity reset.
+    const resetsPity = pool.rule.wish ? wishHero : quality >= 50;
+    if (quality >= 50) state.daily_ssr_draw_num = (state.daily_ssr_draw_num ?? 0) + 1;
+    if (resetsPity) {
       state.guaranteed_count = 0;
       state.high_guaranteed_count = 0;
-      state.daily_ssr_draw_num = (state.daily_ssr_draw_num ?? 0) + 1;
     } else {
       state.guaranteed_count = nextCount;
       state.high_guaranteed_count = nextCount;

@@ -337,9 +337,22 @@ test('gateway preserves login blocks, routes every relic command, and pushes aft
   const demigodPush = await client.waitPush(9160);
   assert.equal(codec.unpack('pb_demigod_act_draw_back', Buffer.from(demigodPush.data, 'base64')).draw_num, 1);
 
+  const residentTicketBefore = BigInt(game.store.read().resources.get('808002')?.num ?? 0);
+  response = await client.request(87618, seq++, await encodeEtf([1]));
+  assert.equal(response.err, undefined);
+  const residentPurchase = codec.unpack('pb_fantasy_equip_draw_buy_rsp', Buffer.from(response.data, 'base64'));
+  assert.equal(residentPurchase.draw.left_buy_times, 6);
+  assert.equal(residentPurchase.draw.total_draw_times, '9');
+  assert.equal(residentPurchase.res.changes.some(change => change.extra), false);
+  assert.equal(BigInt(game.store.read().resources.get('808002').num), residentTicketBefore + 1n);
+
   response = await client.request(601, seq++, codec.pack('pb_draw_hero', { draw_lib: 226, point_draw_num: 1 }));
   assert.equal(response.err, undefined);
-  assert.equal(codec.unpack('hero_draw_back', Buffer.from(response.data, 'base64')).recruit_info.draw_lib, '226');
+  const residentDraw = codec.unpack('hero_draw_back', Buffer.from(response.data, 'base64'));
+  assert.equal(residentDraw.recruit_info.draw_lib, '226');
+  assert.equal(residentDraw.res.changes.some(change => change.tid === '808002' && change.diff_num === '-1'), true);
+  assert.equal(residentDraw.res.changes.filter(change => change.extra?.length).length, 1);
+  assert.equal(BigInt(game.store.read().resources.get('808002').num), residentTicketBefore);
   const fantasyPush = await client.waitPush(10101);
   assert.equal(codec.unpack('pb_fantasy_draw', Buffer.from(fantasyPush.data, 'base64')).total_draw_times, '10');
 
