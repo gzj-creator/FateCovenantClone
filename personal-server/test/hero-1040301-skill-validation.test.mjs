@@ -196,4 +196,3 @@ test('energy gain number is reasonable', () => {
   const result = executor.executeEnergy(effect, unit, unit);
   assert.ok(result.newEnergy >= 0 && result.newEnergy <= 1000);
 });
-"
