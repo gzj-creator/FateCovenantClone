@@ -7,10 +7,12 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
+import { createEquipService } from './equip-service.mjs';
 import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
 import { createRankService } from './rank-service.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
+import { readEquipTables } from '../config/equip-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from './wallet-service.mjs';
 import { createWelfareService } from './welfare-service.mjs';
@@ -323,6 +325,7 @@ export function createLocalGame({
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
+  const equip = createEquipService({ store, codec, tables: readEquipTables() });
   const cabin = createCabinService({ store, codec, heroTables });
   const ranks = createRankService({ codec, store });
   const features = createFeatureService({ store, codec, sprintPreview });
@@ -1125,6 +1128,22 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'fantasy_equipment_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (equip.supports(type)) {
+        try {
+          let input = {};
+          if (type === 1001) input = unpack('pb_equip_level_up_req', request.data);
+          else if (type === 1002) input = unpack('pb_equip_forge_req', request.data);
+          else if (type === 1006) input = unpack('pb_equip_wear_req', request.data);
+          const result = equip.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'equip_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'equip_rejected', type, seq, code, message: error.message });
         }
         return;
       }
