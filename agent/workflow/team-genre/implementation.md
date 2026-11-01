@@ -37,3 +37,13 @@
 - 真实本机 TCP 用例走完整握手和登录，确认模块 10 下标 8 返回当前周期，`91402` 返回 `pb_team_genre_award_rsp`，3 档发放 60 钻石，重复请求返回 `310`；同时覆盖 `91401`、`91403` 和 SQLite 重开持久化。
 
 上述验证属于组件与临时 TCP 验收。真实 APK 点击结果需部署后重新登录并点击热门阵容确认，页面成功反馈前不计用户验收。
+
+## 2026-11-01 合并与部署
+
+- `feature/team-genre-award-20261101` 已以快进方式合并到 `main`，提交 `6a7cba4 fix: implement team genre rewards`。
+- 合并后的 `main` 上，TeamGenre 与原有 TeamSuggest 定向测试 `10/10` 通过，包括 `91402` 的真实本机 TCP 用例。
+- 全量测试仍有任务、心愿树、礼包和若干网关既有用例失败；本次新增的 TeamGenre 用例均通过。其改动仅注册 `91401` 至 `91403`，未拦截其他命令。
+- 部署前使用 `VACUUM INTO` 创建一致快照 `analysis/experiments/private-server-20261025/p3/team-genre-award-20261101/game.before-team-genre-deploy.local-only.sqlite`，376,832 字节，SHA-256 `DC709FA266F5E0BFB69A860756FCE569AD889D11E663F24888501D56D78D178D`，schema v10，`integrity_check=ok`。
+- 服务于 `2026-11-01T07:17:22.159Z` 重启，PID `36616`，入口 `F:\projects\FateCovenantClone\personal-server\local-server.mjs`；五端口 `18880/18881/18882/18883/19090` 均由该 PID 监听且仅绑定 loopback，stderr 为空。
+- 客户端随后在 `07:17:40.157Z` 自动断线重连，握手成功并在 `07:17:40.488Z` 完成 146 模块登录。
+- 用户尚未在真实 APK 页面重新点击“圣堂控制流”的 20 钻石快捷领取，因此 UI 视觉验收仍待完成。成功标准为日志出现 `team_genre_command_committed type=91402`、无对应 `unsupported_command`、界面领取成功，且实时 SQLite 出现 `5402:5402:1..3` 并为钻石 `101500` 增加 60。
