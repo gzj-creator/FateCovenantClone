@@ -95,6 +95,14 @@ function monthlyCardInfo(store) {
   return codec.unpack('pb_monthly_card_info', rawBinary(new Map(store.state().modules.value).get(20)));
 }
 
+function diamondFundInfo(store) {
+  return codec.unpack('pb_diamond_fund', rawBinary(new Map(store.state().modules.value).get(532)));
+}
+
+function permanentCardInfo(store) {
+  return codec.unpack('pb_permanent_card', rawBinary(new Map(store.state().modules.value).get(62)));
+}
+
 function permitRows(store) {
   const moduleValue = new Map(store.state().modules.value).get(38);
   return moduleValue.value.flatMap(element => codec.unpack('pb_permit_data', rawBinary(element)).permit_list ?? []);
@@ -174,6 +182,75 @@ test('monthly card purchase writes login module 20, returns flag 5 and rejects a
 
   env.reopen();
   assert.deepEqual(monthlyCardInfo(env.store).card_list.map(row => [Number(row.id), Number(row.start_day)]), [[2, expectedDay]]);
+});
+
+test('diamond fund returns flag 76, persists its paid cycle and restores a missing module from the order', t => {
+  const env = setup(t);
+  env.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'diamond-fund-balance' });
+  const expectedCycle = FIXED_NOW + 15 * 86400;
+
+  env.wallet.buy({ product_id: 155001, request_id: 'diamond-fund-first' });
+  const purchase = latestPurchase(env);
+  const fundEvent = purchase.extra_ret_list.find(row => Number(row.flag) === 76);
+  assert.ok(fundEvent, 'expected the diamond fund-specific flag 76');
+  const pushedInfo = codec.unpack('pb_diamond_fund', Buffer.from(fundEvent.data, 'base64'));
+  assert.equal(Number(pushedInfo.steady.cycle_time), expectedCycle);
+  assert.deepEqual(pushedInfo.steady.buy_limit_info.buy_num_list.map(row => ({
+    recharge_id: Number(row.recharge_id),
+    buy_num: Number(row.buy_num),
+    refresh_time: Number(row.refresh_time)
+  })), [{ recharge_id: 155001, buy_num: 1, refresh_time: expectedCycle }]);
+  assert.deepEqual(diamondFundInfo(env.store), pushedInfo);
+
+  assert.throws(
+    () => env.wallet.buy({ product_id: 155001, request_id: 'diamond-fund-second' }),
+    error => error.code === 307
+  );
+
+  // Reproduce the already-paid order that reached disk with an empty module
+  // before flag-76 support was deployed. The next wallet construction must
+  // reconstruct the same active cycle from created_at.
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    modules.set(532, {
+      value: { type: 'Buffer', data: Array.from(codec.pack('pb_diamond_fund', {
+        steady: { day_award: [], day_award_history: [] },
+        fortune: { day_award: [], day_award_history: [] }
+      })) }
+    });
+    model.state.modules.value = [...modules];
+  });
+  env.reopen();
+  const restored = diamondFundInfo(env.store);
+  assert.equal(Number(restored.steady.cycle_time), expectedCycle);
+  assert.equal(Number(restored.steady.buy_limit_info.buy_num_list[0].recharge_id), 155001);
+  assert.equal(Number(restored.steady.buy_limit_info.buy_num_list[0].buy_num), 1);
+});
+
+test('permanent card purchase persists module 62, dispatches a recharge event and restores from the order', t => {
+  const env = setup(t);
+  env.wallet.credit({ account_id: 'local-1', amount_cents: 20000, request_id: 'permanent-card-balance' });
+
+  env.wallet.buy({ product_id: 490002, request_id: 'permanent-card-first' });
+  const purchase = latestPurchase(env);
+  assert.deepEqual(flags(purchase), [73]);
+  assert.deepEqual(permanentCardInfo(env.store).element_list.map(row => Number(row.tid)), [2]);
+  assert.throws(
+    () => env.wallet.buy({ product_id: 490003, request_id: 'permanent-card-discount-repeat' }),
+    error => error.code === 307
+  );
+
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    modules.set(62, {
+      value: { type: 'Buffer', data: Array.from(codec.pack('pb_permanent_card', {
+        element_list: [], record_list: [], free_endtime: 0
+      })) }
+    });
+    model.state.modules.value = [...modules];
+  });
+  env.reopen();
+  assert.deepEqual(permanentCardInfo(env.store).element_list.map(row => Number(row.tid)), [2]);
 });
 
 test('monthly card can be paid entirely with vouchers and publishes the same module 20 handoff', t => {

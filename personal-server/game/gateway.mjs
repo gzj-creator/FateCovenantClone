@@ -28,6 +28,7 @@ import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
+import { createPermitService } from './permit-service.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
@@ -358,9 +359,10 @@ export function createLocalGame({
   const timeTemple=createTimeTempleService({store,codec,publish});
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
+  const standardPermit=createPermitService({codec,tables,now:secondsClock});
   const monthPermit=createMonthPermitService({codec,tables});
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,monthPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
+    store,codec,tables,voucher,monthPermit,permitService:standardPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -656,6 +658,46 @@ export function createLocalGame({
         send(seq, await loginPayload()); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
+      if (type === 35001 || type === 35002 || type === 35005) {
+        try {
+          const permitId = Number(await etfArgument(request.data, 'Invalid standard permit payload'));
+          const result = store.transaction(model => type === 35001
+            ? standardPermit.claimFree({ model, permitId })
+            : type === 35002
+              ? standardPermit.claimPaid({ model, permitId })
+              : standardPermit.claimAll({ model, permitId }));
+          send(seq, pack('pb_permit_receive_back', result.response));
+          log({ event: 'permit_reward_committed', type, seq, permitId: result.permitId, level: result.level, levels: result.levels.map(row => Number(row.level)) });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'permit_reward_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (type === 105801 || type === 105803) {
+        try {
+          let actId;
+          let gearLvTid;
+          if (type === 105801) {
+            const requestData = unpackRequest('pb_month_permit_receive_req', request.data);
+            actId = requestData.tid;
+            gearLvTid = requestData.gear_lv_tid;
+          } else {
+            actId = request.data?.length ? await etfArgument(request.data, 'Invalid month permit payload', { optional: true }) : null;
+          }
+          const result = store.transaction(model => type === 105801
+            ? monthPermit.claimReward({ model, actId, gearLvTid })
+            : monthPermit.claimAll({ model, actId }));
+          send(seq, pack('pb_month_permit_receive_back', result.response));
+          log({ event: 'month_permit_reward_committed', type, seq, actId: result.actId, level: result.currentLevel, gearLvTids: result.claimed });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'month_permit_reward_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (type === 105802) {
         try {
           const requestData = unpackRequest('pb_month_permit_buy_exp_req', request.data);

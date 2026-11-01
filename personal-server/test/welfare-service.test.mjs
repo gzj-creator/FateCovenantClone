@@ -140,6 +140,43 @@ test('gift purchase records the purchase without adding it to recharge totals', 
   await assert.rejects(() => e.service.execute(16005, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 999999999, buy_num: 1 }), { connection: 'test', seq: 7 }), x => x.code === 5);
 });
 
+test('16005 monthly card purchase ignores unrelated UI context in extra_param', async t => {
+  const e = setup(t);
+  e.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'monthly-card-16005' });
+  const result = await run(e.service, 16005, 'pb_recharge_buy_or_rev_req', {
+    recharge_id: 140002,
+    extra_param: '{"from":"monthly-card","tab":1}',
+    buy_num: 1
+  });
+  const event = result.value.extra_ret_list.find(entry => Number(entry.flag) === 5);
+  assert.ok(event);
+  const monthly = codec.unpack('pb_monthly_card_info', event.data);
+  assert.deepEqual(monthly.card_list.map(row => Number(row.id)), [2]);
+  assert.equal(e.wallet.snapshot().accounts[0].balance_cents, 4000);
+});
+
+test('16005 passes fund, permanent card and both permit purchases through their specific handlers', async t => {
+  const e = setup(t);
+  e.wallet.credit({ account_id: 'local-1', amount_cents: 100000, request_id: 'payment-classes-16005' });
+  const products = [
+    [155001, 76],
+    [490002, 73],
+    [2000001, 9],
+    [1300071, 116]
+  ];
+  for (const [seq, [recharge_id, flag]] of products.entries()) {
+    const result = await run(e.service, 16005, 'pb_recharge_buy_or_rev_req', {
+      recharge_id,
+      extra_param: '{"from":"locked-apk","unrelated":true}',
+      buy_num: 1
+    }, seq + 1);
+    assert.ok(result.value.extra_ret_list.some(entry => Number(entry.flag) === flag), `product ${recharge_id} did not return flag ${flag}`);
+  }
+  assert.equal(e.wallet.snapshot().orders.length, products.length);
+  assert.equal(new Map(e.store.state().modules.value).has(532), true);
+  assert.equal(new Map(e.store.state().modules.value).has(62), true);
+});
+
 test('free daily gift ignores previous-day orders, resets at 05:00 and rebuilds the current-day limit', async t => {
   const e = setup(t);
   e.store.transaction((model, db) => {

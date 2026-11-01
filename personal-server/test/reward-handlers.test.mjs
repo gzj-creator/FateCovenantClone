@@ -82,7 +82,8 @@ test('preflight rejects unknown rewards and grants every dedicated family throug
 
   const awards = [
     [3030501, 1], [300610, 1], [157112, 1], [400313, 1], [141717, 1],
-    [1202919, 1], [400220, 1], [1030922, 2], [10063200, 1], [355708, 1], [400108, 1],
+    [1202919, 1], [400220, 1], [1030922, 2], [10063200, 1], [100108, 1], [200508, 1],
+    [355708, 1], [400108, 1],
     ...dedicatedContainerIds.map(id => [id, 1])
   ];
   store.transaction(model => grantResources(model, awards, tables, { codec }));
@@ -105,6 +106,8 @@ test('preflight rejects unknown rewards and grants every dedicated family throug
   for (const id of dedicatedContainerIds) assert.equal(store.read().resources.get(String(id))?.location?.[0], 6);
 
   const role = codec.unpack('to_client_role_info', Buffer.from(store.state().rolePb, 'base64'));
+  assert.equal(hasBit(Buffer.from(role.figure_have_info.stable_head_info, 'base64'), 1), true);
+  assert.equal(hasBit(Buffer.from(role.figure_have_info.stable_frame_info, 'base64'), 5), true);
   assert.equal(hasBit(Buffer.from(role.figure_have_info.stable_title_info, 'base64'), 557), true);
   assert.equal(hasBit(Buffer.from(role.figure_have_info.stable_bubble_info, 'base64'), 1001), true);
   assert.equal(store.read().resources.has('300610'), false);

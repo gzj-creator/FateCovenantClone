@@ -21,14 +21,26 @@ export function readGameTables() {
     // Monthly cards use login module 20. The primary recharge id maps each
     // product to one pb_monthly_card_info row and its active period.
     MonthlyCard: readGeneratedTables(new URL('MonthlyCardTable.data.lua.json', base), ['MonthlyCard']).MonthlyCard,
+    PermanentCard: readGeneratedTables(new URL('PermanentCardTable.data.lua.json', base), ['PermanentCard']).PermanentCard,
+    ...pick(readGeneratedTables(new URL('DiamondFundTable.data.lua.json', base), ['Type']), {
+      Type: 'DiamondFundType'
+    }),
     ...readGeneratedTables(new URL('OpenServerSprintTable.data.lua.json', base), ['SprintRankTask', 'SprintType']),
     // Monthly pass products are RechargeTable type=130 rows; the matching Gear row
     // binds a product to the activity version that owns its pay_list entry.
-    ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'Cycle', 'UpLv', 'BuyExp', 'TaskType', 'Task']), {
-      Gear: 'MonthPermitGear', Cycle: 'MonthPermitCycle', UpLv: 'MonthPermitUpLv', BuyExp: 'MonthPermitBuyExp', TaskType: 'MonthPermitTaskType', Task: 'MonthPermitTask'
+    ...pick(readGeneratedTables(new URL('MonthPermitTable.data.lua.json', base), ['Gear', 'GearLv', 'Cycle', 'UpLv', 'BuyExp', 'TaskType', 'Task']), {
+      Gear: 'MonthPermitGear', GearLv: 'MonthPermitGearLv', Cycle: 'MonthPermitCycle', UpLv: 'MonthPermitUpLv', BuyExp: 'MonthPermitBuyExp', TaskType: 'MonthPermitTaskType', Task: 'MonthPermitTask'
     }),
     // Standard permits link their RechargeTable product to module 38.
-    ...pick(readGeneratedTables(new URL('../../analysis/tmp/PermitTable.data.bytecode.json', import.meta.url), ['Base']), { Base: 'PermitBase' }),
+    ...pick(readGeneratedTables(new URL('PermitTable.data.lua.json', base), [
+      'Base', 'Cycle', 'Level', 'Type', 'DynamicArgs'
+    ]), {
+      Base: 'PermitBase',
+      Cycle: 'PermitCycle',
+      Level: 'PermitLevel',
+      Type: 'PermitType',
+      DynamicArgs: 'PermitDynamicArgs'
+    }),
     ...pick(readGeneratedTables(new URL('ActFrameTable.data.lua.json', base), ['Act', 'ActType']), { Act: 'ActFrameAct', ActType: 'ActFrameType' }),
     // Cumulative-recharge awards are keyed by award tid; version links each row
     // to the ActFrame type that owns the claim state.

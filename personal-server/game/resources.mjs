@@ -226,7 +226,17 @@ function grantRawHero(model, id, amount, tables) {
 function grantFigure(model, id, amount, handler) {
   model.role.figure_have_info ??= {};
   const figure = model.role.figure_have_info;
-  const bit = Math.floor((id - 8) / 100) - 3000;
+  // RoleFigureMgr maps each stable figure family by tid range:
+  // head 100xxx -> index 1..., frame 200xxx -> 1..., and title/bubble
+  // 300xxx/400xxx share the 3000 offset. Using the title formula for every
+  // family made common frame rewards such as 200508 resolve to a negative bit.
+  const familyOffset = {
+    stable_head_info: 1000,
+    stable_frame_info: 2000,
+    stable_title_info: 3000,
+    stable_bubble_info: 3000
+  }[handler.field];
+  const bit = familyOffset === undefined ? -1 : Math.floor((id - 8) / 100) - familyOffset;
   if (bit < 0) throw new GameError(5, 'Figure reward index is invalid');
   const current = figure[handler.field] ? Buffer.from(figure[handler.field], 'base64') : Buffer.alloc(0);
   figure[handler.field] = setBit(current, bit).toString('base64');

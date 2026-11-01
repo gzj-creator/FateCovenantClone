@@ -146,9 +146,20 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
     if (!wallet?.purchaseGift) throw new GameError(5, 'Local wallet is not configured');
     const productId = Number(request.recharge_id), buyNum = Number(request.buy_num ?? 1);
     if (!Number.isSafeInteger(productId) || !Number.isSafeInteger(buyNum) || buyNum < 1) throw new GameError(1, 'Invalid gift purchase');
+    const product = tables.Recharge.get(productId);
+    if (!product) throw new GameError(5, 'Gift is not configured');
     let options;
     try { options = parseRechargeExtraParam(request.extra_param); }
-    catch (error) { throw new GameError(1, error.message); }
+    catch (error) {
+      // Purchase UIs wrap unrelated context in extra_param. Only the daily
+      // discount and period-scoped products need its tuple; requiring the same
+      // shape for monthly/permanent cards made the shared 16005 command reject
+      // the whole payment before the wallet could process it.
+      const requiresContext = Number(product.type) === 46 || [4, 5, 7].includes(Number(product.buy_cycle_limit));
+      if (requiresContext) throw new GameError(1, error.message);
+      options = { is_extra_buy: false, period: 0, day_index: 0 };
+      log({ event: 'purchase_extra_param_ignored', productId, length: String(request.extra_param ?? '').length });
+    }
     const result = wallet.purchaseGift({
       product_id: productId,
       request_id: 'gift:' + context.connection + ':' + context.seq,

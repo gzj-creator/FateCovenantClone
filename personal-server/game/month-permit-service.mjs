@@ -57,7 +57,7 @@ export function createMonthPermitService({ codec, tables }) {
         if (!innerBytes) continue;
         let message;
         try { message = codec.unpack('pb_month_permit_login_back', innerBytes); } catch { continue; }
-        const info = (message.month_permit_data?.month_permit_list ?? []).find(row => Number(row.id) === actId);
+        const info = (message.month_permit_data?.month_permit_list ?? []).find(row => actId == null || Number(row.id) === actId);
         if (info) return { modules, moduleValue, elementIndex, login, entry, message, info };
       }
     }
@@ -118,6 +118,35 @@ export function createMonthPermitService({ codec, tables }) {
             info,
             extraRetList: [{ flag: MONTH_PERMIT_HANDLE_FLAG, data: codec.pack('pb_month_permit_info', info) }]
           };
+        }
+      }
+    }
+    throw new GameError(5, 'Month permit activity is not active');
+  }
+
+  function assertPurchaseAvailable({ modules, product }) {
+    if (!supports(product)) throw new GameError(5, 'Unsupported month permit product');
+    const gearRows = gearByRecharge.get(Number(product.tid));
+    const moduleValue = modules.get(MODULE_ACT_LOGIN);
+    if (!moduleValue || !Array.isArray(moduleValue.value)) throw new GameError(5, 'Month permit login data is unavailable');
+
+    for (const element of moduleValue.value) {
+      let login;
+      try { login = codec.unpack('pb_act_role_login', rawBinary(element)); } catch { continue; }
+      for (const entry of login.data_list ?? []) {
+        if (typeof entry.module_login_data !== 'string') continue;
+        const innerBytes = wrappedPayload(Buffer.from(entry.module_login_data, 'base64'));
+        if (!innerBytes) continue;
+        let message;
+        try { message = codec.unpack('pb_month_permit_login_back', innerBytes); } catch { continue; }
+        for (const info of message.month_permit_data?.month_permit_list ?? []) {
+          const act = tables.ActFrameAct?.get(Number(info.id));
+          if (!act) continue;
+          const gear = gearRows.find(row => Number(row.version) === Number(act.version));
+          if (!gear) continue;
+          const payList = (info.pay_list ?? []).map(String);
+          if (payList.includes(String(product.tid))) throw new GameError(307, 'Month permit already purchased');
+          return;
         }
       }
     }
@@ -252,5 +281,84 @@ export function createMonthPermitService({ codec, tables }) {
     };
   }
 
-  return { supports, purchase, buyLevel, claimTask, gearByRecharge };
+  function claimReward({ model, actId, gearLvTid, oneKey = false }) {
+    const requestedId = actId == null ? null : positiveSafeInteger(actId, 'activity id');
+    const row = activeInfo(model, requestedId);
+    const id = Number(row.info.id);
+    const act = tables.ActFrameAct?.get(id);
+    if (!act) throw new GameError(5, 'Month permit activity configuration is unavailable');
+    const cycle = tables.MonthPermitCycle?.get(Number(act.version));
+    if (!cycle) throw new GameError(5, 'Month permit cycle configuration is unavailable');
+
+    const gearRows = [...(tables.MonthPermitGear?.values?.() ?? [])]
+      .filter(gear => Number(gear.version) === Number(act.version));
+    if (gearRows.length === 0) throw new GameError(5, 'Month permit gear configuration is unavailable');
+    const payList = new Set((row.info.pay_list ?? []).map(String));
+    const accessibleGears = new Set(gearRows
+      .filter(gear => Number(gear.recharge) === 0 || payList.has(String(gear.recharge)))
+      .map(gear => Number(gear.tid)));
+
+    const expItem = positiveSafeInteger(cycle.exp_item, 'experience item');
+    const experience = BigInt(model.resources.get(String(expItem))?.num ?? 0);
+    const levelRows = [...(tables.MonthPermitUpLv?.values?.() ?? [])]
+      .filter(entry => Number(entry.lib) === Number(cycle.up_lv_lib))
+      .sort((left, right) => Number(left.need_lv) - Number(right.need_lv));
+    let currentLevel = 0;
+    for (const level of levelRows) {
+      if (BigInt(level.exp) <= experience) currentLevel = Math.max(currentLevel, Number(level.need_lv));
+    }
+
+    const claimed = new Set((row.info.get_gear_lv_list ?? []).map(String));
+    const allRows = [...(tables.MonthPermitGearLv?.values?.() ?? [])];
+    let selected;
+    if (oneKey) {
+      selected = allRows.filter(entry => accessibleGears.has(Number(entry.gear))
+        && Number(entry.level) <= currentLevel
+        && !claimed.has(String(entry.tid)));
+    } else {
+      const tid = positiveSafeInteger(gearLvTid, 'gear level id');
+      const entry = allRows.find(candidate => Number(candidate.tid) === tid);
+      if (!entry) throw new GameError(5, 'Month permit reward configuration is unavailable');
+      const gear = gearRows.find(candidate => Number(candidate.tid) === Number(entry.gear));
+      if (!gear) throw new GameError(5, 'Month permit reward belongs to another activity version');
+      if (!accessibleGears.has(Number(gear.tid)) && Number(gear.recharge) > 0) {
+        throw new GameError(25001, 'Month permit reward has not been purchased');
+      }
+      if (claimed.has(String(tid))) throw new GameError(25002, 'Month permit reward has already been claimed');
+      if (Number(entry.level) > currentLevel) throw new GameError(5, 'Month permit level is not reached');
+      selected = [entry];
+    }
+
+    if (selected.length === 0) {
+      throw new GameError(oneKey ? 25003 : 25002, 'Month permit reward is not claimable');
+    }
+    const awards = selected.flatMap(entry => Array.isArray(entry.award) ? entry.award : []);
+    const granted = grantResources(model, awards, tables, { codec });
+    const claimedTids = selected.map(entry => Number(entry.tid)).sort((left, right) => left - right);
+    row.info.get_gear_lv_list = [...claimed, ...claimedTids.map(String)]
+      .sort((left, right) => Number(left) - Number(right));
+    persistInfo(model, row);
+
+    return {
+      actId: String(id),
+      currentLevel,
+      claimed: claimedTids,
+      response: {
+        get_list: claimedTids,
+        res: { changes: granted.changes, is_overflow: false },
+        month_permit: row.info
+      }
+    };
+  }
+
+  return {
+    supports,
+    assertPurchaseAvailable,
+    purchase,
+    buyLevel,
+    claimTask,
+    claimReward,
+    claimAll: ({ model, actId }) => claimReward({ model, actId, oneKey: true }),
+    gearByRecharge
+  };
 }
