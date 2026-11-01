@@ -5,6 +5,7 @@ import { grantResources } from './resources.mjs';
 // ItemTable.Random_Box -> DrawTable lib (weighted group + weighted award), including configured guarantees.
 // ItemTable.Designated_Box -> the configured fixed award list (151/157/159 use paths).
 // ItemTable.OptionalBox -> the player's selected range entries (type 152 use_selected_box).
+// ItemTable.OptionalSuitBox -> a suit box whose selected suit grants a fixed award_list (type 155).
 // Pay, repeat and lottery boxes stay unsupported on purpose.
 const MAX_USE = 999;
 
@@ -87,9 +88,61 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
     if (random) return random;
     const optional = optionalRule(tid);
     if (optional) return optional;
+    // Suit boxes carry no award of their own: the client always sends the chosen
+    // suit index through type 155, so a non-selective use must be rejected.
+    if (tables.OptionalSuitBox?.get(tid)) throw new GameError(5, 'Suit box requires a selection request');
     if (tables.Pay_Box.get(tid)) throw new GameError(5, 'Paid box requires a recharge handler');
     if (tables.BoxRepeat.get(tid)) throw new GameError(5, 'Repeatable box state is not implemented');
     throw new GameError(5, 'Box award rule is missing from configuration');
+  }
+
+  // Suit box selection (ItemCmd.use_selected_suit_box, type 155). The client sends
+  // {tid, index}; ItemSuitBoxSelectUseForm stores the node's 1-based awardIndex in
+  // _curSelectIndex, ItemSuitBoxSelectNode resolves OptionalSuitRes[range[awardIndex]]
+  // and shows that row's award_list, so the index addresses the range position.
+  function suitBoxOptions(tid) {
+    const item = tables.Item.get(tid);
+    if (!item) throw new GameError(5, 'Unknown item');
+    const type = tables.Type.get(item.type);
+    if ((type?.obj_class?.reference ?? '') !== 'ItemSuitBox') throw new GameError(5, 'This item is not a suit box');
+    const box = tables.OptionalSuitBox?.get(tid);
+    const range = Array.isArray(box?.range) ? box.range : [];
+    if (!range.length) throw new GameError(5, 'Suit box configuration is missing');
+    return range.map(suitId => {
+      const row = tables.OptionalSuitRes?.get(Number(suitId));
+      const list = Array.isArray(row?.award_list) ? row.award_list : [];
+      if (!list.length) throw new GameError(5, 'Suit selection configuration is missing');
+      const awards = list.map(entry => {
+        if (!Array.isArray(entry) || entry.length < 2) throw new GameError(5, 'Suit selection award is invalid');
+        const rewardTid = Number(entry[0]), rewardNum = Number(entry[1]);
+        if (!Number.isSafeInteger(rewardTid) || !Number.isSafeInteger(rewardNum) || rewardNum <= 0) {
+          throw new GameError(5, 'Suit selection award is invalid');
+        }
+        return [rewardTid, rewardNum];
+      });
+      return { suitId: Number(suitId), awards };
+    });
+  }
+
+  function openSuitBox(request) {
+    const tid = Number(Array.isArray(request) ? request[0] : request?.tid);
+    const index = Number(Array.isArray(request) ? request[1] : request?.index);
+    if (!Number.isSafeInteger(tid) || tid <= 0) throw new GameError(1, 'Invalid suit box request');
+    if (!Number.isSafeInteger(index)) throw new GameError(1, 'Invalid suit box selection');
+    const options = suitBoxOptions(tid);
+    if (index < 1 || index > options.length) throw new GameError(1, 'Invalid suit box selection');
+    const chosen = options[index - 1];
+    const result = store.transaction(model => {
+      const held = model.resources.get(String(tid));
+      if (!held || BigInt(held.num) < 1n) throw new GameError(1, 'Not enough suit boxes');
+      held.num = String(BigInt(held.num) - 1n);
+      const changes = [{ tid: String(tid), new_num: held.num, diff_num: '-1' }];
+      changes.push(...grantResources(model, chosen.awards, tables).changes);
+      const value = { changes: mergeChanges(changes), is_overflow: false };
+      return { value, data: codec.pack('pb_res_to_client', value) };
+    });
+    log({ event: 'item_suit_box_opened', tid, index, suitId: chosen.suitId, awards: chosen.awards.length, changes: result.value.changes.length });
+    return result;
   }
 
   function pickWeighted(entries, weightOf) {
@@ -217,5 +270,5 @@ export function createItemBoxService({ store, codec, tables, random = Math.rando
     return result;
   }
 
-  return { supports: type => [151, 152, 157, 159].includes(type), open, openSelected, rule };
+  return { supports: type => [151, 152, 155, 157, 159].includes(type), open, openSelected, openSuitBox, rule, suitBoxOptions };
 }
