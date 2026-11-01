@@ -30,6 +30,9 @@ export class TargetSelector {
       case TARGET_TYPES.FRONT_ROW_ALLIES:
         return this.selectFrontRowAllies(actor, allUnits);
 
+      case TARGET_TYPES.FRONT_ROW_HIGHEST_ATTACK:
+        return this.selectFrontRowHighestAttack(actor, allUnits);
+
       case TARGET_TYPES.BACK_ROW:
         return this.selectBackRow(actor, allUnits);
 
@@ -112,6 +115,16 @@ export class TargetSelector {
   selectFrontRowAllies(actor, allUnits) {
     const allies = this.getAllies(actor, allUnits);
     return allies.filter(u => u.loc >= 1 && u.loc <= 3 && u.alive).sort((a, b) => a.loc - b.loc);
+  }
+
+  /**
+   * Select enemy in front row (loc 1-3) with highest attack
+   */
+  selectFrontRowHighestAttack(actor, allUnits) {
+    const enemies = this.getEnemies(actor, allUnits).filter(u => u.loc >= 1 && u.loc <= 3 && u.alive);
+    if (!enemies.length) return [];
+    const sorted = [...enemies].sort((a, b) => (b.attack || 0) - (a.attack || 0) || a.loc - b.loc);
+    return [sorted[0]];
   }
 
   /**

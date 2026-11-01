@@ -91,6 +91,7 @@ export const TARGET_TYPES = Object.freeze({
   SINGLE: 'single',              // Default: front-most enemy
   FRONT_ROW: 'front-row',        // All enemies in front row (loc 1-3)
   FRONT_ROW_ALLIES: 'front-row-allies', // All allies in front row (loc 1-3)
+  FRONT_ROW_HIGHEST_ATTACK: 'front-row-highest-attack', // Enemy in front row with highest attack
   BACK_ROW: 'back-row',          // All enemies in back row (loc 4-6)
   ALL_ENEMIES: 'all-enemies',
   ALL_ALLIES: 'all-allies',
