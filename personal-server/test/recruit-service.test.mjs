@@ -639,6 +639,22 @@ test('elite pity resets only when the selected target adventurer is drawn', t =>
   assert.equal(Number(result.value.recruit_info.guaranteed_count ?? 0), 0);
 });
 
+test('elite pity continues when an SSR is drawn without a selected target', t => {
+  const env = setup(t, () => 0.95);
+  setDrawCounts(env, { 1: 50, 2: 50 });
+  updateRecruitInfo(env, 2, info => {
+    info.guaranteed_count = 4;
+    info.daily_ssr_draw_num = 0;
+  });
+  env.seed(3002, 10);
+
+  const result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
+  assert.equal(result.valueForLog.results[0].quality, 50);
+  assert.equal(result.valueForLog.results[0].wishHero, false);
+  assert.equal(Number(result.value.recruit_info.guaranteed_count), 5);
+  assert.equal(Number(result.value.recruit_info.daily_ssr_draw_num), 1);
+});
+
 test('new heroes persist, duplicate heroes convert to chips and avoid duplicate hero extras', async t => {
   const env = setup(t);
   env.seed(2002, 10);

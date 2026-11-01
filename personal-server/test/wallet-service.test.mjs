@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createCipheriv} from 'node:crypto';
-import {createGameCodec,rawBinary,decodeEtf} from '../protocol/game-codec.mjs';
+import {createGameCodec,rawBinary,serializedBinary,decodeEtf} from '../protocol/game-codec.mjs';
 import {createGameStore} from '../storage/game-store.mjs';
 import {readGameTables} from '../config/game-tables.mjs';
 import {createWalletService} from '../game/wallet-service.mjs';
@@ -271,4 +271,19 @@ test('sprint uses tournament evidence for tournament tasks and rolls back mixed 
   await assert.rejects(()=>service.execute({act_id:13016,task_tid_list:[55001]}),x=>x.code===311);
   const result=await service.execute({act_id:13016,task_tid_list:[55021,55022,55023]});assert.equal(result.value.res.changes.find(x=>x.tid==='101500').diff_num,'60');
   assert.equal(e.store.inspect(db=>db.prepare('SELECT count(*) n FROM activity_claims').get().n),3);
+});
+
+test('sprint reads progress from the statistics slot configured by TaskType.data',async t=>{
+  const e=setup(t),now=Date.now();
+  const roleStatistics=[...tables.CountStatistics.values()].filter(row=>!row.custom_login&&Number(row.type)===0);
+  const slot=roleStatistics.findIndex(row=>Number(row.tid)===37)+1;
+  e.store.transaction(model=>{
+    const modules=new Map(model.state.modules.value),module=modules.get(21);
+    module.value[slot]=serializedBinary(codec.pack('pb_count_statics_data',{list:[{id:'1',total:10,mod_day:0,count_list:[]}]}));
+    modules.set(21,module);model.state.modules.value=[...modules];
+  });
+  const service=createSprintService({store:e.store,codec,tables,now:()=>now});
+  const result=await service.execute({act_id:13016,task_tid_list:[55011]});
+  assert.equal(result.value.res.changes.find(change=>change.tid==='101500').diff_num,'20');
+  assert.equal(e.store.inspect(db=>db.prepare('SELECT count(*) n FROM activity_claims').get().n),1);
 });
