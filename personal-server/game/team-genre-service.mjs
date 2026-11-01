@@ -77,8 +77,8 @@ function writeRole(model, codec, value) {
   model.state.modules.value = [...modules];
 }
 
-function claimKey(cycleId, teamId, awardId) {
-  return `${cycleId}:${teamId}:${awardId}`;
+function claimKey(cycleId, typeId, awardId) {
+  return `${cycleId}:${typeId}:${awardId}`;
 }
 
 function claimedAwards(db, roleId) {
@@ -95,9 +95,16 @@ function claimedAwards(db, roleId) {
   return result;
 }
 
-function previousReceiveAward(previous, teamId, cycleId) {
+function claimedAwardIds(claims, cycle) {
+  return new Set([
+    ...(claims.get(`${cycle.cycleId}:${cycle.type}`) ?? []),
+    ...(claims.get(`${cycle.cycleId}:${cycle.teamId}`) ?? [])
+  ]);
+}
+
+function previousReceiveAward(previous, typeId, cycleId) {
   const row = (previous.genre_list ?? []).find(value =>
-    Number(value.team_id) === teamId && Number(value.cycle_id) === cycleId
+    Number(value.team_id) === typeId && Number(value.cycle_id) === cycleId
   );
   if (!row || row.receive_award === undefined || row.receive_award === null) return Buffer.alloc(AWARD_BLOCK_BYTES);
   const bytes = Buffer.from(row.receive_award, typeof row.receive_award === 'string' ? 'base64' : undefined);
@@ -105,8 +112,11 @@ function previousReceiveAward(previous, teamId, cycleId) {
 }
 
 function receiveAward(previous, cycle, claims) {
-  let bits = previousReceiveAward(previous, cycle.teamId, cycle.cycleId);
-  for (const awardId of claims.get(`${cycle.cycleId}:${cycle.teamId}`) ?? []) bits = setBit(bits, awardId);
+  let bits = previousReceiveAward(previous, cycle.type, cycle.cycleId);
+  // Early versions stored claim keys with the strategy-team TID. Keep reading
+  // those rows so already-granted rewards immediately render as claimed after
+  // the client-shape fix, without granting them again.
+  for (const awardId of claimedAwardIds(claims, cycle)) bits = setBit(bits, awardId);
   return bits;
 }
 
@@ -188,7 +198,9 @@ export function createTeamGenreService({ store, codec, tables, heroTables, calen
     const claims = claimedAwards(db, model.state.roleId);
     return {
       genre_list: currentCycles().map(cycle => ({
-        team_id: cycle.teamId,
+        // Despite its name, the client calls GetCycleTid(team_id), so this
+        // field is the main genre type TID (51..59), not the lineup-team TID.
+        team_id: cycle.type,
         cycle_id: cycle.cycleId,
         receive_award: receiveAward(previous, cycle, claims)
       }))
@@ -212,13 +224,13 @@ export function createTeamGenreService({ store, codec, tables, heroTables, calen
     const created = new Date(now()).toISOString();
     const insert = db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)');
     for (const award of awardRows) {
-      insert.run(model.state.roleId, CLAIM_TYPE, claimKey(cycle.cycleId, cycle.teamId, Number(award.tid)), created);
+      insert.run(model.state.roleId, CLAIM_TYPE, claimKey(cycle.cycleId, cycle.type, Number(award.tid)), created);
     }
     const granted = grantResources(model, awardTotals(awardRows), tables, { codec });
     const previous = readRole(model, codec);
     const role = buildRole(model, db, previous);
     writeRole(model, codec, role);
-    return { granted, role, team: role.genre_list.find(row => Number(row.team_id) === cycle.teamId && Number(row.cycle_id) === cycle.cycleId) };
+    return { granted, role, team: role.genre_list.find(row => Number(row.team_id) === cycle.type && Number(row.cycle_id) === cycle.cycleId) };
   }
 
   function quickClaim(typeValue) {
@@ -226,7 +238,7 @@ export function createTeamGenreService({ store, codec, tables, heroTables, calen
     return store.transaction((model, db) => {
       const cycle = selectCurrentCycle(type);
       const progress = calculateTeamGenreProgress(cycle.team, heroTids(model));
-      const claims = claimedAwards(db, model.state.roleId).get(`${cycle.cycleId}:${cycle.teamId}`) ?? new Set();
+      const claims = claimedAwardIds(claimedAwards(db, model.state.roleId), cycle);
       const pending = configuredAwards().filter(award => Number(award.tid) <= progress && !claims.has(Number(award.tid)));
       const result = claimCycle(model, db, cycle, pending);
       return {
@@ -239,9 +251,9 @@ export function createTeamGenreService({ store, codec, tables, heroTables, calen
     });
   }
 
-  function resolveRequestedCycle(teamId) {
-    for (const cycle of currentCycles()) if (cycle.teamId === teamId) return cycle;
-    return selectCurrentCycle(teamId);
+  function resolveRequestedCycle(typeId) {
+    for (const cycle of currentCycles()) if (cycle.type === typeId) return cycle;
+    return selectCurrentCycle(typeId);
   }
 
   function manualClaim(requestValue) {
@@ -257,7 +269,7 @@ export function createTeamGenreService({ store, codec, tables, heroTables, calen
       if (!award) throw new GameError(5, 'Team genre award is not configured');
       const progress = calculateTeamGenreProgress(cycle.team, heroTids(model));
       if (awardId > progress) throw new GameError(5, 'Team genre collection progress is insufficient');
-      const claims = claimedAwards(db, model.state.roleId).get(`${cycle.cycleId}:${cycle.teamId}`) ?? new Set();
+      const claims = claimedAwardIds(claimedAwards(db, model.state.roleId), cycle);
       if (claims.has(awardId)) throw new GameError(310, 'Reward already claimed');
       const result = claimCycle(model, db, cycle, [award]);
       return {

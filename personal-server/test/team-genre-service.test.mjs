@@ -79,16 +79,34 @@ test('login initializes all open main genres and selects the newest unlocked cyc
   setTeamHeroes(env, 3);
   assert.deepEqual(env.make().ensureLoginState(), { genreCount: 9, claimedCount: 0 });
   const role = roleFromState(env.store.state());
-  const current = role.genre_list.find(row => row.team_id === CURRENT_TEAM);
+  const current = role.genre_list.find(row => row.team_id === CURRENT_TYPE);
   assert.equal(current.cycle_id, CURRENT_TEAM);
   assert.ok(Buffer.from(current.receive_award, 'base64').every(value => value === 0));
   assert.equal(role.genre_list.length, 9);
+  assert.ok(role.genre_list.every(row => heroTables.TeamGenreType.has(row.team_id)));
 });
 
 test('collection progress counts owned configured heroes', () => {
   const team = heroTables.TeamGenre.get(CURRENT_TEAM);
   assert.equal(calculateTeamGenreProgress(team, new Set(TEAM_HEROES.slice(0, 3))), 3);
   assert.equal(calculateTeamGenreProgress(team, new Set()), 0);
+});
+
+test('login shape uses genre type IDs and reads legacy team-TID claims', t => {
+  const env = setup(t);
+  setTeamHeroes(env, 3);
+  env.make().ensureLoginState();
+  env.store.transaction((model, db) => {
+    db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(
+      model.state.roleId, 'team_genre', `${CURRENT_TEAM}:${CURRENT_TEAM}:1`, new Date(NOW).toISOString()
+    );
+  });
+  env.make().ensureLoginState();
+  const role = roleFromState(env.store.state());
+  const current = role.genre_list.find(row => row.team_id === CURRENT_TYPE);
+  assert.equal(current.cycle_id, CURRENT_TEAM);
+  assert.equal(hasBit(Buffer.from(current.receive_award, 'base64'), 1), true);
+  assert.equal(role.genre_list.some(row => row.team_id === CURRENT_TEAM), false);
 });
 
 test('quick claim grants every reached tier once and persists its bitmap', t => {
@@ -102,7 +120,7 @@ test('quick claim grants every reached tier once and persists its bitmap', t => 
   assert.deepEqual(claimed.value.changes.map(change => [change.tid, change.diff_num]), [['101500', '60']]);
   assert.equal(BigInt(env.store.read().resources.get('101500').num), before + 60n);
   let role = roleFromState(env.store.state());
-  let bits = Buffer.from(role.genre_list.find(row => row.team_id === CURRENT_TEAM).receive_award, 'base64');
+  let bits = Buffer.from(role.genre_list.find(row => row.team_id === CURRENT_TYPE).receive_award, 'base64');
   assert.equal(hasBit(bits, 1), true);
   assert.equal(hasBit(bits, 2), true);
   assert.equal(hasBit(bits, 3), true);
@@ -112,7 +130,7 @@ test('quick claim grants every reached tier once and persists its bitmap', t => 
   env.reopen();
   env.make().ensureLoginState();
   role = roleFromState(env.store.state());
-  bits = Buffer.from(role.genre_list.find(row => row.team_id === CURRENT_TEAM).receive_award, 'base64');
+  bits = Buffer.from(role.genre_list.find(row => row.team_id === CURRENT_TYPE).receive_award, 'base64');
   assert.equal(hasBit(bits, 3), true);
   env.store.inspect(db => assert.equal(
     db.prepare('SELECT count(*) n FROM reward_claims WHERE claim_type=?').get('team_genre').n, 3
@@ -123,7 +141,7 @@ test('manual award accepts the protobuf body and rejects duplicates', t => {
   const env = setup(t);
   setTeamHeroes(env, 4);
   env.make().ensureLoginState();
-  const request = codec.pack('pb_team_genre_award_req', { team_id: CURRENT_TEAM, award_id: 4 });
+  const request = codec.pack('pb_team_genre_award_req', { team_id: CURRENT_TYPE, award_id: 4 });
   const result = env.make().manualClaim(request);
   assert.deepEqual(result.value.changes.map(change => [change.tid, change.diff_num]), [['101500', '20']]);
   assert.throws(() => env.make().manualClaim(request), /already claimed/);
@@ -171,12 +189,12 @@ test('the real gateway accepts 91402 and returns pb_team_genre_award_rsp', async
   const loginPayload = await decodeEtf(Buffer.from(login.data, 'base64'));
   const loginModules = new Map(loginPayload[2].value);
   const loginRole = codec.unpack('pb_team_genre_role', Buffer.from(loginModules.get(10).value[8].value));
-  assert.equal(loginRole.genre_list.find(row => row.team_id === CURRENT_TEAM).cycle_id, CURRENT_TEAM);
+  assert.equal(loginRole.genre_list.find(row => row.team_id === CURRENT_TYPE).cycle_id, CURRENT_TEAM);
 
   const awarded = await request(91402, 2, await encodeEtf(CURRENT_TYPE));
   assert.equal(awarded.err, undefined);
   const result = codec.unpack('pb_team_genre_award_rsp', Buffer.from(awarded.data, 'base64'));
-  assert.equal(result.team.team_id, CURRENT_TEAM);
+  assert.equal(result.team.team_id, CURRENT_TYPE);
   assert.equal(result.team.cycle_id, CURRENT_TEAM);
   assert.deepEqual(result.award.changes.map(change => [change.tid, change.diff_num]), [['101500', '60']]);
   const repeated = await request(91402, 3, await encodeEtf(CURRENT_TYPE));
@@ -184,7 +202,7 @@ test('the real gateway accepts 91402 and returns pb_team_genre_award_rsp', async
 
   setTeamHeroes({ store: game.store }, 6);
   const manual = await request(91401, 4, await encodeEtf(binary(codec.pack('pb_team_genre_award_req', {
-    team_id: CURRENT_TEAM, award_id: 6
+    team_id: CURRENT_TYPE, award_id: 6
   }))));
   assert.equal(manual.err, undefined);
   const manualResult = codec.unpack('pb_res_to_client', Buffer.from(manual.data, 'base64'));
@@ -193,7 +211,7 @@ test('the real gateway accepts 91402 and returns pb_team_genre_award_rsp', async
   const info = await request(91403, 5);
   assert.equal(info.err, undefined);
   const infoRole = codec.unpack('pb_team_genre_role', Buffer.from(info.data, 'base64'));
-  const team = infoRole.genre_list.find(row => row.team_id === CURRENT_TEAM);
+  const team = infoRole.genre_list.find(row => row.team_id === CURRENT_TYPE);
   const bits = Buffer.from(team.receive_award, 'base64');
   for (const bit of [1, 2, 3, 6]) assert.equal(hasBit(bits, bit), true);
 });
