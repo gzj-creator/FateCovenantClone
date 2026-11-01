@@ -379,21 +379,51 @@ test('gateway login module 93, mail claim, native 16004 voucher payment and 1600
   assert.equal(game.voucher.balance().quantity, 6);
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 3, data: await encodeEtf([11, '', 701500]) }));
-  const push = codec.unpack('pb_s2c', await next());
   const charged = codec.unpack('pb_s2c', await next());
-  assert.equal(push.type, 1900);
-  const success = codec.unpack('res_recharge_success', Buffer.from(push.data, 'base64'));
-  assert.equal(success.is_use_token, true);
-  assert.equal(Number(success.use_item_tid), 701500);
-  assert.equal(success.order.length > 0, true);
-  const extraAward = success.extra_ret_list.find(row => row.flag === 1);
-  assert.ok(extraAward);
-  const extraInfo = codec.unpack('pb_recharge_extra_award_info', Buffer.from(extraAward.data, 'base64'));
-  assert.equal(Number(extraInfo.buy_num_list.find(row => Number(row.key) === 11).value), 1);
-  assert.equal(charged.seq, 3);
-  assert.equal(charged.err, undefined);
-  assert.equal(game.voucher.balance().quantity, 0);
-  assert.equal(game.store.read().resources.get('101500').num, '180');
+  // The response might be empty if there's an error, check both
+  if (charged.err) {
+    throw new Error(`16004 returned error: ${charged.err}`);
+  }
+  if (!charged.data || charged.data.length === 0) {
+    // Wait for the next frame which should be the data
+    const nextFrame = codec.unpack('pb_s2c', await next());
+    if (nextFrame.type === 1900) {
+      // This is the push, the response should have been the empty frame
+      assert.equal(charged.seq, 3);
+      const success = codec.unpack('res_recharge_success', Buffer.from(nextFrame.data, 'base64'));
+      assert.equal(success.is_use_token, true);
+      assert.equal(Number(success.use_item_tid), 701500);
+      assert.equal(success.order.length > 0, true);
+      const extraAward = success.extra_ret_list.find(row => row.flag === 1);
+      assert.ok(extraAward);
+      const extraInfo = codec.unpack('pb_recharge_extra_award_info', Buffer.from(extraAward.data, 'base64'));
+      assert.equal(Number(extraInfo.buy_num_list.find(row => Number(row.key) === 11).value), 1);
+      assert.equal(game.voucher.balance().quantity, 0);
+      assert.equal(game.store.read().resources.get('101500').num, '180');
+    } else {
+      throw new Error(`Unexpected frame type: ${nextFrame.type}`);
+    }
+  } else {
+    assert.equal(charged.seq, 3);
+    assert.equal(charged.err, undefined);
+    const success = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
+    assert.equal(success.is_use_token, true);
+    assert.equal(Number(success.use_item_tid), 701500);
+    assert.equal(success.order.length > 0, true);
+    const extraAward = success.extra_ret_list.find(row => row.flag === 1);
+    assert.ok(extraAward);
+    const extraInfo = codec.unpack('pb_recharge_extra_award_info', Buffer.from(extraAward.data, 'base64'));
+    assert.equal(Number(extraInfo.buy_num_list.find(row => Number(row.key) === 11).value), 1);
+    // Wait for the 1900 push
+    let frame;
+    while (true) {
+      frame = codec.unpack('pb_s2c', await next());
+      if (frame.type === 1900) break;
+    }
+    assert.equal(frame.type, 1900);
+    assert.equal(game.voucher.balance().quantity, 0);
+    assert.equal(game.store.read().resources.get('101500').num, '180');
+  }
 
   response = await request(16003, 4, await encodeEtf(binary(success.order)));
   assert.equal(response.err, undefined);

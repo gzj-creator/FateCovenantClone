@@ -34,6 +34,7 @@ export function createFirstRechargeService({ store, codec, tables, now = Date.no
   const log = event => { try { logger(event); } catch {} };
 
   function execute() {
+    log({ event: 'first_recharge_execute_entry' });
     const at = Math.floor(Number(now()) / 1000);
     return store.transaction((model, db) => {
       const modules = new Map(model.state.modules.value);

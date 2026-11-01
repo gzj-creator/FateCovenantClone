@@ -128,14 +128,16 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   const frames = [];
   while (!frames.some(frame => frame.seq === 2)) frames.push(codec.unpack('pb_s2c', await next()));
   assert.equal(frames.find(frame => frame.seq === 2)?.err, undefined);
-  const notification = frames.find(frame => frame.type === 1900);
-  assert.ok(notification);
-  const push = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
+  const charged = frames.find(frame => frame.seq === 2);
+  assert.ok(charged);
+  const push = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
   const extra = push.extra_ret_list.find(entry => entry.flag === 40);
   assert.ok(extra);
   const info = codec.unpack('pb_daily_discount_all', Buffer.from(extra.data, 'base64'));
   assert.equal(info.daily_discount_list.find(row => row.recharge_tid === 3).buy_times, 1);
   assert.equal(codec.unpack('pb_daily_discount_all', rawBinary(new Map(game.store.state().modules.value).get(108))).daily_discount_list.find(row => row.recharge_tid === 3).buy_times, 1);
+  const notification = frames.find(frame => frame.type === 1900);
+  assert.ok(notification);
 
   const week = codec.unpack('pb_week_hunt', rawBinary(new Map(game.store.state().modules.value).get(533))).week_period_info[0];
   const currentDay = week.start_day + 12;
@@ -145,9 +147,9 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
   const additionalFrames = [];
   while (!additionalFrames.some(frame => frame.seq === 3)) additionalFrames.push(codec.unpack('pb_s2c', await next()));
   assert.equal(additionalFrames.find(frame => frame.seq === 3)?.err, undefined);
-  const additionalNotification = additionalFrames.find(frame => frame.type === 1900);
-  assert.ok(additionalNotification);
-  const additionalPush = codec.unpack('res_recharge_success', Buffer.from(additionalNotification.data, 'base64'));
+  const additionalCharged = additionalFrames.find(frame => frame.seq === 3);
+  assert.ok(additionalCharged);
+  const additionalPush = codec.unpack('res_recharge_success', Buffer.from(additionalCharged.data, 'base64'));
   const additionalInfo = codec.unpack('pb_daily_discount_all', Buffer.from(additionalPush.extra_ret_list.find(entry => entry.flag === 40).data, 'base64'));
   const additionalRow = additionalInfo.daily_discount_list.find(row => row.recharge_tid === 3);
   assert.equal(additionalRow.buy_times, 1);
@@ -162,15 +164,21 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
     assert.equal(payload.daily_discount_additional, true);
     assert.equal(payload.requested_extra_buy, true);
   });
+  const additionalNotification = additionalFrames.find(frame => frame.type === 1900);
+  assert.ok(additionalNotification);
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 4, data: await encodeEtf([40008, binary(Buffer.from('[]')), 701500]) }));
   const eliteFrames = [];
   while (!eliteFrames.some(frame => frame.seq === 4)) eliteFrames.push(codec.unpack('pb_s2c', await next()));
   assert.equal(eliteFrames.find(frame => frame.seq === 4)?.err, undefined);
-  const elite = codec.unpack('res_recharge_success', Buffer.from(eliteFrames.find(frame => frame.type === 1900).data, 'base64'));
+  const eliteCharged = eliteFrames.find(frame => frame.seq === 4);
+  assert.ok(eliteCharged);
+  const elite = codec.unpack('res_recharge_success', Buffer.from(eliteCharged.data, 'base64'));
   assert.equal(elite.res.changes.find(row => String(row.tid) === '5971200').diff_num, '25');
   const eliteParams = await decodeEtf(Buffer.from(elite.extra_params, 'base64'));
   assert.deepEqual(eliteParams.value[0].value, [false, week.version, currentDay]);
+  const eliteNotification = eliteFrames.find(frame => frame.type === 1900);
+  assert.ok(eliteNotification);
   const acknowledged = await request(16003, 5, await encodeEtf(binary(elite.order)));
   assert.equal(acknowledged.err, undefined);
   const relogin = await request(909103, 6, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
@@ -211,12 +219,14 @@ test('native 16004 batch offer updates all limited rows, rejects components and 
   send(codec.pack('pb_c2s', { type: 16004, seq: 2, data: await encodeEtf([46003, binary(Buffer.from('[]')), 701500]) }));
   const frames = [];
   while (!frames.some(frame => frame.seq === 2)) frames.push(codec.unpack('pb_s2c', await next()));
-  const notification = frames.find(frame => frame.type === 1900);
-  assert.ok(notification);
   assert.equal(frames.find(frame => frame.seq === 2)?.err, undefined);
-  const purchase = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
+  const charged = frames.find(frame => frame.seq === 2);
+  assert.ok(charged);
+  const purchase = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
   const pushed = codec.unpack('pb_daily_discount_all', Buffer.from(purchase.extra_ret_list.find(entry => entry.flag === 40).data, 'base64'));
   assert.deepEqual([6, 2, 5, 1].map(tid => pushed.daily_discount_list.find(row => row.recharge_tid === tid)?.buy_times ?? 0), [1, 1, 1, 1]);
+  const notification = frames.find(frame => frame.type === 1900);
+  assert.ok(notification);
 
   for (const [seq, productId] of [[3, 40009], [4, 46002], [5, 46003]]) {
     const response = await request(16004, seq, await encodeEtf([productId, binary(Buffer.from('[]')), 701500]));
@@ -258,9 +268,9 @@ test('native 16004 uses available vouchers up to the order price and charges the
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 2, data: await encodeEtf([40009, binary(Buffer.from('[]')), 701500]) }));
   const frames = [codec.unpack('pb_s2c', await next()), codec.unpack('pb_s2c', await next())];
-  const notification = frames.find(frame => frame.type === 1900);
-  assert.ok(notification);
-  const pushed = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
+  const charged = frames.find(frame => frame.seq === 2);
+  assert.ok(charged);
+  const pushed = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
   assert.equal(pushed.recharge_id, 40009);
   assert.equal(pushed.get_token, true);
   assert.equal(pushed.is_use_token, true);
@@ -272,4 +282,6 @@ test('native 16004 uses available vouchers up to the order price and charges the
   assert.equal(game.voucher.balance().quantity, 0);
   assert.equal(game.wallet.snapshot().accounts[0].balance_cents, 0);
   assert.equal(frames.find(frame => frame.type !== 1900)?.err, undefined);
+  const notification = frames.find(frame => frame.type === 1900);
+  assert.ok(notification);
 });

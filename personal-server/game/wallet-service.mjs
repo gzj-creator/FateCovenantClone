@@ -550,7 +550,7 @@ export function createWalletService({
       catch { log({event:'wallet_notification_pending',orderId:result.order_id}); }
       log({event:'wallet_purchase_committed',productId:product_id,orderId:result.order_id});
     }
-    const { notification, wish_treasure_notification, ...publicResult } = result; return publicResult;
+    const { wish_treasure_notification, ...publicResult } = result; return publicResult;
   }
   // Command 16005 covers free, inventory-priced and local-balance gifts. The
   // same transaction owns order creation, limit checks, payment, rewards and

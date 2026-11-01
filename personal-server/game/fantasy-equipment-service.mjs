@@ -58,8 +58,10 @@ export function createFantasyEquipmentService({
   store,
   codec,
   tables,
-  extraReferences = () => []
+  extraReferences = () => [],
+  logger = () => {}
 }) {
+  const log = event => { try { logger(event); } catch {} };
   const inventory = createFantasyEquipmentInventory({ codec, tables });
   const required = [
     'FantasyEquip', 'FantasyEquipConst', 'FantasyBreakUp', 'FantasyLevelUp',
@@ -890,6 +892,7 @@ export function createFantasyEquipmentService({
   }
 
   function execute(type, input) {
+    log({ event: 'fantasy_equipment_execute_entry', type, input, inputHex: input?.toString('base64') });
     switch (Number(type)) {
       case 87601: return putOn(input);
       case 87603: return takeOff(input);

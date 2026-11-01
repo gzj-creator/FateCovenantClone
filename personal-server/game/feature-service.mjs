@@ -17,7 +17,8 @@ function updateBits(login, ids) {
   login.target_list = [...targets.values()];
 }
 
-export function createFeatureService({ store, codec, sprintPreview = false }) {
+export function createFeatureService({ store, codec, sprintPreview = false, logger = () => {} }) {
+  const log = event => { try { logger(event); } catch {} };
   function commit(ids) {
     return store.transaction(model => {
       const modules = new Map(model.state.modules.value);
@@ -44,6 +45,7 @@ export function createFeatureService({ store, codec, sprintPreview = false }) {
   return {
     supports: type => type === 7000,
     execute(type, input) {
+      log({ event: 'feature_execute_entry', type, input, inputHex: input?.toString('base64') });
       const ids = Array.isArray(input) ? input : input?.value;
       if (type !== 7000 || !Array.isArray(ids) || ids.length > 200 || ids.some(id => !Number.isSafeInteger(id) || id < 1001 || id >= 2000)) throw new GameError(1, 'Invalid client-validated feature IDs');
       // Target 1 is explicitly client_req_to_open=true. The local server trusts

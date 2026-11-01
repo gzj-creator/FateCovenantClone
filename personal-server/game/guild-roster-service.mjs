@@ -112,10 +112,12 @@ function assertGuildMatches(value, guildId) {
   if (supplied && supplied !== guildId) fail(5, 'Guild id does not match the current guild');
 }
 
-export function createGuildRosterService({ store, codec, now = () => Math.floor(Date.now() / 1000), encodeResponse = encodeEtf }) {
+export function createGuildRosterService({ store, codec, now = () => Math.floor(Date.now() / 1000), encodeResponse = encodeEtf, logger = () => {} }) {
+  const log = event => { try { logger(event); } catch {} };
   const nowSeconds = () => Math.max(0, Math.trunc(Number(now())));
 
   function ensureLoginState() {
+    log({ event: 'guild_roster_ensureLoginState_entry' });
     return store.transaction(model => {
       const module = moduleFrom(model);
       if (!isUninitialized(module, codec)) return false;
@@ -260,6 +262,7 @@ export function createGuildRosterService({ store, codec, now = () => Math.floor(
     loginPayload,
     supports: type => [21005, 21006, 21007, 21010].includes(Number(type)),
     async execute(type, input) {
+      log({ event: 'guild_roster_execute_entry', type, input, inputHex: input?.toString('base64') });
       switch (Number(type)) {
         case 21005: return queryGuild(input);
         case 21006:
