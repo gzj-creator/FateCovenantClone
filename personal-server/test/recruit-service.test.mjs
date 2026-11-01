@@ -173,10 +173,6 @@ function updateDemigodDraw(env, update) {
   });
 }
 
-function decodeDemigodEquipExtra(value) {
-  return codec.unpack('pb_fantasy_equip', Buffer.from(value, 'base64'));
-}
-
 function leaderEquipData(env) {
   const module = new Map(env.store.state().modules.value).get(175);
   return codec.unpack('pb_leader_equips_data', rawBinary(module));
@@ -262,73 +258,66 @@ test('special ticket purchase encoding failure rolls back diamonds and tickets',
   assert.deepEqual(env.store.state(), before);
 });
 
-test('demigod five draw buys and consumes tickets, emits real equips and survives reopen', t => {
+test('demigod five-ticket purchase credits tickets without drawing and survives reopen', t => {
   const env = setup(t);
   const formationBefore = structuredClone(demigodModule(env).value[1]);
   env.seed(101500, 5000);
   const result = env.service.execute(87618, [5]);
   const response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', result.data);
-  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+  assert.deepEqual(response.res.changes.map(change => [change.tid, change.diff_num]), [
     ['101500', '-2000'],
-    ['808002', '0']
+    ['808002', '5']
   ]);
   const ticketAfterFive = codec.unpack('pb_res_obj', Buffer.from(response.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
   assert.equal(ticketAfterFive.tid, '808002');
-  assert.equal(Number(ticketAfterFive.num ?? 0), 0);
-  const equipChanges = response.res.changes.filter(change => change.extra);
-  assert.equal(equipChanges.length, 5);
-  assert.deepEqual(equipChanges.map(change => change.diff_num), ['1', '1', '1', '1', '1']);
-  const drawn = equipChanges.map(change => decodeDemigodEquipExtra(change.extra));
-  assert.deepEqual(drawn.map(equip => equip.uid), ['1', '2', '3', '4', '5']);
-  assert.equal(new Set(drawn.map(equip => equip.uid)).size, 5);
-  assert.equal(response.draw.total_draw_times, '5');
+  assert.equal(Number(ticketAfterFive.num ?? 0), 5);
+  assert.equal(response.res.changes.some(change => change.extra), false);
+  assert.equal(Number(response.draw.total_draw_times ?? 0), 0);
   assert.equal(response.draw.left_buy_times, 5);
   assert.equal(result.pushes, undefined);
-  assert.equal(Number(env.store.read().resources.get('808002').num), 0);
+  assert.equal(Number(env.store.read().resources.get('808002').num), 5);
 
   const persisted = demigodEquips(env);
-  assert.equal(persisted.equips.length, 5);
-  assert.equal(persisted.max_equip_id, 5);
-  assert.deepEqual(persisted.equips.map(equip => equip.uid), ['1', '2', '3', '4', '5']);
+  assert.equal(persisted.equips.length, 0);
+  assert.equal(Number(persisted.max_equip_id ?? 0), 0);
   assert.deepEqual(demigodModule(env).value[1], formationBefore);
 
   env.reopen();
-  assert.equal(demigodDraw(env).total_draw_times, '5');
+  assert.equal(Number(demigodDraw(env).total_draw_times ?? 0), 0);
   assert.equal(demigodDraw(env).left_buy_times, 5);
-  assert.equal(demigodEquips(env).equips.length, 5);
+  assert.equal(demigodEquips(env).equips.length, 0);
   assert.deepEqual(demigodModule(env).value[1], formationBefore);
 });
 
-test('demigod single draw purchases one ticket while an owned five-ticket draw spends no diamonds', t => {
+test('demigod purchase spends diamonds, credits one ticket and rejects a zero-ticket request', t => {
   const single = setup(t);
   single.seed(101500, 1000);
   let response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', single.service.execute(87618, [1]).data);
-  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num ?? '0']), [
+  assert.deepEqual(response.res.changes.map(change => [change.tid, change.diff_num]), [
     ['101500', '-400'],
-    ['808002', '0']
+    ['808002', '1']
   ]);
   const ticketAfterOne = codec.unpack('pb_res_obj', Buffer.from(response.res.changes.find(change => change.tid === '808002').new_bin, 'base64'));
   assert.equal(ticketAfterOne.tid, '808002');
-  assert.equal(Number(ticketAfterOne.num ?? 0), 0);
-  assert.equal(response.draw.total_draw_times, '1');
+  assert.equal(Number(ticketAfterOne.num ?? 0), 1);
+  assert.equal(Number(response.draw.total_draw_times ?? 0), 0);
   assert.equal(response.draw.left_buy_times, 9);
-  assert.equal(demigodEquips(single).equips.length, 1);
+  assert.equal(demigodEquips(single).equips.length, 0);
+  rejected(() => single.service.execute(87618, [0]), 1);
 
   const multi = setup(t);
-  multi.seed(808002, 5);
-  response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', multi.service.execute(87618, [0]).data);
-  assert.deepEqual(response.res.changes.filter(change => !change.extra).map(change => [change.tid, change.diff_num]), [
-    ['808002', '-5']
+  multi.seed(101500, 5000);
+  response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', multi.service.execute(87618, [5]).data);
+  assert.deepEqual(response.res.changes.map(change => [change.tid, change.diff_num]), [
+    ['101500', '-2000'],
+    ['808002', '5']
   ]);
-  assert.equal(response.draw.total_draw_times, '5');
-  assert.equal(demigodDraw(multi).left_buy_times, 10);
-  rejected(() => multi.service.execute(87618, [0]), 301);
+  assert.equal(Number(response.draw.total_draw_times ?? 0), 0);
+  assert.equal(demigodDraw(multi).left_buy_times, 5);
 });
 
-test('demigod wishes replace results, reset failure progress and expose the forty-draw guarantee', t => {
-  const sequence = [0.99, 0.99, 0, 0.99, 0, 0, 0, 0];
-  let randomIndex = 0;
-  const env = setup(t, () => sequence[randomIndex++] ?? 0);
+test('demigod wishes persist and reject locked or duplicate items', t => {
+  const env = setup(t);
   updateDemigodDraw(env, draw => { draw.total_draw_times = 100; });
   const wishList = [1200819, 1200919, 1201019, 1201719];
   assert.deepEqual(
@@ -338,48 +327,7 @@ test('demigod wishes replace results, reset failure progress and expose the fort
   rejected(() => env.service.execute(87617, { wish_list: [1200119] }), 5);
   rejected(() => env.service.execute(87617, { wish_list: [wishList[0], wishList[0]] }), 5);
   rejected(() => env.service.execute(87617, { wish_list: [999999999] }), 5);
-
-  updateDemigodDraw(env, draw => { draw.total_draw_times = 39; draw.wish_list = []; });
-  env.seed(808002, 5);
-  const result = env.service.execute(87618, [0]);
-  const response = codec.unpack('pb_fantasy_equip_draw_buy_rsp', result.data);
-  assert.equal(response.draw.total_draw_times, '44');
-  assert.equal(result.valueForLog.results.filter(row => row.guaranteed).length, 1);
-
-  updateDemigodDraw(env, draw => {
-    draw.total_draw_times = 100;
-    draw.wish_list = wishList;
-    draw.wish_fail_times = 0;
-  });
-  sequence.splice(0, sequence.length, 0.99, 0.99, 0, 0.99, 0, 0, 0.99, 0);
-  randomIndex = 0;
-  env.seed(808002, 5);
-  const wishedResult = env.service.execute(87618, [0]);
-  const wished = codec.unpack('pb_fantasy_equip_draw_buy_rsp', wishedResult.data);
-  const tids = wished.res.changes.filter(change => change.extra).map(change => Number(decodeDemigodEquipExtra(change.extra).tid));
-  assert.deepEqual(tids, [1202819, 1200819, 1200719, 1200819, 1200719]);
-  assert.equal(wished.draw.wish_fail_times, '1');
-});
-
-test('demigod forty-draw pity forces the best unlocked equip and stays synced with module 10', t => {
-  const env = setup(t);
-  updateDemigodDraw(env, draw => { draw.total_draw_times = 39; draw.wish_list = []; });
-  env.seed(808002, 5);
-  const result = env.service.execute(87618, [0]);
-  assert.equal(result.valueForLog.results[0].guaranteed, true);
-  assert.equal(result.valueForLog.results[0].tid, 1200719);
-  assert.equal(demigodDraw(env).total_draw_times, '44');
-
-  let record = recruitInfo(env, 226);
-  assert.equal(Number(record.tid), 1049);
-  assert.equal(Number(record.draw_count), 44);
-  assert.equal(Number(record.guaranteed_count), 4);
-  assert.equal(Number(record.high_guaranteed_count), 4);
-
-  env.reopen();
-  record = recruitInfo(env, 226);
-  assert.equal(Number(record.draw_count), 44);
-  assert.equal(Number(record.guaranteed_count), 4);
+  assert.deepEqual(demigodDraw(env).wish_list, wishList);
 });
 
 test('demigod state migrates from metadata into module 518 and encoding failure rolls back', t => {
@@ -400,12 +348,12 @@ test('demigod state migrates from metadata into module 518 and encoding failure 
   const failing = {
     ...codec,
     pack(name, value) {
-      if (name === 'pb_fantasy_equip') throw new Error('Injected demigod result encoding failure');
+      if (name === 'pb_fantasy_equip_draw_buy_rsp') throw new Error('Injected demigod purchase encoding failure');
       return codec.pack(name, value);
     }
   };
   const service = env.make({ codec: failing });
-  assert.throws(() => service.execute(87618, [1]), /Injected demigod result encoding failure/);
+  assert.throws(() => service.execute(87618, [1]), /Injected demigod purchase encoding failure/);
   assert.deepEqual(env.store.state(), before);
 });
 

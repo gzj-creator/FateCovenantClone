@@ -384,6 +384,31 @@ test('resident five-draw updates only block 0 and block 2 while preserving forma
   assert.deepEqual(codec.unpack('pb_fantasy_draw', result.pushEvents[0].data), drawInfo(f.store));
 });
 
+test('resident fortieth draw uses the guaranteed group and resets pity', t => {
+  const f = fixture(t);
+  seedResources(f.store);
+  f.fantasyDraw.ensureLoginState();
+  f.setRandom([0.99, 0]);
+  f.service.execute601({ draw_lib: 226 });
+  f.store.transaction(model => {
+    const pool = model.state.fantasyDrawPools.pools['resident:226'];
+    pool.draw_count = '39';
+    pool.total_draw_count = '39';
+    pool.guaranteed_count = '39';
+    const modules = new Map(model.state.modules.value), module = modules.get(518);
+    const draw = codec.unpack('pb_fantasy_draw', rawBinary(module.value[2]));
+    draw.total_draw_times = '39';
+    module.value[2] = serializedBinary(codec.pack('pb_fantasy_draw', draw));
+    model.state.modules.value = [...modules];
+  });
+  f.setRandom([0, 0]);
+  const result = f.service.execute601({ draw_lib: 226 });
+  assert.deepEqual(result.valueForLog.group_ids, [60101]);
+  assert.equal(result.valueForLog.total_draw_times, '40');
+  assert.equal(f.store.read().state.fantasyDrawPools.pools['resident:226'].guaranteed_count, '0');
+  assert.equal(drawInfo(f.store).total_draw_times, '40');
+});
+
 test('resident wish follows 50 percent failure then 100 percent success and resets the counter', t => {
   const f = fixture(t, { residentEquipmentTid: 1200819 });
   seedResources(f.store);
