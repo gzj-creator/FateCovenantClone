@@ -95,3 +95,48 @@ test('unsupported type throws', t => {
   const service = createEquipService({ store: env.store, codec, tables });
   assert.throws(() => service.execute(9999, {}), err => err.code !== undefined);
 });
+
+test('1003 refines an equip (ETF input)', t => {
+  const env = setup(t);
+  const service = createEquipService({ store: env.store, codec, tables });
+  const before = roleEquipData(env).equips.find(e => Number(e.id) === 1001);
+  const beforeRefine = Number(before.refine ?? 0);
+
+  const result = service.execute(1003, 1001);
+  const response = codec.unpack('pb_equip_refine_rsp', result.data);
+  assert.equal(Number(response.equip.id), 1001);
+  assert.equal(Number(response.equip.refine), beforeRefine + 1);
+  assert.equal(Number(response.multi), 1);
+  assert.ok(response.res_change);
+
+  const after = roleEquipData(env).equips.find(e => Number(e.id) === 1001);
+  assert.equal(Number(after.refine), beforeRefine + 1);
+});
+
+test('1004 one-key refines to target level', t => {
+  const env = setup(t);
+  const service = createEquipService({ store: env.store, codec, tables });
+  const before = roleEquipData(env).equips.find(e => Number(e.id) === 1001);
+  const beforeRefine = Number(before.refine ?? 0);
+
+  const result = service.execute(1004, { equip_id: 1001, target_level: beforeRefine + 3 });
+  const response = codec.unpack('pb_equip_refine_one_key_rsp', result.data);
+  assert.equal(Number(response.equip.id), 1001);
+  assert.equal(Number(response.equip.refine), beforeRefine + 3);
+  assert.equal(Number(response.times), 3);
+  assert.equal(response.multi.length, 3);
+});
+
+test('1005 inscribes an equip', t => {
+  const env = setup(t);
+  const service = createEquipService({ store: env.store, codec, tables });
+
+  const result = service.execute(1005, { equip_id: 1001, target_level: 2 });
+  const response = codec.unpack('pb_equip_inscription_rsp', result.data);
+  assert.equal(Number(response.equip.id), 1001);
+  assert.equal(Number(response.equip.inscription), 2);
+  assert.ok(response.res_change);
+
+  const after = roleEquipData(env).equips.find(e => Number(e.id) === 1001);
+  assert.equal(Number(after.inscription), 2);
+});
