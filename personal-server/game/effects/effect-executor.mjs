@@ -45,7 +45,11 @@ export class EffectExecutor {
 
     // Calculate base damage
     let baseDamage = effect.magnitude || 0;
-    if (effect.multiplier) {
+    if (effect.damageType === 'percent-max-hp') {
+      baseDamage = (target.maxHp || target.hp || 0) * (effect.magnitude || 0);
+    } else if (effect.damageType === 'percent-current-hp') {
+      baseDamage = (target.hp || 0) * (effect.magnitude || 0);
+    } else if (effect.multiplier) {
       baseDamage = actor.attack * effect.multiplier;
     }
 
@@ -69,9 +73,8 @@ export class EffectExecutor {
     if (effect.ignoreDefense) {
       defense *= (1 - effect.ignoreDefense);
     }
-
-    // Final damage calculation
-    const defenseReduction = defense * 0.45;
+    const isPercentHp = effect.damageType === 'percent-max-hp' || effect.damageType === 'percent-current-hp';
+    const defenseReduction = isPercentHp ? 0 : defense * 0.45;
     const finalDamage = Math.max(1, Math.floor((baseDamage - defenseReduction) * critMultiplier));
 
     // Apply to target

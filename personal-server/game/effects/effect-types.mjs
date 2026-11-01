@@ -82,6 +82,7 @@ export const STATUS_TYPES = Object.freeze({
   WEAKENED: 'weakened',              // Decreased damage
   SLOWED: 'slowed',                  // Decreased speed
   EXHAUSTED: 'exhausted',            // Decreased energy gain
+  FRIGHTENED: 'frightened',          // 惊惧: terror debuff (银爵艾伦)
 });
 
 // Target selection types
