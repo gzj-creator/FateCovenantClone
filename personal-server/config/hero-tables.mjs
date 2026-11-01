@@ -15,6 +15,13 @@ export function readHeroTables(file = defaultPath) {
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
     'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
     'TeamSuggest', 'TeamSuggestAward', 'TeamSuggestType', 'TeamSuggestTeamType',
+    // TeamGenreMgr stores each current cycle and its claimed-award bitmap in
+    // HeroDataMgr login slot 8. The current rules use TeamGenreCycle/Award;
+    // retain the pre-split tables so local servers created from older clients
+    // still receive valid rows.
+    'TeamGenre', 'TeamGenreType', 'TeamGenreCycle', 'TeamGenreAward',
+    'TeamGenreCycleOld', 'TeamGenreAwardOld', 'TeamGenreConst', 'TeamGenreShow',
+    'StrategyTeamGenre',
     // Hero favour/"training" (HeroFavorMgr): the login module stores the
     // player's accumulated favour while these tables own gift values, level
     // thresholds, rewards, break caps and playground eligibility.
