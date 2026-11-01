@@ -12,6 +12,7 @@
 - `91402 req_team_genre_quick_award`：请求体只有流派类型 ETF 整数，响应为 `pb_team_genre_award_rsp { team, award }`。
 - `91403 req_team_genre_get_info`：无请求参数，响应为 `pb_team_genre_role { genre_list }`。
 - `pb_team_genre { team_id, receive_award(bytes), cycle_id }`。
+- 字段名 `team_id` 在客户端实际传给 `GetCycleTid`，含义是主流派类型 TID（例如 `54`），不是 `StrategyTeamGenre` 的阵容 TID（例如 `5402`）。2026-11-01 真实客户端日志中的 `TeamGenreType(5104) is nil` 确认了该差异。
 - `HeroDataMgr.ParseLogin` 的模块 10 第 9 个 Lua 槽位（数组下标 8）是 `TeamGenre`；模块 10 下标 7 仍由既有的 TeamSuggest 使用。
 
 `TeamGenreMgr.ParseTeamGenrePb` 将每行写成 `collect_awards[team.team_id][team.cycle_id]`，位图来自 `team.receive_award`；快捷回包也按同一路径更新单行。
@@ -47,3 +48,10 @@
 - 服务于 `2026-11-01T07:17:22.159Z` 重启，PID `36616`，入口 `F:\projects\FateCovenantClone\personal-server\local-server.mjs`；五端口 `18880/18881/18882/18883/19090` 均由该 PID 监听且仅绑定 loopback，stderr 为空。
 - 客户端随后在 `07:17:40.157Z` 自动断线重连，握手成功并在 `07:17:40.488Z` 完成 146 模块登录。
 - 用户尚未在真实 APK 页面重新点击“圣堂控制流”的 20 钻石快捷领取，因此 UI 视觉验收仍待完成。成功标准为日志出现 `team_genre_command_committed type=91402`、无对应 `unsupported_command`、界面领取成功，且实时 SQLite 出现 `5402:5402:1..3` 并为钻石 `101500` 增加 60。
+
+## 2026-11-01 客户端位图解析修正
+
+- 真实客户端已正常发出 `91402`，服务端也到账并防重，但页面仍显示红点。设备日志定位到 `HeroTable.TeamGenreType(5104) is nil`，调用栈为 `TeamGenreMgr.InitTeamGenrePb -> GetCycleTid`。
+- 根因是协议字段 `pb_team_genre.team_id` 尽管命名为 team，客户端实际把它当作主流派类型 TID（`51..59`）传给 `GetCycleTid`；首版错误写入了 `StrategyTeamGenre` 阵容 TID（`5104..5901`），使模块 10 登录解析在第一条记录中止。
+- 登录模块与 `91402` 回包的 `team_id` 现统一写类型 TID，`cycle_id` 仍写周期 TID。旧版本已经落库的 `cycle:阵容:奖励` 领取流水继续兼容读取，避免对到账奖励重复发放。
+- 新增覆盖登录记录的客户端形状，以及旧领取流水迁移的回归用例。TeamGenre 与 TeamSuggest 定向测试现为 `11/11` 通过。
