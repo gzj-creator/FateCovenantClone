@@ -29,7 +29,18 @@ const platformRow = platformPrototype?.constants.find(c => c.type === 'table' &&
 const platformValues = platformPrototype?.constants.find(c => c.type === 'table' && typeof c.array[2] === 'string');
 if (!platformRow || !platformValues) throw new Error('Local client platform contract not found');
 const platformFields = Object.fromEntries(platformRow.hash.map(([key, index]) => [key, platformValues.array[index]]));
-  const sdk = createSdkService({ localTestOtp: true, sessionTtlSeconds: 604800, sessionPath: path.join(directory, 'sdk-sessions.local-only.json'), platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform }, quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' }, appId: 'fc-local', appKey: 'fc-local-development-key', account: { loginCode: 'localtest', passwordMd5: createHash('md5').update('Local2026!').digest('hex'), userId: 'local-1', nickname: 'Local Adventurer' }, logger });
+  const sdkAccount = Object.freeze({ loginCode: 'localtest', passwordMd5: createHash('md5').update('Local2026!').digest('hex'), userId: 'local-1', nickname: 'Local Adventurer' });
+  const sdk = createSdkService({
+    localTestOtp: true, sessionTtlSeconds: 604800, sessionPath: path.join(directory, 'sdk-sessions.local-only.json'),
+    platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform },
+    quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' },
+    // The shipped APK obtains a QuickSDK platform identity from its upstream
+    // login page, then signs that identity into /v2/users/checkLogin. Bind the
+    // signed platform identity to this deployment's current game account and
+    // issue a server-owned token; no APK or device NAT is required.
+    quickSdkIdentityResolver: () => ({ userId: sdkAccount.userId, loginCode: sdkAccount.loginCode, nickname: sdkAccount.nickname }),
+    appId: 'fc-local', appKey: 'fc-local-development-key', account: sdkAccount, logger
+  });
 const keyPath = path.resolve(process.env.FC_SERVER_LIST_SIGNING_KEY_PATH ?? path.join(secretsDirectory, 'server-list-signing-key.json'));
 const keyContent = fs.readFileSync(keyPath, 'utf8');
 const key = JSON.parse(keyContent).key;
