@@ -172,5 +172,56 @@ export function createMonthPermitService({ codec, tables }) {
     };
   }
 
-  return { supports, purchase, buyLevel, gearByRecharge };
+  function claimTask({ model, request }) {
+    const actId = positiveSafeInteger(request?.activity_id, 'activity id');
+    const taskIds = request?.task_id_list ?? [];
+    if (!Array.isArray(taskIds) || taskIds.length === 0) throw new GameError(1, 'Task list is empty');
+
+    const row = activeInfo(model, actId);
+    const taskInfoList = row.info.task_get ?? [];
+
+    const taskRows = [...(tables.MonthPermitTask?.values?.() ?? [])]
+      .filter(entry => taskIds.includes(String(entry.tid)));
+
+    const taskIdSet = new Set(taskIds.map(String));
+    const completedTasks = taskInfoList.filter(task => taskIdSet.has(String(task.tid)));
+
+    if (completedTasks.length > 0) throw new GameError(310, 'Task already claimed');
+
+    const rewardRows = [...tables.MonthPermitTaskReward?.values?.() ?? []]
+      .filter(entry => taskIds.includes(String(entry.tid)));
+
+    const rewards = rewardRows.flatMap(row => {
+      const items = row.reward_item ?? [];
+      return items.map(pair => [Number(pair[0]), Number(pair[1])]);
+    });
+
+    // Update task info with claimed timestamp
+    for (const taskId of taskIds) {
+      const taskRow = taskRows.find(entry => String(entry.tid) === taskId);
+      if (taskRow) {
+        taskRow.get_time = Math.floor(Date.now() / 1000);
+      }
+    }
+
+    const updatedTaskInfo = taskInfoList.map(task => {
+      const existing = taskRows.find(entry => String(entry.tid) === String(task.tid));
+      return existing || { tid: Number(task), get_time: 0 };
+    });
+
+    row.info.task_get = updatedTaskInfo;
+    persistInfo(model, row);
+
+    return {
+      actId: String(actId),
+      claimedTasks: taskIds.map(String),
+      rewards,
+      response: {
+        month_permit_info: row.info,
+        res: { changes: rewards.map(([tid, num]) => ({ tid: String(tid), diff_num: String(num) })), is_overflow: false }
+      }
+    };
+  }
+
+  return { supports, purchase, buyLevel, claimTask, gearByRecharge };
 }

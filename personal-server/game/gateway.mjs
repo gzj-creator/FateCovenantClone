@@ -665,6 +665,19 @@ export function createLocalGame({
         }
         return;
       }
+      if (type === 105804) {
+        try {
+          const requestData = unpackRequest('pb_month_permit_task_req', request.data);
+          const result = store.transaction(model => monthPermit.claimTask({ model, request: requestData }));
+          send(seq, pack('pb_month_permit_task_back', result.response));
+          log({ event: 'month_permit_task_reward_committed', type, seq, actId: result.actId, taskIds: result.claimedTasks });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'month_permit_task_reward_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (mail && mail.supports(type)) {
         try {
           let result;
@@ -950,7 +963,7 @@ export function createLocalGame({
             if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
             order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
           }
-          send(seq);
+          send(seq, order.notification);
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
         } catch (error) {
           // The native recharge UI maps 16016 to RechargeErr.RECHARGE_COUNT_NOT_ENOUGH.

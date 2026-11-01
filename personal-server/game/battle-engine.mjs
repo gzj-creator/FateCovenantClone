@@ -1,3 +1,12 @@
+import {
+  loadSkillDatabase,
+  getHeroSkills,
+  applySkillEffects,
+  registerPassiveTriggers,
+  processTriggers,
+  processBuffTicks,
+} from './effects/skill-integration.mjs';
+
 export const BATTLE_RESULT = Object.freeze({ DRAW: 0, WIN: 1, LOSS: 2 });
 
 const MAX_ACTIVE_UNITS = 12;
@@ -52,13 +61,20 @@ function finitePositive(value, name) {
   return value;
 }
 
-function normalizeUnit(unit) {
+function normalizeUnit(unit, skillDatabase) {
   if (!unit || !Number.isSafeInteger(unit.id) || unit.id <= 0) throw new Error('Battle unit id is invalid');
   const maxHp = Math.floor(finitePositive(Number(unit.maxHp), 'maxHp'));
   const attack = finitePositive(Number(unit.attack), 'attack');
   const defense = Math.max(0, Number(unit.defense ?? 0));
   const speed = finitePositive(Number(unit.speed ?? 100), 'speed');
   const initialEnergy = Math.max(0, Math.min(FIGHT_ENERGY_MAX, Number(unit.initialEnergy ?? FIGHT_INITIAL_ENERGY)));
+
+  // Load hero skills if skill database is available
+  let skills = [];
+  if (skillDatabase) {
+    skills = getHeroSkills(unit.id, skillDatabase);
+  }
+
   return {
     id: unit.id,
     team: unit.team,
@@ -78,7 +94,17 @@ function normalizeUnit(unit) {
     energy: initialEnergy,
     alive: true,
     reviveOnce: Boolean(unit.reviveOnce),
-    reviveHpRatio: Math.max(0.05, Math.min(0.75, Number(unit.reviveHpRatio ?? 0.3)))
+    reviveHpRatio: Math.max(0.05, Math.min(0.75, Number(unit.reviveHpRatio ?? 0.3))),
+    // New fields for skill system
+    skills,
+    buffs: [],
+    debuffs: [],
+    triggers: [],
+    cooldowns: new Map(),
+    damageTaken: 0,
+    damageDealt: 0,
+    healsReceived: 0,
+    kills: 0,
   };
 }
 
@@ -313,11 +339,16 @@ function validateTeams(attackers, defenders) {
 export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 }) {
   validateTeams(attackers, defenders);
   if (!Number.isSafeInteger(maxRounds) || maxRounds < 1 || maxRounds > 100) throw new Error('maxRounds is invalid');
-  const attackerTeam = attackers.map(unit => normalizeUnit({ ...unit, team: 1 }));
-  const defenderTeam = defenders.map(unit => normalizeUnit({ ...unit, team: 2 }));
+  const skillDatabase = loadSkillDatabase();
+  const attackerTeam = attackers.map(unit => normalizeUnit({ ...unit, team: 1 }, skillDatabase));
+  const defenderTeam = defenders.map(unit => normalizeUnit({ ...unit, team: 2 }, skillDatabase));
   const allUnits = [...attackerTeam, ...defenderTeam];
   const events = [];
-  const turnState = { seed: (Number(seed) >>> 0) || 1, nextActionId: 1 };
+  const turnState = { seed: (Number(seed) >>> 0) || 1, nextActionId: 1, skillDatabase, random: null };
+  // register passive triggers
+  for (const u of allUnits) {
+    registerPassiveTriggers(u, skillDatabase, turnState);
+  }
   let result = BATTLE_RESULT.DRAW;
   let overRound = 0;
 

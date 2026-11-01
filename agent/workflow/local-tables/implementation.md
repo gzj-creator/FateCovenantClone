@@ -67,3 +67,31 @@ node analysis/tools/probe-table-paths.mjs
 ## 验收边界
 
 表加载与客户端页面数据一致，属于组件级验收。服务尚未重启，登录与 88801 真实链路未复验，不能记为可玩验收。
+
+## 2026-11-01 运行时文件与会话恢复
+
+复核 `cdd1249` 后确认：该提交重建了 41 个配置表，但 `analysis/` 仍受 `.git/info/exclude` 控制，运行时文件没有进入版本控制。现已恢复：
+
+- `p3/server-key.local-only.json` 与 `p3/runtime.local-only.data/server-key.local-only.json` 内容一致，SHA-256 均为 `228EAE9666D55CDC1AB42A594BB8C06A21F8EEA2C9B0ADC44A7DBCA04237C059`。其中 key 是测试用临时签名 key，不是从原 APK 恢复出的原厂 key；原值只保留在 local-only 文件，不写入 Git。
+- `runtime.local-only.data/update-manifest-364110.local-only.txt` 已存在，大小 933,635B，SHA-256 `8DD2A59325E139F333F6BDF3A8CC0E289368FDC5D54281B45D5E4A58E0EC42F1`。
+- `runtime.local-only.data/sdk-sessions.local-only.json` 因清理丢失；已用设备 `JZUserToken.xml` 中仍然有效的 `local-1` token 做 SHA-256，恢复服务端会话条目。文件只保存 token 哈希、用户 ID 和到期时间，不保存原始 token。
+
+恢复后服务于 `2026-11-01T05:50:27.548Z` 重启，实时 PID 以 `runtime.local-only.data/server.local-only.json` 为准（本轮为 27164），五端口正常启动且 stderr 为空。只读验证：
+
+- 用恢复后的 key 对 `/server_list` 发送 `channel_login_servers`，返回 `200 application/octet-stream`。
+- 用客户端现有 token 调用 `/user/tokenVerifySdk`，返回 `200`、`rcode=0`、`userid=local-1`、原到期时间 `1793980174`。
+
+客户端此前日志中的 `Local SDK session required` 由会话文件丢失导致；修复后的接口验证已通过。客户端当前停留在登录流程，未代为点击或重启；用户完成登录并进入大厅后才能记为 APK 可玩验收。
+
+## 2026-11-01 签名密钥与更新清单迁移
+
+静态配置和更新清单已迁出易被清理的 `analysis/` 运行目录，改为 `personal-server` 的版本化配置：
+
+- `/server_list` 签名密钥：`personal-server/secrets/server-list-signing-key.json`。已从客户端 bundle 解码出的 `LoginServerHttp.lua.json` 定位到类常量 `aMyvhEQ5rvyGRm2w`；该值与此前临时值 `fc-local-temp-signing-key-for-testing` 不同。
+- 更新清单：`personal-server/config/update-manifest-364110.txt`，933,635B，SHA-256 为 `8DD2A59325E139F333F6BDF3A8CC0E289368FDC5D54281B45D5E4A58E0EC42F1`。
+- `personal-server/local-server.mjs` 默认读取新路径，并允许用 `FC_SERVER_LIST_SIGNING_KEY_PATH`、`FC_UPDATE_MANIFEST_PATH` 临时覆盖。
+- `.gitattributes` 将更新清单标为 `binary`，避免 Git 换行转换或文本 diff 改变清单字节。
+
+`sdk-sessions.local-only.json` 是登录后动态变化且会过期的本机会话状态，仍留在运行时目录，不提交 Git。签名密钥是否与真实客户端一致，要以客户端实际 `/server_list` 表单中的 `json` 和 `sign` 重算结果为准；仅以服务端自造请求返回 200 不算真实链路验收。
+
+服务改用新密钥后于 `2026-11-01T06:32:17.872Z` 重启，实时 PID 为 `20852`。仍在运行的客户端随后连续请求已由 401 变为 `preferred_login_servers 200`，界面显示 `Local Server` 和“踏上旅途”；用户确认恢复。现有客户端因此无需再重启。截图证据：`analysis/experiments/private-server-20261025/p3/server-list-key-probe-20261101/client-after-key-fix-20261101.png`。新密钥文件 SHA-256 为 `DBCAB5188896475842BC77E70F86744716C66820D8486A259CD4004238552D1C`。

@@ -12,6 +12,8 @@ import { loadActivityCalendarConfig, parseActivityCalendarTimestamp } from './co
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
+const configDirectory = path.join(__dirname, 'config');
+const secretsDirectory = path.join(__dirname, 'secrets');
 
 const activityCalendar = loadActivityCalendarConfig(process.env.FC_ACTIVITY_CALENDAR_CONFIG);
 const serverOpenedAt = process.env.FC_SERVER_OPENED_AT
@@ -28,11 +30,11 @@ const platformValues = platformPrototype?.constants.find(c => c.type === 'table'
 if (!platformRow || !platformValues) throw new Error('Local client platform contract not found');
 const platformFields = Object.fromEntries(platformRow.hash.map(([key, index]) => [key, platformValues.array[index]]));
   const sdk = createSdkService({ localTestOtp: true, sessionTtlSeconds: 604800, sessionPath: path.join(directory, 'sdk-sessions.local-only.json'), platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform }, quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' }, appId: 'fc-local', appKey: 'fc-local-development-key', account: { loginCode: 'localtest', passwordMd5: createHash('md5').update('Local2026!').digest('hex'), userId: 'local-1', nickname: 'Local Adventurer' }, logger });
-const keyPath = path.join(projectRoot, 'analysis/experiments/private-server-20261025/p3/server-key.local-only.json');
+const keyPath = path.resolve(process.env.FC_SERVER_LIST_SIGNING_KEY_PATH ?? path.join(secretsDirectory, 'server-list-signing-key.json'));
 const keyContent = fs.readFileSync(keyPath, 'utf8');
 const key = JSON.parse(keyContent).key;
 const list = createServerListService({ signingKey: key, server: { id: 1, name: 'Local Server', extranetIp: '127.0.0.1:19090', releaseTime: serverOpenedAt }, codec: createProtobufJsCodec(), logger });
-const updateManifestPath = path.join(directory, 'update-manifest-364110.local-only.txt');
+const updateManifestPath = path.resolve(process.env.FC_UPDATE_MANIFEST_PATH ?? path.join(configDirectory, 'update-manifest-364110.txt'));
 const startup = createStartupService({ appVersion: '1.55.090365', assetVersion: 364110, updateManifest: fs.readFileSync(updateManifestPath), logger });
 const game = createLocalGame({
   databasePath: path.join(directory, 'game.local-only.sqlite'),
