@@ -623,8 +623,7 @@ export function createLocalGame({
         payloadBytes: payload.length,
         frameBytes: frame.length,
         header: frame.subarray(0, 4).toString('hex'),
-        frameSha256: crypto.createHash('sha256').update(frame).digest('hex'),
-        responseData: data.toString('base64')
+        frameSha256: crypto.createHash('sha256').update(frame).digest('hex')
       };
       if (wireDumpDirectory && payload.length >= 1024) {
         fs.mkdirSync(wireDumpDirectory, { recursive: true });
@@ -647,8 +646,7 @@ export function createLocalGame({
       }
       const request = root.lookupType('pb_c2s').decode(payload);
       const { type, seq } = request;
-      const requestDataHex = request.data ? request.data.toString('base64') : '';
-      log({ event: 'command', type, seq, bytes: request.data?.length ?? 0, requestData: requestDataHex });
+      log({ event: 'command', type, seq, bytes: request.data?.length ?? 0 });
       // Heartbeat is one-way. A zero-length S2C frame leaves the client's
       // TcpConnectionWorker receive stream at offset 4 and corrupts the next frame.
       if (type === -1) return;

@@ -341,7 +341,6 @@ export function createFantasyActSharedService({
   }
 
   function claimDailyMarbles(kind, actTidValue = null) {
-    log({ event: 'fantasy_act_shared_claimDailyMarbles_entry', kind, actTidValue });
     return store.transaction(model => {
       const seconds = Number(now());
       const info = activity(model, kind, seconds, actTidValue, 'claim_daily_marbles');
@@ -372,7 +371,6 @@ export function createFantasyActSharedService({
   }
 
   function claimBigMarbles(kind, actTidValue = null) {
-    log({ event: 'fantasy_act_shared_claimBigMarbles_entry', kind, actTidValue });
     return store.transaction(model => {
       const seconds = Number(now());
       const info = activity(model, kind, seconds, actTidValue, 'claim_big_marbles');
@@ -452,7 +450,6 @@ export function createFantasyActSharedService({
   }
 
   function claimTrialReward(kind, input, actTidValue = null) {
-    log({ event: 'fantasy_act_shared_claimTrialReward_entry', kind, input, inputHex: input?.toString('base64'), actTidValue });
     return store.transaction(model => {
       const seconds = Number(now());
       const info = activity(model, kind, seconds, actTidValue, 'claim_trial_reward');
@@ -475,7 +472,6 @@ export function createFantasyActSharedService({
   }
 
   function wearTrialEquipment(kind, input, actTidValue = null) {
-    log({ event: 'fantasy_act_shared_wearTrialEquipment_entry', kind, input, inputHex: input?.toString('base64'), actTidValue });
     return store.transaction(model => {
       const seconds = Number(now());
       const info = activity(model, kind, seconds, actTidValue, 'wear_trial_equipment');
@@ -505,7 +501,6 @@ export function createFantasyActSharedService({
   }
 
   function wearTrialBless(kind, input, actTidValue = null) {
-    log({ event: 'fantasy_act_shared_wearTrialBless_entry', kind, input, inputHex: input?.toString('base64'), actTidValue });
     return store.transaction(model => {
       const seconds = Number(now());
       const info = activity(model, kind, seconds, actTidValue, 'wear_trial_bless');
@@ -551,7 +546,6 @@ export function createFantasyActSharedService({
   }
 
   function copyTrial(kind, trialTidValue, actTidValue = null) {
-    log({ event: 'fantasy_act_shared_copyTrial_entry', kind, trialTidValue, actTidValue });
     return store.transaction(model => {
       const seconds = Number(now());
       const info = activity(model, kind, seconds, actTidValue, 'copy_trial');
@@ -578,7 +572,6 @@ export function createFantasyActSharedService({
   }
 
   function setWish(kind, request, actTidValue = null) {
-    log({ event: 'fantasy_act_shared_setWish_entry', kind, request, requestHex: request?.toString('base64'), actTidValue });
     return store.transaction(model => {
       const seconds = Number(now());
       const info = activity(model, kind, seconds, actTidValue, 'set_wish');

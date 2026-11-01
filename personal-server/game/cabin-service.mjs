@@ -297,7 +297,6 @@ export function createCabinService({ store, codec, heroTables }) {
   return {
     supports: type => type === UNLOCK_CELL_TYPE || type === PLACE_HERO_TYPE,
     ensureLoginState() {
-      log({ event: 'cabin_ensureLoginState_entry' });
       return store.transaction(model => {
         const { modules, groups } = readGroups(model);
         for (const config of campsiteGroupsForRoleLevel(roleLevel(model))) {
@@ -312,7 +311,6 @@ export function createCabinService({ store, codec, heroTables }) {
       return moduleBytes(module);
     },
     execute(type, input) {
-      log({ event: 'cabin_execute_entry', type, input, inputHex: input?.toString('base64') });
       if (type !== UNLOCK_CELL_TYPE && type !== PLACE_HERO_TYPE) fail(1, 'Invalid campsite command');
       return store.transaction(model => type === UNLOCK_CELL_TYPE ? unlockCell(model, input) : placeHero(model, input));
     }

@@ -9,7 +9,6 @@ export function createDemigodActService({ store, codec, tables, now, activityTid
   });
 
   function execute(type, input) {
-    log({ event: 'demigod_execute_entry', type, input, inputHex: input?.toString('base64') });
     switch (Number(type)) {
       case 98301: return shared.claimDailyMarbles('demigod');
       case 98302: return shared.claimBigMarbles('demigod');

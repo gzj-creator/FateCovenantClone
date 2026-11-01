@@ -89,7 +89,6 @@ export function createDestinyService({ store, codec, tables }) {
   }
 
   function ensureLoginState() {
-    log({ event: 'destiny_ensureLoginState_entry' });
     return store.transaction(model => {
       const modules = new Map(model.state.modules.value);
       const previous = modules.get(DESTINY_MODULE);
@@ -104,7 +103,6 @@ export function createDestinyService({ store, codec, tables }) {
   }
 
   function upgrade(ids) {
-    log({ event: 'destiny_upgrade_entry', ids });
     return store.transaction(model => {
       const { modules, state } = readState(model);
       const stages = ids.map(stageOf);

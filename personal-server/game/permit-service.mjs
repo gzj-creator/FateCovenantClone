@@ -1,14 +1,10 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
+import { rechargeHandleForType } from './recharge-rules.mjs';
 import { grantResources } from './resources.mjs';
 
 const PERMIT_MODULE = 38;
 const PERMIT_PRODUCT_TYPE = 6;
-// RechargeTable.Handle[9] maps recharge_type 6 to PermitNewMgr. The client
-// loops over extra_ret_list without a nil guard, so a standard permit purchase
-// must return at least one entry. PermitNewMgr refreshes from the product tid;
-// the pb_permit_info payload documents the row that changed.
-const PERMIT_HANDLE_FLAG = 9;
 const NOT_BUY_PERMIT = 25001;
 const PERMIT_HAS_RECEIVED = 25002;
 const PERMIT_NO_ONE_KEY_AWARD = 25003;
@@ -17,6 +13,8 @@ const PERMIT_NO_ONE_KEY_AWARD = 25003;
 // product to a PermitTable row, and the client refreshes the row from the 1900
 // recharge event after the order commits.
 export function createPermitService({ codec, tables, now = () => Math.floor(Date.now() / 1000) }) {
+  const permitHandle = rechargeHandleForType(tables, PERMIT_PRODUCT_TYPE);
+  if (permitHandle == null) throw new Error('RechargeTable.Handle is missing the standard permit handler');
   const permitByRecharge = new Map();
   for (const permit of tables.PermitBase?.values?.() ?? []) {
     for (const recharge of [Number(permit.recharge), Number(permit.discount_recharge)]) {
@@ -179,7 +177,7 @@ export function createPermitService({ codec, tables, now = () => Math.floor(Date
       model.state.modules.value = [...modules];
       return {
         permitId: String(permit.tid),
-        extraRetList: [{ flag: PERMIT_HANDLE_FLAG, data: codec.pack('pb_permit_info', info) }]
+        extraRetList: [{ flag: permitHandle, data: codec.pack('pb_permit_info', info) }]
       };
     }
 

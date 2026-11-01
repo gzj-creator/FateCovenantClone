@@ -3,6 +3,21 @@ const DAY_SECONDS = 86400;
 // the preceding calendar day, so epoch seconds are shifted by three hours.
 const RECHARGE_RESET_OFFSET_SECONDS = 3 * 3600;
 
+// recharge_extra_ret.flag is the RechargeTable.Handle row whose recharge_type
+// matches the purchased product. Resolve it from the shipped table so every
+// product class follows the same client contract instead of hardcoding one
+// manager's handle.
+export function rechargeHandleForType(tables, rechargeType) {
+  const type = Number(rechargeType);
+  if (!Number.isSafeInteger(type) || type < 0) return null;
+  for (const row of tables?.RechargeHandle?.values?.() ?? []) {
+    if (Number(row.recharge_type) !== type) continue;
+    const handle = Number(row.tid);
+    if (Number.isSafeInteger(handle) && handle > 0) return handle;
+  }
+  return null;
+}
+
 export function timestampSeconds(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;

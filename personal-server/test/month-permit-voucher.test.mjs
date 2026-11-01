@@ -98,7 +98,7 @@ test('month permit purchase with vouchers stores pay_list, returns flag 116 and 
   assert.equal(rechargeTotal(e.store), before + 6800);
 
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
-  assert.equal(push.get_token, true);
+  assert.equal(Boolean(push.get_token), false);
   assert.equal(push.is_use_token, true);
   assert.equal(Number(push.use_item_tid), 701500);
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
@@ -175,7 +175,7 @@ test('voucher payment of an ordinary product still counts the full product price
   assert.equal(result.balance_paid_cents, 400);
   assert.equal(rechargeTotal(e.store), before + 600);
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
-  assert.equal(push.get_token, true);
+  assert.equal(Boolean(push.get_token), false);
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
   assertRechargeExtra(extraParams);
 });
@@ -198,7 +198,7 @@ test('voucher payment of a month-card product grants mixed rewards and counts fu
 
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
   assert.equal(Number(push.recharge_id), 140001);
-  assert.equal(push.get_token, true);
+  assert.equal(Boolean(push.get_token), false);
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-30');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 101500)?.diff_num, '1000');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 2002)?.diff_num, '10');
@@ -223,7 +223,7 @@ test('voucher payment of a type-46 diamond recharge grants rewards and counts fu
 
   const push = codec.unpack('res_recharge_success', e.pushes.find(item => item.type === 1900).data);
   assert.equal(Number(push.recharge_id), 40008);
-  assert.equal(push.get_token, true);
+  assert.equal(Boolean(push.get_token), false);
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 701500)?.diff_num, '-30');
   assert.deepEqual(push.res.changes.find(change => Number(change.tid) === 101500)?.diff_num, '300');
   const extraParams = await decodeEtf(Buffer.from(push.extra_params, 'base64'));

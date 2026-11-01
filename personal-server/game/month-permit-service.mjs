@@ -1,9 +1,9 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
+import { rechargeHandleForType } from './recharge-rules.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 
 const MONTH_PERMIT_RECHARGE = 130;
-const MONTH_PERMIT_HANDLE_FLAG = 116;
 const MODULE_ACT_LOGIN = 183;
 
 function positiveSafeInteger(value, field) {
@@ -21,8 +21,10 @@ function positiveBigInt(value, field) {
 
 // RechargeTable type=130 products have an empty reward list. Their purchase is
 // recorded in the owning activity's pb_month_permit_info.pay_list instead; the
-// native client then refreshes the pass UI from extra_ret_list flag 116.
+// native client then refreshes the pass UI from the configured Handle row.
 export function createMonthPermitService({ codec, tables }) {
+  const monthPermitHandle = rechargeHandleForType(tables, MONTH_PERMIT_RECHARGE);
+  if (monthPermitHandle == null) throw new Error('RechargeTable.Handle is missing the month permit handler');
   const gearByRecharge = new Map();
   for (const gear of tables.MonthPermitGear?.values?.() ?? []) {
     const recharge = Number(gear.recharge);
@@ -116,7 +118,7 @@ export function createMonthPermitService({ codec, tables }) {
             actId: String(info.id),
             gearTid: Number(gear.tid),
             info,
-            extraRetList: [{ flag: MONTH_PERMIT_HANDLE_FLAG, data: codec.pack('pb_month_permit_info', info) }]
+            extraRetList: [{ flag: monthPermitHandle, data: codec.pack('pb_month_permit_info', info) }]
           };
         }
       }

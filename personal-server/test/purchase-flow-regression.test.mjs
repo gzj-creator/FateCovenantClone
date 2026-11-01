@@ -269,7 +269,8 @@ test('monthly card can be paid entirely with vouchers and publishes the same mod
   );
   assert.equal(env.voucher.balance().quantity, 0);
   const purchase = latestPurchase(env);
-  assert.equal(purchase.get_token, true);
+  assert.equal(Boolean(purchase.get_token), false);
+  assert.equal(purchase.is_use_token, true);
   assert.deepEqual(flags(purchase), [5]);
   assert.equal(Number(monthlyCardInfo(env.store).card_list[0].id), 2);
 });

@@ -5,10 +5,12 @@ import {
   rechargeClaimKey,
   rechargeDayIndex,
   rechargeDayStart,
+  rechargeHandleForType,
   requireCentAmount,
   requireRechargeRequestTuple,
   roleLoginDayCount
 } from '../game/recharge-rules.mjs';
+import { readGameTables } from '../config/game-tables.mjs';
 
 test('recharge days roll over at 05:00 Asia/Shanghai and login days start at one', () => {
   const beforeReset = Date.parse('2026-10-31T20:59:59Z') / 1000;
@@ -36,4 +38,11 @@ test('ETF number lists and claim keys normalize without accepting implicit extra
   assert.deepEqual(requireRechargeRequestTuple('31', 1, 'request'), [31]);
   assert.throws(() => requireRechargeRequestTuple([31, 3101], 1, 'request'), /must contain 1/);
   assert.equal(rechargeClaimKey('first_recharge', 1, 2), 'first_recharge:1:2');
+});
+
+test('recharge response handles come from the client RechargeTable configuration', () => {
+  const tables = readGameTables();
+  assert.equal(rechargeHandleForType(tables, 6), 9);
+  assert.equal(rechargeHandleForType(tables, 130), 116);
+  assert.equal(rechargeHandleForType(tables, 999999), null);
 });

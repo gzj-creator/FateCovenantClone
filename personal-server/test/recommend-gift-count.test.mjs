@@ -262,7 +262,7 @@ test('native 16004 uses available vouchers up to the order price and charges the
   assert.ok(notification);
   const pushed = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
   assert.equal(pushed.recharge_id, 40009);
-  assert.equal(pushed.get_token, true);
+  assert.equal(Boolean(pushed.get_token), false);
   assert.equal(pushed.is_use_token, true);
   assert.equal(Number(pushed.use_item_tid), 701500);
   const order = game.wallet.snapshot().orders.find(value => value.product_id === 40009);

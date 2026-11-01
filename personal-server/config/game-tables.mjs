@@ -16,8 +16,8 @@ export function readGameTables() {
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
     ...pick(readGeneratedTables(new URL('DrawTable.data.lua.json', base), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
     ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), [
-      'Recharge', 'Param', 'BuyCycleLimit', 'ExtraReward', 'ExtraFixReward', 'ExtraRewardConst'
-    ])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
+      'Recharge', 'Handle', 'Param', 'BuyCycleLimit', 'ExtraReward', 'ExtraFixReward', 'ExtraRewardConst'
+    ])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k === 'Handle' ? 'RechargeHandle' : k,v])),
     // Monthly cards use login module 20. The primary recharge id maps each
     // product to one pb_monthly_card_info row and its active period.
     MonthlyCard: readGeneratedTables(new URL('MonthlyCardTable.data.lua.json', base), ['MonthlyCard']).MonthlyCard,

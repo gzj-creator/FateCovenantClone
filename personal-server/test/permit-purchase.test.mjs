@@ -81,6 +81,11 @@ test('permit 191201 is purchasable, marks module 38 paid and persists across res
   assert.equal(result.balance_paid_cents, 19400);
   assert.equal(result.balance_cents, 600);
   assert.equal(e.voucher.balance().quantity, 0);
+  const notification = codec.unpack('res_recharge_success', e.pushes.find(push => push.type === 1900).data);
+  assert.equal(Boolean(notification.get_token), false);
+  assert.equal(notification.is_use_token, true);
+  assert.equal(Number(notification.use_item_tid), 701500);
+  assert.ok(notification.extra_ret_list.some(entry => Number(entry.flag) === 9));
 
   const after = permitLogin(e.store);
   assert.equal(after.length, 4);
