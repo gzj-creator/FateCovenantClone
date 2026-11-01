@@ -30,6 +30,7 @@ import { createPetActivityService } from './pet-activity-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createPermitService } from './permit-service.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
+import { createMonthlyCardService } from './monthly-card-service.mjs';
 import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
@@ -361,8 +362,9 @@ export function createLocalGame({
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const standardPermit=createPermitService({codec,tables,now:secondsClock});
   const monthPermit=createMonthPermitService({codec,tables});
+  const monthlyCard=createMonthlyCardService({codec,tables,now:secondsClock});
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,monthPermit,permitService:standardPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
+    store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -658,6 +660,22 @@ export function createLocalGame({
         send(seq, await loginPayload()); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
+      if (type === 17001) {
+        try {
+          const requestData = unpackRequest('req_get_monthly_card_reward', request.data);
+          const result = store.transaction(model => monthlyCard.claim({ model, request: requestData }));
+          send(seq, pack('res_get_monthly_card_reward', result.response));
+          log({
+            event: 'monthly_card_reward_committed', type, seq,
+            cardIds: result.cardIds, claims: result.claims, changes: result.changes
+          });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'monthly_card_reward_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (type === 35001 || type === 35002 || type === 35005) {
         try {
           const permitId = Number(await etfArgument(request.data, 'Invalid standard permit payload'));
@@ -1547,7 +1565,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, monthPermit, calendar, handbook, petActivity, heroDrawActivity,
+    root, loginPayload, store, wallet, mail, voucher, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin,
     cms, guildNationAssist,

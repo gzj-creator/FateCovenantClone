@@ -1,31 +1,43 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { hasBit, setBit } from './bit-block.mjs';
 import { GameError } from './hero-progression.mjs';
 import { rechargeDayIndex } from './recharge-rules.mjs';
+import { grantResources } from './resources.mjs';
 
 const MONTHLY_CARD_MODULE = 20;
 const MONTHLY_CARD_RECHARGE = 47;
 const MONTHLY_CARD_HANDLE_FLAG = 5;
 
-function positiveInteger(value, field) {
+function positiveInteger(value, field, code = 5) {
   const number = Number(value);
   if (!Number.isSafeInteger(number) || number <= 0) {
-    throw new GameError(5, `Invalid monthly card ${field}`);
+    throw new GameError(code, `Invalid monthly card ${field}`);
   }
   return number;
+}
+
+function rewardBytes(value) {
+  if (Buffer.isBuffer(value)) return Buffer.from(value);
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (typeof value === 'string') return Buffer.from(value, 'base64');
+  return Buffer.alloc(0);
 }
 
 // RechargeTable type 47 products activate an entry in login module 20. The
 // client's MonthlyCardMgr.LoginParse decodes pb_monthly_card_info and derives
 // the buy state from monthly_card.start_day + MonthlyCardTable.reward_period.
-export function createMonthlyCardService({ codec, tables }) {
+export function createMonthlyCardService({ codec, tables, now = Date.now }) {
   const cardByRecharge = new Map();
+  const cardById = new Map();
   for (const card of tables.MonthlyCard?.values?.() ?? []) {
     const recharge = Number(card.recharge);
     const cardId = positiveInteger(card.tid, 'id');
     const rewardPeriod = positiveInteger(card.reward_period, 'reward period');
     if (!Number.isSafeInteger(recharge) || recharge <= 0) continue;
     if (!cardByRecharge.has(recharge)) {
-      cardByRecharge.set(recharge, { ...card, tid: cardId, reward_period: rewardPeriod });
+      const normalized = { ...card, tid: cardId, reward_period: rewardPeriod };
+      cardByRecharge.set(recharge, normalized);
+      cardById.set(cardId, normalized);
     }
   }
 
@@ -45,7 +57,15 @@ export function createMonthlyCardService({ codec, tables }) {
   function activeOnDay(cardConfig, purchasedCard, day) {
     const startDay = Number(purchasedCard?.start_day ?? 0);
     if (!Number.isSafeInteger(startDay) || startDay <= 0) return false;
-    return day >= startDay && day - startDay <= cardConfig.reward_period;
+    return day >= startDay && day < startDay + cardConfig.reward_period;
+  }
+
+  function countRewardBits(bits, rewardPeriod) {
+    let count = 0;
+    for (let index = 0; index < rewardPeriod; index++) {
+      if (hasBit(bits, index)) count++;
+    }
+    return count;
   }
 
   function assertPurchaseAvailable({ modules, product, at }) {
@@ -87,5 +107,79 @@ export function createMonthlyCardService({ codec, tables }) {
     };
   }
 
-  return { supports, assertPurchaseAvailable, purchase, cardByRecharge };
+  function claim({ model, request, at = now() }) {
+    const currentDay = rechargeDayIndex(at);
+    const requestedCards = request?.card_list;
+    if (!Array.isArray(requestedCards) || requestedCards.length === 0) {
+      throw new GameError(1, 'Monthly card reward list is empty');
+    }
+
+    const modules = new Map(model.state.modules.value);
+    const { info } = readInfo(modules);
+    const seenCards = new Set();
+    const updatedCards = new Map();
+    const awards = [];
+    const claims = [];
+
+    for (const requestedCard of requestedCards) {
+      const cardId = positiveInteger(requestedCard?.card_id, 'id', 1);
+      if (seenCards.has(cardId)) throw new GameError(1, 'Monthly card reward list contains a duplicate card');
+      seenCards.add(cardId);
+
+      const cardConfig = cardById.get(cardId);
+      if (!cardConfig) throw new GameError(5, 'Monthly card configuration is unavailable');
+      const purchasedCard = info.card_list.find(row => Number(row.id) === cardId);
+      if (!purchasedCard || !activeOnDay(cardConfig, purchasedCard, currentDay)) {
+        throw new GameError(309, 'Monthly card is not active');
+      }
+
+      const requestedDays = requestedCard?.day;
+      if (!Array.isArray(requestedDays) || requestedDays.length === 0) {
+        throw new GameError(1, 'Monthly card reward day list is empty');
+      }
+      const seenDays = new Set();
+      let rewardBits = rewardBytes(purchasedCard.got_reward);
+      const startDay = Number(purchasedCard.start_day);
+      for (const rawDay of requestedDays) {
+        const day = positiveInteger(rawDay, 'reward day', 1);
+        if (day > cardConfig.reward_period) throw new GameError(1, 'Monthly card reward day is out of range');
+        if (seenDays.has(day)) throw new GameError(1, 'Monthly card reward day is duplicated');
+        seenDays.add(day);
+        if (startDay + day - 1 > currentDay) throw new GameError(309, 'Monthly card reward is not available yet');
+        const bitIndex = day - 1;
+        if (hasBit(rewardBits, bitIndex)) throw new GameError(310, 'Monthly card reward already claimed');
+        rewardBits = setBit(rewardBits, bitIndex);
+
+        if (!Array.isArray(cardConfig.reward)) throw new GameError(5, 'Monthly card reward configuration is unavailable');
+        for (const reward of cardConfig.reward) {
+          awards.push([
+            positiveInteger(reward?.[0], 'reward id'),
+            positiveInteger(reward?.[1], 'reward quantity')
+          ]);
+        }
+        claims.push({ cardId, day });
+      }
+      purchasedCard.got_reward = rewardBits;
+      purchasedCard.got_count = countRewardBits(rewardBits, cardConfig.reward_period);
+      purchasedCard.last_get_reward_day = currentDay;
+      updatedCards.set(cardId, purchasedCard);
+    }
+
+    const granted = grantResources(model, awards, tables, { codec });
+    const latestModules = new Map(model.state.modules.value);
+    latestModules.set(MONTHLY_CARD_MODULE, serializedBinary(codec.pack('pb_monthly_card_info', info)));
+    model.state.modules.value = [...latestModules];
+    const cards = [...updatedCards.values()];
+    return {
+      cardIds: cards.map(card => Number(card.id)),
+      claims,
+      changes: granted.changes.length,
+      response: {
+        card: cards,
+        res: { changes: granted.changes, is_overflow: false }
+      }
+    };
+  }
+
+  return { supports, assertPurchaseAvailable, purchase, claim, cardByRecharge, cardById };
 }
