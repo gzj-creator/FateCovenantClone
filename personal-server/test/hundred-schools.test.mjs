@@ -133,6 +133,28 @@ function setRecruitDrawCount(store, lib, count) {
   });
 }
 
+function setDrawStatistics(store, counts) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(21);
+    assert.ok(module);
+    const statisticsIndex = [...tables.CountStatistics.values()]
+      .filter(row => !row.custom_login && Number(row.type) === 0)
+      .findIndex(row => Number(row.tid) === 1);
+    assert.ok(statisticsIndex >= 0);
+    module.value[statisticsIndex + 1] = serializedBinary(codec.pack('pb_count_statics_data', {
+      list: [...counts.entries()].map(([id, total]) => ({
+        id: String(id),
+        total: String(total),
+        mod_day: '20752',
+        count_list: [String(total)],
+        snapshot_list: []
+      }))
+    }));
+    model.state.modules.value = [...modules];
+  });
+}
+
 function addResource(store, tid, amount) {
   store.transaction(model => grantResources(model, [[tid, amount]], tables));
 }
@@ -245,6 +267,7 @@ test('genre selection persists and the star task uses the selected lineup id', t
     env.heroDraw.recordDraw(model, { lib: 1, count: 400 });
     env.heroDraw.recordDraw(model, { lib: 10, count: 10 });
   });
+  setDrawStatistics(env.store, new Map([[1, 400], [2, 0], [10, 0]]));
   assert.equal(storedDraw(env.store).role_data.draw_count, 400);
   assert.equal(storedDraw(env.store).server_draw_count, 400);
 
@@ -266,6 +289,19 @@ test('genre selection persists and the star task uses the selected lineup id', t
   env.reopen();
   assert.equal(storedDraw(env.store).role_data.draw_exchange_id, 4);
   assert.throws(() => env.heroDraw.claimTask(7), error => error.code === 310);
+});
+
+test('100-draw task uses normal, quality and magic client statistics', t => {
+  const env = directFixture(t);
+  env.store.transaction(model => env.heroDraw.recordDraw(model, { lib: 1, count: 30 }));
+  setDrawStatistics(env.store, new Map([[1, 25], [2, 71], [10, 9]]));
+
+  assert.equal(storedDraw(env.store).role_data.draw_count, 30);
+  const result = env.heroDraw.claimTask(1);
+  assert.equal(hasBit(Buffer.from(result.value.reward_bytes), 1), true);
+  assert.equal(env.store.inspect(db => db.prepare(
+    'SELECT count(*) AS n FROM activity_claims WHERE act_id=? AND task_id=1'
+  ).get(ACTIVITY_ID).n), 1);
 });
 
 test('recruit draws update hundred-school counters atomically and exclude paid-library draws', t => {
@@ -392,6 +428,7 @@ test('all configured personal, server and selected-genre star tasks can be claim
     }
     env.heroDraw.recordDraw(model, { lib: 1, count: 2000 });
   });
+  setDrawStatistics(env.store, new Map([[1, 2000], [2, 0], [10, 0]]));
 
   const taskIds = [...tables.HeroDrawActTask.keys()].sort((left, right) => left - right);
   assert.equal(taskIds.length, 34);
@@ -443,6 +480,9 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   response = await env.request(16005, 21, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 880101, buy_num: 1 }));
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('res_buy_or_Rev_gift', Buffer.from(response.data, 'base64')).extra_ret_list.some(entry => entry.flag === 92), true);
+
+  response = await env.request(16005, 29, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 880101, buy_num: 1 }));
+  assert.equal(response.err.err, 16016);
 
   let walletFrames = await env.requestWithWalletPush(22, await encodeEtf([40008, 1, 0]));
   assert.equal(walletFrames.ack.err, undefined);

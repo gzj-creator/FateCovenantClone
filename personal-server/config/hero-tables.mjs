@@ -13,8 +13,13 @@ export function readHeroTables(file = defaultPath) {
     'Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star',
     'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
-    'DrawAchievementLib', 'NormalDrawExchangeLineup', 'TeamSuggest',
-    'TeamSuggestAward', 'TeamSuggestType', 'TeamSuggestTeamType', 'HandbookConstant'
+    'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
+    'TeamSuggest', 'TeamSuggestAward', 'TeamSuggestType', 'TeamSuggestTeamType',
+    // Hero favour/"training" (HeroFavorMgr): the login module stores the
+    // player's accumulated favour while these tables own gift values, level
+    // thresholds, rewards, break caps and playground eligibility.
+    'AllFavourLevel', 'FavourConst', 'FavourGift', 'FavourBreak',
+    'FavourLevel', 'PlaygroundUnlock', 'PlaygroundAward'
   ];
   if (file === defaultPath) return defaultCache ??= readGeneratedTables(file, names);
   return readGeneratedTables(file, names);
@@ -36,6 +41,13 @@ export function readLeaderEquipTables(file = defaultLeaderEquipPath) {
 
 export function readGeneratedTables(file, names) {
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return readGeneratedDump(parsed, names);
+}
+
+// Some extracted table families only ship as LuaJIT bytecode. Keep the
+// interpreter reusable so callers can parse a dump in memory instead of
+// requiring a generated JSON copy beside it.
+export function readGeneratedDump(parsed, names) {
   const root = parsed.prototypes[parsed.rootPrototype];
   const constructors = new Map();
   for (let n = 0; n < root.instructions.length - 1; n++) {

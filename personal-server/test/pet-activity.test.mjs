@@ -202,7 +202,7 @@ test('all-open pet activity synchronizes login data, shop, free/resource gifts a
   assert.deepEqual(recommended[0].buy_list.map(row => [row.recharge_tid, row.buy_times]), [[730400, 1], [730401, 1], [730402, 1]]);
 
   response = await buyGift(730400, 26);
-  assert.equal(response.err.err, 307);
+  assert.equal(response.err.err, 16016);
   const counts = env.game.store.inspect(db => db.prepare(`SELECT kind,count(*) AS n,sum(buy_num) AS bought
     FROM activity_purchases WHERE activity_id=? GROUP BY kind ORDER BY kind`).all(PET_ACT_ID));
   assert.deepEqual(counts.map(row => [row.kind, row.n, row.bought]), [['gift', 3, 3], ['shop', 1, 1]]);

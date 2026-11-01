@@ -8,6 +8,11 @@ const ACTIVITY_ID = 117001;
 const ACTIVITY_FUNC = 117;
 const RECHARGE_HANDLE = 92;
 const LOGIN_STATE_RUNNING = 50;
+const STATISTICS_MODULE = 21;
+const ROLE_STATISTICS_TYPE = 0;
+const TID_COUNT_DRAW = 1;
+// HeroDrawUILogic.GetPersonalDrawCount sums normal, quality and magic draws.
+const PERSONAL_DRAW_LIBRARIES = new Set([1, 2, 10]);
 const DAY_SECONDS = 86400;
 const RESET_OFFSET_SECONDS = 10800;
 
@@ -286,9 +291,37 @@ export function createHeroDrawActivityService({
     return ids.reduce((sum, tid) => sum + (model.heroInfo.hero_list.find(hero => Number(hero.tid) === tid)?.star ?? 0), 0);
   }
 
+  function personalDrawCount(model) {
+    const roleStatistics = [...tables.CountStatistics.values()]
+      .filter(row => !row.custom_login && Number(row.type) === ROLE_STATISTICS_TYPE);
+    const statisticsIndex = roleStatistics.findIndex(row => Number(row.tid) === TID_COUNT_DRAW);
+    const module = new Map(model.state.modules.value).get(STATISTICS_MODULE);
+    if (statisticsIndex < 0 || !module || !Array.isArray(module.value)) {
+      fail(5, 'Hero draw statistics module is missing');
+    }
+    const payload = module.value[statisticsIndex + 1];
+    if (payload == null) return 0;
+
+    let statistics;
+    try {
+      statistics = codec.unpack('pb_count_statics_data', rawBinary(payload));
+    } catch {
+      fail(5, 'Hero draw statistics are invalid');
+    }
+    let total = 0n;
+    for (const row of statistics.list ?? []) {
+      if (!PERSONAL_DRAW_LIBRARIES.has(Number(row.id))) continue;
+      const value = BigInt(row.total ?? 0);
+      if (value < 0n) fail(5, 'Hero draw statistics are invalid');
+      total += value;
+    }
+    if (total > BigInt(Number.MAX_SAFE_INTEGER)) fail(5, 'Hero draw statistics are invalid');
+    return Number(total);
+  }
+
   function taskProgress(model, context, data, task) {
     switch (Number(task.task_type)) {
-      case 1: return nonNegative(data.role_data.draw_count);
+      case 1: return personalDrawCount(model);
       case 2: return nonNegative(data.server_draw_count);
       case 3: return coreHeroStarCount(model, context, data);
       default: fail(5, 'Hundred schools task type is not configured');

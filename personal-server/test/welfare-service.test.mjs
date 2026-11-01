@@ -243,7 +243,7 @@ test('real gateway routes welfare claims and gift purchase without LOCAL_NOT_IMP
   const daily = codec.unpack('pb_daily_discount_all', Buffer.from(gift.extra_ret_list.find(entry => entry.flag === 40).data, 'base64'));
   assert.equal(daily.daily_discount_list.find(row => row.recharge_tid === 1).buy_times, 1);
   response = await request(16005, 28, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 40006, buy_num: 1 }));
-  assert.equal(response.err.err, 307);
+  assert.equal(response.err.err, 16016);
   response = await request(16005, 24, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 140002, buy_num: 1 }));
   assert.equal(response.err.err, 301);
   response = await request(97101, 25, await encodeEtf([1013]));
