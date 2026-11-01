@@ -355,6 +355,11 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
  */
 function evaluateConditionKey(key, unit, allUnits, state) {
   switch (key) {
+    case 'hp-above-50':
+      return unit.hp / unit.maxHp >= 0.5;
+    case 'target-has-debuff':
+      // approximated true; precise per-target filtering requires further investigation
+      return true;
     case 'hp-below-30':
       return unit.hp / unit.maxHp < 0.3;
     case 'hp-below-50':

@@ -327,6 +327,36 @@ export class EffectExecutor {
   }
 
   /**
+   * Execute dispel effect - remove buffs (dispel) or debuffs (cleanse) from target
+   */
+  executeDispel(effect, actor, target) {
+    if (!target.alive) return null;
+    const count = effect.count || 1;
+    const removeType = effect.removeType || 'buff'; // 'buff' removes enemy buffs, 'debuff' removes ally debuffs
+    const isBuff = removeType === 'buff';
+    const collection = isBuff ? (target.buffs || []) : (target.debuffs || []);
+    const removed = [];
+    // Remove up to count dispellable entries
+    let removedCount = 0;
+    for (let i = collection.length - 1; i >= 0 && removedCount < count; i--) {
+      const status = collection[i];
+      if (status.dispellable !== false) {
+        removed.push(status);
+        collection.splice(i, 1);
+        removedCount++;
+      }
+    }
+    return {
+      type: 'dispel',
+      actor: actor.id,
+      target: target.id,
+      removed: removed.map(s => s.type || s.id),
+      count: removed.length,
+      removeType,
+    };
+  }
+
+  /**
    * Helper: determine if stat modifier is a buff
    */
   isStatModifierBuff(statType, magnitude) {
