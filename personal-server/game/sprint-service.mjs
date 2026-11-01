@@ -2,6 +2,38 @@ import { E, binary, encodeEtf, decodeEtf, rawBinary, serializedBinary } from '..
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 const dayIndex = now => Math.floor((now/1000+10800)/86400);
+const ROLE_STATISTICS_TYPE = 0;
+
+function statisticProgress(model, taskConfig, statExpand, resetType, currentDay, codec, tables) {
+  if (!taskConfig || !Array.isArray(taskConfig.stat_expand)) throw new GameError(5, 'Sprint statistics are not configured');
+  const statisticsType = Number(taskConfig.data);
+  const roleStatistics = [...tables.CountStatistics.values()]
+    .filter(row => !row.custom_login && Number(row.type) === ROLE_STATISTICS_TYPE);
+  const slot = roleStatistics.findIndex(row => Number(row.tid) === statisticsType);
+  if (slot < 0) throw new GameError(5, 'Sprint statistics are not configured');
+  const module = new Map(model.state.modules.value).get(21);
+  const payload = module?.value?.[slot + 1];
+  if (payload == null) return 0;
+  let data;
+  try {
+    data = codec.unpack('pb_count_statics_data', rawBinary(payload));
+  } catch {
+    throw new GameError(5, 'Sprint statistics are invalid');
+  }
+  const ids = new Set((statExpand ?? taskConfig.stat_expand).map(String));
+  let total = 0n;
+  for (const row of data.list ?? []) {
+    if (!ids.has(String(row.id))) continue;
+    const value = resetType === 1
+      ? (Number(row.mod_day ?? 0) === currentDay ? BigInt(row.count_list?.[0] ?? 0) : 0n)
+      : BigInt(row.total ?? 0);
+    if (value < 0n) throw new GameError(5, 'Sprint statistics are invalid');
+    total += value;
+  }
+  if (total > BigInt(Number.MAX_SAFE_INTEGER)) throw new GameError(5, 'Sprint statistics are invalid');
+  return Number(total);
+}
+
 export function createSprintService({ store, codec, tables, calendar, now = Date.now }) {
   async function execute(request) {
     const ids=request.task_tid_list;
@@ -42,13 +74,7 @@ export function createSprintService({ store, codec, tables, calendar, now = Date
         if(db.prepare('SELECT 1 FROM activity_claims WHERE role_id=? AND act_id=? AND task_id=? AND period=?').get(model.state.roleId,request.act_id,cfg.tid,period)||(bits[Math.floor(cfg.tid%1000/8)]&(128>>(cfg.tid%8))))throw new GameError(310,'Reward already claimed');
         let progress;
         if(task.progress_type===2){
-          const snapshots=new Map(model.state.modules.value).get(21).value;
-          const data=snapshots[task.data-1];
-          const statistics=data?codec.unpack('pb_count_statics_data',rawBinary(data)).list:[];
-          const key=(task.stat_expand??[]).includes(1)?'1':String(cfg.task_param);
-          const count=statistics.find(x=>x.id===key);
-          if(cfg.reset_type===1){progress=count?.mod_day==currentDay?Number(count.count_list.at(-1)??0):0;}
-          else progress=Number(count?.total??0);
+          progress=statisticProgress(model,task,cfg.stat_expand,cfg.reset_type,currentDay,codec,tables);
         }else if(task.progress_fun===12)progress=model.role.level;
         else if([452,453,454,455].includes(task.progress_fun)){
           const hunter=task.progress_fun<454;
