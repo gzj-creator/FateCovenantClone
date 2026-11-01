@@ -33,6 +33,7 @@ import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createGuildRosterService } from './guild-roster-service.mjs';
 import { createHeroFavorService } from './hero-favor-service.mjs';
 import { createTeamSuggestService } from './team-suggest-service.mjs';
+import { createTeamGenreService } from './team-genre-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { createEliteMissionService } from './elite-mission-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
@@ -345,6 +346,7 @@ export function createLocalGame({
     store, codec, heroTables, tables, now: () => Math.floor(clock() / 1000)
   });
   const teamSuggest = createTeamSuggestService({ store, codec, tables, heroTables, now: clock });
+  const teamGenre = createTeamGenreService({ store, codec, tables, heroTables, calendar, now: clock });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
@@ -384,6 +386,7 @@ export function createLocalGame({
     handbook.ensureLoginState();
     heroFavor.ensureLoginState();
     teamSuggest.ensureLoginState();
+    teamGenre.ensureLoginState();
     wishTreasure.ensureLoginState();
     wishTree.ensureLoginState();
     weekHunt.ensureLoginState();
@@ -971,6 +974,19 @@ export function createLocalGame({
         }
         return;
       }
+      if (teamGenre.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = teamGenre.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'team_genre_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'team_genre_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (features.supports(type)) {
         try {
           const result = features.execute(type, await decodeEtf(request.data));
@@ -1435,7 +1451,7 @@ export function createLocalGame({
   return {
     root, loginPayload, store, wallet, mail, voucher, monthPermit, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
-    guildRoster, heroFavor, teamSuggest, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin,
+    guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
