@@ -1,5 +1,12 @@
 # Git 工作区整理记录
 
+## 2026-11-01 server launcher
+
+- `scripts/run.bat` calls `scripts/run-server.ps1` and starts the server from the checkout that owns `main`, so invoking it from another worktree cannot accidentally launch stale code.
+- The launcher is idempotent: it checks that the published `server.local-only.json` PID still belongs to a live `node.exe` before starting another instance.
+- Missing locked dependencies are installed with `npm ci`; startup logs stay in `runtime.local-only.data` as timestamped `.local-only.out.log` and `.local-only.err.log` files.
+- When the MuMu ADB device is available, the launcher restores only the four required `adb reverse` mappings (`18880/18881/18882/19090`). It does not install device NAT rules.
+
 ## 2026-10-30 当前检查点
 
 - 整理开始时 `main` 为 `238f6d8`，没有 stash；工作区包含大量已暂存的项目文档、协议目录、服务端修复、测试和少量根目录临时产物。
