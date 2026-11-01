@@ -664,6 +664,33 @@ test('elite wish selections persist per library and replace matching SSR and UR 
   assert.equal(result.valueForLog.results[0].wishHero, true);
 });
 
+test('elite pity resets only when the selected target adventurer is drawn', t => {
+  let roll = 0.95;
+  const env = setup(t, () => roll);
+  setDrawCounts(env, { 1: 50, 2: 50, 10: 0 });
+  updateRecruitInfo(env, 2, info => {
+    info.guaranteed_count = 4;
+    info.daily_ssr_draw_num = 0;
+  });
+  env.service.execute(642, {
+    draw_lib: 2,
+    choose_item_list: [{ index: 2, hero_tid: 1040101 }]
+  });
+  env.seed(3002, 10);
+
+  let result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
+  assert.equal(result.valueForLog.results[0].quality, 50);
+  assert.equal(result.valueForLog.results[0].wishHero, false);
+  assert.equal(Number(result.value.recruit_info.guaranteed_count), 5);
+  assert.equal(Number(result.value.recruit_info.daily_ssr_draw_num), 1);
+
+  roll = 0.999999999999;
+  result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
+  assert.equal(result.valueForLog.results[0].quality, 60);
+  assert.equal(result.valueForLog.results[0].wishHero, true);
+  assert.equal(Number(result.value.recruit_info.guaranteed_count ?? 0), 0);
+});
+
 test('new heroes persist, duplicate heroes convert to chips and avoid duplicate hero extras', async t => {
   const env = setup(t);
   env.seed(2002, 10);

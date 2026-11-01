@@ -812,10 +812,13 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
       wishHero = candidates.length > 0;
     }
     const hero = choosePoolHero(pool, quality, random, wishHero ? candidates : null);
-    if (quality >= 50) {
+    // A targeted pool advances its pity only when the selected adventurer is
+    // actually drawn. Other pools keep their normal quality-based pity reset.
+    const hasGuaranteeTarget = Boolean(pool.rule.wish) && (state.wish_hero_list?.length ?? 0) > 0;
+    if (quality >= 50) state.daily_ssr_draw_num = (state.daily_ssr_draw_num ?? 0) + 1;
+    if (quality >= 50 && (!hasGuaranteeTarget || wishHero)) {
       state.guaranteed_count = 0;
       state.high_guaranteed_count = 0;
-      state.daily_ssr_draw_num = (state.daily_ssr_draw_num ?? 0) + 1;
     } else {
       state.guaranteed_count = nextCount;
       state.high_guaranteed_count = nextCount;
