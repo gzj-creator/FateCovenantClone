@@ -18,6 +18,9 @@ export function readGameTables() {
     ...Object.fromEntries(Object.entries(readGeneratedTables(new URL('RechargeTable.data.lua.json', base), [
       'Recharge', 'Param', 'BuyCycleLimit', 'ExtraReward', 'ExtraFixReward', 'ExtraRewardConst'
     ])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k,v])),
+    // Monthly cards use login module 20. The primary recharge id maps each
+    // product to one pb_monthly_card_info row and its active period.
+    MonthlyCard: readGeneratedTables(new URL('MonthlyCardTable.data.lua.json', base), ['MonthlyCard']).MonthlyCard,
     ...readGeneratedTables(new URL('OpenServerSprintTable.data.lua.json', base), ['SprintRankTask', 'SprintType']),
     // Monthly pass products are RechargeTable type=130 rows; the matching Gear row
     // binds a product to the activity version that owns its pay_list entry.

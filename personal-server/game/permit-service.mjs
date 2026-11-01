@@ -3,7 +3,6 @@ import { GameError } from './hero-progression.mjs';
 
 const PERMIT_MODULE = 38;
 const PERMIT_PRODUCT_TYPE = 6;
-const BASE_PERMIT_TYPES = new Set([67, 68, 69, 70, 71]);
 // RechargeTable.Handle[9] maps recharge_type 6 to PermitNewMgr. The client
 // loops over extra_ret_list without a nil guard, so a standard permit purchase
 // must return at least one entry. PermitNewMgr refreshes from the product tid;
@@ -16,10 +15,10 @@ const PERMIT_HANDLE_FLAG = 9;
 export function createPermitService({ codec, tables }) {
   const permitByRecharge = new Map();
   for (const permit of tables.PermitBase?.values?.() ?? []) {
-    const recharge = Number(permit.recharge);
-    const type = Number(permit.type);
-    if (!Number.isSafeInteger(recharge) || recharge <= 0 || !BASE_PERMIT_TYPES.has(type)) continue;
-    if (!permitByRecharge.has(recharge)) permitByRecharge.set(recharge, permit);
+    for (const recharge of [Number(permit.recharge), Number(permit.discount_recharge)]) {
+      if (!Number.isSafeInteger(recharge) || recharge <= 0) continue;
+      if (!permitByRecharge.has(recharge)) permitByRecharge.set(recharge, permit);
+    }
   }
 
   function supports(product) {
@@ -60,5 +59,21 @@ export function createPermitService({ codec, tables }) {
     throw new GameError(5, 'Permit login row is unavailable');
   }
 
-  return { supports, purchase, permitByRecharge };
+  function assertPurchaseAvailable({ modules, product }) {
+    if (!supports(product)) throw new GameError(5, 'Unsupported permit product');
+    const permit = permitByRecharge.get(Number(product.tid));
+    const moduleValue = modules.get(PERMIT_MODULE);
+    if (!moduleValue || !Array.isArray(moduleValue.value)) throw new GameError(5, 'Permit login data is unavailable');
+    for (const element of moduleValue.value) {
+      let data;
+      try { data = codec.unpack('pb_permit_data', rawBinary(element)); } catch { continue; }
+      const info = (data.permit_list ?? []).find(row => Number(row.id) === Number(permit.tid));
+      if (!info) continue;
+      if (info.is_pay === true) throw new GameError(307, 'Permit already purchased');
+      return;
+    }
+    throw new GameError(5, 'Permit login row is unavailable');
+  }
+
+  return { supports, assertPurchaseAvailable, purchase, permitByRecharge };
 }

@@ -4,6 +4,7 @@ import { consumeResources, grantResources, rewardHandlerFor } from './resources.
 import { GameError } from './hero-progression.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
 import { createPermitService } from './permit-service.mjs';
+import { createMonthlyCardService } from './monthly-card-service.mjs';
 import { createDailyDiscountPurchaseRules } from './daily-discount-purchase.mjs';
 import { isDailyDiscountOrder, rechargeCycleKey } from './recharge-rules.mjs';
 const DAILY_DISCOUNT_RECHARGE = 46;
@@ -48,13 +49,14 @@ function reviveJsonBuffers(value) {
 }
 const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
 export function createWalletService({
-  store, codec, tables, voucher, monthPermit, permitService, petActivity, heroDrawActivity,
+  store, codec, tables, voucher, monthPermit, permitService, monthlyCard, petActivity, heroDrawActivity,
   wishTreasure, wishTree, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward,
   accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000)
 }) {
   const log = event => { try { logger(event); } catch {} };
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
   const standardPermits = permitService ?? createPermitService({ codec, tables });
+  const monthlyCards = monthlyCard ?? createMonthlyCardService({ codec, tables });
   const GIFT_BUY_RECORD_HANDLE = 73;
   const dailyRechargeRows = [...(tables.DailyDiscountRecharge?.values?.() ?? [])];
   const dailyDiscountProductIds = new Set(dailyRechargeRows.map(row => Number(row.recharge_id)));
@@ -240,15 +242,17 @@ export function createWalletService({
     && Number(row.price) > 0
     && Number(row.sync_handle ?? 0) === 0
     && rewardsAreHandled(row);
-  const supported = row => Boolean(row) && (row.type === 130
-    ? permits.supports(row)
-    : row.type === 76
-      ? Boolean(petActivity?.giftConfig(row.tid)) && ordinaryCashProduct(row)
-      : row.type === 113
-        ? Boolean(lineFirstRecharge?.supportsProduct(row)) && ordinaryCashProduct(row)
-        : Boolean(heroDrawActivity?.giftConfig(row.tid)) && ordinaryCashProduct(row)
-        || standardPermits.supports(row)
-        || ordinaryCashProduct(row));
+  const supported = row => {
+    if (!row) return false;
+    if (Number(row.type) === 130) return permits.supports(row);
+    // Only cash monthly cards are advertised to the SDK/native 16004 payment
+    // list. Free and resource-priced cards still use the shared 16005 path.
+    if (monthlyCards.supports(row)) return ordinaryCashProduct(row);
+    if (Number(row.type) === 76) return Boolean(petActivity?.giftConfig(row.tid)) && ordinaryCashProduct(row);
+    if (Number(row.type) === 113) return Boolean(lineFirstRecharge?.supportsProduct(row)) && ordinaryCashProduct(row);
+    if (Boolean(heroDrawActivity?.giftConfig(row.tid)) && ordinaryCashProduct(row)) return true;
+    return standardPermits.supports(row) || ordinaryCashProduct(row);
+  };
   const products = [...tables.Recharge.values()].filter(supported);
 
   const payloadOf = row => {
@@ -311,8 +315,7 @@ export function createWalletService({
         voucher_order_count: db.prepare('SELECT count(*) n FROM voucher_redemptions').get().n },
       products: products.map(row => {
         const purchaseCount = store.inspect(db => {
-          const count = db.prepare('SELECT count(*) FROM recharge_orders WHERE account_id=? AND product_id=?').get(accountId, row.tid);
-          return count;
+          return db.prepare('SELECT count(*) AS purchase_count FROM recharge_orders WHERE account_id=? AND product_id=?').get(accountId, row.tid).purchase_count;
         });
         return {
           id: row.tid,
@@ -361,6 +364,14 @@ export function createWalletService({
       petActivity.assertGiftAvailable(product_id);
       const purchaseCount = petActivity.giftPurchaseCount(product_id);
       if (product.can_buy_times > 0 && purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
+      return;
+    }
+    if (monthlyCards.supports(product)) {
+      monthlyCards.assertPurchaseAvailable({ modules: new Map(store.state().modules.value), product, at: now() });
+      return;
+    }
+    if (standardPermits.supports(product)) {
+      standardPermits.assertPurchaseAvailable({ modules: new Map(store.state().modules.value), product });
       return;
     }
     if (!(product.can_buy_times > 0)) return;
@@ -414,6 +425,11 @@ export function createWalletService({
       }
       const limitModules = new Map(model.state.modules.value);
       let dailyPlan = null;
+      if (monthlyCards.supports(product)) {
+        monthlyCards.assertPurchaseAvailable({ modules: limitModules, product, at: purchasedAt });
+      } else if (standardPermits.supports(product)) {
+        standardPermits.assertPurchaseAvailable({ modules: limitModules, product });
+      }
       if (product.can_buy_times > 0) {
         if (lineFirstRecharge?.supportsProduct(product)) {
           lineFirstRecharge.assertPurchaseAvailable({ modules: limitModules, product, at: purchasedAt });
@@ -455,6 +471,9 @@ export function createWalletService({
         ? dailyPurchaseRules.rewards(product, dailyPlan.oneKeyFreeGiftConsumed)
         : [];
       changes.push(...grantResources(model, [...product.reward_tid.map((tid,i) => [tid,product.reward_count[i]]), ...dailyAwards], tables, { codec }).changes);
+      const monthlyCardPurchase = monthlyCards.supports(product)
+        ? monthlyCards.purchase({ model, product, at: purchasedAt })
+        : null;
       const permit = product.type === 130
         ? permits.purchase({ model, product })
         : (standardPermits.supports(product) ? standardPermits.purchase({ model, product }) : null);
@@ -474,7 +493,7 @@ export function createWalletService({
       if (!login.max_record || daily.amount >= (login.max_record.amount ?? 0)) login.max_record = structuredClone(daily);
       const giftRecord = product.can_buy_times > 0 ? codec.pack('pb_buy_gift_record', { recharge_tid: product_id, buy_time: purchasedAt }) : null;
       if (giftRecord) addBuyGiftRecord(login, product_id, purchasedAt);
-      const extraRetList = [...(permit?.extraRetList ?? [])];
+      const extraRetList = [...(monthlyCardPurchase?.extraRetList ?? []), ...(permit?.extraRetList ?? [])];
       if (giftRecord) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord });
       const dailyDiscount = dailyPlan ? setDailyDiscountInfo(modules, dailyPlan.info) : null;
       if (dailyDiscount) extraRetList.push({ flag: DAILY_DISCOUNT_HANDLE, data: dailyDiscount });
@@ -527,6 +546,14 @@ export function createWalletService({
         res.changes.push(...extra.changes);
         extraRetList.push(...extra.extraRetList);
       }
+      // Some otherwise ordinary products have no dedicated login-module
+      // handoff. The native RechargeMgr still requires a non-empty list before
+      // it fires EVT_RECHARGE, so persist and return the real purchase record.
+      if (extraRetList.length === 0) {
+        const dispatchRecord = codec.pack('pb_buy_gift_record', { recharge_tid: product_id, buy_time: purchasedAt });
+        addBuyGiftRecord(login, product_id, purchasedAt);
+        extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: dispatchRecord });
+      }
       const purchasePeriod = weekPurchase?.period ?? (Number.isSafeInteger(period) ? period : 0);
       const value = { recharge_id: product_id, time: purchasedAt, order, get_token: quote.quantity > 0, extra_params: etfList([[dailyPlan?.additional === true, purchasePeriod, purchaseDay]]), package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
@@ -578,6 +605,7 @@ export function createWalletService({
     if (!Number.isSafeInteger(purchasedAt) || purchasedAt <= 0) throw new GameError(1, 'Invalid purchase time');
     const heroGift = heroDrawActivity?.giftConfig(product_id, purchasedAt) ?? null;
     const petGift = !heroGift && product.type === 76 ? petActivity.assertGiftAvailable(product_id) : null;
+    const monthlyCard = !heroGift && !petGift && monthlyCards.supports(product);
     const free = Number(product.pay_type) === 2;
     const balancePrice = Number(product.price) * buy_num;
     const itemPrice = Number(product.price) * buy_num;
@@ -629,6 +657,13 @@ export function createWalletService({
       const chargeCents = Number(product.pay_type) === 0 ? balancePrice : 0;
 
       let dailyPlan = null;
+      if (monthlyCard) {
+        monthlyCards.assertPurchaseAvailable({
+          modules: new Map(model.state.modules.value),
+          product,
+          at: purchasedAt
+        });
+      }
       if (product.can_buy_times > 0) {
         if (heroGift) {
           if (!heroDrawActivity.giftPurchaseAllowed(product_id, buy_num, db, purchasedAt)) {
@@ -657,6 +692,9 @@ export function createWalletService({
         changes.push(...consumeResources(model, [[Number(product.cost_item), itemPrice]]).changes);
       }
       changes.push(...grantResources(model, product.reward_tid.map((tid, i) => [tid, Number(product.reward_count[i]) * buy_num]), tables).changes);
+      const monthlyCardPurchase = monthlyCard
+        ? monthlyCards.purchase({ model, product, at: purchasedAt })
+        : null;
       const res = { changes, is_overflow: false };
 
       const modules = new Map(model.state.modules.value);
@@ -676,7 +714,8 @@ export function createWalletService({
       // Pet gifts are refreshed by their activity-specific flag below. Adding
       // the generic recharge record ahead of it changes the client handler
       // order and leaves pet stock stale.
-      const extraRetList = petGift ? [] : [{ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord }];
+      const extraRetList = [...(monthlyCardPurchase?.extraRetList ?? [])];
+      if (!petGift) extraRetList.push({ flag: GIFT_BUY_RECORD_HANDLE, data: giftRecord });
       if (dailyDiscount) extraRetList.push({ flag: DAILY_DISCOUNT_HANDLE, data: dailyDiscount });
       if (petGift) {
         petActivity.recordGiftPurchase({
