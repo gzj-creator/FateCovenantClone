@@ -309,7 +309,21 @@ export function createWalletService({
         order_count: db.prepare('SELECT count(*) n FROM recharge_orders').get().n,
         voucher_redeemed_cents: db.prepare('SELECT coalesce(sum(amount_cents),0) n FROM voucher_redemptions').get().n,
         voucher_order_count: db.prepare('SELECT count(*) n FROM voucher_redemptions').get().n },
-      products: products.map(row => ({ id: row.tid, price_cents: row.price, rewards: row.reward_tid.map((tid,i) => ({ tid, count: row.reward_count[i] })), type: row.type }))
+      products: products.map(row => {
+        const purchaseCount = store.inspect(db => {
+          const count = db.prepare('SELECT count(*) FROM recharge_orders WHERE account_id=? AND product_id=?').get(accountId, row.tid);
+          return count;
+        });
+        return {
+          id: row.tid,
+          price_cents: row.price,
+          rewards: row.reward_tid.map((tid,i) => ({ tid, count: row.reward_count[i] })),
+          type: row.type,
+          can_buy_times: row.can_buy_times,
+          purchased: purchaseCount,
+          available: row.can_buy_times > 0 ? Math.max(0, row.can_buy_times - purchaseCount) : 0
+        };
+      })
     }));
   }
   function credit({ account_id, amount_cents, request_id, note = '' }) {
