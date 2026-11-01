@@ -58,13 +58,15 @@ test('non-selective use of a suit box is rejected instead of consuming it', t =>
   assert.equal(env.store.read().resources.get('1071200').num, '1');
 });
 
-test('a suit whose award family has no reward handler is rejected and the box is kept', t => {
+test('a suit whose award family has a reward handler is granted and the box is consumed', t => {
   const env = setup(t);
   addBox(env, 1071200, 1);
-  // The shipped rows award relic items (ItemTable.Type 9 / Relic), a family the
-  // server still cannot store. The request must fail closed, not half-apply.
-  assert.throws(() => env.service.openSuitBox([1071200, 1]), error => error.code === 5);
-  assert.equal(env.store.read().resources.get('1071200').num, '1');
+  // The shipped rows award relic items (ItemTable.Type 9 / Relic), which are now
+  // stored in module 50 pb_relic_list through the relic handler.
+  const result = env.service.openSuitBox([1071200, 1]);
+  const decoded = codec.unpack('pb_res_to_client', result.data);
+  assert.equal(decoded.changes.find(change => change.tid === '1071200').diff_num, '-1');
+  assert.equal(env.store.read().resources.get('1071200').num, '0');
 });
 
 test('a granted suit award is consumed once, granted once and survives reopen', t => {

@@ -70,6 +70,7 @@ function handlerFor(itemId, tables) {
     return null;
   }
 
+  if (resType === 9 && objClass === 'Relic') return { key: '9:Relic', kind: 'item', group: 0 };
   if (resType === 10 && objClass === 'Artifact') return { key: '10:Artifact', kind: 'artifact' };
   if (resType === 12 && objClass === 'Skin') return { key: '12:Skin', kind: 'skin' };
   if (resType === 13 && objClass === 'Pet') return { key: '13:Pet', kind: 'pet' };
@@ -340,6 +341,7 @@ export function grantResources(model, awards, tables, options = {}) {
         break;
       case 'hero': newNum = grantRawHero(model, id, amount, tables); break;
       case 'figure': newNum = grantFigure(model, id, amount, handler); break;
+      case 'relic': newNum = grantRelic(modules, id, amount, codec); break;
       case 'artifact': newNum = grantArtifact(modules, id, amount, codec); break;
       case 'skin': newNum = grantSkin(modules, id, amount, codec); break;
       case 'pet':
