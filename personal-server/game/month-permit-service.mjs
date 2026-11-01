@@ -180,45 +180,74 @@ export function createMonthPermitService({ codec, tables }) {
     const row = activeInfo(model, actId);
     const taskInfoList = row.info.task_get ?? [];
 
+    const taskIdSet = new Set(taskIds.map(String));
+    const claimedTids = new Set(taskInfoList.map(task => String(task.tid)));
+
+    // Check if any tasks are already claimed
+    const alreadyClaimed = taskIds.filter(tid => claimedTids.has(String(tid)));
+    if (alreadyClaimed.length > 0) throw new GameError(310, 'Task already claimed');
+
     const taskRows = [...(tables.MonthPermitTask?.values?.() ?? [])]
       .filter(entry => taskIds.includes(String(entry.tid)));
 
-    const taskIdSet = new Set(taskIds.map(String));
-    const completedTasks = taskInfoList.filter(task => taskIdSet.has(String(task.tid)));
+    if (taskRows.length !== taskIds.length) throw new GameError(5, 'Invalid task ID');
 
-    if (completedTasks.length > 0) throw new GameError(310, 'Task already claimed');
+    // Get activity configuration for exp item and level rewards
+    const act = tables.ActFrameAct?.get(actId);
+    if (!act) throw new GameError(5, 'Month permit activity configuration is unavailable');
+    const cycle = tables.MonthPermitCycle?.get(Number(act.version));
+    if (!cycle) throw new GameError(5, 'Month permit cycle configuration is unavailable');
+    const expItem = positiveSafeInteger(cycle.exp_item, 'experience item');
 
-    const rewardRows = [...tables.MonthPermitTaskReward?.values?.() ?? []]
-      .filter(entry => taskIds.includes(String(entry.tid)));
+    // Calculate total exp from all tasks
+    const totalExpGain = taskRows.reduce((sum, row) => sum + (Number(row.add_exp) || 0), 0);
+    if (totalExpGain <= 0) throw new GameError(5, 'Task has no exp reward');
 
-    const rewards = rewardRows.flatMap(row => {
-      const items = row.reward_item ?? [];
-      return items.map(pair => [Number(pair[0]), Number(pair[1])]);
-    });
+    // Add exp to the permit
+    const currentExp = BigInt(row.info.buy_exp_num ?? 0);
+    const newExp = currentExp + BigInt(totalExpGain);
+    row.info.buy_exp_num = newExp.toString();
 
-    // Update task info with claimed timestamp
-    for (const taskId of taskIds) {
-      const taskRow = taskRows.find(entry => String(entry.tid) === taskId);
-      if (taskRow) {
-        taskRow.get_time = Math.floor(Date.now() / 1000);
+    // Check for level rewards
+    const upLvRows = [...(tables.MonthPermitUpLv?.values?.() ?? [])]
+      .filter(entry => Number(entry.lib) === Number(cycle.up_lv_lib));
+
+    const grantedRewards = [];
+    for (const upLv of upLvRows) {
+      const levelExp = BigInt(upLv.exp);
+      if (newExp >= levelExp && currentExp < levelExp) {
+        // This level was just reached, grant its reward
+        if (upLv.is_big_award && upLv.award_item) {
+          const items = upLv.award_item ?? [];
+          for (const pair of items) {
+            grantedRewards.push([Number(pair[0]), Number(pair[1])]);
+          }
+        }
       }
     }
 
-    const updatedTaskInfo = taskInfoList.map(task => {
-      const existing = taskRows.find(entry => String(entry.tid) === String(task.tid));
-      return existing || { tid: Number(task), get_time: 0 };
-    });
-
-    row.info.task_get = updatedTaskInfo;
+    // Add claimed tasks to task_get list with current timestamp
+    const now = Math.floor(Date.now() / 1000);
+    const newTaskEntries = taskIds.map(tid => ({ tid: Number(tid), get_time: now }));
+    row.info.task_get = [...taskInfoList, ...newTaskEntries];
     persistInfo(model, row);
+
+    // Grant rewards if any
+    const resourceChanges = [];
+    if (grantedRewards.length > 0) {
+      const granted = grantResources(model, grantedRewards, tables, { codec });
+      resourceChanges.push(...granted.changes);
+    }
 
     return {
       actId: String(actId),
       claimedTasks: taskIds.map(String),
-      rewards,
+      expGain: totalExpGain,
+      newExp: row.info.buy_exp_num,
+      rewards: grantedRewards,
       response: {
         month_permit_info: row.info,
-        res: { changes: rewards.map(([tid, num]) => ({ tid: String(tid), diff_num: String(num) })), is_overflow: false }
+        res: { changes: resourceChanges, is_overflow: false }
       }
     };
   }
