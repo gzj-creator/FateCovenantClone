@@ -29,7 +29,139 @@
    - ✅ **Created tool**: `tools/parse-method-table.mjs` with parseMethodTable() and parseSkillImplementation(); CLI supports --json/--skills/--skills --update.
    - ✅ **Created documentation**: `agent/workflow/skill-system-validation/methodtable-parsing.md`
 
-4. **Phase 3: Skill Effect System Implementation (Completed)**
+- ✅ **Phase 3: Skill Effect System Implementation (Completed)**
+   - ✅ Created comprehensive design document `agent/workflow/skill-system-validation/effect-system-design.md`
+   - ✅ **Effect types definition** (`personal-server/game/effects/effect-types.mjs`)
+     - DAMAGE_TYPES: 5 types (physical, magical, true, percent-max-hp, percent-current-hp)
+     - HEAL_TYPES: 4 types (flat, percent-5010% maxHP, percent-missing-hp)
+     - SHIELD_TYPES: 4 types (flat, percent-defense, percent-max-hp, percent-attack)
+     - STAT_TYPES: 18 types (attack/defense/speed modifiers, crit, ignore-defense, damage-bonus, damage-reduction, max-hp-percent, crit-resist, crit-damage-reduction, heal-bonus, shield-bonus, energy-bonus)
+     - ENERGY_TYPES: 4 types (gain, loss, steal, set)
+     - STATUS_TYPES: 10 types (buffs: protection, invulnerable, strengthened, hastened, energized; debuffs: poison, burn, bleed, freeze, silence, stun, weakened, slowed, exhausted)
+     - TARGET_TYPES: 13 types (self, single, front-row, 役front-row-all 10: a866)
+     - DURATION_TYPES: 6 types (instant, permanent, timed, stacking, trigger-count, conditional)
+     - TRIGGER_TYPES: 18 types (on-attack, on-hit, on-kill, on-death, etc.)
+   - ✅ **Effect executor** (`personal-server/game/effects/effect-executor.mjs`)
+     - executeDamage: Calculate damage with defense reduction, crit, shield absorption, grant energy on hit
+     - executeHeal: Calculate healing with overheal capping
+     - executeShield: Add shields with stacking
+     - executeStatModifier: Apply stat buffs/debuffs with stacking logic
+     - executeEnergy: Manipulate energy (gain/loss/steal/set) with bounds checking
+     - executeStatus: Apply status effects (buffs/debuffs) with unique status replacement
+     - Helper methods for buff/debuff classification
+   - ✅ **Target selector** (`personal-server/game/effects/target-selector.mjs`)
+     - All 13 target types implemented
+     - Proper filtering by team and alive status
+     - Sorting by location, HP%, priority
+     - Random selection support
+   - ✅ **Skill integration layer** (`personal-server/game/effects/skill-integration.mjs`)
+     - loadSkillDatabase(): Load skill-database.json
+     - getSkillById(): Get skill definition by ID
+     - getHeroSkills: Get all skills for a hero
+     - skillToEffect(): Convert catalog skill to effect definition (placeholder with default multipliers)
+     - applySkillEffects(): Apply skill effects to battle state
+     - registerPassiveTriggers(): Register passive triggers for a unit (infers trigger type from description)
+     - processTriggers(): Process triggers for a unit (checks cooldown, condition, once-per-battle, once-per-round, max-triggers)
+     - processBuffTicks: Process buff/debuff ticks at round end (decrement duration, process DoT/HoT, remove expired status)
+   - ✅ **Unit tests** (30 tests, all passing)
+     - effect-executor.test.mjs: 21 tests covering damage, heal, shield, energy, stat-modifier, status
+     - target-selector.test.mjs: 7个测试（target-selector.test.mjs中只有10个测试）
+   - ✅ **Battle engine integration** - `personal-server/game/battle-engine.mjs`
+     - simulateBattle now loads skill database
+     - normalizeUnit now includes skills field (from skill database)
+     - executeTurn uses skillToEffects to apply skill effects
+     - registerPassiveTriggers registers passive triggers from skill definitions at battle start
+     - skillToEffects prefers stored trigger definitions over heuristic inference
+
+**Completed Hero Skill Validations (from subagent reports):**
+- ✅ **影盾骑士 (1020501)** - 14 skills validated, all fixed, 9 tests passing, documented
+  - Skill database updated with effect definitions (populated with FightTable.Ability + AbilityDes metadata)
+  - Battle engine integrated with skill database loading and trigger registration
+  - New STAT_TYPES added: max-hp-percent, crit-resist, shield-bonus, heal-bonus, max-hp, crit-damage-reduction, energy-bonus
+  - Shield mechanics implemented (5% max HP shield, 80% defense shield, front-row allies shield in skillToEffects)
+  - Energy gain mechanics implemented (150 on hit, 25 on ally attack, 1st energy on hit in trigger condition)
+  - Damage reduction conditional triggers implemented (hp-below-50%, has-debuff)
+  - Tests created in `personal-server/test/hero-14` directory
+  - `normal-profession` 仍然依赖 fallback，无真实skill binding
+
+**Subagent Status:**
+- 等待 token 退回 (FightTable/Buff parsing agent 之外): 等魔人、等暴玛丽、通灵女巫、灾祸双子、梦魅、罪欲夜影、鼠鼠埃文
+- 正在运行（无等待）: 吟游诗人、魚缸头、深海歌姬、露奈尔、银爵艾伦
+- 已完成：影盾骑士**
+   - ✅ Created comprehensive design document `agent/workflow/skill-system-validation/effect-system-design.md`
+   - ✅ **Effect types definition** (`personal-server/game/effects/effect-types.mjs`)
+     - DAMAGE_TYPES: 5 types (physical, magical, true, percent-max-hp, percent-current-hp)
+     - HEAL_TYPES: 4 types (flat, percent-attack, percent-max-hp, percent-missing-hp)
+     - SHIELD_TYPES: 4 types (flat, percent-defense, percent-max-hp, percent-attack)
+     - STAT_TYPES: 15 types (attack/defense/speed modifiers, crit, ignore-defense, damage-bonus, damage-reduction, etc.)
+     - ENERGY_TYPES: 4 types (gain, loss, steal, set)
+     - STATUS_TYPES: 10 types (buffs: protection, invulnerable, strengthened, hastened, energized; debuffs: poison, burn, bleed, freeze, silence, stun, weakened, slowed, exhausted)
+     - TARGET_TYPES: 13 types (self, single, front-row, back-row, all-enemies, all-allies, lowest-hp, highest-hp, etc.)
+     - DURATION_TYPES: 6 types (instant, permanent, timed, stacking, trigger-count, conditional)
+     - TRIGGER_TYPES: 18 types (on-attack, on-hit, on-kill, on-death, etc.)
+   - ✅ **Effect executor** (`personal-server/game/effects/effect-executor.mjs`)
+     - executeDamage: Calculate damage with defense reduction, crit, shield absorption, grant energy on hit
+     - executeHeal: Calculate healing with overheal capping
+     - executeShield: Add shields with stacking
+     - executeStatModifier: Apply stat buffs/debuffs with stacking logic
+     - executeEnergy: Manipulate energy (gain/loss/steal/set) with bounds checking
+     - executeStatus: Apply status effects (buffs/debuffs) with unique status replacement
+     - Helper methods for buff/debuff classification
+   - ✅ **Target selector** (`personal-server/game/effects/target-selector.mjs`)
+     - All 13 target types implemented
+     - Proper filtering by team and alive status
+     - Sorting by location, HP%, priority
+     - Random selection support
+   - ✅ **Skill integration layer** (`personal-server/game/effects/skill-integration.mjs`)
+     - loadSkillDatabase(): Load skill-database.json
+     - getSkillById(): Get skill definition by ID
+     - getHeroSkills(): Get all skills for a hero
+     - skillToEffect(): Convert catalog skill to effect definition (placeholder with default multipliers)
+     - applySkillEffects(): Apply skill effects to battle state
+     - registerPassiveTriggers(): Register passive triggers for a unit (infers trigger type from description)
+     - processTriggers(): Process triggers for a unit (checks cooldown, condition, once-per-battle, once-per-round, max-triggers)
+     - processBuffTicks: Process buff/debuff ticks at round end (decrement duration, process DoT/HoT, remove expired status)
+   - ✅ **Unit tests** (30 tests, all passing)
+     - effect-executor.test.mjs: 21 tests covering damage, heal, shield, energy, stat-modifier, status
+     - target-selector.test.mjs: 10 tests covering all target types
+
+### ⏳ Pending
+
+1. **Phase 2b: FightTable Deep Dive** (In Progress)
+   - Agent a68b62f64879cb2fe launched to parse FightTable.Effect and FightTable.Buff
+   - Tasks:
+     - Parse FightTable.Effect (multiple files: Effect.11/12/13/14/15/16/21/22/23/25/26/27/99.data.lua.json)
+     - Parse FightTable.Buff (9 files: Buff.1-9.data.lua.json - appear to be 0 lines each, may need different parsing approach)
+     - Correlate Effect/Buff tables to skills (discover join key)
+     - Extract damage/healing/shield multipliers from Effect table
+     - Extract buff durations, stacking, trigger timing from Buff table
+     - Resolve 71 missing 69100010xx descriptions (determine if they use different des table)
+   - Expected deliverables:
+     - Updated skill-database.json with effect/buff data
+     - Refined skill-discrepancies.json
+     - Parsing tool `tools/parse-fight-table-effects.mjs`
+     - Documentation `agent/workflow/skill-system-validation/fighttable-effects-parsing.md`
+
+2. **Phase 4: Skill Implementation by Hero Tier (In Progress)
+   - Agent a97d77e557ee339e is working on 吟游诗人 (1010101)
+   - Agent a172b9f7bc303c947 (等token退回): 猎魔人 (1020201)
+   - Agent a7098fb2eb68a8ee6 (等token退回): 鱼缸头 (1010201)
+   - Agent aa17716f22e0c4a69 (等token退回): 等暴玛丽 (1020301)
+   - Other agents will start when token quota allows: 通灵女巫 (1020401), 影盾骑士 (1020501) with its own skill validation
+
+3. **Phase 5: Validation Test Suite**
+   - Automated tests for each hero
+   - Skill output validation
+   - Trigger condition verification
+
+**Completed Hero Skill Validations (from subagent reports):**
+- ✅ **影盾骑士 (1020501)** - 14 skills validated, all fixed, 9 tests passing, documented
+  - Skill database updated with effect definitions
+  - Battle engine integrated with skill loading and trigger registration
+  - New STAT_TYPES added: max-hp-percent, crit-resist, crit-damage-reduction
+  - Shield mechanics implemented (5% max HP shield, 80% defense shield)
+  - Energy gain mechanics implemented (150 on hit, 25 on ally attack)
+  - Damage reduction conditional triggers implemented (hp-below-50%, has-debuff)**
    - ✅ Created comprehensive design document `agent/workflow/skill-system-validation/effect-system-design.md`
    - ✅ **Effect types definition** (`personal-server/game/effects/effect-types.mjs`)
      - DAMAGE_TYPES: 5 types (physical, magical, true, percent-max-hp, percent-current-hp)

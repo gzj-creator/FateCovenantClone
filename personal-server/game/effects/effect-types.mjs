@@ -37,12 +37,22 @@ export const STAT_TYPES = Object.freeze({
   SPEED_PERCENT: 'speed-percent',
   CRIT_RATE: 'crit-rate',          // Percentage (0-1)
   CRIT_DAMAGE: 'crit-damage',     // Percentage multiplier (1.0 = no bonus)
+  CRIT_RESISTANCE: 'crit-resistance', // Percentage (0-1)
+  HIT_RATE: 'hit-rate',           // Percentage (0-1)
+  REBOUND_RATE: 'rebound-rate',    // Percentage (0-1)
+  ANTI_CRIT: 'anti-crit',         // Percentage (0-1)
+  STATUS_HIT: 'status-hit',        // Percentage (0-1)
+  STATUS_RESIST: 'status-resist',  // Percentage (0-1)
+  MAX_HP_PERCENT: 'max-hp-percent',
   IGNORE_DEFENSE: 'ignore-defense', // Percentage (0-1)
   DAMAGE_BONUS: 'damage-bonus',   // Percentage (0-1)
   DAMAGE_REDUCTION: 'damage-reduction', // Percentage (0-1)
   HEAL_BONUS: 'heal-bonus',       // Percentage (0-1)
   SHIELD_BONUS: 'shield-bonus',   // Percentage (0-1)
   ENERGY_BONUS: 'energy-bonus',   // Percentage (0-1)
+  MAX_HP_PERCENT: 'max-hp-percent',
+  CRIT_RESIST: 'crit-resist',
+  CRIT_DAMAGE_REDUCTION: 'crit-damage-reduction',   // Percentage (0-1)
 });
 
 // Energy types
@@ -79,6 +89,7 @@ export const TARGET_TYPES = Object.freeze({
   SELF: 'self',
   SINGLE: 'single',              // Default: front-most enemy
   FRONT_ROW: 'front-row',        // All enemies in front row (loc 1-3)
+  FRONT_ROW_ALLIES: 'front-row-allies', // All allies in front row (loc 1-3)
   BACK_ROW: 'back-row',          // All enemies in back row (loc 4-6)
   ALL_ENEMIES: 'all-enemies',
   ALL_ALLIES: 'all-allies',

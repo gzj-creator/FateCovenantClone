@@ -27,6 +27,9 @@ export class TargetSelector {
       case TARGET_TYPES.FRONT_ROW:
         return this.selectFrontRow(actor, allUnits);
 
+      case TARGET_TYPES.FRONT_ROW_ALLIES:
+        return this.selectFrontRowAllies(actor, allUnits);
+
       case TARGET_TYPES.BACK_ROW:
         return this.selectBackRow(actor, allUnits);
 
@@ -101,6 +104,14 @@ export class TargetSelector {
   selectFrontRow(actor, allUnits) {
     const enemies = this.getEnemies(actor, allUnits);
     return enemies.filter(u => u.loc >= 1 && u.loc <= 3 && u.alive).sort((a, b) => a.loc - b.loc);
+  }
+
+  /**
+   * Select all allies in front row (loc 1-3)
+   */
+  selectFrontRowAllies(actor, allUnits) {
+    const allies = this.getAllies(actor, allUnits);
+    return allies.filter(u => u.loc >= 1 && u.loc <= 3 && u.alive).sort((a, b) => a.loc - b.loc);
   }
 
   /**

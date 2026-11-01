@@ -30,6 +30,8 @@ export class EffectExecutor {
         return this.executeEnergy(effect, actor, target);
       case 'status':
         return this.executeStatus(effect, actor, target);
+      case 'dispel':
+        return this.executeDispel(effect, actor, target);
       default:
         throw new Error(`Unknown effect type: ${effect.type}`);
     }
