@@ -67,6 +67,7 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
   return {
     supports: type => type === 1001 || type === 1002 || type === 1003 || type === 1004 || type === 1005 || type === 1006,
     execute(type, input) {
+      log({ event: 'equip_execute_entry', type, input, inputHex: input?.toString('base64') });
       if (type === 1001) {
         const requests = input?.equips;
         if (!Array.isArray(requests) || requests.length === 0) fail(1, 'Equip level-up list is empty');

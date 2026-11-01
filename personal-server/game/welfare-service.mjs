@@ -143,11 +143,13 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
   }
 
   async function purchaseGift(request, context) {
+    log({ event: 'welfare_purchase_gift_entry', request, context });
     if (!wallet?.purchaseGift) throw new GameError(5, 'Local wallet is not configured');
     const productId = Number(request.recharge_id), buyNum = Number(request.buy_num ?? 1);
     if (!Number.isSafeInteger(productId) || !Number.isSafeInteger(buyNum) || buyNum < 1) throw new GameError(1, 'Invalid gift purchase');
     const product = tables.Recharge.get(productId);
     if (!product) throw new GameError(5, 'Gift is not configured');
+    log({ event: 'purchase_gift_request', productId, buyNum, extra_param: request.extra_param, extra_param_type: typeof request.extra_param });
     let options;
     try { options = parseRechargeExtraParam(request.extra_param); }
     catch (error) {
@@ -156,10 +158,14 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
       // shape for monthly/permanent cards made the shared 16005 command reject
       // the whole payment before the wallet could process it.
       const requiresContext = Number(product.type) === 46 || [4, 5, 7].includes(Number(product.buy_cycle_limit));
-      if (requiresContext) throw new GameError(1, error.message);
+      if (requiresContext) {
+        log({ event: 'parse_extra_param_failed', error: error.message, extra_param: request.extra_param });
+        throw new GameError(1, error.message);
+      }
       options = { is_extra_buy: false, period: 0, day_index: 0 };
       log({ event: 'purchase_extra_param_ignored', productId, length: String(request.extra_param ?? '').length });
     }
+    log({ event: 'parse_extra_param_success', options });
     const result = wallet.purchaseGift({
       product_id: productId,
       request_id: 'gift:' + context.connection + ':' + context.seq,
@@ -168,6 +174,7 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
       period: options.period,
       day_index: options.day_index
     });
+    log({ event: 'welfare_purchase_gift_wallet_result', orderId: result.order_id });
     const value = { recharge_id: productId, time: result.time, res: result.res, extra_ret_list: result.extra_ret_list ?? [] };
     return { value, data: codec.pack('res_buy_or_Rev_gift', value) };
   }

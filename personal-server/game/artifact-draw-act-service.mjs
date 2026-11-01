@@ -676,6 +676,7 @@ export function createArtifactDrawActService({
   function supports101806() { return true; }
 
   function execute(command, request) {
+    log({ event: 'artifact_draw_execute_entry', command, request });
     const id = Number(command);
     if (!supports(id)) fail(5, 'Artifact activity command is not implemented');
     const result = handlers[id](request);
@@ -715,12 +716,14 @@ export function createArtifactDrawActService({
   }
 
   function recordArtifactDraw(actTid, count = 1) {
+    log({ event: 'artifact_draw_recordArtifactDraw_entry', actTid, count });
     const id = integer(actTid, 'activity id', { min: 1 });
     const amount = integer(count, 'draw count', { min: 1, max: 100000 });
     return store.transaction(model => onFantasyDraw(model, { pool: 'artifact', act_tid: id, count: amount, seconds: secondsNow() }));
   }
 
   function recordTrialFight(actTid, challengeTid, damage, { cleared = true } = {}) {
+    log({ event: 'artifact_draw_recordTrialFight_entry', actTid, challengeTid, damage, cleared });
     const id = integer(actTid, 'activity id', { min: 1 });
     const challengeId = integer(challengeTid, 'challenge id', { min: 1 });
     const dealt = BigInt(integer(damage, 'trial damage', { min: 0, max: Number.MAX_SAFE_INTEGER }));
@@ -740,6 +743,7 @@ export function createArtifactDrawActService({
   }
 
   function recordRecharge(actTid, value) {
+    log({ event: 'artifact_draw_recordRecharge_entry', actTid, value });
     const id = integer(actTid, 'activity id', { min: 1 });
     const amount = integer(value, 'recharge value', { min: 1 });
     return store.transaction(model => {
@@ -753,6 +757,7 @@ export function createArtifactDrawActService({
   }
 
   function loginPayloads({ actTids = null } = {}) {
+    log({ event: 'artifact_draw_loginPayloads_entry', actTids });
     return store.transaction(model => {
       const seconds = secondsNow();
       const activities = root(model);

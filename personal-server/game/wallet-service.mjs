@@ -619,10 +619,12 @@ export function createWalletService({
   // same transaction owns order creation, limit checks, payment, rewards and
   // activity bookkeeping so an injected failure cannot leave a paid order.
   function purchaseGift({ account_id = accountId, product_id, request_id, buy_num = 1, extra_buy = false, period = 0, day_index = 0 }) {
+    log({ event: 'purchase_gift_entry', account_id, product_id, request_id, buy_num, extra_buy, period, day_index });
     if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)
       || !Number.isSafeInteger(buy_num) || buy_num < 1 || buy_num > 100) throw new GameError(1, 'Invalid local gift purchase');
     const product = tables.Recharge.get(product_id);
     if (!product) throw new GameError(5, 'Gift is not configured');
+    log({ event: 'purchase_gift_product_found', product_id, type: product.type, pay_type: product.pay_type, price: product.price });
     const purchasedAt = now();
     if (!Number.isSafeInteger(purchasedAt) || purchasedAt <= 0) throw new GameError(1, 'Invalid purchase time');
     const heroGift = heroDrawActivity?.giftConfig(product_id, purchasedAt) ?? null;
@@ -632,6 +634,7 @@ export function createWalletService({
     const diamondFund = !heroGift && !petGift && diamondFunds.supports(product);
     const activityPermit = !heroGift && !petGift && Number(product.type) === 130;
     const standardPermit = !heroGift && !petGift && standardPermits.supports(product);
+    log({ event: 'purchase_gift_activity_check', heroGift: !!heroGift, petGift: !!petGift });
     const free = Number(product.pay_type) === 2;
     const balancePrice = Number(product.price) * buy_num;
     const itemPrice = Number(product.price) * buy_num;

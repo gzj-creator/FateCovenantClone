@@ -59,6 +59,7 @@ export function createEliteMissionService({ store, codec, tables, now = Date.now
   function supports(type) { return type === 87001 || type === 87002 || type === 87003; }
 
   function custom(input) {
+    log({ event: 'elite_mission_custom_entry', input, inputHex: input?.toString('base64') });
     const missionIdRaw = Array.isArray(input) ? input[0] : input;
     const missionId = (missionIdRaw === undefined || missionIdRaw === null || missionIdRaw === '') ? null : Number(missionIdRaw);
     return store.transaction((model, db) => {
@@ -87,6 +88,7 @@ export function createEliteMissionService({ store, codec, tables, now = Date.now
   }
 
   function boxAward(request) {
+    log({ event: 'elite_mission_boxAward_entry', request });
     const boxIds = Array.isArray(request && request.box_id_list) ? request.box_id_list.map(Number) : [];
     const taskIds = Array.isArray(request && request.common_task_id_list) ? request.common_task_id_list.map(Number) : [];
     if (boxIds.some(id => !Number.isSafeInteger(id) || id < 0)) fail(1, 'Invalid elite box id list');
@@ -131,6 +133,7 @@ export function createEliteMissionService({ store, codec, tables, now = Date.now
   }
 
   function chapterPass(input) {
+    log({ event: 'elite_mission_chapterPass_entry', input });
     const chapterId = integer(Array.isArray(input) ? input[0] : input, 1, Number.MAX_SAFE_INTEGER, 'Invalid elite chapter id');
     return store.transaction((model, db) => {
       ensureTables(db);

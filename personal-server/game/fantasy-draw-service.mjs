@@ -9,7 +9,8 @@ const RESET_OFFSET_SECONDS = 10800;
 const dayIndex = seconds => Math.floor((seconds + RESET_OFFSET_SECONDS) / DAY_SECONDS);
 const fail = (code, message) => { throw new GameError(code, message); };
 
-export function createFantasyDrawService({ store, codec, tables, now = () => Math.floor(Date.now() / 1000) }) {
+export function createFantasyDrawService({ store, codec, tables, now = () => Math.floor(Date.now() / 1000), logger = () => {} }) {
+  const log = event => { try { logger(event); } catch {} };
   const config = tables.FantasyDrawNormal?.get(1);
   if (!config || !tables.FantasyDrawNormalWish || !tables.FantasyDrawUnlock) {
     throw new Error('Fantasy draw configuration is missing');
@@ -49,6 +50,7 @@ export function createFantasyDrawService({ store, codec, tables, now = () => Mat
   }
 
   function ensureLoginState() {
+    log({ event: 'fantasy_draw_ensureLoginState_entry' });
     store.transaction(model => {
       const current = state(model, now());
       write(model, current);
@@ -56,6 +58,7 @@ export function createFantasyDrawService({ store, codec, tables, now = () => Mat
   }
 
   function setWish(request) {
+    log({ event: 'fantasy_draw_setWish_entry', request, requestHex: request?.toString('base64') });
     const list = request?.wish_list;
     if (!Array.isArray(list)) fail(1, 'Invalid fantasy wish list');
     return store.transaction(model => {
@@ -79,6 +82,7 @@ export function createFantasyDrawService({ store, codec, tables, now = () => Mat
   }
 
   function buyTickets(quantity) {
+    log({ event: 'fantasy_draw_buyTickets_entry', quantity });
     const count = Number(quantity);
     if (!Number.isSafeInteger(count) || count < 1 || count > maxLimit) fail(1, 'Invalid fantasy ticket quantity');
     return store.transaction(model => {

@@ -142,6 +142,7 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
   releaseEligiblePendingRewards();
 
   function synchronizeLogin(activity, at = Math.floor(Date.now() / 1000)) {
+    log({ event: 'acc_recharge_synchronizeLogin_entry', activity, at });
     if (!activity || typeof activity !== 'object') {
       throw new GameError(5, 'Activity login data is invalid');
     }
@@ -213,6 +214,7 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
 
   function execute(data) {
     const request = codec.unpack('pb_acc_recharge_award_req', data);
+    log({ event: 'acc_recharge_execute_entry', request, dataLength: data?.length });
     const actId = Number(request.act_id);
     const awardTid = Number(request.award_tid);
     if (!Number.isSafeInteger(actId) || !Number.isSafeInteger(awardTid) || actId <= 0 || awardTid <= 0) {

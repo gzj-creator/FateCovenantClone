@@ -182,9 +182,11 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
   }
 
   function ensureActiveFishingBenefits() {
+    log({ event: 'activity_read_ensureActiveFishingBenefits_entry' });
     const actId = calendar.activeFishingActivityId(currentSeconds(), storedActivity());
     if (!actId) return { actId: null, changes: [] };
     const { version } = fishingConfiguration(actId);
+    log({ event: 'activity_read_ensureActiveFishingBenefits_config', actId, version });
     const result = store.transaction((model, db) => ({ changes: ensureFreeBait(model, db, actId, version).changes }));
     if (result.changes.length) log({ event: 'fishing_free_bait_granted', actId, ticketItem: Number(version.ticket_item), amount: Number(version.free_item_num) });
     return { actId, ...result };
@@ -429,13 +431,14 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
     supports: type => reads.has(type) || refused.has(type) || [110301, 110302, 110305, 110311].includes(type),
     ensureActiveFishingBenefits,
     execute(type, data) {
+      log({ event: 'activity_read_execute_entry', type, dataLength: data?.length, dataHex: data?.toString('base64') });
       if (type === 110301) return castRod(data);
       if (type === 110302) return collectFish(data);
       if (type === 110305) return unlockFishingMap(data);
       if (type === 110311) return batchFish(data);
       if (refused.has(type)) throw new GameError(5, refused.get(type));
       const [schema, value] = reads.get(type);
-      log({ event: 'activity_read_sent', type, schema });
+      log({ event: 'activity_read_sent', type, schema, value });
       return { value, data: codec.pack(schema, value) };
     }
   };
