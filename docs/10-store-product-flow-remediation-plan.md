@@ -42,7 +42,7 @@
 | F3 | 通行证/战令购买无反应 | 盘点所有通行证 SKU，统一购买后的活动/模块/推送同步，覆盖标准通行证与月卡战令 | `permit-service.mjs`、`month-permit-service.mjs`、`wallet-service.mjs` 的购买接入与测试 | 主验收通过，已合入 main；待部署 |
 | F4 | 表情包宝箱无法打开 | 定位具体物品与箱型，接通请求、扣箱、奖励发放、重开持久化 | `item-box-service.mjs`、对应资源/奖励处理与测试 | 主验收通过，已合入 main；待部署 |
 | F5 | 主线任务领取金币等奖励未完成 | 定位客户端实际命令与任务表，补齐可验证的任务奖励领取，不伪造未证实的任务类型 | `task-service.mjs`、主线/任务协议接入与测试 | 主验收通过，已合入 main；待部署 |
-| F6 | 全支付类回包为空、月卡/通行证无反应、限购状态不同步 | 补齐非空事件、模块 20/38 更新、snapshot 计数和所有支付通道，覆盖现金/代金券/免费/资源购买 | `wallet-service.mjs`、`monthly-card-service.mjs`、`permit-service.mjs`、支付回归与临时 TCP | 组件与临时集成通过；已合入 main；待部署和视觉验收 |
+| F6 | 全支付类回包为空、月卡/通行证无反应、限购状态不同步 | 补齐非空事件、模块 20/38 更新、snapshot 计数和所有支付通道，覆盖现金/代金券/免费/资源购买 | `wallet-service.mjs`、`monthly-card-service.mjs`、`permit-service.mjs`、支付回归与临时 TCP | 组件与临时集成通过；已合入 main 并部署；待 APK/视觉验收 |
 
 每个任务的详细调查、根因、实现边界、测试命令和状态记录在 `agent/workflow/store-product-flow-fixes/<任务编号>.md`。子 agent 必须维护自己的文件；总计划表由主 agent 验收后更新。
 
@@ -123,4 +123,5 @@
 - 新增 `purchase-flow-regression.test.mjs`，覆盖限购礼包、月卡余额/代金券/免费/资源、标准通行证、活动战令和临时 TCP 16004/16003。
 - 支付专项套件 97/97 通过；全量套件仍受当前本地共享 fixture 漂移影响，在非支付模块出现失败，详见 `agent/workflow/store-product-flow-fixes/F6.md`。
 - 已以合并提交 `7ec6439` 合入 main，无冲突；合并后同组支付专项套件 98/98 通过。
-- 尚未部署、未重启服务、未写生产 SQLite、未操作 ADB，待隔离客户端视觉验收。
+- 已于 2026-11-01T10:54:40Z 以 `main@13e9713` 重启实时服务；新 PID `43116`，五端口正常，待隔离客户端视觉验收。
+- 本轮未操作 ADB 或 APK，未修改生产库结构。
