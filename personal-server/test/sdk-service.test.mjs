@@ -215,6 +215,34 @@ test('file-backed SDK sessions survive restart, store only hashes, and expire no
   assert.equal((await third.verify(login.body.result)).status, 401);
 });
 
+test('version 1 session files migrate to version 2 identities without changing valid tokens', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-sdk-session-migration-'));
+  const sessionPath = path.join(directory, 'sessions.json');
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const first = await fixture(t, { sessionPath });
+  const login = await first.login();
+  assert.equal(login.status, 200);
+  await first.service.close();
+
+  const current = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+  fs.writeFileSync(sessionPath, JSON.stringify({
+    version: 1,
+    sessions: current.sessions.map(({ tokenHash, userId, expiresAt }) => ({ tokenHash, userId, expiresAt }))
+  }));
+
+  const migrated = await fixture(t, { sessionPath });
+  const stored = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+  assert.equal(stored.version, 2);
+  assert.deepEqual(stored.sessions[0], {
+    tokenHash: current.sessions[0].tokenHash,
+    userId: configuration.account.userId,
+    loginCode: configuration.account.loginCode,
+    nickname: configuration.account.nickname,
+    expiresAt: current.sessions[0].expiresAt
+  });
+  assert.equal((await migrated.verify(login.body.result)).status, 200);
+});
+
 test('factory fails closed for missing config, bad MD5, TTL, clock, and invalid port', async () => {
   assert.throws(() => createSdkService(), /appId/);
   assert.throws(() => createSdkService({ ...configuration, account: { ...configuration.account, passwordMd5: 'plaintext' } }), /passwordMd5/);
@@ -284,6 +312,67 @@ test('secondary SDK validates signed DES carrier against issued session and reje
   assert.equal((await check({}, false, true)).status, 401);
   f.setTime(login.body.result.expire_time + 1);
   assert.equal((await check()).status, 401);
+});
+
+test('signed external QuickSDK identity is bridged to a server-owned local session', async t => {
+  const quickSdk = { productCode: 'fc-local', productKey: 'fclocal1' };
+  const canonical = { userId: 'server-player-2', loginCode: 'server-login-2', nickname: 'Server Player 2' };
+  const resolved = [];
+  const f = await fixture(t, {
+    quickSdk,
+    quickSdkIdentityResolver: identity => {
+      resolved.push(identity);
+      return canonical;
+    }
+  });
+  async function check(overrides = {}, badSign = false) {
+    const data = { uid: '9768a7c5ad00', token: '97170cea8a25', ...overrides };
+    const key = Buffer.from(quickSdk.productKey);
+    const cipher = createCipheriv('des-ede3', Buffer.concat([key, key, key]), null);
+    const json_data = Buffer.concat([cipher.update(JSON.stringify(data), 'utf8'), cipher.final()]).toString('base64');
+    const fields = new Map([['product_code', quickSdk.productCode], ['json_data', json_data]]);
+    const digestValue = signQuickSdk(fields, quickSdk.productKey);
+    const sign = badSign ? '0'.repeat(32) : digestValue;
+    return f.raw('/v2/users/checkLogin', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: new URLSearchParams([...fields, ['sign', sign]]).toString() });
+  }
+
+  const accepted = await check();
+  assert.equal(accepted.status, 200);
+  assert.equal(accepted.body.result, true);
+  assert.equal(accepted.body.data.uid, canonical.userId);
+  assert.equal(accepted.body.data.platform_uid, canonical.userId);
+  assert.equal(accepted.body.data.user_name, canonical.nickname);
+  assert.match(accepted.body.data.user_token, /^[0-9a-f]{64}$/);
+  assert.notEqual(accepted.body.data.user_token, '97170cea8a25');
+  assert.equal(f.service.verifySession(canonical.userId, accepted.body.data.user_token), true);
+  assert.equal((await f.verify({ token: accepted.body.data.user_token, userid: canonical.userId })).status, 200);
+  assert.equal(resolved.length, 1);
+  assert.deepEqual(resolved[0], { productCode: quickSdk.productCode, uid: '9768a7c5ad00', token: '97170cea8a25' });
+
+  const second = await check({ token: 'abcdef123456' });
+  assert.equal(second.status, 200);
+  assert.match(second.body.data.user_token, /^[0-9a-f]{64}$/);
+  assert.notEqual(second.body.data.user_token, accepted.body.data.user_token);
+  const logged = JSON.stringify(f.events);
+  for (const secret of ['9768a7c5ad00', '97170cea8a25', accepted.body.data.user_token]) assert.equal(logged.includes(secret), false, secret);
+
+  const before = resolved.length;
+  assert.equal((await check({}, true)).status, 401);
+  assert.equal(resolved.length, before);
+});
+
+test('external QuickSDK identity resolver can reject an otherwise signed identity', async t => {
+  const quickSdk = { productCode: 'fc-local', productKey: 'fclocal1' };
+  const f = await fixture(t, { quickSdk, quickSdkIdentityResolver: () => null });
+  const key = Buffer.from(quickSdk.productKey);
+  const cipher = createCipheriv('des-ede3', Buffer.concat([key, key, key]), null);
+  const json_data = Buffer.concat([cipher.update(JSON.stringify({ uid: 'external-user', token: 'external-token' }), 'utf8'), cipher.final()]).toString('base64');
+  const fields = new Map([['product_code', quickSdk.productCode], ['json_data', json_data]]);
+  const form = new URLSearchParams([...fields, ['sign', signQuickSdk(fields, quickSdk.productKey)]]);
+  const response = await f.raw('/v2/users/checkLogin', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: form.toString() });
+  assert.equal(response.status, 401);
+  assert.equal(response.body.result, false);
+  assert.equal(response.body.error.code, 1003);
 });
 
 test('QuickSDK order payment validates its carrier, product, role and amount before buying', async t => {

@@ -10,7 +10,8 @@ const HOST = '127.0.0.1';
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_SESSIONS = 1024;
 const MAX_UNIX_SECONDS = 2_147_483_647;
-const SESSION_STORE_VERSION = 1;
+const SESSION_STORE_VERSION = 2;
+const SUPPORTED_SESSION_STORE_VERSIONS = new Set([1, SESSION_STORE_VERSION]);
 
 class RequestError extends Error {
   constructor(statusCode, rcode, message) {
@@ -88,6 +89,9 @@ export function createSdkService(options = {}) {
   const localTestOtp = options.localTestOtp === true;
   const quickSdk = options.quickSdk;
   if (quickSdk && (typeof quickSdk.productCode !== 'string' || Buffer.byteLength(quickSdk.productKey ?? '', 'utf8') !== 8)) throw new TypeError('Local QuickSDK requires a product code and eight-byte key');
+  const quickSdkIdentityResolver = options.quickSdkIdentityResolver;
+  if (quickSdkIdentityResolver !== undefined && typeof quickSdkIdentityResolver !== 'function') throw new TypeError('quickSdkIdentityResolver must be a function');
+  if (quickSdkIdentityResolver && !quickSdk) throw new TypeError('quickSdkIdentityResolver requires quickSdk configuration');
   const appId = requiredText(options.appId, 'appId');
   const appKey = requiredText(options.appKey, 'appKey');
   const platform = options.platform && Object.freeze({
@@ -122,7 +126,7 @@ export function createSdkService(options = {}) {
   currentTime();
   function persistSessions() {
     if (!sessionPath) return;
-    const entries = [...sessions].map(([tokenHash, session]) => ({ tokenHash, userId: session.userId, expiresAt: session.expiresAt }))
+    const entries = [...sessions].map(([tokenHash, session]) => ({ tokenHash, userId: session.userId, loginCode: session.loginCode, nickname: session.nickname, expiresAt: session.expiresAt }))
       .sort((a, b) => a.tokenHash.localeCompare(b.tokenHash));
     const temporary = sessionPath + '.' + process.pid + '.tmp';
     fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
@@ -133,29 +137,87 @@ export function createSdkService(options = {}) {
       if (fs.existsSync(temporary)) fs.rmSync(temporary, { force: true });
     }
   }
+  function removeExpiredSessions(now = currentTime()) {
+    let removed = false;
+    for (const [key, session] of sessions) {
+      if (now > session.expiresAt) {
+        sessions.delete(key);
+        removed = true;
+      }
+    }
+    if (removed) persistSessions();
+    return removed;
+  }
+  function activeSessionFor(token, userId) {
+    if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return undefined;
+    const key = tokenKey(token);
+    const session = sessions.get(key);
+    if (!session) return undefined;
+    if (currentTime() > session.expiresAt) {
+      sessions.delete(key);
+      persistSessions();
+      return undefined;
+    }
+    return session.userId === userId ? session : undefined;
+  }
   if (sessionPath && fs.existsSync(sessionPath)) {
     let stored;
     try { stored = JSON.parse(fs.readFileSync(sessionPath, 'utf8')); }
     catch { throw new Error('Local SDK session store is not valid JSON'); }
-    if (stored?.version !== SESSION_STORE_VERSION || !Array.isArray(stored.sessions)) throw new Error('Local SDK session store has an unsupported shape');
+    if (!SUPPORTED_SESSION_STORE_VERSIONS.has(stored?.version) || !Array.isArray(stored.sessions)) throw new Error('Local SDK session store has an unsupported shape');
     for (const entry of stored.sessions) {
-      if (!entry || !/^[0-9a-f]{64}$/.test(entry.tokenHash) || entry.userId !== account.userId || !Number.isSafeInteger(entry.expiresAt) || entry.expiresAt < 0 || entry.expiresAt > MAX_UNIX_SECONDS || sessions.has(entry.tokenHash)) {
+      const identity = stored.version === 1
+        ? { userId: account.userId, loginCode: account.loginCode, nickname: account.nickname }
+        : { userId: entry?.userId, loginCode: entry?.loginCode, nickname: entry?.nickname };
+      let validIdentity = false;
+      try {
+        requiredText(identity.userId, 'session.userId');
+        requiredText(identity.loginCode, 'session.loginCode');
+        requiredText(identity.nickname, 'session.nickname');
+        validIdentity = true;
+      } catch {}
+      if (!entry || !/^[0-9a-f]{64}$/.test(entry.tokenHash) || !validIdentity || !Number.isSafeInteger(entry.expiresAt) || entry.expiresAt < 0 || entry.expiresAt > MAX_UNIX_SECONDS || sessions.has(entry.tokenHash)) {
         throw new Error('Local SDK session store contains an invalid entry');
       }
-      sessions.set(entry.tokenHash, { userId: entry.userId, expiresAt: entry.expiresAt });
+      sessions.set(entry.tokenHash, { ...identity, expiresAt: entry.expiresAt });
     }
-    const now = currentTime();
-    let removed = false;
-    for (const [key, session] of sessions) if (now > session.expiresAt) { sessions.delete(key); removed = true; }
-    if (removed) persistSessions();
+    const removed = removeExpiredSessions();
+    if (stored.version !== SESSION_STORE_VERSION && !removed) persistSessions();
   }
-  function resultFor(token, expiresAt) {
+  function hasActiveSessionFor(userId) {
+    removeExpiredSessions();
+    return [...sessions.values()].some(session => session.userId === userId);
+  }
+  function issueSession(identity) {
+    const now = currentTime();
+    removeExpiredSessions(now);
+    if (sessions.size >= MAX_SESSIONS) throw new RequestError(503, 1004, 'Session limit reached');
+    const token = randomBytes(32).toString('hex');
+    const session = Object.freeze({ userId: identity.userId, loginCode: identity.loginCode, nickname: identity.nickname, expiresAt: now + sessionTtlSeconds });
+    const hash = tokenKey(token);
+    sessions.set(hash, session);
+    try { persistSessions(); }
+    catch (error) { sessions.delete(hash); throw error; }
+    return { token, session };
+  }
+  function normalizeQuickSdkIdentity(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    try {
+      return Object.freeze({
+        userId: requiredText(value.userId, 'resolved identity userId'),
+        loginCode: requiredText(value.loginCode ?? value.userId, 'resolved identity loginCode'),
+        nickname: requiredText(value.nickname ?? value.userId, 'resolved identity nickname')
+      });
+    } catch { return null; }
+  }
+  function resultFor(token, session) {
+    const identity = session ?? { ...account, expiresAt: currentTime() };
     return {
-      account_type: 'local', enthralment: 0, expire_time: expiresAt, face_url: '',
+      account_type: 'local', enthralment: 0, expire_time: identity.expiresAt, face_url: '',
       guest_id_verify: 0, has_pwd: 1, id_code: '', info_age: 0,
-      login_code: account.loginCode, login_code_ext: account.loginCode, mail_set: '',
-      name: '', nickname: account.nickname, sdk_id_verify: false, status: '1',
-      telphone_set: '', token, userid: account.userId
+      login_code: identity.loginCode, login_code_ext: identity.loginCode, mail_set: '',
+      name: '', nickname: identity.nickname, sdk_id_verify: false, status: '1',
+      telphone_set: '', token, userid: identity.userId
     };
   }
   function authenticateForm(fields) {
@@ -240,7 +302,7 @@ export function createSdkService(options = {}) {
           log({ event: 'user_status_rejected', stage: 'signature', appMatches: fields.get('appid') === platform.appId });
           throw new RequestError(401, 1001, 'Invalid local platform or signature');
         }
-        const active = fields.get('userid') === account.userId && [...sessions.values()].some(session => session.userId === account.userId && currentTime() <= session.expiresAt);
+        const active = hasActiveSessionFor(fields.get('userid'));
         if (!active) throw new RequestError(401, 1003, 'Local SDK session required');
         // Fictional identity fixture for this isolated local test, not an identity check.
         const status = { is_idcode_verified: 1, is_certification: 2, is_guest: 0, is_telphone_bind: 1, info_telphone: '19900000000', info_age: 18 };
@@ -258,12 +320,32 @@ export function createSdkService(options = {}) {
         let login;
         try { login = decodeQuickSdkCarrier(fields.get('json_data'), quickSdk.productKey); }
         catch { throw new RequestError(400, 400, 'Invalid local SDK carrier'); }
-        const session = typeof login.token === 'string' && /^[0-9a-f]{64}$/.test(login.token) ? sessions.get(tokenKey(login.token)) : undefined;
-        if (!session || session.userId !== login.uid || currentTime() > session.expiresAt) {
-          log({ event: 'quick_login_rejected', stage: 'session', tokenKnown: Boolean(session), uidMatches: session?.userId === login.uid, uidLength: String(login.uid ?? '').length, tokenLength: String(login.token ?? '').length });
-          throw new RequestError(401, 1003, 'Local SDK session required');
+        if (typeof login.uid !== 'string' || login.uid.length < 1 || login.uid.length > 128 || /[\u0000-\u001f\u007f\s]/.test(login.uid)
+          || typeof login.token !== 'string' || login.token.length < 1 || login.token.length > 512 || /[\u0000-\u001f\u007f]/.test(login.token)) {
+          throw new RequestError(400, 400, 'Invalid local SDK identity');
         }
-        send(200, { result: true, error: {}, data: { uid: account.userId, user_name: account.nickname, user_token: login.token, token: login.token, platform_uid: account.userId, platform_username: account.nickname, platform_password: '', platform_status: '1', stopCreateRole: false, stopCreateTime: '' } });
+        let sessionToken = login.token;
+        let session = activeSessionFor(login.token, login.uid);
+        if (!session) {
+          if (!quickSdkIdentityResolver) {
+            log({ event: 'quick_login_rejected', stage: 'session', tokenKnown: Boolean(session), uidMatches: session?.userId === login.uid, uidLength: String(login.uid ?? '').length, tokenLength: String(login.token ?? '').length });
+            throw new RequestError(401, 1003, 'Local SDK session required');
+          }
+          let resolved;
+          try { resolved = await quickSdkIdentityResolver(Object.freeze({ productCode: quickSdk.productCode, uid: login.uid, token: login.token })); }
+          catch {
+            log({ event: 'quick_login_rejected', stage: 'identity_resolver', uidLength: login.uid.length, tokenLength: login.token.length });
+            throw new RequestError(401, 1003, 'External SDK identity rejected');
+          }
+          const identity = normalizeQuickSdkIdentity(resolved);
+          if (!identity) {
+            log({ event: 'quick_login_rejected', stage: 'identity_shape', uidLength: login.uid.length, tokenLength: login.token.length });
+            throw new RequestError(401, 1003, 'External SDK identity rejected');
+          }
+          ({ token: sessionToken, session } = issueSession(identity));
+          log({ event: 'quick_login_identity_bridged', userId: session.userId, uidLength: login.uid.length, tokenLength: login.token.length });
+        }
+        send(200, { result: true, error: {}, data: { uid: session.userId, user_name: session.nickname, user_token: sessionToken, token: sessionToken, platform_uid: session.userId, platform_username: session.nickname, platform_password: '', platform_status: '1', stopCreateRole: false, stopCreateTime: '' } });
         return;
       }
       if (route === 'quickOrderPay') {
@@ -276,8 +358,8 @@ export function createSdkService(options = {}) {
         let payment;
         try { payment = decodeQuickSdkCarrier(fields.get('json_data'), quickSdk.productKey); }
         catch { throw new RequestError(400, 400, 'Invalid local payment carrier'); }
-        const session = typeof payment.token === 'string' && /^[0-9a-f]{64}$/.test(payment.token) ? sessions.get(tokenKey(payment.token)) : undefined;
-        if (!session || session.userId !== payment.uid || currentTime() > session.expiresAt) throw new RequestError(401, 1003, 'Local SDK session required');
+        const session = activeSessionFor(payment.token, payment.uid);
+        if (!session) throw new RequestError(401, 1003, 'Local SDK session required');
         let extras;
         try { extras = JSON.parse(payment.extras_params); }
         catch { throw new RequestError(400, 400, 'Invalid local payment extras'); }
@@ -322,28 +404,18 @@ export function createSdkService(options = {}) {
       if (route === 'phoneAccountCheck') { send(200, { rcode: 0, rdesc: 'Local test account', result: { has_pwd: 0 } }); return; }
       if (route === 'localSms') { send(200, { rcode: 0, rdesc: 'Local test mode: no SMS sent', result: { wait_time: 1 } }); return; }
       if (['localPhoneLogin','localPhoneRegister'].includes(route) && !/^[0-9]{4}$/.test(fields.get('verifyCode'))) throw new RequestError(400, 400, 'Use a four-digit local test code');
-      const now = currentTime();
-      let removedExpired = false;
-      for (const [key, session] of sessions) if (now > session.expiresAt) { sessions.delete(key); removedExpired = true; }
-      if (removedExpired) persistSessions();
       if (route === 'login' || route === 'localPhoneLogin' || route === 'localPhoneRegister') {
         // The isolated SDK's registration screen also signs a password field.
         // It signs into the existing test identity without changing its credentials or save.
         if (route === 'login' && (fields.get('loginCode') !== account.loginCode || !equalMd5Hex(account.passwordMd5, fields.get('password')))) throw new RequestError(401, 1002, 'Invalid credentials');
-        if (sessions.size >= MAX_SESSIONS) throw new RequestError(503, 1004, 'Session limit reached');
-        const token = randomBytes(32).toString('hex');
-        const expiresAt = now + sessionTtlSeconds;
-        const hash = tokenKey(token);
-        sessions.set(hash, { userId: account.userId, expiresAt });
-        try { persistSessions(); }
-        catch (error) { sessions.delete(hash); throw error; }
-        send(200, { rcode: 0, rdesc: 'ok', result: resultFor(token, expiresAt) });
+        const issued = issueSession({ userId: account.userId, loginCode: account.loginCode, nickname: account.nickname });
+        send(200, { rcode: 0, rdesc: 'ok', result: resultFor(issued.token, issued.session) });
         return;
       }
       const token = fields.get('access_token');
-      const session = /^[0-9a-f]{64}$/.test(token) ? sessions.get(tokenKey(token)) : undefined;
-      if (!session || session.userId !== fields.get('userid') || now > session.expiresAt) throw new RequestError(401, 1003, 'Invalid or expired session');
-      send(200, { rcode: 0, rdesc: 'ok', result: resultFor(token, session.expiresAt) });
+      const session = activeSessionFor(token, fields.get('userid'));
+      if (!session) throw new RequestError(401, 1003, 'Invalid or expired session');
+      send(200, { rcode: 0, rdesc: 'ok', result: resultFor(token, session) });
     } catch (error) {
       const known = error instanceof RequestError;
       if (route === 'quickLogin') {
