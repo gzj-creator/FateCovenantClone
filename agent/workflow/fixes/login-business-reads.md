@@ -11,7 +11,7 @@
 ## 客户端规则
 
 - `CmsMgr.TryReqInfo` 按 `CmsTable` 的 `fun_open`、`req_duration` 控制请求，并发送 CMS `tid`。当前配置只有 `tid=1 -> pb_cms_question_info`。客户端解码 `question_list` 后按 `end_time` 排序。
-- `GuildNationMgr.LoginFinish` 和进入公会国家界面都会调用 `GuildNationAssistMgr.ReqNewAssistList()`。请求无业务参数，返回 `pb_guild_nation_assist_list_back`。
+- `GuildNationMgr.LoginFinish` 和进入公会国家界面都会调用 `GuildNationAssistMgr.ReqNewAssistList()`。请求没有业务值，但线上实际发送 ETF atom `nil`（7 字节），返回 `pb_guild_nation_assist_list_back`；空 payload、空列表和 `nil` 都按无参数处理。
 
 ## 实现
 
@@ -22,7 +22,7 @@
 
 ## 验证
 
-- `node --test test/login-business-reads.test.mjs`：3/3 通过，覆盖有效非空 CMS、过期/未来/禁用/其他类型过滤、空结果、当前公会过滤、过期/满额/其他公会过滤、重开持久化及真实 TCP 网关。
+- `node --test test/login-business-reads.test.mjs`：3/3 通过，覆盖有效非空 CMS、过期/未来/禁用/其他类型过滤、空结果、当前公会过滤、过期/满额/其他公会过滤、重开持久化及真实 TCP 网关（`99229` 使用实际 ETF `nil` 字节）。
 - 相关模块均通过 `node --check`，`git diff --check` 通过。
 - schema v11 测试同时验证旧 v10 备份可迁移，迁移标记存在。
 - `gameplay-gateway.test.mjs` 在本分支和同一 `main` 基点的对照 worktree 都得到相同的 3 个既有数据夹具失败（鱼饵 50/25、线性任务 `err=310`、WishTree 外键）；本功能使用独立真实 TCP 测试验证，不依赖这些失败用例。

@@ -206,7 +206,9 @@ test('real gateway serves CMS and current-guild assist reads without unsupported
   response = await request(89501, 2, await encodeEtf([1]));
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_cms_question_info', Buffer.from(response.data, 'base64')).question_list.map(question => question.title), ['TCP survey']);
-  response = await request(99229, 3, Buffer.alloc(0));
+  // GuildNationAssistMgr sends ETF atom `nil` (83 64 00 03 6e 69 6c),
+  // not an empty protobuf payload.
+  response = await request(99229, 3, Buffer.from('g2QAA25pbA==', 'base64'));
   assert.equal(response.err, undefined);
   assert.deepEqual(
     codec.unpack('pb_guild_nation_assist_list_back', Buffer.from(response.data, 'base64')).list.map(item => item.id),

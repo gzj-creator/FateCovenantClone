@@ -799,7 +799,19 @@ export function createLocalGame({
       }
       if (guildNationAssist.supports(type)) {
         try {
-          const unexpected = await etfArgument(request.data, 'Invalid guild nation assist-list payload', { optional: true });
+          let unexpected = null;
+          if (request.data?.length) {
+            let decoded;
+            try {
+              decoded = await decodeEtf(request.data);
+            } catch {
+              throw new GameError(1, 'Invalid guild nation assist-list payload');
+            }
+            const value = decoded?.value ?? decoded;
+            const isNilAtom = decoded?.constructor?.name === 'OtpErlangAtom' && decoded.value === 'nil';
+            const isEmptyList = Array.isArray(value) && value.length === 0;
+            if (!isNilAtom && !isEmptyList) unexpected = value;
+          }
           if (unexpected !== null) throw new GameError(1, 'Guild nation assist list takes no parameters');
           const result = guildNationAssist.execute(null);
           send(seq, result.data);
