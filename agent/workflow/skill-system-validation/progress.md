@@ -21,38 +21,68 @@
    - ✅ **Correction**: Real skill implementation data lives in FightTable.Ability (10466 rows) + FightTable.AbilityDes (5655 rows)
    - ✅ **Cross-reference results**:
      - 508 unique skill IDs in catalog
-     - 504 resolved in FightTable.Ability (only 4 normal-profession fallbacks missing)
+     - 504 resolved in FightTable.Ability (only the 4 normal-profession fallback ids are absent, as expected)
      - 437 resolved in FightTable.AbilityDes (71 missing, all 69100010xx ids)
      - 0 type mismatches
    - ✅ **Refined discrepancies**: 68 total (all MISSING_ABILITY_DESCRIPTION for 69100010xx skills + 4 fallbacks)
-   - ✅ **Updated skill-database.json**: All 1062 skill references now have implementation data (986 from FightTable, 76 project-fallback)
-   - ✅ **Created tool**: `tools/parse-method-table.mjs` with parseMethodTable() and parseSkillImplementation()
+   - ✅ **Updated skill-database.json**: All 1062 skill references now carry `implementation` (986 from FightTable data, 76 project-fallback). 0 null.
+   - ✅ **Created tool**: `tools/parse-method-table.mjs` with parseMethodTable() and parseSkillImplementation(); CLI supports --json/--skills/--skills --update.
    - ✅ **Created documentation**: `agent/workflow/skill-system-validation/methodtable-parsing.md`
 
-4. **Phase 3: Skill Effect System Design (Completed)**
-   - Created comprehensive design document `agent/workflow/skill-system-validation/effect-system-design.md`
-   - Defined:
-     - Effect types (damage, heal, shield, stat modifiers, energy, status)
-     - Duration system (instant, permanent, timed, stacking, trigger-count, conditional)
-     - Trigger system (on-attack, on-hit, on-kill, on-death, etc.)
-     - Target selection (self, single, front-row, all-enemies, etc.)
-     - Skill definition structure
-     - Effect executor architecture
-     - Integration with current battle engine
-     - Implementation phases (7 phases over 4+ weeks)
-     - Testing strategy
-     - Performance considerations
-     - Migration strategy
+4. **Phase 3: Skill Effect System Implementation (Completed)**
+   - ✅ Created comprehensive design document `agent/workflow/skill-system-validation/effect-system-design.md`
+   - ✅ **Effect types definition** (`personal-server/game/effects/effect-types.mjs`)
+     - DAMAGE_TYPES: 5 types (physical, magical, true, percent-max-hp, percent-current-hp)
+     - HEAL_TYPES: 4 types (flat, percent-attack, percent-max-hp, percent-missing-hp)
+     - SHIELD_TYPES: 4 types (flat, percent-defense, percent-max-hp, percent-attack)
+     - STAT_TYPES: 15 types (attack/defense/speed modifiers, crit, ignore-defense, damage-bonus, damage-reduction, etc.)
+     - ENERGY_TYPES: 4 types (gain, loss, steal, set)
+     - STATUS_TYPES: 10 types (buffs: protection, invulnerable, strengthened, hastened, energized; debuffs: poison, burn, bleed, freeze, silence, stun, weakened, slowed, exhausted)
+     - TARGET_TYPES: 13 types (self, single, front-row, back-row, all-enemies, all-allies, lowest-hp, highest-hp, lowest-hp-enemy, highest-hp-enemy, lowest-hp-ally, highest-hp-ally, random, random-ally, random-count)
+     - DURATION_TYPES: 6 types (instant, permanent, timed, stacking, trigger-count, conditional)
+     - TRIGGER_TYPES: 18 types (on-attack, on-hit, on-kill, on-crit, on-being-hit, on-being-crit, on-hp-threshold, on-death, on-skill-use, on-skill-hit, on-ultimate-use, on-round-start, on-round-end, on-turn-start, on-turn-end, on-energy-full, on-energy-gain, on-buff-gain, on-debuff-gain, on-status-expire)
+   - ✅ **Effect executor** (`personal-server/game/effects/effect-executor.mjs`)
+     - executeDamage: Calculate damage with defense reduction, crit, shield absorption, grant energy on hit
+     - executeHeal: Calculate healing with overheal capping
+     - executeShield: Add shields with stacking
+     - executeStatModifier: Apply stat buffs/debuffs with stacking logic
+     - executeEnergy: Manipulate energy (gain/loss/steal/set) with bounds checking
+     - executeStatus: Apply status effects (buffs/debuffs) with unique status replacement
+     - Helper methods for buff/debuff classification
+   - ✅ **Target selector** (`personal-server/game/effects/target-selector.mjs`)
+     - All 13 target types implemented
+     - Proper filtering by team and alive status
+     - Sorting by location, HP%, priority
+     - Random selection support
+   - ✅ **Skill integration layer** (`personal-server/game/effects/skill-integration.mjs`)
+     - loadSkillDatabase(): Load skill-database.json
+     - getSkillById(): Get skill definition by ID
+     - getHeroSkills(): Get all skills for a hero
+     - skillToEffect(): Convert catalog skill to effect definition (placeholder with default multipliers, will be refined with FightTable.Effect data)
+     - applySkillEffects(): Apply skill effects to battle state
+     - registerPassiveTriggers(): Register passive triggers for a unit (infers trigger type from description)
+     - processTriggers(): Process triggers for a unit (checks cooldown, condition, once-per-battle, once-per-round, max-triggers)
+     - processBuffTicks(): Process buff/debuff ticks at round end (decrement duration, process DoT/HoT, remove expired status)
+   - ✅ **Unit tests** (30 tests, all passing)
+     - effect-executor.test.mjs: 21 tests covering damage, heal, shield, energy, stat-modifier, status
+     - target-selector.test.mjs: 10 tests covering all target types
 
 ### ⏳ Pending
 
-1. **Phase 2b: FightTable Deep Dive** (New)
-   - Parse FightTable.Effect (707 rows) to understand effect parameters
-   - Parse FightTable.Buff (5423 rows) to understand buff mechanics
-   - Correlate Effect/Buff tables to skills (discover join key)
-   - Extract damage/healing/shield multipliers from Effect table
-   - Extract buff durations, stacking, trigger timing from Buff table
-   - Resolve 71 missing 69100010xx descriptions (determine if they use different des table)
+1. **Phase 2b: FightTable Deep Dive** (In Progress)
+   - Agent a68b62f64879cb2fe launched to parse FightTable.Effect and FightTable.Buff
+   - Tasks:
+     - Parse FightTable.Effect (multiple files: Effect.11/12/13/14/15/16/21/22/23/25/26/27/99.data.lua.json)
+     - Parse FightTable.Buff (9 files: Buff.1-9.data.lua.json - appear to be 0 lines, may need different parsing approach)
+     - Correlate Effect/Buff tables to skills (discover join key)
+     - Extract damage/healing/shield multipliers from Effect table
+     - Extract buff durations, stacking, trigger timing from Buff table
+     - Resolve 71 missing 69100010xx descriptions (determine if they use different des table)
+   - Expected deliverables:
+     - Updated skill-database.json with effect/buff data
+     - Refined skill-discrepancies.json
+     - Parsing tool `tools/parse-fight-table-effects.mjs`
+     - Documentation `agent/workflow/skill-system-validation/fighttable-effects-parsing.md`
 
 2. **Phase 4: Skill Implementation by Hero Tier**
    - Tier 1: 16 core roster heroes
@@ -85,20 +115,18 @@
 
 ## Next Steps
 
-1. **Phase 2b: FightTable Deep Dive** (Immediate priority)
-   - Parse FightTable.Effect to extract effect parameters and multipliers
-   - Parse FightTable.Buff to extract buff mechanics (duration, stacking, triggers)
-   - Discover join key between Effect/Buff tables and skills
-   - Resolve 71 missing 69100010xx descriptions
-   - Update skill-database.json with effect/buff data
-
-2. **Phase 3: Implement Effect System** (After FightTable deep dive)
-   - Start with core effect types (damage, heal, shield)
-   - Implement effect executor
-   - Integrate with battle engine
-   - Add unit tests
-
-3. **Start Tier 1 Hero Implementation** (Once effect system is ready)
+1. **Wait for FightTable parsing agent** (a68b62f64879cb2fe) to complete
+2. **Review FightTable parsing results**
+3. **Integrate FightTable data** into skill integration layer
+   - Update skillToEffect() to use actual multipliers from FightTable.Effect
+   - Add buff mechanics from FightTable.Buff
+   - Resolve 69100010xx descriptions
+4. **Integrate with battle engine**
+   - Add skill database loading to battle initialization
+   - Add passive trigger registration to battle start
+   - Add trigger processing to turn execution
+   - Add buff tick processing to round end
+5. **Start Tier 1 hero implementation** (Once integration is ready)
    - Begin with 吟游诗人 (1010101) as proof of concept
    - Validate against catalog
    - Roll out to remaining Tier 1 heroes
@@ -110,7 +138,12 @@
 - Skill Database: `personal-server/config/skill-database.json`
 - Discrepancies Report: `analysis/reports/skill-discrepancies.json`
 - Metadata Extraction Tool: `tools/extract-skill-metadata.mjs`
-- MethodTable Parsing Tool: `tools/parse-method-table.mjs` (to be created by agent)
+- MethodTable Parsing Tool: `tools/parse-method-table.mjs`
+- Effect Types: `personal-server/game/effects/effect-types.mjs`
+- Effect Executor: `personal-server/game/effects/effect-executor.mjs`
+- Target Selector: `personal-server/game/effects/target-selector.mjs`
+- Skill Integration: `personal-server/game/effects/skill-integration.mjs`
+- Effect Tests: `personal-server/test/effects/effect-executor.test.mjs`, `personal-server/test/effects/target-selector.test.mjs`
 
 ## Metrics
 
@@ -125,11 +158,12 @@
 - Type mismatches: 0
 - Heroes with implemented skills: 0
 - Skills with effect system implementation: 0
+- Effect system unit tests: 30 (30 passing, 0 failing)
 
 ## Key Data Sources Discovered
 
-- **FightTable.Ability**: 10466 rows (tid, type, dmg_type, effect_type, run_type)
-- **FightTable.AbilityDes**: 5655 rows (tid, type_des, show_name, skill_icon, text, detail_text)
-- **FightTable.Effect**: 707 rows (effect parameters - not yet correlated)
-- **FightTable.Buff**: 5423 rows (buff mechanics - not yet correlated)
-- **MethodTable**: 260 Method entries + 308 DynamicArgs entries (UI/guide conditions, NOT skill data)
+- FightTable.Ability: 10466 rows (tid, type, dmg_type, effect_type, run_type) - 8 files (Ability.0-7.data.lua.json)
+- FightTable.AbilityDes: 5655 rows (tid, type_des, show_name, skill_icon, text, detail_text) - 100+ files (AbilityDes.1000-70030+ etc.)
+- FightTable.Effect: 707 rows (effect parameters - 11 files: Effect.11/12/13/14/15/16/21/22/23/25/26/27/99.data.lua.json)
+- FightTable.Buff: 5423 rows (buff mechanics - 9 files: Buff.1-9.data.lua.json, but appear to be 0 lines each)
+- MethodTable: 260 Method entries + 308 DynamicArgs entries (UI/guide conditions, NOT skill data)
