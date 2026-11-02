@@ -25953,7 +25953,7 @@
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
-          "description": "普攻/绝招时，额外附加5%的无视防御和5%的最终伤害 释放终结技时，30%概率额外获得1层【狂野】，持续到战斗结束",
+          "description": "普攻/绝招时，额外附加5%的无视防御和5%的最终伤害",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
             "resolvedAbility": true,
@@ -26122,6 +26122,78 @@
               }
             ],
             "notes": "Mastery: on normal/skill, +5% ignore defense and +5% final damage for 1 round."
+          }
+        },
+        {
+          "id": "322030175",
+          "name": "高光时刻",
+          "type": "Mastery",
+          "status": "Executable",
+          "category": "Metadata only",
+          "description": "释放终结技时，30%概率额外获得1层【狂野】，持续到战斗结束",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": false,
+            "resolvedDescription": true,
+            "ability": null,
+            "abilityDes": null,
+            "catalogTypeMatch": null,
+            "effectType": "status",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "status",
+                  "statusType": "strengthened",
+                  "duration": 0,
+                  "maxStacks": 0,
+                  "dispellable": true,
+                  "sourceSkill": "322030175"
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 0.3
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "status",
+                    "statusType": "strengthened",
+                    "duration": 0,
+                    "maxStacks": 0,
+                    "dispellable": true,
+                    "sourceSkill": "322030175"
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 0.3
+                },
+                "priority": 0,
+                "chance": 0.3
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Mastery (metadata only): on ultimate use, 30% chance to gain 1 stack of 狂野 (effect unknown, approximated as strengthened buff). Requires investigation."
           }
         },
         {
@@ -26625,7 +26697,7 @@
               {
                 "triggerType": "on-round-start",
                 "condition": null,
-                "conditionKey": null,
+                "conditionKey": "hp-above-50",
                 "cooldown": 0,
                 "maxTriggers": 1,
                 "oncePerBattle": true,
