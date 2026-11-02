@@ -357,6 +357,8 @@ function evaluateConditionKey(key, unit, allUnits, state) {
   switch (key) {
     case 'hp-above-50':
       return unit.hp / unit.maxHp >= 0.5;
+    case 'hp-above-70':
+      return unit.hp / unit.maxHp >= 0.7;
     case 'target-has-debuff':
       // approximated true; precise per-target filtering requires further investigation
       return true;
