@@ -5,7 +5,7 @@
 - 项目根目录：`F:\projects\FateCovenantClone`
 - 文档：`docs/`
 - 分析证据：`analysis/`
-- Unity 工程：`unity/`
+- 个人服务器：`personal-server/`
 - APK 快照：`apk/`（仅本地保存，不提交 Git；说明见 `apk/README.md`）
 
 ## APK 快照规则（持久）
@@ -13,6 +13,8 @@
 每次涉及 APK 的修改，验收通过后必须把当前可用 APK 同步一份到项目 `apk/` 目录，并在 `apk/README.md` 记录文件名、大小、SHA256、包名/版本、来源、验收证据和已知前置条件（例如 PlayerPrefs）。APK 文件不提交 Git；只提交文档。未验收或仅组件测试通过的构建不得标为“可用快照”。
 
 ## 当前目标
+
+2026-11-03 用户最新范围：只维护个人服务器（`personal-server/`）和隔离客户端 APK（`apk/`）；Unity 复刻路线已取消，`unity/` 目录按用户要求删除。下方 Unity 开发、构建与验收步骤均为历史，不再执行。本轮对私服全部模块进行代码审查，不启停实时服务或操作模拟器。审查报告见 `agent/workflow/project-review/2026-11-03.md`，本轮未修复业务代码。
 
 2026-10-28 当前快照（覆盖下方旧状态）：主界面看板娘缺失已定位并实测修复。根因不是资源缺失，而是隔离客户端 PlayerPrefs 中 SubDownloadFinish=0 时，UniCore.RemoteLoadMgr.NeedRemoteLoad 将 sub_first 资源误判为远程下载；UpdateDownloader.AsyncAssetLackPreCheck 为空，AddRemoteLoad 报错，AssetBundle 请求未创建并在 6000 帧后超时，最终报 hero_sl_GuangZhiXin_new_talk.prefab load fail by bundle load timeOut 和 [MissAsset]。已在 /data/data/com.jzyx.ps/shared_prefs/com.jzyx.ps.v2.playerprefs.xml 写入 SubDownloadFinish=1 并重启，截图 analysis/experiments/private-server-20261025/p3/kanban-after-subdownload-20261028.png 确认看板娘恢复；修复后 Info 日志无 AddRemoteLoad/timeout/MissAsset。该值未烘焙进 APK，重装/清数据/换设备后需重新写入。当前可用 APK 快照已保存到 apk/com.jzyx.ps.v9-working.apk（4,185,758,901 字节，SHA256 1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473），仅本地保存、不提交 Git，说明见 apk/README.md。设备 ADB 使用 E:\Mumu\MuMuPlayer\nx_main\adb.exe -s 127.0.0.1:16448；原版 com.jzyx.my 未操作。服务实时状态以 p3/runtime.local-only.data/server.local-only.json 为准（本轮核对五端口 18880/18881/18882/18883/19090 均在 loopback 监听）。详见 agent/workflow/client-resource/implementation.md。
 

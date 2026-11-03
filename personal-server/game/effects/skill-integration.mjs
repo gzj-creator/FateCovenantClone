@@ -364,6 +364,8 @@ function evaluateConditionKey(key, unit, allUnits, state) {
       return true;
     case 'hp-below-30':
       return unit.hp / unit.maxHp < 0.3;
+    case 'hp-below-40':
+      return unit.hp / unit.maxHp < 0.4;
     case 'hp-below-50':
       return unit.hp / unit.maxHp < 0.5;
     case 'hp-below-70':

@@ -200,5 +200,3 @@ test('stat modifier effect is executable', () => {
   assert.ok(result, 'stat-modifier should execute');
   assert.equal(result.type, 'stat-modifier');
 });
-EOF
-cd F:/projects/FateCovenantClone/personal-server && node --test test/hero-3010201-skill-validation.test.mjs
