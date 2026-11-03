@@ -202,5 +202,3 @@ test('stat modifier effect is executable', () => {
   assert.ok(result, 'stat-modifier should execute');
   assert.equal(result.type, 'stat-modifier');
 });
-EOF
-echo written

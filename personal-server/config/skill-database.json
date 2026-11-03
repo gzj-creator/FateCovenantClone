@@ -39211,7 +39211,30 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null
+            "abilityDes": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 1,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Project fallback basic attack."
           }
         },
         {
@@ -39240,7 +39263,31 @@
               "text": 601501115,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "damage",
+            "targetType": "all-enemies",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "all-enemies"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "magical",
+                  "multiplier": 1.3,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "requiresInvestigation": true,
+            "notes": "Ultimate: consumes 3 Tianji (not modeled), 130% magical damage to all enemies; if target has 噬炎 (flame), adds true damage = 30% of damage taken during 噬炎 (cap 180% atk) and removes 噬炎; on kill permanently -3% atk/def per target (max 3) and +1% atk/def to all allies (max 5 battles); otherwise restores 150 energy to all allies. 噬炎 tracking, Tianji, kill branching require engine integration (requiresInvestigation)."
           }
         },
         {
@@ -39269,7 +39316,86 @@
               "text": 604400316,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-bonus",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 2,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.6,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Mastery: first 2 ultimates per round guaranteed crit and +60% final damage (crit guarantee not modeled; approximated as damage-bonus 0.60, maxTriggers 2); battle start final damage bonus +5%."
           }
         },
         {
@@ -39298,7 +39424,115 @@
               "text": 604400317,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "attack-percent",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "attack-percent",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": true,
+                "effect": {
+                  "target": {
+                    "targetType": "random"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "loss",
+                    "magnitude": 100
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "all-enemies"
+                  },
+                  "effect": {
+                    "type": "status",
+                    "statusType": "burn",
+                    "maxStacks": 20,
+                    "duration": {
+                      "durationType": "timed",
+                      "rounds": 99
+                    }
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 99
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Mastery: first ultimate each round reduces a random enemy Tianji by 1 (approximated energy loss 100); after ultimate applies 1 layer of 噬炎 (approximated as burn status, max 20 stacks) to all enemies; battle start attack +5%. {0}/噬炎 identity and Tianji require investigation."
           }
         },
         {
@@ -39327,7 +39561,156 @@
               "text": 604400318,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-rate",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-damage",
+                  "magnitude": 0.1,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-rate",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-damage",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.6,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-rate",
+                    "magnitude": 1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Mastery: all ultimates/Tianji guaranteed crit and +60% final damage with no usage limit (crit guarantee approximated as crit-rate +1.0 and damage-bonus 0.60 on ultimate use); battle start crit-rate +5% and crit-damage +10%."
           }
         },
         {
@@ -39356,7 +39739,196 @@
               "text": 604400319,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "energy",
+                  "energyType": "gain",
+                  "magnitude": 100
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              },
+              {
+                "target": {
+                  "targetType": "all-allies"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-bonus",
+                  "magnitude": 0.4,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-bonus",
+                  "magnitude": 0.15,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 2
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 100
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-skill-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 100
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "all-allies"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.4,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-attack",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 2
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-skill-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 2
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Mastery: after normal/skill gain 1 Tianji (approx energy +100); all allies ultimate damage +40% (permanent); after normal/skill next ultimate damage +15% (approximated 2 rounds). Tianji conversion requires investigation."
           }
         },
         {
@@ -39385,7 +39957,102 @@
               "text": 604400320,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-rate",
+                  "magnitude": 0.1,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 0
+                },
+                "chance": 1
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-damage",
+                  "magnitude": 0.15,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-rate",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-damage",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Mastery: each 10% crit-rate grants +10% crit-damage and +3% ignore-defense (cap +100% crit-damage/+30% ignore-defense) requires engine scaling (requiresInvestigation); on ultimate use +10% crit-rate and +15% crit-damage."
           }
         },
         {
@@ -39414,7 +40081,83 @@
               "text": 601509006,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "energy",
+                  "energyType": "gain",
+                  "magnitude": 50
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 50
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-skill-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 50
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": false,
+            "notes": "Passive: when ally uses normal/skill, self gains 50 energy."
           }
         },
         {
@@ -39443,7 +40186,59 @@
               "text": 601509032,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-bonus",
+                  "magnitude": 0.15,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Passive: +15% damage to defense-type adventurers (target condition not enforced; approximated as permanent damage-bonus)."
           }
         },
         {
@@ -39472,7 +40267,59 @@
               "text": 601509033,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-bonus",
+                  "magnitude": 0.3,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-bonus",
+                    "magnitude": 0.3,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": false,
+            "notes": "Passive: normal/skill damage +30%."
           }
         },
         {
@@ -39501,7 +40348,83 @@
               "text": 601509037,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "energy",
+                  "energyType": "gain",
+                  "magnitude": 100
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 100
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-skill-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 100
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": false,
+            "notes": "Passive: normal/skill grants +100 energy."
           }
         },
         {
@@ -39530,7 +40453,86 @@
               "text": 601509039,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-resistance",
+                  "magnitude": 0.3,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-resistance",
+                    "magnitude": 0.3,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              },
+              {
+                "triggerType": "on-buff-gain",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-resistance",
+                    "magnitude": 0.3,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": true,
+            "notes": "Passive: when self has buff, crit-resistance +30% (buff-presence condition approximated)."
           }
         },
         {
@@ -39559,7 +40561,59 @@
               "text": 601509042,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "hit-rate",
+                  "magnitude": 0.15,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": "hp-above-50",
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "hit-rate",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": false,
+            "notes": "Passive: when HP > 50%, hit-rate +15%."
           }
         },
         {
@@ -39588,7 +40642,59 @@
               "text": 601509083,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "ignore-defense",
+                  "magnitude": 0.3,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "ignore-defense",
+                    "magnitude": 0.3,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0,
+                "chance": 1
+              }
+            ],
+            "requiresInvestigation": false,
+            "notes": "Passive: first ultimate ignores 30% of enemy defense."
           }
         },
         {
@@ -39610,7 +40716,31 @@
               "run_type": 1
             },
             "abilityDes": null,
-            "catalogTypeMatch": null
+            "catalogTypeMatch": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 2,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "requiresInvestigation": true,
+            "notes": "Ultimate: metadata fallback -> 2.0x physical damage single (requiresInvestigation)."
           }
         }
       ]

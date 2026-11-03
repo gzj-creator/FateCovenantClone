@@ -210,7 +210,7 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
     const storedTriggers = skill.implementation && Array.isArray(skill.implementation.triggers)
       ? skill.implementation.triggers : null;
 
-    if (storedTriggers && storedTriggers.length) {
+    if (Array.isArray(storedTriggers)) {
       for (const t of storedTriggers) {
         triggers.push({
           id: `${skill.id}_${unit.id}_${triggers.length}`,
