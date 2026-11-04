@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+// 单个玩法次数统计总数据
+message pb_count_statics_data {
+    repeated pb_count_statics list = 1; // 维度数据列表
+}
+
+// 统计维度数据格式
+message pb_count_statics {
+    int64 id = 1; // 维度id
+    int64 total = 2; // 该维度类型总次数
+    int64 mod_day = 3; // 该维度数据统计最近修改的天数索引
+    repeated int64 count_list = 4; // 每天记录的统计数据（按org_day + 偏移存储数据）
+    repeated pb_count_statics_snapshot snapshot_list = 5; // 快照数据
+}
+
+// 所有玩法次数统计最高进度
+message pb_count_statics_max {
+    repeated pb_count_statics_max_item max_list = 1; //所有最高进度记录
+}
+
+// 单个最高进度的数据格式
+message pb_count_statics_max_item {
+    uint64 tid = 1; //最高进度表tid
+    uint64 progress = 2; //当前进度值
+}
+
+// 统计快照(用来计算某个精确时间点之后总次数)
+message pb_count_statics_snapshot{
+    uint64 day_index = 1; //快照天数
+    uint64 total = 2; //快照瞬间总次数
+}

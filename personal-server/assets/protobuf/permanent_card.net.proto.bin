@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/permanent_card/permanent_card.db.proto.txt";
+
+// 永久卡领取奖励数据返回
+message pb_permanent_card_back{
+    pb_permanent_card card = 1; //永久卡数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 永久卡激活数据返回
+message pb_permanent_card_active_back{
+    pb_permanent_card_element card_info = 1; //永久卡数据
+    pb_res_to_client res = 2; //资源改变
+}

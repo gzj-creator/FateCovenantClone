@@ -1,0 +1,29 @@
+syntax = "proto3";
+import "project/recharge/recharge_role_select.db.proto.txt";
+
+// 萝卜农场活动角色数据
+message pb_radish_farm_role {
+    repeated pb_radish_farm_cell cells = 1;
+    uint32 last_refresh_stamp = 2;              // 上次刷新时间戳,使用该结构内的数据时都需要验证是否跨天
+    uint32 help_times = 3;                      // 帮助次数
+    repeated pb_radish_farm_gift gifts = 4;     // 礼包数据
+    uint32 harvest_num = 5;                     //活动期间收获次数
+    uint64 visit_id = 6;                        //拜访的玩家id
+    repeated uint64 day_help_roles = 7;         //今日已帮助过的玩家
+}
+
+// 农场格子数据
+message pb_radish_farm_cell {
+    uint32 id = 1;                  // 格子索引
+    uint32 start_time = 2;          // 播种时间
+    bytes event_finish_state = 3;   // 触发过的事件
+    uint32 speed_up_sec = 4;        // 加速秒数
+    bool is_harvest = 5;            // 是否已经收获
+}
+
+// 农场礼包数据
+message pb_radish_farm_gift {
+    uint32 gift_tid = 1;                        // 萝卜农场礼包表tid
+    uint32 times = 2;                           // 已领取次数
+    pb_recharge_role_select role_select = 3;    //选择礼包信息
+}

@@ -1066,7 +1066,7 @@ export function createLocalGame({
             if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
             order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
           }
-          send(seq, order.notification);
+          send(seq, Buffer.from(order.notification, 'base64'));
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
         } catch (error) {
           // The native recharge UI maps 16016 to RechargeErr.RECHARGE_COUNT_NOT_ENOUGH.

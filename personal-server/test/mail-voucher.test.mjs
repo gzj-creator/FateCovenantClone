@@ -19,7 +19,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const rechargeTotal = store => codec.unpack('res_recharge_login', rawBinary(new Map(store.state().modules.value).get(19))).total_amount ?? 0;
 
 function fixture() {
@@ -343,7 +343,7 @@ test('gateway login module 93, mail claim, native 16004 voucher payment and 1600
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-voucher-gateway-'));
   const legacyStatePath = path.join(directory, 'legacy.json');
   fs.writeFileSync(legacyStatePath, JSON.stringify(fixture()));
-  const game = createLocalGame({ databasePath: path.join(directory, 'game.sqlite'), statePath: legacyStatePath, capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url), localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
+  const game = createLocalGame({ databasePath: path.join(directory, 'game.sqlite'), statePath: legacyStatePath, capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url), localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const issued = game.mail.issueVoucher(voucherRequest({ request_id: 'gateway-mail', amount_cents: 600, expire_at: Math.floor(Date.now() / 1000) + 3600 }));
@@ -379,10 +379,13 @@ test('gateway login module 93, mail claim, native 16004 voucher payment and 1600
   assert.equal(game.voucher.balance().quantity, 6);
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 3, data: await encodeEtf([11, '', 701500]) }));
-  const push = codec.unpack('pb_s2c', await next());
-  const charged = codec.unpack('pb_s2c', await next());
-  assert.equal(push.type, 1900);
-  const success = codec.unpack('res_recharge_success', Buffer.from(push.data, 'base64'));
+  const frames = [];
+  while (!frames.some(frame => frame.seq === 3)) frames.push(codec.unpack('pb_s2c', await next()));
+  const charged = frames.find(frame => frame.seq === 3);
+  assert.equal(charged.err, undefined);
+  assert.ok(charged.data?.length);
+  while (!frames.some(frame => frame.type === 1900)) frames.push(codec.unpack('pb_s2c', await next()));
+  const success = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
   assert.equal(success.is_use_token, true);
   assert.equal(Number(success.use_item_tid), 701500);
   assert.equal(success.order.length > 0, true);
@@ -390,8 +393,6 @@ test('gateway login module 93, mail claim, native 16004 voucher payment and 1600
   assert.ok(extraAward);
   const extraInfo = codec.unpack('pb_recharge_extra_award_info', Buffer.from(extraAward.data, 'base64'));
   assert.equal(Number(extraInfo.buy_num_list.find(row => Number(row.key) === 11).value), 1);
-  assert.equal(charged.seq, 3);
-  assert.equal(charged.err, undefined);
   assert.equal(game.voucher.balance().quantity, 0);
   assert.equal(game.store.read().resources.get('101500').num, '180');
 

@@ -1,0 +1,71 @@
+syntax = "proto3";
+import "project/activity/firecracker_act/firecracker_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// ============== 活动信息 ==============
+// 请求爆竹迎春公会信息
+message pb_firecracker_act_guild_info_req {
+    int64 activity_id = 1;                              // 活动ID
+}
+
+// 响应爆竹迎春公会信息
+message pb_firecracker_act_guild_info_rsp {
+    pb_firecracker_guild_act_info guild_info = 1;    // 公会信息
+}
+
+// ============== 使用爆竹 ==============
+// 请求使用爆竹
+message pb_firecracker_act_use_req {
+    int64 activity_id = 1;                              // 活动ID
+    int32 use_count = 2;                                // 使用次数
+}
+
+// 响应使用爆竹
+message pb_firecracker_act_use_rsp {
+    pb_firecracker_act_info act_info = 1;        // 玩家活动数据更新
+    pb_res_to_client res = 2;                           // 资源变化
+    pb_firecracker_guild_act_info guild_info = 3;    // 公会信息
+}
+
+// ============== 领取任务奖励 ==============
+// 请求领取任务奖励
+message pb_firecracker_act_task_award_req {
+    int64 activity_id = 1;                              // 活动ID
+    repeated int64 task_tid_list = 2;                   // 任务奖励库tid列表
+}
+
+// 响应领取任务奖励
+message pb_firecracker_act_task_award_rsp {
+    pb_firecracker_act_info act_info = 1;        // 玩家活动数据更新
+    pb_res_to_client res = 2;                           // 资源变化
+}
+
+// ============== 领取累计奖励 ==============
+// 请求领取累计奖励
+message pb_firecracker_act_acc_award_req {
+    int64 activity_id = 1;                              // 活动ID
+    repeated int64 acc_award_tid_list = 2;                   // 累计奖励库tid列表
+}
+
+// 响应领取累计奖励
+message pb_firecracker_act_acc_award_rsp {
+    pb_firecracker_act_info act_info = 1;        // 玩家活动数据更新
+    pb_res_to_client res = 2;                           // 资源变化
+}
+
+// ============== 领取累充奖励 ==============
+// 请求领取累充奖励
+message pb_firecracker_act_acc_recharge_award_req {
+    int64 activity_id = 1;                              // 活动ID
+}
+
+// 响应领取累充奖励
+message pb_firecracker_act_acc_recharge_award_rsp {
+    pb_firecracker_act_info act_info = 1;        // 玩家活动数据更新
+    pb_res_to_client res = 2;                           // 资源变化
+}
+
+// protobuf 排名额外信息
+message pb_firecracker_rank_extra_info {
+    int64 fire_num = 1;        // 参与人数
+}

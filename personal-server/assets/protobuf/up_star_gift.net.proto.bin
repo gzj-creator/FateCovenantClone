@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/up_star_gift/up_star_gift.db.proto.txt";
+
+// 请求升星礼包数据
+message pb_up_star_gift_req{
+    repeated int32 ids = 1; //升星礼包id
+}
+// 数据返回
+message pb_up_star_gift_back{
+    pb_time_limit_up_star info = 1; //活动数据
+    pb_res_to_client res = 2; //资源改变
+}
+

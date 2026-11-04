@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// ============== 个人数据（DB存储） ==============
+//翻翻乐活动数据
+message pb_flop_card_act_data {
+    repeated pb_flop_card_data act_list = 1; // 活动列表
+}
+
+// 翻翻乐数据
+message pb_flop_card_data {
+    int64 act_tid = 1;              // 活动表tid
+    repeated int32 card_list = 2;   // 卡牌Tid
+    int32 flop_count = 3;           // 翻牌张数
+    int32 total_count = 4;          // 累计次数
+    bytes reward_bits = 5;          // 累计奖励标记
+    int32 round = 6;                // 轮次（算保底用）
+    int32 round_total = 7;          // 总轮次
+    int32 round_flop_count = 8;     // 保底回合内总抽数
+}

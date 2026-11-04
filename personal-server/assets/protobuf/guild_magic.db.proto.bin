@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+//【魔导时阵】背包
+message pb_guild_magic_data{
+    repeated pb_guild_magic magic_list = 1;//已解锁的魔导时阵列表
+}
+
+//【魔导时阵】基本信息
+message pb_guild_magic{
+    uint32 tid = 1;//魔导时阵表id
+    uint32 level = 2;//等级
+    uint32 star = 3;//星级
+}
+

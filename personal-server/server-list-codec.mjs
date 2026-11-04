@@ -3,9 +3,10 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { protocolAsset } from './assets.mjs';
 
 export const SERVER_SCHEMA_SHA256 = '1f1a744f71e9dd5216b7ecc061383ef5ded3b2fe9072aa8e8785659e6f8df4d3';
-const schemaPath = fileURLToPath(new URL('../analysis/reports/private-client-16448/lua-bundles/login-protos/server.net.proto', import.meta.url));
+const schemaPath = fileURLToPath(protocolAsset('server.net.proto'));
 
 export function createProtobufJsCodec(packageJsonPath = fileURLToPath(new URL('./node_modules/protobufjs/package.json', import.meta.url))) {
   if (typeof packageJsonPath !== 'string' || !path.isAbsolute(packageJsonPath)) throw new TypeError('An explicit absolute protobufjs package.json path is required');

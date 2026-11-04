@@ -4,6 +4,28 @@
 
 import { DAMAGE_TYPES, HEAL_TYPES, SHIELD_TYPES, STAT_TYPES, ENERGY_TYPES, STATUS_TYPES } from './effect-types.mjs';
 
+function normalizeDuration(effect) {
+  const raw = effect.duration;
+  if (raw && typeof raw === 'object') {
+    const rounds = Math.max(0, Number(raw.rounds ?? 0) || 0);
+    return {
+      durationType: raw.durationType || (rounds > 0 ? 'timed' : 'permanent'),
+      remainingRounds: rounds,
+      remainingTriggers: Math.max(1, Number(raw.triggers ?? 1) || 1),
+      conditionKey: raw.conditionKey ?? effect.conditionKey ?? null,
+      trigger: raw.trigger ?? effect.trigger ?? null
+    };
+  }
+  const rounds = Math.max(0, Number(raw ?? effect.rounds ?? 0) || 0);
+  return {
+    durationType: rounds > 0 ? 'timed' : 'permanent',
+    remainingRounds: rounds,
+    remainingTriggers: Math.max(1, Number(effect.triggers ?? 1) || 1),
+    conditionKey: effect.conditionKey ?? null,
+    trigger: effect.trigger ?? null
+  };
+}
+
 export class EffectExecutor {
   constructor(state) {
     this.state = state;
@@ -63,7 +85,8 @@ export class EffectExecutor {
     baseDamage *= variance;
 
     // Check crit
-    const canCrit = effect.canCrit !== false;
+    const isTrueDamage = effect.damageType === DAMAGE_TYPES.TRUE;
+    const canCrit = effect.canCrit !== false && !isTrueDamage;
     const critChance = actor.critChance + (actor.buffs?.critRate || 0);
     const isCrit = canCrit && this.random() < critChance;
     const critMultiplier = isCrit ? (effect.critMultiplier || 1.5) : 1.0;
@@ -74,8 +97,15 @@ export class EffectExecutor {
       defense *= (1 - effect.ignoreDefense);
     }
     const isPercentHp = effect.damageType === 'percent-max-hp' || effect.damageType === 'percent-current-hp';
-    const defenseReduction = isPercentHp ? 0 : defense * 0.45;
-    const finalDamage = Math.max(1, Math.floor((baseDamage - defenseReduction) * critMultiplier));
+    const defenseReduction = isPercentHp || isTrueDamage ? 0 : defense * 0.45;
+    let finalDamage = Math.max(1, Math.floor((baseDamage - defenseReduction) * critMultiplier));
+    const damageReduction = Math.min(0.9, (target.buffs || [])
+      .filter(modifier => modifier.statType === STAT_TYPES.DAMAGE_REDUCTION)
+      .reduce((sum, modifier) => sum + Number(modifier.magnitude || 0), 0)
+      + (isCrit ? (target.buffs || [])
+        .filter(modifier => modifier.statType === STAT_TYPES.CRIT_DAMAGE_REDUCTION)
+        .reduce((sum, modifier) => sum + Number(modifier.magnitude || 0), 0) : 0));
+    finalDamage = Math.max(1, Math.floor(finalDamage * (1 - damageReduction)));
 
     // Apply to target
     const oldHp = target.hp;
@@ -87,6 +117,8 @@ export class EffectExecutor {
     if (target.hp === 0) {
       target.alive = false;
     }
+
+    const consumedDurations = this.consumeTriggerCount(target, 'damage-taken');
 
     // Grant energy to target on being hit
     target.energy = Math.min(1000, (target.energy || 0) + 80);
@@ -102,6 +134,8 @@ export class EffectExecutor {
       newHp: target.hp,
       oldShield: target.shield + absorbed,
       newShield: target.shield,
+      damageReduction,
+      consumedDurations,
     };
   }
 
@@ -191,16 +225,25 @@ export class EffectExecutor {
   executeStatModifier(effect, actor, target) {
     if (!target.alive) return null;
 
+    const duration = normalizeDuration(effect);
+
     // Create stat modifier object
     const modifier = {
       statType: effect.statType,
       magnitude: effect.magnitude,
       isPercentage: effect.isPercentage || false,
-      duration: effect.duration || 0,
+      duration: duration.remainingRounds,
+      durationType: duration.durationType,
+      remainingRounds: duration.remainingRounds,
+      remainingTriggers: duration.remainingTriggers,
+      conditionKey: duration.conditionKey,
+      trigger: duration.trigger,
       maxStacks: effect.maxStacks || 0,
       stacksAdditive: effect.stacksAdditive !== false,
       source: actor.id,
       sourceSkill: effect.sourceSkill,
+      unique: effect.unique === true,
+      refresh: effect.refresh !== false,
     };
 
     // Apply to target's buffs/debuffs
@@ -211,13 +254,21 @@ export class EffectExecutor {
     const isBuff = this.isStatModifierBuff(effect.statType, effect.magnitude);
     const collection = isBuff ? target.buffs : target.debuffs;
 
-    // Check for stacking
-    if (effect.maxStacks > 0) {
-      const existing = collection.find(b => b.statType === effect.statType && b.source === actor.id);
+    const existing = collection.find(b => b.statType === effect.statType
+      && b.source === actor.id
+      && (!effect.sourceSkill || !b.sourceSkill || b.sourceSkill === effect.sourceSkill));
+
+    if (effect.unique) {
+      if (existing && effect.refresh !== false) {
+        Object.assign(existing, modifier, { stacks: existing.stacks || 1 });
+      } else if (!existing) {
+        collection.push({ ...modifier, stacks: 1 });
+      }
+    } else if (effect.maxStacks > 0) {
       if (existing) {
         if (existing.stacks < effect.maxStacks) {
           existing.stacks++;
-          existing.duration = effect.duration; // Refresh duration
+          Object.assign(existing, modifier, { stacks: existing.stacks });
         }
       } else {
         collection.push({ ...modifier, stacks: 1 });
@@ -234,6 +285,8 @@ export class EffectExecutor {
       magnitude: effect.magnitude,
       isPercentage: effect.isPercentage,
       duration: effect.duration,
+      durationType: duration.durationType,
+      unique: effect.unique === true,
     };
   }
 
@@ -256,7 +309,7 @@ export class EffectExecutor {
       case ENERGY_TYPES.STEAL:
         // Take from target and give to actor
         const stolen = Math.min(oldEnergy, effect.magnitude);
-        target.energy = oldEnergy - stolen;
+        newEnergy = oldEnergy - stolen;
         actor.energy = Math.min(1000, (actor.energy || 0) + stolen);
         break;
       case ENERGY_TYPES.SET:
@@ -274,6 +327,7 @@ export class EffectExecutor {
       magnitude: effect.magnitude,
       oldEnergy,
       newEnergy,
+      actorEnergy: actor.energy || 0,
     };
   }
 
@@ -283,6 +337,8 @@ export class EffectExecutor {
   executeStatus(effect, actor, target) {
     if (!target.alive) return null;
 
+    const duration = normalizeDuration(effect);
+
     // Create status object
     const status = {
       id: `${effect.statusType}_${actor.id}_${Date.now()}`,
@@ -291,11 +347,17 @@ export class EffectExecutor {
       sourceSkill: effect.sourceSkill,
       stacks: 1,
       maxStacks: effect.maxStacks || 0,
-      duration: effect.duration || 0,
+      duration: duration.remainingRounds,
+      durationType: duration.durationType,
+      remainingRounds: duration.remainingRounds,
+      remainingTriggers: duration.remainingTriggers,
+      conditionKey: duration.conditionKey,
+      trigger: duration.trigger,
       tickInterval: effect.tickInterval || 0,
       nextTick: 0,
       dispellable: effect.dispellable !== false,
       unique: effect.unique || false,
+      refresh: effect.refresh !== false,
       data: effect.data || {},
     };
 
@@ -327,6 +389,21 @@ export class EffectExecutor {
       duration: effect.duration,
       unique: effect.unique,
     };
+  }
+
+  consumeTriggerCount(target, trigger) {
+    const consumed = [];
+    for (const collection of [target.buffs || [], target.debuffs || []]) {
+      for (let index = collection.length - 1; index >= 0; index--) {
+        const status = collection[index];
+        if (status.durationType !== 'trigger-count') continue;
+        if (status.trigger && status.trigger !== trigger) continue;
+        status.remainingTriggers = Math.max(0, Number(status.remainingTriggers ?? 1) - 1);
+        consumed.push(status.id || status.statType || status.type);
+        if (status.remainingTriggers === 0) collection.splice(index, 1);
+      }
+    }
+    return consumed;
   }
 
   /**
@@ -377,6 +454,16 @@ export class EffectExecutor {
       STAT_TYPES.IGNORE_DEFENSE,
       STAT_TYPES.DAMAGE_BONUS,
       STAT_TYPES.DAMAGE_REDUCTION,
+      STAT_TYPES.CRIT_DAMAGE_REDUCTION,
+      STAT_TYPES.CRIT_RESIST,
+      STAT_TYPES.CRIT_RESISTANCE,
+      STAT_TYPES.ANTI_CRIT,
+      STAT_TYPES.HIT_RATE,
+      STAT_TYPES.EVASION,
+      STAT_TYPES.STATUS_HIT,
+      STAT_TYPES.STATUS_RESIST,
+      STAT_TYPES.REBOUND_RATE,
+      STAT_TYPES.MAX_HP_PERCENT,
       STAT_TYPES.HEAL_BONUS,
       STAT_TYPES.SHIELD_BONUS,
       STAT_TYPES.ENERGY_BONUS,

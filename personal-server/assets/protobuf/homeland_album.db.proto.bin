@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 家园仓库
+message pb_homeland_album_role {
+    repeated uint64 furniture_list = 1;   // 激活的家具列表
+    repeated uint64 furniture_suit_list = 2;   // 激活的家具套装列表
+    repeated uint64 furniture_suit_award_list = 3;   // 家具套装图鉴奖励已领取列表
+}

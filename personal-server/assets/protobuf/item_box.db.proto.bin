@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+// 可重复使用宝箱对象
+message pb_box_repeat {
+    int64 tid = 1;                          // 物品tid
+    int64 num = 2;                          // 数量（定义该字段的目的是为了和pb_res_obj的结构一致）
+    int64 uid = 3;                          // 唯一id
+    int32 get_time = 4;                     // 获取时间
+    int32 use_times = 5;                    // 使用次数
+}
+
+// 宝箱保底数据列表
+message pb_box_guarantee_list{
+    repeated pb_box_guarantee guarantee_list = 1;   // 保底列表
+}
+
+// 宝箱保底数据
+message pb_box_guarantee{
+    uint64 tid = 1;     // 宝箱tid
+    uint32 no_guarantee_count = 2;  // 未触发保底的次数(正保底使用)
+    uint32 open_count = 3;  // 开启次数
+    uint32 counter_guarantee_count = 4; // 触发反保底次数(反保底使用)
+    uint64 open_total_count = 5;    // 开启总次数
+}

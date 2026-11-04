@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+import "project/activity/tri_match_pvp/tri_match_pvp.db.proto.txt";
+import "project/triple_match_fight/triple_match_fight_db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/triple_match_fight/triple_match_fight_net.proto.txt";
+
+message pb_tri_match_pvp_get_report_req {
+  int64 act_id = 1;
+  int64 fight_uid = 2;
+}
+message pb_tri_match_pvp_get_report_rsp {
+  pb_triple_match_fight_replay replay = 1;
+}
+
+// 三消 PVP 战斗结算数据
+message pb_tri_match_pvp_set_data{
+  pb_tri_match_pvp_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+  int64 score_change = 3; // 积分变化
+}
+
+
+// 领取任务奖励
+message pb_tri_match_pvp_rec_task_award_req{
+  int64 act_id = 1; // 活动id
+  repeated int64 ids = 2; // 任务id列表
+}
+
+message pb_tri_match_pvp_rec_task_award_rsp{
+  pb_tri_match_pvp_act_res_data data = 1;
+}
+
+// 领取段位奖励
+message pb_tri_match_pvp_rec_grade_award_req{
+  int64 act_id = 1; // 活动id
+  repeated int64 ids = 2;// 段位id列表
+}
+
+message pb_tri_match_pvp_rec_grade_award_rsp{
+  pb_tri_match_pvp_act_res_data data = 1;
+  bytes award = 2;
+}
+
+// 三消pvp活动资源变化
+message pb_tri_match_pvp_act_res_data{
+  pb_tri_match_pvp_act_data act_data = 1; // 活动数据
+  pb_res_to_client res = 2; // 资源变化
+}
+
+// 获取战报列表
+message pb_tri_match_pvp_get_report_list_req{
+  int64 act_id = 1;
+}
+
+message pb_tri_match_pvp_get_report_list_rsp{
+  repeated pb_tri_match_pvp_report report_list = 1;
+}

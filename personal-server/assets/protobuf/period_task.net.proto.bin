@@ -1,0 +1,8 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/period_task/period_task.db.proto.txt";
+
+message pb_period_task_back {
+    pb_period_task_info period_task = 1;    // 周期任务数据
+    pb_res_to_client res = 2;               // 资源改变
+}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "project/activity/task_award/task_award.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 任务奖励-活动返回数据
+message pb_task_award_back{
+  pb_task_award info = 1; //活动数据
+  pb_res_to_client res = 2; //资源数据
+}

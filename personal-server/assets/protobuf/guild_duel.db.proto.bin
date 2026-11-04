@@ -1,0 +1,135 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+
+// 航会对决服务器数据
+message pb_guild_duel_server{
+    uint32 last_open_day = 1;                       // 上次开启天数(后台使用)
+    uint32 cur_stage = 2;                           // 当前阶段
+    uint64 next_stage_time = 3;                     // 下一阶段开启的时间/秒
+    uint32 round = 4;                               // 比赛轮次(开始跨服活动时重置为0)
+    bool is_cross = 5;                              // 是否跨服活动(非主服务器不设置该值)
+    uint64 season_settle_time = 6;                  // 下次赛季结算时间
+    uint32 server_stage = 7;                        // 服务器阶段（单服，双子，跨服）
+    uint32 version_change_time = 8;                 // 周期切换时间
+    uint32 season_version = 9;                      // 赛季版本
+    uint32 determine_eligibility = 10;              // 确定龙息战场参赛排行榜资格时间戳
+    bool is_peak = 11;                              // 是否进入巅峰赛季
+    uint32 regroup_n = 12;                          // 跨服组重组次数
+    uint32 divine_flag = 13;                        // 神域标记(次数累加)
+}
+
+// 航会对决服务器匹配数据
+message pb_guild_duel_server_match{
+    repeated pb_guild_duel_match_guild match_guild_list = 1;    // 匹配的航会列表
+    repeated pb_g_duel_zone_data zone_list = 2;                           // 赛区列表
+}
+
+message pb_g_duel_zone_data{
+    uint32 tid = 1;                                     //赛区id
+    repeated pb_g_duel_zone_guild guild_list = 2;       //航会列表
+    repeated pb_duel_zone_round match_pool = 3;         //匹配池（用于跨服赛区循环匹配）
+}
+
+message pb_duel_zone_round{
+    uint32 round = 1;                                 //匹配轮次
+    repeated pb_duel_zone_match match_list = 2;       //匹配航会信息
+}
+
+message pb_duel_zone_match{
+    uint32 index1 = 1;    //匹配航会索引
+    uint32 index2 = 2;    //匹配航会索引
+    uint32 result = 3;    //结算结果（1为1胜，2为2胜）
+}
+
+message pb_g_duel_zone_guild{
+    uint64 guild_id = 1;            //航会id
+    uint32 index = 2;               //索引
+    uint64 last_match_guild = 3;    //上次匹配航会
+}
+
+// 航会对决匹配航会数据
+message pb_guild_duel_match_guild{
+    uint64 guild_id_1 = 1;
+    uint64 guild_id_2 = 2;
+}
+
+// 航会对决航会数据
+message pb_guild_duel_guild{
+    uint32 cur_score = 1;                           // 当前积分(可计算出段位)
+    uint64 cur_power = 2;                           // 当前战力
+    uint32 fight_score = 3;                         // 本轮对战积分
+    repeated pb_guild_duel_entry_member entry_member_list = 4;          // 参赛成员信息列表(有序)
+    uint64 opponent_guild = 5;                      // 对手航会
+    pb_guild_duel_person mvp_person = 6;            // 本轮mvp成员(轮空的没有)
+    repeated pb_guild_duel_person_report report_list = 7;   // 本轮成员战报(上限60条)
+    bool is_win = 8;                                // 本轮是否胜利
+    uint32 max_score = 9;                           // 历史最大积分(用于领取段位奖励)
+    uint32 season_settle_day = 10;                  // 赛季结算天
+    uint32 zone_id = 11;                            // 赛区id
+    uint32 last_zone_id = 12;                       // 上赛季赛区
+    uint32 last_rank = 13;                          // 上轮排名
+}
+
+// 航会对决参赛成员信息
+message pb_guild_duel_entry_member{
+    uint64 id = 1;                                  // 真实玩家为role_id，机器人为位置索引
+    uint32 cur_hp = 2;                              // 当前血量(废弃)
+    uint32 sur_atk_n = 3;                           // 剩余攻击次数(废弃)
+    bool is_elite = 4;                              // 是否是王牌成员
+    uint32 add_score = 5;                           // 获得积分
+    repeated uint32 atk_team_list = 6;              // 攻击队伍信息列表(按队伍索引取值)
+    repeated uint32 def_team_list = 7;              // 防守队伍信息列表(按队伍索引取值)
+}
+
+// 航会对决航会战绩数据
+message pb_guild_duel_guild_record{
+    uint32 acc_win_n = 1;                           // 累积胜利次数
+    uint32 max_win_streak_n =  2;                   // 最大连胜次数
+    uint32 win_streak_n = 3;                        // 当前连胜次数
+    uint32 acc_entry_n = 4;                         // 累积参赛次数
+    repeated pb_guild_duel_guild_report report_list = 5;    // 对战记录列表(上限15条)
+}
+
+// 航会对决航会对战记录
+message pb_guild_duel_guild_report{
+    pb_guild_duel_guild_info atk_guild = 1;         // 进攻方航会
+    pb_guild_duel_guild_info def_guild = 2;         // 防守方航会
+    bool is_win = 3;                                // 是否胜利
+    uint32 time_day = 4;                            // 记录时间/天
+}
+
+// 航会对决航会信息
+message pb_guild_duel_guild_info{
+    uint64 id = 1;                                  // 公会ID
+    uint32 badge = 2;                               // 公会徽章
+    uint32 level = 3;                               // 公会等级
+    string name = 4;                                // 公会名字
+    uint32 cur_score = 5;                           // 当前积分
+    uint32 fight_score = 6;                         // 本轮对战积分
+    int32 change_score = 7;                         // 变化的积分(可正可负)
+}
+
+// 航会对决个人数据
+message pb_guild_duel_person{
+    uint64 role_id = 1;                             // 角色id(主要用于mvp成员展示，个人数据中该字段为0)
+    uint32 gain_score = 2;                          // 本轮获取积分
+    repeated uint64 win_id_list = 3;                // 本轮战胜对手列表
+    uint32 atk_win_n = 4;                           // 进攻胜利次数
+    uint32 def_win_n = 5;                           // 防守胜利次数
+    uint64 win_total_power = 6;                     // 击败对手总战力
+    uint64 power = 7;                               // 自身战力(发起了战斗才会赋值)
+    bytes level_award = 8;                          // 段位奖励领取(不重置)
+    uint32 receive_award_round = 9;                 // 领取奖励的轮次
+}
+
+// 航会对决个人对战记录
+message pb_guild_duel_person_report{
+    uint64 atk_id = 1;                              // 进攻方id
+    bool atk_is_elite = 2;                          // 是否是进攻方王牌
+    uint64 def_id = 3;                              // 防守方id
+    bool def_is_elite = 4;                          // 是否是防守方王牌
+    uint64 win_id = 5;                              // 胜利方id
+    uint64 report_id = 6;                           // 战报id
+    uint64 time = 7;                                // 时间/秒
+}

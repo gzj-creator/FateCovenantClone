@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "project/house_assistant/house_assistant.db.proto.txt";
+
+// 请求使用橘屋助手
+message pb_house_assistant_use_req {
+    uint64 scene_tid = 1;
+    uint64 assistant_tid = 2;
+}
+
+message pb_house_assistant_use_req_list {
+    repeated pb_house_assistant_use_req req = 1;
+}
+
+message pb_house_assistant_use_rsp {
+    repeated pb_house_assistant_use_info use = 1; // 使用信息
+}
+
+// 请求使用试炼看板娘和背景
+message pb_house_assistant_trial_req {
+    repeated int64 trial_id_list = 1; // 试用列表
+    repeated pb_house_assistant_use_req req = 2;
+}
+
+// 请求取消试炼看板娘和背景
+message pb_house_assistant_trial_cancel_req {
+    repeated int64 trial_id_list = 1; // 取消试用列表
+}
+
+// 试炼相关请求返回数据
+message pb_house_assistant_trial_rsp {
+    pb_house_assistant_info info = 1; // 橘屋信息
+}

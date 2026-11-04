@@ -17,7 +17,7 @@ import { createResidentFantasyDrawPool } from '../game/resident-fantasy-draw-poo
 const codec = createGameCodec();
 const tables = readGameTables();
 const heroTables = readHeroTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const openedAt = 1792789200;
 const seededResources = [
   670002, 677002, 149002, 808002, 101500,

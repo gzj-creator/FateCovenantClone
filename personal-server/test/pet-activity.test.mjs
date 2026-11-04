@@ -18,7 +18,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const SERVER_OPENED_AT = 1792789200;
 const PET_ACT_ID = 83028;
@@ -163,14 +163,16 @@ test('all-open pet activity synchronizes login data, shop, free/resource gifts a
     data: await encodeEtf([730402, binary(Buffer.from('[]')), 0])
   }));
   const walletFrames = [codec.unpack('pb_s2c', await env.next()), codec.unpack('pb_s2c', await env.next())];
-  const notification = walletFrames.find(frame => frame.type === 1900);
-  assert.ok(notification);
-  const walletPush = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
+  const charged = walletFrames.find(frame => frame.seq === 22);
+  assert.ok(charged);
+  assert.equal(charged.err, undefined);
+  const walletPush = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
   const limitInfo = walletPush.extra_ret_list.find(extra => extra.flag === 65);
   assert.ok(limitInfo);
   assert.equal(codec.unpack('pb_recharge_limit_info', Buffer.from(limitInfo.data, 'base64')).buy_num_list.find(row => row.recharge_id === 730402).buy_num, 1);
   assert.equal(env.game.wallet.snapshot().accounts[0].balance_cents, 7000);
-  assert.ok(walletFrames.some(frame => frame.seq === 22 && frame.err === undefined));
+  const notification = walletFrames.find(frame => frame.type === 1900);
+  assert.ok(notification);
 
   response = await env.request(1201, 23, codec.pack('pb_req_buy_shop_item', {
     shop_id: PET_SHOP_ID,
@@ -232,6 +234,7 @@ test('scheduled pet activity removes login, shop, gift purchase and recommendati
     data: await encodeEtf([730402, binary(Buffer.from('[]')), 0])
   }));
   response = codec.unpack('pb_s2c', await env.next());
+  assert.equal(response.seq, 12);
   assert.equal(response.err.err, 5);
 
   response = await env.request(85901, 13, codec.pack('pb_recommend_gift_active_req', {

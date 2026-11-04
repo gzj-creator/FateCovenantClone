@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+import "project/hero/base/hero.db.proto.txt";
+import "project/role.db.proto.txt";
+import "project/function_cache/player_data/player_data.db.proto.txt";
+import "project/wear/equip/equip.db.proto.txt";
+import "project/attribute/attribute.db.proto.txt";
+import "project/artifact.db.proto.txt";
+import "project/hero/share/hero_share.db.proto.txt";
+import "project/guild_magic/guild_magic.db.proto.txt";
+import "project/war_rune.db.proto.txt";
+import "project/lineup.db.proto.txt";
+import "project/campsite/campsite.db.proto.txt";
+import "project/activity/summer_act/summer_water_gun/summer_water_gun.db.proto.txt";
+
+//公会基础数据
+message pb_player_guild{
+    uint64 id = 1;//公会id
+    string name = 2;//公会名字
+    uint32 badge = 3; //公会徽章
+    uint64 active = 4;// 活跃度(计算周期每周一0：00，至周日24：00;每周一0：00重置)
+    uint64 day_active = 5;  // 日活跃度
+    uint64 active_time = 6;// 获得活跃度的时间
+    uint64 job = 7; //玩家在航会里的职位
+    uint32 yesterday_active = 8; //玩家昨天活跃度
+    uint32 active_sum = 9; //玩家累积活跃度
+    uint32 special_active = 10;// 特殊活跃度
+    uint32 last_week_active = 11; //上周贡献度
+}
+
+//阵容数据
+message pb_player_lineup{
+    repeated hero hero_list = 1;                                        //英雄信息（为客户端Hero对象列表）
+    repeated pb_player_hero_attr attr_list = 2;                         //属性列表
+    repeated pb_lineup lineup_list = 3;                                 //阵型列表
+    repeated pb_player_lineup_timeliness lineup_timeliness = 4;         //布阵时效性列表
+    uint64 robot_fight_tid = 5;                                         //机器人战斗tid
+}
+
+//单个布阵类型时效性
+message pb_player_lineup_timeliness{
+    uint32 type = 1;    // 布阵类型
+    uint64 time = 2;    //更新时间
+}
+//单个英雄战力
+message pb_player_hero_power{
+    int64 uid = 1;      //英雄uid
+    uint64 power = 2;   //战力
+}
+
+//单个英雄属性
+message pb_player_hero_attr{
+    int64 uid = 1;      //英雄uid
+    repeated pb_attr_item attr = 2;     //属性
+}
+
+//登录数据
+message pb_player_login{
+    uint32 last_login_time = 1; //上一次登陆的时间
+    uint32 last_logout_time = 2;//上一次登出的时间
+    bool maybe_online = 3;      //是否在线
+}
+
+//圣约数据（上阵的圣约信息）
+message pb_player_artifact{
+    repeated pb_artifact artifact_list = 1; //圣器列表
+    repeated int32 tid_list = 2;           //神器上阵tid列表
+}
+
+//橘屋数据块
+message pb_house_block{
+    uint32 kernel_level = 1;            // 【橘屋中枢】中枢等级
+    repeated uint32 camp_lv_list = 3;   // 【橘屋关系网】势力等级列表（根据势力id取对应下标等级）
+}
+
+// 魔导时阵数据块
+message pb_guild_magic_block{
+    bool in_guild = 1;//玩家是否在航会里:true|在;false|不在
+    repeated pb_guild_magic magic_list = 2;//已解锁的魔导时阵列表
+}
+
+// 圣约数据块（所有的圣约，目前用于实力对比界面）
+message pb_detail_artifact_block{
+    repeated pb_artifact artifact_list = 1; //圣器列表
+    uint32 artifact_guide_tid = 2;//圣约众令图鉴表的id
+}
+
+//数据（上阵的圣约信息）
+message pb_player_war_rune_block{
+    repeated pb_war_rune_grid grid_list = 1; //兵符格子列表
+    repeated pb_war_rune_item rune_list = 2; //兵符列表
+}
+
+// 营地数据
+message pb_player_campsite{
+    pb_campsite_data campsite_data = 1; // 营地数据
+    repeated hero hero_list = 2;        // 营地里的英雄数据
+}
+
+// 时空试炼关卡数据块
+message pb_player_time_temple_mission_block{
+    pb_campsite_data campsite_data = 1; // 营地数据
+    repeated hero hero_list = 2;        // 营地里的英雄数据
+}
+
+
+// 夏日活动水枪养成列表
+message pb_player_summer_water_list {
+    repeated pb_player_summer_water water_gun_list = 1;//水枪列表
+}
+
+// 夏日活动水枪养成数据
+message pb_player_summer_water {
+    int32 act_id = 1; // 活动id
+    int32 tid = 2;//水枪id
+    int32 level = 3;//等级
+    int32 stage = 4; //阶
+    int32 star = 5; // 星
+    repeated pb_summer_water_beads beads = 6;//灵珠镶嵌
+    int32 skin_id = 7; //穿戴的皮肤id
+    bool active = 8; // 是否激活水枪
+    int64 power = 9; //战力
+}
+
+// 夏日活动PVP数据列表
+message pb_player_summer_pvp_list {
+    repeated pb_player_summer_pvp pvp_list = 1;//PVP列表
+}
+
+// 夏日活动PVP数据
+message pb_player_summer_pvp {
+    uint64 act_tid = 1; // 活动tid
+    bool swap_open = 2; // 是否开启了换位赛
+}
+
+

@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+message pb_sprint_recharge {
+    uint64 act_tid = 1;         // 活动id
+    pb_recharge_limit_info recharge_list = 2; // 充值次数限制信息
+}
+
+// 玩家礼包数据
+message pb_sprint_gift_data{
+    repeated pb_sprint_gift gift_list = 1; // 暂时没用
+    repeated pb_sprint_recharge limit_recharge = 2;
+}
+
+// 玩家礼包信息
+message pb_sprint_gift{
+    uint64 type = 1;    // 礼包类型
+    uint64 id = 2;      // 礼包id
+    uint32 count = 3;   // 购买次数
+}
+
+// 参加活动数据
+message pb_sprint_join_data{
+    repeated pb_sprint_join join_list = 1;
+}
+
+// 参加活动信息
+message pb_sprint_join {
+    uint64 role_id = 1;       //玩家id
+    repeated uint32 join_act_list = 2;    //参加的活动列表
+}
+
+// 任务数据信息
+message pb_sprint_task_data{
+    repeated pb_sprint_task task_list = 1;      //任务列表
+    repeated pb_sprint_rank_task rank_task_list = 2;      //榜单任务列表
+}
+
+// 榜单任务数据
+message pb_sprint_day_task {
+    uint32 day_index = 1;
+    bytes receive_data = 2;  //已领奖的任务tid二进制数据
+}
+message pb_sprint_rank_task{
+    uint32 type_tid = 1;    //开服冲榜表-冲榜类型表id
+    bytes receive_data = 2;  //已领奖的任务tid二进制数据
+    repeated pb_sprint_day_task day_tasks = 3; // 每日任务的领取情况(用来算排行榜分数用)
+    uint32 refresh_day = 4; // 刷新天数
+    repeated pb_sprint_day_score day_scores = 5; // // 每日额外积分获得(目前是使用物品获得)
+}
+
+// 每日额外积分获得(使用物品获得)
+message pb_sprint_day_score {
+    uint32 day_index = 1;
+    int64 score = 2;
+}
+
+// 任务数据
+message pb_sprint_task{
+    uint32 type_tid = 1;    //开服冲榜表-冲榜类型表id
+    bytes receive_data = 2;  //已领奖的任务tid二进制数据
+}
+
+// 任务完成信息
+message pb_sprint_task_finish_data{
+    repeated pb_sprint_type_task_finish type_task_list = 1;     //榜单任务列表
+}
+
+// 单个类型任务完成信息
+message pb_sprint_type_task_finish{
+    uint32 sprint_type = 1;         //开服冲榜表-冲榜类型表id
+    repeated pb_sprint_task_finish task_list = 2;     //任务完成列表
+}
+
+// 单个类型完成信息
+message pb_sprint_task_finish{
+    uint32 task_tid = 1;            //任务tid
+    repeated pb_sprint_task_player player_list = 2;     //领取奖励的玩家列表(按完成时间倒序)
+    uint32 received_times = 3;//该任务奖励已被领取的次数
+}
+
+// 任务玩家信息
+message pb_sprint_task_player{
+    uint64 role_id = 1;             //玩家id
+    uint64 time = 2;                //领取任务奖励的时间
+}

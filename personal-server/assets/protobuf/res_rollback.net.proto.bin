@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+
+// 回退参数
+message pb_res_rollback_req{
+    uint32 rollback_type = 1;       // 回退类型
+    uint64 rollback_res_id = 2;     // 回退的资源id
+}
+
+// 资源回退预览返回
+message pb_res_rollback_preview_ret {
+    repeated pb_res_obj res_list = 1;      // 回退可以获得的资源
+}
+
+// 回退返回
+message pb_res_rollback_ret {
+    pb_res_to_client res = 1;      // 回退获得的资源
+    bytes to_client = 2;           // 回退后返回给客户端的数据（可能是普通数据也可能是pb数据）
+}

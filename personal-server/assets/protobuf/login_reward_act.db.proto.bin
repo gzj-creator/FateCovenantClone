@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 活动 - 登录领奖数据
+message pb_login_reward_act{
+    repeated pb_login_reward_act_single act_list = 1; // 活动列表
+}
+
+// 单个活动的数据
+message pb_login_reward_act_single{
+    int32 id = 1; // 活动id
+    bytes award_bin = 2; // 领奖记录数据
+}

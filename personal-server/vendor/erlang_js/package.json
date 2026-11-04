@@ -1,0 +1,25 @@
+{
+    "author": "Michael Truog <mjtruog@protonmail.com> (https://github.com/okeuday)",
+    "name": "erlang_js",
+    "description": "Erlang External Term Format for Javascript",
+    "version": "2.0.7",
+    "homepage": "https://github.com/okeuday/erlang_js",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/okeuday/erlang_js.git"
+    },
+    "license": "MIT",
+    "keywords": [
+        "erlang"
+    ],
+    "main": "Erlang.js",
+    "scripts": {
+        "test": "node tests/ErlangTests.js"
+    },
+    "dependencies": {},
+    "devDependencies": {},
+    "optionalDependencies": {},
+    "engines": {
+        "node": "*"
+    }
+}

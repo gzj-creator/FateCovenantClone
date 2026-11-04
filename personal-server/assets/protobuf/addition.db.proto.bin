@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+//对于某个加成对象的加成
+message pb_target_addition{
+    int64 tid = 1;  //加成目标tid
+    bytes addition_idxs = 4; //当前已加成的索引
+}
+
+//玩家的加成信息
+message pb_addition_info{
+    repeated pb_target_addition addition_list = 1; //加成列表
+}

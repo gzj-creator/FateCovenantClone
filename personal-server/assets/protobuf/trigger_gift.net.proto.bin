@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "project/trigger_gift.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 领取触发礼包奖励回调
+message res_get_trigger_gift_reward {
+    pb_trigger_gift gift = 1; //领取奖励的礼包
+    pb_res_to_client res = 2; //资源改变
+}

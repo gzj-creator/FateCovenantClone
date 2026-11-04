@@ -15,7 +15,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const DAY = 20758;
 const NOW = DAY * 86400 + 3600;
 const CARD_ID = 1;
@@ -159,7 +159,7 @@ test('gateway routes 17001 over real TCP and returns res_get_monthly_card_reward
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     activityMode: 'all-open',
     now: () => NOW * 1000,
     verifySession: (uid, code) => uid === 'monthly-user' && code === 'monthly-session',

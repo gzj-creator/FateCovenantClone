@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+// 公会拍卖行数据
+message pb_guild_auction_guild_info {
+    repeated pb_guild_auction_guild_data data_list = 1; // 公会拍卖行列表
+}
+
+message pb_guild_auction_guild_data {
+    int64 auction_tid = 1; // 拍卖行tid =《拍卖行类型表》tid
+    repeated guild_auction_item item_list = 2; // 拍卖物品列表
+    repeated guild_auction_record_info record_list = 3; // 拍卖记录列表
+    int64 version = 4; // 版本号 按照天数来做
+    repeated int64 member_list = 5; // 参与公会成员列表
+    int64 bonus = 6; // 分红奖励数量
+    repeated pb_guild_auction_guild_pre_data pre_list = 7; // 下一批拍卖物品列表
+    int64 uid_index = 8; // uid序号
+    repeated pb_guild_auction_guild_show_data show_list = 9; // 拍卖物品列表展示（其他玩法用）
+    int64 stage = 10; // 当前阶段
+    bool is_award = 11; // 是否已分红
+}
+
+// 公会拍卖行预拍品
+message pb_guild_auction_guild_pre_data {
+    repeated int64 drop_tid_list = 1; // 拍卖行奖励库表tid 列表
+    repeated int64 member_list = 2; // 参与公会成员列表
+    repeated guild_auction_item item_list = 3; // 拍卖物品列表
+}
+
+// 公会拍卖行显示
+message pb_guild_auction_guild_show_data {
+    repeated int64 drop_tid_list = 1; // 拍卖行奖励库表tid 列表
+    int64 over_time = 2; // 显示结束时间
+    bytes param = 3; // 显示参数
+}
+
+// 个人拍卖行数据
+message pb_guild_auction_role_info {
+    repeated guild_auction_role_data data_list = 1; // 个人拍卖行数据列表
+}
+
+message guild_auction_role_data {
+    int64 auction_tid = 1; //  拍卖行tid =《拍卖行类型表》tid
+    repeated int64 focus_item_uid_list = 2; // 关注uid列表
+    int64 version = 3; // 版本号 按照天数来做
+    repeated guild_auction_role_record_info record_list = 4; // 拍卖记录列表
+}
+
+// 拍卖行物品
+message guild_auction_item {
+    int64 uid = 1; // uid -- 本场拍卖物品唯一ID
+    int64 res_tid = 2; // auction_resource_info表id
+    int64 bid_player = 3; // 当前竞价者
+    int64 bid_price = 4; // 当前价格
+    int64 bid_over_time = 5; // 竞价结束时间
+    int64 state = 6; // 状态(0:竞拍中,1:已成交,2:已流拍)
+    repeated int64 bid_player_list = 7; // 参与竞价者列表(重复、顺序列表)
+    int64 bid_time = 8; // 竞价时间
+}
+
+// 拍卖行公会记录
+message guild_auction_record_info {
+    int64 res_tid = 1; // auction_resource_info表tid
+    int64 time = 2; // 成交时间
+    int64 bid_price = 3; //  成交价
+    int64 role_id = 4; //  玩家
+}
+
+// 拍卖行个人记录
+message guild_auction_role_record_info {
+    int64 res_tid = 1; // auction_resource_info表tid
+    int64 time = 2; // 变动时间
+    int64 bid_price = 3; //  价格
+    bool is_bid = 4; //  是否成交
+    int64 role_id = 5; //  玩家
+}
+
+// 拍卖行阶段
+message pb_guild_auction_state_info {
+    repeated guild_auction_state_data state_list = 1; // 阶段列表
+}
+
+message guild_auction_state_data {
+    int64 auction_tid = 1; // auction_resource_info表tid
+    int64 state = 2; // 阶段
+}
+
+// 拍卖结算显示数据
+message pb_guild_auction_settle_show_info {
+    int64 rank = 1; // 排名
+    int64 join_num = 2; // 参与人数
+    int64 order = 3; // 结算排序tid
+}

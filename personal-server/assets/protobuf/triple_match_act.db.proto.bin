@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+// 三消奖玩家数据
+message pb_triple_match_role_info {
+  repeated pb_triple_match_act_info act_list = 1;           //活动信息列表
+}
+
+// 充值返利抽奖活动数据
+message pb_triple_match_act_info {
+  int64 version = 1;                                   //活动表version
+  int64 stamina = 2;                                   //体力
+  int64 last_update_time = 3;                          //上次更新的时间
+  int64 score = 4;                                     // 累计虚拟积分
+  pb_triple_match_map map = 5;                         // 消消乐地图数据
+  repeated int64 get_list = 6;                         // 累计积分领取记录
+  int64 cur_score = 7;                                 // 当前虚拟积分
+  int64 max_cur_score = 8;                             // 当前最大虚拟积分
+  int64 extra_score = 9;                               // 额外虚拟积分
+  int64 extra_cur_score = 10;                          // 额外当前虚拟积分
+  int64 round_index = 11;                              // 当前局数
+  repeated int64 received_pass_stage = 13;             //领取的通关关卡
+}
+
+// 消消乐地图数据
+message pb_triple_match_map {
+  int64 param_score = 1;                                      //参数积分
+  repeated pb_triple_match_tile tile_list = 2;                //位置列表
+  bool is_dead = 3;                                           // 是否死局
+}
+
+// 消消乐地图位置数据
+message pb_triple_match_tile {
+  int64 x = 1;                                         //x坐标
+  int64 y = 2;                                         //y坐标
+  int64 tid = 3;                                      //格子tid
+}
+
+// 三消服务器数据
+message pb_triple_match_server_info {
+  repeated int64 act_list = 1;           //已经结算的活动tid
+}

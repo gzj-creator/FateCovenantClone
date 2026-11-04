@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+//好友信息
+message pb_friend {
+    repeated uint64 friends = 1;                //好友列表(后续删除)
+    repeated int64 applies = 2;                 //申请列表
+    repeated int64 blacklist = 3;               //黑名单列表
+    repeated pb_friend_data friend_list = 4;    //好友列表
+}
+
+//好友数据
+message pb_friend_data{
+    uint64 id = 1;              //好友角色id
+    uint32 favors = 2;          //好感度
+}
+
+//爱心(友情点)信息
+message pb_friendship {
+    int32 day = 1; // 上一次刷新友情点数据的日期
+    repeated int64 present_today = 2; //今日送出的玩家列表
+    repeated int64 to_receive_today = 3; //今日待领取的玩家列表
+    int32 received_count_today = 4; //今日已领取的数量
+    repeated int64 received_today = 5; //今日已领取的赠送我的玩家列表
+    uint64 flower = 6; //鲜花数量
+}
+
+// 玩家访客数据
+message pb_guest_role{
+    repeated int64 role_id_list = 1;
+}

@@ -1,0 +1,26 @@
+syntax = "proto3";
+import "project/hero/share/hero_share.db.proto.txt";
+
+// 分享数据
+message pb_hero_share_req{
+    repeated pb_hero_share_req_one req_list = 1;      // 请求列表
+}
+
+// 一个请求
+message pb_hero_share_req_one{
+    uint64 role_id = 1;         // 角色ID
+    repeated uint64 uid_list = 2;   // uid列表
+    uint32 share_tid = 3;           // 分享类型
+}
+
+// 请求返回
+message pb_hero_share_req_back{
+    repeated pb_hero_share_req_back_one req_back_list = 1;       // 请求返回
+}
+
+// 单个请求返回
+message pb_hero_share_req_back_one{
+    uint64 role_id = 1;     // 角色ID
+    repeated pb_hero_share_info hero_share_list = 2;        // 英雄信息
+}
+

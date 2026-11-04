@@ -1,0 +1,83 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+//公会信息
+message pb_spirit_courtyard_guild {
+  repeated pb_spirit_courtyard_entrust entrust_task_list = 1;//个人委托任务求助列表
+    int64 banquet_total_score = 2; // 宴会总进度
+    repeated pb_spirit_courtyard_banquet_info banquet_role_list = 3; // 宴会个人进度列表
+    int64 update_time = 4;                       //更新时间
+    int64 reward_type = 5;  // 进度奖励库tid 《妖灵庭院公会盛宴进度奖励表》
+    repeated int64 fruit_lib_types = 6; // 所需果实库tid 《妖灵庭院公会盛宴果实表》
+  int64 order_id = 7;  // 公会宴会订单id
+}
+
+// 玩家信息
+message pb_spirit_courtyard_role {
+    int64 intimacy = 1;                             // 亲密度
+    int64 intimacy_lv = 2;                          // 亲密度等级
+    repeated pb_spirit_courtyard_land land_list = 3;//地块列表
+    int64 entrust_times = 4;                        //委托次数
+    repeated pb_spirit_courtyard_entrust entrust_task_list = 5;//委托任务列表
+  int64 day_update_time = 6; // 每日数据更新时间（包括发起、完成委托次数、每日特权奖励领取时间）
+    int64 entrust_update_times = 7;                          // 委托刷新次数
+    bytes is_get_task_rewards = 8;  // 已经领取的亲和度任务奖励
+    int64 base_vip_expire_day = 9; // 普通祝福到期时间 如果当前天数大于等于就是失效
+    int64 high_vip_expire_day = 10; // 普通祝福到期时间 如果当前天数大于等于就是失效
+  int64 assist_times = 11;//委托协助次数
+  int64 banquet_fruit_num = 12;//每日宴会提交的果实数量
+  bool is_banquet_award = 13;  // 是否已经领取宴会奖励
+  repeated pb_spirit_courtyard_assist_log assist_log_list = 14;//协助记录列表
+  int64 last_banquet_award_time = 15;  // 上次领取宴会奖励的时间
+}
+
+// 地块信息
+message pb_spirit_courtyard_land {
+    int64 id = 1;                                // 地块编号
+    int64 crop_tid = 2;                          // 作物tid《妖灵庭院作物产出表》
+    int64 update_time = 3;                       //更新时间
+    repeated pb_u64_kv  fix_award_list = 4;       //提前结算的奖励列表
+    int64 mature_time = 5; // 灵田成熟时间
+}
+
+// 个人委托信息
+message pb_spirit_courtyard_entrust {
+    int64 uid = 1;                               // 委托任务uid
+    int64 tid = 2;                               // 委托任务tid 《妖灵庭院委托订单表》
+    repeated int64 lib_tid_list = 3;                          //  《妖灵庭院委托订单库表》tid
+    bool is_public = 4;                          // 是否发起协作请求
+    bool is_finish = 5;                          // 是否完成
+  int64 role_id = 6;                               // 委托人id
+  int64 assist_role_id = 7;                               // 协助者id
+}
+
+// 委托协助信息
+message pb_spirit_courtyard_assist_log {
+  int64 role_id = 1;                               // 协助者roleId
+  int64 time = 2;                                  // 协助时间
+  repeated int64 lib_tid_list = 3;                 //  《妖灵庭院委托订单库表》tid
+}
+
+// 个人委托请求信息
+message pb_spirit_courtyard_entrust_assist {
+  int64 uid = 1;                               // 委托任务uid
+  int64 tid = 2;                               // 委托任务tid
+  int64 update_time = 3;                       //更新时间
+  bool is_complete = 4;                        // 是否完成
+  int64 role_id = 5;                           // 委托人
+  repeated int64 lib_tid_list = 6;                          //  《妖灵庭院委托订单库表》tid
+}
+
+// 宴会完成数据
+message pb_spirit_courtyard_banquet_info {
+    int64 role_id = 1;// 玩家id
+    int64 score = 2; // 贡献总积分
+    int64 tid = 3; // 水果tid
+    int64 num = 4; // 水果数量
+}
+
+// 种植请求数据
+message pb_req_spirit_courtyard_tree_plant_info {
+  int64 id = 1;                   // 土地ID
+  int64 tree_tid = 2; // 植物tid
+}

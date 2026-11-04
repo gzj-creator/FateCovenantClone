@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+
+// 角色英雄试炼数据
+message pb_role_hero_trial {
+    repeated pb_hero_trial hero_trial = 1;  // 英雄试炼数据
+}
+
+// 英雄试炼数据
+message pb_hero_trial {
+    uint32 hero_tid = 1;    // 英雄tid
+    repeated pb_hero_trial_task_progress task_progress = 2; // 任务进度
+}
+
+// 英雄试炼任务进度
+message pb_hero_trial_task_progress {
+    uint32 type = 1;        // 任务类型
+    uint32 progress = 2;    // 任务进度
+}

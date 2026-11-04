@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/mini_game/mini_game.db.proto.txt";
+
+// 小游戏结算请求
+message pb_mini_game_settle_req {
+  uint32 tid = 1;         // 小游戏配置tid
+  bytes custom_bin = 2;   // 小游戏自定义序列化数据
+}
+
+// 小游戏结算返回
+message pb_mini_game_settle_rsp {
+  pb_res_to_client res_change = 1;  // 资源变化
+  bytes custom_bin = 2;   // 小游戏自定义序列化数据
+  pb_mini_game game = 3;
+}
+
+// 小游戏开始请求
+message pb_mini_game_enter_req {
+  uint32 tid = 1;         // 小游戏配置tid
+  bytes custom_bin = 2;   // 小游戏自定义序列化数据
+}
+
+// 小游戏开始返回
+message pb_mini_game_enter_rsp {
+  pb_res_to_client res_change = 1;  // 资源变化
+  bytes custom_bin = 2;   // 小游戏自定义序列化数据
+}
+
+// 小游戏中途请求
+message pb_mini_game_handle_req {
+  uint32 tid = 1;         // 小游戏配置tid
+  bytes custom_bin = 2;   // 小游戏自定义序列化数据
+}
+
+// 小游戏中途处理返回
+message pb_mini_game_handle_rsp {
+  pb_res_to_client res_change = 1;  // 资源变化
+  bytes custom_bin = 2;   // 小游戏自定义序列化数据
+}
+
+
+// 简单游戏结算数据
+message pb_normal_game_settle {
+  repeated pb_res_obj award = 1;
+}
+
+
+// 弹球小游戏结算请求、中途买子弹请求
+message pb_mini_game_pin_ball_settle_req {
+  repeated pb_mini_game_pin_ball_slime slime_blood_list = 1; // 小游戏配置tid列表
+  bool is_over = 2;                   // 是否整体结算结束
+  uint32 left_bullet = 3; // 剩余子弹数
+  uint32 buy_times = 4; // 购买子弹次数
+}

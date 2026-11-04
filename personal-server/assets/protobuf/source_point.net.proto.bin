@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+import "project/wear/source_point/source_point.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/lineup.db.proto.txt";
+
+
+// 替换源点请求
+message pb_source_point_change_req {
+    repeated pb_source_point_hero_change change_list = 1; // 替换列表
+}
+
+message pb_source_point_change_rsp {
+    repeated hero hero_list = 1; //英雄列表
+    repeated pb_lineup lineup_list = 2; //变化的列表
+    pb_role_lineup role_lineup = 3; //角色阵容
+}
+
+// 源点合成
+message pb_source_point_combine_req {
+    uint32 tid = 1; // 目标源点配表id
+    repeated int64 source_point_list = 2; // 源点uid列表
+}
+
+message pb_source_point_combine_rsp {
+    pb_res_to_client res = 1; //返回给客户端的资源改变
+    repeated pb_source_point_hero_change change_list = 2;
+}
+
+message pb_source_point_hero_change {
+    repeated int64 changes = 1; // 源点uid列表
+    int64 hero_uid = 2;                  // 英雄uid
+}
+
+// 源点领取任务奖励
+message pb_source_point_task_req {
+    uint32 tid = 1; // 目标任务id
+}
+
+message pb_source_point_task_rsp {
+    pb_res_to_client res = 1; //返回给客户端的资源改变
+    bytes hero_tasks = 2; // 已领取试炼奖励记录
+}

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+//主线战令模块 需求文档 https://jzyxgames.feishu.cn/wiki/wikcnFenDKlJZUCQ8dRdzgxbfjc
+
+//获取战令任务奖励返回结构
+message pb_travel_global_permit_task_reward {
+  repeated int32 task_ids = 1; //完成任务获取
+  pb_res_to_client res = 2;   //资源改变
+}
+
+

@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+import "project/assistant/assistant.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "project/role.db.proto.txt";
+import "project/mission.db.proto.txt";
+import "project/elite_mission/elite_mission.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/dream/dream.db.proto.txt";
+
+// 小助手功能设置请求
+message pb_assistant_setting_req{
+    repeated pb_assistant_setting setting_list = 1;   // 功能设置列表
+}
+
+// 小助手功能设置
+message pb_assistant_setting{
+    uint32 tid = 1;     // 功能tid
+    bool is_off = 2;   // 功能开关
+    bytes setting_extra = 3;   // 功能额外设置数据
+}
+
+// 小助手功能设置返回
+message pb_assistant_setting_back{
+    repeated pb_assistant_func func_list = 1;   // 功能列表
+}
+
+// 小助手执行指令请求
+message pb_assistant_execute_req{
+    uint32 tid = 1;     // 功能tid
+    bytes ex_data = 2;   // 功能请求额外数据
+}
+
+// 小助手执行指令返回
+message pb_assistant_execute_back{
+    pb_count_flush count_data = 1; // 每天执行次数数据
+    bytes func_to_client = 2;   // 功能返回前台数据
+}
+
+// 小助手好友pk返回
+message pb_assistant_pk_back{
+    uint64 target_id = 1;   // 目标id
+    uint32 fight_result = 2;    // 战斗结果
+}
+
+// 小助手推送排名提升消息
+message pb_assistant_rank_push{
+    uint32 fun_tid = 1;    // 功能tid
+    uint32 rank = 2;    // 当前排名
+    repeated pb_assistant_rank_role exceed_list = 3;     // 超过的玩家列表
+    bool is_special = 4; // 是否为高级版助手
+}
+
+// 小助手推送排名玩家数据
+message pb_assistant_rank_role{
+    uint64 id = 1;      // 玩家id
+    pb_figure_simple_info figure = 2;   // 形象
+    bytes name = 3;     //名字
+}
+
+// 小助手高级 - 主线关卡推关返回
+message pb_mission_assistant_back{
+    pb_mission mission_info = 1; // 主线数据（1.为空说明已通关，无需再挑战；2.如果是战斗且失败了，则不解析这个数据）
+    pb_res_to_client res = 2; // 资源改变数据（一定有，需要解析）
+    bool is_fight = 3; // 是否是战斗关
+    uint64 fight_result = 4; // 战斗结果
+    uint64 attempt_n = 5;   // 战斗失败尝试次数
+    bool is_stop = 6; // 是否停止
+}
+
+// 小助手高级 - 精英主线关卡推关返回
+message pb_elite_mission_assistant_back{
+    pb_elite_mission mission_info = 1; // 精英主线数据（战斗失败为空，不用处理此数据）
+    pb_res_to_client res = 2; // 资源改变数据（一定有，需要解析）
+    bool is_fight = 3; // 是否是战斗关
+    uint64 fight_result = 4; // 战斗结果
+    uint64 attempt_n = 5;   // 战斗失败尝试次数
+    bool is_stop = 6; // 是否停止
+}
+
+// 小助手高级 - 命运梦境返回
+message pb_dream_assistant_back{
+    pb_res_to_client daily_res = 1; //每日奖励数据
+    repeated pb_dream_assistant_data data_list = 2; //事件数据
+    pb_dream_role dream_role = 3; //命运角色数据
+    bool continue = 4;  //是否继续执行下一轮
+    pb_res_to_client progress_res = 5; //进度奖励数据
+}
+
+// 小助手高级 - 命运梦境事件数据
+message pb_dream_assistant_data{
+    int32 event_type = 1;   // 事件类型，命运梦境事件类型表id
+    pb_res_to_client res = 2; //挑战奖励数据
+    int32 fail_count = 3; //失败次数
+}

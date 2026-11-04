@@ -1,0 +1,115 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+
+// 角色主线关卡总数据
+message pb_mission {
+    uint64 mission_id = 1; //小关卡配置ID
+    bytes box_award = 2; //章节内宝箱领取数据
+    pb_count_flush pass_count = 3; // 每日通关次数
+//    uint64 fail_time = 4;  // 关卡失败时间/秒(用于计算关卡难度提升，胜利清空)
+    pb_mission_difficulty difficulty = 5; // 关卡难度限制数据
+    bytes boss_bin = 6; //Boss通关领奖数据
+    bytes boss_pass_bin = 8; //Boss全服通关人数奖励数据
+}
+
+// 主线boss通关人数数据
+message pb_mission_boss_pass {
+    repeated pb_mission_boss_pass_item pass_list = 1; //全服通关人数数据。k=bossId，v=通关人数
+}
+
+message pb_mission_boss_pass_item {
+    uint32 key = 1; //boss的配置tid
+    uint32 value = 2; //真实通关人数
+    uint64 begin_time = 3; //自增人数逻辑开启时间
+    uint32 push_tid = 4; //boss通关领奖推送记录（目的为了每个奖励仅推送一次，仅服务端用）
+}
+
+//关卡通关记录信息
+message mission_pass_info {
+    uint64 role_id = 1; //玩家ID
+    uint32 server_id = 2; //玩家服务器ID
+    uint32 power = 3; //玩家战力
+    uint32 level = 4; //玩家等级
+    uint64 fight_id = 5; //战斗录像ID
+}
+
+//章节任务信息记录
+message mission_chapter_task {
+    uint32 chapter = 1; //章节id
+    repeated mission_side_task side_tasks = 2; //支线任务列表
+    uint32 receive_state = 3;   //章节奖励领取状态
+}
+
+//支线任务结构
+message mission_side_task {
+    uint32 task_id = 1; //支线任务id
+    uint32 state = 2;   //支线任务状态
+    uint32 progress = 3;    //支线进度
+}
+
+// 挑战关卡-请求
+message mission_fight_req {
+    int32 chapter_tid = 1; // 章节
+    int32 section_idx = 2; // 关卡下标
+    uint64 mission_id = 3; // 关卡ID
+    bool is_assistant = 4;  // 是否是小助手
+    uint32 boss_tid = 5; //挑战主线BOSS
+}
+
+// 关卡对话角色数据
+message pb_mission_conversation {
+    repeated pb_mission_conversation_choose choose = 1;
+}
+
+// 角色对话选择情况
+message pb_mission_conversation_choose {
+    uint32 tid = 1;
+    uint32 unlock_paragraph = 2;
+}
+
+// 角色领取包子情况
+message pb_role_mission_meal {
+    uint32 last_refresh_stamp = 1; // 数据时间戳
+    bytes got_award = 2;           // 已经领取的奖励tid
+}
+
+// 角色体力资源数据
+message pb_role_energy_res {
+    repeated pb_mission_energy_res res = 1;  // 资源列表
+}
+
+// 主线体力资源
+message pb_mission_energy_res {
+    int64 tid = 1;            // 资源tid
+    int64 num = 2;            // 资源数量
+    uint32 produce_time = 3;  // 上次产出时间
+}
+
+// 角色体力手动兑换数据
+message pb_role_energy_manual_buy {
+    repeated pb_energy_manual_buy res = 1;  // 资源列表
+}
+
+// 单个体力手动兑换数据
+message pb_energy_manual_buy {
+    int64 tid = 1;            // 兑换tid
+    int64 num = 2;            // 今日已兑换数量
+    uint64 time = 3;          // 兑换时间
+}
+
+// 关卡难度限制数据
+message pb_mission_difficulty {
+    uint32 win_count = 1; // 连胜次数
+    uint32 fail_count = 2; // 失败次数
+    uint64 fail_time = 3; // 当前关卡首次失败时间
+    uint64 fail_power = 4; // 当前关卡首次失败时的战力
+    uint64 last_power = 5; // 上次挑战关卡战力
+    uint64 last_power_time = 6; // 上次挑战关卡战力记录时间/天
+    uint32 power_add_n = 7; // 战力加成次数(有次数则不更新挑战战力)
+    uint64 calc_add_power = 8;  // 计算加成的战力
+}
+
+// 关卡章节通关数据
+message pb_mission_chapter_pass{
+    repeated uint32 number_list = 1;     // 章节通过人数(难度作为索引进行存储)
+}

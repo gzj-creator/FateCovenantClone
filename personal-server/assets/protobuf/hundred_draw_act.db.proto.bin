@@ -1,0 +1,46 @@
+﻿syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+
+// 百抽活动角色数据
+message pb_hundred_draw_role_data{
+  repeated pb_hundred_draw_act_data act_list = 1; // 活动数据，活动结束会清理
+  repeated pb_hundred_draw_pool_data pool_list = 2; // 卡池数据 不跟着活动走
+}
+
+// 百抽活动数据
+message pb_hundred_draw_act_data{
+  int64 act_id = 1; // 活动id
+  repeated int64 received_process_tid_list = 2; // 领取的进度tid列表
+  int64 cumulative_draw_times = 3; // 累计抽奖次数
+  int64 select_target_tid = 4; // 选择的大奖tid
+  int64 guarantee_times = 5; // 保底次数
+  pb_recharge_limit_info buy_limit_info = 6; // 礼包限购记录
+  repeated int64 received_star_tid_list = 7; // 领取的升星奖励tid列表
+  int64 draw_target_time = 8; // 抽中大奖次数
+  int64 ten_target_times = 9; // 10抽内命中大奖次数
+}
+
+
+// 卡池数据 这块数据活动结束是不会清理的
+// 保底需要继承到下一个同类型同主题的活动中
+message pb_hundred_draw_pool_data{
+  int64 pool_type = 1; // 卡池类型 首发、下放
+  int64 theme_type = 2; // 主题类型
+  int64 guarantee_times = 3; // 保底次数
+}
+
+// 全服跑马灯数据
+message pb_hundred_draw_overall_marquee_data{
+  repeated pb_hundred_draw_marquee_data data = 1;
+}
+
+// 单个跑马灯数据
+message pb_hundred_draw_marquee_data{
+  int64 role_id = 1; // 触发的角色id
+  int64 type = 2; // 跑马灯类型
+  int64 num = 3; // 数量
+  int64 trigger_time = 4; // 触发时间
+  int64 target_tid = 5; // 目标tid
+}

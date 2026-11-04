@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "project/activity/turntable_act/turntable_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 转盘活动抽奖返回
+message pb_turntable_act_go_back{
+    pb_res_to_client res = 1;       //资源信息
+    int32 draw_tid = 2;       //抽奖id
+    pb_turntable_act_data act_data = 3;       //转盘活动数据
+}

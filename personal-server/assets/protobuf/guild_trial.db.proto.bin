@@ -1,0 +1,142 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+
+// -------逻辑服数据--------------------------------------------------------------
+
+// 服务器玩法数据
+message pb_guild_trial_s{
+  uint32 cycle_th = 1;// 第几个玩法周期
+  uint64 refresh_time = 2;//刷新时间
+  pb_guild_trial_s_mon mon = 3;//怪物数据
+}
+
+// 服务器怪物数据
+message pb_guild_trial_s_mon{
+  uint32 camp = 1;//英雄阵营表id
+  repeated uint32 group_tid_list = 2;//航会试炼怪物组表id列表
+}
+
+// -------航会数据 --------------------------------------------------------------
+
+// 航会数据
+message pb_guild_trial_g{
+  uint32 play_level = 1;//玩法难度等级
+  uint32 last_cycle_play_level = 2;//上个玩法周期的玩法难度等级：用于校验上个周期有没有通过难度
+  pb_guild_trial_g_mon_group mon_group = 3;//航会怪物组
+  repeated pb_guild_trial_box_lv box_lv_list = 4;//关卡宝箱列表
+  uint64 score = 5;//获得的压制积分
+  string notice = 6;//公告
+  repeated pb_guild_trial_report report_list = 7;//战报列表：每天五点清空
+}
+
+// 战报数据
+message  pb_guild_trial_report{
+  uint64 role_id = 1;//角色id
+  uint32 mon_tid = 2; // 怪物tid
+  uint32 score = 3;  //一共获得的压制积分
+  uint64 update_time = 4;//更新时间
+}
+
+// 航会怪物组
+message pb_guild_trial_g_mon_group{
+  uint32 group = 1;//航会试炼怪物组表id
+  repeated pb_guild_trial_g_mon mon_list = 2;// 航会怪物列表
+}
+
+// 航会怪物
+message pb_guild_trial_g_mon{
+  uint32 tid = 1;//航会试炼怪物表id
+  uint32 score = 2;//被压制值
+  bool is_suppress = 3;//是否已被压制了
+}
+
+// -----航会数据：宝箱------------------------------------
+
+// 关卡宝箱 = 4 + 8 * 816 + 4 + 8 = 6544bytes
+message pb_guild_trial_box_lv{
+  uint32 camp = 1;//英雄阵营表id（同时不会有相同camp的关卡宝箱，所以可用此字段标识/查找关卡宝箱）
+  uint64 init_time = 2;//此数据初始化的时间（单位：毫秒），可用于判断此关卡宝箱是否过期
+  uint32 play_level = 3;//玩法难度等级（领昨天的宝箱就需要用这个）
+  repeated pb_guild_trial_box_mon box_list = 4;//宝箱列表（预计长度为8：一阶段5个，二阶段3个）
+  repeated uint32 group_list = 5;//航会试炼怪物组表id列表（预计长度为2）
+}
+
+// 怪物宝箱 = 4 + 4 + 8 + 50 * 16bytes = 816bytes
+message pb_guild_trial_box_mon{
+  uint32 mon_tid = 1;//航会试炼怪物表id
+  uint64 active_time = 2;//被激活时间
+  repeated pb_guild_trial_box box = 3;//已领取的宝箱列表（预计50个）
+}
+
+// 宝箱 = 16bytes
+message pb_guild_trial_box{
+  uint64 role_id = 1;//领取宝箱的玩家id（谁领取的）
+  uint32 index = 2;//宝箱下标（领的是是哪个宝箱）
+  uint32 box_tid = 3;//宝箱表id（宝箱开出的是什么奖励）
+}
+
+
+// -------角色数据 --------------------------------------------------------------
+
+// 角色总数据
+message pb_guild_trial_r{
+  uint64 refresh_time = 1;//刷新时间
+  uint32 fight_times = 2;//挑战次数(跨天刷新)
+  repeated pb_guild_trial_helped helped_list = 3;//被救援次数列表
+  uint32 help_times = 4;//救援别人的次数(跨天刷新)
+  bytes level_gain = 5;//通关奖励领取数据
+  repeated pb_guild_trial_r_box_lv box_list = 6;//宝箱领取数据列表
+  uint64 score = 7;//获得的压制积分(跨天刷新)
+  pb_guild_trial_r_fail fail_data = 8;//挑战失败
+  repeated pb_guild_trial_help_log  help_log_list = 9;//救援日志
+  repeated pb_guild_trail_defeat_mon defeat_mon_list = 10;//击败过的怪物列表:进入新的周期，需要重置掉
+  uint32 cost_free_times = 11;  // 使用了的免费次数(跨天刷新)
+}
+
+// 角色被救援次数
+message  pb_guild_trial_helped{
+  uint64 helped_time = 1;//被救援的时间
+  uint32 helped_times = 2;//被救援次数
+  uint32 cost_times = 3;//消耗次数
+}
+
+//角色领取单个关卡宝箱的数据
+message pb_guild_trial_r_box_lv{
+  uint32 camp = 1; //阵营
+  uint64 init_time = 2;//对应的航会关卡宝箱数据初始化的时间（单位：毫秒），可用于判断角色身上这一条关卡宝箱数据是否已过期
+  repeated uint32 mon_box_list = 3; //已领取宝箱的列表（航会试炼怪物表id列表）
+}
+
+// 玩家数据-挑战失败
+message pb_guild_trial_r_fail{
+  repeated pb_res_obj fight_award = 1; // 挑战奖励
+  uint32 score = 2;//获得的积分
+  uint32 mon_tid = 3;//航会试炼怪物表id
+}
+
+// 救援日志
+message pb_guild_trial_help_log{
+  uint64 role_id = 1;  // 玩家id
+  uint64 time = 2;     // 赠送时间
+  uint32 times = 3;    // 赠送个数
+  uint32 type = 4;     // 航会试炼救援日志类型表id：救援对方|被对方救援
+  bool read = 5;       // 已读标记
+  bool thank = 6;      // 感激标记
+}
+
+// 击败的怪物
+message pb_guild_trail_defeat_mon{
+  uint32 mon_tid = 2;//航会试炼怪物表id
+  uint32 mon_diff_tid = 3;//航会试炼怪物难度表
+}
+
+
+
+
+
+
+
+
+
+

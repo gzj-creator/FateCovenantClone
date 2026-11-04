@@ -1,0 +1,51 @@
+syntax = "proto3";
+import "project/hero_blazon/hero_blazon.db.proto.txt";
+import "project/attribute/attribute.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 纹章养成
+message pb_hero_blazon_up{
+    int32 chapter_id = 1;                                   // 章节id
+    repeated pb_hero_blazon_material_cell normal_blazon_list = 2;   // 蓝紫色纹章消耗列表
+    repeated pb_hero_blazon_cell special_blazon_list = 3;  // 特殊纹章列表
+}
+
+// 纹章养成返回数据
+message pb_hero_blazon_up_back{
+    pb_res_to_client res_client = 1;    // 资源信息
+    repeated pb_hero_blazon_talent update_talent_list = 2;           // 更新后的天赋列表
+    pb_hero_blazon_chapter update_chapter_info = 3;   // 更新后的总阵营结果列表
+}
+
+// 纹章羁绊养成返回数据
+message pb_hero_blazon_bond_up_rsp{
+    pb_res_to_client res_client = 1;    // 资源信息
+    repeated pb_hero_blazon_talent update_talent_list = 2;           // 更新后的天赋列表
+}
+
+// 天赋升级请求
+message pb_hero_blazon_update_talent_req{
+    repeated pb_hero_blazon_talent talent_list = 1;    // 天赋列表
+}
+
+// 天赋升级返回
+message pb_hero_blazon_update_talent_rsp{
+    repeated pb_hero_blazon_talent talent_list = 1;    // 天赋列表
+    pb_res_to_client res_client = 2;    // 资源信息
+    uint32 reset_timestamp = 3;         // 重置时间戳
+    uint32 reset_times = 4;             // 重置次数
+}
+
+// 技能升级返回
+message pb_hero_blazon_update_skill_back{
+    uint32 skill_tid = 1;   // 技能tid
+    pb_res_to_client res_client = 2;    // 资源信息
+}
+
+// 英雄纹章数据块
+message pb_hero_blazon_block{
+    repeated int32 skill_list = 1;                     // 技能列表（技能表编号）
+    int32 unlock_chapter = 2;                          // 已解锁章节
+    repeated pb_attr_item attr_list = 3;               // 属性列表
+    uint32 chart_value = 4;                            // 图鉴值
+}

@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 领奖请求
+message pb_acc_recharge_award_req {
+    uint32 act_id = 1;      // 活动id
+    uint32 award_tid = 2;   // 累充活动奖励表tid
+}

@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+import "project/hero/hero_lease/hero_lease.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/lineup.db.proto.txt";
+
+
+// 单个租借英雄通信用
+message pb_lease_hero_net {
+    uint64 role_id = 1;  // 放置方role_id
+    uint32 hero_tid = 2; // 英雄id
+}
+
+// 请求租借英雄列表
+message pb_lease_hero_list_req {
+    repeated uint64 role_id_list = 1; // 角色id列表
+    uint32 lease_tid = 2;  // 租借功能tid
+}
+
+// 放置的租借英雄
+message pb_lease_hero_place_one {
+    uint64 role_id = 1; // 角色id
+    repeated pb_lease_place_hero_info place_heroes = 2; // 放置的英雄
+}
+
+// 所有放置的租借英雄
+message pb_lease_hero_list_rsp {
+    repeated pb_lease_hero_place_one all_place_heroes = 1; // 所有放置的英雄
+}
+
+
+// 请求租借英雄
+message pb_lease_hero_lease_req {
+    uint32 lease_tid = 1;   // 租借功能tid
+    repeated pb_lease_hero_net hero_list = 2; // 英雄列表
+}
+// 归还英雄请求
+message pb_lease_hero_give_back_req {
+    uint32 lease_tid = 1;   // 租借功能tid
+    repeated pb_lease_hero_net hero_list = 2; // 英雄列表
+}
+
+
+// 放置英雄请求
+message pb_lease_hero_place_req {
+    uint32 lease_tid = 1;   // 租借功能tid
+    repeated pb_lease_hero_place_req_one hero_list = 2; // 英雄列表
+}
+
+// 放置英雄请求
+message pb_lease_hero_place_req_one {
+    uint32 hero_tid = 1; // 英雄tid
+    uint32 index = 2; // 位置索引
+}
+
+// 收回英雄请求
+message pb_lease_hero_take_back_req {
+    uint32 lease_tid = 1;   // 租借功能tid
+    repeated uint32 hero_list = 2; // 英雄列表
+}
+
+// 跨天刷新
+message pb_lease_hero_cross_day_rsp {
+    repeated pb_role_lease_hero lease = 1; // 租借英雄列表(清理租借英雄)
+    pb_res_to_client res_change = 2; // 资源变化(补发邮件)
+}
+
+
+// 推送变化
+message pb_lease_hero_change_notify {
+    repeated pb_role_lease_hero lease = 1; // 租借英雄信息列表
+    repeated pb_lineup lineup = 2; // 阵容信息
+}
+
+// 重置一个租借功能的数据
+message pb_lease_hero_reset_one {
+    pb_role_lease_hero lease = 1; // 租借英雄信息
+    pb_res_to_client res_change = 2; // 资源变化(补发邮件)
+}
+
+// 租借信息更新返回
+message pb_lease_hero_update_rsp {
+    pb_role_lease_hero lease = 1;
+    repeated pb_lineup lineup = 2; // 阵容信息
+}
+
+

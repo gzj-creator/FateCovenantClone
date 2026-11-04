@@ -16,7 +16,7 @@ import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const fixedNow = 1793300000000; // 2026-10-29 UTC+8; day 5 of the fixture's 7-day activity
 
 function setup(t) {
@@ -104,7 +104,7 @@ test('daily discount selection persists and updates in place', async t => {
   await assert.rejects(() => run(e.service, 99300, 'pb_daily_discount_select_req', { recharge_tid: 40006, select_tid: 1, day_index: '20753' }), x => x.code === 5);
 });
 
-test('gift purchase records the purchase without adding it to recharge totals', async t => {
+test('gift purchase keeps free gifts out of totals and routes cash gifts through the recharge ledger', async t => {
   const e = setup(t);
   const buy = (recharge_id, seq) => run(e.service, 16005, 'pb_recharge_buy_or_rev_req', { recharge_id, extra_param: '[[false,0,0]]', buy_num: 1 }, seq);
   let result = await buy(40006, 1);
@@ -133,8 +133,9 @@ test('gift purchase records the purchase without adding it to recharge totals', 
   const login = codec.unpack('res_recharge_login', rawBinary(moduleValue(e.store, 19)));
   const record = codec.unpack('pb_buy_gift_record_list', Buffer.from(login.buy_gift_record, 'base64'));
   assert.deepEqual(record.record_list.map(x => x.recharge_tid), [40006, 40008, 40009]);
-  assert.equal(login.total_amount ?? 0, 0);
-  assert.deepEqual(login.recharge_record?.recent_record ?? [], []);
+  assert.equal(login.total_amount, 3600);
+  assert.equal(login.recharge_record.recent_record.reduce((sum, row) => sum + row.amount, 0), 3600);
+  assert.equal(login.tmp_recharge_record.tmp_record_list.length, 2);
   e.reopen();
   await assert.rejects(() => buy(40006, 6), x => x.code === 307);
   await assert.rejects(() => e.service.execute(16005, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 999999999, buy_num: 1 }), { connection: 'test', seq: 7 }), x => x.code === 5);
@@ -150,9 +151,30 @@ test('16005 monthly card purchase ignores unrelated UI context in extra_param', 
   });
   const event = result.value.extra_ret_list.find(entry => Number(entry.flag) === 5);
   assert.ok(event);
-  const monthly = codec.unpack('pb_monthly_card_info', event.data);
+  const eventData = Buffer.isBuffer(event.data) ? event.data : Buffer.from(event.data, 'base64');
+  const monthly = codec.unpack('pb_monthly_card_info', eventData);
   assert.deepEqual(monthly.card_list.map(row => Number(row.id)), [2]);
   assert.equal(e.wallet.snapshot().accounts[0].balance_cents, 4000);
+});
+
+test('cash gift uses daily-discount rewards and cumulative recharge bookkeeping', async t => {
+  const e = setup(t);
+  e.wallet.credit({ account_id: 'local-1', amount_cents: 2000, request_id: 'cash-gift-credit' });
+  const beforeDaily = BigInt(e.store.read().resources.get('5971200')?.num ?? 0);
+
+  const result = await run(e.service, 16005, 'pb_recharge_buy_or_rev_req', {
+    recharge_id: 40010,
+    extra_param: '[[false,0,0]]',
+    buy_num: 1
+  }, 31);
+
+  assert.equal(result.value.res.changes.find(change => change.tid === '101500').diff_num, '120');
+  assert.equal(result.value.res.changes.find(change => change.tid === '5971200').diff_num, '10');
+  assert.equal(BigInt(e.store.read().resources.get('5971200').num), beforeDaily + 10n);
+  assert.equal(e.wallet.snapshot().accounts[0].balance_cents, 800);
+  const login = codec.unpack('res_recharge_login', rawBinary(moduleValue(e.store, 19)));
+  assert.equal(login.total_amount, 1200);
+  assert.equal(login.recharge_record.recent_record.reduce((sum, row) => sum + row.amount, 0), 1200);
 });
 
 test('16005 passes fund, permanent card and both permit purchases through their specific handlers', async t => {
@@ -240,7 +262,7 @@ test('real gateway routes welfare claims and gift purchase without LOCAL_NOT_IMP
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     localWallet: true,
     now: () => fixedNow,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'

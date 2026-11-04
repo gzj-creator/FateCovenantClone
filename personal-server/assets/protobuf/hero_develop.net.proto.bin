@@ -1,0 +1,86 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/hero/base/hero_base.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/lineup.db.proto.txt";
+import "project/hero/develop/hero_develop.db.proto.txt";
+
+// 升级
+message pb_hero_up_lv_req {
+    int64 hero_uid = 1;             // 英雄的uid
+    int32 up_lv_count = 2;          // 升级数量
+    uint32 cell_index = 3;          // 升级的格子索引
+}
+
+// 升级返回前台数据
+message pb_hero_up_lv_ret{
+    pb_res_to_client res = 1;           // 改变的资源
+    uint32 new_lv = 2;                  // 升级后的等级（经验不足时，不会改变）
+    repeated hero change_hero_list = 3; // 改变等级的英雄列表
+}
+
+// 突破返回前台数据
+message pb_hero_break_ret{
+    pb_res_to_client res = 1;           // 改变的资源
+    uint32 new_break_lv = 2;            // 升级后的等级
+    repeated hero change_hero_list = 3; // 改变等级的英雄列表
+}
+
+// 突破返回前台数据
+message pb_hero_up_star_ret{
+    pb_res_to_client res = 1;           // 改变的资源
+    hero new_hero = 2;                  // 新的英雄
+    pb_hero_trial trial = 3;            // 试炼进度更新
+}
+
+// 试炼返回前台数据
+message pb_hero_trial_ret{
+    pb_res_to_client res = 1;           // 改变的资源
+    uint32 new_quality = 2;             // 英雄新的品质
+    uint32 new_star = 3;                // 新的星级
+    pb_hero_trial trial = 4;            // 新的试炼数据
+}
+
+// 提交英雄请求
+message pb_hero_submit_req {
+    uint32 hero_tid = 1;        // 英雄tid
+    uint32 cell_index = 2;            // 英雄格子
+    uint32 lineup_pos = 3;             // 不填代表和cell一样
+}
+
+// 提交英雄返回前台数据
+message pb_hero_submit_ret{
+    repeated pb_hero_cell cell_list = 1;        // 格子列表
+    repeated hero change_hero_list = 2;         // 改变属性的英雄
+    repeated pb_lineup change_lineup = 3;       // 有变化的阵容
+    pb_pre_lineup cur_pre_lineup = 4;           // 当前预设阵容
+}
+
+// 批量提交英雄请求
+message pb_hero_batch_submit_req {
+    repeated pb_hero_submit_req hero_list = 1;        // 英雄列表
+}
+
+// 一键升星
+message pb_hero_one_key_up_req {
+    repeated int32 hero_tid_list = 1; // 英雄id
+}
+
+// 一键升星
+message pb_hero_one_key_up_rsp {
+    pb_res_to_client res = 1;                               // 改变的资源
+    repeated pb_hero_develop_change success_hero_list = 2;  // 新的英雄
+    repeated pb_hero_develop_change failed_hero_list = 3;   // 旧的英雄
+    repeated hero change_hero_list = 4;                     // 变化的英雄
+}
+
+message pb_hero_develop_change {
+    int32 hero_tid = 1;         // 英雄tid
+    int32 before_star = 2;      // 升级前星级
+    int32 after_star = 3;       // 升级后星级
+    int32 before_quality = 4;   // 升级前品质
+    int32 after_quality = 5;    // 升级后品质
+    bool success = 6;           // 是否升级成功
+}
+
+

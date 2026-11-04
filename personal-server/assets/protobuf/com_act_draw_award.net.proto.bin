@@ -1,0 +1,19 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+
+// 通用进度领奖返回
+message pb_act_draw_award_back{
+    pb_res_to_client res_change = 1;                    // 奖励
+    int32 draw_award_id = 2;                           // 已经领奖进度Id
+}
+
+// 活动退出返回数据
+message pb_act_exit_back{
+    repeated pb_res_to_client res_list = 1;     // 返回前台的资源改变列表
+}
+
+// 活动领奖请求数据
+message pb_act_exit_req{
+    int32 act_tid = 1;                         // 当前活动tid
+    int32 draw_award_tid = 2;                   // 库表Id
+}

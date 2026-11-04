@@ -1,0 +1,8 @@
+syntax = "proto3";
+import "project/fashion/fashion.db.proto.txt";
+import "general/res.net.proto.txt";
+
+message pb_fashion_lv_back {
+    pb_fashion_info fashion_info = 1;
+    pb_res_to_client res = 2;
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 红包雨活动数据
+message pb_red_rain{
+    uint64 version = 1; // 活动版本号
+    bytes rev_bin = 2; // 当天领奖的数据
+    uint64 ref_day = 3; // 上次领奖的天数索引
+    uint64 random_round_tid = 4; // 当前随机的轮次tid
+    repeated pb_u64_kv random_list = 5; // 当前随机出的各奖励多少个
+    bytes active_bin = 6; // 当天激活的红包雨
+    uint64 out_big_num = 7; // 超大额红包出现次数
+}

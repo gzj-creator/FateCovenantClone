@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/growth_target/growth_target.db.proto.txt";
+
+// 请求阶段奖励
+message pb_growth_target_phase_award_req {
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 phase_tid = 2;                       // 阶段tid
+}
+message pb_growth_target_phase_award_rsp {
+    pb_growth_target_act act_data = 1;          //活动数据
+    pb_res_to_client res = 2;                   //资源数据
+}
+
+// 请求任务奖励
+message pb_growth_target_task_award_req {
+    uint32 act_tid = 1;                         // 活动tid
+    repeated uint32 task_tid_list = 2;          // 任务tid列表
+}
+message pb_growth_target_task_award_rsp {
+    pb_growth_target_act act_data = 1;          //活动数据
+    pb_res_to_client res = 2;                   //资源数据
+}

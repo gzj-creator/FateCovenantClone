@@ -1,0 +1,45 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "project/world_boss/world_boss.db.proto.txt";
+import "project/rank/rank.db.proto.txt";
+
+// 深渊首领系统信息
+message pb_pit_lord_sys{
+  repeated pb_pit_lord lords = 1;                              // 首领信息集合
+  repeated pb_pit_lord_rank_settle settle_award = 2;           // 排行榜结算
+  repeated pb_pit_lord_rank_settle cross_settle_award = 3;           // 跨服排行榜结算
+  uint64 last_fight_day_index = 4;                             // 上次战斗天数
+  uint64 free_award = 5;                                         // 上次免费奖励领取时间
+}
+
+// 首领信息
+message pb_pit_lord{
+  uint32 level_id = 1;                                    // 当前关卡id
+  uint32 level_max_award = 2;                             // 当前关卡已领取的进度奖励
+  uint64 max_damage = 3;                                  // 最高伤害
+}
+
+// 排行榜结算
+message pb_pit_lord_rank_settle{
+  uint64 day_index = 1;                       // 天数
+  int32 rank = 2;                             // 排名
+  bool award = 3;                            // 领取奖励标记 true:已领取
+}
+
+
+// 排行榜缓存
+message pb_pit_lord_history_rank{
+  uint64 day_index = 1;                       // 天数
+  repeated pb_rank_obj rank_list = 2;         // 排行榜数据
+}
+
+
+// 深渊首领历史排行榜列表
+message pb_pit_lord_history_rank_list{
+  repeated pb_pit_lord_history_rank history_rank_list = 1; // 历史排名列表
+  uint64 settle_day_index = 2;                       // 结算天数
+  bool clear_double_cache = 3;                       // 是否清除双子排行榜缓存
+  bool clear_quadruple_cache = 4;                       // 是否清除四极排行榜缓存
+  bool clear_single_cache = 5;                        //是否清楚单服排行榜缓存
+}

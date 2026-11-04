@@ -1,0 +1,35 @@
+syntax = "proto3";
+import "project/activity/chess_revert/chess_revert.db.proto.txt";
+import "project/tile_swap/tile_swap.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 宝石迷阵初始化数据
+message pb_chess_revert_init {
+    pb_chess_revert_act chess_revert = 1;       // 宝石迷阵数据
+    pb_tile_swap tile_swap = 2;                 // 棋子交换玩法数据
+}
+
+// 宝石迷阵返回数据
+message pb_chess_revert_req {
+    uint32 act_id = 1;                          // 活动id
+    repeated uint32 id_list = 2;                // id列表
+}
+
+// 宝石迷阵请求进入下一轮
+message pb_chess_revert_next_turn {
+    uint32 act_id = 1;                          // 活动id
+    uint32 step = 2;                            // 当前步数
+}
+
+// 宝石迷阵返回数据
+message pb_chess_revert_award_back {
+    pb_res_to_client res = 1;                   // 资源改变
+    bytes state = 2;                            // 奖励状态
+}
+
+// 宝石迷阵返回数据
+message pb_chess_revert_select_gift_req {
+    uint32 act_id = 1;                          // 活动id
+    uint32 gift_tid = 2;                        // 宝石迷阵活动礼包表tid
+    repeated uint32 select_idx = 3;             // 选择的奖励索引
+}

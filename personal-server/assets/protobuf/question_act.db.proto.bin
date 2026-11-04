@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+
+// 问答活动 - 玩家数据
+message pb_question_person {
+    repeated pb_question_day day_list = 1; //玩家每天数据列表
+    bytes pile_reward = 2;//累积奖励
+}
+
+// 每天答题情况
+message pb_question_day {
+    int32 day = 1; //相对活动运行天数
+    repeated pb_question_topic topic_list = 2;  //玩家题目列表
+    int32 answer_times = 3; //答题次数
+    int32 answer_ord = 4; //回答正确次数
+    bool is_reward = 5; // 是否领取每日答题奖励
+}
+
+// 题目数据
+message pb_question_topic {
+    int32 topic_tid = 1;    //题目tid
+    int32 choose_options = 2;   //玩家选择答案
+}
+

@@ -1,0 +1,34 @@
+syntax = "proto3";
+import "project/activity/divine_embryo/divine_embryo.db.proto.txt";
+import "project/bonus_draw/bonus_draw.db.proto.txt";
+import "project/shop.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/hero/draw/hero_draw.db.proto.txt";
+
+// 投放活动初始化数据
+message pb_divine_embryo_init {
+   pb_divine_embryo_data embryo_data = 1;       // 胚子投放数据
+   pb_bonus_draw bonus_data = 2;                // 福利抽奖数据
+   pb_shop_info_list bonus_shop_data = 3;       // 福利抽奖普通商店数据
+}
+
+// 抽奖额外数据
+message pb_divine_embryo_draw_extra{
+    repeated pb_divine_embryo_extra_guaranteed extra_guaranteed = 1;  // 触发保底数据
+    repeated pb_divine_embryo_extra_item extra_item = 2;              // 额外奖励物品数据
+    pb_res_to_client res = 3;                                   // 资源改变
+    pb_hero_recruit recruit = 4;                                // 招募数据
+}
+
+// 额外保底数据
+message pb_divine_embryo_extra_guaranteed{
+    int32 index = 1;                            // 顺序
+    int32 guaranteed = 2;                       // 触发保底次数
+}
+
+// 额外奖励
+message pb_divine_embryo_extra_item{
+    int32 index = 1;                            // 顺序
+    uint64 item_id = 2;                         // 物品ID
+    int32 item_num = 3;                         // 物品数量
+}

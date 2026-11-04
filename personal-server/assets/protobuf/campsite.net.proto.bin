@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 营地放置英雄
+message pb_campsite_place{
+  repeated pb_campsite_place_group place_groups = 1;  //放置分组列表
+}
+
+// 放置分组表
+message pb_campsite_place_group{
+  int32 group_id = 1;                   // 营地id
+  repeated int32 cell_index_list = 2;   // 格子id列表
+  repeated int64 hero_uid_list = 3;     // 英雄uid列表
+}

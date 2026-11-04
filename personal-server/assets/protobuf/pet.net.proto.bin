@@ -1,0 +1,136 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+
+import "project/pet/pet.db.proto.txt";
+
+//魔灵养成返回数据
+message pb_rsp_pet_develop {
+    pb_pet pet = 1;                  // 魔灵数据
+    pb_res_to_client res_change = 2; // 资源变化
+}
+
+//魔灵图鉴升品返回数据
+message pb_pet_book_rsp {
+    pb_pet pet = 1;                  // 魔灵数据
+}
+
+message pb_req_pet_up_lv{
+    int32 pet_tid = 1;     // 魔灵tid
+    uint32 level_count = 2; // 升级
+}
+
+// 请求镶嵌灵核
+message pb_req_pet_slot_wear_equip {
+    repeated pb_pet_slot pet_slot = 1; // 槽位数据
+}
+
+// 请求镶嵌灵核 新
+message pb_req_pet_slot_wear_equip_insert {
+    repeated pb_pet_req_wear_equip pet_req_wear_equips = 1; // 灵核镶嵌结构
+}
+
+// 灵核镶嵌单个net结构
+message pb_pet_req_wear_equip {
+    int32 pet_tid = 1; //魔灵id
+    repeated pb_pet_req_pet_equip pet_req_equip = 2; //装备列表
+}
+
+// 单个镶嵌结构
+message pb_pet_req_pet_equip {
+    uint32 index = 1; //镶嵌位置
+    int32 equip_uid = 2; // 装备uid 卸下的时候uid就是0
+}
+
+// 请求镶嵌灵核返回数据
+message pb_rsp_pet_wear_equip {
+    repeated pb_pet pet = 1; // 槽位数据
+    pb_res_to_client res_changes = 2;   // 资源变化
+    bool is_open_equip_up_star = 3;     // 是否开启灵核升星
+}
+
+// 请求镶嵌灵核返回数据
+message pb_rsp_pet_slot_wear_equip {
+    repeated pb_pet_slot pet_slot = 1; // 槽位数据
+    pb_res_to_client res_changes = 2;   // 资源变化
+    bool is_open_equip_up_star = 3;     // 是否开启灵核升星
+}
+
+// 请求灵核分组合成方案
+message pb_combine_equip {
+    repeated int64 cost_equips = 1; // 灵核消耗列表
+}
+
+// 请求灵核合成方案列表(单个或批量)
+message pb_req_combine_equip {
+    repeated pb_combine_equip combine_equips = 1; // 合成方案列表
+}
+
+
+// 灵核合成返回数据
+message pb_rsp_pet_equip {
+    repeated int64 new_equips = 1; // 分组合成结果
+    pb_res_to_client res_change = 2;                   // 整体资源变化
+}
+
+
+// 请求灵核分解为灵魄水晶
+message pb_req_pet_rune_convert{
+    repeated pb_res_obj materials = 1; // 资源材料
+}
+
+// 魔灵实力对比信息
+message pb_pet_play_data_block{
+    repeated pb_pet pet_list = 1; // 魔灵列表
+    repeated int64 equip_list = 2; // 魔灵上阵列表
+}
+
+
+//魔灵升品回调数据
+message pb_pet_up_quality_back{
+	  pb_pet pet = 1; // 新的魔灵数据
+    pb_res_to_client res = 2; // 资源变化
+}
+
+//灵核请求重置
+message pb_pet_equip_reset{
+    int32 pet_slot_index = 1;                   // 魔灵槽位
+    int64 equip_up_uid = 2;                     // 升星灵核uid
+}
+
+//灵核重置返回数据
+message pb_pet_equip_reset_back{
+    pb_pet_slot slot = 1;       // 槽位信息
+    pb_res_to_client res = 2;   // 资源变化
+}
+
+//灵核请求升星
+message pb_pet_equip_up{
+    int32 pet_slot_index = 1;                   // 魔灵槽位
+    int64 equip_up_uid = 2;                     // 升星灵核uid
+    repeated int64 equip_uid_list = 3;          // 使用消耗uid
+}
+
+//灵核请求升星 新
+message pb_pet_equip_star_up{
+    int32 pet_tid = 1;                          // 魔灵tid
+    int64 equip_up_uid = 2;                     // 升星灵核uid
+    repeated int64 equip_uid_list = 3;          // 使用消耗uid
+}
+
+//灵核升星返回数据 新
+message pb_pet_equip_star_up_back{
+    pb_pet pet = 1;       // 魔灵信息
+    pb_res_to_client res_change = 2;   // 资源变化
+}
+
+
+//灵核升星返回数据
+message pb_pet_equip_up_back{
+    pb_pet_slot slot = 1;       // 槽位信息
+}
+
+// 魔灵破格
+message pb_pet_up_promote_lv_req {
+  int64 pet_tid = 1; // 魔灵tid
+}

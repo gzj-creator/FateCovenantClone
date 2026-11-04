@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/shop.db.proto.txt";
+import "project/activity/elves_act/elves_act.db.proto.txt";
+
+// 活动开启数据
+message pb_elves_act_begin {
+  pb_shop_info shop_info = 1;                 // 商店信息
+  pb_elves_act_data act_player = 2;           // 活动玩家信息
+}
+// 进度领奖请求数据
+message pb_elves_act_draw_award_req{
+   uint32 act_tid = 1;                      // 活动tid
+   repeated uint32 award_tid = 2;           // 领奖tid列表
+}
+// 进度领奖返回数据
+message pb_elves_act_draw_award{
+   pb_res_to_client res = 1;                       // 资源改变
+   bytes draw_award_data = 2;                      // 抽奖领取奖励数据
+}

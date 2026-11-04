@@ -1,0 +1,57 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/activity/vickrey_auction_act/vickrey_auction_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// ============== 活动信息 ==============
+// 请求活动信息
+message pb_vickrey_auction_act_info_req {
+    int64 activity_id = 1;                              // 活动ID
+}
+
+// 响应活动信息
+message pb_vickrey_auction_act_info_rsp {
+    pb_vickrey_auction_act_display_info display_info = 1; // 拍卖会展示数据
+}
+
+// ============== 拍卖会展示数据（服务端计算） ==============
+//活动展示信息
+message pb_vickrey_auction_act_display_info {
+    repeated pb_vickrey_auction_act_auction_data auction_list = 1; // 拍品数据列表
+}
+
+// 拍品数据（服务端返回）
+message pb_vickrey_auction_act_auction_data {
+    int64 round_id = 1;                                // 轮次ID
+    int32 award_index = 2;                             // 拍品索引(1/2/3)
+    int64 final_price = 3;                             // 成交价格(第2名出价,结算后有值)
+    repeated pb_vickrey_auction_act_top5_bidder top5_list = 4; // 出价前5名(结算后才有值)
+}
+
+// 出价前5名（结算后公开）
+message pb_vickrey_auction_act_top5_bidder {
+    int64 role_id = 1;                               // 玩家id
+    string name = 2;                                 // 玩家名字
+    int64 bid_price = 3;                               // 出价金额
+}
+
+// ============== 出价 ==============
+// 请求出价(含首次出价和加价)
+message pb_vickrey_auction_act_bid_req {
+    int64 activity_id = 1;                              // 活动ID
+    int64 round_id = 2;                                // 轮次ID
+    int32 award_index = 3;                             // 拍品索引
+    int64 bid_price = 4;                               // 目标出价金额
+}
+
+// 响应出价
+message pb_vickrey_auction_act_bid_rsp {
+    pb_vickrey_auction_act_info act_info = 1;              // 活动数据
+    pb_res_to_client res = 2;                              // 资源变化
+    pb_vickrey_auction_act_auction_data auction_data = 3;  // 展示数据
+}
+
+message pb_vickrey_auction_update_info {
+    pb_vickrey_auction_act_info act_info = 1;              // 活动数据
+    pb_res_to_client res = 2;                              // 资源变化
+}

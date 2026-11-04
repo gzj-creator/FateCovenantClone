@@ -1,0 +1,22 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 钻石基金数据
+message pb_diamond_fund{
+  pb_diamond_fund_data steady = 1; //稳健基金数据
+  pb_diamond_fund_data fortune = 2; //鸿运基金数据
+}
+
+// 钻石基金基础数据
+message pb_diamond_fund_data{
+  uint64 cycle_time = 1; //周期开启时间
+  repeated pb_diamond_day_award day_award = 2; //奖励领取数据
+  pb_recharge_limit_info buy_limit_info = 3; //限购数据
+  repeated pb_diamond_day_award day_award_history = 4; //历史奖励领取数据
+}
+
+// 每天领奖数据
+message pb_diamond_day_award{
+  repeated pb_res_obj award_list = 1; //奖励列表
+}

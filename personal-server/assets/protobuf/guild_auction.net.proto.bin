@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+import "project/guild_auction/guild_auction.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 请求竞拍
+message req_guild_auction_bid {
+    int64 auction_id = 1; // 拍卖行唯一ID 《拍卖行类型表》tid
+    int64 item_uid = 2; // 物品uid
+    int64 spend = 3; // 出价
+}
+
+// 返回竞拍结果
+message rsp_guild_auction_bid {
+    bool is_bid = 1; // 是否竞拍成功
+    guild_auction_item item = 2; // 竞拍物品列表
+    pb_res_to_client  res = 3; // 竞得奖励
+    repeated guild_auction_role_record_info add_role_record_list = 4; // 新增个人拍卖记录列表 增量 客户端塞进去
+}
+
+// 拍卖行登陆数据
+message guild_auction_login {
+    pb_guild_auction_guild_info guild_auction_info = 1; // 仙盟
+    pb_guild_auction_role_info auction_role_info = 2; // 个人
+    pb_guild_auction_state_info state_info = 3; // 排行榜阶段
+}
+
+// 拍卖行请求数据
+message guild_auction_get_req {
+    pb_guild_auction_guild_info guild_auction_info = 1; // 仙盟
+    pb_guild_auction_state_info state_info = 2; // 排行榜阶段
+}
+
+// 返回请求战报结果
+message rsp_guild_auction_record {
+    repeated guild_auction_record_info record_list = 1;
+}
+
+// 心愿操作请求
+message pb_guild_auction_wish_req{
+    uint64 auction_id = 1; // 拍卖行唯一ID
+    uint64 auction_item_uid = 2; // 拍卖品唯一ID
+    uint64 do_type = 3; // 处理类型（1.添加 0.删除）
+}
+
+// 返回心愿操作结果
+message rsp_guild_auction_wish {
+     int64 auction_tid = 1; //  拍卖行tid =《拍卖行类型表》tid
+     repeated int64 focus_item_uid_list = 2; // 关注uid列表
+}
+
+// 推送竞拍变动
+message rsp_guild_auction_bid_push {
+    repeated guild_auction_item item_list = 1; // 竞拍物品列表
+    repeated guild_auction_record_info add_record_list = 2; // 新增仙盟拍卖记录列表 增量 客户端塞进去
+    int64 auction_tid = 3; //  拍卖行tid =《拍卖行类型表》tid
+}
+
+// 推送阶段变动
+message rsp_guild_auction_stage_push {
+    pb_guild_auction_guild_data guild_auction_data = 1; // 仙盟
+    int64 stage = 2; // 阶段
+}
+
+// 推送结算变动
+message rsp_guild_auction_settle_push {
+    int64 auction_tid = 1; // 拍卖行tid =《拍卖行类型表》tid
+    repeated guild_auction_item item_list = 2; // 拍卖物品列表
+    int64 version = 3; // 版本号 按照天数来做
+    int64 bonus = 4; // 分红奖励数量
+    repeated guild_auction_record_info add_record_list = 5; // 新增仙盟拍卖记录列表 增量 客户端塞进去
+}
+
+// 推送个人拍品变动
+message rsp_guild_auction_role_bid_push {
+    pb_res_to_client  res = 1; // 返还奖励
+    repeated guild_auction_role_record_info add_role_record_list = 2; // 新增个人拍卖记录列表 增量 客户端塞进去
+    int64 auction_tid = 3; // 拍卖行tid =《拍卖行类型表》tid
+}

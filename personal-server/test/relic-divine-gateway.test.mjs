@@ -16,8 +16,7 @@ import {
 import { decodeModuleLoginBlocks, mergeRelicLoginContainer } from '../game/relic-divine-login.mjs';
 
 const codec = createGameCodec();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const SERVER_OPENED_AT = 1792789200;
 const GAME_NOW = (SERVER_OPENED_AT + 3600) * 1000;
 
@@ -33,6 +32,21 @@ function serializedEntry(entry) {
     value: entry.value.map(value => serializedBinary(Buffer.from(value.value))),
     improper: false
   };
+}
+
+function setResource(store, tid, num, group = 1) {
+  store.transaction(model => {
+    const existing = model.resources.get(String(tid));
+    if (existing) {
+      existing.num = String(num);
+      return;
+    }
+    const groups = new Map(model.state.modules.value).get(6).value;
+    while (groups.length <= group) groups.push({ value: [], improper: false });
+    const entry = groups[group].value.length;
+    groups[group].value.push(serializedBinary(Buffer.alloc(0)));
+    model.resources.set(String(tid), { tid, num: String(num), location: [6, group, entry] });
+  });
 }
 
 function moduleValue(model, id) {
@@ -195,7 +209,6 @@ function loginActivity(loginBytes) {
 test('gateway preserves login blocks, routes every relic command, and pushes after committed draws', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-relic-gateway-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const logs = [];
   const options = {
     databasePath,
@@ -337,12 +350,15 @@ test('gateway preserves login blocks, routes every relic command, and pushes aft
   const demigodPush = await client.waitPush(9160);
   assert.equal(codec.unpack('pb_demigod_act_draw_back', Buffer.from(demigodPush.data, 'base64')).draw_num, 1);
 
+  setResource(game.store, 101500, 2000);
+  const residentModuleBefore = new Map(game.store.state().modules.value).get(518);
+  const residentDrawBefore = codec.unpack('pb_fantasy_draw', rawStored(residentModuleBefore.value[2]));
   const residentTicketBefore = BigInt(game.store.read().resources.get('808002')?.num ?? 0);
   response = await client.request(87618, seq++, await encodeEtf([1]));
   assert.equal(response.err, undefined);
   const residentPurchase = codec.unpack('pb_fantasy_equip_draw_buy_rsp', Buffer.from(response.data, 'base64'));
-  assert.equal(residentPurchase.draw.left_buy_times, 6);
-  assert.equal(residentPurchase.draw.total_draw_times, '9');
+  assert.equal(residentPurchase.draw.left_buy_times, residentDrawBefore.left_buy_times - 1);
+  assert.equal(residentPurchase.draw.total_draw_times, residentDrawBefore.total_draw_times);
   assert.equal(residentPurchase.res.changes.some(change => change.extra), false);
   assert.equal(BigInt(game.store.read().resources.get('808002').num), residentTicketBefore + 1n);
 

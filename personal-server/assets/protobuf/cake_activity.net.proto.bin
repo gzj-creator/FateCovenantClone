@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/role.db.proto.txt";
+
+// 年糕玩法数据
+message pb_cake_play {
+    repeated pb_cake_play_role role_list = 1; // 玩家数据
+    repeated pb_cake_play_plate plate_list = 2; // 盘子数据
+}
+
+// 年糕玩家数据
+message pb_cake_play_role {
+    int64 role_id = 1; // 玩家id
+    int32 cake_count = 2; // 年糕数量
+    int32 server_id = 3; //服务器id
+    bytes name = 4; //名字
+    int32 level = 5; //等级
+    pb_figure_item head_info = 6; //当前使用头像
+    pb_figure_item frame_info = 7; //当前使用头像框
+    pb_figure_item title_info = 8; //当前使用称号
+    int32 power = 9; //战力
+    bool is_robot = 10; //是否是机器人
+}
+
+// 年糕盘子数据
+message pb_cake_play_plate {
+    int32 plate_tid = 1; // 盘子tid
+    int32 cake_count = 2; // 年糕数量
+    repeated int64 role_id = 3; // 玩家id列表
+}
+
+// 玩家选择盘子
+message pb_cake_activity_select_plate_req {
+    int32 state_id = 1; // 状态id
+    int32 plate_tid = 2; // 盘子tid
+}

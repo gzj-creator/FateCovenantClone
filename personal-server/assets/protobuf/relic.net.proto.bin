@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+import "project/wear/relic/relic.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/lineup.db.proto.txt";
+
+//请求升级遗物
+message pb_req_level_up_relic {
+    int64 uid = 1;//待升级的遗物UID
+    int64 holder_uid = 2; //遗物所属英雄uid，如果没有则为0
+    repeated int64 mat_uid_list = 3; //作为材料的遗物UID列表
+}
+
+//操作遗物后的回调（洗炼、升级）
+message pb_res_op_relic {
+    pb_res_to_client res = 1; //返回给客户端的资源改变
+    pb_relic relic = 2; //操作后的遗物数据
+}
+
+//请求锁定、解锁遗物的副属性
+message pb_req_toggle_relic_attr_lock {
+    int64 uid = 1;//待升级的遗物UID
+    int32 idx = 2; //操作的副属性的索引
+    bool is_lock = 3; //是否锁定
+}
+
+//请求洗炼遗物/保存洗炼结果
+message pb_req_recast_relic {
+    int64 relic_uid = 1; //遗物uid
+    int32 index = 2; //槽位索引
+}
+
+//遗物打造结果
+message pb_relic_forge_res {
+    pb_res_to_client res = 1; //返回给客户端的资源改变
+}
+
+// 请求分解遗物
+message pb_req_resolve_relic {
+    repeated uint64 relic_uid_list = 1; //要分解的遗物uid列表
+}
+
+// 请求升阶遗物
+message pb_req_stage_relic {
+    int64 relic_uid = 1; //遗物uid
+    repeated uint64 relic_uid_list = 2; //消耗的遗物uid列表
+}
+
+// 返回重置遗物
+message pb_rsp_reset_relic {
+    pb_res_to_client res = 1;           //返回给客户端的资源改变
+    pb_relic relic = 2;                 //操作后的遗物数据
+    repeated pb_relic back_relic_l = 3; //返还遗物列表
+}
+
+//  遗物列表
+message pb_relic_list {
+    repeated pb_relic relic_list = 1; //遗物列表
+}
+
+// 遗物穿戴
+message pb_relic_wear_one {
+    uint64 hero_tid = 1; //英雄tid
+    repeated uint64 relics = 2; //遗物uid列表
+}
+
+// 遗物穿戴请求
+message pb_relic_wear_req {
+    repeated pb_relic_wear_one wear_list = 1; //遗物穿戴列表
+}
+
+// 遗物穿戴结果
+message pb_relic_wear_rsp {
+    repeated hero hero_list = 1; //英雄列表
+    repeated pb_lineup lineup_list = 2; //变化的列表
+    pb_role_lineup role_lineup = 3; //角色阵容
+}
+
+// 升级专属符文
+message pb_relic_sp_up_rsp {
+    hero hero = 1; //英雄数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 符文变异返回
+message pb_variation_back {
+    pb_relic relic = 1; //变异过后的数据
+    pb_res_to_client res = 2; // 资源变化
+}
+
+// 符文淬炼返回
+message pb_relic_refine_back {
+     int64 tid = 1; // 英雄tid
+     int64 refine_value = 2; // 遗物淬炼值
+     int64 add_refine_value = 3; // 本次新增遗物淬炼值
+     pb_res_to_client res = 4; //资源改变
+}

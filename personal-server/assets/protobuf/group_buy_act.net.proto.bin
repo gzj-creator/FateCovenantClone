@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 领取拼团奖励请求
+message pb_group_buy_act_group_award_req {
+    uint32 act_id = 1;      // 活动id
+    uint32 award_tid = 2;   // 拼团购活动拼团奖励表tid
+}

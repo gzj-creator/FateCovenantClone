@@ -1,0 +1,22 @@
+syntax = "proto3";
+import "project/activity/slot_game_act/slot_game_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 老虎机活动抽奖奖励请求
+message pb_slot_game_act_go_req {
+  int64 act_tid = 1;                               // 活动tid
+  int64 item_tid = 2;                   // 物品tid
+}
+
+// 老虎机活动获得奖励请求
+message pb_slot_game_act_draw_req {
+  int64 act_tid = 1;                               // 活动tid
+  bool challenge_multiplier = 2;                   // 是否挑战倍率
+}
+
+// 老虎机活动获得奖励返回
+message pb_slot_game_act_draw_rsp {
+  pb_slot_game_act_role_data act_data = 1;         // 活动数据
+  pb_res_to_client res = 2;                        // 抽取到的奖励
+  int64 multiplier = 3;                            // 抽取到的倍率
+}

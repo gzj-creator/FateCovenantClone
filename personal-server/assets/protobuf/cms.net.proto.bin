@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// cms - 问卷信息
+message pb_cms_question_info {
+    repeated pb_cms_question_item question_list = 1; // 问卷列表
+}
+
+// cms - 单条问卷数据
+message pb_cms_question_item {
+    string title = 1; // 问卷标题
+    string link = 2; // 问卷链接
+    string award = 3; // 问卷奖励信息
+    uint64 start_time = 4; // 问卷开始时间
+    uint64 end_time = 5; // 问卷结束时间
+}
+

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 纳福活动玩家数据
+message pb_enjoy_blessing_act_role_info {
+    repeated pb_enjoy_blessing_act_role_data data_list = 1;              // 玩家数据
+}
+
+// 纳福玩家纳福数据
+message pb_enjoy_blessing_act_role_data {
+    int64 act_id = 1;                                   // 纳福活动tid
+    int64 total_money = 2;                           // 代金券剩余
+    int64 draw_count = 3;                           // 纳福已抽取次数
+    int64 total_vitality = 4;                       // 活动期间累计活跃度
+    repeated pb_enjoy_blessing_act_buy_limit buy_limit_list = 5;              // 付费项次数限制记录
+    repeated pb_enjoy_blessing_act_buy_limit all_buy_limit_num_list = 6;                       // 充值返利限制次数
+    repeated pb_enjoy_blessing_act_recharge_last all_buy_list = 7;                       // 充值返利剩余
+}
+
+message pb_enjoy_blessing_act_buy_limit {
+    int64 recharge_id = 1;                                   // 付费id
+    int64 num = 2;                           // 付费次数
+}
+
+// 纳福玩家充值返利剩余
+message pb_enjoy_blessing_act_recharge_last {
+    int64 tid = 1;                                   // 返利项id
+    int64 num = 2;                           // 返利剩余
+}
+
+

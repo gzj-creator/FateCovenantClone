@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 打地鼠 - 支持并行 - 版本号区分 - 列表结构
+message pb_beat_gopher_person_list {
+    repeated pb_beat_gopher_person person_list = 1;//玩家数据列表
+}
+
+// 打地鼠 - 玩家个人数据
+message pb_beat_gopher_person {
+    int32 version = 1;//版本号
+    int32 score = 2; //单局最高分数
+    int64 start_time = 3; //功能开始时间
+    repeated pb_beat_gopher_score_award award_list = 4; //领取过奖励的列表
+}
+
+// 打地鼠 - 每天积分奖励
+message pb_beat_gopher_score_award {
+    int32 day_index = 1; //相对功能开始时间
+    repeated int32 award_id_list = 2; //奖励id列表
+}

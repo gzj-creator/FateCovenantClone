@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 永久自增礼包数据
+message pb_forever_increase_gift_info {
+    repeated pb_forever_increase_gift gift_list = 1;        // 礼包列表
+}
+
+// 永久自增礼包
+message pb_forever_increase_gift{
+    uint32 recharge_id = 1;                 // 付费id
+    int32 cur_times = 2;                    // 当前可够购买次数
+    uint64 last_refresh_time = 3;           // 上次刷新时间
+}

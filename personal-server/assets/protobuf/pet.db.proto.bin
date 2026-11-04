@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+// 魔灵数据
+message pb_pet {
+    int64 tid = 1;                                  // 魔灵编号
+    int32 star = 2;                                 // 魔灵星级
+    int32 book_level = 3;                           // 图鉴等级
+    int32 quality = 4;                              // 品质
+    int32 book_quality = 5;                         // 图鉴品质
+    int64 ability_tid = 6;                          // 激活技能
+    int32 level = 8;                                // 当前等级
+    int32 break_level = 9;                          // 突破等级
+    repeated pb_pet_equip_insert equip_items = 10;  // 镶嵌的灵核列表(新灵核，带有星级)
+    repeated int64 equips = 11;                     // 镶嵌的灵核列表
+    bool is_mutant = 12;                            // 魔灵是否变异
+    int32 promote_lv = 13;                            // 破格等级
+}
+
+// 灵核道具资源
+message pb_pet_equip{
+    int64 uid = 1;                      // 唯一id
+    int64 tid = 2;                      // 道具tid
+    int32 star = 3;                     // 星级
+}
+
+// 灵核镶嵌数据
+message pb_pet_equip_insert{
+    int32 index = 1;                   // 灵核镶嵌编号
+    pb_pet_equip item = 2;             // 灵核道具
+}
+
+// 灵核道具背包
+message pb_pet_equip_container{
+    repeated pb_pet_equip items = 1;              // 灵核列表
+    int64 max_uid = 2;                             //下一灵核应该使用的uid
+}
+
+// 灵核升星记录
+message pb_pet_equip_up_log{
+    repeated pb_equip_up_log log_list = 1;           // 灵核升星消耗
+}
+
+message pb_equip_up_log{
+    int64 uid = 1;                                  // 灵核uid
+    repeated pb_pet_equip cost_list = 2;           // 灵核升星消耗
+}
+
+// 魔灵槽位
+message pb_pet_slot {
+    int32 index = 1;                        // 编号
+    int32 exp = 2;                          // 当前经验，升级后会扣除升级的经验
+    repeated int64 equips = 3;              // 镶嵌的灵核列表
+    int32 level = 4;                        // 当前等级
+    repeated pb_pet_equip_insert equip_items = 5;  // 镶嵌的灵核列表(新灵核，带有星级)
+}
+
+// 魔灵养成数据
+message pb_pet_develop_data {
+    repeated pb_pet pets = 1;           // 拥有魔灵
+    repeated pb_pet_slot slots = 2;     // 魔灵槽位（废弃）
+    int32 cur_rune_node = 3;            // 当前激活灵魄点位
+    uint64 last_exchange_time = 4;      // 上次魔灵兑换时间
+    bool is_open_equip_up_star = 5;     // 是否开启灵核升星
+}
+
+// 魔灵灵祠槽位数据
+message pb_pet_help_slot {
+    int32 index = 1; // 槽位索引
+    int64 pet_tid = 2; // 精灵tid
+}
+
+// 魔灵灵祠槽位数据
+message pb_pet_help_slot_list {
+    repeated pb_pet_help_slot list = 1; //魔灵灵祠槽位数据
+}

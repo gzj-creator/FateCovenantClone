@@ -1,0 +1,45 @@
+// 推送礼包db
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 服务器单个预设礼包数据
+message pb_gmc_notify_gift {
+  uint64 uid        = 1;         // 唯一id
+  uint32 start_time = 2;         // 开始时间
+  uint32 end_time   = 3;         // 相对截止时间(跟玩家收到推送相关)
+  uint32 last_time  = 4;         // 收到推送消息后的持续时间
+  uint32 deadline   = 5;         // 绝对截止时间
+  uint32 vip_min    = 6;         // vip最低限制
+  uint32 vip_max    = 7;         // vip最低限制
+  uint32 recharge_min = 8;       // 充值最低限制
+  uint32 recharge_max = 9;       // 充值最高限制
+  uint32 level_min  = 10;        // 等级最低限制
+  uint32 level_max  = 11;        // 等级最高限制
+
+  uint32 price_tid  = 12;         // 价格挡位tid
+  uint32 gear_tid   = 13;         // 原价挡位tid
+  uint32 bg_tid     = 14;         // 礼包描述信息表tid
+  repeated pb_res_obj award = 15; // 奖励
+
+  uint32 id         = 16;         // 礼包id
+
+  uint32 delete_time = 17;       // 删除时间，平台可能不设置deadline
+                                 // 且希望保留平台给的数据，不做计算覆盖
+}
+
+// 玩家所有礼包数据
+message pb_player_notify_gift {
+  repeated pb_single_notify_gift gifts = 1;  // 玩家买过的礼包uid
+  uint64 max_gift_uid = 2;          // 玩家到管理进程取到过的最大的uid(废弃,推送的uid不保证递增)
+  repeated uint64 checked = 3;      // 已经检查过的
+}
+
+// 玩家礼包结构
+message pb_single_notify_gift {
+  uint64 uid = 1;         // 礼包唯一id
+  uint32 delete_time = 2; // 删除时间
+  uint32 buy_count = 3;   // 购买次数
+}
+
+

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 累充活动数据列表
+message pb_acc_recharge_list {
+    repeated pb_acc_recharge list = 1;  // 累充活动数据列表
+}
+
+// 累充活动数据
+message pb_acc_recharge {
+    uint32 act_id = 1;                  // 活动id
+    bytes award_state = 2;              // 累充奖励领取状态
+}

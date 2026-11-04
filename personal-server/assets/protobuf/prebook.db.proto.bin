@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 百媚之约活动玩家数据
+message pb_prebook_role {
+    bytes task_award_bin = 1;   // 任务奖励领取记录
+    bool is_first_shared = 2;   // 是否进行过首次分享
+}

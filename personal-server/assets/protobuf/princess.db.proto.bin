@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+// 公主奖励相关数据
+message pb_princess {
+    pb_princess_login login = 1; //登录奖励数据
+    pb_princess_energy energy = 2; //体力奖励数据
+    pb_princess_holiday holiday = 3; //节日奖励领取数据
+    pb_princess_energy_supplement supplement = 4; //补领体力数据
+}
+
+// 公主登录奖励相关数据
+message pb_princess_login {
+    uint64 rev_day = 1; //最近一次领奖的天数索引
+    uint32 group = 2; //当前循环到哪一组奖励
+    bytes bin = 3; //当组奖励领取状态
+}
+
+// 体力奖励数据
+message pb_princess_energy {
+    uint64 last_noon_day = 1; //上次领午餐的天数索引
+    uint64 last_night_day = 2; //上次领晚餐的天数索引
+}
+
+// 体力补领数据
+message pb_princess_energy_supplement{
+    uint64 last_supplement_day = 1;//上次补领体力天数
+    repeated pb_princess_energy_supplement_single princess_energy = 2;//补领体力数据
+}
+
+// 体力补领单个数据
+message pb_princess_energy_supplement_single{
+    uint64 day = 1; //上次领取天数
+    bool moon = 2; //午餐是否领取
+    bool night =3; //完成是否领取
+}
+
+// 节日奖励数据
+message pb_princess_holiday {
+    uint64 tid = 1; //节日tid
+    bytes bin = 2; //当前节日的领取数据
+}

@@ -1,0 +1,7 @@
+syntax = "proto3";
+import "project/hero/base/hero.db.proto.txt";
+
+// 英雄碎片信息
+message pb_chip_info {
+    repeated chip_compose chip_compose = 1; // 碎片合成信息
+}

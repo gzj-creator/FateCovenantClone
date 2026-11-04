@@ -1,0 +1,45 @@
+syntax = "proto3";
+import "project/activity/help_up_act/help_up_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 任务领奖
+message pb_help_up_task_reward_req {
+  int64 act_id = 1;           // 活动 TID
+  repeated int64 task_id_list = 2; // 领取的任务 ID 列表
+}
+
+message pb_help_up_task_reward_rsp {
+  pb_help_up_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2;        // 资源变化
+}
+
+// 阶段领奖
+message pb_help_up_stage_award_req{
+  int64 act_id = 1;  // 活动 TID
+  repeated int64 stage_tid_list = 2; // 阶段奖励tid列表
+}
+
+message pb_help_up_stage_award_rsp{
+  pb_help_up_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2;        // 资源变化
+}
+
+// 助力
+message pb_help_up_help_req{
+  int64 act_id = 1; // 活动id
+  int64 times = 2; // 数量
+}
+
+message  pb_help_up_help_rsp{
+  pb_res_to_client res = 1;        // 资源变化
+  int64 help_times = 2; // 最新的助力次数
+}
+
+// 获取助力次数
+message pb_help_up_get_times_req{
+  int64 act_id = 1; // 活动id
+}
+
+message pb_help_up_get_times_rsp{
+  int64 times = 2; // 助力次数
+}

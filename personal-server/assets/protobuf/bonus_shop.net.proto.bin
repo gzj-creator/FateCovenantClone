@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/bonus_draw/bonus_shop/bonus_shop.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 福利抽奖商店购买请求
+message pb_bonus_shopping_req {
+    int32 shop_tid = 1; //商品id
+    int32 num = 2; //购买数量
+}
+
+// 特殊商店购买 返回结构
+message pb_bonus_shopping_back {
+    pb_res_to_client res = 1; //资源变化
+    pb_bonus_shop_item item = 2; //商品变动
+}

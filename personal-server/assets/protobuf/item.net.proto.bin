@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+
+// 简单的使用消息
+// 注意：如果需要扩展专用字段，请在自身模块中定义消息
+message simple_use {
+  int32 tid = 1;    // 资源tid
+  uint32 num = 2;   // 使用数量
+}
+
+// 单个选择
+message selected{
+  uint32 index = 1; // 选择序列
+  uint32 num = 2;   // 选择数量
+}
+
+// 选择宝箱使用
+message selected_use{
+  int32 tid = 1;    // 资源tid
+  uint32 num = 2;   // 使用数量
+  repeated selected selected = 3;   // 选择数据
+}
+
+// 一键合成
+message pb_one_key_compose{
+  repeated simple_use one_key_compose = 1;   // 一键合成数据
+}
+
+// 一键使用
+message pb_one_key_use{
+  repeated simple_use use = 1;   // 一键使用数据
+}

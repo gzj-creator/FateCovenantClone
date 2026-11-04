@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 周年庆主活动数据
+message pb_overall_act {
+    pb_recharge_limit_info recharge_limit_info = 1;
+}

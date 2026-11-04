@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+// 逻辑服务器信息
+message pb_server {
+    int32 id = 1;           //  32bits服务器ID：自增数字，平台生成，内部使用
+    string name = 2;        // 	服务器名称：官方苹果/安卓，如“S1测试服”；越狱苹果/安卓，如“Y1测试服”，编号和文字间一个空格
+    int32 state = 3;        //  32bits服务器状态：0启用，1停新，2停用
+    int32 label = 4;        //  32bits服务器标签，0正常，1推荐，2新服
+    int32 show_state = 5;   //  32bits服务器显示：0正常，1流畅，2爆满
+    int32 show_time = 6;    //  32bits服务器显示时间（时间戳，精度到秒）
+    int32 release_time = 7; //  32bits服务器开放时间（时间戳，精度到秒）
+    int32 start_maintain_time = 8;  //  32bits维护开始时间（时间戳，精度到秒）
+    int32 stop_maintain_time = 9;   //  32bits维护结束时间（时间戳，精度到秒）
+
+    string extranet_ip = 10;        // 外网IP地址，如：192.168.x.x:3030
+    string intranet_ip = 11;        // 内网IP地址，如：<<"game@192.168.x.x">>
+    // 注意：运行时ets缓存的这个字段是节点名原子，比如'game@192.168.x.x'
+
+    bool release_finished = 12;     // 是否已经执行完了开服逻辑
+    repeated string channel_list = 13; // 服务器渠道列表
+    int32 version = 14;             // 数据版本号（修改次数），新数据版本号为1
+    pb_server_state_param state_param = 15; // 逻辑服状态自动切换的控制参数
+    // 注意：增加了字段需要修改server_manage_agent.hrl中的PB_SERVER_MATCH_BASE
+    int32 region_id = 16;           // 服务器所属大区的id(和平台统一定制的大区保持一致：服务器大区名称表.xml）
+    string region_name = 17;        // 服务器所属大区的名称
+    string nick_name = 18;          // 服务器昵称
+    int32 cross_stage = 19;     // 逻辑服的额外信息（当前是和平台无关的数据），（0：单服，1：双子，2：四极，3：神域跨服）
+}
+
+// 逻辑服状态自动切换的控制参数
+message pb_server_state_param {
+    int32 full_num = 1;         // 自动爆满角色数：达到此数目，自动变为爆满
+    int32 stop_new_num = 2;     // 自动停新角色数：达到此数目，自动变为停新+爆满
+    int32 stop_new_time = 3;    // 自动停新时长：开服多长时间后自动变为停新（单位：秒）
+}

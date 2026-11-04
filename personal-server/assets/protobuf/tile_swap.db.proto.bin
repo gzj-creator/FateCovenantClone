@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 棋子交换所有期数据
+message pb_tile_swap_all {
+    repeated pb_tile_swap list = 1;     // 棋子交换数据列表
+}
+
+// 棋子交换玩法数据
+message pb_tile_swap {
+    uint32 version = 1;                 // 版本号
+    uint32 cur_turn = 2;                // 当前轮次(棋子交换轮次表tid)
+    repeated uint32 group_list = 3;     // 所有轮中随到的组列表
+}

@@ -1,0 +1,73 @@
+syntax = "proto3";
+import "project/fight/fight.db.proto.txt";
+import "project/mission.net.proto.txt";
+import "project/peak_tower.net.proto.txt";
+import "project/role.db.proto.txt";
+import "project/activity/activity.net.proto.txt";
+import "project/hero/rent/rent_hero.db.proto.txt";
+
+// 战斗发起请求数据
+message pb_fight_request {
+    int64 fight_tid = 1;
+    int64 enemy_id = 2; // 敌人的角色id
+    int32 stm_type = 3; // 结算类型
+    bytes req = 4; // 战斗发起的功能数据
+    repeated pb_team_loc loc = 5; // 队伍站位
+    bool ignore_inherit = 6;     // 忽略战斗数据继承(有继承的类型生效)
+    bool is_pure_fight = 7;     // 是否是纯战斗(不会进行战斗请求验证和结算)
+}
+
+// 队伍站位
+message pb_team_loc {
+    uint32 team_id = 1;
+    repeated pb_fight_loc loc = 2;
+}
+
+// 英雄站位
+message pb_fight_loc {
+    uint64 hero_id = 1;
+    uint32 loc = 2;
+}
+
+// 战斗发起返回数据
+message pb_fight_response {
+    pb_fight_report report = 1; // 战斗结果数据
+    pb_fight_rsp rsp = 2; // 战斗返回的功能数据
+    pb_fight_stm stm = 3; // 战斗结算数据（不能退出的战斗，后台就直接结算掉了）
+    pb_rent_use_one rent_data = 4;// 单个战斗对应的租借英雄使用次数
+}
+
+// 战斗返回数据
+message pb_fight_rsp {
+//    pb_guild_boss_back guild_boss_rsp = 2; //公会BOSS返回数据
+}
+
+// 战斗结算
+message pb_fight_stm {
+    int32 result = 1; // 战斗结果，部分战斗会在结算时修改结果，例如：挑战关卡必胜等
+    bytes stm_data = 2; //结算数据，由各个模块自己解析
+    bool exception = 3; // 是否为异常结算，异常结算就不会发战报到前台，但是结算数据还是会给前台
+}
+
+// 战斗结算请求
+message pb_fight_settlement_request {
+    int32 fight_type = 1; // 战斗类型
+}
+
+// 战斗结算返回
+message pb_fight_settlement_response {
+    pb_fight_stm stm = 1; // 战斗结算结果数据
+    pb_rent_use_one rent_data = 2;// 单个战斗对应的租借英雄使用次数
+}
+
+// 战斗结算登录
+message pb_fight_settlement_login {
+    pb_fight_report report = 1;
+}
+
+// 战斗退出
+message pb_fight_exit {
+    int32 fight_type = 1; // 战斗类型
+    bool is_force = 2;  // 是否强制退出
+}
+

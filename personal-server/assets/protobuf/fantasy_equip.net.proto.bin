@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+
+import "project/fantasy_equip/fantasy_equip.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/lineup.db.proto.txt";
+
+// 幻武穿戴请求
+message pb_fantasy_equip_put_on_req {
+    int64 hero_tid = 1;                                         //幻武穿戴的英雄
+    pb_fantasy_equip_id equip = 2;                              //幻武标识
+}
+
+// 幻武穿戴请求 返回前台数据
+message pb_fantasy_equip_put_on_rsp {
+    repeated hero changed_hero = 1;                             //改变的英雄
+    pb_fantasy_equip take_off_equip = 2;                         //脱下的幻武
+    pb_fantasy_equip put_on_equip = 3;                         //穿上的幻武
+    repeated pb_lineup change_lineup = 4;                       //改变的阵容
+}
+
+// 幻武脱下请求
+message pb_fantasy_equip_take_off_req {
+    int64 hero_tid = 1;                                         //幻武穿戴的英雄
+}
+
+// 幻武脱下请求返回
+message pb_fantasy_equip_take_off_rsp {
+    hero hero = 1;                                         //幻武穿戴的英雄
+    repeated pb_fantasy_equip changed_equip = 2;                        //改变的幻武
+}
+
+
+// 一键穿戴幻武
+message pb_fantasy_equip_put_on_one_key_req {
+    int64 hero_tid = 1;                                               //幻武穿戴的英雄
+    pb_fantasy_equip_id equip = 2;                                    //幻武标识
+    repeated pb_fantasy_equip_id bless_equip = 3;                     //护佑的幻武标识
+}
+//一键穿戴幻武返回前台数据
+message pb_fantasy_equip_put_on_one_key_rsp {
+    repeated hero changed_hero = 1;                                      //改变的英雄
+    repeated pb_fantasy_equip bless_equips = 2;                       //护佑改变幻武
+    pb_fantasy_equip put_on_equip = 3;                       //穿戴幻武
+    pb_fantasy_equip take_off_equip = 4;                       //脱下幻武
+    repeated pb_fantasy_equip takeoff_blessed = 5;                       //脱下护佑幻武
+}
+
+// 幻/专武养成请求
+message pb_fantasy_equip_dev_req {
+    pb_fantasy_equip_id id = 1;                                 // 格子id
+    uint64 times = 2;                                           // 次数
+    repeated pb_fantasy_equip_id args = 3;                      //材料列表
+}
+// 幻/专武养成返回前台数据
+message pb_fantasy_equip_dev_rsp {
+    pb_res_to_client res = 1;                                   // 改变的资源
+    pb_fantasy_equip new_equip = 2;                             // 新的装备
+}
+
+
+// 请求合成（升品）
+message pb_fantasy_equip_composite_req {
+    pb_fantasy_equip_id id = 1;                                 //格子id
+    repeated pb_fantasy_equip_id materials = 2;                 //材料列表
+    repeated pb_fantasy_equip_raw raw_materials = 3;            // 白板材料列表
+}
+// 请求合成（升品）返回信息
+message pb_fantasy_equip_composite_rsp {
+    pb_res_to_client res = 1;                                   // 改变的资源
+    pb_fantasy_equip new_equip = 2;                             // 新的装备
+    repeated hero changed_hero = 3;                             //改变的英雄
+    uint32 over_value = 4;                                      // 溢出价值
+}
+
+// 幻/专武升级请求
+message pb_fantasy_equip_level_up_req {
+    pb_fantasy_equip_id id = 1;                                 // 格子id
+    repeated pb_res_obj costs = 2;                              // 材料列表
+}
+// 幻/专武升级返回前台数据
+message pb_fantasy_equip_level_up_rsp {
+    pb_res_to_client res = 1;                                   // 改变的资源
+    pb_fantasy_equip new_equip = 2;                             // 新的装备
+}
+
+
+// 一键穿戴幻武
+message pb_fantasy_equip_lineup_custom_req {
+    int64 hero_tid = 1;                                               //幻武穿戴的英雄
+    pb_fantasy_equip_id equip = 2;                                    //幻武标识
+    repeated pb_fantasy_equip_id bless_equip = 3;                     //护佑的幻武标识
+    uint64 lineup_type = 4;                                           //阵容类型
+}
+// 编辑阵容临时幻武返回
+message pb_fantasy_equip_lineup_custom_rsp {
+    pb_lineup lineup = 1;       // 新阵容
+    pb_fantasy_equip_res equip_res = 2; // 新的幻武资源，可能会将普通幻武转为已培养幻武
+}
+
+// 一件穿戴包含阵容数据编辑(ur专武)
+message pb_fantasy_equip_lineup_one_key_req {
+    uint64 lineup_type = 4;                                     //阵容类型
+    repeated pb_fantasy_equip_one_key_lineup_custom equip_reqs = 1; // 幻武穿戴请求
+}
+message pb_fantasy_equip_one_key_lineup_custom {
+    int64 hero_tid = 1;                                               //幻武穿戴的英雄
+    pb_fantasy_equip_id equip = 2;                                    //幻武标识
+    repeated pb_fantasy_equip_id bless_equip = 3;                     //护佑的幻武标识
+}
+
+message pb_fantasy_equip_lineup_one_key_rsp {
+    repeated hero changed_hero = 1;                             //改变的英雄
+    pb_fantasy_equip_res equip_res = 2;                         //新的幻武资源，可能会将普通幻武转为已培养幻武
+    repeated pb_lineup lineup = 3;       // 新阵容
+}
+
+// 请求护佑
+message pb_fantasy_equip_bless_req{
+    pb_fantasy_equip_id equip = 1;                                    //幻武标识
+    repeated pb_fantasy_equip_bless_material bless_material = 2;              //护佑请求
+}
+
+// 请求护佑返回信息
+message pb_fantasy_equip_bless_rsp {
+    repeated pb_fantasy_equip equips = 1;                       //新的幻武装备(第一个是主装备,后面是护佑装备)
+    pb_res_to_client res = 2;                                   // 改变的资源
+    repeated hero changed_hero = 3;                             //改变的英雄
+    uint32 over_value = 4;                                      // 溢出价值
+}
+
+// 一键护佑幻武,可以是id或者是一件合成的请求
+message pb_fantasy_equip_bless_material{
+    pb_fantasy_equip_id equip = 1;                                    //幻武标识(如果没有则不赋值）
+    pb_fantasy_equip_composite_onekey_req composite_req = 2;         //合成请求（如果没有则不赋值）
+}
+
+// 一键合成幻武，只要有材料就合成
+message pb_fantasy_equip_composite_onekey_req{
+    int64 tid = 1;                                 //目标幻武tid
+    int64 target_quality = 2;                      //目标品质
+    int64 target_star = 3;                         //目标星级
+    repeated pb_fantasy_equip_id materials = 4;                 //材料列表
+    repeated pb_fantasy_equip_raw raw_materials = 5;            // 白板材料列表
+}
+
+// 幻武觉醒请求参数
+message  pb_fantasy_awakening_req {
+    pb_fantasy_equip_id equip = 1;                                    //幻武标识
+    repeated pb_res_obj cost_list = 2;                                //消耗道具材料
+}
+
+// 幻武抽设置心愿单
+message pb_fantasy_equip_draw_wish_req {
+    repeated uint32 wish_list = 1; // 心愿单
+}
+
+// 购买抽卡道具返回
+message pb_fantasy_equip_draw_buy_rsp {
+    pb_res_to_client res = 1;                                   // 改变的资源
+    pb_fantasy_draw  draw = 2;                                   // 抽卡信息
+}

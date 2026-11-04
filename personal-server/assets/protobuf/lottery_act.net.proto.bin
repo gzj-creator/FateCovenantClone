@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/lottery_act/lottery_act.db.proto.txt";
+import "core/db.db.proto.txt";
+import "general/res.db.proto.txt";
+
+// 参加活动返回数据
+message pb_lottery_act_ent_back{
+    pb_lottery_act info = 1; //活动数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 抽奖返回数据
+message pb_lottery_act_draw_back{
+    repeated pb_u64_kv lib_list = 1; //最新额外权重列表
+    pb_res_to_client res = 2; //资源改变
+    repeated pb_res_obj hit_well_list = 3; //抽中大奖的列表
+    repeated uint64 big_lib_list = 6; //当前抽中的大奖记录列表
+    repeated uint64 hit_lib_tid_list = 7; //本次抽中的库ID列表
+    repeated uint64 hit_big_lib_tid_list = 8; //本次抽中的大奖库ID列表
+}

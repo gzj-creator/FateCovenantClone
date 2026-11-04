@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+// 小卡池特殊商店 玩家数据
+message pb_bonus_shop_person {
+    repeated pb_bonus_shop_version version_list = 1; //版本列表
+}
+
+// 小卡池特殊商店 单挑商品记录
+message pb_bonus_shop_item {
+    int32 shop_tid = 1; //商品id
+    int32 shop_activation_times = 2; //激活次数
+    int32 shop_buy_times = 3; //购买次数
+}
+
+// 单个版本的商店数据
+message pb_bonus_shop_version {
+    uint32 version = 1; //版本号
+    repeated pb_bonus_shop_item shop_item_list = 2; //商品条目列表
+}

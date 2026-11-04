@@ -1,0 +1,4 @@
+syntax = "proto3";
+import "project/activity/custom_activity/custom_gift.db.proto.txt";
+import "general/res.net.proto.txt";
+

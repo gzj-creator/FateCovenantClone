@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 龙息试炼航会数据
+message pb_guild_explore_trial{
+    uint64 end_time = 1;                                            // 结束时间/秒
+    repeated pb_guild_explore_trial_boss boss_list = 2;             // boss列表
+}
+
+// 龙息试炼boss数据
+message pb_guild_explore_trial_boss{
+    uint32 tid = 1;                             // boss tid
+    uint64 cur_hp = 2;                          // 当前血量
+    uint32 map_node_id = 3;                     // 地图节点id
+    repeated pb_u64_kv hurt_list = 4;           // 伤害列表(key为玩家id，value为伤害值，从大到小有序，数量级较小)
+}
+
+// 龙息试炼个人数据
+message pb_guild_explore_trial_person{
+    pb_count_flush atk_info = 1;                                                // 挑战信息，每日重置
+    repeated pb_guild_explore_trial_receive receive_list = 2;                   // 奖励领取列表
+}
+
+// 龙息试炼领奖数据
+message pb_guild_explore_trial_receive{
+    uint32 map_node_id = 1;                     // 地图节点id
+    bool is_receive = 2;                        // 是否领取
+    uint64 last_receive_time = 3;               // 上次领取时间(用于计算领奖时间限制，宝藏结算时会清理领奖数据)
+}

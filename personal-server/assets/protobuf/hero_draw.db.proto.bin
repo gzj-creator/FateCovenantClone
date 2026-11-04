@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+import "core/db.db.proto.txt";
+
+// 招募信息
+message pb_hero_draw_info{
+    repeated pb_hero_recruit recruit_list = 1;          // 招募记录列表
+    repeated pb_hero_draw_achieve achieve_list = 2;     // 招募成就记录
+}
+
+// 英雄招募成就信息
+message pb_hero_draw_achieve{
+    uint32 tid = 1;                                      // 抽卡库tid
+    bytes award_state = 2;                               // 奖励领取记录
+}
+
+// 英雄招募信息
+message pb_hero_recruit{
+    uint32 tid = 1;                                      // 招募类型tid
+    uint32 free_count = 2;                               // 免费次数
+    uint32 daily_flush_time = 3;                         // 每日免费次数刷新时间
+    uint32 draw_count = 4;                               // 抽卡次数
+    uint32 guaranteed_count = 5;                         // 保底次数
+    uint32 high_guaranteed_count = 6;                    // 特殊保底次数
+    uint64 draw_lib = 7;                                 // 抽卡库
+    repeated pb_wish_hero wish_hero_list = 8;            // 心愿英雄列表
+    uint32 next_progress_award_index = 9;                // 下一个应该领取的进度奖励的索引
+    uint32 last_award_count = 10;                        // 上一次给奖励的抽卡次数
+    uint32 daily_draw_count = 11;                        // 每日抽卡次数
+    repeated uint32 wish_must_count = 12;                // 心愿必出次数
+    bool is_guaranteed_wish_hero = 13;                   // 是否保底心愿英雄了
+    repeated pb_u64_kv draw_num_kv_list = 14;            // 抽卡次数，使用抽卡类型作为数据记录的key值的记录这个数据
+    uint32 custom_choose_index = 15;                     // 新手定制英雄选择的第几种
+    uint32 daily_ssr_draw_num = 16;                      // 每日抽中SSR的次数
+    uint32 guaranteed_num_when_is_custom = 17;           // 本来是定制抽的，但是又触发了每40次必中SSR的次数
+    uint32 draw_num_index = 18;                          // 随机选择的索引
+    uint32 random_box_tid = 19;                          // 当前随机盒子的tid
+    uint32 random_box_day = 20;                          // 当前随机盒子的天数
+    repeated uint32 random_box_draw_list = 21;           // 已经抽取的随机盒子的记录
+    repeated uint64 latest_more_draw_list = 22;          // 最近N次抽到的分组，用于单抽反保底
+    uint32 last_double_count = 23;                       //上次双黄是在第几次
+    bool is_quick = 24;                                  //是否需要快速保底
+    uint32 daily_guarantee_double_num = 25;              // 每日保底双黄次数
+    repeated pb_wish_hero extra_wish_list = 26;          // 在前一个心愿列表全部抽中后使用的心愿列表
+    repeated uint32 hero_transfer_num = 27;              // 近10抽英雄碎片转化的情况，1表示转化了，0表示未转化
+    uint32 daily_can_draw_num = 28;                      // 每日可抽卡次数
+    uint32 daily_ssr_base_draw_num = 29;                      // 每日没抽中心愿的保底次数（跨天或者抽到心愿则重置）
+    uint32 data_version = 30;                            // 招募数据版本号
+}
+
+// 服务器抽卡信息
+message pb_draw_server_info{
+    uint64 draw_count = 1;                               // 抽卡次数
+    uint32 draw_double_gold_num = 2;                // 保底出双黄的次数
+    uint64 time_sec = 3;                                 // 该数据是哪一天的时间戳的数据
+}
+
+// 心愿英雄
+message pb_wish_hero{
+    uint64 tid = 1;         // 英雄tid
+    uint32 index = 2;       // 位置
+    uint32 draw_num = 3;    // 抽中的次数
+    uint32 weight = 4;      // 权重
+}
+
+// 特聘心愿单
+message pb_draw_wish_list{
+    repeated pb_draw_wish_support support_list = 1;  // 所有英雄
+}
+
+message pb_draw_wish_support{
+    uint64 lineup_type = 1;    // 阵容类型（不是战斗阵容类型，是招募心愿兑换表.xml推荐阵容配置的ID）
+    uint32 support_num = 2; // 支持数量
+}
+
+// 高级招募券购买信息
+message pb_draw_normal_buy_info{
+    uint64 flush_time = 1;      // 刷新时间
+    uint32 buy_max_num = 2;     // 当前最大购买次数
+}

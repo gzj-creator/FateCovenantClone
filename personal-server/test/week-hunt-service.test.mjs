@@ -10,7 +10,7 @@ import { createWalletService } from '../game/wallet-service.mjs';
 import { createWeekHuntService } from '../game/week-hunt-service.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const startDay = 20745;
 const atDay = day => day * 86400 - 10800 + 3600;
 

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+// 次数刷新信息
+message pb_count_flush{
+    uint32 flush_time = 1; //刷新时间
+    uint32 count = 2; //当前次数
+}
+
+// 次数列表刷新信息
+message pb_count_list_flush{
+    uint32 flush_time = 1; //刷新时间
+    repeated uint32 count_list = 2; //当前次数列表
+}
+
+// 在线跨天和跨天登录的自动刷新数据
+message pb_auto_flush {
+    uint64 last_time = 1;            // 上次刷新时间
+    repeated uint32 last_failed = 2; // 上次刷新失败的tid列表
+}

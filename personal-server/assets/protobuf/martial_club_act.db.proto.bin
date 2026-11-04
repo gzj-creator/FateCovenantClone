@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 武道馆活动数据
+message pb_role_martial_club_act {
+    bytes got_server_award = 1;  // 已领取的服务器奖励
+    bytes got_pass_award = 2;    // 已领取的首通奖励
+}

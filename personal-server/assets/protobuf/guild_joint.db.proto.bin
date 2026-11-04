@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+import "project/count_statistics/count_statistics.db.proto.txt";
+import "project/rank/rank.db.proto.txt";
+
+// 航会GVE航会数据
+message pb_guild_joint_guild{
+    uint32 score = 1;                                   //  航会GVE积分
+    repeated pb_guild_joint_pioneer pioneer_list = 2;   //  先锋列表
+    uint32 focus = 3;                                   //  集火目标
+    uint64 refresh_time = 4;                            //  先锋刷新时间
+    pb_count_statics_data stat_data = 5;                //  统计数据
+    repeated int64 auto_role_list = 6;         //开启自动的玩家id
+}
+
+message pb_guild_joint_pioneer{
+    uint32 index = 1;           //位置
+    uint64 role_id = 2;         //玩家id
+}
+
+
+// 航会GVE个人数据
+message pb_guild_joint_person{
+    uint64 refresh_time = 1;                            // 刷新时间戳
+    repeated uint32 box_list = 2;                       // 个人宝箱数据(存储map_node_id的列表)
+    pb_guild_joint_task task_data = 3;                  // 任务数据
+    uint32 pioneer_count = 4;                           // 额外的先锋次数
+    uint32 has_lode_time = 5;                           // 已经使用的占矿时间
+    uint64 lode_stage_time = 6;                         // 占矿周期开始时间，每次占矿更新，如果跨期则重置
+    uint32 lode_map_id = 7;                             // 占据的矿脉地图id
+    uint64 lode_start_time = 8;                         // 占矿开始时间
+    repeated pb_guild_joint_report report_list = 9;     // 战报数据列表
+    uint32 now_node = 10;                               // 当前正在处理的节点（用于城门持续战斗）
+    repeated pb_guild_joint_share_time share_list = 11; // 分享时间
+    pb_limit_lode_award_info limit_lode_award_info = 12; // 限时矿脉奖励获取信息
+}
+
+message pb_limit_lode_award_info{
+    uint64 refresh_time = 1;                            // 刷新时间戳
+    repeated pb_limit_lode_award limit_award_list = 2; // 限时矿脉奖励获取信息
+    uint32 limit_stone_count = 3;                       // 限时矿脉源石开采限制
+}
+
+message pb_guild_joint_share_time{
+    uint32 map_node_id = 1;
+    uint64 time = 2;
+}
+
+message pb_limit_lode_award{
+    uint64 tid = 1;        //奖励id
+    uint32 count = 2;      //奖励数量
+}
+
+//航会GVE个人循环数据
+message pb_guild_joint_role_map{
+    repeated pb_guild_joint_monster monster = 1;                 //个人怪物数据
+    repeated uint32 rev_box = 2;                                 //个人宝箱领取数据
+    repeated pb_guild_joint_door door = 3;                       //城门数据
+    bool is_finish = 4;                                          //是否通过区域
+}
+
+// 航会GVE任务数据
+message pb_guild_joint_task{
+    bytes guild_glory_task = 1;                     // 航会成就任务的领取状态（周期刷新）
+    bytes person_glory_task = 2;                    // 个人成就任务的领取状态（周期刷新）
+}
+
+// 航会GVE地图数据
+message pb_guild_joint_map{
+    repeated pb_guild_joint_monster monster_list = 1;   // 已操作过的怪物列表2430
+    repeated pb_guild_joint_door door_list = 2;         // 已操作过的城门列表1320
+    repeated pb_guild_joint_lode lode_list = 3;         // 已操作过的矿脉数据2430
+}
+
+// 航会GVE城门4+4+4+72+4=88*15
+message pb_guild_joint_door{
+    uint32 map_node_id = 1;                         // 地图节点id(X * 1000 + Y)
+    repeated pb_kick_role kick_list = 2;       // 攻击城门玩家
+    uint64 door_hp = 3;                             // 剩余耐久
+}
+
+message pb_kick_role{
+    uint64 role_id = 1;                             //玩家id
+    uint64 kick_time = 2;                           //攻击计时（结算后更新一次）
+    uint64 calc_power = 3;                          //计算伤害用战斗力
+}
+
+// 航会GVE怪物4+4+(4+8)*6+1 = 81*30
+message pb_guild_joint_monster{
+    uint32 map_node_id = 1;                         // 地图节点id
+    repeated hp_history histories = 2;              // 怪物继承血量 修改为直接配置血量，不再需要实际战斗和战斗中的血量继承
+    bool is_death = 3;                              // 是否死亡
+    uint64 now_hp = 4;                              // 改版后血量
+    uint64 max_hp = 5;                              // 最大血量
+    repeated pb_kick_role kick_list = 6;            // 攻击怪物玩家
+    uint64 heal_time = 7;                           // 上次回血时间
+}
+
+//战斗后的血量数据
+message hp_history{
+    uint32 loc = 1;                             //站位
+    uint64 hp = 2;                              //血量
+    uint64 max_hp = 3;                          //血量上限
+}
+
+//航海GVE矿脉数据4+4+(8+8)*5
+message pb_guild_joint_lode{
+    uint32 map_node_id = 1;                         // 地图节点id
+    repeated pb_role_lode role_list = 2;            // 占领矿脉的玩家数据
+    uint64 recover_stamp = 3;                       // 恢复时间戳
+    uint64 left_num = 4;                            // 剩余采集量
+    uint64 update_stamp = 5;                        // 数据更新时间戳(计算剩余量)
+    uint64 end_stamp = 6;                           // 结束时间戳
+}
+
+//玩家占矿数据
+message pb_role_lode{
+    uint64 role_id = 1;         // 玩家id
+    uint64 end_time_sec = 2;    // 占矿结束时间戳
+    bool is_end = 3;            // 是否结束
+    uint64 calc_stamp = 4;      // 计算时间戳
+}
+
+//航会GVE服务器数据
+message pb_guild_joint_server{
+    uint32 version = 1;                                   // 运行期数
+    uint64 start_time = 2;                                // 周期开始时间
+    uint64 end_time = 3;                                  // 周期结束时间
+    uint64 next_start_time = 4;                           // 下次周期开始时间（中间有间隔，需要根据服务器计算）
+    uint32 settle_version = 5;                            // 排行榜结算期数
+    repeated uint64 day_power = 6;                        // 标准战力列表(周期刷新时清空，更新时头部插入，使用时需先反转一下)
+    uint64 ref_day = 7;                                   // 战力刷新天
+}
+
+//玩家贡献数据列表
+message pb_guild_role_rank_list{
+    repeated pb_guild_role_rank rank_list = 1;
+}
+
+//玩家贡献数据
+message pb_guild_role_rank{
+    uint64 role_id = 1;         //玩家id
+    uint32 use_times = 2;       //值
+}
+
+//战报数据
+message pb_guild_joint_report{
+    uint64 role_id = 1;         //玩家id
+    uint32 result = 2;          //战斗结果（胜利|失败）
+    uint32 enemy_id = 3;        //敌对方id（map_node_id）
+    uint32 duct_hp = 4;         //敌对方掉血百分比
+    uint64 fight_time = 5;      //战斗时间
+    uint64 report_id = 6;       //战报id
+}
+
+//龙息战场资格定榜数据
+message pb_guild_joint_rank{
+    repeated pb_rank_obj rank_list = 1;   //单个数据列表
+}
+
+message pb_joint_mission_fight_req{
+    uint32 map_node_id = 1;     //地图节点
+    uint32 type = 2;            //战斗类型
+}
+
+//航会GVE公会日志结构
+message pb_guild_joint_log{
+    uint64 role_id = 1;             //玩家id
+    uint32 version = 2;             //版本号
+    uint32 map_node_id = 3;         //地图节点id
+    uint64 time = 4;                //时间戳
+}

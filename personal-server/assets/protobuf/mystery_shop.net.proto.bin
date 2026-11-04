@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "project/mystery_shop/mystery_shop.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 手动刷新回复
+message pb_mystery_shop_manual_refresh_back{
+    pb_mystery_shop shop = 1;           // 商店数据
+    pb_res_to_client res_change = 2;   // 资源改变信息
+}

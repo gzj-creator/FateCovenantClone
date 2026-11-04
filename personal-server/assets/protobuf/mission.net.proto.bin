@@ -1,0 +1,79 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/mission.db.proto.txt";
+import "general/res.db.proto.txt";
+import "project/task.net.proto.txt";
+import "project/task.db.proto.txt";
+
+//通信后台返回前台的关卡数据
+message mission_to_client{
+	pb_res_to_client res = 3;								//资源改变
+	int64 fight_result = 4;								//战斗结果
+	pb_mission_conversation conversation = 6;		// 大橘大数据
+	pb_role_mission_meal mission_meal = 7;			// 领饭数据
+	pb_mission mission = 8; 						// 主线数据
+	bool is_boss = 9; // 是否是打的BOSS
+	int32 boss_tid = 10; // 当前打的BOSS
+	pb_mission_boss_pass_item boss_pass_item = 11; //打BOSS通关后返回通关人数数据
+}
+
+//通信返给前台的关卡记录信息
+message mission_record_to_client{
+	repeated mission_record_info infos = 1;				//通关记录列表
+}
+
+//通关记录信息
+message mission_record_info{
+	mission_pass_info info = 1;
+	bytes name = 2;
+	bytes alliance_info = 3;                    //联盟信息
+	int32 icon_tid = 4;                      //头像id
+}
+
+// 扫荡请求
+message pb_mission_sweep_passed_req {
+	uint32 tid = 1;		// 扫荡配置表tid
+	uint32 times = 2;	// 扫荡次数
+}
+
+// 扫荡返回
+message pb_mission_sweep_passed_rsp {
+	pb_res_to_client changes = 1;
+	repeated pb_mission_sweep_once sweep_award = 2;
+}
+
+// 单次扫荡奖励
+message pb_mission_sweep_once {
+	repeated pb_res_obj award = 1;
+}
+
+// 请求领取包子奖励返回
+message pb_mission_meal_rsp {
+	pb_role_mission_meal meal = 1; // 领取情况
+	pb_res_to_client res_change = 2; // 资源变化情况
+}
+
+// 通用关卡数据返回
+message pb_mission_rsp {
+	pb_mission mission = 1; // 关卡数据
+	pb_res_to_client res_change = 2; // 资源变化情况
+}
+
+// 一键领取主线相关奖励
+message pb_mission_one_key_reward_req {
+	repeated uint32 box_tids = 1; // 要领取的宝箱tid
+	repeated uint32 common_task_tids = 2; // 要领取的普通任务tid
+}
+
+// 一键领取主线相关奖励返回
+message pb_mission_one_key_reward_rsp {
+	pb_common_task common_task = 1; //通用任务数据
+	pb_mission mission = 2; // 关卡数据
+	pb_res_to_client res_change = 3; // 资源变化
+}
+
+// 手动兑换返回
+message pb_energy_manual_buy_rsp {
+	pb_res_to_client res = 1;		//资源改变
+	pb_energy_manual_buy buy = 2;	//手动兑换数据
+}

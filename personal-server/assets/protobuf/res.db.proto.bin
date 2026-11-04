@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// 资源基础对象（基类）
+message pb_res_obj {
+    int64 tid = 1;
+    int64 num = 2;
+}
+
+// 资源操作的来源信息选填信息
+message pb_res_src {
+    int32 src_type = 1;  // 资源的来源类型
+    int64 src_value = 2; // 来源数据
+}
+
+// 资源添加/扣除的参数信息（可用于写入数据库或通信）
+message pb_res_arg {
+    int64 tid = 1;      // 资源tid
+    uint64 num = 2;     // 添加或扣除数量
+    bytes extra = 3;    // 自定义附加数据
+    uint64 flag = 4;    // 参数标志
+    pb_res_src src = 5; // 来源信息
+}

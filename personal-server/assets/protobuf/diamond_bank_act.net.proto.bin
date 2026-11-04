@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "project/activity/diamond_bank_act/diamond_bank_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//钻石储蓄活动基础请求
+message pb_diamond_bank_act_base_req {
+   int64 act_id = 1;    //活动id
+   repeated int64 value = 2;     //值
+}
+
+//钻石储蓄任务返回
+message pb_diamond_bank_act_task_rsp {
+     pb_diamond_bank_act_role_data role_data = 1;
+     pb_res_to_client res = 2; // 改变量列表
+}
+
+//钻石储蓄跨天返回
+message pb_diamond_bank_act_cross_rsp {
+     pb_diamond_bank_act_role_info role_info = 1;
+     pb_res_to_client res = 2; // 改变量列表
+}

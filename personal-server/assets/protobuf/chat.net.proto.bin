@@ -1,0 +1,132 @@
+syntax = "proto3";
+import "project/msg/chat/chat.db.proto.txt";
+import "project/hero/hero_lease/hero_lease.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//聊天登陆消息
+message pb_res_chat_login {
+    pb_chat_ban_state ban_state = 1; //禁言状态
+    int32 cancel_ban_time = 2; //取消禁言时间
+    bytes tips_setting = 3;  //聊天提示设置
+}
+
+//私聊频道数据
+message pb_private_chat_channel{
+    int64 channel_id = 1; //频道ID
+    int64 target = 2; //目标角色ID
+}
+
+//请求发送私聊消息
+message pb_req_send_msg_to_role {
+    int64 target_role_id = 1; //目标角色ID
+    pb_chat_msg_content content = 2; //消息内容
+}
+
+//请求禁言自己
+message pb_req_ban_self{
+    repeated pb_chat_ban_proof proof_list = 1; //证据列表
+}
+
+// 玩法结算荣誉推送
+message pb_msg_guild_play_settle_rev {
+    repeated pb_msg_guild_settle_info guild_info = 1; // 头部航会信息(有序)
+    uint64 play_id = 2; // 玩法ID
+    uint64 self_rank = 3; // 自己的排名
+    string self_name = 4; // 自己的名字
+}
+
+message pb_msg_guild_settle_info {
+    uint64 guild_id = 1;        // 公会ID
+    string guild_name = 2;      // 公会名字
+    uint64 badge = 3;           // 公会徽章
+}
+
+// 公会多角色信息
+message pb_msg_guild_multi_role {
+    repeated pb_msg_guild_role role_list = 1; // 角色列表
+    bytes param = 2; // 参数
+}
+
+// 推送聊天角色信息
+message pb_msg_guild_role {
+    string role_name = 1; // 角色名字
+    uint64 role_id = 2; // 角色ID
+}
+
+// 推送角色事件
+message pb_msg_guild_role_event {
+    uint64 role_id = 1; // 角色ID
+    uint64 param = 2; // 参数
+    string name = 3; // 名字
+}
+
+// 公会租借英雄信息
+message pb_msg_guild_lease_hero {
+    uint64 src = 1; // 发起方
+    uint64 dst = 2; // 接收方
+    pb_lease_hero hero = 3; // 租借英雄
+    string src_name = 4; // 发起方名字
+    string dst_name = 5; // 接收方名字
+}
+
+// 公会职位变更
+message pb_msg_guild_change_job {
+    uint64 src = 1; // 发起方
+    uint64 dst = 2; // 接收方
+    string src_name = 3; // 发起方名字
+    string dst_name = 4; // 接收方名字
+    uint64 job = 5; // 职位
+}
+
+// 进行点赞请求
+message pb_msg_like_req {
+    uint64 channel_id = 1;
+    uint64 index = 2;
+}
+
+// 进行点赞返回
+message pb_msg_like_rsp {
+    pb_role_msg_channel_like_award_record record = 1;
+    pb_res_to_client res = 2;
+}
+
+// 聊天分享道具
+message pb_chat_share_item {
+    int64 tid = 1; // 物品tid
+    int64 num = 2; // 物品数量
+}
+
+// 聊天分享排行榜
+message pb_chat_share_rank {
+    uint64 rank_id = 1; // 排行榜id
+    uint32 rank = 2; // 排名
+}
+
+// 聊天分享成就榜
+message pb_chat_share_achieve {
+    uint32 achieve_id = 1; // 成就榜id
+}
+
+// 聊天分享竞技场
+message pb_chat_share_arena {
+    uint64 role_id = 1; // 玩家id
+    uint32 rank = 2; // 排名
+    uint32 score = 3; // 分数
+    string stage = 4; // 段位
+    uint32 win_rate = 5; // 胜率
+}
+
+// 聊天分享黄金国度战报
+message pb_chat_share_guild_nation_report {
+    uint64 role_id = 1; // 玩家id
+    uint64 report_uid = 2; // 战报uid
+    uint32 report_tid = 3; // 战报tid
+    uint32 atk_fight_result = 4; // 事件结果
+}
+
+// 聊天分享砍价商人
+message pb_chat_share_guild_bargain {
+    uint64 role_id = 1; // 玩家id
+    uint64 bargain_price = 2; // 砍价金额
+    uint32 remain_count = 3; // 还剩几人
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/recharge/regular_gift/regular_gift.db.proto.txt";
+
+
+//商城礼包登陆数据
+message res_regular_gift_login {
+    repeated regular_gift gift_list = 1; //商城礼包数据列表
+}
+
+//FIXME by liangc:这里为什么不直接用'pb_res_to_client'?
+//领取免费礼包回调
+message res_rev_free_regular_gift {
+    pb_res_to_client res = 1; //资源改变
+}

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+// 战斗三消角色装备信息
+message pb_battle_tri_match_role_equip_data{
+  repeated pb_battle_tri_match_equip_data equips = 1; //装备列表
+}
+
+// 战斗三消装备数据
+message pb_battle_tri_match_equip_data{
+  int64 site_idx = 1; // 槽位idx
+  repeated pb_battle_tri_match_single_equip_data equips = 2; // 槽位装备列表
+}
+
+// 战斗三消单个槽位装备数据
+message pb_battle_tri_match_single_equip_data{
+  int64 equip_type_tid = 1; // 装备类型tid
+  int64 level_tid = 2; // 装备等级tid
+}

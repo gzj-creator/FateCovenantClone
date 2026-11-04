@@ -17,7 +17,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const heroTables = readHeroTables(), tables = readGameTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const TEAM_TID = 100;
 const TEAM_HEROES = heroTables.TeamSuggest.get(TEAM_TID).suggest_hero.map(row => Number(row[0]));

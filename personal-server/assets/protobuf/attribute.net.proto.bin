@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+import "project/attribute/attribute.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 一个阵容的属性数据
+message pb_attr_lineup_all{
+    uint32 lineup_type = 1;                      // 阵容类型
+    repeated pb_attr_final_item attr_list = 2;   // 所有的属性实体的最终属性信息集合
+    uint64 lineup_power = 3;                     // 阵容战力
+    repeated pb_attr_team_power team_power_list = 4;  // 队伍战力，多队伍阵容才有这个
+}
+
+// 队伍战力信息
+message pb_attr_team_power{
+    uint32 team_id = 1;             // 队伍ID
+    uint64 power = 2;               // 战力
+}
+
+// 一个养成玩法的属性数据
+message pb_attr_play{
+    uint32 play_type = 1;                           // 玩法类型，比如英雄基础、装备、神器等待
+    repeated pb_attr_lineup source_attr_list = 2;   // 根据当前的阵容合并后的属性，可能包含多个阵容
+}
+
+// 单个对象（英雄或宠物）的属性数据
+message pb_attr_obj{
+    uint64 tid = 1;                             // 缓存数据tid，实际是英雄或者宠物的TID
+    repeated pb_attr_play attr_play_list = 2;   // 各个玩法提供的属性列表，作为计算最终属性的数据来源
+    uint64 last_use_time = 3;                   // 上一次使用的时间，用于整理过期数据，从缓存中移除掉
+}
+
+// 阵容属性
+message pb_attr_lineup{
+    uint32 lineup_type = 1;                         // 阵容类型
+    repeated pb_attr_item attrs = 2;                // 属性
+    repeated uint64 skills = 3;                     // 技能TID列表
+    repeated pb_attr_team team_attr_list = 4;       // 队伍属性
+    repeated pb_attr_sub sub_attr_list = 5;         // 子类型属性(一个模块需要拆成若干个子模块进行收集才用这个字段)
+}
+
+// 阵容所有属性信息，包含原始属性的
+message pb_attr_lineup_all_info{
+    repeated pb_attr_obj attr_list = 1;     // 所有实体的原始属性
+    pb_attr_lineup_all lineup_attr = 2;     // 阵容属性
+}
+
+// 阵容所有属性信息，包含原始属性的(GM战力对比用)
+message pb_attr_lineup_all_info_test{
+    repeated pb_attr_obj attr_list = 1;     // 所有实体的原始属性
+    pb_attr_lineup_all lineup_attr = 2;     // 阵容属性
+    repeated pb_u64_kv tid_power_list = 3;   // tid和战力的映射里诶包
+}
+
+
+// 子类型属性
+message pb_attr_sub {
+    uint64 type = 1;
+    repeated pb_attr_item attrs = 2;
+    repeated uint64 skills = 3;
+}

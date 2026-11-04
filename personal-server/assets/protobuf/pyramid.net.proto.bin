@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "project/activity/pyramid/pyramid.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 抽奖后返回数据
+message pb_pyramid_draw_back {
+    pb_pyramid info = 1; //活动数据
+    pb_res_to_client res = 2; //资源数据
+    bool is_special = 3; //是否是特殊奖励
+    uint32 award_index = 4; //所得奖励在该层的索引位置
+    bool is_next_ceil = 5; //是否进入新一层
+    bool is_next_round = 6; //是否进入新一轮
+}
+
+// 战斗返回
+message pb_pyramid_fight_rsp{
+    pb_res_to_client res = 1; //资源数据
+    pb_pyramid_pve pyramid_pve = 2; // 战斗活动数据
+    pb_pyramid_act_pass pass_info = 3; // 通关数据
+}
+
+// 任务领奖返回
+message pb_pyramid_task_rsp{
+    pb_res_to_client res = 1; //资源数据
+    pb_pyramid_task task_info = 2; // 任务数据
+}

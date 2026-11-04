@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+// 一个实体的最终属性信息
+message pb_attr_final_item{
+    uint64 tid = 1;                               // 属性实体的TID，一个阵容里所有属性实体的tid都不能重复
+    repeated pb_attr_item fight_attr_list = 2;    // 单个属性实体所有的最终属性数据
+    repeated uint64 skills = 3;                   // 战斗中使用的技能tid列表
+    repeated pb_attr_team team_attrs = 4;         // 队伍属性（主角才有这个）
+    repeated pb_attr_item base_attr_list = 5;     // 单个属性实体最终基础属性数据（只有英雄的攻(物/法)防血基础属性）
+}
+
+// 队伍属性
+message pb_attr_team{
+    uint32 team_id = 1;                             // 队伍id
+    repeated pb_attr_item attrs = 2;                // 属性
+    repeated uint64 skills = 3;                     // 技能TID列表
+}
+
+// 单条属性
+message pb_attr_item{
+    uint32 key = 1;
+    uint64 value = 2;
+}

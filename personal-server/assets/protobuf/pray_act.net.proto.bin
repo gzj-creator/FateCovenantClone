@@ -1,0 +1,44 @@
+syntax = "proto3";
+import "project/activity/pray_act/pray_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 请求设置奖励
+message pb_pray_act_select_award_req {
+    uint64 act_tid = 1; // 活动配置表tid
+    repeated pb_pray_index_award index_award_list = 2; // 挡位奖励列表
+}
+
+message pb_pray_act_select_award_rsp {
+}
+
+message pb_pray_index_award {
+    int64 pray_index_tid = 1; // 挡位tid
+    int64 award_tid = 2; // 奖励选择tid
+}
+
+// 请求抽取
+message pb_pray_act_draw_award_req {
+    uint64 act_tid = 1; // 活动配置表tid
+    int64 cnt = 2;	// 次数
+}
+
+message pb_pray_act_draw_award_rsp {
+    pb_pray_act pray_act_info = 1; // 所有进度数据
+    pb_res_to_client res = 2; //资源变化
+    repeated pb_pray_draw_times draw_critical_list = 3; // 抽取暴击信息
+}
+
+// 抽取次数信息
+message pb_pray_draw_times {
+    int64 draw_cnt = 1; // 抽取第几次
+    repeated pb_pray_draw_info draw_info = 2; // 抽取的暴击信息
+}
+// 抽取暴击信息
+message pb_pray_draw_info {
+    int64 pray_index = 1; // 挡位id
+    int64 selected_tid = 2; // 选择的奖励tid
+    bool is_direct = 3; // 是否直出
+    bool is_award = 4; // 是否拿到奖励
+    bool is_critical = 5; // 是否暴击
+    int64 progress_val = 6; // 暴击加的进度值
+}

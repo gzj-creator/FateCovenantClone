@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+
+// 请求激活徽章
+message pb_badge_active_req {
+  repeated uint64 tid_list = 1; // 激活列表
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 直购皮肤活动 - 玩家数据
+message pb_buy_skin_person{
+    int32 act_id = 1; // 活动id
+    pb_recharge_limit_info record = 2;          // 付费购买记录
+    repeated pb_buy_skin_free_award free_award = 3; //免费奖励领奖记录
+}
+
+// 免费奖励领奖时间
+message pb_buy_skin_free_award {
+    int32 item_id = 1; //id
+    int64 time_sec = 2; //领取时间（不补发，不补领，持续多久，每天能领一次）
+}

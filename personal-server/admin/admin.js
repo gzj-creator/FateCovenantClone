@@ -1,3 +1,5 @@
+import { createPendingRequest } from './pending-request.js';
+
 const $ = id => document.getElementById(id);
 const fromHash = new URLSearchParams(location.hash.slice(1)).get('key');
 let token = fromHash || sessionStorage.getItem('fc-admin-key') || '';
@@ -181,12 +183,15 @@ async function submit(form, path, getData, kind, success) {
   button.disabled = true;
   try {
     const data = getData();
-    const signature = JSON.stringify(data);
-    let record = pending[kind];
-    if (!record || record.signature !== signature) {
-      record = { signature, payload: { ...data, request_id: crypto.randomUUID() } };
-      pending[kind] = record;
-    }
+    const signatureData = kind === 'voucher'
+      ? { ...data, days: Number($('voucher-days').value) }
+      : data;
+    const record = createPendingRequest(data, pending[kind], {
+      ignoredKeys: kind === 'voucher' ? ['expire_at'] : [],
+      signatureData,
+      requestId: () => crypto.randomUUID()
+    });
+    pending[kind] = record;
     const result = await api(path, record.payload);
     pending[kind] = null;
     try { await load(); } catch {}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+
+// 专精升级返回
+message pb_hero_mastery_level_up_rsp {
+    hero hero = 1;
+    pb_res_to_client res = 2;           // 改变的资源
+}
+
+// 专精突破请求
+message pb_hero_mastery_break_rsp {
+    hero hero = 1;
+    pb_res_to_client res = 2;           // 改变的资源
+}

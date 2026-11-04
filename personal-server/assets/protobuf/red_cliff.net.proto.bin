@@ -1,0 +1,44 @@
+syntax = "proto3";
+import "project/red_cliff/red_cliff.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/shop.db.proto.txt";
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+
+// 战斗执行结果
+message pb_red_cliff_fight_result {
+    pb_red_cliff_data_to_client data_to_client = 1;                         // 新关卡数据
+    pb_res_to_client res_change = 2;                             // 奖励(包含战斗奖励和星级奖励)
+    bool has_star_award = 3;                                      // 是否含有星级奖励
+    int32 add_points = 4;                                        // 新增挑战积分
+}
+
+// 宝箱领奖结果
+message pb_red_cliff_box_result {
+    pb_red_cliff_data_to_client data_to_client = 1;                         // 新关卡数据
+    pb_res_to_client res_change = 2;                              // 奖励
+    pb_shop_info shop_info = 3;                                   // 通关商店数据，通关时才有
+}
+
+// 发送前台的关卡数据
+message pb_red_cliff_data_to_client{
+    pb_red_cliff_data red_cliff_data = 1;                         // 新关卡数据
+    repeated pb_lineup_snapshot snapshot_list = 2;                // 对手阵容镜像数据
+}
+
+// 云中遗迹小助手推图返回
+message pb_red_cliff_assistant_mission_back{
+    pb_red_cliff_data_to_client data_to_client = 1;                         // 新关卡数据
+    repeated pb_red_cliff_assistant_mission mission_list = 2;               // 推图数据列表
+    bool is_go_on = 3;  // 是否继续
+}
+
+// 云中遗迹小助手推图数据
+message pb_red_cliff_assistant_mission{
+    uint32 type = 1;                        // 类型
+    pb_res_to_client res_change = 2;        // 资源改变(战斗和宝箱使用)
+    bool has_star_award = 3;                // 是否含有星级奖励(战斗使用)
+    pb_shop_info shop_info = 4;             // 通关商店数据，通关时才有(最后一关的宝箱使用)
+    uint64 buff_id = 5;                     // 选择的buff id(buff类型使用)
+    uint32 challenge_star = 6;              // 挑战星级(战斗使用)
+    uint32 challenge_mission = 7;           // 挑战关卡数(战斗使用)
+}

@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+import "project/activity/summer_act/summer_pve/summer_act_pve.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 夏日活动pve更新数据
+message pb_summer_act_pve_update {
+  pb_res_to_client res = 1;         // 资源变化
+  pb_summer_act_pve_role role = 2;  // 角色数据
+}
+
+// 夏日活动pve请求领取试炼任务
+message pb_summer_act_task_award_req {
+  repeated uint32 tid = 1; // 任务表tid列表
+  uint64 act_tid = 2; // 活动tid
+}
+
+// 夏日活动pve购买试炼次数
+message pb_summer_act_pve_buy_times_req {
+  repeated pb_summer_act_trial_buy_times_info buy = 1; // 购买次数信息
+  uint64 act_tid = 2;// 活动tid
+}
+
+// 夏日活动爬塔战斗请求
+message pb_summer_act_pve_tower_fight {
+  uint64 act_tid = 1; // 活动tid
+  uint32 phase = 2; // 阶段
+  uint64 level_tid = 3; // 关卡tid
+}
+
+// 夏日活动试炼战斗请求
+message pb_summer_act_pve_trial_fight {
+  uint64 act_tid = 1; // 活动tid
+  uint64 level_tid = 2; // 关卡tid
+}
+// 夏日试炼战斗返回
+message pb_summer_act_pve_trial_fight_rsp {
+  pb_res_to_client res = 1;         // 资源变化
+  pb_summer_act_pve_role role = 2;  // 角色数据
+  uint64 damage_hp_percent = 3;     // 伤害血量万分比(最后一关可能会超过1w)
+  uint64 damage = 4;                // 本次伤害
+  uint32 rank = 5;                  // 自己最新排名
+}
+
+// 夏日活动试炼设置额外掉落标志
+message pb_summer_act_pve_set_award_drop {
+  uint64 act_tid = 1; // 活动tid
+  bool choose_extra_award = 2; // 是否选择额外奖励
+}

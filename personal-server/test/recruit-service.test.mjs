@@ -22,7 +22,7 @@ const tables = readGameTables();
 const heroTables = readHeroTables();
 const fantasyEquipTables = readFantasyEquipTables();
 const leaderEquipTables = readLeaderEquipTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const now = () => Date.UTC(2026, 9, 29, 12, 0, 0) / 1000;
 
 function fixture() {

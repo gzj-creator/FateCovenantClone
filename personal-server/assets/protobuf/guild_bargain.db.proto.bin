@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+// 航会砍价数据
+message pb_guild_bargain_guild{
+    int32 gift_tid = 1;                                   //  航会砍价商品tid(航会行商礼包权重表的tid)
+    int32 bargain_param_tid = 2;                          //  记录砍价公会参数tid，公会升级读取最新人数，该字段当前废弃
+    int32 current_price = 3;                              //  当前价格，可能为负数
+    repeated pb_guild_bargain_info bargain_list = 4;      //  砍价列表
+    uint64 refresh_time = 5;                              //  商品刷新时间
+    int32 bargain_price_tid = 6;                          //  记录砍价价格组tid
+}
+
+// 砍价信息
+message pb_guild_bargain_info{
+    uint64 role_id = 1;                          //  砍价人
+    int32 bargain_price = 2;                    //  砍价价格
+    uint64 bargain_time = 3;                    //  砍价时间
+    bool has_bought = 4;                         //  是否购买
+}
+
+message pb_guild_bargain_person{
+    uint64 buy_time = 1;                            // 购买时间戳
+    uint64 bargain_time = 2;                        // 砍价时间戳
+    int32 buy_price = 3;                            //  购买价格
+}

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+
+// 接水管游戏数据
+message pb_pipe_connect_game {
+    uint32 flush_time = 1; //地图刷新时间
+    uint32 map_id = 2;          // 地图id
+    bytes map_bin = 3;         // 地图数据
+    uint32 step_count = 4;      // 步数
+    uint32 block_id = 5;        // 当前方块id
+    uint32 award_time = 6;      // 奖励领取时间
+    uint32 version = 7;         // 活动版本信息
+    uint32 activity_start_time = 8; // 活动开始时间
+    bool is_settle = 9;         // 是否已结算
+    uint32 step_history = 10;         // 历史最佳步骤
+}

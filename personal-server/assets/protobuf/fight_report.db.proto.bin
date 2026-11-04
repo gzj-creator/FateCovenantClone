@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+import "project/lineup.db.proto.txt";
+import "project/artifact.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/wear/relic/relic.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 战报轻量数据（用于缓存、逻辑传递，预估最小32个字节，有额外数据预计在128个字节以内）
+message pb_fight_report_light{
+    int64 id = 1; // 战斗Id
+    int64 tid = 2; // 战斗Tid
+    int64 type = 3; // 战斗类型
+    int64 time = 4; // 战报时间/秒
+}
+
+// 战斗挑战记录
+message pb_fight_report_challenge{
+    repeated int64 fight_id_list = 1; // 战斗Id列表
+}
+
+// 通关记录列表
+message pb_fight_report_pass{
+    repeated int64 fight_id_list = 1; // 战斗Id列表
+}
+
+// 每日产生的战报记录
+message pb_fight_report_daily{
+    int64 zero_time = 1; // 零点时间
+    repeated int64 fight_id_list = 2; // 战斗Id列表
+}
+
+// 每天需要进行清理的战报
+message pb_fight_report_erase{
+    repeated int64 fight_id_list = 1; // 战斗Id列表
+    int64 report_count = 2; // 统计的战报数量
+    int64 update_time = 3; // 更新时间
+}
+
+// 通关记录
+message pb_pass_record {
+    repeated  pb_pass_info pass_info_list = 1; // 通关信息列表
+}
+
+// 通关信息
+message pb_pass_info{
+    uint32 pass_type = 1;   //通关类型
+    int64 fight_id = 2;     //战斗id
+    int64 role_id = 3;      //角色id
+    uint64 pass_score = 4; // 用作通关排序的分数，如通关时间、通关星级等
+    uint64 sub_pass_score = 5; // 用作通关排序的分数，如通关时间、通关星级等
+    pb_pass_lineup_info lineup_info = 6; // 通关阵容信息
+    pb_pass_info_show show_info = 7; // 通关信息显示信息
+    pb_pass_info_vote vote_info = 8; // 通关信息点赞信息
+}
+
+// 通关信息点赞信息
+message pb_pass_info_vote {
+    uint64 up_vote = 1; // 点赞数
+    uint64 down_vote = 2; // 踩数
+}
+
+// 通关记录玩家点赞信息
+message pb_pass_record_role_vote {
+    uint32 type = 1; // 通关记录表tid
+    repeated pb_pass_record_role_vote_info vote_info = 2; // 玩家点赞信息
+}
+message pb_pass_record_role_vote_info {
+    uint32 type = 1; // 通关记录类型tid
+    repeated uint64 up_vote = 2; // 点赞数
+    repeated uint64 down_vote = 3; // 踩数
+}
+
+
+// 通关信息显示信息
+// 纯显示信息，如通关时间，玩家当时的等级等
+// 如果需要显示的等级是实时的则使用玩家数据模块
+message pb_pass_info_show{
+    uint32 pass_time = 1; // 通关时间
+    uint32 level = 2;   // 玩家等级
+    uint64 power = 3;   // 玩家战力
+    uint32 rank_tid = 4; // 头衔tid
+}
+
+// 通关阵容信息
+// 根据策划需求增加字段
+message pb_pass_lineup_info {
+    pb_lineup lineup = 1; // 通关阵容
+    repeated pb_pass_lineup_info_detail detail_list = 2; // 通关阵容信息详情
+}
+
+// 通关阵容信息详情
+message pb_pass_lineup_info_detail {
+    uint32 type = 1;
+    bytes data = 2;
+}
+
+// 通关阵容信息英雄列表
+message pb_pass_lineup_info_hero_list {
+    repeated pb_pass_lineup_info_hero hero_list = 1;
+}
+message pb_pass_lineup_info_hero {
+    uint32 tid = 1;
+    uint32 star = 2;
+    uint32 breakthrough_level = 3;
+    uint32 level = 4;
+    uint32 quality = 5;
+    uint64 skin_tid = 6;
+}
+
+// 通关阵容信息圣约列表
+message pb_pass_lineup_info_artifact_list {
+    repeated pb_pass_lineup_info_artifact artifact_list = 1;
+}
+message pb_pass_lineup_info_artifact {
+    uint32 tid = 1;
+    uint32 star = 2;
+}
+
+// 通关阵容信息遗物列表
+message pb_pass_lineup_info_relic_list {
+    repeated pb_pass_lineup_info_relic relic_list = 1;
+}
+message pb_pass_lineup_info_relic {
+    uint64 uid = 1;
+    uint32 tid = 2;
+    uint32 star = 3;
+}
+
+// 通关记录站位
+message pb_pass_lineup_info_team_loc_list {
+    repeated pb_pass_lineup_info_team_loc team_list = 1;
+}
+
+message pb_pass_lineup_info_team_loc {
+    uint64 team_id = 1;
+    repeated pb_u64_kv loc_list = 2;
+}

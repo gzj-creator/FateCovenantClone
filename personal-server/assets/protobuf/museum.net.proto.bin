@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 收藏品领奖结构
+message pb_museum_req_list {
+    repeated pb_museum_req pb_museum_req_list = 1;
+}
+
+// 领取收藏品奖励结构
+message pb_museum_req {
+    int64 tid = 1;
+    int64 num = 2;
+}
+

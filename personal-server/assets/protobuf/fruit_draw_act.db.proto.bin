@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+// 水果抽奖系统数据
+message pb_fruit_draw_list {
+    repeated pb_fruit_draw_data draw_list = 1;              // 抽奖数据
+}
+
+// 单个活动抽奖数据
+message pb_fruit_draw_data {
+    int32 act_tid = 1;                                       // 活动id
+    int32 big_award = 2;                                     // 本期选择大奖
+    uint64 draw_num = 3;                                     // 总抽奖次数
+    uint64 continue_num = 4;                                 // 连抽抽奖次数（顺序计数，不论什么连抽，用于连抽次数间隔控制,server）
+    int32 multiple_cell_id = 5;                              // 多倍奖励格子id
+    repeated pb_fruit_draw_log draw_log_list = 6;            // 历史中奖次数信息
+    repeated int32 together_cell_id = 7;                     // 绑定抽格子组
+    uint64 real_draw_num = 8;                                // 真实抽奖次数
+}
+
+// 格子中奖信息用于保底
+message pb_fruit_draw_log {
+    int32 award_id = 1;                     // 奖励编号id
+    uint32 draw_num = 2;                    // 中奖时抽奖次数
+}

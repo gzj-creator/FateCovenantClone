@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 每日精选
+message pb_hundred_acc {
+    uint64 start_time = 1; // 达成条件的时间戳
+    repeated pb_hundred_acc_reward reward_list = 2; //组列表
+}
+
+message pb_hundred_acc_reward {
+    int32 group_id = 1; //组id
+    int32 day_index = 2; // 达成组条件的天数
+    repeated int32 reward_id_list = 3; //领取的奖励Id列表，对应百元累充奖励表Id
+    uint64 reward_time = 4; //上次领取奖励的时间
+}

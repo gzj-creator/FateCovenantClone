@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "project/role_back/role_back.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 获取可绑定老区列表
+message pb_rsp_role_back_get_all_bind_list
+{
+    repeated pb_role_back_bind binds = 1; // 可绑定老区列表
+}
+
+// 数据 + 资源
+message pb_rsp_role_back_info_res
+{
+    pb_role_back_new info = 1; // 数据
+    pb_res_to_client res = 2;
+}
+
+// 登录下发数据
+message pb_rsp_role_back_login
+{
+    pb_role_back_new role_info = 1; // 玩家数据
+    repeated pb_role_back_old binds = 2; // 老区列表
+}
+
+// 获取可绑定显示信息
+message pb_rsp_role_show_infos
+{
+    repeated pb_role_back_bind_show_info infos = 1;
+}

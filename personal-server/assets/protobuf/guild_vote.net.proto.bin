@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+
+import "project/guild_vote/guild_vote.db.proto.txt";
+
+
+// 投票请求
+message pb_guild_vote_req {
+  uint64 type = 1;  // 投票类型
+  uint64 vote = 2;  // 投票
+}

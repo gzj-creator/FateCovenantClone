@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+//加成改变
+message pb_addition_change{
+    repeated int32 add_list = 1; //增加的加成tid列表
+    repeated int32 remove_list = 2; //移除的加成tid列表
+}

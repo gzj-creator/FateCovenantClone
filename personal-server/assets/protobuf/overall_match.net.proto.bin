@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "project/overall_match/overall_match.db.proto.txt";
+
+// 请求开始全服匹配
+message pb_overall_match_start_req {
+    int32 match_type = 1;
+    int32 opt = 2;
+}
+
+// 开始匹配返回
+message pb_overall_match_start_rsp {
+    int32 match_type = 1;
+    int32 opt = 2;
+}

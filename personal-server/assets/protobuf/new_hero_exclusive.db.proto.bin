@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 剧情体验数据
+message pb_new_hero_exclusive_story{
+    bytes award_rev_states = 1;     // 活动期间每天的奖励领取状态
+    uint64 version = 2;             // 新增
+}
+
+// 新英雄抽卡活动
+message pb_new_hero_exclusive_draw{
+    uint64 draw_hero_tid = 1;       //当前选中英雄id
+    uint32 act_version = 2;         //当前版本号
+    repeated uint64 rev_hero_tid_list = 3; //已领取奖励的英雄tid列表
+    uint32 draw_num = 4;                        // 抽卡次数
+    repeated uint32 draw_awards = 5;            // 已经领奖进度tid列表
+    uint64 limit_draw_num = 6;  // 当前限时招募次数
+}
+
+// 礼包活动
+message pb_new_hero_exclusive_gift{
+    pb_recharge_limit_info limit_info = 1;  // 礼包限购信息
+    uint32 act_version = 2;         //当前版本号
+}
+
+// 剧情体验数据 - 新版本
+message pb_new_hero_exclusive_story_all{
+    repeated pb_new_hero_exclusive_story story_list = 1; // 剧情数据列表
+}
+
+// 新英雄抽卡活动 - 新版本
+message pb_new_hero_exclusive_draw_all{
+    repeated pb_new_hero_exclusive_draw draw_list = 1; // 抽奖数据列表
+}
+
+// 礼包活动 - 新版本
+message pb_new_hero_exclusive_gift_all{
+    repeated pb_new_hero_exclusive_gift gift_list = 1; // 礼包数据列表
+}

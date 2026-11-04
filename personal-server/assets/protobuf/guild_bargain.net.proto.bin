@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+import "project/guild_bargain/guild_bargain.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 获取商人信息返回
+message pb_guild_bargain_get_info_rsp{
+    pb_guild_bargain_guild info = 1;              // 公会商人信息
+    pb_guild_bargain_person personal_info = 2;    // 个人购买信息
+}
+
+// 发起砍价
+message pb_guild_bargain_req{
+    uint32 gift_tid = 1; // 礼物tid
+}
+
+// 发起砍价信息返回
+message pb_guild_bargain_rsp{
+    pb_guild_bargain_guild info = 1;              // 公会商人信息
+    pb_guild_bargain_person personal_info = 2;    // 个人购买信息
+}
+
+// 购买商品
+message pb_guild_bargain_buy_req{
+    uint32 gift_tid = 1; // 礼物tid
+}
+
+// 购买商品信息返回
+message pb_guild_bargain_buy_rsp{
+    pb_guild_bargain_guild info = 1;              // 公会商人信息
+    pb_res_to_client res = 2;                    // 资源
+}
+
+// 获取未砍价玩家列表
+message pb_guild_not_bargain_list_req{
+    uint32 gift_tid = 1; // 礼物tid
+}
+
+// 获取未砍价玩家列表
+message pb_guild_not_bargain_list_rsp{
+    repeated uint64 role_list = 1;                          //  砍价人
+}
+
+

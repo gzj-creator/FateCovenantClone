@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 活动数据列表
+message pb_finance_manage_act_data_list{
+    repeated pb_finance_manage_act_data list = 1;   // 活动数据列表
+}
+
+// 单期活动数据
+message pb_finance_manage_act_data{
+    uint32 act_id = 1;                      // 活动id
+    uint32 deposit_tid = 2;                 // 选择的产品tid(为0表示本期还未选择)
+    bool rebate_state = 3;                  // 当期是否已经获得了返利
+}

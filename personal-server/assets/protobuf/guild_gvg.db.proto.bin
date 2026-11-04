@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+import "project/count_statistics/count_statistics.db.proto.txt";
+import "project/rank/rank.db.proto.txt";
+
+// 航会GVG航会数据
+message pb_guild_gvg_guild{
+  uint32 map_id = 1;                                    //  地图id
+  uint32 score = 2;                                     //  航会GVG积分
+  uint32 focus = 3;                                     //  集火目标
+  pb_count_statics_data stat_data = 4;                  //  统计数据
+  repeated uint64 have_node_list = 5;                   //  占据的节点（用于计算领地范围）
+}
+
+// 航会GVG个人数据
+message pb_guild_gvg_person{
+  uint64 refresh_time = 1;                            // 刷新时间戳
+  repeated uint32 box_list = 2;                       // 个人宝箱数据(存储map_node_id的列表)
+  pb_guild_gvg_task task_data = 3;                    // 任务数据
+  repeated pb_guild_gvg_report report_list = 4;       // 战报数据列表
+  repeated pb_guild_gvg_share_time share_list = 5;    // 分享时间
+  repeated uint32 portal_list = 6;                    // 传送门列表
+  repeated pb_guild_gvg_team teams = 7;               // 玩家队伍列表
+}
+
+// 航会GVG玩家队伍数据
+message pb_guild_gvg_team{
+  uint32 team_id = 1;                                 // 队伍id
+  pb_gvg_injured_info injured_info = 2;               // 重伤信息
+  uint32 has_lode_time = 3;                           // 已经使用的占矿时间
+  uint64 lode_stage_time = 4;                         // 占矿周期开始时间，每次占矿更新，如果跨期则重置
+  uint32 lode_map_id = 5;                             // 占据的矿脉地图id
+  uint64 lode_start_time = 6;                         // 占矿开始时间
+  pb_gvg_limit_lode_award limit_lode_award_info = 7;  // 限时矿脉奖励获取信息
+  uint32 now_node = 8;                                // 当前正在处理的节点
+  uint32 tired_layer = 9;                             // 疲劳层数
+}
+
+//
+message pb_gvg_limit_lode_award{
+  uint64 refresh_time = 1;                            // 刷新时间戳
+  repeated pb_gvg_lode_award limit_award_list = 2; // 限时矿脉奖励获取信息
+}
+
+//
+message pb_guild_gvg_share_time{
+  uint32 map_node_id = 1;
+  uint64 time = 2;
+}
+
+message pb_gvg_lode_award{
+  uint64 tid = 1;        //奖励id
+  uint32 count = 2;      //奖励数量
+}
+
+// 航会GVG任务数据
+message pb_guild_gvg_task{
+  bytes guild_glory_task = 1;                     // 航会成就任务的领取状态（周期刷新）
+  bytes person_glory_task = 2;                    // 个人成就任务的领取状态（周期刷新）
+}
+message pb_guild_gvg_map_list{
+  repeated pb_guild_gvg_map map_list = 1;           // 地图列表
+}
+
+// 航会GVG地图数据
+message pb_guild_gvg_map{
+  uint32 tid = 1;                                     // 地图tid
+  repeated pb_guild_gvg_monster monster_list = 2;     // 怪物列表
+  repeated pb_guild_gvg_block block_list = 3;         // 城门列表
+  repeated pb_guild_gvg_lode lode_list = 4;           // 矿脉数据
+  repeated pb_guild_gvg_hold hold_list = 5;           // 据点列表
+  repeated pb_guild_gvg_map_guild guild_list = 6;     // 参与的航会数据
+}
+
+message pb_guild_gvg_map_guild{
+  uint64 guild_id = 1;          //参与的航会
+  uint32 born_node = 2;         //出生点
+}
+
+// 航会GVG据点
+message pb_guild_gvg_hold{
+  uint32 tid = 1;                                 // tid
+  uint32 map_node_id = 2;                         // 地图节点id(X * 1000 + Y)
+  repeated pb_gvg_guard_info guard_list = 3;      // 守卫列表
+  uint64 guild_id = 4;                            // 归属航会
+  bytes guild_name = 5;                           // 归属航会名称
+  repeated pb_gvg_role_team defense_list = 6;     // 驻守玩家
+  uint64 occupy_time = 7;                         // 占领时间(用于计算保护时间)
+  uint64 score_time = 8;                          // 积分结算时间
+  repeated pb_gvg_guard_kill_info kill_list = 9;  // 守卫击杀数据列表
+  repeated pb_gvg_role_team attack_list = 10;     // 正在攻击的玩家
+}
+
+// 航会GVG阻拦
+message pb_guild_gvg_block{
+  uint32 tid = 1;                                   // 怪物id
+  uint32 map_node_id = 2;                         // 地图节点id(X * 1000 + Y)
+  repeated pb_gvg_event_role kick_list = 3;        // 攻击城门玩家
+  uint32 door_hp = 4;                             // 剩余耐久
+}
+
+message pb_gvg_event_role{
+  uint64 role_id = 1;                             //玩家id
+  uint64 kick_time = 2;                           //攻击计时（结算后更新一次）
+  uint32 team_id = 3;                             //队伍id
+}
+
+// 航会GVG怪物4+4+(4+8)*6+1 = 81*30
+message pb_guild_gvg_monster{
+  uint32 tid = 1;                                   // 怪物id
+  uint32 map_node_id = 2;                           // 地图节点id
+  uint64 now_hp = 3;                                // 血量
+  repeated pb_guild_gvg_monster_rank rank_list = 4; // 排行信息
+  repeated pb_gvg_attack_role attack_list = 5;      // 攻击玩家列表
+}
+
+message pb_gvg_attack_role{
+  uint64 role_id = 1;                           // 玩家id
+  uint64 guild_id = 2;                          // 航会id
+  uint64 team_id = 3;                           // 队伍id
+  uint64 last_time = 4;                         // 上次攻击时间
+}
+
+message pb_guild_gvg_monster_rank{
+  uint64 guild_id = 1;                          // 航会id
+  uint64 damage = 2;                            // 造成伤害
+}
+
+//航海GVE矿脉数据4+4+(8+8)*5
+message pb_guild_gvg_lode{
+  uint32 tid = 1;             // 矿脉id
+  uint32 map_node_id = 2;     // 地图节点id
+  uint64 role_id = 3;         // 玩家id
+  uint64 end_time_sec = 4;    // 矿结束时间戳
+  uint32 team_id = 5;         // 队伍id
+}
+
+//玩家占矿数据
+message pb_guild_gvg_role_lode{
+  uint64 role_id = 1;         //玩家id
+  uint64 end_time_sec = 2;    //占矿结束时间戳
+  uint32 team_id = 3;         //队伍id
+}
+
+//航会GVE服务器数据
+message pb_guild_gvg_cross{
+  uint32 version = 1;                                   // 运行期数
+  uint64 start_time = 2;                                // 周期开始时间
+  uint64 end_time = 3;                                  // 周期结束时间
+  uint64 next_start_time = 4;                           // 下次周期开始时间（中间有间隔，需要根据服务器计算）
+  uint32 settle_version = 5;                            // 排行榜结算期数
+}
+
+//玩家贡献数据列表
+message pb_gvg_role_rank_list{
+  repeated pb_guild_gvg_role_rank rank_list = 1;
+}
+
+//玩家贡献数据
+message pb_guild_gvg_role_rank{
+  uint64 role_id = 1;         //玩家id
+  uint32 score = 2;           //周期内的积分
+}
+
+//战报数据
+message pb_guild_gvg_report{
+  uint64 role_id = 1;         //玩家id
+  uint32 result = 2;          //战斗结果（胜利|失败）
+  uint32 enemy_id = 3;        //敌对方id（map_node_id）
+  uint32 duct_hp = 4;         //敌对方掉血百分比
+  uint64 fight_time = 5;      //战斗时间
+}
+
+//航会GVE公会日志结构
+message pb_guild_gvg_log{
+  uint64 role_id = 1;             //玩家id
+  uint32 version = 2;             //版本号
+  uint32 map_node_id = 3;         //地图节点id
+  uint64 time = 4;                //时间戳
+}
+
+// 航会GVG重伤信息
+message pb_gvg_injured_info{
+  bytes role_name = 1;          // 攻击者玩家名字
+  uint64 injured_time = 2;      // 重伤时间
+  bool is_need_notice = 3;      // 是否需要提示
+}
+
+message pb_gvg_guard_kill_info{
+  uint64 guild_id = 1;      // 航会ID
+  bytes guild_name = 2;     // 航会名字
+  uint32 kill_num = 3;      // 击杀数量
+  uint64 kill_time = 4;     // 攻击时间
+}
+
+// 航会GVG守卫信息
+message pb_gvg_guard_info{
+  uint32 idx = 1;         // 守卫索引
+  uint64 hp = 2;          // 守卫血量
+  uint64 power = 3;       // 守卫战斗力
+}
+
+// 航会GVG驻守队伍信息
+message pb_gvg_role_team{
+  uint64 role_id = 1;     // 驻守玩家id
+  uint64 team_id = 2;     // 队伍id
+  uint64 guild_id = 3;    // 航会id
+}

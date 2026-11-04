@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+//渠道开关信息
+message pb_channel_switch{
+    string channel_id = 1;// 渠道Id
+    repeated pb_switch switch_list = 2;// 关闭的功能
+}
+
+// 服务器开关信息
+message pb_server_switch{
+    int32 server_id = 1;// 服务器Id
+    repeated pb_switch switch_list = 2;// 关闭的功能
+}
+
+// 开关信息
+message pb_switch{
+    int32 id = 1;// 开关id
+    int32 status = 2;// 开关状态 1：开启，0：关闭
+}

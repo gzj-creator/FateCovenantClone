@@ -1,0 +1,86 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/arena/swap_arena/swap_arena.db.proto.txt";
+
+import "project/rank/rank.net.proto.txt";
+
+// 登录
+message pb_swap_arena_login{
+  pb_swap_arena_role role_data = 1;//玩家数据
+  pb_swap_arena_fight_report_data report_data = 2; // 战报数据
+  uint32 rank = 3;//当前排名
+  repeated pb_swap_arena_bot_info bot_list = 4;//机器人列表
+}
+
+//匹配数据
+message pb_swap_arena_match_toc{
+  repeated pb_swap_arena_match match_list = 1;//对手列表：包括前10名选手
+}
+
+// 对手信息
+message pb_swap_arena_match{
+  uint32 rank = 1;//排名
+  uint64 role_id = 2;//角色id：等于0表示机器人
+}
+
+// 刷新匹配队列
+
+// 挑战请求
+message pb_swap_arena_fight_req{
+  uint32 rank = 1;//敌人的排名
+  uint64 role_id = 2;//敌人角色id：等于0表示机器人
+}
+
+// 战斗挑战奖励
+message pb_swap_arena_fight_award{
+  repeated pb_res_arg award_group = 1;// 当前奖励组
+  uint32 award_index = 2;// 奖励下标
+}
+
+// 挑战返回
+message pb_swap_arena_fight_toc{
+  pb_res_to_client res = 1; // 资源变化
+
+  // 【细节补充】挑战奖励, 一次排名奖励在不同的界面展示;
+  // 理论上来说前台可以自己的读配置的,和高山协商之后,高山更倾向于后台发给前台, 避免前后台计算的不一致
+  pb_swap_arena_fight_award fight_award = 2; // 挑战奖励
+  repeated pb_res_obj rank_award = 3; // 一次性排名奖励
+
+  repeated pb_swap_arena_match match_list = 4;//对手列表：包括前10名选手;如果列表为空，客户端就不需要刷新了
+  uint32 cur_rank = 5;//自己的排名
+  uint32 history_rank = 6;//历史最高排名
+
+  pb_swap_arena_fight_report fight_report = 7;
+
+  // 用来做排行榜滚动变化表现的数据
+  rank_to_client rank_info = 8; // 排行榜数据
+  rank_info old_rank_info = 9; // 自己的老的排行榜数据
+  uint32 start_rank = 10; // 排行榜列表开始排名
+}
+
+// 排名变化信息
+message pb_swap_arena_rank_chang_toc{
+  uint32 last_rank = 1;//变化前的排名
+  uint32 cur_rank = 2;//变化后的排名
+  pb_swap_arena_fight_report fight_report = 3;  // 新增战报数据
+  repeated pb_swap_arena_match match_list = 4;//对手列表：包括前10名选手
+}
+
+// 一键领取排名奖励
+message pb_swap_arena_rank_award_req{
+  repeated uint64 tid_list = 1;
+}
+
+// 竞技场玩家数据
+message pb_swap_arena_role_brief {
+  uint64 rank = 1;          // 当前排名
+  uint64 history_rank = 2;  // 历史最高排名
+}
+
+// 更新新的跨服阶段
+message pb_swap_arena_update_cross{
+    pb_swap_arena_role arena = 1;
+    pb_res_to_client res = 2;
+    repeated pb_swap_arena_bot_info bot_list = 3;//机器人列表
+}

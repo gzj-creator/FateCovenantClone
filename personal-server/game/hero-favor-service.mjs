@@ -55,7 +55,8 @@ function levelFor(value, levels) {
   return level;
 }
 
-export function createHeroFavorService({ store, codec, heroTables, tables, now = () => Date.now() }) {
+export function createHeroFavorService({ store, codec, heroTables, tables, now = () => Date.now(), logger = () => {} }) {
+  const log = event => { try { logger(event); } catch {} };
   const heroLevels = sortedConfigs(heroTables.FavourLevel);
   const totalLevels = sortedConfigs(heroTables.AllFavourLevel);
   const constant = heroTables.FavourConst?.get(1);
@@ -312,6 +313,10 @@ export function createHeroFavorService({ store, codec, heroTables, tables, now =
   }
 
   function execute(type, input) {
+    log({
+      event: 'hero_favor_execute_entry', type, input,
+      inputHex: Buffer.isBuffer(input) || input instanceof Uint8Array ? Buffer.from(input).toString('base64') : undefined
+    });
     if (type === 646) return sendGifts(input);
     if (type === 649) return playFavour(input);
     if (type === 653) return claimLevelAwards(input);

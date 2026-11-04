@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+// 周周探宝活动数据
+message pb_week_hunt{
+    repeated int32 cur_versions = 1;          // 当前期数
+    repeated pb_week_version week_period_info = 2;  // 期数信息
+}
+
+message pb_week_version{
+    int32 version = 1;              // 期数
+    uint32 start_day = 2;           // 开始天数
+    uint32 progress_value = 3;      // 进度值
+    bytes common_progress = 4;      // 周常进度
+    bytes week_common_task = 5;     // 周常任务列表完成情况
+    bool get_upgrade_gift = 6;      // 是否领取精进任务大奖
+    repeated pb_week_discount_gift discount_buy_list = 7;   // 一键购买记录情况
+    repeated pb_week_upgrade_gift upgrade_list = 8;           // 精进任务充值记录情况
+    repeated pb_week_discount_task_list discount_task_list = 9;    // 任务记录情况
+}
+
+message pb_week_discount_task_list{
+    uint32 task_id = 1;   // 任务id(周周探宝任务类型表tid)
+    repeated pb_week_discount_task_daily task_daily_list = 2;       // 任务进度
+}
+
+message pb_week_discount_task_daily{
+    uint32 day_index = 1;   // 活动的第几天
+    uint32 count = 2;              // 完成数量
+}
+
+message pb_week_discount_gift{
+    uint32 day_index = 1;   // 对应天数，相对1970
+    repeated uint32 split_buy_ids = 2;  // 单独购买特惠recharge id列表
+    uint32 one_buy_id = 3;              // 一次性购买特惠recharge id
+}
+
+message pb_week_upgrade_gift{
+    uint32 day_index = 1;   // 对应天数，相对1970
+    uint32 recharge_id = 2;     // 精进任务充值的每日特惠id
+}
+
+
+
+

@@ -1,0 +1,47 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 艾伦棋局活动数据
+message pb_chess {
+  uint32 timestamp = 1;               // 数据更新时间
+  repeated pb_chess_award award = 2;  // 奖励记录
+  uint32 turn = 3;                    // 轮次
+  bytes day_got_award = 4;            // 每日任务领取奖励
+  uint32 choose_award = 5;            // 选择的大奖的tid
+  repeated uint32 bomb_pos = 6;       // 炸弹的位置
+  uint32 draw_times = 7;              // 抽奖次数
+  repeated uint32 special_award = 8;  // 大奖记录数组，第一个为第一轮记录，第二个为第二轮选择...
+  bool turn_over = 9;                 // 本轮是否已经结束(需要点击进入下一轮)
+  repeated uint32 empty_slot = 10;    // 空余的格子，不能开奖的
+  bytes period_got_award = 11;        // 周期任务领取奖励
+  pb_recharge_limit_info buy_limit_info = 12;   // 礼包限购记录
+  pb_chess_exchange exchange = 13;              // 兑换活动
+  repeated pb_chess_custom custom_list = 14;    // 定制奖励列表
+  bytes turn_got_award = 15;                    // 轮次奖励领取记录
+  uint32 day_draw_times = 16;                   // 每日抽奖次数
+}
+
+// 本轮已翻开的奖励记录
+message pb_chess_award {
+  uint32 tid = 1;
+  uint32 num = 2;
+  uint32 index = 3;
+}
+
+// 本轮定制奖励
+message pb_chess_custom {
+  uint32 index = 1; // 位置
+  uint32 tid = 2; // 艾伦棋局定制奖励表tid
+}
+
+// 兑换活动
+message pb_chess_exchange {
+  repeated pb_chess_exchange_times exchange = 1; // 已兑换信息
+  uint32 cost = 2;  // 挑战消耗
+}
+
+// 兑换次数
+message pb_chess_exchange_times{
+  uint32 tid = 1;     //  兑换表tid
+  uint32 times = 2;   //  已兑换次数
+}

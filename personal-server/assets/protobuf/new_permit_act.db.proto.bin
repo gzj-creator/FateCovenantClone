@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// 通行证玩家数据
+message pb_new_permit_role_info {
+  repeated pb_new_permit_act_info act_list = 1;           //活动信息列表
+}
+
+// 通行证活动数据
+message pb_new_permit_act_info {
+  int64 version = 1;                                   //活动表version
+  repeated int64 pay_list = 2;                         //购买付费项列表
+  repeated int64 get_list = 3;                         //领取的档位奖励tid列表
+  int64 exp = 4;                                       //通行证经验
+  int64 extra_exp = 5;                                 //额外通行证经验
+}

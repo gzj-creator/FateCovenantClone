@@ -1,0 +1,14 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+//首充档位
+message pb_first_recharge_grade {
+    int32 grade = 1; //档位ID
+    bytes reward_states = 2; //领奖状态列表, 二进制的索引代表天数
+}
+
+// 首充新数据
+message pb_first_recharge {
+    pb_recharge_limit_info buy_limit_info = 1; // 礼包限购记录
+    uint32 buy_mission = 2; // 购买礼包时的通关关卡
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 公主赠礼
+
+import "general/res.db.proto.txt";
+import "project/vip_gift/vip_gift.db.proto.txt";
+
+// 登陆数据
+message pb_vip_gift_login {
+  pb_vip_gift_player db_gift = 1;       // 玩家数据
+  repeated pb_vip_gift notify_gift = 2; // gmc推送数据
+}
+

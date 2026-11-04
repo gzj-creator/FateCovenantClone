@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 定制礼包活动数据
+message pb_custom_gift_data{
+    repeated pb_custom_gift gift_list = 1;      // 礼包列表
+}
+
+// 定制礼包数据
+message pb_custom_gift{
+    uint64 uid = 1;                         // 礼包唯一id
+    string name = 2;                        // 礼包名称
+    uint32 price = 3;                       // 礼包价格(付费id)
+    repeated pb_res_obj item_list = 4;      // 道具列表
+    uint32 buy_limit_n = 5;                 // 限购次数
+}
+
+// 定制礼包个人数据
+message pb_custom_gift_person{
+    repeated pb_custom_gift_buy buy_list = 1;                       // 当前购买列表
+}
+
+// 定制礼包个人购买数据
+message pb_custom_gift_buy{
+    uint64 uid = 1;                         // 礼包唯一id
+    uint32 buy_n = 2;                       // 当前购买次数
+}

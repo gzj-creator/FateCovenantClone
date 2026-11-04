@@ -1,0 +1,46 @@
+syntax = "proto3";
+import "project/tower_defense/tower_defense.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 驻防请求
+message pb_tower_defense_garrison_req {
+    int32 tid = 1; //塔防id
+    repeated garrison garrison_list  = 2; //驻防列表
+}
+
+// 单个驻防pb
+message garrison {
+    int32 garrison_tid = 1; //驻防对象id 黄金小镇这边就传精灵id
+    int32 index = 2; //位置下标
+}
+
+// 塔防结算挂机奖励
+message pb_tower_defense_award_rsp {
+    pb_tower_defense tower_defense = 1; //塔防数据
+    pb_res_to_client res_changes = 2;   // 资源变化
+}
+
+// 预览奖励
+message pb_tower_defense_look_rsp {
+    repeated wait_award_turns wait_award_turns = 1;
+    int32 acc_turns_num = 2;
+}
+
+// gm - 数据返回
+message pb_tower_defense_gm_hurt {
+    int32 ack_turns = 1; //进攻轮次
+    int32 version = 2;  //周期
+    int32 use_time = 3; //本期使用时间
+    int32 harm_sc = 4; //每秒伤害
+    repeated pb_tower_defense_gm_elves_hurt pb_tower_defense_gm_elves_hurt = 5; //精灵攻击力
+
+}
+
+// 精灵攻击力
+message pb_tower_defense_gm_elves_hurt {
+    int32 elves_id = 1; //精灵id
+    int32 elves_atk = 2; //精灵攻击力
+}
+
+
+

@@ -1,0 +1,55 @@
+syntax = "proto3";
+import "project/mission.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 角色灵魂历练数据
+message pb_soul_trial_role {
+    repeated pb_soul_trial_camp camps = 1;  // 所有阵营数据
+    uint32 left_times = 2;                  // 剩余挑战次数
+    uint32 stamp = 3;                       // 数据时间戳
+    uint32 day_fight_times = 4;             // 每日挑战次数
+}
+
+// 单个阵营数据
+message pb_soul_trial_camp {
+    uint32 camp = 1;     // 阵营tid
+    uint32 pass_tid = 2; // 已经通关的tid
+    bool got_box_award = 3; // 是否已经领取当前关卡的宝箱(每5关1个) (废弃，待删除)
+    pb_mission_difficulty difficulty = 4; // 关卡难度限制数据
+}
+
+// 每日奖励(名将历练)数据
+message pb_soul_trial_day_award {
+    uint32 refresh_times = 1;   // 刷新次数
+    uint32 award_times = 2;     // 当前奖励次数
+    uint32 award_tid = 3;       // 当前奖励tid
+    uint32 normal_times = 4;    // 辣鸡奖励次数
+    uint32 stamp = 5;           // 数据时间戳
+}
+
+// 翻牌数据
+message pb_soul_trial_poker {
+    repeated pb_soul_trial_poker_look look_list = 1; //已翻开的数据列表
+    uint32 ensure_times = 2; //保底次数
+    uint64 refresh_time = 3; //数据刷新时间
+    uint32 rev_day = 4; //已领取奖励的天数索引
+    repeated uint32 rev_loc_list = 5; //已领取的位置列表
+}
+
+// 翻牌数据
+message pb_soul_trial_poker_look {
+    uint32 loc = 1; //翻开的位置
+    uint64 item_tid = 2; //奖励tid
+    uint32 item_num = 3; //奖励数量
+}
+
+// 服务器通关数据
+message pb_soul_trial_all_pass {
+    repeated pb_soul_trial_pass pass_list = 1;
+}
+
+// 单个阵营通关人数
+message pb_soul_trial_pass {
+    uint64 camp = 1;
+    repeated pb_u64_kv chapter_pass = 2;
+}

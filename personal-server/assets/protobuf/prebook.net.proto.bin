@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/prebook/prebook.db.proto.txt";
+
+// 百媚之约活动返回
+message pb_prebook_back {
+    pb_prebook_role role_data = 1;  // 玩家数据
+    pb_res_to_client res = 2;       // 资源数据
+}

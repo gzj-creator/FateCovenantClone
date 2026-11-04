@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/hero/team_genre/team_genre.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//请求奖励
+message pb_team_genre_award_req {
+    uint32 team_id = 1;         //阵容流派id
+    uint32 award_id = 2;        //领取的奖励id
+}
+
+//返回领奖结果
+message pb_team_genre_award_rsp {
+    pb_team_genre team = 1;             //阵容数据
+    pb_res_to_client award = 2;         //领取的奖励
+}

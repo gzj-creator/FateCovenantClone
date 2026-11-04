@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "project/activity/common_sign/common_sign.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 领奖通信请求pb
+message pb_common_sign_award_req{
+    uint32 act_id = 1;              // 活动id
+    repeated uint32 award_tid = 2;  // 请求的奖励tid列表
+}
+
+// 领奖通信请求回复
+message pb_common_sign_award_rev{
+    pb_common_sign sign = 1;    //活动数据
+    pb_res_to_client res = 2;   //资源数据
+}
+

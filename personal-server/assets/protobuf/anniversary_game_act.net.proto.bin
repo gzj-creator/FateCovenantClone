@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/anniversary_game_act/anniversary_game_act.db.proto.txt";
+
+// 请求领取玩游戏奖励
+message pb_anniversary_game_act_award_req{
+  uint64 act_tid = 1;         // 活动id
+  uint32 type = 2;            // 玩法类型
+  bytes settle_params = 3;    // 结算参数
+}
+
+// 翻牌子结算参数
+message pb_anniversary_game_settle_card {
+  uint32 cost_microsec = 1; // 消耗时间(微秒)
+  uint32 step = 2; // 消耗步数
+}
+
+// 翻牌子奖励返回
+message pb_anniversary_game_act_award_rsp{
+  pb_res_to_client res = 1; // 资源变化
+  pb_anniversary_game_act act_data = 2; // 玩法数据
+  uint32 rank = 3; // 自己的最新排名
+}

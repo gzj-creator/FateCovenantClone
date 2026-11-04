@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 永久卡基本信息
+message pb_permanent_card{
+    repeated pb_permanent_card_element element_list = 1; //所有永久卡数据列表
+    repeated pb_u32_kv record_list = 2; //奖励记录列表
+    int64 free_endtime = 3; // 体验结束时间
+}
+
+// 单个永久卡数据
+message pb_permanent_card_element{
+    int32 tid = 1; //永久卡ID
+    int32 last_reward_day = 2; //上一次领奖时间
+    uint32 data_version = 3; //数据版本号
+}

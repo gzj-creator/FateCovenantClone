@@ -1,0 +1,33 @@
+syntax = "proto3";
+import "project/wear/skin/skin.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 皮肤穿戴请求数据
+message pb_skin_wear_req {
+    int64 hero_uid = 1;
+    int64 skin_tid = 2;
+}
+
+// 皮肤穿戴返回数据
+message pb_skin_wear_back {
+    int64 hero_uid = 1;
+    int64 skin_tid = 2;
+}
+
+// 英雄皮肤数据块
+message pb_skin_block{
+    repeated pb_skin skin_list = 1; //皮肤列表
+}
+
+// 忽略幻武皮肤开关请求
+message pb_toggle_ignore_fantasy_skin_req{
+    uint64 hero_tid = 1;        // 要处理的英雄tid
+    bool ignore = 2;            // 是否忽略
+}
+
+// 皮肤增幅返回数据
+message pb_skin_increase_back {
+    pb_skin skin_info = 1;
+    pb_res_to_client res = 2;
+}
+

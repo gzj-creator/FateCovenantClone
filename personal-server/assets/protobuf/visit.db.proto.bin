@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+// 角色英雄好感度数据
+message pb_role_hero_visit {
+    repeated uint32 visited_heroes = 1; // 已拜访的英雄tid
+    uint32 last_refresh_time = 2;   // 上次刷新时间
+    uint32 used_meet_times = 3;     // 已经使用过的偶遇次数
+    repeated uint32 yesterday_visited_heroes = 4; // 前一天已拜访的英雄tid
+    uint32 continue_meet_s = 5; // 当前连续遇到s级冒险者次数
+}

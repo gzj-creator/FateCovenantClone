@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+//奖励信息
+message pb_mail_award {
+    uint32 id = 1; //ID
+    uint32 count = 2; //数量
+    pb_res_src src = 3; // 来源信息
+}
+
+//角色身上的邮件数据
+message pb_role_mails {
+    repeated pb_mail mails = 1;
+    bool send_warn_mail = 2; // 是否发送过安全提示邮件
+    repeated pb_mail risk_mails = 3; // 存在风险的邮件
+    repeated pb_mail_history history = 4; // 邮件发放历史信息
+}
+
+message pb_mail_history {
+    uint64 mail_tid = 1;        // 邮件id
+    repeated uint64 stamps = 2; // 发放时间戳
+}
+
+//单封邮件的数据
+message pb_mail {
+    uint32 tid = 1; //邮件配置tid
+    uint64 id = 2; //邮件id
+    uint32 send_time = 3; //发送时间
+    bool read = 4; //是否已读
+    bool received = 5; //是否已领取
+    string send_name = 6; //发送人
+    string title = 7; //标题
+    string content = 8; //内容
+    repeated pb_res_arg award = 9; //奖励
+    bytes params = 10; //附件参数
+    uint64 common_ref = 11; //公共邮件内容ID引用
+    uint32 expire_time = 12; //过期时间,没设置就按照配置表时间过期
+    uint64 expire_convert_time = 13; //过期转化时间戳（绝对时间，秒），0=不生效
+}
+
+
+//公共邮件内容信息，用于单独保存内容较复杂的群发邮件
+message pb_common_mail_content {
+    string send_name = 1; //发送人
+    string content = 2; //内容
+    bytes params = 3; //附加参数
+}
+
+//群发邮件信息
+message pb_mass_mail_info {
+    uint64 id = 1; //ID
+    uint32 tid = 2; //tid
+    uint32 start_time = 3; //发送时间
+    uint32 end_time = 4; //截止时间
+    string send_name = 5; //发送人
+    string title = 6; //标题
+    string content = 7; //内容
+    repeated pb_mail_award award = 8; //奖励
+    repeated uint32 server_list = 9; //服务器列表
+    uint32 min_level = 10; //最低等级限制
+    uint32 max_level = 11; //最高等级限制
+    uint32 min_ctime = 12; //最小创建时间限制
+    uint32 max_ctime = 13; //最大创建时间限制
+    repeated uint64 black_list = 14; //黑名单列表
+    uint32 mass_type = 15; //群发类型  1.服务器群发  2.角色ID群发
+    repeated uint64 role_id_list = 16; //群发的角色ID列表
+    uint32 send_time = 17; //发送时间（只用于发邮件时的显示参数传递）
+    uint32 expire_time = 18; //过期时间
+    repeated string channel_id_list = 19; //渠道ID列表
+}
+
+// 玩家群发邮件信息
+message  pb_role_mass_mail {
+    uint64 max_check_get = 1;         // 检查已领取邮件最大id(废弃,推送的uid不保证递增)
+    repeated uint64 possible_get = 2; // 等级提升，vip提升后可能能领的邮件(废弃,推送的uid不保证递增)
+    uint64 max_check_delete = 3;      // 检查强制删除邮件最大id
+    repeated uint64 checked = 4;      // 检查过的id
+}
+
+
+
+
+
+

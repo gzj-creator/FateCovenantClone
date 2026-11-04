@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/three_admonition/three_admonition.db.proto.txt";
+
+// 抽取奖励返回
+message pb_three_admonition_draw_ret{
+  pb_res_to_client res = 1;   // 资源改变
+  pb_three_admonition new_role_data = 2;  // 角色数据
+}

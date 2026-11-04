@@ -1,0 +1,38 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 个人数据列表
+message pb_group_buy_act_role_list {
+    repeated pb_group_buy_act_role list = 1;                        // 个人数据列表
+}
+
+// 个人单期活动数据
+message pb_group_buy_act_role {
+    uint32 act_id = 1;                                              // 活动id
+    pb_recharge_limit_info record = 2;                              // 礼包购买记录
+    repeated pb_group_buy_role_gift_award award_record = 3;         // 礼包奖励领取记录
+}
+
+// 玩家礼包奖励领取记录
+message pb_group_buy_role_gift_award {
+    uint32 recharge_tid = 1;                                        // 付费id
+    bytes award_state = 2;                                          // 奖励领取状态
+}
+
+// 服务器数据列表
+message pb_group_buy_act_server_list {
+    repeated pb_group_buy_act_server list = 1;                      // 服务器数据列表
+}
+
+// 服务器单期活动数据
+message pb_group_buy_act_server {
+    uint32 act_id = 1;                                              // 活动id
+    repeated pb_group_buy_act_server_gift_record record_list = 2;   // 礼包购买记录
+}
+
+// 服务器礼包购买次数记录
+message pb_group_buy_act_server_gift_record {
+    uint32 gift_tid = 1;                                            // 礼包tid
+    uint32 buy_cnt = 2;                                             // 购买次数
+    uint64 last_refresh_sec = 3;                                    // 上次刷新时间点
+}

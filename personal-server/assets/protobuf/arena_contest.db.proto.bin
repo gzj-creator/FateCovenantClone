@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+// 玩家擂台赛数据(RoleId)
+message pb_arena_contest_role{
+    uint32 period = 1;                    // 活动的届数
+    uint64 sign_up_time = 2;              // 报名时间
+    uint32 sign_up_num = 3;               // 报名次数
+    uint32 congratulate_period = 4;       // 祝贺的活动届数，通过这个和pb_arena_contest_act的届数比较判断祝贺数据是否应该重置
+    bytes congratulate_states = 5;        // 祝贺状态
+    bytes fight_award_states = 6;         // 战斗奖励领取状态
+    bytes task_rev_states = 7;            // 任务奖励领取状态
+    uint64 daily_time = 8;                // 记录的每日时间，用来判断刷新用
+    repeated pb_arena_contest_guess guess = 9;     // 竞猜数据(存7条，插入时删除多余的)
+    uint64 watch_award_time = 10;     // 领取观看奖励的时间
+}
+
+// 擂台赛精彩数据
+message pb_arena_contest_guess {
+    repeated uint64 guess_role_id = 1;    // 竞猜的人
+    uint64 guess_time = 2;                // 竞猜时间
+    bytes guess_correct = 3;             // 竞猜正确的人
+    bool got_guess_award = 4;            // 是否领取精彩奖励
+    uint32 period = 5;                   // 活动的届数(逻辑待添加 todo)
+}
+
+// 活动基础数据（ServerId）
+message pb_arena_contest_act{
+    uint32 period = 1;                                      // 活动的届数
+    repeated pb_arena_contest_top_role top_roles = 2;       // 结算时前三名玩家的ID
+    uint32 round = 3;                                       // 活动当前轮次
+    uint64 start_time = 4;                                  // 活动正式开始时间
+    uint64 enter_round_time = 5;                            // 轮次进入时间
+    bool is_act_running = 6;                                // 活动是否在进行中
+    bool is_first_match = 7;                                // 是否首轮匹配
+    uint32 watch_num = 8;                                   // 当前观看的人
+}
+
+// 前几名的玩家信息
+message pb_arena_contest_top_role{
+    uint64 role_id = 1;                     // 玩家ID
+    uint32 rank = 2;                        // 排名
+    uint32 real_popularity = 3;             // 真实的人气
+    uint32 fake_popularity = 4;             // 假人气（定时增长）
+    uint32 max_fake_popularity = 5;         // 最大的假人气
+}
+
+// 活动比赛数据（ServerId）
+message pb_arena_contest_race_data{
+    pb_arena_contest_guess_info guess_info = 1;                          // 竞猜数据
+    repeated pb_arena_contest_contestant contestants = 2;                // 所有报名参赛者数据
+    repeated pb_arena_contest_match point_match_list = 3;                // 预赛信息
+    repeated pb_arena_contest_level final_level_list = 4;                // 决赛信息
+    repeated pb_arena_contest_match cur_matches = 5;                     // 当前的匹配信息
+    repeated pb_arena_contest_fight_report_role fight_report_list = 6;   // 所有玩家的战报信息
+    repeated uint64 last_sign_roles = 7;                                 // 活动结算后暂存的报名参赛者角色ID数据，用于结算任务奖励用
+    repeated uint64 sign_role_list = 8;                                  // 所有报名的人
+}
+
+// 竞猜数据
+message pb_arena_contest_guess_info{
+    repeated pb_arena_contest_guess_role guess_role_list = 1;   // 所有被竞猜的人的信息
+    uint64 flush_time = 2;                                      // 竞猜数据的刷新时间
+}
+
+// 被竞猜的人
+message pb_arena_contest_guess_role{
+    uint64 role_id = 1;         // 角色ID
+    uint32 rank = 2;            // 上一期活动的排名（首次活动为战力榜的排名）
+    uint32 guess_num = 3;       // 竞猜的人数
+    repeated uint64 support_role_id_list = 4;   // 竞猜的人角色列表
+}
+
+// 活动参赛者数据
+message pb_arena_contest_contestant{
+    uint64 role_id = 1;     // 角色ID
+    uint32 win_time = 2;    // 比赛胜利次数
+    uint32 lose_time = 3;   // 比赛失败次数
+    uint32 score = 4;       // 获得的积分
+    uint64 rank = 5;        // 排名
+    uint64 power = 6;       // 战力
+    uint32 final_round_win_time = 7; // 决赛每一轮胜利次数（胜利2次就晋级下一轮）
+    uint32 final_win_time = 8;       // 决赛赢的场次（用于决赛排名）
+}
+
+// 参赛者的战报信息
+message pb_arena_contest_fight_report_role{
+    uint64 role_id = 1; //角色ID
+    repeated pb_arena_contest_fight_report reports = 2;  // 战报列表
+}
+// 战报信息
+message pb_arena_contest_fight_report{
+    uint64 enemy_role_id = 1; // 敌方角色ID
+    int64 fight_id = 2;       // 战斗id
+    int32 round = 3;          // 轮次
+    bool is_win = 4;          // 是否胜利（用于发战斗奖励）
+}
+
+// 一场比赛信息
+message pb_arena_contest_match {
+    uint64 match_id = 1; // 比赛id
+    uint64 fight_id = 2; // 战斗id
+    uint64 winner_id = 3; // 胜利者的角色id
+    uint32 round = 4;    // 轮次
+    pb_arena_contest_match_role role1 = 5;    // 角色1
+    pb_arena_contest_match_role role2 = 6;    // 角色2
+}
+
+// 比赛角色
+message pb_arena_contest_match_role{
+    uint64 role_id = 1;    // 角色ID
+    bool is_robot = 2;     // 是否是机器人
+}
+
+// 决赛信息
+message pb_arena_contest_level {
+    int32 level = 1; // 级别
+    repeated pb_arena_contest_match match_list = 2; //匹配信息
+    uint64 stage_idx = 3; // 赛场编号 = 阶段 * 100 + 阶段内的赛场编号
+}
+
+// 战斗请求数据
+message pb_arena_contest_fight_req {
+    pb_arena_contest_match match = 1; // 比赛
+}

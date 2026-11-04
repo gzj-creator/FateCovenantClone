@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+// 逻辑服务器建联模板信息
+message pb_vip_link_info {
+    int32 id = 1; //  vip建联模板ID
+    bool is_open = 2; //  是否开启
+    repeated string channel_id_list = 3; // 渠道列表
+    int32 total_recharge = 4;  // 累充
+    int32 recharge_day = 5;  // 日充
+    string top_text = 6; // 标题
+    string main_text = 7; // 正文
+    string url = 8; // 跳转链接
+}
+
+// 个人vip建联信息
+message pb_role_vip_link {
+    int32 id = 1; //  vip建联模板ID（记录走的通用模板id）
+    bool is_show = 2; //  是否显示过（唯一能否显示标识）
+    bool is_force = 3; //  是否强制显示(做记录用 为true同时会强制修改is_show)
+    string top_text = 4; // 个人推送-标题
+    string main_text = 5; // 个人推送-正文
+    string url = 6; // 个人推送-跳转链接
+}

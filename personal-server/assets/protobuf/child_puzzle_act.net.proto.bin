@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/child_puzzle_act/child_puzzle_act.db.proto.txt";
+
+
+// 拼图 - 抽奖请求
+message pb_puzzle_draw_req{
+    uint32 version = 1;             // 活动版本
+    bool buy_draw_item = 2;         // 是否直接购买抽奖道具来抽奖
+}
+
+// 拼图 - 抽拼图碎片返回
+message pb_puzzle_draw_back {
+    pb_res_to_client  res = 1; //资源变化
+    int32 puzzle_id = 2;//碎片id
+}
+
+// 拼图 - 领取任务奖励
+message pb_puzzle_task_award_req {
+    repeated uint32 task_tid_list = 1; // 任务tid列表
+}
+
+// 拼图 - 领取任务奖励返回
+message pb_puzzle_task_award_rsp {
+    pb_res_to_client  res = 1; //资源变化
+    pb_puzzle_person person = 2; //玩家单个版本活动信息
+}
+

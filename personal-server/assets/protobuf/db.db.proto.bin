@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+// 通用消息
+message pb_generic {
+    int32 proto = 1;
+    bytes bin = 2;
+}
+
+// 无符号的32位kv结构
+message pb_u32_kv{
+    uint32 key = 1;
+    uint32 value = 2;
+}
+
+// 无符号的64位kv结构
+message pb_u64_kv{
+    uint64 key = 1;
+    uint64 value = 2;
+}

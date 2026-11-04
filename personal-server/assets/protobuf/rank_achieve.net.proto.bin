@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/rank_achieve/rank_achieve.db.proto.txt";
+
+// 排行榜成就推送
+message pb_rank_achieve_rev {
+    uint64 tid = 1;           // 成绩tid
+    uint64 finish_id = 2;     // 完成成就的角色/航会id
+}
+
+
+// 领取成就奖励请求
+message pb_rank_achieve_award_req {
+    repeated uint64 tid_list = 1; // 成就id列表
+}
+
+// 领取成就奖励返回
+message pb_rank_achieve_award_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_rank_achieve_role new_achieve = 2; // 新角色成就数据
+}

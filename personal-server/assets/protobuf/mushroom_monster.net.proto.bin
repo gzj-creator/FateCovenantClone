@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/mushroom_monster/mushroom_monster.db.proto.txt";
+
+// 蘑菇领奖数据
+message pb_mushroom_monster_award_rev {
+    pb_mushroom_monster monster_data = 1;      // 蘑菇数据
+    pb_res_to_client res = 2;   // 资源改变
+}
+
+// 蘑菇结束数据
+message pb_mushroom_monster_end_rev {
+    pb_mushroom_monster monster_data = 1;  // 蘑菇数据
+    int32 rank_id = 2;                    // 排名
+}

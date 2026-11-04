@@ -1,0 +1,12 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 皮肤付费活动
+message pb_skin_recharge_all {
+    repeated pb_skin_recharge info_list = 1; //多期数据列表
+}
+
+message pb_skin_recharge {
+    uint64 act_id = 1; //活动tid
+    pb_recharge_limit_info buy_limit_info = 2; //礼包限购记录
+}

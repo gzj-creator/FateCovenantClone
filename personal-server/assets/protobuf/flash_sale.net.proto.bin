@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/flash_sale/flash_sale.db.proto.txt";
+
+// 特卖折上折玩家数据
+message pb_flash_sale_bargain_ret{
+    pb_res_to_client res = 1;                   // 资源改变
+    pb_flash_sale_role flash_sale_role = 2;     // 新的活动数据
+}

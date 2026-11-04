@@ -1,0 +1,35 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/week_hunt/week_hunt.db.proto.txt";
+
+// 【周周探宝】任务完成奖励
+message pb_week_common_task_req {
+    uint32 version = 1; //期数
+    uint32 task_id = 2; //任务id
+}
+
+message pb_week_common_task_rsp {
+    repeated uint32 versions = 1; //期数
+    pb_res_to_client res_changes = 2;
+}
+
+// 【周周探宝】任务进度奖励
+message pb_week_common_progress_req {
+    uint32 version = 1; //期数
+    repeated uint32 ids = 2; //进度id列表
+}
+
+message pb_week_common_progress_rsp {
+    repeated uint32 versions = 1; //期数
+    pb_res_to_client res_changes = 2;
+}
+
+//【周周探宝】精进任务大奖
+message pb_week_upgrade_gift_req {
+    uint32 version = 1; //期数
+}
+
+message pb_week_upgrade_gift_rsp {
+    repeated uint32 versions = 1; //期数
+    pb_res_to_client res_changes = 2;
+}

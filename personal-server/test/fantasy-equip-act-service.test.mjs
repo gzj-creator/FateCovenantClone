@@ -15,7 +15,7 @@ import {
 const codec = createGameCodec();
 const tables = readGameTables();
 const fantasyTables = loadFantasyActTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const openedAt = 1792789200;
 const alwaysOpen = () => true;
 

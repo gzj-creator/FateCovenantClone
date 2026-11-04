@@ -1,0 +1,53 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/permit.db.proto.txt";
+
+// 通行证操作领取返回
+message pb_permit_receive_back{
+    repeated pb_permit_level levels = 1;     // 等级信息列表
+    pb_res_to_client res = 2;			     //资源改变
+    pb_permit_info permit = 3;               // 完整的通行证数据(完成开启下期类型会返回该值)
+}
+
+// 通行证购买等级返回
+message pb_permit_buy_level_back{
+    uint64 buy_exp = 1;     // 购买经验数量
+    pb_res_to_client res = 2;			//资源改变
+}
+
+// 通行证结算返回
+message pb_permit_settle_back{
+    pb_permit_data permit_data = 1;     // 通行证数据
+    pb_res_to_client res = 2;			//资源改变
+}
+
+// 通行证奖励选择请求
+message pb_permit_select_award_req{
+    uint64 tid = 1;                         // 通行证tid
+    uint32 select_idx = 2;                  // 选择奖励的索引
+}
+
+// 通行证奖励选择返回
+message pb_permit_select_award_back{
+    uint32 award_idx = 1;    // 选择奖励索引
+}
+
+//【全民福利】领取全民福利奖励返回
+message pb_permit_gain_welfare_toc{
+    pb_res_to_client res = 1;      //资源改变
+    pb_permit_welfare welfare = 2; //领取记录
+}
+
+// 通行证手动更新返回
+message pb_permit_manual_update_back{
+    repeated pb_permit_info permit = 1;     // 通行证数据
+    pb_res_to_client res = 2;			//资源改变
+}
+
+// 通行证支持自选挡位，请求自选挡位接口
+message pb_permit_choose_req {
+    int32 cur_permit_id = 1; //修改前的通行证id
+    int32 choose_permit_id = 2; //修改成为那个通行证id
+    int32 award_index = 3; //选择的奖励下标
+
+}

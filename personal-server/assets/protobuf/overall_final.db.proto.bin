@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+
+// 全服pvp决赛服务器数据
+message pb_overall_final_server {
+    int32 stage = 1; // 阶段
+    int64 start_time = 2; // 阶段开始时间
+    pb_overall_final_player_list winner = 3;     // 胜者组
+    repeated pb_overall_final_player_list loser_list = 4;      // 败者组
+    repeated pb_overall_final_battle_area winner_area_list = 5;  // 胜者组对战组列表
+    repeated pb_overall_final_battle_area loser_area_list = 6;  // 败者组对战组列表
+}
+
+// 全服pvp决赛玩家列表
+message pb_overall_final_player_list{
+    repeated int64 player_list = 1;     // 玩家列表
+}
+
+// 全服pvp决赛对战轮次数据
+message pb_overall_final_battle_round{
+    repeated pb_overall_final_battle_area area_list = 1;        // 赛区列表
+}
+
+// 全服pvp决赛对战赛区数据
+message pb_overall_final_battle_area{
+    repeated pb_overall_final_battle_group group_list = 1;
+}
+
+// 全服pvp决赛对战组数据
+message pb_overall_final_battle_group{
+    repeated pb_overall_final_battle battle_list = 1;   // 对战列表
+}
+
+// 全服pvp决赛对战数据
+message pb_overall_final_battle{
+    int64 atk_id = 1;           // 进攻方id
+    int64 def_id = 2;           // 防守方id
+    uint32 round = 3;           // 轮次
+    int64 win_id = 4;           // 获胜方id
+    int64 fight_id = 5;         // 战报id
+}
+
+// 全服pvp决赛记录
+message pb_overall_final_record{
+    repeated pb_overall_final_battle_round winner_round_list = 6;  // 胜者组对战赛区列表
+    repeated pb_overall_final_battle_round loser_round_list = 7;  // 败者组对战赛区列表
+}
+
+// 全服pvp决赛个人数据
+message pb_overall_final_person{
+    int32 join_version = 1;                 // 参加的版本(版本切换时，会重置数据)
+    bool is_player = 2;                     // 是否是参赛者
+    pb_count_flush day_watch = 3;           // 每日观看信息
+    uint64 last_watch_time = 4;             // 上次领取奖励时间
+}

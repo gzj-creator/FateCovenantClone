@@ -1,0 +1,36 @@
+syntax = "proto3";
+import "project/activity/hoard_wheel_act/hoard_wheel_act.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/shop.db.proto.txt";
+
+// 切换卡池请求
+message pb_hoard_wheel_draw_change_req{
+    uint32 version = 1;                     // 活动版本
+    uint32 pool_id = 2;                     // 卡池id
+    uint32 prize_id = 3;                    // 大奖id
+}
+
+// 领取任务奖励
+message pb_hoard_wheel_task_req {
+    uint32 activity_id = 1;//活动id
+    uint32 task_id = 2;//任务id
+}
+
+// 领取累积奖励
+message pb_hoard_wheel_pile_req {
+    uint32 activity_id = 1;//活动id
+    repeated uint32 pile_id = 2;//任务id
+}
+
+// 领取累积奖励返回
+message pb_hoard_wheel_pile_back {
+    pb_res_to_client res = 1;//资源变换
+    pb_hoard_wheel_person person = 2;//玩家版本数据变化
+}
+
+// 活动进入状态返回
+message pb_hoard_wheel_enter_run {
+    pb_hoard_wheel_person person = 1;// 玩家版本数据
+    repeated pb_shop_info shop = 2;//商店数据
+}
+

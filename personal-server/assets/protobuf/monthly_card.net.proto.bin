@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "project/monthly_card.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//月卡登陆数据
+message res_monthly_card_login {
+    repeated monthly_card cards = 1; //月卡数据列表
+}
+
+//领取月卡奖励回调
+message res_get_monthly_card_reward{
+    repeated monthly_card card = 1;    //月卡数据
+    pb_res_to_client res = 2;      //资源改变
+}
+
+// 领取月卡奖励请求
+message req_get_monthly_card_reward{
+    repeated req_get_monthly_card_reward_one card_list = 1;  // 请求领取列表
+}
+
+// 单个领取月卡奖励请求
+message req_get_monthly_card_reward_one {
+    uint32 card_id = 1; //月卡id
+    repeated uint32 day = 2; //领取的天数(从1开始)
+}

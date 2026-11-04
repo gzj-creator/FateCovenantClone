@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 签到数据列表
+message pb_common_sign_data {
+    repeated pb_common_sign sign_list = 1;
+}
+
+// 签到数据
+message pb_common_sign {
+    uint64 act_id = 1;          // 活动id
+    bytes state_bin = 2;        // 状态
+}

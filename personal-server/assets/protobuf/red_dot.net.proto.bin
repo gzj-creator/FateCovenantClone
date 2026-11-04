@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+import "general/red_dot.db.proto.txt";
+
+//保存的所有红点信息
+message all_saved_red {
+    repeated single_red_info saved_red_list = 1; //保存的红点列表
+}
+
+//改变的红点信息
+message red_change_info {
+    repeated single_red_info to_add_or_change_list = 1; //添加或改变的列表
+    repeated string to_del_list = 2; //删除的列表
+}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 周期新英雄招募活动数据
+message pb_cycle_hero_draw_act{
+    uint32 version = 1;                     // 当前活动的版本
+    pb_recharge_limit_info limit_info = 2;  // 礼包限购信息
+    bool dragon_draw_special_hero = 3;      // 龙晶抽到目标英雄标记
+}

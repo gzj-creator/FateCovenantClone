@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+import "project/fight/fight.net.proto.txt";
+import "general/res.net.proto.txt";
+import "project/match_pvp/match_pvp.db.proto.txt";
+
+message pb_match_pvp_login_season {
+    uint32 cur_season = 1;
+    uint32 cur_season_close_stamp = 2;
+    uint32 next_season_open_stamp = 3;
+}
+
+// 被攻击推送
+message pb_match_pvp_fought {
+    pb_match_pvp_fight_report fight_report = 1;
+    int32 cur_score = 2;      // 当前积分
+    uint32 max_score = 3;      // 最高积分(任务进度需要用)
+    int32 score_change = 4;   // 分数变化
+    pb_match_pvp_role_palace palace = 5;  // 自己的荣誉殿堂数据
+    repeated pb_match_pvp_best_record best_rank = 6; // 最近N天最佳排名
+}
+
+// 战斗返回
+message pb_match_pvp_fight_rsp {
+    int64 role_id = 1;               // 敌方角色id
+    pb_match_pvp_fight_change atk_change = 2;       // 进攻方积分变化
+    pb_match_pvp_fight_change def_change = 3;       // 防守方积分变化
+    pb_match_pvp_show_base def_base = 4;            // 防守方基础数据
+    pb_match_pvp_role_palace palace = 5;            // 自己的荣誉殿堂数据
+    repeated pb_match_pvp_best_record best_rank = 6; // 最近N天最佳排名
+}
+
+// 显示所需要的玩法基础数据
+message pb_match_pvp_show_base {
+    uint32 stage = 1;         // 段位
+    uint32 fight_times = 2;  // 挑战次数
+    uint32 win_times = 3;    // 胜利次数
+}
+
+// 排行榜额外数据
+message pb_match_pvp_rank_extra {
+    uint64 fight_uid = 1;       // 战斗唯一id
+    uint64 atk_power = 2;       // 进攻方战力
+    uint64 def_power = 3;       // 防守方战力
+    pb_match_pvp_fight_change atk_change = 4;       // 进攻方积分变化
+    pb_match_pvp_fight_change def_change = 5;       // 防守方积分变化
+}
+
+// 设置战报锁定标记
+message pb_match_pvp_set_report_lock {
+    uint64 fight_uid = 1;
+    bool lock = 2;
+}
+
+// 请求历史排行榜返回
+message pb_match_pvp_history_rank_rsp {
+    uint32 rank = 1;
+    uint32 score = 2;
+    uint32 season = 3;
+    pb_match_pvp_base base = 4;
+}

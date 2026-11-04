@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "project/activity/gift_box_act/gift_box_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 礼包领取请求
+message pb_gift_box_receive_req{
+    int64 activity_id = 1;                              // 活动ID
+    repeated int64 gift_id_list = 2;           // 礼包ID列表
+}
+
+// 礼包领取返回
+message pb_gift_box_receive_rsp{
+    pb_gift_box_act_data act_data = 1;       // 礼盒活动数据
+    pb_res_to_client res = 2;                 // 资源改变
+}
+
+// 礼包活动结算返回
+message pb_gift_box_settle_rsp{
+    pb_gift_box_act_data act_data = 1;       // 礼盒活动数据
+    pb_res_to_client res = 2;                 // 资源改变
+}

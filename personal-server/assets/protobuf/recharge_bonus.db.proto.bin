@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+// 礼包福利数据记录
+message pb_recharge_bonus{
+    uint32 tid = 1; //当前进行的福利编号
+    uint32 group = 2; //当前所选奖励组
+    bytes award_bin = 3; //奖励领取记录
+    uint32 last_recharge_day = 4; //上一次充值天索引
+    uint32 acc_recharge_days = 5; //累计充值天数（从第一次选奖励组开始）
+}

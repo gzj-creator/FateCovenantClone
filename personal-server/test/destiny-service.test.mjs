@@ -11,7 +11,7 @@ import { setBit } from '../game/bit-block.mjs';
 import { createLocalGame } from '../local-game.mjs';
 
 const codec = createGameCodec(), tables = readDestinyTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 
 function setup(t) {

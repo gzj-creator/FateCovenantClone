@@ -10,10 +10,9 @@ import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
-// Real TCP integration on a temporary port with a database copied from the consistent handoff backup.
+// Real TCP integration on a temporary port using the checked-in capture seed.
 const codec = createGameCodec();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const SERVER_OPENED_AT = 1792789200;
 const GAME_NOW = (SERVER_OPENED_AT + 3600) * 1000;
 
@@ -48,6 +47,17 @@ function setDestiny(store, value) {
   });
 }
 
+function setMission(store, missionId) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(8);
+    const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    mission.mission_id = String(missionId);
+    module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+    model.state.modules.value = [...modules];
+  });
+}
+
 function storedLinearTask(store) {
   return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[0]));
 }
@@ -65,7 +75,6 @@ function addResource(store, tid, num, group = 1) {
 test('gateway serves mission fights, box opening and activity reads on a temporary port', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-gameplay-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   let gameNow = GAME_NOW;
   const game = createLocalGame({
     databasePath,
@@ -79,6 +88,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  setMission(game.store, 30201);
   const address = await game.listen(0);
   socket = net.connect(address.port, '127.0.0.1');
   const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
@@ -98,6 +108,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const scheduledActivity = await loginActivities(Buffer.from(login.data, 'base64'));
   assert.equal(scheduledActivity.act_list.some(entry => Number(entry.state_data?.act_id) === 1074003), true);
   assert.equal(BigInt(game.store.read().resources.get('821202')?.num ?? 0), 25n);
+  addResource(game.store, 100012900, 10);
 
   // Heartbeat is one-way. If it receives an empty frame, the client's receive
   // stream is left at offset 4 and decodes the next frame header as protobuf.
@@ -261,7 +272,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(demigodTicket.tid, '808002');
   assert.equal(Number(demigodTicket.num ?? 0), 1);
   assert.equal(demigodPurchase.res.changes.some(change => change.extra), false);
-  assert.equal(demigodPurchase.draw.left_buy_times, demigodDrawBefore.left_buy_times - 1);
+  assert.equal(demigodPurchase.draw.left_buy_times, 9);
   assert.equal(demigodPurchase.draw.total_draw_times, demigodDrawBefore.total_draw_times);
   const demigodModule = new Map(game.store.state().modules.value).get(518);
   assert.equal(codec.unpack('pb_fantasy_draw', rawBinary(demigodModule.value[2])).total_draw_times, demigodDrawBefore.total_draw_times);
@@ -387,7 +398,6 @@ test('gateway claims a destiny-stage linear task through 9010 and persists it ac
     serverOpenedAt: SERVER_OPENED_AT,
     now: () => GAME_NOW
   };
-  fs.copyFileSync(backup, options.databasePath);
   let game = createLocalGame(options), socket;
   t.after(async () => {
     socket?.destroy();
@@ -440,7 +450,6 @@ test('gateway claims a destiny-stage linear task through 9010 and persists it ac
 test('all-open mode returns every stored activity and forces test-visible states', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-all-open-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const game = createLocalGame({
     databasePath,
     statePath: path.join(directory, 'absent.json'),
@@ -628,7 +637,6 @@ test('cabin unlock, hero placement and atomic swap use real gateway framing and 
 test('gateway draws WishTree rebates over real TCP, persists them, and rejects a second empty quota', { timeout: 10000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-wish-tree-gateway-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const wishNow = Date.parse('2026-10-31T06:00:00.000Z');
   const game = createLocalGame({
     databasePath,
@@ -638,8 +646,6 @@ test('gateway draws WishTree rebates over real TCP, persists them, and rejects a
     serverOpenedAt: SERVER_OPENED_AT,
     now: () => wishNow
   });
-  // Keep this test independent of sample orders shipped in the handoff DB.
-  game.store.inspect(db => db.prepare('DELETE FROM recharge_orders WHERE product_id IN (40008,40009,40010,46002,46003)').run());
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const address = await game.listen(0);

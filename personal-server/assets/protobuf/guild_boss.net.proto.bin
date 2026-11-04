@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+import "project/guild_boss/guild_boss.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 公会boss道具使用请求
+message pb_guild_boss_use_skill_req{
+    uint64 skill_id = 1; //使用的道具
+    uint64 target_guild_id = 2; //目标航会
+}
+
+// 公会boss道具使用返回
+message pb_guild_boss_use_skill_back{
+    uint64 damage = 1;                                     // 造成伤害(伤害道具使用)
+    repeated int32 award_list = 3;                          // 使用道具后爆出的新增奖励列表（“航会boss技能奖励表” tid）, 需要玩家手动领取
+    pb_res_to_client res = 4;                                   // 资源改变
+    pb_guild_boss_use_skill_push use_skill_msg_push = 5;       // 道具使用走马灯推送数据（个人用作表现）
+    pb_res_use_skill_push use_skill_push = 6;                  // 道具使用推送数据
+}
+
+// 公会boss自动攻击推送
+message pb_guild_boss_auto_atk_push{
+    pb_guild_boss cur_boss = 1;         // 当前boss(tid改变则表示前一个boss被击败)
+    repeated pb_guild_boss_member member_list = 2;  // 成员列表
+}
+
+// 公会boss结算推送
+message pb_guild_boss_settle_push{
+    pb_guild_boss_person person = 1;               // 角色数据
+    pb_res_to_client res = 2;           // 资源改变
+}
+
+// 技能使用提醒推送
+message pb_guild_boss_use_skill_push{
+    uint32 skill_id = 1; // 技能ID
+    string use_guild_name = 2; // 使用道具的航会名
+    string use_role_name = 3; // 使用道具的玩家名
+    string target_guild_name = 4; // 目标航会名
+    string target_role_name = 5; // 目标玩家名
+    uint64 use_guild_id = 6; // 使用方航会ID
+    uint64 use_role_id = 7; // 使用方玩家ID
+}
+
+//请求批量领奖(包括领取伤害奖励和使用技能奖励)
+message pb_req_batch_claim_boss_award{
+    repeated pb_req_claim_boss_dmg_award dmg_award_req_list = 1;  //伤害奖励领取参数
+    repeated int32 use_skill_award_idx_list = 2;  //使用技能奖励索引列表
+}
+
+// 请求领取boss伤害奖励
+message pb_req_claim_boss_dmg_award{
+    int32 boss_tid = 1;                 // 航会boss基础表 tid
+    int32 dmg_idx = 2;                  // 伤害索引
+    repeated int32 award_idx_list = 3;  // 奖励索引列表
+}
+
+//请求参与公会boss返回
+message pb_res_join_guild_boss{
+    pb_guild_boss_person person = 1;               // 角色数据
+    pb_res_to_client res = 2;                      // 资源改变
+}
+
+//请求公会信息返回
+message pb_guild_boss_guild_info_back {
+    repeated pb_guild_boss_guild guild_info_list = 1;  //公会信息列表
+}
+
+//使用技能推送，推送给施法者所在公会和目标公会的所有成员。
+message pb_res_use_skill_push{
+	uint32 skill_id = 1; //技能ID
+	uint64 src_role_id = 2; //释放技能的角色ID
+	pb_guild_boss_guild src_boss_guild = 3; //施法者所在公会数据
+	pb_guild_boss_guild target_boss_guild = 4; //目标公会数据。注意：	如果目标公会为自己公会，则该字段为空
+}
+
+//兔兔请求批量领奖(包括领取伤害奖励和使用技能奖励、宝箱奖励)
+message pb_req_batch_claim_boss_all_award{
+    repeated pb_guild_boss_dmg_award pb_guild_boss_dmg_award_list = 1;
+    bytes use_skill_award_state = 2;  // 使用道具奖励领取状态(对应 use_item_award_list 的索引)
+    bytes award_box_state = 3;   //宝箱领取状态
+    pb_res_to_client res = 4;                      // 资源改变
+}

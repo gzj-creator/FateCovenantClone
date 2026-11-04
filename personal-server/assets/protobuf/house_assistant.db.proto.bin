@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+// 橘屋助手资源
+message pb_house_assistant_res {
+    int64 tid = 1;          // 物品id
+    int64 num = 2;          // 物品数量
+}
+
+// 橘屋助手信息
+message pb_house_assistant_info {
+    repeated pb_house_assistant_res res = 1;    // 资源列表
+    repeated pb_house_assistant_use_info use = 2; // 使用信息
+    repeated pb_house_assistant_trial_info trial = 3;// 试用信息
+    repeated pb_house_assistant_use_info last_use = 4; // 上次使用信息
+}
+
+// 橘屋助手使用信息
+message pb_house_assistant_use_info {
+    uint64 scene_tid = 1;                       // 场景id
+    uint64 use_bg = 2;                          // 使用的背景
+    uint64 use_assistant = 3;                   // 使用的助手
+}
+
+// 橘屋助手信息(旧版本结构，用于数据兼容)
+message pb_house_assistant_info_old {
+    repeated pb_house_assistant_res res = 1;    // 资源列表
+    uint64 use_bg = 2;                          // 使用的背景
+    uint64 use_assistant = 3;                   // 使用的助手
+}
+
+// 橘屋助手使用信息
+message pb_house_assistant_trial_info {
+    uint64 id = 1;                       // 试用id
+    uint64 deadline = 2;                 // 试用结束时间
+}

@@ -1,0 +1,217 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+import "general/res.db.proto.txt";
+
+//公会成员结构
+message pb_guild_member {
+    int64 role_id = 1; //角色ID
+    int32 job = 2; //职位
+    int64 join_time = 3; //加入时间
+}
+
+// 公会信息
+message pb_guild {
+    uint64 id = 1; //公会ID
+    uint32 level = 2; //公会等级
+    uint32 exp = 3; //公会经验
+    uint32 badge = 4; //公会徽章
+    string notice = 5; //公会公告
+    uint32 active = 6; //公会活跃度
+    uint64 chat_channel = 7; //公会聊天频道
+    repeated pb_guild_member member_list = 8; //成员列表
+    uint32 audit_type = 9; //审核方式
+    repeated pb_guild_apply_info apply_list = 10; //申请列表
+    string name = 11; //公会名字
+    uint32 server_id = 12; //服务器ID，以后可根据该服务器ID获取服务器组ID
+    uint32 level_limit = 13; //最小等级限制
+    uint32 today_active = 14; //今日活跃度
+    uint32 active_refresh_day = 15; //活跃度刷新日期
+    uint32 notice_suspend_stamp = 16; // 解封修改公告时间
+    uint64 power = 17;  // 航会总战力(前端请求时计算)
+    uint64 power_limit = 18; // 申请加入公会的战力限制
+    pb_guild_social_info social_info = 19; // 社交信息
+    uint32 last_act_count = 20;     // 前一日活跃人数
+    uint32 refresh_day = 21;   // 刷新天(跨天判断时使用)
+    uint64 last_notice_mail_time = 22; // 上次发送通知邮件时间
+    uint64 last_member_count = 23; // 前一日成员数量
+    uint64 can_transfer_time = 24; // 能转让的时间
+    uint64 mail_channel = 25; //公会邮件频道
+    uint64 top_channel = 26; //公会置顶频道
+    uint64 last_notice_time = 27; //上次发送公告时间
+    uint64 daily_exp_num = 28;  // 每日获得的经验值
+}
+
+message pb_guild_apply_info {
+    uint64 apply_role = 1; //申请者
+    uint64 apply_time = 2; //申请时间
+}
+
+//公会简略信息
+message pb_guild_simple_info {
+    uint64 id = 1; //公会ID
+    uint32 badge = 2; //公会徽章
+    uint32 level = 3; //公会等级
+    uint32 member_count = 4; //公会成员数量
+    uint32 level_limit = 5; //等级限制
+    uint32 audit_type = 6; //审核方式
+    uint32 active = 7; //公会活跃度
+    string name = 8; //公会名字
+    bytes extra = 9; //额外数据
+    uint64 leader = 10; // 公会会长
+    uint64 power_limit = 11; // 申请加入公会的战力限制
+    uint32 last_act_count = 12; // 前一日活跃人数
+    uint32 refresh_day = 13;   // 刷新天(跨天判断时使用)
+    uint32 recharge_count = 14; //会长 副会长 执行官充值累积
+}
+
+//公会日志数据
+message pb_guild_log_data{
+    repeated pb_guild_log log_list = 1;//日志列表
+}
+
+//公会日志
+message pb_guild_log{
+    uint32 time = 1; //时间
+    uint32 log_id = 2; //日志ID
+    bytes params = 3; //日志参数
+    string role_name = 4; //仅加入航会时记录玩家名字
+}
+
+//玩家公会活跃度信息
+message pb_guild_active {
+    uint32 total_active = 1;    //总活跃度
+    repeated pb_guild_day_active day_actives = 2;   //每日活跃度列表
+}
+
+//公会每日活跃度信息
+message pb_guild_day_active {
+    uint64 day = 1;         //日期
+    uint32 active = 2;      //活跃度
+}
+
+//公会捐献信息
+message pb_guild_contribute{
+    pb_count_list_flush count_info = 1;      //捐献次数信息
+    uint64 active = 2;      // 活跃度(计算周期每周一0：00，至周日24：00;每周一0：00重置)
+    uint64 active_time = 3;      // 获得活跃度的时间
+    bytes got_level_award = 4; // 已领取的等级奖励标记
+}
+
+//公会宝箱信息
+message pb_guild_box{
+    uint64 day = 1;         //日期
+    bytes box_info = 2;     //宝箱信息
+}
+
+// 公会退出信息
+message pb_guild_leave{
+    uint32 count = 1;       //离开公会次数
+    uint32 reset_day = 2;   //重置时间/天
+}
+
+// 航会会长弹劾定时器数据
+message pb_guild_transfer_timer {
+    uint64 uid = 1;         // 定时器唯一id
+    uint32 type = 2;        // 定时器类型
+    uint64 old_id = 3;      // 旧会长id
+    uint64 new_id = 4;      // 新会长id
+    uint64 guild_id = 5;    // 航会id
+}
+
+// 航会邀请信息（发送到聊天频道的数据）
+message pb_guild_invite{
+    uint64 guild_id = 1;       //航会id
+    string note = 2;  //邀请留言
+}
+
+// 航会社交信息
+message pb_guild_social_info {
+    uint32 type = 1;        // 社交类型
+    string id = 2;          // 社交信息id
+    uint32 set_stamp = 3;   // 设置信息的时间戳
+}
+
+// 航会取名数据
+message pb_guild_rename_info {
+    uint32 normal_rename_times = 1; // 正常渠道取名次数
+    uint64 rename_stamp = 2; // 改名时间
+}
+
+// 玩家复制社交信息数据
+message pb_guild_social_role {
+    uint64 guild_id = 1;    // 航会id
+    uint32 copy_stamp = 2;  // 复制航会社交信息时间戳
+}
+
+// 角色公会杂项信息
+message pb_guild_sundry_role {
+    uint64 day_refresh_stamp = 1;  // 每日刷新时间
+    uint64 recruit_times = 2;      // 招募次数
+    uint64 read_transfer_stamp = 3; // 读取过会长转让信息时间
+    uint64 can_create_stamp = 4;    // 可以创建航会时间
+    uint64 read_notice_notice_stamp = 5; // 读取过公告通知时间
+}
+
+// 公会自动转让数据
+message pb_guild_leader_auto_transfer {
+    uint64 type = 1; // 自动转让类型
+    uint64 trigger_time = 2; // 自动转让触发时间
+    uint64 old_leader_id = 3; // 旧会长
+    uint64 new_leader_id = 4; // 新会长
+}
+
+// 公会信息
+message pb_guild_20240919 {
+    uint64 id = 1; //公会ID
+    uint32 level = 2; //公会等级
+    uint32 exp = 3; //公会经验
+    uint32 badge = 4; //公会徽章
+    string notice = 5; //公会公告
+    uint32 active = 6; //公会活跃度
+    uint64 chat_channel = 7; //公会聊天频道
+    repeated pb_guild_member member_list = 8; //成员列表
+    uint32 audit_type = 9; //审核方式
+    repeated uint64 apply_list = 10; //申请列表
+    string name = 11; //公会名字
+    uint32 server_id = 12; //服务器ID，以后可根据该服务器ID获取服务器组ID
+    uint32 level_limit = 13; //最小等级限制
+    uint32 today_active = 14; //今日活跃度
+    uint32 active_refresh_day = 15; //活跃度刷新日期
+    uint32 notice_suspend_stamp = 16; // 解封修改公告时间
+    uint64 power = 17;  // 航会总战力(前端请求时计算)
+    uint64 power_limit = 18; // 申请加入公会的战力限制
+    pb_guild_social_info social_info = 19; // 社交信息
+    uint32 last_act_count = 20;     // 前一日活跃人数
+    uint32 refresh_day = 21;   // 刷新天(跨天判断时使用)
+    uint64 last_notice_mail_time = 22; // 上次发送通知邮件时间
+}
+
+//公会工资和分配宝箱数据
+message pb_guild_pay_box {
+    repeated pb_res_obj assign_box_award = 1; //工会可分配奖励
+    uint64 pay_time = 2; //工资发放时间
+    uint64 box_time = 3; //宝箱分配时间
+    repeated pb_role_box_award pb_role_box_award = 4;//玩家奖励
+    repeated pb_res_obj assign_pay_award = 5; //公会总工资
+    uint32 distribution_ratio = 6; //会长设置的分配比例 百分之多少
+    repeated pb_pay_add_record pay_add_record = 7; //添加工资列表
+    repeated pb_role_box_award role_pay_award = 8;//玩家工资奖励
+    uint32 week_active = 9; //公会活跃值
+    repeated uint32 finish_week_active = 10; // 累计值奖励
+}
+
+// 增加工资的记录
+message pb_pay_add_record {
+    uint64 role_id = 1; //玩家uid
+    uint32 add_pay = 2; //增加的工资
+    bytes role_name = 3; //玩家名
+    uint64 time = 4; //时间戳
+}
+
+// 公会奖励
+message pb_role_box_award {
+    uint64 role_id = 1; // 玩家id
+    repeated pb_res_obj pb_box_award = 2;//奖励
+    bool is_get = 4; //是否被领取
+}
+

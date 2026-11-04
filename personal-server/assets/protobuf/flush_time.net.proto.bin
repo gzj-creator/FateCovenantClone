@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 刷新数据
+message pb_auto_flush_data{
+    repeated pb_auto_flush_req req_list = 1;    // 请求列表
+    uint32 flush_type = 2;                      // 刷新类型
+}
+
+// 刷新请求
+message pb_auto_flush_req{
+    int32 tid = 1;          // 自动刷新id
+    bytes params = 2;       // 请求参数
+}

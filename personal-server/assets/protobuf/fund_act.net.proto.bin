@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "project/activity/fund_act/fund_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 活动返回数据
+message pb_fund_act_back{
+    pb_fund_act info = 1; //活动数据
+    pb_res_to_client res = 2; //资源数据
+}

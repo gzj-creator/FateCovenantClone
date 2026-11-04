@@ -1,0 +1,36 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+//神器总数据
+message pb_artifact_info{
+    repeated pb_artifact artifact_list = 1;   //圣约数据列表
+    repeated uint32 skill_list = 2;           //选择的天赋技能列表
+    repeated uint64 lineup_list = 3;          //上阵的神器id列表
+    repeated uint32 fetter_list = 4;          //激活的连携id列表
+    repeated uint32 inject_list = 5;          //注入过的列表
+    repeated pb_u64_kv handbook_list = 6;     //圣约图鉴列表(圣约tid=>图鉴加成节点tid)
+}
+
+
+//神器对象
+// 注意：必须包含pb_res_obj的字段
+message pb_artifact{
+    int64 tid = 1;                      // 配置表ID
+    int32 num = 2;                      // 数量（定义该字段的目的是为了和pb_res_obj的结构一致）
+    int32 star = 3;                     // 星级
+    int32 star_node = 4;                // 星级节点数
+    repeated uint32 forge_list = 5;     // 神锻列表
+    uint32 stage = 6;                   // 神锻阶级
+    int32 quality = 7;                  // 品质
+    int32 level = 8;                    // 等级
+    int32 break_level = 9;              // 突破等级
+    bool is_fly_up = 10;                // 是否跃升
+    int32 artifact_skin = 11;           // 神器穿戴皮肤
+}
+
+///神器神锻数据
+message pb_artifact_forge{
+    int32 forge_stage = 1;              //神锻阶级
+    repeated pb_u32_kv forge_list = 2;  //神锻数据列表
+}

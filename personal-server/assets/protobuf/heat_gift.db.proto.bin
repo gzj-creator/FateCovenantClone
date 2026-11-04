@@ -1,0 +1,44 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 活动 - 全服数据
+message pb_heat_gift{
+    uint32 support_value = 1; //当前应援值
+    pb_heat_gift_auto_support auto_support = 2; //自动应援数据
+    pb_recharge_limit_info buy_limit_info = 3; //全服礼包限购记录
+    pb_heat_gift_auto_limit auto_limit = 4; //自动限购数据
+    uint32 auto_reduce_limit_num = 5; //自动减少的限购次数
+    repeated pb_heat_gift_buy_role buy_role_list = 6; //购买过礼包的玩家付费数据 (不会发给客户端)
+}
+
+// 活动 - 玩家数据
+message pb_heat_gift_role{
+    uint32 support_day = 1; //最近一次应援的天数
+    pb_recharge_limit_info buy_limit_info = 2; //个人礼包限购记录
+    uint32 support_times = 3; //当前天数应援次数
+}
+
+// 自动递增应援数据
+message pb_heat_gift_auto_support{
+    uint32 day_tid = 1; //当前触发的自动应援的tid（废弃）
+    uint64 begin_time = 2; //开始时间（开始自动增加应援值的时间）
+    uint32 add_per_num = 3; //本轮增加多少个单位时间
+    uint32 per_time = 4; //单位时间s
+    uint32 per_value = 5; //单位时间增加应援值
+    uint32 support_tid = 6; //当前触发的自动应援的tid
+}
+
+// 自动减少限购数据
+message pb_heat_gift_auto_limit{
+    uint32 limit_tid = 1; //当前触发的自动限购的tid
+    uint64 begin_time = 2; //开始时间（开始自动减少限购次数的时间）
+    uint32 reduce_per_num = 3; //本轮减少多少个单位时间
+    uint32 per_time = 4; //单位时间s
+    uint32 per_value = 5; //单位时间减少限购次数
+}
+
+// 购买过礼包的玩家付费数据
+message pb_heat_gift_buy_role{
+    uint64 role_id = 1; //玩家id
+    uint32 number = 2; //第几个购买
+}

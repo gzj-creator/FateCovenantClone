@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 首周目标活动数据
+message pb_first_week_goal{
+    bytes progress_award = 1; //任务进度奖励领取数据
+    bytes task_award = 2; //任务项奖励领取数据
+    pb_recharge_limit_info buy_limit_info = 4; //限购数据
+    uint32 challenge_day = 5; //当前未结算挑战任务的天数索引（用于后端结算settle_list数据）
+    repeated pb_first_week_challenge_settle settle_list = 6; //当前已结算的挑战任务进度数据（未领取的挑战任务才会有）
+    uint32 settle_day_number = 7; //结算之前，玩家最后一次登录为活动第几天
+}
+
+// 每天结算的挑战任务进度记录数据
+message pb_first_week_challenge_settle{
+    uint32 task_tid = 1; //任务tid
+    uint32 progress = 2; //结算时记录的进度数据
+}

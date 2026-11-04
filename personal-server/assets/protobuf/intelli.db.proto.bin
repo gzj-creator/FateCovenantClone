@@ -1,0 +1,18 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+
+//情报信息
+message pb_intelli_info{
+    repeated intelli intelli_list = 1;      // 情报列表
+    uint32 last_refresh_stamp = 2;          // 上次刷新时间
+}
+
+// 情报数据
+message intelli{
+    uint32 tid          = 1;    // 情报tid(情报表tid)
+    uint32 type         = 2;    // 情报类型（槽位,情报任务类型表tid)
+    uint32 finish_time  = 3;    // 情报完成时间(开始派遣后才有这个时间)
+    bool finished       = 4;    // 是否已完成
+    uint32 award_type   = 5;    // 情报奖励物品表tid
+    uint32 star         = 6;    // 情报对应英雄星级
+}

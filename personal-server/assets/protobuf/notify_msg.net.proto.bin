@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+import "project/wear/equip/equip.db.proto.txt";
+import "general/res.db.proto.txt";
+
+// 推送消息：多个tid
+message pb_msg_multi_tid {
+    repeated uint32 tid = 1;
+}
+
+// 兵符打造推送消息
+message pb_notify_msg_war_rune {
+    uint32 tid = 1;     // 兵符tid
+    uint32 quality = 2; // 品质
+}
+
+// 装备打造
+message pb_notify_msg_equip {
+    uint32 develop_type = 1;  // 养成类型
+    uint32 equip_tid = 2;     // 装备tid
+    uint32 develop_level = 3; // 养成等级
+    pb_equip equip = 4;       // 装备数据
+}
+
+// 多个名字
+message pb_msg_multi_name {
+    repeated string names = 1;  // 名字列表
+    uint32 param = 2;   // 参数
+    uint32 msg_tid = 3; // 推送消息编号
+}
+
+// 推送消息
+message pb_notify_msg {
+    uint32 type = 1;    // 推送类型
+    bytes content = 2; // 推送内容
+}
+
+// 阵营塔通关推送消息
+message pb_lantern_camp_tower{
+    uint32 tower_type_id = 1; // 塔类型id
+    uint32 tower_num = 2; // 塔层
+}
+
+// 阵营塔双子累计通关推送消息
+message pb_lantern_camp_tower_cross{
+    uint32 total_tower_num = 1; // 累计通关塔层
+}
+
+// 周周探宝获取秘宝
+message pb_week_hunt_get_treasure{
+    uint32 version = 1; // 第几期
+    uint32 treasure_tid = 2; // 秘宝tid
+    uint32 r_type = 3; // 获奖页签 1是周常 2是精进
+}
+
+// 推送消息：多个奖励
+message pb_msg_multi_award {
+    repeated pb_res_obj award_list = 1;
+}

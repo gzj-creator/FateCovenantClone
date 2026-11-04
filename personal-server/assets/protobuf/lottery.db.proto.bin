@@ -1,0 +1,11 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 乐乐卡开启分享
+message pb_lottery_share{
+    repeated pb_res_obj awards = 1;// 奖励
+    repeated uint32 awardLv = 2;// 奖励
+    int64  lottery = 3;// 乐乐卡
+}
+
+

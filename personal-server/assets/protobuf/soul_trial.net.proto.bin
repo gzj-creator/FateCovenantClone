@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+import "project/soul_trial/soul_trial.db.proto.txt";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+
+// 角色灵魂历练数据
+message pb_soul_trial_fight_rsp {
+    pb_soul_trial_camp camp = 1;            // 单个阵营数据
+    uint32 left_times = 2;                  // 剩余挑战次数
+    uint32 stamp = 3;                       // 数据时间戳
+    pb_res_to_client res_changes = 4;       // 资源变化
+    repeated pb_u32_kv fight_award_list = 5;// 战斗奖励列表
+    repeated pb_u32_kv box_award_list = 6;  // 宝箱奖励列表
+}
+
+// 名将历练所有操作返回
+message pb_soul_trial_day_award_rsp {
+    pb_res_to_client res_changes = 1;       // 资源变化
+    pb_soul_trial_day_award day_award = 2;  // 每日奖励数据变化
+}
+
+// 功能开启
+message pb_soul_trial_func_open {
+    pb_soul_trial_role trial = 1;       // 历练数据
+    pb_soul_trial_day_award day_award = 2; // 每日奖励数据
+}
+
+// 翻牌返回数据
+message pb_soul_trial_draw_back {
+    pb_soul_trial_poker_look look = 1; //本次翻开的数据
+    uint32 ensure_times = 2; //保底次数
+    uint64 refresh_time = 3; //数据刷新时间
+    pb_res_to_client res_changes = 4; // 资源变化
+}
+
+// 领翻牌奖励返回数据
+message pb_soul_trial_rev_draw_back {
+    uint64 refresh_time = 1; //数据刷新时间
+    uint32 rev_day = 2; //已领取奖励的天数索引
+    repeated uint32 rev_loc_list = 3; //已领取的位置列表
+    pb_res_to_client res_changes = 4; // 资源变化
+}
+
+// 小助手连续战斗返回
+message pb_soul_trial_assist_fight_rsp {
+    repeated pb_soul_trial_assist_fight_award award_list = 1; // 资源变化
+    pb_soul_trial_role trial = 2; // 历练数据
+    bool can_continue = 3; // 是否可以继续
+}
+
+message pb_soul_trial_assist_fight_award {
+    uint32 trial_tid = 1;
+    pb_res_to_client res_changes = 2; // 资源变化
+    repeated pb_u32_kv fight_award_list = 3;// 战斗奖励列表
+    repeated pb_u32_kv box_award_list = 4;  // 宝箱奖励列表
+}
+
+// 小助手自动翻牌返回
+message pb_soul_trial_assist_draw_rsp {
+    repeated pb_res_to_client res_changes = 1; // 资源变化
+    pb_soul_trial_poker trial_poker = 2; // 翻牌数据
+}
+
+

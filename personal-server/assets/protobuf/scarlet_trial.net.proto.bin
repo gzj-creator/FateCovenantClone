@@ -1,0 +1,49 @@
+// 猩红试炼前后端通信协议pb
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/scarlet_trial/scarlet_trial.db.proto.txt";
+import "project/rank/rank.net.proto.txt";
+import "project/function_cache/player_data/player_data.net.proto.txt";
+
+
+// 猩红试炼角色数据
+message pb_scarlet_trial_cache_lineup_list {
+  repeated pb_scarlet_trial_cache_lineup cache_lineup_list = 1;    // 玩家数据
+}
+
+// 猩红试炼角色活动数据
+message pb_scarlet_trial_cache_lineup {
+  pb_player_lineup player_lineup = 1;            // 今天最高伤害
+  int64 version = 2;           // 活动版本号
+}
+
+// 战斗请求数据
+message pb_scarlet_trial_fight_req{
+  uint64 act_tid = 1; // 猩红试炼活动tid
+}
+
+// 战斗返回数据
+message pb_scarlet_trial_fight_back{
+  pb_scarlet_trial_data scarlet_trial_data = 1;
+    rank_info rank_data = 2; // 自己的排行数据
+    uint64 damage = 3; // 本次战斗造成的伤害
+  pb_player_lineup cache_lineup = 4; // 缓存阵容数据
+}
+
+// 领取任务奖励返回
+message pb_scarlet_trial_award_back{
+  pb_scarlet_trial_data scarlet_trial_data = 1; // 猩红试炼活动数据
+  pb_res_to_client res_change = 2; // 资源变化
+}
+
+// 跨天刷新请求
+message pb_scarlet_trial_flush_req{
+  uint64 act_tid = 1; // 猩红试炼活动tid
+}
+
+// 跨天请求返回
+message pb_scarlet_trial_flush_back{
+    pb_res_to_client res = 1;
+  pb_scarlet_trial_role_info role_info = 2;
+}

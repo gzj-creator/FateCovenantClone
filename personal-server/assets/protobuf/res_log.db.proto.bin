@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// 资源延迟日志
+message pb_res_log {
+    repeated pb_res_delay_log get_items = 1;     // 获取资源日志列表
+    repeated pb_res_delay_log cost_items = 2;     // 消耗资源日志列表
+    repeated pb_res_delay_log after_items = 3;     // 变更后资源日志列表
+}
+
+// 资源日志延迟上报存储
+message pb_res_delay_log {
+    int64 item_id = 1;                    // 物品ID
+    int64 change_reason = 2;              // 变更原因
+    int64 change_num = 3;                    // 获取的数量
+    int64 timestamp = 4;                   // 时间戳
+}

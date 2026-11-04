@@ -1,0 +1,63 @@
+syntax = "proto3";
+import "project/task.db.proto.txt";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+
+// 日常领取返回数据
+message daily_receive_back {
+    pb_daily_task daily_task = 1; //日常任务数据
+    pb_res_to_client res = 2; //奖励资源数据
+    repeated pb_res_obj normal_res_list = 3; //普通领取奖励列表
+    repeated pb_res_obj weekend_res_list = 4; //周末特殊奖励列表
+    repeated pb_res_obj weekend_acc_res_list = 5; //今天累计的周末奖励列表
+}
+
+//主线领取奖励返回数据
+message main_receive_back {
+    pb_main_task main_task = 1; //主线任务数据
+    pb_res_to_client res = 2; //奖励资源数据
+}
+
+// 周常领取返回数据
+message weekly_receive_back {
+    pb_weekly_task weekly_task = 1; //周常任务数据
+    pb_res_to_client res = 2; //奖励资源数据
+}
+
+//通用任务领取奖励返回数据
+message common_receive_back {
+    pb_common_task common_task = 1; //通用任务数据
+    pb_res_to_client res = 2; //奖励
+}
+
+// 请求领取任务组的任务奖励
+message pb_task_group_task_award_req{
+    repeated uint32 tid_list = 1;            // 任务id列表(不可以跨功能)
+}
+// 领取任务组的任务奖励返回
+message pb_task_group_task_award_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_role_task_group task_group = 2; // 新的任务组数据
+}
+
+// 请求领取任务组的任务组奖励
+message pb_task_group_group_award_req {
+    repeated uint32 tid_list = 1;            // 任务组id列表(不可以跨功能)
+}
+// 领取任务组的任务组奖励返回
+message pb_task_group_group_award_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_role_task_group task_group = 2; // 新的任务组数据
+}
+
+// 日常任务每日刷新数据
+message pb_daily_task_day_flush_data{
+    repeated pb_daily_task_group_compensate compensate_list = 1;    // 分组补偿数据
+    pb_res_to_client res_change = 2; // 资源变化
+}
+
+// 线性任务领取返回
+message pb_linear_task_receive_back{
+    pb_linear_task task = 1;    // 新的任务数据
+    pb_res_to_client res_change = 2; // 资源变化
+}

@@ -1,0 +1,39 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+
+////////////////////装备///////////////////////
+
+// 角色装备信息
+message pb_role_equip {
+    repeated pb_equip equips = 1;
+}
+
+// 装备
+message pb_equip {
+    uint32 id = 1;          // 格子id,从1递增
+    uint32 tid = 2;         // 装备tid
+    uint32 level = 3;       // 等级(强化)
+    uint32 level_exp = 4;   // 等级经验
+    uint32 inscription = 5; // 铭文(附魔)
+    uint32 refine = 6;      // 打造(铭刻)
+    uint32 refine_exp = 7;  // 打造经验
+    repeated pb_res_obj random_develop_cost = 8; // 带随机性的养成消耗，如refine随机暴击涨经验
+}
+
+// 角色装备资源
+message pb_role_equip_res {
+    repeated pb_equip_res equips = 1; // 装备资源列表
+}
+
+// 装备资源
+message pb_equip_res {
+    uint32 tid = 1;     // 装备tid
+    uint32 num = 2;     // 个数
+}
+
+
+
+
+
+

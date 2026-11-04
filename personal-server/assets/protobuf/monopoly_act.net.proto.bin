@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+import "project/activity/monopoly_act/monopoly_act.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/count_statistics/count_statistics.net.proto.txt";
+
+// 大富翁活动丢骰子返回
+message pb_monopoly_act_go_back{
+    pb_res_to_client res = 1;       //资源信息
+    int32 throw_dice_num = 2;       //丢骰子点数
+    monopoly_act_role_data act_role_data = 3;       //活动玩家信息
+}
+
+// 大富翁活动丢骰子请求
+message pb_monopoly_act_go_req{
+    int64 act_tid = 1;       //活动id
+    bool is_high = 2;       //是否高级投掷
+    int32 need_point = 3;       // 高级投掷指定点数
+}
+
+// 大富翁活动完成商行请求
+message pb_monopoly_act_finish_firm_req{
+    int64 act_tid = 1;       //活动id
+    bool is_get = 2;       //是否领取奖励
+}
+
+// 大富翁完成订单返回
+message pb_monopoly_act_finish_order_back{
+   pb_res_to_client res = 1;       //资源信息
+   monopoly_act_role_data act_role_data = 2;       //活动玩家信息
+}
+
+// 大富翁通用请求
+message pb_monopoly_act_base_req{
+   int64 act_tid = 1;       //活动id
+   int64 tid = 2;       //事务tid
+}
+
+// 大富翁通用领取请求
+message pb_monopoly_act_get_reward_req{
+   int64 act_tid = 1;       //活动id
+   repeated int64 tid_list = 2;       //事务tid列表
+}
+
+// 大富翁活动登录返回
+message pb_monopoly_act_login{
+    monopoly_act_role_data act_role_data = 1;       //活动玩家信息
+    monopoly_act_guild_data guild_data = 2;       //公会数据
+    pb_res_to_client res = 3;       //资源信息
+    pb_count_statics_send guild_count_statics_send = 4;// 工会任务统计数据
+}
+
+// 大富翁战斗请求
+message pb_monopoly_act_fight_req{
+   int64 act_tid = 1;       //活动id
+   int64 ower_event_role = 2;       // 事件所有者
+   int64 event_uid = 3;       //事件uid
+}
+
+// 大富翁通用 返回
+message pb_monopoly_act_base_back{
+    pb_res_to_client res = 1;       //资源信息
+    monopoly_act_role_data act_role_data = 2;       //活动玩家信息
+    monopoly_act_guild_data guild_data = 3;       //公会数据
+    int64 act_tid = 4;       //活动id
+    int64 event_uid = 5;       //事件uid
+    int64 ower_event_role = 6;       // 事件所有者
+}
+
+// 大富翁发起订单返回
+message pb_monopoly_act_send_order_back{
+    monopoly_act_guild_data guild_data = 1;       //公会数据
+    monopoly_act_role_data act_role_data = 2;       //活动玩家信息
+}
+
+// 大富翁请求公会订单列表 返回
+message pb_monopoly_act_get_guild_back{
+   repeated pb_monopoly_act_order order_list = 1;                   // 订单列表
+   repeated pb_monopoly_act_supply supply_list = 2;                   // 补给列表
+   repeated pb_monopoly_act_score_report_data score_record_list = 3;      // 人员变动积分记录列表
+   repeated pb_monopoly_act_role_score_data role_score_list = 4;      // 人员积分记录列表
+}
+
+// 大富翁跨天返回
+message pb_monopoly_act_day_back{
+    monopoly_act_guild_data guild_data = 1;       //公会数据
+    int64 act_tid = 2;       //活动id
+}
+
+// 大富翁进入公会返回
+message pb_monopoly_guild_enter{
+    int64 act_tid = 1;       //活动id
+    monopoly_act_guild_data guild_data = 2;       //公会数据
+    pb_count_statics_send guild_count_statics_send = 3;// 工会任务统计数据
+}

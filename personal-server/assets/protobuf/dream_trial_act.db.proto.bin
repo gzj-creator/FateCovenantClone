@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+// 梦境试炼玩家数据
+message pb_dream_trial_role {
+  repeated pb_dream_trial_role_data act_list = 1;           //活动信息列表
+}
+
+// 梦境试炼活动数据
+message pb_dream_trial_role_data {
+  int64 version = 1;                                        // 活动表version
+  int64 challenge_score = 2;                                // 挑战积分
+  int64 seize_score = 3;                                    // 抢夺积分
+  int64 challenge_times = 4;                                // 已挑战次数
+  int64 last_challenge_time = 5;                            // 上次挑战时间
+  int64 raided_times = 7;                                   // 被抢夺次数
+  int64 last_update_time = 8;                               // 上次更新时间(用于次数跨天重置)
+  int64 rob_times = 9;                                      // 抢夺次数
+  int64 last_rob_time = 10;                                 // 上次抢夺时间
+  repeated int64 enemy_list = 11;                           // 敌人列表
+  repeated pb_dream_trial_report report_list = 12;          // 战斗记录列表
+  repeated pb_dream_trial_damage damage_list = 13;          // 伤害列表
+}
+
+// 梦境试炼战报数据
+message pb_dream_trial_report {
+  int64 enemy = 1;                                       // 敌人role_id
+  int64 score_change = 2;                                // 变化积分
+  int64 fight_uid = 3;                                   // 战斗唯一id，用来取战报
+  bool is_atk = 4;                                       // 我方是否是进攻方
+  int64 time = 5;                                        // 战斗时间
+}
+
+// 梦境试炼伤害数据
+message pb_dream_trial_damage {
+  int64 boss_id = 1;                                       // 仇人玩家的rid
+  int64 damage = 2;                                        //  伤害值
+}
+
+// 梦境试炼公会数据
+message pb_dream_trial_guild {
+  repeated pb_dream_trial_guild_data act_list = 1;           //活动信息列表
+}
+
+// 梦境试炼公会数据详情
+message pb_dream_trial_guild_data {
+  int64 version = 1;                                         //活动表version
+  int64 score = 2;                                           //累计积分
+  repeated pb_dream_trial_guild_boss_data boss_list = 3;     // boss列表
+  repeated int64 rid_list = 4;                               // 参与列表
+}
+
+// 公会级boss信息
+message pb_dream_trial_guild_boss_data {
+  int64 boss_id = 1;                                       //boss表id
+  int64 damage = 2;                                        // 伤害值
+  repeated int64 rid_list = 3;                             // 参与列表
+}
+
+// 梦境试炼公会数据
+message pb_dream_trial_server {
+  repeated pb_dream_trial_server_data act_list = 1;           //活动信息列表
+}
+
+// 梦境试炼公会数据详情
+message pb_dream_trial_server_data {
+  int64 version = 1;                                   //活动表version
+  repeated pb_dream_trial_server_boss_data boss_list = 3;     // boss列表
+}
+
+// 服务器级boss信息
+message pb_dream_trial_server_boss_data {
+  int64 boss_id = 1;                                       //boss表id
+  int64 lost_hp = 2;                                       // 丢失血量
+  int64 last_update_time = 3;                              // 上次更新时间
+  int64 damage = 4;                                       // 受到的伤害总值
+}
+
+// 服务器级boss信息
+message pb_dream_trial_rank_extra {
+  int64 num = 1;                                       //玩家数量
+}

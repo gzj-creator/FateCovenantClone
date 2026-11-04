@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+// 驱逐年兽活动
+message pb_festival_monster_act_data{
+    uint64 start_fight_time = 1;             // 开始打年兽时间
+    uint64 pass_fight_time = 2;             // 经历时间
+    uint32 surplus_fight_times = 3;         // 剩余打年兽次数
+    uint64 refresh_fight_time = 4;          // 刷新打年兽次数时间
+    uint64 rank_last_pass_fight_time = 5;    // 排行榜最小时间
+}

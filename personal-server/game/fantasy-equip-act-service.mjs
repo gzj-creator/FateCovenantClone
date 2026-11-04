@@ -10,7 +10,10 @@ export function createFantasyEquipActService({ store, codec, tables, fantasyTabl
   });
 
   function execute(type, input) {
-    log({ event: 'fantasy_equip_act_execute_entry', type, input, inputHex: input?.toString('base64') });
+    log({
+      event: 'fantasy_equip_act_execute_entry', type, input,
+      inputHex: Buffer.isBuffer(input) || input instanceof Uint8Array ? Buffer.from(input).toString('base64') : undefined
+    });
     switch (Number(type)) {
       case 88922: return shared.claimDailyMarbles('fantasy');
       case 88924: return shared.setWish('fantasy', input);

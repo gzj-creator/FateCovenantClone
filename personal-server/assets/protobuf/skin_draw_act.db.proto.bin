@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// 皮肤抽奖活动全服信息
+message pb_skin_draw_act_server{
+  uint64 draw_count = 1;                            // 全服抽奖次数
+  bool is_open_special_award = 2;                   // 是否开启大奖（废弃）
+  int32 open_special_award_count = 3;                     // 开启大奖次数
+}

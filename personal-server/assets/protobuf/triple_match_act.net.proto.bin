@@ -1,0 +1,80 @@
+syntax = "proto3";
+import "project/activity/triple_match/triple_match_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//消消乐交换位置请求
+message pb_triple_match_swap_tile_req{
+  int64 activity_id = 1;//活动id
+  int64 x1 = 2;//x坐标1
+  int64 y1 = 3;//y坐标1
+  int64 x2 = 4;//x坐标2
+  int64 y2 = 5;//y坐标2
+}
+
+//消消乐交换位置返回
+message pb_triple_match_swap_tile_rsp {
+  repeated pb_triple_match_action action_list = 1; //操作列表
+  pb_res_to_client res = 2;                        // 资源变化
+  pb_triple_match_act_info act_info = 3;           //活动信息
+}
+
+//消消乐重新开始请求
+message pb_triple_match_restart_req{
+  int64 activity_id = 1;//活动id
+  bool use_item = 2;// 是否使用道具
+}
+
+//消消乐操作数据
+message pb_triple_match_action {
+  repeated pb_triple_match_del_list del_list = 1;//消失的位置列表
+  repeated pb_triple_match_tile special_list = 2;//特殊格子的初始生成位置列表
+  pb_triple_match_map map = 3;                   //最新的地图数据
+  int64 score_gain = 4;                          //  得分增加量
+}
+
+//消消乐操作数据
+message pb_triple_match_del_list {
+  repeated pb_triple_match_tile tile_list = 1;//消失的位置列表
+}
+
+//消消乐领取累计积分奖励请求
+message pb_triple_match_score_award_req{
+  int64 activity_id = 1;//活动id
+  repeated int64 id_list = 2;//领取的奖励id
+}
+
+//消消乐领取累计积分奖励返回
+message pb_triple_match_score_award_rsp {
+  pb_res_to_client res = 1;                        // 资源变化
+  pb_triple_match_act_info act_info = 2;           //活动信息
+}
+
+//消消乐领取累计积分奖励返回
+message pb_triple_match_update_info {
+  pb_res_to_client res = 1;                        // 资源变化
+  pb_triple_match_act_info act_info = 2;           //活动信息
+}
+
+//消消乐使用道具回复
+message pb_triple_match_use_item_req {
+  int64 activity_id = 1;//活动id
+  int64 num = 2;//使用的道具数量
+}
+
+//消消乐使用道具回复返回
+message pb_triple_match_use_item_rsp {
+  pb_res_to_client res = 1;                        // 资源变化
+  pb_triple_match_act_info act_info = 2;           //活动信息
+}
+
+//消消乐领取关卡通关奖励请求
+message pb_triple_match_rec_pass_stage_award_req{
+  int64 activity_id = 1;//活动id
+  repeated int64 id_list = 2;//领取的奖励id
+}
+
+//消消乐领取关卡通关奖励返回
+message pb_triple_match_rec_pass_stage_award_rsp {
+  pb_res_to_client res = 1;                        // 资源变化
+  pb_triple_match_act_info act_info = 2;           //活动信息
+}

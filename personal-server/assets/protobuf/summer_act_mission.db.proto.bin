@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// 夏日活动主线相关数据
+message pb_summer_act_mission {
+    uint64 act_tid = 1; //活动tid
+    uint64 main_tid = 2; //主线通过关卡tid
+    repeated pb_summer_act_mission_sub sub_info_list = 4; //支线数据
+}
+
+// 夏日活动支线进度数据
+message pb_summer_act_mission_sub {
+    uint64 chapter = 1; //所属章节
+    uint64 sub_tid = 2; //支线通过关卡tid
+    uint64 atk_times = 3; //当前累计行动次数
+    bytes progress = 4; //进度奖励领取记录
+}

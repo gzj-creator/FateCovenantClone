@@ -1,0 +1,7 @@
+syntax = "proto3";
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+
+// 阵容镜像数据列表请求参数
+message pb_lineup_snapshot_list_req{
+  repeated pb_lineup_snapshot_key key_list = 1; // 请求列表
+}

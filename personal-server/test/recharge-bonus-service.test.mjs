@@ -10,7 +10,7 @@ import { createRechargeBonusService } from '../game/recharge-bonus-service.mjs';
 import { hasBit } from '../game/bit-block.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const OPENED_AT = Date.parse('2026-10-30T21:00:00Z') / 1000;
 
 function setup(t) {

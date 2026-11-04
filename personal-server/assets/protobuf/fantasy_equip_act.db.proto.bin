@@ -1,0 +1,40 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 专武活动
+message pb_fantasy_equip_act{
+    pb_recharge_limit_info buy_limit_info = 1;  // 礼包限购记录
+    pb_fantasy_equip_act_draw draw_info = 2;    // 抽卡数据
+    uint32 pre_choose_fantasy = 3;              // 预热活动选择的专武
+    bytes task_records = 4;                     // 召唤任务数据记录
+    uint32 act_tid = 5;                         // 当前活动tid
+}
+
+// 专武活动抽卡数据
+message pb_fantasy_equip_act_draw {
+    uint32 wish_tid = 1; // 选择的心愿专武
+    uint32 normal_guarantee_times = 2; // 普通保底次数(抽到非心愿专武次数，在抽到心愿专武后清0)
+    uint32 guarantee_progress = 3; // 保底进度
+    uint32 all_guarantee_times = 4; // 总保底次数,不会清零,不同期数也会累加
+}
+
+// 专武活动弹珠领奖
+message pb_marbles_award_info{
+    int32 award_count = 1;                      // 已领取奖励次数
+    bool marbles_big_award = 2;                 // 是否已领取大奖
+    int32 activity_version = 3;                 // 活动奖励版本数据 跟配置奖励表中的Group对应
+}
+
+// 专武活动挑战数据
+message pb_fantasy_equip_act_trial_data{
+    repeated pb_fantasy_equip_act_trial challenge_list = 1;     // 挑战列表
+}
+
+// 专武活动挑战数据(单个)
+message pb_fantasy_equip_act_trial{
+    uint32 tid = 1;                             // 副本tid
+    uint64 fantasy_equip = 2;                   // 穿戴的幻武uid
+    repeated uint64 bless_list = 3;             // 护佑的幻武
+    int64 max_damage = 4;                       // 最高伤害
+    repeated uint32 receive_list = 5;           // 已领取的奖励tid
+}

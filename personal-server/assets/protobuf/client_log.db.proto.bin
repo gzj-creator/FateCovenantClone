@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+
+// 服务器发送给客户端提交日志指令的参数
+message pb_res_submit_client_log{
+    uint32 day_count = 1; //日志天数
+    string desc = 2; //提交描述
+}

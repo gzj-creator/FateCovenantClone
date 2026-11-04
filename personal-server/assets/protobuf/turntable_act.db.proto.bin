@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 转盘活动数据
+message pb_turntable_act_info{
+    repeated pb_turntable_act_data act_data_list = 1;            // 活动数据列表
+}
+
+// 转盘活动数据
+message pb_turntable_act_data{
+    int64 version = 1;             // 数据版本号
+    int64 total_num = 2;             // 本期抽取次数
+    int64 no_big_num = 3;             // 本期未中大奖励次数
+}

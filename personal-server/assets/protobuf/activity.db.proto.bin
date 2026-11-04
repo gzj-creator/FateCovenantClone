@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+// 服务器暂停活动列表
+message pb_activity_pause_data{
+    repeated uint32 pause_list = 1;             //暂停状态的活动列表
+}
+
+// 活动状态时间
+message pb_act_state_time{
+    uint32 state_id = 1;                    // 状态id
+    uint32 start_time = 2;                  // 开始时间
+    uint32 end_time = 3;                    // 结束时间
+}
+
+// 定制活动配置
+message pb_act_custom_config{
+    uint32 act_id = 1;                  // 活动id
+    int32 fun_id = 2;                   // 模块id
+    uint32 start_time = 3;              // 开始时间
+    uint32 end_time = 4;                // 结束时间
+}
+
+// 服务器定制活动配置数据
+message pb_activity_custom_data {
+    repeated pb_act_custom_config configs = 1;      // 定制活动配置列表
+}
+
+// 玩家当前所有活动数据
+message pb_player_act_data{
+    repeated pb_act_state_data act_states = 1;       //活动数据
+}
+
+// 服务器当前所有全服活动数据
+message pb_server_act_data{
+    repeated pb_server_act_state_data act_states = 1; //活动数据
+}
+
+// 玩家活动状态数据
+message pb_act_state_data{
+    uint32 act_id = 1;                          // 活动表id
+    uint32 cur_state_id = 2;                    // 活动状态
+    repeated pb_act_enter_time history_time = 3; // 活动历史状态时间
+}
+
+// 服务器活动状态数据
+message pb_server_act_state_data{
+    uint32 act_id = 1;                          // 活动表id
+    uint32 cur_state_id = 2;                    // 活动状态
+}
+
+// 活动时间
+message pb_act_enter_time{
+    uint32 state_id = 1;           // 活动状态
+    uint64 enter_time = 2;      // 实际进入状态时间
+}
+
+// 服务器当前定时循环活动数据
+message pb_server_tc_act_list{
+    repeated pb_server_tc_act act_list = 1;       //定时循环活动列表
+}
+
+// 服务端定时循环活动信息
+message pb_server_tc_act {
+    uint32 act_id = 1;                          // 活动表id
+    uint64 open_time = 2;                       // 活动开启时间/秒
+    uint64 end_time = 3;                        // 活动结束时间/秒(存储结束时间是因为可能存在停服错过结束时间的情况)
+}

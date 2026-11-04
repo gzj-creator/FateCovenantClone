@@ -1,0 +1,64 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+//时空神殿总数据
+message pb_time_temple_data{
+    repeated pb_time_temple_bond bond_data = 1;              // 羁绊数据
+    repeated pb_time_temple_runes runes_data = 2;            // 符文数据
+    repeated pb_time_temple_god god_data = 3;                // 阵营女神(阵营女神等级表tid)
+    repeated pb_time_temple_season_runes select_runes = 4;   // 赛季选择用于战斗的符文
+    pb_time_temple_draw draw_award_data = 5;                 // 赛季抽卡进度领奖
+    pb_recharge_limit_info common_buy_gift_info = 6;         // 常驻礼包限购记录
+    pb_time_temple_limit_gift limit_buy_gift_info = 7;       // 当前阶段限时礼包限购记录
+}
+
+// 符文数据
+message pb_time_temple_runes{
+    uint32 id = 1;          // 符文id
+    uint32 progress = 2;    // 符文进度
+    uint32 level = 3;       // 符文等级
+}
+
+// 胚子数据
+message pb_time_temple_embryo{
+    int32 index = 1;         // 槽位
+    uint32 chip_num = 3;     // 拥有碎片数量
+    int32 star = 4;          // 星级，默认-1星，0星表示激活
+    int32 rune_star = 5;     // 符文星点
+}
+
+// 羁绊数据
+// 注意：如果slots里面有胚子所在槽位信息，说明拥有碎片
+message pb_time_temple_bond{
+    uint32 id = 1;                                      // 羁绊id
+    repeated pb_time_temple_embryo embryo_slots = 2;    // 槽位胚子激活情况
+    int32 level = 3;                                    // 羁绊等级 默认-1，0表示激活
+}
+
+// 阵营女神数据
+message pb_time_temple_god{
+    uint32 id = 1;                          // 阵营女神id
+    uint32 level = 2;                       // 等级
+}
+
+// 符文选择
+message pb_time_temple_season_runes{
+    uint32 season_id = 1;           // 赛季id
+    uint32 runes_id = 2;            // 选择的符文
+}
+
+// 抽卡奖励领取
+message pb_time_temple_draw{
+  uint32 season_id = 1;           // 赛季id
+  uint32 draw_num = 2;            // 赛季总抽奖次数
+  uint32 award_phase_num = 3;     // 赛季领奖阶段数值
+  bytes award_state = 4;          // 阶段领奖状态（可以跳着领奖）
+}
+
+// 限时礼包购买记录
+message pb_time_temple_limit_gift{
+    int32 phase_id = 1;                             // 阶段id
+    pb_recharge_limit_info buy_limit_info = 2;      // 购买记录
+}
+

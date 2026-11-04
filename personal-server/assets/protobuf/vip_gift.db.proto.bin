@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// 公主赠礼
+
+import "general/res.db.proto.txt";
+
+// 进程数据
+message pb_vip_gift {
+  uint64 uid = 1;                 // 唯一id
+  uint32 start_time = 2;          // 生效时间
+  uint32 end_time = 3;            // 结束时间
+  repeated pb_res_obj award = 4;  // 奖励
+}
+
+// 玩家赠礼数据
+message pb_vip_gift_player {
+  bytes received_gift = 1;        // 领取过的配置赠礼
+  repeated uint64 received_notify_gift = 2; // 领取过的推送赠礼
+}
+

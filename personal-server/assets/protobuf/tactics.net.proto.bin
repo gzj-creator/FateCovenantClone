@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/tactics/tactics.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 战法节点升级返回
+message pb_tactics_level_up_back{
+    pb_tactics_node node_info = 1; //节点数据返回
+    pb_res_to_client res = 2;   // 资源变更
+}
+
+// 战法章节重置返回
+message pb_tactics_reset_back{
+    pb_tactics_master master_info = 1; //节点数据返回
+    pb_res_to_client res = 2;   // 资源变更
+}

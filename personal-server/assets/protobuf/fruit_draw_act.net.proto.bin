@@ -1,0 +1,22 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/fruit_draw_act/fruit_draw_act.db.proto.txt";
+
+// 抽奖返回
+message pb_fruit_draw_back{
+    uint64 draw_num = 1;                                    // 总抽奖次数
+    repeated int32 cur_together_cell_id = 3;                // 绑定抽格子组
+    int32 cur_multiple_cell_id = 4;                         // 当前多倍奖励格子id
+    repeated int32 award_id = 5;                            // 本次抽中奖励格子
+    pb_res_to_client res = 6;                               // 资源改变
+    int32 act_id = 7;                                       // 活动id
+    repeated pb_fruit_draw_log draw_log_list = 8;            // 历史中奖次数信息
+    uint64 real_draw_num = 9;                                 // 真实抽奖次数
+}
+
+// 大奖选择返回数据
+message pb_fruit_draw_big_award_back{
+    int32 act_id = 7;                                        // 活动id
+    int32 big_award = 2;                                     // 本期选择大奖
+    repeated pb_fruit_draw_log draw_log_list = 6;            // 历史中奖次数信息
+}

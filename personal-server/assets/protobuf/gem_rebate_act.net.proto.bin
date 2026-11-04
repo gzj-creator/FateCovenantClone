@@ -1,0 +1,13 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+
+// 钻石返利活动数据
+message pb_gem_rebate_back {
+    uint32 rebate_num = 1;          // 返利的数量
+    pb_res_to_client res = 2;       // 资源改变
+}
+
+message pb_gem_rebate_req {
+    uint32 act_id = 1;              // 钻石返利活动id
+    uint32 turn_tid = 2;            // 钻石返利轮次表tid
+}

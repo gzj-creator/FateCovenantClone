@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+// 已完成任务记录
+message pb_homeland_act_finish_task {
+  int64 task_tid = 1;      // 任务配置tid
+  int64 finish_time = 2;   // 完成时间戳(用于每日重置判定)
+}
+
+// 任务状态(客户端展示用，惰性计算，不持久化)
+message pb_homeland_act_task {
+  int64 task_tid = 1;   // 任务配置tid
+  int64 progress = 2;   // 当前进度
+  int64 state = 3;      // 0=进行中, 1=可领奖, 2=已领取
+}
+
+// 阶段排行历史
+message pb_homeland_act_stage_history {
+  int64 stage_index = 1; // 阶段索引(0~4)
+  int64 rank = 2;        // 排名
+  int64 happiness = 3;   // 该阶段结算时的幸福值
+  int64 settle_time = 4; // 结算时间戳
+}
+
+// 家具装饰条目
+message pb_homeland_act_decorate {
+  int64 furniture_tid = 1; // 装饰的家具样式tid, 0=未装饰
+  int64 x = 2;             // 装饰的x坐标
+  int64 y = 3;             // 装饰的y坐标
+  int64 furniture_type = 4;  // 家具品类
+}
+
+// 冲榜英雄养成记录(用于幸福值增量计算)
+message pb_homeland_act_hero_record {
+  int64 hero_tid = 1;        // 英雄tid
+  int64 initial_favour = 2;  // 活动开始时的好感度(计算增量)
+  int64 rune_consume = 3;    // 活动期间消耗的专属符文数量
+}
+
+// 幸福值明细（按配置表分类汇总，客户端展示用）
+message pb_homeland_act_happiness_detail {
+  int64 src_type = 1;   // 来源类型（对应homeland_act_happiness_cfg的tid：1=英雄养成 2=好感度 3=家具图鉴 4=繁荣度 5=专属符纹）
+  int64 score = 2;      // 该来源幸福值
+}
+
+// 家园冲榜活动数据（单期，按version索引，下发客户端）
+message pb_homeland_act_role_data {
+  int64 act_id = 1;                                    // 活动表TID
+  int64 selected_hero_tid = 2;                         // 所选冲榜英雄tid, 0=未选择
+  int64 task_score = 3;                                // 任务积分（整期任务进度用）
+  repeated pb_homeland_act_finish_task finish_tasks = 4; // 已完成任务列表(仅记录tid+完成时间，服务端持久化)
+  repeated int64 settled_stages = 5;                    // 已结算阶段索引(0-based)
+  repeated pb_homeland_act_stage_history stage_history = 6; // 各阶段排行历史
+  repeated pb_homeland_act_decorate decorate_list = 7;  // 当前装饰的家具样式列表
+  bool is_cleaned = 8;                                 // 房间是否已打扫
+  int64 favour_intimacy = 9;                           // [deprecated] 改用hero_records
+  repeated pb_homeland_act_hero_record hero_records = 10; // 可选英雄养成记录(初始好感度+符文消耗)
+  repeated pb_homeland_act_happiness_detail happiness_detail = 11; // 各模块幸福值明细
+}
+
+// 家园冲榜活动玩家数据（DB存储容器，act_list按version区分多期）
+message pb_homeland_act_role {
+  repeated pb_homeland_act_role_data act_list = 1;
+}

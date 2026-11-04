@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "project/activity/recommend_gift/recommend_gift.db.proto.txt";
+
+// 激活推荐礼包请求
+message pb_recommend_gift_active_req {
+    repeated pb_recommend_gift_active actives = 1; // 激活的推荐礼包
+}
+
+message pb_recommend_gift_active {
+    uint32 act_tid = 1; // 活动id
+    repeated uint32 gift_id = 2; // 礼包id
+}
+// 激活推荐礼包返回
+message pb_recommend_gift_active_rsp {
+    repeated pb_recommend_gift gift_list = 1;   // 变化过的购买数据
+}

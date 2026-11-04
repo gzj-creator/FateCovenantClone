@@ -1,0 +1,56 @@
+syntax = "proto3";
+import "project/shop.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//请求购买商品
+message pb_req_buy_shop_item{
+    int32 shop_id = 1;              // 请求购买的商店
+    int32 cell_index = 2;           // 商品格子index
+    int64 shop_item_id = 3;         // 商品id 这里由客户端发给服务器，校验购买数据准确性
+    int32 count = 4;                // 购买数量
+    bytes groupParam = 5;           // 额外参数
+}
+
+//请求补买历史特殊商品
+message pb_req_buy_history_item {
+    int32 shop_id = 1;              // 商店id
+    int64 shop_item_id = 2;         // 特殊商品id
+    int32 count = 3;                // 购买数量
+    int64 day = 4;                  // 跨天秒数
+}
+
+//请求补买历史特殊商品回复
+message pb_rev_buy_history_item {
+    int32 shop_id = 1;                                          // 商店id
+    repeated pb_shop_item_bought  items_history_bought = 2;     // 特殊商品购买历史
+    pb_res_to_client res = 3;                                   // 资源改变
+}
+
+//随机商店手动刷新回复
+message pb_manual_refresh_shop_back{
+    pb_shop_info shop = 1;          // 商店信息
+    pb_res_to_client res = 2;       // 玩家资源改变
+}
+
+// 周期结算数据
+message pb_period_settle_data{
+    int32 period = 1;                // 周期
+    bytes settleData = 2;            // 结算结果数据
+}
+
+// 周期商店请求结算回复
+message pb_shop_settle_back{
+    pb_shop_info shop = 1;                              // 商店数据
+    repeated pb_period_settle_data settle_list = 2;     // 周期结算数据列表
+}
+
+// 商店小助手自动购买返回
+message pb_shop_assistant_buy_back{
+    pb_res_to_client res_to_client = 1;        // 资源改变
+    repeated pb_shop_item_info item_info_list = 2;  // 新的道具信息列表
+}
+
+// 多商店数据返回
+message pb_query_shops_back{
+    repeated pb_shop_info shops = 1;           // 商店数据
+}

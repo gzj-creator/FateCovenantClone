@@ -1,0 +1,170 @@
+syntax = "proto3";
+import "project/item.net.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/role.db.proto.txt";
+import "project/hero/draw/hero_draw.db.proto.txt";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+import "project/fantasy_equip/fantasy_equip.db.proto.txt";
+
+// 抽卡请求
+message pb_draw_hero {
+  int32 draw_lib = 1;             // 抽卡库  (普通、高级、爱心)
+  int32 draw_type = 2;            // 抽卡类型（单抽or十连抽）
+  uint32 point_draw_num = 3;      // 指定的抽奖次数
+  bytes extra_param = 4;           // 客户端->服务器透传参数
+  uint64 specify_item_tid = 5;     // 指定消耗配置的道具，配置表里有，不传默认消耗第一个
+}
+
+// 抽卡后返回前台数据
+message hero_draw_back {
+  pb_res_to_client res = 1;          // 改变的资源
+  pb_hero_recruit recruit_info = 2;     // 招募信息
+  repeated pb_res_arg decompose_args = 3; // 分解掉的资源列表
+  repeated pb_res_obj pre_args = 4;       // 分解之前的资源列表
+}
+
+// 合成请求
+message hero_compose_req {
+  int64 hero_tid = 1;             // 英雄tid
+  int32 hero_star = 2;            // 英雄星级
+  repeated int64 mat_hero_uid_list = 3;   // 材料uid列表
+}
+
+// 分解请求
+message hero_discompose_req {
+  repeated int64 mat_hero_uid_list = 3;   // 材料uid列表
+}
+
+// 分解返回前台
+message hero_discompose_back {
+  pb_res_to_client res = 1;             // 改变的资源
+}
+
+// 英雄重生返回前台
+message hero_rebirth_back {
+  pb_res_to_client res = 1;             // 改变的资源
+}
+
+// 升级
+message hero_up_lv {
+  int64 hero_uid = 1;             // 英雄的uid
+  int32 up_lv_count = 2;          // 升级数量
+  bool is_one_key_up = 3;         // 是否一键升级
+}
+
+// 升级返回前台数据
+message hero_up_lv_back {
+  pb_res_to_client res = 1;          // 改变的资源
+  int32 new_lv = 2;               // 升级后的等级
+  int32 new_break_lv = 3;         // 新的突破等级
+}
+
+// 升阶
+message hero_up_stage {
+  int64 hero_uid = 1;             // 英雄的uid
+}
+
+// 聊天分享数据
+message hero_chat_data {
+  int32 type = 1;                 // 类型
+  repeated int64 hero_list = 2;    // 分享的英雄列表
+  uint32 lucky_value = 3;         // 欧气值
+  string share_name = 4;          // 分享人的名字
+}
+
+// 领取图鉴钻石奖励回前台数据
+message hero_get_guide_award_back {
+  pb_res_to_client res = 1;             // 资源改变
+  repeated int64 have_got_tid_list = 2;   // 已经领取的英雄的tid列表
+}
+
+// 使用英雄道具
+message use_hero_prop {
+  uint32 tid = 1;                     // 物品tid
+  uint32 num = 2;                     // 使用数量
+  uint32 choose_type = 3;             // 选择类型（有些自选英雄道具需要选择阵营或者职业）
+}
+
+// 英雄碎片使用
+message hero_chip_use {
+  int32 tid = 1;    // 资源tid
+  uint32 num = 2;   // 使用数量
+  int64 custom_tid = 3;   // 自选的英雄tid
+}
+
+// 升星请求
+message pb_hero_up_star_req{
+  int64 main_uid = 1;                               // 升星的主英雄
+  repeated int64 self_hero_uids = 2;                // 本体英雄uid列表
+  repeated int64 same_camp_hero_uids_one = 3;       // 同阵营的第1种英雄uid列表
+  repeated int64 same_camp_hero_uids_other = 4;     // 同阵营的第2种英雄uid列表
+  repeated int64 any_camp_hero_uids = 6;            // 任意阵营的英雄uid列表
+}
+
+// 英雄置换返回前台
+message pb_hero_replace_back {
+  pb_res_to_client res = 1;               // 改变的资源数据
+  int64 new_hero_tid = 2;                 // 新英雄的tid
+}
+
+// 英雄转换返回前台
+message pb_hero_conversion_back {
+  pb_res_to_client res = 1;             // 改变的资源
+  hero new_hero = 2;                    // 新获得的英雄
+}
+
+// 英雄置换保存返回前台
+message pb_hero_replace_save_back {
+  pb_res_to_client res = 1;             // 改变的资源
+  hero new_hero = 2;                    // 新获得的英雄
+  bool is_add_preach_power = 3;         // 是否需要增加祝福能量
+}
+
+// 激活羁绊请求
+message pb_active_fetter_req{
+  uint64 hero_tid = 1;        // 要激活羁绊的英雄TID
+  uint32 fetter_idx = 2;      // 激活羁绊的索引（1、2、3、4）
+}
+
+// 全英雄变异返回前台
+message pb_hero_diff_back {
+  pb_res_to_client res = 1;             // 改变的资源
+  hero new_hero = 2;                    // 新获得的英雄
+}
+
+// 英雄觉醒
+message pb_hero_wake_req {
+  int32 hero_tid = 1;             //英雄tid
+  repeated pb_res_obj res = 2;    //选择消耗的资源
+}
+
+// 英雄洗练请求
+message pb_hero_reforge_req{
+  uint32 hero_tid = 1;                // 英雄tid
+  bool use_currency = 2;              // 是否使用货币(道具不足时使用)
+  repeated uint32 lock_idx_list = 3;  // 锁定的词条索引列表
+}
+
+// 英雄洗练返回
+message pb_hero_reforge_back{
+  pb_hero_reforge reforge = 1;        // 英雄洗练数据
+  pb_res_to_client res = 2;           // 改变的资源
+}
+
+// 英雄重置返回前台
+message pb_hero_back {
+  hero new_hero = 2;                    // 新获得的英雄
+  repeated pb_fantasy_formation formation_list = 1; // 新的半神派驻数据
+}
+
+
+// 英雄选择挂件
+message pb_hero_select_pendant_req{
+  int64 hero_uid = 1;             // 英雄的uid
+  repeated pb_hero_pendant_select pendants = 2;
+}
+
+message pb_hero_select_pendant_rsp{
+  repeated pb_hero_pendant_select pendants = 1;
+}

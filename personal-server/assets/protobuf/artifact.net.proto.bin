@@ -1,0 +1,68 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/artifact.db.proto.txt";
+import "core/db.db.proto.txt";
+
+//养成带资源信息返回数据
+message pb_artifact_back {
+    pb_res_to_client res = 1;       //资源信息
+    pb_artifact artifact = 2;       //神器信息
+}
+
+//请求强化天赋
+message pb_req_artifact_forge{
+    int64 tid = 1;          //神锻id
+    repeated pb_req_artifact_forge_one forge_list = 2;  //神锻列表
+}
+
+//请求强化天赋
+message pb_req_artifact_forge_one {
+    int32 type = 1;    //神锻类型
+    int32 forge_count = 2;  //神锻次数
+}
+
+//神器上阵信息
+message pb_artifact_wore_info{
+    repeated pb_artifact wore_list = 1;    //神器上阵列表
+    repeated int32 tid_list = 2;           //神器上阵tid列表
+}
+
+//圣约连携
+message pb_artifact_fetter{
+    repeated uint32 fetter_list = 1;    //连携列表
+}
+
+//圣约升级请求
+message pb_artifact_level_up_req{
+    uint32 tid = 1;         // 圣约tid
+    uint32 times = 2;       // 升级次数
+}
+
+//圣约升级返回
+message pb_artifact_level_up_rsp{
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_artifact artifact = 2;   // 新的圣约信息
+}
+
+//圣约突破返回
+message pb_artifact_break_level_up_rsp{
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_artifact artifact = 2;   // 新的圣约信息
+}
+
+// 圣约升星请求
+message pb_artifact_star_up_req {
+    uint32 tid = 1;     // 圣约tid
+    uint32 times = 2;   // 升星次数
+}
+
+//圣约图鉴升级请求
+message pb_artifact_handbook_level_up_req{
+    uint32 tid = 1;     // 圣约tid
+    uint32 times = 2;   // 升级次数
+}
+
+//圣约图鉴升级返回
+message pb_artifact_handbook_level_up_rsp{
+    pb_u64_kv handbook = 1;     // 新的圣约图鉴(圣约tid=>图鉴加成节点tid)
+}

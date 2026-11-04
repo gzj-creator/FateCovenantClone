@@ -1,0 +1,105 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 大富翁数据
+message pb_monopoly{
+    uint64 open_time = 1;                                        // 功能开启时间
+    repeated pb_monopoly_item use_item_list = 2;                 // 当前使用的道具列表
+    uint64 last_dice_flush_time = 3;                             // 骰子刷新时间
+    uint64 last_daily_flush_time = 4;                            // 每日刷新时间
+    uint32 daily_dice_buy_num = 5;                               // 每日购买骰子数量
+    uint32 total_throw_dice_num = 6;                             // 扔骰子的总次数，不随周期重置
+    uint64 reset_time = 7;                                       // 功能重置时间
+    pb_mono_map_data map_data = 8;                               // 地图数据
+    pb_mono_build_data build_data = 9;                           // 建筑数据
+    pb_mono_achieve_data achieve_data = 10;                      // 成就奖励
+    repeated pb_mono_tech tech_list = 11;                        // 科技天赋列表
+    uint64 box_award_num = 12;                                   // 宝箱奖励次数
+    uint64 left_box_num = 13;                                    // 剩余宝箱数量
+    uint64 version = 14;                                         // 当前地图周期
+}
+
+// 成就信息
+message  pb_mono_achieve_data{
+    uint32 week_throw_dice_num = 1;                              // 每周丢骰子数量
+    bytes achieve_rev_states = 2;                                // 成就奖励领取状态
+}
+
+// 地图数据
+message pb_mono_map_data{
+    uint32 cur_index = 1;                                        // 当前走到的格子索引
+    repeated pb_monopoly_event event_list = 2;                   // 事件列表
+    bool is_custom = 3;                                          // 是否是定制的地图
+    repeated uint64 normal_events = 13;                          // 剩余普通事件
+}
+
+// 建筑的总信息
+message pb_mono_build_data{
+    repeated pb_mono_one_build builds = 1;       // 建筑列表
+}
+
+// 单个建筑信息
+message pb_mono_one_build{
+    uint32 id = 1;              // 建筑ID，自己维护的一个根据当前建筑数量递增的一个ID
+    uint32 tid = 2;             // 建筑tid
+    uint32 level = 3;           // 建筑等级
+    uint32 output = 4;          // 建筑已经产出的产量
+    repeated pb_res_arg extra_award_args = 5; // 额外产出,
+    repeated pb_res_arg output_acc = 6;       // 累计产出
+    pb_mono_dispatch dispatch_hero = 7;       // 驻扎的英雄
+    bytes extra_info = 8;                     // 额外自定义数据
+}
+
+// 大富翁使用的道具，同时只能使用1个相同的道具
+message pb_monopoly_item{
+    int64 tid = 1;              // 使用的道具tid
+    uint32 effect_num = 2;      // 效果次数，0就代表不生效了，把道具删除掉
+}
+
+// 大富翁事件
+message pb_monopoly_event{
+    uint32 tid = 1;             // 事件tid
+    uint32 index = 2;           // 事件索引
+    bool is_finish = 3;         // 是否完成了
+    int32 param = 4;            // 事件动态参数，比如前进XX格
+    pb_mono_event_ext_data ext_data = 5;         // 事件额外数据
+}
+
+// 事件额外扩展数据
+message pb_mono_event_ext_data{
+    repeated pb_res_obj res_list = 1;    // 奖励列表
+}
+
+// 科技天赋
+message pb_mono_tech{
+    uint32 tid = 1;         // 科技天赋TID
+    uint64 start_time = 2;  // 开始研发时间（秒时间戳）
+}
+
+// 驻扎信息
+message pb_mono_dispatch {
+    repeated pb_mono_dispatch_hero heroes = 1; // 驻扎情况
+}
+message pb_mono_dispatch_hero {
+    uint32 pos = 1;      // 驻扎在几号位
+    uint64 hero_id = 2;  // 英雄id
+    bool is_rent = 3;    // 是否是租借的
+}
+
+// 精灵建筑数据
+message pb_mono_build_elves{
+    uint64 acc_dice_count = 1; // 当前累计用于订单生成的投骰子次数
+    repeated uint64 cache_week_list = 2; // 当前缓存对应可生成哪周的订单数据列表
+    repeated pb_mono_build_elves_order order_list = 3; // 当前已生成订单编号列表
+    uint64 init_time = 4; // 数据初始化时间
+    uint64 order_id = 5; // 当前的订单最大ID
+    uint64 refresh_order_time = 6; // 最近一次刷新订单时间
+    uint64 refresh_order_num = 7; // 当前刷新订单次数
+}
+
+// 精灵建筑数据的订单数据
+message pb_mono_build_elves_order{
+    uint64 id = 1; // 订单唯一ID
+    uint64 tid = 2; // 订单的配置表tid
+    repeated pb_res_obj obj_list = 3; // 随机的所需道具列表（最多3个）
+}

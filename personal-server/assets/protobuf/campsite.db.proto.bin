@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 营地数据
+message pb_campsite_data{
+  repeated pb_campsite_group groups_data = 1;   // 营地分组列表数据
+}
+
+// 营地分组数据
+message pb_campsite_group{
+  int32 group_id = 1;               // 营地分组id
+  bytes cell_states = 2;            // 格子解锁状态
+  repeated int64 hero_list = 3;     // 格子英雄
+}

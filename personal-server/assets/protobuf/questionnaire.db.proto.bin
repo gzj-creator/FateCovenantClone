@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message pb_questionnaire_role_info{
+  repeated int64 finish_questionnaire_tid = 1; // questionnaire table tid
+}
+
+message pb_questionnaire_data{
+  int64 question_tid = 1; // question tid
+  string content = 2; // answer content
+  string title = 3;
+  repeated string context2 = 4;
+}

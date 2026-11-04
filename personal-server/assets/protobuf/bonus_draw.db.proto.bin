@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// 所有福利抽奖数据
+message pb_bonus_draw_all {
+    repeated pb_bonus_draw list = 1;            // 福利抽奖列表
+}
+
+// 福利抽奖数据
+message pb_bonus_draw {
+    uint32 id = 1;                              // 福利抽奖表tid
+    uint32 cur_pool = 2;                        // 当前卡池
+    uint64 end_sec = 3;                         // 结束时间戳/秒
+    repeated pb_bonus_draw_pool pool_list = 4;  // 福利抽奖卡池列表
+}
+
+// 福利抽奖卡池数据
+message pb_bonus_draw_pool {
+    uint32 id = 1;                              // 福利抽奖卡池表tid
+    repeated uint64 award_list = 2;             // 已抽中的奖励tid列表(福利抽奖库表tid,按照获取的时间顺序排序)
+}

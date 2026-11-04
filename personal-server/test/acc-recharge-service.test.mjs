@@ -18,7 +18,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const SERVER_OPENED_AT = 1792789200;
 const WINDOW = activityWindow(tables.ActFrameAct.get(106036), SERVER_OPENED_AT);
 const dayIndex = timestampSeconds => Math.floor((timestampSeconds + 10800) / 86400);
@@ -401,7 +401,7 @@ test('real gateway routes 98620 instead of returning LOCAL_NOT_IMPLEMENTED', asy
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     localWallet: true,
     serverOpenedAt: SERVER_OPENED_AT,
     activityMode: 'all-open',

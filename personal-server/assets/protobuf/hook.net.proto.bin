@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/hook/hook.db.proto.txt";
+
+// 快速挂机返回
+message pb_hook_fast_rsp {
+  pb_res_to_client res_changes = 1;
+  repeated pb_hook hooks = 2;
+  pb_fast_hook fast_hooks = 3; // 快速挂机数据
+}
+
+// 使用快速挂机物品返回
+message pb_hook_item_fast_rsp {
+  pb_res_to_client res_changes = 1;
+  repeated pb_hook hooks = 2;
+}
+
+// 收取挂机奖励返回
+message pb_hook_gather_rsp {
+  pb_res_to_client res_changes = 1;
+  repeated pb_hook hooks = 2;
+}
+
+// 预览挂机奖励返回
+message pb_hook_preview_rsp {
+  repeated pb_res_obj award = 1;
+  repeated pb_hook hook = 2;
+}
+
+// 道具快速挂机
+message pb_hook_item_fast_req {
+  uint32 item_id = 1; // 道具id
+  uint32 times = 2; // 次数
+  bytes msg_bin = 3; // 请求的自定义数据
+}
+
+// 领取或预览
+message pb_hook_gather_or_preview_req {
+  repeated uint64 type_list = 1; // 类型列表
+  bytes msg_bin = 2; // 请求的自定义数据
+}
+
+// 快速挂机收取
+message pb_hook_fast_gather_req {
+  uint64 type = 1; // 类型
+  uint64 count = 2; // 次数
+  bytes msg_bin = 3; // 请求的自定义数据
+}

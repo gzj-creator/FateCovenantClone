@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+//【七夕特惠】自选奖励请求
+message pb_qi_xi_recharge_select_req {
+    uint32 recharge_tid = 1;        // 礼包tid
+    repeated pb_qi_xi_recharge_select_list select_list = 2;          // 选择的奖励列表
+}
+
+message pb_qi_xi_recharge_select_list {
+    uint32 gift_award_tid = 1;        // 序号（格子）第一列的值
+    uint32 select_tid = 2;            // 选择的奖励下标
+}

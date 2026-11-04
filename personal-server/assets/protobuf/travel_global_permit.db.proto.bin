@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+//主线战令模块 需求文档 https://jzyxgames.feishu.cn/wiki/wikcnFenDKlJZUCQ8dRdzgxbfjc
+
+//主线战令信息
+message pb_travel_global_permit_info {
+    bytes progress_award = 1; //任务进度奖励领取数据
+    uint64 all_pass_time = 2; //所有任务已完成时间
+}

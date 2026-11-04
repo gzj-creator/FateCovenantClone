@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+
+// 开服100抽数据
+message pb_open_server_box{
+  int64 join_day = 1; //加入活动的天数（即功能开启后天数）
+  int64 rev_days = 2; //领取到第几天的奖励
+  bytes rev_progress = 3;//领取了哪些进度奖励
+  uint64 version = 4; //活动功能内的版本号（兼容外网数据，从0开始）
+  bool recharge_flag = 5; //是否付费
+}

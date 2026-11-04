@@ -1,0 +1,76 @@
+syntax = "proto3";
+import "project/msg/msg.db.proto.txt";
+import "project/role.db.proto.txt";
+import "project/function_cache/player_data/player_data.db.proto.txt";
+
+//玩家基本信息
+message pb_msg_role_info {
+    int64 role_id = 1; //角色ID
+    pb_player_info player_info = 2; //玩家基础信息
+}
+
+//请求发送消息
+message pb_req_send_msg{
+    int64 channel_id = 1;//频道ID
+    bytes content_bin = 2; //消息内容二进制
+    bytes extra_param = 3; //额外参数
+}
+
+//新消息推送
+message pb_res_new_msg{
+    int64 channel_id = 1; //频道ID
+    pb_msg msg = 2; //消息体
+    bytes sender_bin = 3; //发送者信息二进制，可能为空，需要解码时自行判断
+    bytes extra_bin = 4; //用于记录一些额外数据，如私聊的目标角色ID等
+}
+
+//消息计数新增推送，用于给不在聊天频道内的玩家推送消息
+message pb_res_inc_msg_count{
+    int64 channel_id = 1; //频道ID
+    int32 inc_count = 2; //消息新增数量
+}
+
+//消息登录推送
+message pb_res_msg_login{
+    repeated pb_msg_range_list channel_msg_list = 1;  //每个频道的消息列表
+    repeated pb_msg_role_info role_info_list = 3; //对应的不重复的玩家信息列表
+}
+
+//频道内某个范围的消息列表，用于登录推送和拉取历史消息
+message pb_msg_range_list{
+    int64 channel_id = 1; //频道ID
+    repeated pb_msg msg_list = 2; //消息列表
+    bytes extra_data = 3; //用于记录一些额外数据，如私聊的目标角色ID等
+}
+
+//频道内某个范围的消息列表，带发送者(玩家)信息
+message pb_msg_range_list_with_role_info{
+    int64 channel_id = 1; //频道ID
+    repeated pb_msg msg_list = 2; //消息列表
+    repeated pb_msg_role_info role_info_list = 3; //对应的不重复的玩家信息列表
+    bytes extraData = 4; //用于记录一些额外数据，如私聊的目标角色ID等
+}
+
+//玩家信息列表
+message pb_msg_role_info_list{
+    repeated pb_msg_role_info role_info_list = 1; //角色信息列表
+}
+
+// 推送消息
+message pb_msg_notify {
+    uint32 tid = 1;             // 推送消息tid
+
+    uint64 src_id = 2;          // 触发源,如果是玩家就是玩家role_id
+    bytes src_name = 3;         // 如果是玩家,则是玩家名字
+
+    uint32 play_time = 4;       // 播放时间(秒),可以为作为消息唯一标识
+    uint32 content_type = 5;    // 推送格式
+
+    bytes custom = 6;           // 自定义数据
+}
+
+
+// 使用宝箱
+message pb_lantern_use_box {
+    repeated uint32 tid_list = 1;     // 抽中的资源tid列表
+}

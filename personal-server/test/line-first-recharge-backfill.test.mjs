@@ -9,7 +9,7 @@ import { readGameTables } from '../config/game-tables.mjs';
 import { createLineFirstRechargeService } from '../game/line-first-recharge-service.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const NOW = Date.parse('2026-10-31T10:30:00Z');
 const CREATED_AT = Date.parse('2026-10-29T21:30:00Z') / 1000;
 

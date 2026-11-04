@@ -1,0 +1,73 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/general_dungeon/general_dungeon.db.proto.txt";
+import "project/hero/hero_lease/hero_lease.db.proto.txt";
+
+
+//请求执行某个事件
+//在执行事件时需要同步迷雾数据和玩家位置
+message pb_dungeon_event_exe{
+    int32 execute_event = 1; //执行的事件id
+    int32 pos = 2; //玩家当前位置 高3位储存x，低3位储存y，如3014，表示x=3,y=14
+    bytes fog = 3; //新的迷雾数据
+    repeated int32 active_event = 4; //要激活的事件id列表，通常情况下是指因迷雾消散，需要激活的事件
+    int32 req_data = 5; //请求执行的内容,如选择某个Buff，选择招募某个英雄
+}
+
+//请求激活或者初始化事件
+message pb_dungeon_event_active{
+    repeated int32 active_event = 1; //要激活的事件id列表，通常情况下是指因迷雾消散，需要激活的事件
+    bytes fog = 2; //新的迷雾数据
+    int32 pos = 3; //玩家当前位置 高3位储存x，低3位储存y，如3014，表示x=3,y=14
+}
+
+
+// 事件执行结果
+message pb_dungeon_event_res {
+    repeated pb_dungeon_event events = 1;   // 事件结果列表
+    int32 target_evt = 2;       //请求执行的事件id
+    pb_res_to_client res = 3;   // 资源变化
+    int32 box_count = 4;        //新的宝箱数量
+    pb_role_lease_hero hero = 5;   // 招募英雄
+    bytes extra_data = 6; //事件执行二进制，由各个模块自己解析
+}
+
+// 事件激活结果
+message pb_dungeon_event_list {
+    repeated pb_dungeon_event events = 1;   // 事件结果列表
+}
+
+// 同步地图
+message pb_dungeon_sync_map{
+    bytes fog = 1; //新的迷雾数据
+    int32 pos = 2; //玩家当前位置 高3位储存x，低3位储存y，如3014，表示x=3,y=14
+    int32 scene_id = 3; //场景id
+}
+
+// 战斗请求参数
+message pb_dungeon_fight_param
+{
+    int32 event_id = 1; //事件id
+    int32 pos = 2; //玩家当前位置
+    bytes fog = 3; //新的迷雾数据
+}
+
+// 关卡数据改变（初始化关卡/关闭关卡/改变挑战的关卡）
+message pb_dungeon_level_change{
+    int32 cur_level = 1;  //当前关卡id
+    repeated pb_dungeon_level level_list = 2; // 发生改变的关卡数据列表
+    bytes extraData = 3;                      // 自定义额外数据
+}
+
+
+// 关卡数据改变（初始化关卡/关闭关卡/改变挑战的关卡）
+message pb_enter_dungeon_level{
+    int32 enter_level = 1;  //当前关卡id
+    bytes extraData = 2;    // 自定义额外数据
+}
+
+
+
+
+
+

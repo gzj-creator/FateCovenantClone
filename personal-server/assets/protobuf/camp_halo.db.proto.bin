@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 角色阵营光环数据
+message pb_camp_halo_role {
+  repeated pb_camp_halo halos = 1; // 多个阵营光环数据
+  int32 select_camp = 2; // 选择的光环索引（0为未选择光环）
+}
+
+// 单个阵营光环
+message pb_camp_halo {
+  uint32 camp_tid = 1; // 阵营类型
+  uint32 level = 2;    // 光环等级
+}

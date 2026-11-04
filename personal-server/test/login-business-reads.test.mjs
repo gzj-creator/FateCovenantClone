@@ -146,7 +146,7 @@ test('real gateway serves CMS and current-guild assist reads without unsupported
   const game = createLocalGame({
     databasePath,
     statePath: path.join(directory, 'absent.json'),
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: SERVER_OPENED_AT,
     now: () => gameNow,

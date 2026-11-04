@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// 所有消息
+message pb_msg_all{
+    repeated pb_msg msg_list = 1;       // 消息列表
+}
+
+//消息基础结构，其他消息请在此基础上扩展
+message pb_msg{
+    int64 sender = 1; //发送者 规定：当sender>100时必定为角色ID
+    int32 time = 2; //发送时间
+    int32 idx = 3;  //消息在频道中的索引（依次自增）
+    bytes content = 4; //消息内容
+    int32 type = 5;    //消息类型
+}

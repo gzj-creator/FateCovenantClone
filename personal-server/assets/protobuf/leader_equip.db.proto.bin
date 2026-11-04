@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+// 团长装备数据
+message pb_leader_equips_data {
+    repeated pb_leader_equip_slot slots = 1;          // 装备的槽位信息
+    repeated pb_leader_equip equip_list = 2;          // 装备的其它装备列表
+    uint64 max_uid = 3;                               // 当前最大装备uid
+    pb_leader_equip_forge draw_info = 4;              // 打造信息
+    bytes dismiss = 5;                                // 标记的自动分解数据
+}
+
+// 团长装备槽位数据
+message pb_leader_equip_slot {
+    int32 type = 1;                                   // 团长装备类型表tid
+    pb_leader_equip equip = 2;                        // 装备信息
+    uint32 level = 3;                                 // 槽位等级
+}
+
+// 团长装备
+message pb_leader_equip {
+    int64 tid = 1;                                    // 装备道具tid
+    int64 uid = 2;                                    // 装备唯一id
+    uint32 star = 3;                                  // 装备星级
+    uint32 level = 4;                                 // 装备后小于等于格子等级，脱下为1级
+    pb_leader_equip_intensify intensify_info = 5;     // 增幅信息
+}
+
+// 团长装备增幅信息
+message pb_leader_equip_intensify {
+    uint32 intensify_level = 1;                       // 装备增幅等级
+    uint32 intensify_times = 2;                       // 当前已增幅次数(增幅成功后会重置为0)
+}
+
+// 团长装备打造信息
+message pb_leader_equip_forge {
+    uint32 lv = 1;                                   // 等级
+    uint32 exp = 2;                                   // 经验
+    uint32 wish = 3;                                   // 当前祝福值
+}

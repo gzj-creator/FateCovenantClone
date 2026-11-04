@@ -1,0 +1,47 @@
+syntax = "proto3";
+import "project/role.db.proto.txt";
+
+// 账号回归信息
+message pb_account_role_back {
+    repeated pb_role_back_new news = 1; // 新区列表（命运新篇）
+    repeated pb_role_back_old olds = 2; // 老区列表（征途再启）
+}
+
+// 玩家新服回归信息
+message pb_role_back_new {
+    uint64 role_id = 1; // 新区玩家id
+    bool is_get_bind_reward = 2; // 领取绑定奖励
+    uint64 bind_role_id = 3; // 绑定的老区玩家id
+    uint64 open_time = 4; // 开启时间（结束时间读表）
+    repeated uint64 can_bind_roles = 5; // 可绑定的老区玩家id列表（注册时候就确定）
+    int64 bind_total_recharge = 6; // 返利累充金额（元）
+    repeated int64 day_back_num_list = 7; // 每天返利数额（提前定好的）
+    int64 get_day_back_index = 8; // 已领取每天返利的次数
+    int64 get_day_back_time = 9; // 上一次领取每天返利的时间戳
+}
+
+// 玩家老区回归信息
+message pb_role_back_old {
+    uint64 role_id = 1; // 老区玩家id
+    uint64 open_time = 2; // 开启时间（结束时间读表）
+    uint64 bind_role_id = 3; // 新区玩家id
+}
+
+ // 可绑定老区
+message pb_role_back_bind{
+    uint64 role_id = 1; // 老区玩家id
+    uint64 open_time = 2; // 开启天数
+    uint32 server_id = 3; //服务器id
+}
+
+ // 可绑定老区显示资料
+message pb_role_back_bind_show_info{
+    bytes name = 1; //名字
+    uint32 level = 2; //等级
+    pb_figure_simple_info figure_simple_info = 3; //形象数据
+    uint32 server = 4; //服务器id
+    uint32 cross_stage = 5; // 跨服阶段
+    uint32 total_recharge = 6; // 累充额度
+    uint64 role_id = 7; // 玩家id
+    bool have_forever_card = 8; // 是否拥有永久卡
+}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+// 活动商店总数据
+message pb_act_shop_info {
+    repeated pb_act_shop_db_info shop_list = 1; // 所有商店数据
+}
+
+// 活动商店相关数据结构
+message pb_act_shop_db_info {
+    uint64 act_tid = 1; // 活动配置表tid
+    repeated pb_act_goods_info goods_list = 2; // 已购买的商品列表
+    int64 history_tid = 3; // 历史最高等级tid
+    repeated int64 claimed_tid_list = 4; // 当前领取的等级tid列表
+}
+
+message pb_act_goods_info {
+    int64 goods_id = 1; // 商品表id
+    int64 goods_tid = 2; // 商品tid
+    int64 count = 3; // 数量
+    int64 times = 4; // 购买次数
+}

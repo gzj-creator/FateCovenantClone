@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "project/activity/pin_ball/pin_ball.db.proto.txt";
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/shop.db.proto.txt";
+
+// 活动 - 角色数据
+message pb_act_pin_ball_role_res_back{
+    pb_act_pin_ball_role info = 1; // 角色数据
+    pb_res_to_client res = 2; //资源数据
+}
+
+// 活动 - 参加返回数据
+message pb_act_pin_ball_enter_back{
+    pb_act_pin_ball_role role_info = 1; // 角色数据
+    pb_shop_info shop_info = 2; //商店数据
+    pb_res_to_client res = 3; //资源数据
+}
+
+// 活动 - 参加返回数据
+message pb_act_pin_ball_settle_back{
+    pb_act_pin_ball_role role_info = 1; // 角色数据
+    bool is_red = 2; //是否随机到大红包
+    repeated pb_res_obj award_list = 3; //对局结束后记录的所有奖励列表
+}

@@ -1,0 +1,176 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// -------服务器数据---------
+
+// 竞速活动的整体服务器数据
+message pb_guild_racing_s {
+    pb_guild_racing_time time_info = 1; // 活动的时间数据
+    repeated pb_guild_racing_rank_item rank_list = 4;   // 当前已经完结的榜单
+    bool handle_cross = 3; // 标记是否处理了逻辑服的跨服操作
+}
+
+// 竞速活动的时间数据
+message pb_guild_racing_time {
+    uint64 prepare_time = 1;                            // 可以开始报名的时间点
+    uint64 begin_time = 2;                              // 正式比赛开始的时间点
+    uint64 end_time = 3;                                // 正式比赛结束的时间点
+}
+
+// 服务器记录排行榜简单数据
+message pb_guild_racing_rank_item {
+    uint64 guild_id = 1; //航会ID
+    uint32 extra_time = 2; //额外时间（报名时，比赛已开始的时间）
+    uint32 use_time = 3; //耗时
+    uint64 move_meter = 4; //移动的毫米数
+    uint32 role_number = 5; //参与人数
+    string guild_name = 6; //航会名称
+    uint32 rank_number = 7; //排名
+    uint32 award_tid = 8; //奖励tid
+}
+
+// 记录每个航会夺冠次数
+message pb_guild_racing_champion{
+    repeated pb_u64_kv champion_list = 1; // 航会冠军次数列表
+    uint64 avg_power = 2; // 当前平均战力
+}
+
+// -------航会数据---------
+
+// 竞速活动，单个航会的数据（各阶段同步当前的数据；结束后落地到DB的数据）
+message pb_guild_racing_g {
+    uint64 guild_id = 1; //航会ID
+    pb_guild_racing_attend_info attend_info = 2; //参赛玩家信息
+    pb_guild_racing_support_info support_info = 3; //助威玩家信息
+    uint32 use_time = 4; //耗时（每次推数据时，这个时间都会算一下）
+    uint64 move_meter = 5; //移动的毫米数
+    uint64 speed = 6; //速度毫米/秒
+    string guild_name = 7; //航会名称
+    uint64 total_power = 8; //总战力（可能比较大）
+    uint64 refresh_time = 9; //计算移动距离用到的时间(毫秒)
+    uint64 init_time = 10; //第一个玩家参加活动的时间（主要用于比赛阶段玩家参赛，好计算耗时）
+    uint64 defense_time = 11; //屏障失效时间
+    uint64 bomb_time = 12; //炸弹失效时间
+    pb_guild_racing_bar_info bar_info = 13; //车把信息
+    pb_guild_racing_snow snow_ball = 14; //雪球相关数据
+    bool output_normal = 15; //道具是否正常产出
+    repeated pb_guild_racing_buff_wait wait_list = 16; //使用带有前摇时间的道具，需要先加入等待列表中
+    pb_guild_racing_event evt_info = 17; // 当前生效的事件信息（水怪事件或投票事件）
+    pb_guild_racing_vote_buff vote_buff_info = 18; // 当前生效的投票buff数据
+    uint32 car_tid = 19; // 赛车Tid
+    uint64 stone_time = 20; //障碍物失效时间
+    uint64 fix_speed = 21; //基于玩家人数和战力计算出的一个修正速度
+}
+
+// 参赛的玩家数据
+message pb_guild_racing_attend_info {
+    uint32 role_num = 1; //参赛玩家个数
+    repeated uint64 role_list = 2; //参加活动的玩家ID列表
+}
+
+// 助威玩家信息
+message pb_guild_racing_support_info {
+    uint32 support_num = 1; //总助威次数
+    repeated pb_u64_kv support_list = 2; //每个玩家助威总次数列表
+}
+
+
+// 车把信息
+message pb_guild_racing_bar_info {
+    uint32 bar_num = 1; //当前总车把个数
+    repeated pb_guild_racing_bar bar_list = 2; //车把使用情况列表
+}
+
+// 单个车把信息
+message pb_guild_racing_bar {
+    uint64 bar_time = 1; // 车把失效时间
+    uint64 bar_num = 2; // 车把使用量
+}
+
+// 航会的雪球相关数据
+message pb_guild_racing_snow {
+    repeated pb_guild_racing_down down_list = 1; //当前下船玩家的数据
+    uint32 suffer_damage = 2; //所受伤害值
+    uint32 down_num = 3; //当前下船玩家总数
+}
+
+// 航会下船玩家数据
+message pb_guild_racing_down {
+    uint64 role_id = 1; //下船玩家ID
+    uint64 back_time = 2; //回到船上的时间点
+}
+
+// 道具等待生效的数据
+message pb_guild_racing_buff_wait {
+    uint32 buff_tid = 1; //道具的tid
+    uint32 duration = 2; //配置的持续时间
+    repeated uint32 effect = 3; //配置的效果参数
+    uint64 active_time = 4; //实际开始生效的时间（毫秒）
+    uint32 use_num = 5; //道具使用数量
+    uint64 use_role_id = 6; //使用的玩家ID
+    uint64 use_guild_id = 7; //使用的玩家航会ID
+}
+
+// 事件数据
+message pb_guild_racing_event {
+    uint32 tid = 1; // 当前已经触发过的事件tid
+    pb_guild_racing_event_vote vote_data = 2; // 当前投票事件数据
+    pb_guild_racing_event_monster monster_data = 3; // 当前海怪事件数据
+}
+
+// 事件 - 投票数据
+message pb_guild_racing_event_vote {
+    uint64 begin_time = 2; // 投票开始时间点
+    uint64 end_time = 3; // 投票结束时间点
+    repeated pb_u32_kv random_buff_list = 4; //随机可投票的buff列表，最多3个（tid和当前投票人数）
+}
+
+// 事件 - 海怪数据
+message pb_guild_racing_event_monster {
+    uint64 begin_time = 2; // 水怪出现时间点
+    uint64 end_time = 3; // 水怪消失时间点
+}
+
+// 投票BUFF数据
+message pb_guild_racing_vote_buff {
+    uint32 tid = 1; // 投票BUFF的tid
+    uint32 end_param = 2; // 结束的参数（比如结束的米数、结束的时间点）
+    uint32 effect = 3; // effect配置值
+}
+
+// 单个航会的拍卖数据
+message pb_guild_racing_goods {
+    repeated uint32 goods_list = 2; //物品列表
+}
+
+// 航会内玩家积分数据
+message pb_guild_racing_score {
+    repeated pb_u64_kv score_list = 1; // 每个玩家的积分数据
+    uint64 expire_time = 2; // 失效时间
+    bool is_cross = 3; // 是否开启了跨服玩法
+}
+
+
+// -------角色数据 --------------------------------------------------------------
+
+// 角色竞速相关数据
+message pb_guild_racing_r {
+    uint64 attend_time = 1; //报名时间
+    uint32 support_times = 2; //助威次数
+    repeated pb_guild_racing_buff buff_list = 3; //当前拥有的道具数据列表
+    uint64 power = 4; //战力
+    uint32 vote_buff_tid = 5; //当前的投票BuffTid
+    uint32 vote_event_tid = 6; //当前已投票的事件tid
+    uint64 cache_award_tid = 7; //可以领取奖励的tid（废弃）
+    uint64 leave_time = 8; //标记最近一次比赛期间离开航会的时间
+    uint64 rev_award_time = 9; //最近一次领取奖励的时间
+    repeated pb_u64_kv msg_push_list = 10; //玩家触发道具使用推送消息的时间列表
+    uint64 output_award_time = 11; // 上次领取产出奖励的时间
+    uint64 rev_score_time = 12; //最近一次领取积分奖励的时间
+}
+
+// 单个道具数据
+message pb_guild_racing_buff {
+    uint32 buff_tid = 1; //道具tid
+    uint32 num = 2; //当前拥有个数
+}

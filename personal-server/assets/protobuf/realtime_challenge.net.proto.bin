@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+// 连胜播报消息
+message pb_realtime_challenge_win_count{
+    uint64 role_id = 1;   // 角色ID
+    uint32 win_count = 2;   // 连胜次数
+}
+
+// 攻击时通知被打的人
+message pb_realtime_challenge_be_attack{
+    uint64 src_role_id = 1;     // 攻击的人
+    uint32 lose_hp = 2;         // 损失的血量
+}
+
+// 发起战斗
+message pb_realtime_challenge_fight_req{
+    uint32 map_id = 1; // 地图id
+    uint64 target_id = 2; // 挑战目标id（boss的id|玩家角色ID）
+    uint32 target_type = 3; // 挑战目标类型（0是PVE，1是pvp）
+}
+
+// 发起战斗返回
+message pb_realtime_challenge_fight_ret{
+    uint32 result = 1; // 挑战结果（和战斗胜负定义一致）
+    uint32 new_score = 2;   // 新的积分
+    uint64 harm = 3;        // 造成的伤害值
+    uint64 lose_hp = 4;     // 自己扣的血
+}
+
+// 战斗更新内容
+message pb_realtime_challenge_fight_update{
+    uint64 hp = 1; // 血量
+    uint64 last_atk_time = 2; // 上次攻击时间
+    uint32 win_count = 3; // 连胜次数
+    uint32 atk_count = 4; // 攻击次数
+    uint32 start_loc = 5; // 开始位置
+    uint32 end_loc = 6; // 结束位置
+    uint64 last_rebirth_time = 7; // 上次复活时间
+    uint32 kill_count = 8; // 总的击杀次数
+    uint32 continue_kill_count = 9; // 连续（没有死亡）击杀次数
+}
+
+// 移动更新内容
+message pb_realtime_challenge_move_update{
+    uint32 start_loc = 1; // 开始位置
+    uint32 end_loc = 2; // 结束位置
+    uint64 last_move_time = 3; // 上次移动时间
+}
+
+
+// 战斗表现数据推送
+message pb_guild_war_fight_show_data{
+    string atk_name = 1;  // 攻击的人
+    string def_name = 2;  // 防守的人
+    bool is_def_dead = 3; // 防守者是否死亡
+    uint64 atk_id = 4;    // 攻击者id
+    uint64 def_id = 5;    // 防守者id
+    uint32 win_count = 6; // 连胜次数
+    uint32 harm = 7;      // 造成的伤害
+}

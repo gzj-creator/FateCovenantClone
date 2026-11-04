@@ -1,0 +1,23 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 精灵活动数据
+message pb_elves_act_data{
+    pb_recharge_limit_info buy_limit_info = 1;      // 礼包限购记录
+    int32 cur_fruit_draw_act_tid = 2;               // 当前选择水果抽奖活动
+    int64 cur_elves_tid = 3;                        // 主界面心愿精灵
+    bytes draw_award_data = 4;                      // 抽奖领取奖励
+}
+
+// 精灵活动任务数据
+message pb_elves_act_task{
+    int32 task_id = 1;                             // 任务id
+    repeated pb_elves_act_hero heroes = 2;         // 冒险者列表
+    int64 start_time = 3;                          // 开始时间
+}
+
+// 精灵活动冒险者
+message pb_elves_act_hero{
+    uint64 tid = 1;   // 英雄tid
+    uint64 star = 2;  // 星级
+}

@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+import "project/guild_gvg/guild_gvg.db.proto.txt";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+import "project/fight/fight.db.proto.txt";
+import "project/guild.db.proto.txt";
+
+// 攻打小怪返回
+message pb_guild_gvg_atk_monster{
+  pb_guild_gvg_monster monster = 1;     // 战斗后的怪物数据
+  pb_res_to_client res = 2;               // 资源
+  pb_guild_gvg_person person = 3;       // 战斗后的玩家数据
+  uint64 hurt = 4;                        // 扣除血量
+}
+
+// 自动攻击城门完整推送
+message pb_guild_gvg_door_push_l{
+  repeated pb_guild_gvg_atk_door_push push_list = 1;    //城门定时推送数据
+  repeated pb_guild_log log_list = 2;                     //增加的公会日志
+}
+// 自动攻击城门单个推送
+message pb_guild_gvg_atk_door_push{
+  uint64 atk_role = 1;                    // 进攻的玩家id
+  pb_guild_gvg_block block = 2;           // 战斗后的城门数据
+}
+
+// 加入或离开城门推送
+message pb_guild_gvg_door_push{
+  uint64 role = 1;                        // 玩家id
+  uint32 type = 2;                        // 加入1|离开0
+  uint32 map_node_id = 3;                 // 节点id
+}
+
+// 矿脉派遣返回
+message pb_guild_gvg_pick_lode_rsp{
+  pb_guild_gvg_lode lode_info = 1;           // 矿脉派遣后数据信息
+  pb_res_to_client res = 2;                    // 资源
+  pb_guild_gvg_person person = 3;            // 派遣后的玩家数据
+}
+
+// 矿脉领奖返回
+message pb_guild_gvg_rev_lode_rsp{
+  pb_res_to_client res = 1;               // 资源
+  pb_guild_gvg_person person = 2;       // 领奖后的玩家数据
+}
+
+// 矿脉派遣s2c返回
+message pb_guild_gvg_pick_lode_s2c_rsp{
+  repeated pb_guild_gvg_lode lode_list = 1;           // 矿脉派遣后数据信息
+}
+
+// 成就任务领奖返回
+message pb_guild_gvg_rev_task_rsp{
+  pb_guild_gvg_task task_data = 1; // 任务数据
+  pb_res_to_client res = 2;            // 资源
+}
+
+// 进入地图返回
+message pb_guild_gvg_enter_map_back{
+  pb_guild_gvg_person role_data = 1;           // 玩家数据
+  pb_guild_gvg_map map = 2;                    // 地图数据
+  pb_guild_gvg_guild guild_data = 3;           // 航会GVE航会数据
+  pb_guild_gvg_cross period = 4;              // 周期
+  pb_res_to_client res = 5;                      // 第一次进地图给与的攻击次数奖励
+}
+
+//公会召集数据
+message pb_guild_gvg_help{
+  uint64 role_id = 1;            //玩家id
+  uint32 map_node_id = 2;        //节点id
+  uint32 period = 3;            //当前期数
+}
+
+// 传送门请求
+message pb_guild_gvg_portal_req{
+  uint32 tid = 1;                 // 传送门id
+  repeated int64 point = 2;       // 透传坐标
+}
+
+// 事件请求
+message pb_guild_gvg_req{
+  uint32 map_node_id = 1;         //节点id
+  uint32 team_id = 2;             //队伍id
+}
+
+// 战斗数据传递
+message pb_guild_gvg_fight_req{
+  uint32 atk_tired_layer = 1;     // 攻击者疲劳值
+  uint32 def_tired_layer = 2;     // 防御者疲劳值
+  uint32 atk_team_id = 3;         // 攻击者队伍id
+  uint32 def_team_id = 4;         // 防御者队伍id
+}
+
+// 据点守卫战斗结果
+message pb_guild_gvg_hold_fight_result{
+  uint32 map_node_id = 1;           // 节点id
+  uint32 team_id = 2;               // 队伍id
+  pb_gvg_injured_info injured = 3;  // 重伤信息
+  uint64 tired_layer = 4;           // 疲劳层数
+  uint64 now_node = 5;              // 队伍所在节点
+  uint32 guard_idx = 6;             // 守卫索引
+  uint64 guard_new_hp = 7;          // 守卫新血量
+  uint64 reduce_hp = 8;             // 扣除血量
+  bool is_win = 9;                  // 是否胜利
+}
+
+// 据点玩家战斗结果
+message pb_guild_gvg_hold_pvp_result{
+  uint32 map_node_id = 1;           // 节点id
+  uint32 team_id = 2;               // 队伍id
+  pb_gvg_injured_info injured = 3;  // 重伤信息
+  uint64 tired_layer = 4;           // 疲劳层数
+  uint64 now_node = 5;              // 队伍所在节点
+  uint64 def_role_id = 7;           // 防守者id
+  bool is_win = 8;                  // 是否胜利
+}
+
+// 队伍发生变化
+message pb_guild_gvg_team_change{
+  pb_guild_gvg_team team = 1;       // 队伍数据
+}
+
+// 队伍占领的节点发生变化
+message pb_guild_gvg_team_node_change{
+  uint32 team_id = 1;               // 队伍id
+  uint64 now_node = 2;              // 队伍所在节点
+}
+
+// 积分变化
+message pb_guild_gvg_score_change{
+  uint64 total_score = 1;   // 总积分
+  uint64 change = 2;        // 积分变化
+}
+
+// 通知占领据点
+message pb_guild_gvg_occupy_hold{
+  uint32 map_node_id = 1;     // 节点id
+  uint64 occ_guild_id = 2;    // 占领航会id
+  uint64 old_guild_id = 3;    // 之前占领航会id
+}
+
+message pb_guild_gvg_pvp_req{
+  uint64 map_id = 1;            //地图id
+  uint32 use_team = 2;          //己方使用队伍
+  uint64 target_role = 3;       //敌方id
+  uint64 target_team = 4;       //敌方队伍id
+}

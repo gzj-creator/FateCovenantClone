@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// vip建联
+
+import "general/res.db.proto.txt";
+import "project/vip_link/vip_link.db.proto.txt";
+
+
+// 显示vip建联
+message pb_show_vip_link
+{
+    string top_text = 1; // 标题
+    string main_text = 2; // 正文
+    string url = 3; // 跳转链接
+}

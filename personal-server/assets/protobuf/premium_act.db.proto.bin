@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 活动商店总数据
+message pb_premium_act {
+    repeated pb_premium_act_info recharge_list = 1;           //充值信息
+}
+
+// 活动商店总数据
+message pb_premium_act_info {
+    int32 act_tid = 1;                                  //活动表tid
+    pb_recharge_limit_info recharge_info = 2;           //充值信息
+    repeated int64 free_get_list = 3;                   // 免费领取奖励
+}

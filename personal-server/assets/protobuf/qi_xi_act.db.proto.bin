@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+//【七夕特惠】全部数据 - 唯一，活动结束后删除
+message pb_qi_xi_recharge_all{
+    repeated pb_qi_xi_recharge_select_info select_list = 1;     // 自选奖励信息列表
+    repeated pb_qi_xi_recharge_data qi_xi_recharge_list = 2;    // 购买信息
+    repeated uint32 sign_list = 3;        // 签到记录
+    uint32 version = 4; // 版本
+    pb_recharge_limit_info qi_xi_skin_recharge_list = 5;    // 皮肤购买信息
+}
+
+//【七夕特惠】单个礼包购买数据
+message pb_qi_xi_recharge_data{
+    uint32 recharge_tid = 1;                                    // 礼包tid
+    uint32 buy_times = 2;                                       // 购买总次数
+}
+
+//【七夕特惠】自选奖励信息列表
+message pb_qi_xi_recharge_select_info {
+    uint32 recharge_tid = 1;                                    // 付费id
+    repeated pb_qi_xi_recharge_select_index select_list = 2;                                      // 自选的奖励列表
+}
+
+message pb_qi_xi_recharge_select_index {
+    uint32 gift_award_tid = 1;                                    // 序号索引
+    uint32 select_tid = 2;                                      // 自选的奖励
+}

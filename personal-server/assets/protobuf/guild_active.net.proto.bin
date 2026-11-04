@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/guild_active/guild_active.db.proto.txt";
+
+
+// 请求领取航会活跃奖励
+message pb_guild_active_award_req {
+    repeated uint32 tid_list = 1; // 奖励id列表
+}
+
+// 返回领取航会活跃奖励
+message pb_guild_active_award_rsp {
+    pb_res_to_client res_change = 1;    // 资源变化
+    bytes got_award = 2; // 已领取的奖励
+    uint32 active_refresh_day = 3; // 活跃刷新时间
+    bytes week_award = 4; // 已领取的周奖励记录
+    bytes finish_award = 5; // 完成的任务奖励领取记录
+    uint32 active = 6; // 日活跃度
+    uint32 week_active = 7; // 周累计活跃度
+    uint32 active_sum = 8; //玩家总贡献
+}
+
+// 航会活跃度信息
+message pb_guild_active_info {
+    uint32 today_active = 1; // 活跃度
+    uint32 active_refresh_day = 2; // 活跃刷新时间
+    repeated pb_guild_active_detail details = 3; // 活跃度详情
+    uint64 refresh_stamp = 4; // 活跃刷新时间戳
+}
+
+// 返回结算活跃奖励
+message pb_guild_active_settle_rsp {
+    pb_res_to_client res_change = 1;    // 资源变化
+    pb_role_guild_active active_info = 2; //新活跃数据
+}
+
+// 特殊贡献任务返回领取奖励列表和资源变化
+message pb_guild_active_special_rsp {
+    pb_res_to_client res_change = 1;    // 资源变化
+    bytes special_finish_award = 2; //新领取奖励列表
+    uint32 special_active = 3; //周活跃
+    uint32 active_sum = 4; //总贡献
+}

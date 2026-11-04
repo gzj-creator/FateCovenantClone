@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+// 名人堂角色数据
+message pb_fame_hall_role {
+    repeated pb_fame_hall_hero heroes = 2;          // 英雄
+    repeated pb_fame_hall_artifact artifacts = 3;   // 圣武
+    repeated uint64 badge_list = 4;                 // 购买的徽章列表
+
+    uint64 stage = 5;                               // 当前层数(关卡tid)
+    bytes pass_award = 9;                           // 通关奖励
+    pb_fame_hall_drop drop = 10;                    // 掉落
+    uint64 enemy_role_id = 11;                      // 敌人角色id
+
+    repeated uint64 lineup_artifact = 14;               // 阵容圣武(已废弃用下面的队伍上阵圣武)
+    repeated pb_fame_hall_dev_history dev_history = 15; // 养成历史
+    uint64 drop_stage = 16;                             // 掉落层数
+    uint64 reset_times = 17;                            // 重置次数
+    uint64 max_stage = 18;                              // 当前难度最大层数（关卡tid)
+    int32 cur_difficult = 19;                           // 当前难度
+    uint64 last_sweep_time = 20;                        // 上次扫荡时间
+    bytes difficult_settle_award = 21;                  // 难度结算记录
+    bool client_show = 22;                              // 客户端表现
+    int32 enemy_team_format = 23;                       // 敌方防守队形
+    repeated pb_fame_hall_line_artifact team_lineup_artifact = 24;  //队伍上阵圣武
+
+    repeated pb_fame_hall_fantasy_equip fantasy_equips = 25; // 专武
+    uint32 data_version = 26;// 数据版本号
+}
+
+// 队伍上阵圣武
+message pb_fame_hall_line_artifact {
+    int32 team_index = 1;                               // 队伍编号
+    repeated uint64 lineup_artifact = 14;               // 阵容圣武
+}
+
+
+// 名人堂养成历史
+message pb_fame_hall_dev_history {
+    uint64 stage = 1; // 层数
+    repeated pb_fame_hall_dev_history_detail dev_list = 2; // 养成列表
+    uint64 dev_type = 3; // 掉落类型，实际掉落的时候可能不是和层数一一对应的，因为掉落可能已经满了，比如英雄全满星会掉圣武
+}
+
+// 名人堂养成历史详情
+message pb_fame_hall_dev_history_detail {
+    uint64 tid = 1;
+    repeated uint64 param_list = 2;
+    uint64 cost = 3;
+}
+
+// 名人堂玩法英雄
+message pb_fame_hall_hero {
+    uint64 tid = 1;   // 英雄tid
+    uint64 star = 2;  // 星级
+    uint64 quality = 3; // 品质
+    uint32 fetter_tid = 4; // 龙魂羁绊英雄tid
+    uint32 mutant = 5;     // 变异tid
+    uint32 skin_tid = 6;   // 皮肤tid
+}
+
+// 名人堂玩法圣武
+message pb_fame_hall_artifact {
+    uint64 tid = 1;  // 圣武tid
+    uint64 star = 2; // 星级
+    uint64 quality = 3; // 品质
+}
+
+// 名人堂玩法掉落
+message pb_fame_hall_drop {
+    uint64 type = 1;                // 掉落的类型，英雄、圣武...
+    repeated pb_fame_hall_drop_item item_list = 2;   // 掉落的物品列表
+}
+
+// 名人堂玩法掉落物品
+message pb_fame_hall_drop_item {
+    uint64 tid = 1;
+    repeated uint64 param_list = 2;
+    uint64 num = 3;
+}
+
+// 名人堂玩法专武
+message pb_fame_hall_fantasy_equip {
+    uint64 tid = 1;  // 专武tid
+    uint64 star = 2; // 星级
+    uint64 quality = 3; // 品质
+}

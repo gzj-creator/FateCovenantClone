@@ -1,0 +1,23 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// ============== 个人数据（DB存储） ==============
+//盲拍活动玩家数据
+message pb_vickrey_auction_act_role_info {
+    repeated pb_vickrey_auction_act_info act_list = 1; // 活动列表
+}
+
+// 盲拍活动数据
+message pb_vickrey_auction_act_info {
+    int64 version = 1;                                  // 活动表version
+    repeated pb_vickrey_auction_act_bid bid_list = 2;   // 出价记录列表
+}
+
+// 盲拍出价记录
+message pb_vickrey_auction_act_bid {
+    int64 round_id = 1;                                 // 轮次ID
+    int32 award_index = 2;                              // 拍品索引(1/2/3)
+    int64 bid_price = 3;                                // 当前出价金额
+    bool is_winner = 4;                                // 是否成功拍下(结算后有值)
+    bool is_settle = 5;                                // 是否已结算
+}

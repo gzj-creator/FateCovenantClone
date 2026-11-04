@@ -1,0 +1,58 @@
+syntax = "proto3";
+import "project/hero/draw/hero_draw.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/hero/base/hero.net.proto.txt";
+import "project/red_envelope/red_envelope.db.proto.txt";
+
+// 兑换请求
+message pb_exchange_hero_back {
+    pb_res_to_client res = 1;   // 资源改变
+    int64 hero_tid = 2;         // 兑换的英雄
+    uint32 exchange_num = 3;    // 兑换的数量
+}
+
+// 抽卡红包分享数据
+message pb_hero_draw_red_envelope {
+    hero_chat_data hero_data = 1;
+    pb_red_envelope red_envelope = 2;
+}
+
+// 领取抽卡进度奖励返回
+message pb_rev_draw_progress_award_back{
+    pb_res_to_client res = 1;           // 资源改变
+    pb_hero_recruit new_recruit = 2;    // 新的招募信息
+}
+
+// 选择心愿英雄请求参数
+message pb_draw_choose_wish_req{
+    uint64 draw_lib = 1;        // 抽卡库
+    repeated pb_draw_wish_choose_item choose_item_list = 2; // 选择的列表
+}
+
+// 一个选择的信息
+message pb_draw_wish_choose_item{
+    uint32 index = 1;           // 位置索引
+    uint64 hero_tid = 2;        // 选择的英雄TID
+}
+
+// 领取抽卡进度奖励返回
+message pb_draw_support_back{
+    pb_draw_wish_list role_support = 1;     // 心愿支持玩家信息
+    pb_draw_wish_list server_support = 2;   // 心愿服务器支持信息
+}
+
+// 普通抽购买抽卡券返回
+message pb_draw_normal_buy_ret{
+    pb_res_to_client res = 1;           // 资源改变
+    pb_draw_normal_buy_info buy_info = 2; // 购买信息
+}
+
+// 获取抽卡跑马灯（参数/返回均为自定义二进制，各抽卡系统自行编解码）
+message pb_draw_marquee_req {
+    int32 draw_lib = 1;   // 抽卡库 tid
+    bytes param = 2;      // 自定义参数（各系统自己解析）
+}
+
+message pb_draw_marquee_rsp {
+    bytes data = 1;       // 跑马灯二进制（各系统结构不同，客户端按自己结构解析）
+}

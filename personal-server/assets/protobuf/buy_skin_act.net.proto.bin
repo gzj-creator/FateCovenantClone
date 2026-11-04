@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 直购皮肤 - 领取免费奖励请求
+message pb_buy_skin_free_req{
+    int32 act_id = 1; // 活动id
+    int32 item_id = 2;// 条目id
+}
+

@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/recharge_rebate_reset/recharge_rebate_reset.db.proto.txt";
+import "project/recharge/recharge_extra_award/recharge_extra_award.db.proto.txt";
+
+// 参加钻石重置返利活动返回数据
+message pb_recharge_rebate_reset_enter {
+  pb_recharge_rebate_reset act_info = 1; // 活动数据
+  pb_recharge_extra_award_info recharge_extra_info = 2; // 付费额外奖励数据(进入预告阶段为nil)
+}
+
+message pb_recharge_rebate_reset_back {
+  pb_recharge_rebate_reset act_info = 1; // 活动数据
+  pb_res_to_client res = 2; // 奖励
+}

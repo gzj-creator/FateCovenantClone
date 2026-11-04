@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 打蘑菇数据
+message pb_mushroom_monster {
+    uint64 max_score = 1;       // 活动期间最大分数
+    int32 cur_day_times = 2;    // 今日已经挑战次数
+    bytes award_state = 3;      // 奖励领取状态
+    int64 start_hit_time = 4;       // 开始时间
+    int64 last_refresh_time = 5;    // 上次刷新时间
+    int32 game_times = 6;        // 挑战次数
+                                // 通行证使用：（根据小游戏开启的天数，计算总共能完成的上限值，
+                                // 低于这个值的，每次挑战都加一）,和今日挑战次数互不影响
+}

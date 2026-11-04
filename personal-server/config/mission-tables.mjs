@@ -1,6 +1,7 @@
 import { readGeneratedTables, readHeroTables } from './hero-tables.mjs';
+import { tableAsset } from '../assets.mjs';
 
-const defaultPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/MissionTable.data.lua.json', import.meta.url);
+const defaultPath = tableAsset('MissionTable.data.lua.json');
 let defaultCache;
 
 // These fight rows are not shipped in the client's lua project bundle. Missions 30204

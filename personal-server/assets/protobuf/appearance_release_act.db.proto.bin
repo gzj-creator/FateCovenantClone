@@ -1,0 +1,14 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 外观投放活动活动数据
+message pb_appearance_release_act {
+    repeated pb_appearance_release_act_info info_list = 1;
+}
+
+// 外观投放活动单期活动数据
+message pb_appearance_release_act_info {
+    uint32 act_id = 1;                      // 活动id
+    pb_recharge_limit_info record = 2;      // 付费购买记录
+    bytes interact_state = 3;               // 已交互记录
+}

@@ -1,0 +1,37 @@
+syntax = "proto3";
+import "project/activity/question_act/question_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 每日答题请求
+message pb_question_answer_req {
+    int32 activity_id = 1; //活动id
+    int32 topic_tid = 2;//题目id
+    int32 choose = 3;//选项
+    int32 day_index = 4;//第几天
+}
+
+// 每日答题领奖请求
+message pb_question_reward_req {
+    int32 activity_id = 1; //活动id
+    int32 day_index = 2;//第几天
+}
+
+// 每日答题领奖
+message pb_question_reward_back {
+    pb_question_day day_data = 1; //天数据
+    pb_res_to_client res = 2; //资源变化
+}
+
+// 累积奖励领取请求
+message pb_question_reward_pile_req {
+    int32 activity_id = 1; //活动id
+    int32 answer_num = 2;//那一条累积抽奖次数奖励
+}
+
+// 累积奖励领取返回
+message pb_question_reward_pile_back {
+    bytes pile_reward = 1;//领取记录
+    pb_res_to_client res = 2; //资源变化
+}
+
+

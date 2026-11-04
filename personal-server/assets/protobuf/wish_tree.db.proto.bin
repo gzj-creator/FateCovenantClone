@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+// 许愿树数据 （废弃不用）
+message pb_wish_tree{
+    bytes normal_bin = 1; //普通奖励记录
+    bytes special_bin = 2; //特殊奖励记录（---废弃）
+    uint32 special_theme = 3; //特殊所选主题，默认为0（---废弃）
+    uint64 draw_sec = 4; //上次许愿的时间
+    repeated pb_wish_tree_record record_list = 5; //奖励记录列表（最新36次）
+    uint32 normal_times = 6; //普通许愿次数
+    uint32 special_times = 7; //特殊许愿次数（---废弃）
+    repeated uint32 normal_idx_list = 8; //普通奖励随机的序号列表
+    repeated uint32 special_idx_list = 9; //特殊奖励随机的序号列表（---废弃）
+    uint64 recharge_amount = 10; // 当天充值金额（分） - 每日特惠礼包（---废弃）
+    uint64 recharge_day_index = 11; // 当前在哪天充值了 - 每日特惠礼包（---废弃）
+    uint64 accrue_day = 12; //累积领奖天数 -每天积累1次,领一次加1天
+    uint32 today_wish_count = 13;//当天许愿次数 -跨天重置
+}
+
+// 许愿记录 （废弃不用）
+message pb_wish_tree_record{
+    uint64 time = 1; //许愿时间
+    repeated uint64 res_tid_list = 2; //奖励tid列表
+    repeated uint32 res_num_list = 3; //奖励数量列表
+    uint32 round = 4; //奖励轮次
+}
+
+// 许愿树数据（新）
+message pb_wish_tree_new{
+    repeated pb_wish_tree_data data_list = 1; // 所有树列表
+}
+
+// 许愿树单个数据（新）
+message pb_wish_tree_data{
+    uint64 type = 1; //类型（普通、特殊）
+    bytes normal_bin = 2; //奖励记录
+    uint64 draw_sec = 3; //上次许愿的时间
+    uint64 normal_times = 4; //许愿次数
+    repeated uint32 normal_idx_list = 5; //奖励随机的序号列表
+    uint64 accrue_day = 6; //累积领奖天数 -每天积累1次,领一次加1天（和当天的间隔最大不超过配置累计天数）
+    uint64 today_wish_count = 7;//当天许愿次数 -跨天重置
+    repeated pb_wish_tree_select select_list = 8; //大奖自选数据
+    repeated uint64 buy_day_list = 9; //最近30天购买数据
+    uint64 can_wish_count = 10; //当前可抽奖次数
+}
+
+// 许愿树大奖自选数据（新）
+message pb_wish_tree_select{
+    uint64 award_tid = 1; //奖励表tid
+    uint64 select_tid = 2; //自选表tid
+}

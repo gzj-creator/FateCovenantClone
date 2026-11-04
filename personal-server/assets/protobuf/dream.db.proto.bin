@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+import "general/res.db.proto.txt";
+import "project/role.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+
+// 命运梦境角色数据
+message pb_dream_role {
+    uint32 start_stamp = 1;             // 大周期开始时间戳
+    uint32 week_finish_event = 2;       // 当前周完成的轮次数
+    uint32 month_finish_event = 3;        // 总共完成的轮次数
+    repeated pb_dream_task tasks = 4;   // 任务列表
+    repeated uint64 buffs = 5;          // buff列表
+    uint32 got_day_award_stamp = 6;     // 领取每日奖励的时间戳
+    uint64 match_fight_power = 7;       // 匹配NPC使用的战力
+    uint32 group = 8;                   // 当前进行的组
+    repeated pb_dream_event group_events = 9; // 当前组的事件
+    bytes collect = 10;                 // 档案馆收集情况
+
+    bytes got_week_event_award = 11;    // 已领取的周奖励
+    bytes got_month_event_award = 12;     // 已领取的总奖励
+    bytes got_collect_award = 13;       // 已领取的收集奖励
+
+    pb_dream_story story = 14;          // 故事，档案馆
+    uint32 week = 15;                   // 当前周
+    repeated pb_dream_fight_index fight_index = 16; // 战斗记录
+    uint32 period = 17;                 // 当前周期
+    uint32 last_task_uid = 18;          // 上一个任务uid
+    repeated uint32 finish_event_history = 19; // 历史完成的事件
+
+    bytes got_single_collect_award = 20; // 已领取的单个收集奖励
+    pb_count_flush day_refresh_event_times = 21; // 每日已刷新事件次数
+
+    uint32 data_version = 24;  // 数据版本
+}
+
+// 命运梦境任务数据
+message pb_dream_task {
+    uint32 tid = 1;             // 任务id
+    uint32 uid = 2;             // 任务uid
+    uint32 end_stamp = 3;       // 任务结束时间
+    uint32 no_use_count = 4;    // 无效任务进度(接任务前就已经有的)
+}
+
+// 命运梦境故事数据
+message pb_dream_story {
+    repeated uint32 choices = 1;    // 选项
+}
+
+// 命运梦境事件
+message pb_dream_event {
+    uint32 type = 1;            // 事件类型
+    bytes data = 2;             // 事件数据
+}
+
+// 战斗事件数据
+message pb_dream_event_fight {
+    repeated pb_dream_event_fight_enemy enemies = 1; // 敌方数据
+    uint32 refresh_times = 2; // 刷新次数(影响匹配的战力)
+}
+
+// 战斗敌方数据
+message pb_dream_event_fight_enemy {
+    pb_lineup_snapshot_key npc_key = 1;  // 阵容镜像key
+    uint64 buff = 2;                     // buff
+    uint32 type = 3;                     // 怪物类型
+    uint32 index = 4;                    // 怪物索引
+}
+
+// buff选择事件数据
+message pb_dream_event_buff {
+    repeated uint64 buffs = 1;  // buff列表
+}
+
+// 奖励发放事件
+message pb_dream_event_award {
+    uint32 num = 1;             // 奖励数量
+    repeated pb_dream_award_box boxes = 2;  // 已领奖的宝箱
+}
+
+// 已领奖的宝箱
+message pb_dream_award_box {
+    uint32 index = 1; // 宝箱索引
+    repeated pb_res_obj awards = 2; // 奖励
+}
+
+// 任务事件
+message pb_dream_event_task {
+    pb_dream_task task = 1;   // 任务列表
+}
+
+// 匹配npc数据
+message pb_dream_npc {
+    bytes role_name = 1;                            // 对手名称(功能自己的npc使用)
+    pb_figure_simple_info figure = 2;               // 形象数据(功能自己的npc使用)
+    uint32 level = 3;                               // 对手等级(功能自己的npc使用)
+    int64 fight_tid = 4;                            // 对应战斗tid(功能自己的npc使用)
+    pb_lineup_snapshot_key key = 5;                 // 阵容镜像key
+    int32 level_id = 6;                              // 对应星级等级关卡tid
+}
+
+// 命运梦境战斗记录
+message pb_dream_fight_index {
+    uint32 type = 1;
+    uint32 index = 2;
+    uint32 group = 3;
+}
+

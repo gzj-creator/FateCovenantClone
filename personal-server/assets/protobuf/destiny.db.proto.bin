@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 天命数据
+message pb_destiny_data{
+  int32 cur_stage = 1;        // 当前阶级
+  bytes slot_state = 2;       // 激活状态
+}

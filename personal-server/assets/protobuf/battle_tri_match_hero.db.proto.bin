@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+
+// 战斗三消英雄角色数据
+message pb_battle_tri_match_role_hero_data{
+  repeated pb_battle_tri_match_hero_data hero_list = 1; // 英雄列表
+  repeated pb_battle_tri_match_site_data site_list = 2; // 槽位列表
+}
+
+// 战斗三消英雄数据
+message pb_battle_tri_match_hero_data{
+  int64 tid = 1; // tid 对应哪个英雄
+  int64 star = 2; // 英雄星级
+}
+
+// 战斗三消槽位数据
+message pb_battle_tri_match_site_data{
+  int64 index = 1; // 槽位索引
+  int64 hero_tid = 2; // 槽位放置的英雄tid
+  int64 level_tid = 3; // 槽位等级tid
+}

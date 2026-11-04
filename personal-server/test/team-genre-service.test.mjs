@@ -17,7 +17,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const heroTables = readHeroTables(), tables = readGameTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const SERVER_OPENED_AT = Date.parse('2026-10-24T05:00:00Z') / 1000;
 const NOW = Date.parse('2026-11-01T12:00:00Z');

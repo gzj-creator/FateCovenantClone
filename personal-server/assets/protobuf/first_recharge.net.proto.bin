@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/recharge/first_recharge/first_recharge.db.proto.txt";
+
+//首充领奖回调
+message pb_res_rev_first_recharge_reward {
+    pb_res_to_client res = 1; //资源改变
+    repeated pb_first_recharge_grade grade_list = 2; //首充数据
+}

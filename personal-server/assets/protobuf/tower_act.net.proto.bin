@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+import "project/activity/tower_act/tower_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 爬塔活动领取格子奖励返回
+message pb_tower_act_slot_rsp {
+  pb_tower_act_role act_data = 1; // 活动数据
+  pb_res_to_client res_change = 2; // 资源变换
+  repeated uint32 steps = 3; // 本次前进具体步数情况
+}
+
+// 爬塔活动前进领取奖励请求
+message pb_tower_act_step_req {
+  uint64 act_tid = 1; // 活动id
+  uint32 step = 2; // 前进步数
+}
+
+// 爬塔活动切换奖励组请求
+message pb_tower_act_switch_req {
+  uint64 act_tid = 1; // 活动id
+  uint32 group = 2; // 奖励组
+}
+
+// 爬塔活动领取任务奖励请求
+message pb_tower_act_task_req {
+  uint64 act_tid = 1; // 活动id
+  repeated uint32 task_id = 2; // 任务id
+}
+
+// 爬塔活动领取任务奖励返回
+message pb_tower_act_task_rsp {
+  pb_tower_act_role act_data = 1; // 活动数据
+  pb_res_to_client res_change = 2; // 资源变换
+}

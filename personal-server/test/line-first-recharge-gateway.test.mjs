@@ -12,7 +12,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 import { hasBit } from '../game/bit-block.mjs';
 
 const codec = createGameCodec();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const FIXED_NOW = Date.parse('2026-10-31T10:30:00Z');
 
 test('linear first-recharge purchase synchronizes module 547 and exposes both activity commands', async t => {
@@ -77,15 +77,17 @@ test('linear first-recharge purchase synchronizes module 547 and exposes both ac
   const purchaseFrames = [];
   while (!purchaseFrames.some(frame => frame.seq === 2)) purchaseFrames.push(codec.unpack('pb_s2c', await next()));
   assert.equal(purchaseFrames.find(frame => frame.seq === 2)?.err, undefined);
-  const notification = purchaseFrames.find(frame => frame.type === 1900);
-  assert.ok(notification);
-  const purchased = codec.unpack('res_recharge_success', Buffer.from(notification.data, 'base64'));
+  const charged = purchaseFrames.find(frame => frame.seq === 2);
+  assert.ok(charged);
+  const purchased = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
   assert.equal(purchased.recharge_id, 600078);
   assert.equal(purchased.res.changes.find(change => String(change.tid) === '5040201').diff_num, '1');
   const lineInfo = codec.unpack('pb_line_first_recharge', Buffer.from(purchased.extra_ret_list.find(entry => entry.flag === 99).data, 'base64'));
   assert.equal(String(lineInfo.tid), '32');
   assert.equal(String(lineInfo.choose_tid), '3102');
   assert.deepEqual(lineInfo.buy_list.map(entry => String(entry.tid)), ['31']);
+  const notification = purchaseFrames.find(frame => frame.type === 1900);
+  assert.ok(notification);
 
   const storedLineInfo = codec.unpack('pb_line_first_recharge', rawBinary(new Map(game.store.state().modules.value).get(547)));
   assert.deepEqual(storedLineInfo.buy_list.map(entry => String(entry.tid)), ['31']);

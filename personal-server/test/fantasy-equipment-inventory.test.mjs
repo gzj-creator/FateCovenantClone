@@ -16,7 +16,7 @@ import {
 import { consumeResources, grantResources } from '../game/resources.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const openedAt = 1792789200;
 const normalTid = 1100119, uniqueTid = 1200119, spTid = 1202919, chipTid = 434002;
 

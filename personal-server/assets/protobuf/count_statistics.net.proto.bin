@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "project/count_statistics/count_statistics.db.proto.txt";
+
+// 单个玩家次数统计数据推送消息
+message pb_count_statics_send {
+    pb_count_statics_data data = 1; // 单个统计数据
+    repeated int64 expand_id_list = 2; //维度ID列表
+    uint32 stat_tid = 3; // 统计表ID
+}
+
+// 单个玩家多条次数统计相关数据
+message pb_count_statics_send_list {
+    repeated pb_count_statics_send data_list = 1; // 单个统计数据
+}
+
+// 航会成员的最高进度数据
+message pb_guild_statics_max_send_list{
+    repeated pb_guild_statics_max_item data_list = 1; // 统计数据
+}
+
+// 航会单玩家的最高进度数据
+message pb_guild_statics_max_item{
+    int64 role_id = 1;                              // 角色ID
+    repeated pb_count_statics_max_item data = 2;    // 统计数据
+}

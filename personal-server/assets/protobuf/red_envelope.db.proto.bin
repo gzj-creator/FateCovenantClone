@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+
+// 单个模块的红包数据
+message pb_red_envelopes {
+  repeated pb_red_envelope red_envelope = 1;  // 红包数据
+  uint32 uid = 2;   // 下一个红包的唯一id
+  uint32 latest_end_time = 3; // 最近的一个过期时间
+}
+
+// 单个红包数据
+message pb_red_envelope {
+  uint32 id = 1;                    // 红包唯一id
+  uint32 tid = 2;                   // 红包配置tid
+  uint32 end_time = 3;              // 红包失效时间
+  uint64 sender_role_id = 4;        // 发红包的玩家id
+
+  uint32 left_num = 5;              // 剩余个数
+  repeated pb_res_obj awards = 6;   // 红包奖励
+  uint32 drop_tid = 7;              // 红包掉落奖励
+  uint32 award_type = 8;            // 奖励形式
+}
+
+// 玩家数据
+message pb_role_red_envelope {
+  repeated pb_red_envelope_send send = 1;   // 发出去的红包
+  repeated pb_red_envelope_recv recv = 2;   // 自己可以领取的红包
+}
+
+message pb_red_envelope_recv {
+  uint32 tid = 1;
+  repeated uint32 recv = 2;
+  uint32 max_checked = 3; // 如果是按服务器推送的不会直接写玩家数据,需要主动根据max_checked去拉
+  uint32 times = 4;
+  uint32 end_time = 5;    // 记录的公共红包数据对应最早结束时间
+  uint32 stamp = 6;                         // 数据时间戳
+}
+
+message pb_red_envelope_send {
+  uint32 tid = 1;
+  repeated uint32 send = 2;
+  uint32 times = 3;
+  uint32 end_time = 4;
+  uint32 stamp = 5;                         // 数据时间戳
+}

@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// 体力爆发角色数据
+message pb_energy_burst {
+    bytes got_award = 1;        //本轮已领取奖励
+    uint32 start_day = 2;       //本轮开始提天数
+    uint32 end_day = 3;         //本轮结束天数
+}

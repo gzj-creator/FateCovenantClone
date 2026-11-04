@@ -15,7 +15,7 @@ import { createWalletService } from '../game/wallet-service.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const CREATED_AT = Date.parse('2026-09-12T00:00:00Z') / 1000;
 const OPENED_AT = Date.parse('2026-09-12T00:00:00Z') / 1000;
 

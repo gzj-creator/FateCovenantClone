@@ -239,6 +239,7 @@ export function createHeroDrawActivityService({
   }
 
   function synchronizeLogin(activity, at = currentSeconds()) {
+    log({ event: 'hero_draw_activity_synchronizeLogin_entry', activity, at });
     const context = openActivity(activity, at);
     if (!context) return null;
     const data = normalizeDrawData(drawFromEntry(context.entry), context);
@@ -268,6 +269,7 @@ export function createHeroDrawActivityService({
   }
 
   function selectGenre(drawExchangeId, at = currentSeconds()) {
+    log({ event: 'hero_draw_activity_selectGenre_entry', drawExchangeId, at });
     const id = integer(drawExchangeId, 1, 2147483647, 'Invalid hero draw genre');
     return store.transaction(model => {
       const context = currentContextFromModel(model, at);
@@ -333,6 +335,7 @@ export function createHeroDrawActivityService({
   }
 
   function claimTask(taskId, at = currentSeconds()) {
+    log({ event: 'hero_draw_activity_claimTask_entry', taskId, at });
     const id = integer(taskId, 1, 2147483647, 'Invalid hero draw activity task');
     return store.transaction((model, db) => {
       const context = currentContextFromModel(model, at);

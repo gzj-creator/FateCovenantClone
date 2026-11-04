@@ -150,6 +150,25 @@ export function skillToEffects(skill, skillDatabase) {
   const single = skillToEffect(skill, skillDatabase);
   return single ? [single] : [];
 }
+
+function passesChance(chance, executor) {
+  if (chance === undefined || chance === null) return true;
+  const value = Number(chance);
+  if (!Number.isFinite(value)) return false;
+  if (value >= 1) return true;
+  if (value <= 0) return false;
+  return executor.random() < value;
+}
+
+function executorEffect(effectDefinition, sourceSkill) {
+  const effect = { ...(effectDefinition.effect || {}) };
+  for (const key of ['duration', 'unique', 'refresh', 'trigger', 'triggers', 'maxStacks', 'conditionKey']) {
+    if (effectDefinition[key] !== undefined) effect[key] = effectDefinition[key];
+  }
+  effect.sourceSkill ??= sourceSkill;
+  return effect;
+}
+
 export function applySkillEffects(skill, actor, allUnits, state, events) {
   if (!skill) return;
 
@@ -163,33 +182,30 @@ export function applySkillEffects(skill, actor, allUnits, state, events) {
     return;
   }
 
-  // Convert skill to effect definition
-  const effectDef = skillToEffect(skill, skillDatabase);
-  if (!effectDef) {
+  // Convert skill to every executable effect definition.
+  const effectDefinitions = skillToEffects(skill, skillDatabase);
+  if (!effectDefinitions.length) {
     console.warn(`No effect definition for skill ${skill.id}`);
     return;
   }
 
-  // Select targets
-  const targets = selector.selectTargets(effectDef.target, actor, allUnits, state);
+  for (const effectDefinition of effectDefinitions) {
+    if (!effectDefinition?.effect) continue;
+    const targets = selector.selectTargets(effectDefinition.target, actor, allUnits, state);
 
-  // Apply effect to each target
-  for (const target of targets) {
-    // Check condition if present
-    if (effectDef.condition && !effectDef.condition(actor, target, state)) {
-      continue;
-    }
+    for (const target of targets) {
+      if (typeof effectDefinition.condition === 'function'
+        && !effectDefinition.condition(actor, target, state)) continue;
+      if (effectDefinition.conditionKey
+        && !evaluateConditionKey(effectDefinition.conditionKey, actor, allUnits, state)) continue;
+      if (!passesChance(effectDefinition.chance, executor)) continue;
 
-    // Check chance
-    if (effectDef.chance && Math.random() > effectDef.chance) {
-      continue;
-    }
-
-    // Execute effect
-    const result = executor.executeEffect(effectDef.effect, actor, target);
-
-    if (result) {
-      events.push(result);
+      const result = executor.executeEffect(
+        executorEffect(effectDefinition, skill.id),
+        actor,
+        target
+      );
+      if (result) events.push(result);
     }
   }
 }
@@ -210,7 +226,7 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
     const storedTriggers = skill.implementation && Array.isArray(skill.implementation.triggers)
       ? skill.implementation.triggers : null;
 
-    if (storedTriggers && storedTriggers.length) {
+    if (Array.isArray(storedTriggers)) {
       for (const t of storedTriggers) {
         triggers.push({
           id: `${skill.id}_${unit.id}_${triggers.length}`,
@@ -219,6 +235,7 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
           condition: null,
           conditionKey: t.conditionKey || null,
           cooldown: t.cooldown || 0,
+          chance: t.chance ?? null,
           maxTriggers: t.maxTriggers || 0,
           oncePerBattle: !!t.oncePerBattle,
           oncePerRound: !!t.oncePerRound,
@@ -327,12 +344,23 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
       continue;
     }
 
+    if (!passesChance(trigger.chance, executor)) continue;
+
     // Apply trigger effect
     if (trigger.effect) {
+      if (typeof trigger.effect.condition === 'function'
+        && !trigger.effect.condition(unit, null, state)) continue;
+      if (trigger.effect.conditionKey
+        && !evaluateConditionKey(trigger.effect.conditionKey, unit, allUnits, state)) continue;
+      if (!passesChance(trigger.effect.chance, executor)) continue;
       const targets = selector.selectTargets(trigger.effect.target, unit, allUnits, state);
 
       for (const target of targets) {
-        const result = executor.executeEffect(trigger.effect.effect, unit, target);
+        const result = executor.executeEffect(
+          executorEffect(trigger.effect, trigger.sourceSkill),
+          unit,
+          target
+        );
         if (result) {
           events.push({
             ...result,
@@ -357,22 +385,30 @@ function evaluateConditionKey(key, unit, allUnits, state) {
   switch (key) {
     case 'hp-above-50':
       return unit.hp / unit.maxHp >= 0.5;
+    case 'hp-above-70':
+      return unit.hp / unit.maxHp >= 0.7;
     case 'target-has-debuff':
       // approximated true; precise per-target filtering requires further investigation
       return true;
     case 'hp-below-30':
       return unit.hp / unit.maxHp < 0.3;
+    case 'hp-below-40':
+      return unit.hp / unit.maxHp < 0.4;
     case 'hp-below-50':
       return unit.hp / unit.maxHp < 0.5;
     case 'hp-below-70':
       return unit.hp / unit.maxHp < 0.7;
     case 'has-debuff':
       return (unit.debuffs || []).length > 0;
+    case 'has-shield':
+      return (unit.shield || 0) > 0;
     case 'target-hp-above-self':
       // evaluated at trigger fire; default true here, refined per-target later
       return true;
     case 'round-3':
       return (state && (state.round === 3 || state.round === undefined));
+    case 'round-1':
+      return (state && (state.round === 1 || state.round === undefined));
     default:
       return true;
   }
@@ -383,8 +419,19 @@ export function processBuffTicks(unit, state, events) {
   const allStatus = [...(unit.buffs || []), ...(unit.debuffs || [])];
 
   for (const status of allStatus) {
-    if (status.duration > 0) {
-      status.duration--;
+    const durationType = status.durationType
+      || ((Number(status.remainingRounds ?? status.duration ?? 0) > 0) ? 'timed' : 'permanent');
+    let expired = false;
+    if (durationType === 'timed') {
+      const remaining = Math.max(0, Number(status.remainingRounds ?? status.duration ?? 0) - 1);
+      status.remainingRounds = remaining;
+      status.duration = remaining;
+      expired = remaining === 0;
+    } else if (durationType === 'conditional') {
+      const conditionActive = typeof status.condition === 'function'
+        ? status.condition(unit, null, state)
+        : (!status.conditionKey || evaluateConditionKey(status.conditionKey, unit, null, state));
+      expired = !conditionActive;
     }
 
     // Process tick effects (DoT, HoT)
@@ -405,8 +452,9 @@ export function processBuffTicks(unit, state, events) {
       status.nextTick--;
     }
 
-    // Remove expired status
-    if (status.duration === 0) {
+    // Trigger-count durations are consumed by the effect they protect against,
+    // while permanent statuses remain until explicitly dispelled.
+    if (expired) {
       const collection = unit.buffs.includes(status) ? unit.buffs : unit.debuffs;
       const index = collection.indexOf(status);
       if (index >= 0) {
@@ -416,6 +464,7 @@ export function processBuffTicks(unit, state, events) {
           target: unit.id,
           statusType: status.type,
           statusId: status.id,
+          durationType,
         });
       }
     }

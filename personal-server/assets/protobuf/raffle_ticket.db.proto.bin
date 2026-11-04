@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// 刮刮乐玩家数据
+message pb_raffle_ticket {
+  bytes award_state = 1;          // 阶段领奖状态（可以跳着领奖）
+  uint32 choose_tid = 2;          // 自选大奖tid
+  uint64 draw_num = 3;            // 总抽奖次数
+  uint64 award_phase_num = 4;     // 领奖阶段数值
+  uint32 data_version = 5;        // 数据版本号
+}
+
+// 刮刮乐服务器抽卡统计信息
+message pb_raffle_ticket_server{
+    uint64 draw_count = 1;              // 抽卡次数
+    uint64 draw_special_count = 2;      // 特等将次数
+}

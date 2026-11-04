@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 所有基金活动数据
+message pb_fund_act_all {
+    repeated pb_fund_act list = 1;              // 数据列表
+}
+
+// 基金活动数据
+message pb_fund_act {
+    bytes award_bin = 1;                        // 奖励领取数据
+    pb_recharge_limit_info buy_limit_info = 2;  // 限购数据
+    uint32 level = 3;                           // 等级
+    uint64 act_id = 4;                          // 活动id
+}

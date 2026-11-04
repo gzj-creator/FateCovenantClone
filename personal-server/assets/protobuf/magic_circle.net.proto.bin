@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "project/magic_circle/magic_circle.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 魔导时阵升级请求
+message pb_magic_circle_level_up_req {
+    uint32 id = 1;   // 魔导时阵id
+    uint32 target_level = 2; // 目标等级（废弃）
+}
+
+// 魔导时阵养成返回
+message pb_magic_circle_rsp {
+    repeated pb_magic_circle magic_circles = 1; // 变化的魔导时阵列表(升到满级时会有两个)
+    pb_res_to_client res_change = 2; // 消耗的资源
+}
+
+// 魔导时阵激活节点请求
+message pb_magic_circle_active_point_req {
+    uint32 id = 1;   // 魔导时阵id
+    repeated uint32 points = 2; // 激活的节点列表
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 钻石返利活动数据列表
+message pb_gem_rebate_list {
+    repeated pb_gem_rebate list = 1;    // 钻石返利活动数据列表
+}
+
+// 钻石返利活动数据
+message pb_gem_rebate {
+    uint32 act_id = 1;                  // 活动id
+    uint32 turn = 2;                    // 当前轮次
+    uint32 last_turn_award_cnt = 3;     // 上一轮次获得的奖励数量
+}

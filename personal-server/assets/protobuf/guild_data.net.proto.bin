@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+// 航会数据 - 基础
+message pb_guild_data_base {
+    uint64 id = 1;//公会id
+    string name = 2;//公会名字
+    uint32 badge = 3; //公会徽章
+    uint64 active = 4;// 活跃度
+}
+
+// 航会数据 - 简单
+message pb_guild_data_simple {
+    uint64 id = 1;//公会id
+    string name = 2;//公会名字
+    uint32 badge = 3; //公会徽章
+    uint64 active = 4;// 活跃度
+    bytes leader_name = 5; //会长名字
+}
+
+// 航会数据 - 详细
+message pb_guild_data_detail {
+    uint64 server_id = 1; //服务器id
+    string server_name = 2; //服务器名字
+    uint64 guild_id = 3; //公会id
+    string guild_name = 4;//公会名字
+    uint64 guild_badge = 5; //公会徽章
+    uint64 guild_level = 6; //公会等级
+    uint64 guild_member_num = 7; //成员数量
+    uint64 guild_active = 8; // 活跃度
+    uint64 guild_power = 9; // 战力
+}

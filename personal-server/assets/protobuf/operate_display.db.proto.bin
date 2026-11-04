@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+// 操作表现数据
+message pb_operate_display_info {
+  repeated pb_operate_display_item display_list = 1; // 所有的操作表现记录
+}
+
+// 一个表现记录
+message pb_operate_display_item{
+   uint32 type = 1;  // 类型
+   uint64 id = 2;   // 唯一id
+   uint64 op_time = 3; // 操作时间， 过期了就自动清理掉
+   bytes fun_data = 4;   // 功能数据可以自己定义
+}
+
+
+

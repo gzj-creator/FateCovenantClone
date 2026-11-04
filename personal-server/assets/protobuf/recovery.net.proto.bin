@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "project/recovery/recovery.db.proto.txt";
+import "project/shop.db.proto.txt";
+
+// 找回登录数据
+message pb_recovery_login_data{
+    pb_recovery_data recovery_data = 1;            // 找回信息
+    pb_shop_info shop_info = 2;                // 商店信息(可能没有)
+}
+
+
+// 特权功能信息更新
+message pb_recovery_privilege_update{
+    repeated pb_recovery_privilege privilege_list = 1; // 更新特权
+}
+
+// 跨天刷新返回数据
+message pb_recovery_flush_data{
+    pb_recovery_free_award free_award = 1;     // 找回奖励
+    pb_shop_info shop_info = 2;                // 商店信息(可能没有)
+}

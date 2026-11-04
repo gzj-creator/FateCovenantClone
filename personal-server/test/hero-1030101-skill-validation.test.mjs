@@ -116,15 +116,17 @@ test('反杀 (120000055) registers target-hp-above-self condition', () => {
   assert.equal(trig.effect.effect.magnitude, 0.30);
 });
 
-test('祝福 (120000059) registers heal-bonus with maxTriggers 2', () => {
+test('祝福 (120000059) registers a single heal-bonus trigger for 2 rounds', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '120000059');
   const trig = skill.implementation.triggers[0];
-  assert.equal(trig.maxTriggers, 2);
+  assert.equal(trig.maxTriggers, 1);
   assert.equal(trig.effect.effect.type, 'stat-modifier');
   assert.equal(trig.effect.effect.statType, 'heal-bonus');
   assert.equal(trig.effect.effect.magnitude, 0.20);
+  assert.equal(trig.effect.duration.durationType, 'timed');
+  assert.equal(trig.effect.duration.rounds, 2);
 });
 
 test('生命护盾 (120001003) registers hp-below-70 condition with percent-defense shield', () => {

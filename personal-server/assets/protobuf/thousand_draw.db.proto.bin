@@ -1,0 +1,14 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 玩家个人数据
+message pb_thousand_draw_role_info{
+    uint64 round = 1;//当前轮次（默认值为1）
+    repeated pb_thousand_draw_type_info type_info_list = 2; //当前增加了权重的数据列表(废弃)
+}
+
+// 抽中大奖的玩家数据
+message pb_thousand_draw_type_info{
+    uint64 type = 1; // 元素类型
+    repeated pb_u64_kv award_list = 2; //奖励列表
+}

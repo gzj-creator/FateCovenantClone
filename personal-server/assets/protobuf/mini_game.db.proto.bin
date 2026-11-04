@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 角色小游戏数据
+message pb_role_mini_game {
+    repeated pb_mini_game games = 1;
+}
+
+// 单个小游戏数据
+message pb_mini_game {
+    uint32 tid = 1;
+    bytes custom_bin = 2;
+}
+
+// 老虎机数据结构
+message pb_mini_game_slot_machine {
+    repeated pb_res_obj award = 1;  // 奖励
+    uint32 left_retry_times = 2;    // 剩余重试次数
+}
+
+// 弹珠游戏基础数据结构
+message pb_mini_game_pin_ball{
+    uint32 cur_bullet = 1; // 当前剩余子弹
+    repeated pb_mini_game_pin_ball_slime slimes = 2; //怪物数据列表
+    uint32 buy_times = 3; //当前购买次数
+    repeated pb_res_obj  award_list = 4; //当前领取奖励记录列表
+}
+
+// 弹珠游戏 - 史莱姆数据
+message pb_mini_game_pin_ball_slime{
+    uint32 tid = 1; //怪物id
+    uint32 cur_blood = 2; //当前血量
+    uint32 location = 3; //位置
+    bool is_rev = 4; // 是否已经领奖
+}

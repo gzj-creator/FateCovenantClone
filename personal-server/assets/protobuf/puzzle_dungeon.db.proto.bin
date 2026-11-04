@@ -1,0 +1,8 @@
+syntax = "proto3";
+import "project/general_dungeon/general_dungeon.db.proto.txt";
+
+//一次性解密副本数据
+message pb_puzzle_dungeon {
+    repeated int32 box_count_list = 1;   //已领取的宝箱数量，依次存放. [第一关，第二关，第三关]
+    int32 version = 2;                   //版本号
+}

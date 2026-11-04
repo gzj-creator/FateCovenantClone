@@ -1,11 +1,8 @@
-import fs from 'node:fs';
 import { readGeneratedDump } from './hero-tables.mjs';
-import { parseLuaJit } from '../../tools/extract-battle-tables.mjs';
+import { readAssetBytes, tableAsset } from '../assets.mjs';
+import { parseLuaJit } from '../protocol/lua-jit-dump.mjs';
 
-const defaultPath = new URL(
-  '../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/15935513698146724000-MagicCircleTable.data.lua.bin',
-  import.meta.url
-);
+const defaultPath = tableAsset('15935513698146724000-MagicCircleTable.data.lua.bin');
 let defaultCache;
 
 function requireMap(tables, name, expectedSize) {
@@ -51,7 +48,7 @@ function validate(tables) {
 
 export function readMagicCircleTables(file = defaultPath) {
   if (file === defaultPath && defaultCache) return defaultCache;
-  const dump = parseLuaJit(fs.readFileSync(file));
+  const dump = parseLuaJit(readAssetBytes(file));
   const tables = readGeneratedDump(dump, ['Const', 'MagicCircle', 'Level', 'Star', 'BreakLevel', 'PointLevel']);
   requireMap(tables, 'Const', 1);
   requireMap(tables, 'MagicCircle', 5);

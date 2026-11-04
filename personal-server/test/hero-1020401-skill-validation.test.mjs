@@ -133,14 +133,15 @@ test('反杀 (120000055) grants 30% crit when attacking higher-HP target', () =>
   assert.equal(trig.conditionKey, 'target-hp-above-self');
 });
 
-test('祝福 (120000059) grants 20% heal bonus for first 2 rounds', () => {
+test('祝福 (120000059) grants 20% heal bonus once for 2 rounds', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '120000059');
   const trig = skill.implementation.triggers[0];
   assert.equal(trig.effect.effect.statType, 'heal-bonus');
   assert.equal(trig.effect.effect.magnitude, 0.20);
-  assert.equal(trig.maxTriggers, 2);
+  assert.equal(trig.maxTriggers, 1);
+  assert.equal(trig.effect.duration.durationType, 'timed');
   assert.equal(trig.effect.duration.rounds, 2);
 });
 

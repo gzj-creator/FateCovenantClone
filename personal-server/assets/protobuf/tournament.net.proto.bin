@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+import "project/tournament/tournament.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/match_pvp/match_pvp.net.proto.txt";
+import "project/match_pvp/match_pvp.db.proto.txt";
+
+
+// 登录数据
+message pb_tournament_login {
+    pb_tournament_role tournament = 1; // 角色数据
+    uint32 score = 2;       // 当前分数
+    uint32 rank = 3;        // 当前排名
+    pb_tournament_login_season season_state = 4; // 赛季状态
+    pb_match_pvp_role_palace palace = 5;  // 自己的荣誉殿堂数据
+}
+
+message pb_tournament_login_season {
+    uint32 cur_season = 1;
+    uint32 cur_season_close_stamp = 2;
+    uint32 next_season_open_stamp = 3;
+}
+
+// 跨天刷新返回
+message pb_tournament_day_flush {
+    pb_res_to_client res_change = 1;
+    pb_tournament_role tournament = 2;
+}
+
+// 晋级赛战斗返回
+message pb_tournament_promote_fight_rsp {
+    pb_match_pvp_fight_rsp match_pvp_fight = 1; // 匹配pvp战斗返回
+    pb_tournament_role tournament = 2; // 位面锦标赛角色数据
+}
+
+
+// 位面锦标赛角色数据
+message pb_tournament_player_data {
+    pb_match_pvp_role_palace palace = 1; // 荣誉殿堂数据
+    pb_tournament_role tournament = 2; // 位面锦标赛角色数据
+}

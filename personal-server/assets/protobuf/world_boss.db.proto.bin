@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "project/rank/rank.db.proto.txt";
+
+// 世界boss服务器数据
+message pb_world_boss_server{
+    pb_world_boss cur_boss = 1;               // 当前boss
+    repeated uint64 map_role_list = 2;        // 地图内玩家列表(主要用于推送)
+    repeated pb_world_boss_damage damage_list = 3;  // 最近伤害列表(前台弹幕)
+    uint64 refresh_day = 4;                     // 刷新天(用于跨天判断)
+    repeated uint64 skill_list = 5;             // 当前可选择的技能列表
+    bool calc_hp_rate = 6;                      // 使用比例计算血量
+    int32 cross_state = 7;                      // 跨服状态(0:单服 1:双子 2:四极)
+    bool is_close = 8;                         // 是否处理过boss提前结算 进程停用
+    uint32 last_active_num = 9;                 // 上一期活跃的人数(用于计算拍卖品产出,首期取配置值)
+}
+
+// 世界boss数据
+message pb_world_boss{
+    uint32 tid = 1;                             // boss tid
+    uint64 cur_hp = 2;                          // 当前血量
+    uint64 max_hp = 3;                          // 最大血量
+    uint64 refresh_day = 4;                     // 刷新时间/天
+    uint64 auto_hurt_time = 5;                  // 上次自动扣血时间/秒
+    uint64 alive_day = 6;                       // 存活时间/天
+    uint64 atk = 7;                             // boss攻击
+    int64 kill_boss_time = 8;                   //击杀boss时间
+}
+
+// 世界boss个人数据
+message pb_world_boss_person{
+    pb_count_flush atk_count = 1;               // 攻击次数统计(每日刷新)
+    uint32 receive_boss_tid = 2;                // 已领取奖励的boss tid
+    uint64 attach_skill = 3;                    // 附带技能(结算时重置)
+    uint64 max_damage = 4;                      // 最高伤害(结算时重置)
+    repeated pb_world_boss_rank_person rank_list = 5;   // 每期的排名信息
+    uint64 history_max_damage = 6;              // 历史最高伤害(不会重置)
+    uint64 last_atk_time = 7;                   // 上次攻击时间(用于避免前台频繁发送战斗请求)
+    uint64 receive_ref_day = 8;                 // 已领取奖励的boss刷新天(boss tid可能会重复)
+    uint32 period_fight_times = 9;               // 本期战斗次数(每期刷新)
+    bytes achievements = 10;                    // 成就领取数据(tid为索引)
+}
+
+// 世界boss玩家伤害数据
+message pb_world_boss_damage{
+    uint64 role_id = 1;                         // 玩家id
+    uint64 damage = 2;                          // 伤害值
+}
+
+// 世界boss历史排行榜数据
+message pb_world_boss_history_rank{
+    repeated pb_world_boss_rank rank_list = 1;
+}
+
+// 世界boss排行榜数据
+message pb_world_boss_rank{
+    uint32 boss_tid = 1;                        // boss tid
+    repeated pb_rank_obj rank_list = 2;         // 排行榜数据
+}
+
+// 世界boss排行榜个人数据
+message pb_world_boss_rank_person{
+    uint32 boss_tid = 1;                        // boss tid
+    uint32 self_rank = 2;                       // 自己的排名
+    uint64 self_value = 3;                      // 自己的值
+}
+
+// 世界boss流派数据
+message pb_world_boss_sect_data{
+    repeated pb_world_boss_sect sect_list = 1;  // 流派数据
+}
+
+// 世界boss流派
+message pb_world_boss_sect{
+    uint32 tid = 1;                             // 流派tid
+    uint64 role_id = 2;                         // 当前最高伤害玩家(可能为0)
+    uint64 power = 3;                           // 当前最高伤害玩家战力
+    uint64 report_id = 4;                       // 当前最高伤害战报(可能为0)
+    uint64 damage = 5;                          // 当前最高伤害
+    uint64 attach_skill = 6;                    // 当前战斗附带的技能(可能为0)
+}
+
+// 世界boss排行榜阵容
+message pb_world_boss_lineup{
+    uint64 power = 1;                           // 战力
+    repeated pb_world_boss_hero hero_list = 2;  // 英雄列表
+}
+
+// 世界boss排行榜英雄
+message pb_world_boss_hero{
+    int64 tid = 1;                              // 英雄tid
+    int32 star = 2;                             // 星级
+    uint32 quality = 3;                         // 品质
+    uint32 mutant = 4;                          // 变异tid
+    uint32 mastery_break = 5;                   // 专精突破等级
+}
+

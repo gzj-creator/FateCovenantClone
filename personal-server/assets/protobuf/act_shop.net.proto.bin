@@ -1,0 +1,44 @@
+syntax = "proto3";
+import "project/activity/act_shop/act_shop.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//请求商店数据商品
+message pb_act_shop_info_req {
+    int64 version = 1; // 商店活动期数
+}
+
+//请求商店数据商品
+message pb_act_shop_info_rsp {
+    repeated pb_act_shop_db_info shop_list = 1; //返回正在开放的商店列表
+    bool is_act_open = 2; // 返回给客户端活动开启状态
+}
+
+//购买商品
+message pb_act_buy_goods_req {
+    uint64 act_tid = 1; // 活动配置表tid
+    int64 goods_tid = 2; // 商品Tid
+    int64 count = 3; //数量，批量购买相关
+}
+
+//商品状态信息，已买数量
+message pb_act_buy_goods_rsp {
+    pb_res_to_client res = 1; // 资源变化
+    pb_act_shop_db_info shop_info = 2; //返回正在商店的物品状态列表
+}
+
+//通知商品条件更新
+message pb_act_shop_refresh_goods {
+    uint64 act_tid = 1; // 活动配置表tid
+}
+
+//请求商店等级奖励
+message pb_act_shop_level_rewards_req {
+    uint64 act_tid = 1; // 活动配置表tid
+    int64 shop_level_tid = 2; // 商店等级
+}
+
+//返回商店等级奖励
+message pb_act_shop_level_rewards_rsp {
+    pb_res_to_client res = 1; // 资源变化
+    pb_act_shop_db_info shop_info = 2; //返回正在商店的物品状态列表
+}

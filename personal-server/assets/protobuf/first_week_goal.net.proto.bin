@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "project/activity/first_week_goal/first_week_goal.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 首周目标活动返回数据
+message pb_first_week_goal_back{
+    pb_first_week_goal info = 1; //活动数据
+    pb_res_to_client res = 2; //资源数据
+}
+
+// 在线跨天，跨天登录时，挑战类任务刷新数据返回
+message pb_first_week_settle_flush{
+    repeated pb_first_week_challenge_settle settle_list = 1;
+}

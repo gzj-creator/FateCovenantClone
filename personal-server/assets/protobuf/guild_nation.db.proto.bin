@@ -1,0 +1,576 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "general/res.db.proto.txt";
+import "project/count_statistics/count_statistics.db.proto.txt";
+
+// 黄金国度 - 赛季整体数据
+message pb_guild_nation_season{
+  uint64 version = 1;                   // 期数（向上累加）
+  uint64 open_time = 2;                 // 玩法开启时间
+  uint64 end_time = 3;                  // 玩法结束结算时间
+  bool is_settle = 4;                   // 标记赛季是否结算
+  uint64 cross_id = 5;                  // 跨服组主服ID
+  uint64 week_settle_time = 6;          // 周结算时间(未来时)
+  uint32 base_tmx_n = 7;                // 航会基地随机tmx数量
+  uint64 play_end_time = 8;             // 玩法地图内部结束时间
+}
+
+// 黄金国度 - 基地数据（地图）
+message pb_guild_nation_map_core{
+  uint64 gxy = 1;                                           // 坐标(包含服务器id)
+  uint64 tid = 2;                                           // 物件tid
+  uint64 belong = 3;                                        // 归属（航会id）
+  uint64 sub_belong = 4;                                    // 次级归属（玩家id）
+  uint64 timer_id = 5;                                      // 定时器ID
+  uint64 level = 11;                                        // 核心等级
+  uint64 hp = 12;                                           // 核心当前血量
+  uint64 protect_time = 13;                                 // 保护结束时间（初始为0则不限制）
+  uint64 create_time = 14;                                  // 下次可建造时间（初始为0则不限制）
+  repeated pb_guild_nation_help_defense_team help_defense_team = 15; // 协防阵容
+}
+
+// 黄金国度 - 旗帜数据（地图）
+message pb_guild_nation_map_flag{
+  uint64 gxy = 1;                                           // 坐标(包含服务器id)
+  uint64 tid = 2;                                           // 物件tid
+  uint64 belong = 3;                                        // 归属（航会id）
+  uint64 sub_belong = 4;                                    // 次级归属（玩家id）
+  uint64 timer_id = 5;                                      // 定时器ID
+  uint64 hp = 11;                                            // 当前血量
+  repeated pb_guild_nation_help_defense_team help_defense_team = 12; // 协防阵容
+}
+
+// 黄金国度 - 矿脉数据（地图）
+message pb_guild_nation_map_lode{
+  uint64 gxy = 1;                         // 坐标(包含服务器id)
+  uint64 tid = 2;                         // 物件tid
+  uint64 belong = 3;                      // 归属
+  uint64 sub_belong = 4;                  // 次级归属
+  uint64 timer_id = 5;                    // 定时器ID
+  uint64 lode_tid = 11;                   // 黄金国度矿脉表tid
+  uint64 begin_time = 13;                 // 本次开采开始的时间点
+  uint64 end_time = 14;                   // 本次开采结束的时间点
+  uint64 award_item = 15;                 // 资源tid（没开始前为0）
+  uint64 award_num = 16;                  // 资源剩余数量（没开始前为0）
+  pb_guild_nation_soldier_line_up_team team_info = 17;  // 玩家驻守数据
+}
+
+// 黄金国度 - 玩家基地（地图）
+message pb_guild_nation_map_role_base{
+  uint64 gxy = 1;                         // 坐标(包含服务器id)
+  uint64 tid = 2;                         // 物件tid
+  uint64 belong = 3;                      // 归属（航会id）
+  uint64 sub_belong = 4;                  // 次级归属（玩家id）
+  uint64 timer_id = 5;                    // 定时器ID
+  uint64 level = 11;                      // 等级（当前时间小于等级生效时间，则真实等级为level-1）
+  uint64 level_change_time = 12;          // 等级生效时间
+  uint32 city_hp = 13;                                     // 城防血量
+  repeated pb_guild_nation_help_defense_team help_defense_team = 14; // 其他人的协防阵容
+  uint64 protect_end_time = 15;                                // 保护结束时间
+  uint64 repair_end_time = 16;                             // 修复结束时间
+  uint64 fire_end_time = 17;                               // 燃烧结束时间
+  uint64 repair_start_time = 18;                           // 修复开始时间
+  uint64 fire_start_time = 19;                             // 燃烧开始时间
+  uint64 protect_start_time = 20;                          // 保护开始时间
+  repeated pb_res_obj repair_prop_list = 21;               // 修复使用道具 列表
+  uint32 defense_build_lv = 22;                            // 防御建筑等级
+  uint32 fire_hp = 23;                                     // 燃烧血量
+  uint32 origin_repair_time = 24;                          // 初始修复时间
+  repeated pb_guild_nation_muster_info muster_info_list = 25; // 玩家发起的集结信息列表
+}
+
+// 黄金国度 - 怪物（地图）
+message pb_guild_nation_map_monster{
+  uint64 gxy = 1;                         // 坐标(包含服务器id)
+  uint64 tid = 2;                         // 物件tid
+  uint64 belong = 3;                      // 归属
+  uint64 sub_belong = 4;                  // 次级归属
+  uint64 timer_id = 5;                    // 定时器ID
+  uint64 monster_tid = 11;                // 怪物表tid
+}
+
+// 单个据点数据(地图)
+message pb_guild_nation_map_stronghold{
+  uint64 gxy = 1;                         // 坐标(包含服务器id)
+  uint64 tid = 2;                         // 物件tid
+  uint64 belong = 3;                      // 归属
+  uint64 sub_belong = 4;                  // 次级归属
+  uint64 timer_id = 5;                    // 定时器ID
+  uint32 number = 11;                      // 据点编号
+  uint64 occupy_start_time = 12;           // 占领开始的时间
+  uint32 state = 13;                       // 据点状态
+  bool is_vacancy = 14;                    // 是否空缺
+}
+
+
+// 黄金国度 - 航会有关的地图数据
+message pb_guild_nation_guild{
+  uint64 core_gxy = 1;                                  // 基地坐标
+  pb_guild_nation_technology_guild technology_info = 2; // 航会科技信息
+  repeated pb_guild_nation_assist_info assist_list = 3; // 助力数据
+  int64 cur_assist_id = 4;                              // 助力唯一id
+  repeated pb_guild_nation_guild_res res_list = 5;      // 航会资源列表
+  repeated int64 flag_gxy_list = 6;                     // 航会旗帜列表
+  int64 res_update_time = 7;                            // 航会资源更新时间
+}
+
+// 黄金国度 - 玩家基础数据（个人）
+message pb_guild_nation_role{
+  uint64 version = 1;                                       // 赛季
+  repeated uint64 lode_gxy_list = 2;                        // 玩家当前占领矿脉的坐标列表
+  uint64 base_gxy = 3;                                      // 玩家基地地图坐标
+  uint32 mission_index = 5;                                 // 爬塔关卡
+  uint32 mission_chapter = 6;                               // 爬塔章节
+  bytes elite_star_bin = 7;                                 // 精英关卡星级记录二进制数据
+  uint64 monster_level = 8;                                 // 当前打到的最大小怪等级
+  uint64 energy_settle_time = 9;                            // 精力结算时间
+  repeated pb_u64_kv hero_energy_list = 10;                 // 英雄精力key为heroTid，value为精力值
+  pb_guild_nation_build_info build_info = 11;               // 建筑信息
+  pb_guild_nation_soldier_info soldier_info = 12;           // 士兵信息
+  pb_guild_nation_soldier_line_up map_line_up_soldier = 13; // 地图中的士兵布阵数据
+  pb_guild_nation_technology technology_info = 14;          // 科技数据
+  pb_guild_nation_donate donate_info = 15;                  // 捐献数据
+  repeated pb_guild_nation_scout scout_list = 16;           // 侦查数据
+  pb_guild_nation_person_task task_info = 17;               // 个人任务数据
+    pb_guild_nation_lode_output lode_output = 18;           // 矿产出
+}
+
+// 矿产出
+message pb_guild_nation_lode_output{
+  uint32 day = 1;                                           // 产出的天数
+  repeated pb_res_obj res_list = 2;                         // 资源列表
+}
+// 黄金国度 - 阶段任务数据
+message pb_guild_nation_phase_task{
+  uint32 cur_phase = 1;                                        // 当前阶段
+  bool is_received = 2;                                        // 是否已领取
+}
+
+// 黄金国度 - 个人任务数据
+message pb_guild_nation_person_task{
+  repeated bytes task_list = 1;                    // 任务列表(1:公会里程碑,2:阶段任务,3:成就任务,4:战力任务)
+  pb_guild_nation_phase_task phase = 2;            // 阶段任务奖励数据
+}
+
+// 黄金国度 - 玩家城建建筑总数据
+message pb_guild_nation_build_info{
+  repeated pb_guild_nation_build_item build_list = 1;       // 建筑列表
+  repeated pb_guild_nation_build_queue queue_list = 2;      // 队列列表
+}
+
+// 黄金国度 - 玩家城建建筑队列数据
+message pb_guild_nation_build_queue {
+  uint32 tid = 1;                                           // 黄金国度玩家城建队列表tid
+  uint64 lock_sec = 2;                                      // 锁住时间(0表示永久解锁)
+  uint64 build_tid = 3;                                     // 最近建造/升级的建筑
+}
+
+// 黄金国度 - 玩家城建建筑单个数据
+message pb_guild_nation_build_item{
+  uint64 tid = 1;                                           // 黄金国度玩家建筑表tid
+  uint64 level = 2;                                         // 建筑等级(当前时间小于建造完成，则真实等级为level-1)
+  uint64 finish_time = 3;                                   // 建造完成时间
+  bool is_assist = 4;                                       // 是否助力过
+  uint64 ori_build_time = 5;                                // 原始申请建造所需的时间
+  uint64 last_cancel_level = 6;                             // 上次取消建造的等级
+}
+
+// 黄金国度 - 玩家城建造兵总数据
+message pb_guild_nation_soldier_info{
+  repeated pb_guild_nation_soldier_type type_list = 1;      // 兵种列表
+  uint64 raise_end_sec = 2;                                 // 提升数量上限结束时间
+}
+
+// 黄金国度 - 玩家城建造兵类型数据
+message pb_guild_nation_soldier_type{
+  uint64 type = 1;                                          // 兵种类型
+  repeated pb_guild_nation_soldier_item item_list = 2;      // 兵种详情列表
+}
+
+// 黄金国度 - 玩家城建兵种数据
+message pb_guild_nation_soldier_item{
+  uint64 type = 1;                                          // 兵种类型
+  uint64 level = 2;                                         // 兵种等级
+  uint64 num = 3;                                           // 士兵数量
+  uint64 org_level = 4;                                     // 当前正在建造兵的原始等级
+  uint64 spawn_num = 5;                                     // 当前正在建造兵的数量
+  uint64 begin_time = 6;                                    // 建造开始时间
+  uint64 finish_time = 7;                                   // 建造完成时间(当前时间大于等于该时间，则实际兵力=num+spawn_num)
+  uint64 ori_build_time = 8;                                // 原始申请造兵所需的时间
+}
+
+// 黄金国度 - 兵种布阵到阵容中
+message pb_guild_nation_soldier_line_up{
+  repeated pb_guild_nation_soldier_line_up_team team_list = 2; // 阵容中的队伍列表
+  pb_guild_nation_soldier_line_up_team defense_team = 4;       // 防守阵容
+}
+
+// 黄金国度 - 兵种布阵到阵容中的某个队伍
+message pb_guild_nation_soldier_line_up_team{
+  uint64 team_id = 1;                                           // 队伍id
+  repeated pb_guild_nation_soldier_line_up_cell cell_list = 2;  // 阵容中的位置列表
+  uint64 state = 3;                                             // 队伍的状态（队伍状态表，0=空闲）
+  uint64 march_id = 4;                                          // 行军过程的行军ID
+  uint64 dst_gxy = 5;                                           // 出征目标点Gxy
+  uint64 dst_obj_tid = 6;                                       // 出征目标所属物件tid
+}
+
+// 黄金国度 - 兵种布阵到阵容中的某个队伍的某个位置
+message pb_guild_nation_soldier_line_up_cell{
+  uint64 team_id = 1;                                       // 队伍id
+  uint32 cell = 2;                                          // 格子位置
+  uint64 type = 3;                                          // 兵种类型
+  uint64 level = 4;                                         // 兵种等级
+  uint64 num = 5;                                           // 士兵数量
+  uint32 hero_tid = 6;                                      // 英雄tid
+  uint32 hero_star = 7;                                     // 星级
+}
+
+// 黄金国度 - 行军数据
+message pb_guild_nation_march_info{
+  pb_guild_nation_soldier_line_up_team team_info = 1; // 队伍数据
+  pb_guild_nation_march_lode_res_info lode_res_info = 2; // 采矿带回的数据
+  repeated pb_guild_nation_muster_team muster_team_list = 3; // 集结队伍列表
+  pb_guild_nation_answer_muster_team answer_muster_team = 4; // 响应集结的行军数据
+}
+
+// 黄金国度 - 行军待会矿脉奖励数据
+message pb_guild_nation_march_lode_res_info{
+  repeated pb_res_obj award_list = 1; // 奖励数据
+  repeated pb_res_obj ext_award_list = 2; // 额外奖励数据
+  pb_guild_nation_map_lode map_lode_obj = 3; // 矿点数据
+  uint32 result = 4; // 采集结果
+}
+
+// 黄金国度 - 单个玩家攻击基础数据
+message pb_guild_nation_attack_role{
+  uint64 role_id = 1;                                     // 玩家id
+  uint64 guild_id = 2;                                    // 航会id
+  uint64 last_time = 3;                                   // 上次攻击时间
+}
+
+// 黄金国度 - 协防阵容
+message pb_guild_nation_help_defense_team{
+  uint64 role_id = 1;                                     // 玩家id
+  uint32 team_id = 2;                                     // 阵容id 阵容tid放到外面来，方便后面取数据
+  pb_guild_nation_soldier_line_up_team team = 3;          // 阵容数据
+}
+
+// 黄金国度 - 玩家集结个人数据
+message pb_guild_nation_muster_info{
+  uint64 timer_id = 1;                                    // 定时器Id
+  uint64 src_id = 2;                                      // 集结玩家ID
+  uint64 dst_id = 3;                                      // 目标ID（航会、人、怪物、据点等）
+  uint64 src_gxy = 4;                                     // 集结起始点坐标
+  uint64 dst_gxy = 5;                                     // 集结发起目标点坐标
+  uint64 dst_obj_tid = 6;                                 // 集结发起目标物件tid
+  uint64 team_id = 7;                                     // 集结发起人用的队伍ID
+  uint64 end_time = 8;                                    // 发起集结战出发时间点
+  uint64 team_num_limit = 9;                              // 限制的集结队伍数量
+  uint64 soldier_num_limit = 10;                           // 限制的集结兵力上限
+  repeated pb_guild_nation_muster_team muster_team_list = 11; // 当前集结队伍列表
+}
+
+// 黄金国度 - 集结阵容
+message pb_guild_nation_muster_team{
+  uint64 role_id = 1;                                     // 玩家id
+  pb_guild_nation_soldier_line_up_team team = 3;          // 阵容数据
+}
+
+// 黄金国度 - 响应集结阵容
+message pb_guild_nation_answer_muster_team{
+  uint64 timer_id = 1;                                    // 响应集结的定时器ID
+  pb_guild_nation_soldier_line_up_team team = 3;          // 阵容数据
+}
+
+// 黄金国度 - 战报列表
+message pb_guild_nation_report_list {
+  uint64 version = 1;                                       // 赛季
+  bool is_red_dot = 2;                                      // 是否显示战报主红点
+  int64 max_report_uid = 3;                                 // 最大战报uid（赛季发生变化则删除战报数据）
+  repeated pb_guild_nation_report report_list = 4;          // 战报列表
+}
+
+// 黄金国度 - 战报数据
+message pb_guild_nation_report {
+  uint64 uid = 1;                                          // 战报uid
+  uint32 tid = 2;                                          // 战报tid
+  uint64 time = 3;                                         // 战报时间
+  bool is_read = 4;                                        // 是否已读
+  bool is_received = 5;                                    // 是否已领
+  uint32 atk_fight_result = 6;                             // 事件结果
+  repeated pb_res_obj fixed_award_list = 7;                // 固定奖励
+  repeated pb_res_obj extra_award_list = 8;                // 额外奖励
+  int32 map_obj_type = 9;                                  // 物件tid（地图物件表）
+  bytes map_obj = 10;                                      // 地图物件（地图物件表）
+  pb_guild_nation_report_role atk_role = 11;               // 攻击方
+  pb_guild_nation_report_role def_role = 12;               // 防守方
+  bytes extra = 13;                                        // 额外数据
+}
+
+// 黄金国度 - 战报对象
+message pb_guild_nation_report_role {
+  uint64 gxy = 1;                                         // 坐标(包含服务器id)
+  uint64 role_id = 2;                                     // 玩家id
+  string name = 3;                                        // 玩家名
+  string guild_name = 4;                                  // 航会名
+}
+
+// 黄金国度 - 战斗战报主数据
+message pb_guild_nation_report_fight_main {
+  repeated pb_guild_nation_report_fight fight_list = 1;  // 多场战斗结果列表
+  repeated pb_res_obj cost_award_list = 2;             // 防守方失败扣除的奖励
+}
+
+// 黄金国度 - 战斗战报
+message pb_guild_nation_report_fight {
+  int64 fight_id = 1;                                     // 战斗id
+  pb_guild_nation_report_fight_detail atk_detail = 2;     // 攻击方详情
+  pb_guild_nation_report_fight_detail def_detail = 3;     // 防守方详情
+  int32 fight_result = 4;   //小场战斗结果
+}
+
+// 黄金国度 - 玩家战报
+message pb_guild_nation_report_fight_detail {
+  uint64 power = 1;                                       // 实力
+  uint32 soldier_num = 2;                                 // 兵力
+  uint32 lose_soldier_num = 3;                            // 损失兵力
+  uint32 hurt_soldier_num = 4;                            // 受伤兵力
+  uint32 remain_soldier_num = 5;                          // 剩余兵力
+  uint64 role_id = 6;                                     // 角色id
+  uint64 team_id = 7;                                     // 队伍ID
+}
+
+// 黄金国度 - 科技数据
+message pb_guild_nation_technology {
+  repeated pb_guild_nation_study study_list = 1;                      // 研究队列
+  repeated pb_guild_nation_activation_technology activation_list = 2; // 科技生效列表
+  repeated int32 is_assist_list = 3;      // 节点助力记录（记录节点id，如果升级后记得删除掉可以重新助力）
+}
+
+// 黄金国度 - 科技研究队列数据
+message pb_guild_nation_study{
+  int32 id = 1;                 // 队列id
+  int32 study_node_tid = 2;         // 当前研究的科技节点tid
+  int32 study_node_lv = 3;         // 当前研究的科技节点等级
+  uint64 finish_time = 4;       // 完成时间
+  uint64 init_finish_time = 5;       // 初始完成时间
+}
+
+// 黄金国度 - 科技章节生效列表
+message pb_guild_nation_activation_technology{
+  int32 chapter_tid = 1;         // 科技章节tid
+  repeated pb_guild_nation_activation_node node_list = 2;       // 节点列表
+}
+
+// 黄金国度 - 科技生效列表
+message pb_guild_nation_activation_node{
+  int32 tid = 1;         // 科技节点tid
+  int32 level = 2;       // 等级
+}
+
+// 黄金国度 - 科技捐献数据（航会）
+message pb_guild_nation_technology_guild{
+  repeated pb_guild_nation_guild_technology_chapter chapter_list = 1;     // 科技章节数据列表
+  int32 recommend_tid = 2;                                                // 推荐科技tid
+}
+
+// 黄金国度 - 科技捐献数据（个人）
+message pb_guild_nation_donate{
+  int32 donate_num = 1;                                            // 捐献次数
+  int32 donate_num_diamond = 2;                                    // 钻石捐献次数
+  uint64 last_donate_time = 3;                                     // 上次捐献时间
+}
+
+// 黄金国度 - 科技章节数据（航会）
+message pb_guild_nation_guild_technology_chapter{
+  int32 chapter_tid = 1;                                            // 科技章节tid
+  repeated pb_guild_nation_guild_technology_node tech_list = 2;     // 科技节点数据列表
+}
+
+// 黄金国度 - 科技节点数据（航会）
+message pb_guild_nation_guild_technology_node{
+  int32 tid = 1;         // 科技节点tid
+  int32 level = 2;       // 等级
+  int32 progress = 3;    // 进度
+  int64 up_lv_time = 4;     //等级生效时间
+}
+
+// 黄金国度 - 侦查数据（个人）
+message pb_guild_nation_scout{
+  uint32 obj_tid = 1;                               // 物件tid（地图物件表）
+  repeated pb_u64_kv report_list = 2;               // 侦查战报列表（矿点/怪物:gxy,玩家:role_id,公会:guild_id...）
+}
+
+// 黄金国度 - 助力数据（工会）
+message pb_guild_nation_assist_info{
+  int64 role_id = 1;                                // 发起的玩家id
+  int32 target_type = 2;                            // 助力目标类型
+  int32 target_id = 3;                              // 助力目标id
+  int32 max_num = 4;                                // 最大助力次数
+  int32 assist_num = 5;                             // 已助力次数
+  int64 finish_time = 6;                            // 完成时间
+  repeated int64 assist_role_list = 7;              // 已助力的玩家
+  int32 target_lv = 8;                              // 助力目标等级
+  int64 id = 9;                                     // 助力唯一id
+}
+
+// 黄金国度 - 助力下发数据
+message pb_guild_nation_assist_info_back{
+  int64 role_id = 1;                                // 发起的玩家id
+  int32 target_type = 2;                            // 助力目标类型
+  int32 target_id = 3;                              // 助力目标id
+  int32 max_num = 4;                                // 最大助力次数
+  int32 assist_num = 5;                             // 已助力次数
+  int64 finish_time = 6;                            // 完成时间
+  int32 target_lv = 7;                              // 助力目标等级
+  int64 id = 8;                                     // 助力唯一id
+}
+
+// 黄金国度 - 助力列表
+message pb_guild_nation_assist_list{
+  repeated pb_guild_nation_assist_base_info list = 1;              // 助力列表
+}
+message pb_guild_nation_assist_base_info{
+  int64 role_id = 1;                                // 发起的玩家id
+  int32 target_type = 2;                            // 助力目标类型
+  int32 target_id = 3;                              // 助力目标id
+  int32 target_lv = 4;                              // 助力目标等级
+  int64 id = 5;                                     // 助力唯一id
+}
+
+// 黄金国度 - 修复使用道具
+message pb_guild_nation_repair_prop{
+  uint32 prop_tid = 1;                              // 道具tid
+  uint32 num = 2;                                   // 道具数量
+}
+
+// 黄金国度 - 地图补充数据
+message pb_guild_nation_supply{
+  repeated pb_guild_nation_supply_obj obj_list = 1;
+}
+
+// 黄金国度 - 地图补充物件数据
+message pb_guild_nation_supply_obj{
+  int64 gxy = 1;                                  // 坐标
+  uint32 tid = 2;                                 // 物件tid
+  uint32 sub_tid = 3;                             // 具体的矿脉/怪物tid
+}
+
+// 黄金国度 - 任务统计数据
+message pb_guild_nation_task_stat{
+  uint64 id = 1;                               // 类型
+  repeated pb_u64_kv stat = 2;                          // 统计数据
+}
+
+// 黄金国度 - 次数统计记录数据
+message pb_guild_nation_count_statistics{
+  pb_count_statics_data count_data = 1;               // 统计数据
+  uint64 last_send_time = 2;                          // 上一次数据推送时间(用以控制推送频率,避免性能问题)
+  repeated pb_guild_nation_task_stat record_list = 3; // 统计数据列表(记录玩家信息，避免重复刷数据）
+  repeated pb_guild_nation_task_stat stat_list = 4;   // 统计值
+}
+
+// 黄金国度 - 航会资源
+message pb_guild_nation_guild_res{
+  uint64 res_tid = 1;                                   // 资源tid
+  uint64 res_num = 2;                                   // 资源数量
+}
+
+
+// ----------------- 黄金国度 - 据点争夺开始 -----------------
+
+// 黄金国度 - 据点数据
+message pb_guild_nation_all_stronghold_data{
+  repeated pb_guild_nation_stronghold stronghold_list = 1; // 据点列表
+}
+
+// 单个据点数据
+message pb_guild_nation_stronghold{
+  uint32 tid = 1;                                       // 据点tid
+  uint64 owner_guild_id = 2;                            // 据点归属航会id
+  uint64 occupy_start_time = 3;                         // 占领开始的时间
+  bool is_vacancy = 4;                                  // 是否空缺
+  uint64 gxy = 5;                                       // 坐标
+
+  repeated uint64 sign_up_guild_list = 10;               // 报名的公会ID列表
+  repeated pb_guild_nation_stronghold_occupy_info occupy_list = 11; // 多个公会的占领信息
+  repeated pb_guild_nation_stronghold_npc npc_list = 12; // 据点NPC信息
+  repeated pb_guild_nation_help_defense_team help_defense_team = 13; // 协防阵容
+  uint64 timer_id = 14;                                  // 定时器ID
+  uint64 guard_id = 15;                                  // 守卫id
+}
+
+// 据点占领信息
+message pb_guild_nation_stronghold_occupy_info{
+  uint64 guild_id = 1;                                  // 占领公会id
+  uint64 occupy_start_time = 2;                         // 占领开始的时间
+  uint32 occupy_total_time = 3;                         // 累计占领总时间
+}
+
+// 公会据点信息
+message pb_guild_nation_stronghold_guild{
+  uint64 score = 1;                                                             // 公会积分
+  repeated uint64 member_list = 2;                                              // 报名时的成员列表
+  repeated uint64 join_member_list = 3;                                         // 参与了的成员列表
+  uint32 sign_up_stronghold_tid = 4;                                            // 报名的据点tid
+  uint64 occupy_tid = 5;                                                        // 正在占领的据点tid
+  repeated uint64 occupy_list = 6;                                              // 占领过的据点tid列表
+
+  repeated pb_guild_nation_official official_list = 10;                         // 任命的官员列表
+  repeated pb_guild_nation_king_stunt stunt_list = 11;                          // 特技使用信息
+  repeated pb_guild_nation_stronghold_capture_record record_list = 12;          // 战利品分配记录信息
+}
+
+// 据点战利品分配记录
+message pb_guild_nation_stronghold_capture_record {
+  uint64 stronghold_tid = 1;                                     // 黄金国度据点表tid
+  repeated pb_guild_nation_stronghold_capture capture_list = 2;  // 战利品分配信息
+}
+
+// 战利品奖励数据
+message pb_guild_nation_stronghold_capture {
+  uint32 tid = 1;                 // 战利品奖励表tid
+  repeated uint64 role_list = 2;  // 分配的成员列表
+}
+
+// 据点占领玩家信息
+message pb_guild_nation_stronghold_role{
+  bytes merit_reward_states = 1;                                      // 战功奖励领取状态
+  repeated pb_guild_nation_stronghold_award_record record_list = 2;   // 据点奖励领取记录
+}
+
+// 据点奖励领取记录
+message pb_guild_nation_stronghold_award_record {
+  uint64 stronghold_tid = 1;            // 黄金国度据点表tid
+  bool participate = 2;                 // 是否参与过据点争夺
+  bool stronghold_reward_state = 3;     // 参与奖励领取状态
+  bool official_reward_state = 4;       // 官员奖励领取状态
+  bool occupy_reward_state = 5;         // 占领奖励领取状态
+}
+
+// 国王特技使用信息
+message pb_guild_nation_king_stunt{
+  uint32 tid = 1;             // 特技ID
+  uint32 use_count = 2;       // 已经使用次数
+  uint64 last_use_time = 3;   // 上次使用时间
+}
+
+// 黄金国度官员
+message pb_guild_nation_official{
+  uint64 role_id = 1;       // 官员角色ID
+  uint64 job = 2;           // 职位
+}
+
+// 据点NPC数据
+message pb_guild_nation_stronghold_npc{
+  uint64 hp = 1;           // 气血值
+  uint32 number = 2;       // npc编号
+  uint32 tid = 3;          // npc tid
+}
+
+// ----------------- 黄金国度 - 据点争夺结束 -----------------
+
+
+
+

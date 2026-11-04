@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "project/role.db.proto.txt";
+
+// 线性关卡玩家数据
+message pb_linear_level_role {
+    repeated pb_linear_level linear_levels = 1; //线性关卡数据
+}
+
+// 线性关卡数据
+message pb_linear_level {
+    uint32 type = 1; //类型
+    uint32 level = 2; //关卡
+    bytes box_award = 3; //宝箱奖励
+}

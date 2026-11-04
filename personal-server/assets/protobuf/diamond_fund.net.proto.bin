@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/diamond_fund/diamond_fund.db.proto.txt";
+
+// 钻石基金领奖请求返回
+message pb_diamond_award_rsp{
+  pb_diamond_fund diamond_fund = 1;//钻石基金数据
+  pb_res_to_client res_change = 2;//资源变化
+}

@@ -317,8 +317,10 @@ export function createFantasySharedDrawService({
   pools = [],
   now = () => Math.floor(Date.now() / 1000),
   onDraw = null,
-  maxDrawCount = DEFAULT_MAX_DRAW_COUNT
+  maxDrawCount = DEFAULT_MAX_DRAW_COUNT,
+  logger = () => {}
 }) {
+  const log = event => { try { logger(event); } catch {} };
   if (!store || typeof store.transaction !== 'function') throw new Error('Fantasy draw store is required');
   if (!codec || typeof codec.pack !== 'function' || typeof codec.unpack !== 'function') throw new Error('Fantasy draw codec is required');
   if (!Array.isArray(pools)) throw new Error('Fantasy draw pools must be an array');
@@ -342,6 +344,10 @@ export function createFantasySharedDrawService({
   }
 
   function execute601(request) {
+    log({
+      event: 'fantasy_shared_draw_execute601_entry', request,
+      requestHex: Buffer.isBuffer(request) || request instanceof Uint8Array ? Buffer.from(request).toString('base64') : undefined
+    });
     const drawLib = fantasyDrawInteger(request?.draw_lib, 'draw library', { min: 1, max: INT32_MAX });
     const pool = routes.get(drawLib);
     if (!pool) fantasyDrawFail(5, 'Fantasy draw library is not registered');

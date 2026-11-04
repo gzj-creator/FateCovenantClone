@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 弹幕消息内容，该结构最终会转成二进制存在pb_msg里的content内
+message pb_req_like_danmaku {
+    uint64 channel_id = 1;  // 频道ID
+    uint32 msg_idx = 2;      // 点赞的消息索引
+}

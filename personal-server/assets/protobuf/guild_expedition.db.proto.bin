@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 航会远征信息
+message pb_guild_expedition_info{
+    uint64 version = 1;                 // 版本：第几期
+    uint64 version_start_time = 2;      // 当前周期开始时间
+    uint64 version_end_time = 3;        // 当前周期结束时间
+    repeated pb_guild_expedition_round round_list = 4;   // 轮次列表
+    uint64 settled_round = 5;           // 已经结算的轮次
+    repeated pb_guild_expedition_pos pos_list = 6;     // 航会远征位置列表
+    repeated pb_guild_expedition_city city_list = 7;   // 城市列表
+    repeated pb_guild_expedition_guess_role guess_role_list = 8;      // 被竞猜的玩家列表
+    uint64 support_times = 9; // 总点赞次数
+    repeated pb_guild_expedition_fit_obj fit_list = 10; // 中高级自动宣战资格的航会列表
+}
+
+// 晋级中高级航会记录
+message pb_guild_expedition_fit_obj{
+    uint64 level = 1; // 城池类型（只有中高级）
+    uint64 guild_id = 2; // 公会id
+}
+
+message pb_guild_expedition_round{
+    uint64 round_tid = 1;               // 轮次tid
+    uint64 duration = 2;                // 持续时间（秒）
+}
+
+// 航会远征城市信息
+message pb_guild_expedition_city{
+    uint64 city_id = 1;                         // 城市id
+    repeated uint64 guild_id_list = 2;          // 公会id列表
+}
+
+// 航会远征竞猜信息
+message pb_guild_expedition_guess_role{
+    uint64 role_id = 1;                     // 被竞猜的玩家id
+    uint64 guess_num = 2;                   // 竞猜的人数
+    repeated uint64 support_role_ids = 3;   // 支持的玩家id列表
+}
+
+// 航会远征位置信息
+message pb_guild_expedition_pos{
+    uint64 uid = 1;                     // 建筑tid * 100 + 位置索引
+    uint64 occupy_role_id = 2;          // 占领者id
+    uint64 occupy_team_id = 3;          // 占领者队伍id
+    uint64 guild_id = 4;                // 占领者公会id
+} // 最大数量：60（公会数量）*40（1个公会玩家数量）*5（1个玩家队伍个数）=12000个
+
+// 航会远征队伍信息
+message pb_guild_expedition_team{
+    uint64 team_id = 1;
+    uint64 pos_uid = 2;
+    uint64 challenge_count = 3;       // 已挑战次数
+}
+
+// 航会远征玩家信息
+message pb_guild_expedition_role{
+    repeated pb_guild_expedition_team team_list = 1;  // 队伍列表
+    uint64 point = 2;                   // 个人积分（每轮清除）
+    pb_count_flush inspire_count = 3;   // 助威次数信息
+    bool can_enter_expedition = 4;      // 是否可以进入最后的先锋挑战阶段
+    repeated uint64 guess_role_ids = 5; // 竞猜的玩家id列表（不分顺序）
+    uint64 like_time = 6;               // 点赞后时间设置为玩法结束时间点
+    int64 challenge_damage = 8;                    // 先锋挑战最高伤害
+    int64 grass_point = 9;              // 占草地获取的战功（这个值最终会累积到point里面，显示的时候不需要单独处理）
+    uint64 def_num = 10; //本轮成功防守人数（每轮清除）
+    uint64 inspire_point = 11; // 助威积分（每轮清除）
+}
+
+// 航会远征公会信息
+message pb_guild_expedition_guild{
+    uint64 proclaim_city = 1;               // 当前宣战的城市id
+    uint64 proclaim_type = 2;               // 当前可以宣战的类型（城池类型表tid）
+    uint64 guild_point = 3;                 // 公会积分（每轮清除）
+    uint64 inspire_point = 4;               // 助威点数
+    repeated pb_guild_expedition_guild_result results = 5;   //前几轮的战绩
+    repeated uint64 role_id_list = 6;       //参加的角色ID列表
+    repeated pb_guild_expedition_report_obj report_list = 7; //本公会战报列表（最近N条）
+    uint64 proclaim_time = 8;               // 宣战时间
+    repeated uint64 top_role_id_list = 9;   // 王牌角色ID列表
+    repeated uint64 check_role_id_list = 10; // 可进行据点挑战的角色ID列表
+}
+
+// 航会远征结果
+message pb_guild_expedition_guild_result{
+    uint64 round = 1;                   // 第X轮
+    uint64 occupy_city = 2;             // 当前占领的城市id
+    uint64 guild_point = 3;             // 公会当轮的历史战功
+    uint64 rank = 4;                    // 排名
+    uint64 total_guild_count = 5;       // 总公会数量
+}
+
+// 航会远征简易战报对象
+message pb_guild_expedition_report_obj {
+    int64 id = 1; // 战斗Id
+    int64 tid = 2; // 战斗Tid
+    int32 type = 3; // 战斗类型
+    int64 atk_role_id = 4; // 进攻方角色Id
+    int64 def_role_id = 5; // 防守方角色Id
+    int64 time = 6; // 战报时间/秒
+    int32 final_result = 7;// 战斗最终结果
+    bytes req = 8; // 发起战斗的数据缓存（战报回放会用到，就直接放战报里）
+}

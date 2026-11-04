@@ -17,7 +17,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const STANDARD_PERMIT = 1401;
 const STANDARD_PRODUCT = 2000001;
 const STANDARD_DAY = 20757;
@@ -160,7 +160,7 @@ test('gateway routes 35005 and 105803 over real TCP', async t => {
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     activityMode: 'all-open',
     now: () => STANDARD_DAY * 86400 * 1000,
     verifySession: (uid, code) => uid === 'permit-user' && code === 'permit-session',

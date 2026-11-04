@@ -1,0 +1,83 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "project/lantern/lantern.db.proto.txt";
+
+// 走马灯消息列表
+message pb_lantern_list {
+    repeated bytes msg_list = 1; // 消息列表
+}
+
+// 单个走马灯信息
+message pb_lantern_info {
+    uint32 id = 1; // 走马灯类型ID
+    int64 role_id = 2; // 玩家ID
+    bytes role_name = 3; //玩家名字
+    uint32 play_time = 4; // 播放时间秒,可以为作为消息唯一标识
+    bytes custom_data = 5; // 自定义参数信息
+}
+
+// 五星英雄id
+message pb_lantern_five_hero {
+    uint32 hero_id = 1; // 五星英雄id
+}
+
+// 特定星级英雄
+message pb_lantern_star_hero {
+    uint32 hero_id = 1; // 英雄id
+    uint32 hero_star = 2; // 英雄星级
+}
+
+// 获得指定英雄
+message pb_lantern_spec_hero {
+    uint32 hero_id = 1; // 英雄id
+    uint32 hero_spec = 2; // 英雄条件
+}
+
+// 通用任务奖励信息
+message pb_lantern_common_task {
+    uint32 target = 1; // 目标数量
+    repeated pb_res_obj award = 2; //奖励
+}
+
+// 暗能魔城信息
+message  pb_lantern_magic_city {
+    uint32 difficulty = 1;      //难度
+}
+
+// 冲榜结算信息
+message pb_lantern_sprint_settle {
+    uint32 type = 1;            //冲榜类型
+    repeated bytes role_name_list = 2;       //玩家名字列表
+    uint32 timestamp = 3;       // 评定时间
+}
+
+// 圣约升星
+message pb_lantern_artifact_up_star {
+    uint32 tid = 1;     // 圣约配置表
+    uint32 star = 2;    // 星级
+}
+
+
+message pb_lantern_hero_chip {
+    uint32 hero_id = 1; // 英雄id
+    uint32 hero_talent = 2; // 英雄星级
+    uint32 item_id = 3; // 使用道具id
+}
+
+// 装备养成
+message pb_lantern_equip_develop {
+    uint32 develop_type = 1;  // 养成类型
+    uint32 equip_tid = 2;     // 装备tid
+    uint32 develop_level = 3; // 养成等级
+}
+
+// 多个英雄
+message pb_lantern_multi_hero {
+    repeated uint32 tid = 1;  // 英雄tid
+}
+
+// 兵符
+message pb_lantern_war_rune {
+    uint32 tid = 1;     // 兵符tid
+    uint32 quality = 2; // 品质
+}

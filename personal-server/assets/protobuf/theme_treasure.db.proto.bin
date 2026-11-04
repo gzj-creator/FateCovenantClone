@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 寻宝活动
+message pb_theme_treasure {
+    uint32 free_times = 1;
+    uint32 step = 2;
+    pb_theme_treasure_challenge challenge = 3; // 挑战数据
+    pb_recharge_limit_info buy_limit_info = 4;   // 充值购买次数信息
+    uint32 time_stamp = 5; // 数据更新时的时间戳
+    bytes day_award = 6; //  每日奖励
+    pb_theme_treasure_exchange exchange = 7;   // 兑换活动
+    repeated pb_res_obj award_list = 8;     // 提前确定的奖励列表
+    repeated uint32 dice_seq = 9;   // 掷骰子的序列
+    uint32 dice_group = 10;   // 掷骰子的组
+    uint32 box_num = 11;   // 宝箱数量
+    uint32 normal_num = 12;   // 普通奖励数量
+    bytes version_award = 13; // 本周期奖励
+    uint32 last_login_day = 14; // 上次活动期间登录的天数（用于结算每日任务奖励）
+}
+
+// 挑战活动
+message pb_theme_treasure_challenge {
+    bytes award_personal_tasks = 1; // 已领奖的个人挑战
+    bytes award_server_tasks = 2; // 已领奖的单服(位面)挑战
+    bytes award_turn = 3; // 已领取的轮次奖励
+}
+
+// 特殊奖励
+message pb_theme_treasure_special_award {
+    uint32 uid = 1;     // 奖励唯一id
+    repeated pb_res_obj special_award = 2;  // 奖励
+}
+
+// 礼包充值次数
+message pb_theme_treasure_recharge_times {
+    uint32 tid = 1;     // 充值表tid
+    uint32 used_times = 2;   // 已使用次数
+    uint32 refresh_stamp = 3; // 刷新时间戳
+    uint32 recharge_times = 4;  // 普通充值次数
+}
+
+// 兑换活动
+message pb_theme_treasure_exchange {
+    repeated pb_theme_treasure_exchange_times exchange = 1; // 已兑换信息
+    uint32 cost = 2;  // 挑战消耗
+}
+
+message pb_theme_treasure_exchange_times{
+    uint32 tid = 1;     //  兑换表tid
+    uint32 times = 2;   //  已兑换次数
+}
+
+message pb_theme_treasure_server_step {
+    uint32 version = 1;   // 活动期数
+    uint32 step = 2;      // 步数
+}
+
+// 历史步数
+message pb_theme_treasure_step_history {
+    repeated pb_theme_treasure_server_step history = 1; // 历史步数
+}
+
+// 寻宝活动服务器数据
+message pb_theme_treasure_server {
+    repeated pb_theme_treasure_server_stat stats = 1; // 服务器统计数据
+}
+
+// 寻宝活动服务器统计数据
+message pb_theme_treasure_server_stat {
+    uint64 role_id = 1; // 角色id
+    string role_name = 2; // 角色名
+    uint32 step = 3; // 步数
+}

@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+import "project/guild_red_envelope/guild_red_envelope.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//公会玩家未发放红包数据
+message pb_client_inactive_red_envelope {
+  uint64 role_id = 1;
+  repeated pb_role_red_envelope_end_time envelope = 2;     //repeated pb_role_inactive_red_envelope
+}
+
+//红包登录时同步客户端信息
+message pb_client_red_envelope_login {
+  pb_role_guild_red_envelope info = 1;                              //自己的公会红包基础信息
+  repeated pb_guild_red_envelope_info active_red_envelopes = 2;//所有已发放但是未领完红包
+  pb_guild_red_envelope_bullet_chat_list chat_list = 3;    //所有chatlist
+}
+
+//红包添加同步信息
+message pb_guild_red_envelope_add_sync{
+  pb_guild_red_envelope_info envelope = 1;
+  uint32 count = 2;
+}
+
+//返回客户端 打开界面时需求数据
+message pb_guild_red_envelope_get_data_rsp{
+  repeated pb_client_inactive_red_envelope inactive_envelope = 1;        //所有未发放红包信息
+  repeated pb_guild_red_envelope_info fetched_red_envelopes = 2;                                      //所有已领取完红包 repeated pb_guild_red_envelope_info
+}
+
+//抢红包 返回值
+message pb_guild_red_envelope_fetch_rsp{
+  pb_guild_red_envelope_info envelope = 1;
+  pb_res_to_client res_changes = 2; // 资源变化
+  pb_count_flush fetch_gold_count = 3; // 今日累计领取红包总额
+}
+
+//请求红包领取记录
+message pb_guild_red_envelope_show_log_req{
+  uint32 id = 1;                    //红包唯一id
+  bool is_over = 2 ;          //是否是在已完成红包列表中
+}
+
+//请求红包领取
+message pb_guild_red_envelope_fetch_req{
+  uint32 id = 1;                    //红包唯一id
+  uint32 tid = 2;                    //红包配置id
+}
+
+// 同步服务为tid
+message pb_guild_red_envelope_create_sync{
+  repeated uint32 envelopes = 1;    //创建的红包id
+}
+
+// 同步大额红包领取信息
+message pb_guild_red_envelope_fetch_sync{
+  uint32 id = 1;                    //红包唯一id
+  uint64 role_id = 2;               //领取者id
+}
+
+
+
+
+
+
+
+

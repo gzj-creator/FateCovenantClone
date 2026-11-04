@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/ticket_draw/ticket_draw.db.proto.txt";
+
+// 领取奖励返回
+message pb_ticket_rev_award_back{
+    pb_res_to_client res = 1;               // 资源改变
+    pb_ticket_draw_role_data role_data = 2; // 玩家数据
+}
+
+// 结算数据返回
+message pb_ticket_settle_back{
+    pb_ticket_draw_pool pool = 1;           // 奖池数据
+}
+
+// 走马灯消息
+message pb_ticket_settle_msg{
+    repeated bytes names = 1;               // 玩家名字
+    uint32 draw_type = 2;                   // 抽奖类型
+}

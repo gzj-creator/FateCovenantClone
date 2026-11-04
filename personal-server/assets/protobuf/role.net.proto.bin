@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+import "project/role.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/operate_display/operate_display.db.proto.txt";
+import "project/leader_equip/leader_equip.db.proto.txt";
+
+//后台传递前台角色数据
+message to_client_role_info {
+    bytes nick_name = 1; //昵称
+    uint32 set_name_times = 2; //设置名字的次数
+    pb_figure_simple_info figure_simple_info = 3; //角色形象信息
+    uint32 level = 4; //等级
+    uint32 exp = 5; //经验
+    uint32 create_time = 6; //角色创建时间
+    bytes sundry_bin = 7; //玩家杂项数据
+    uint32 level_reward_record = 8; //玩家领取等级奖励的最高记录
+    pb_res_to_client res = 9; //资源变化数据
+    pb_figure_have_info figure_have_info = 10; //角色拥有的形象数据
+    bool force_rename = 11; // 是否要强制改名
+    bytes operate_display_info = 12; // 操作表现信息
+}
+
+//设置角色名称回调
+message res_set_role_name {
+    bytes nick_name = 1; //昵称
+    uint32 set_name_times = 2; // 设置名字的次数
+    pb_res_to_client res = 3; // 资源数据
+}
+
+//初始引导设置角色名称性别回调
+message res_set_role_name_sex {
+    bytes nick_name = 1; //昵称
+    uint32 set_name_times = 2; // 设置名字的次数
+    pb_res_to_client res = 3; // 资源数据
+    pb_figure_simple_info simple_info = 4; //角色形象信息
+}
+
+//领取升级奖励回调
+message res_get_level_reward {
+    pb_res_to_client res = 1; // 资源数据
+}
+
+// 角色基础信息
+message role_base_info {
+    int32 server_id = 1; // 所属服务器
+    int64 role_id = 2; // 角色id
+    string name = 3; // 角色名称
+    int32 level = 4; // 角色等级
+    int32 figure = 5; // 角色形象tid
+}
+
+// 服务器角色信息数据
+message server_role_info {
+    repeated role_base_info roles = 1; // 角色信息列表
+}
+
+//激活称号请求返回数据
+message pb_active_title_req_back {
+    pb_figure_simple_info simple_info = 1; //当前形象使用数据
+    pb_figure_have_info have_info = 2; //当前拥有形象数据
+}
+
+//简略玩家信息
+message pb_brief_role_info{
+    int64 id = 1;       //id
+    uint32 value = 2;   //值
+    bytes extra = 3;    //额外数据
+}
+
+//角色形象数据块
+message pb_role_figure_block{
+    bytes stable_title_info = 1;            //永久性称号数据
+    repeated pb_figure_item limit_title_list = 2;   //限时称号list
+}
+
+// 头衔晋升条件奖励领取返回
+message pb_role_figure_rank_award_back {
+    bytes rank_award_bin = 1; // 晋升条件奖励领取状态
+    pb_res_to_client res = 2; //资源变化数据
+}
+
+// 头衔晋升返回
+message pb_role_figure_up_back {
+    pb_leader_equip_forge leader_equips_forge_data = 1; // 团长打造数据
+    pb_res_to_client res = 2; //资源变化数据
+}

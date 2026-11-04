@@ -1,0 +1,22 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 多期链路礼包数据
+message pb_link_gift_master{
+    repeated pb_link_gift info_list = 1; // 数据列表
+}
+
+// 礼包数据
+message pb_link_gift{
+    pb_recharge_limit_info limit_info = 1;  // 礼包限购信息
+    uint32 act_version = 2;         //当前版本号
+    uint64 begin_time = 3; // 活动开启时间
+    uint64 end_time = 4; // 活动结束时间
+    repeated pb_link_gift_custom_item custom_list = 5; // 自选礼包数据（初始为空列表）
+}
+
+// 礼包自选数据
+message pb_link_gift_custom_item{
+    uint64 normal_tid = 1; // 链路普通礼包配置表tid
+    uint64 choose_gift = 2; // 所选礼包id
+}

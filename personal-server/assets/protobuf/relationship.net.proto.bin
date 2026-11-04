@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+import "project/relationship/relationship.db.proto.txt";
+import "general/res.net.proto.txt";
+
+message pb_relationship_login {
+  repeated pb_role_relationship relation = 1;         // 自身数据
+  repeated pb_relation_login_event mark_event = 2;    // 登录时事件数据
+}
+
+// 登录时事件数据
+message pb_relation_login_event {
+  uint32 tid = 1;
+  repeated pb_relation_event mark_event = 2;    // tid关系下发生的事件
+}
+
+// 标记关系请求
+message pb_relation_mark_req {
+  uint32 tid = 1;
+  uint64 dst = 2;
+  bytes custom = 3;
+}
+
+// 标记关系返回数据
+message pb_relation_mark_rsp {
+  bytes custom = 1;
+  pb_res_to_client res_changes = 2;
+}
+
+// 取消标记关系请求
+message pb_relation_un_mark_req {
+  uint32 tid = 1;
+  uint64 dst = 2;
+  bytes custom = 3;
+}
+
+// 取消标记返回数据
+message pb_relation_un_mark_rsp {
+  bytes custom = 1;
+  pb_res_to_client res_changes = 2;
+}
+
+// 推送事件
+message pb_relation_notify_event {
+  uint32 tid = 1;       // 事件tid
+  repeated bytes param = 2;      // 序列化事件自定义参数
+  uint32 timestamp = 3; // 事件发生时间戳
+  uint64 role = 4;      // 事件源role_id
+}

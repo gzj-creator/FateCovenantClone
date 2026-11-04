@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import { createHash } from 'node:crypto';
 import protobuf from 'protobufjs';
+import { protocolAsset } from './assets.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from './game-framing.mjs';
 import { createServerHandshakeChallenge } from './game-handshake.mjs';
 
@@ -9,9 +10,9 @@ const HOST = '127.0.0.1';
 const LOGIN_SDK_TYPE = 909103;
 const INITIAL_VERIFY = Buffer.from('verify', 'utf8');
 const SCHEMAS = Object.freeze([
-  ['channel_push.db.proto', 'afe4f56ac8f35267ad87bc252427c3b3f9a98f7e7d1c687df57f23fe7359e07c'],
+  ['channel_push.db.proto', '6b3b4626a542ba45a8feb1030ad0cbc495f15f8b9a378f170825ac5063d28e63'],
   ['login.net.proto', 'a94efa0bfa99cc99664f6ace7bb6323bc8bf533b026c41fc9a15a6ce7f1e1e42'],
-  ['net.net.proto', '2e233e81eda933e7a0cd134b11a29eb56f4096cb8e646c76a01b4118af8f7e5a']
+  ['net.net.proto', 'ad9cbcc63e5a6519214663254ad59216d5116ead41848ad68f8c38f740b1a1dc']
 ]);
 
 function digest(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
@@ -23,7 +24,7 @@ function integer(value, name, maximum) {
 function loadSchemas() {
   const root = new protobuf.Root();
   for (const [name, expectedHash] of SCHEMAS) {
-    const source = fs.readFileSync(new URL('../analysis/reports/private-client-16448/lua-bundles/login-protos/' + name, import.meta.url));
+    const source = Buffer.from(fs.readFileSync(protocolAsset(name), 'utf8').replace(/\r\n?/g, '\n'));
     if (digest(source) !== expectedHash) throw new Error('Exported gateway protobuf schema hash mismatch');
     protobuf.parse(source.toString('utf8'), root, { keepCase: true });
   }

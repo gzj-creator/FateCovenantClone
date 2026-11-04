@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+
+// 三消pvp角色数据
+message pb_tri_match_pvp_role_info{
+  repeated pb_tri_match_pvp_act_data act_lists = 1;
+}
+
+// 三消pvp活动数据
+message pb_tri_match_pvp_act_data{
+  int64 act_id = 1; // 活动id
+  int64 last_update_time = 2; // 上次更新时间
+  repeated int64 received_daily_task_ids = 3; // 领取的每日任务id列表
+  repeated int64 received_grade_ids = 4; // 领取的段位id列表
+  int64 score = 5; // 总积分
+  int64 daily_success_times = 6; // 每日胜利次数
+  int64 last_settlement_fight_id = 7; // 最近一次已处理的战斗结算ID
+  int64 match_times = 8; // 本活动期已进入匹配的场次
+  int64 give_up_num = 9; // 本活动期已放弃场次
+  int64 success_streak_times = 10; // 连胜次数，失败时清零
+  repeated pb_tri_match_pvp_report report_list = 11; // 最近30场，随活动清理
+  int64 max_score = 12; // 最大积分，记录的是历史最高分
+}
+
+message pb_tri_match_pvp_report {
+  int64 fight_uid = 1; // 战斗唯一标识，用于获取具体战报详情
+  int64 time = 2; // 战斗时间
+  int64 atk_role_id = 3; // 红方角色ID；NPC使用三消战斗队伍表 tid
+  int64 def_role_id = 4; // 蓝方角色ID；NPC使用三消战斗队伍表 tid
+  int32 result = 5; // 我方战斗结果
+  int64 atk_score_change = 6; // 红方积分变化
+  int64 def_score_change = 7; // 蓝方积分变化
+  int64 atk_power = 8; // 红方战力快照
+  int64 def_power = 9; // 蓝方战力快照
+  bool is_robot = 10; // 是否机器人
+  int64 fight_tid = 11; // 战斗tid
+}
+
+// 三消 PVP 逻辑大区参与玩家分片。ShardId=0 为分片元数据，其他分片最多保存 shard_size 个角色。
+message pb_tri_match_pvp_reissue_participant {
+  int64 act_id = 1; // 活动 ID
+  int64 version = 2; // 活动版本
+  uint32 region_id = 3; // 逻辑大区 ID
+  repeated int64 role_ids = 4; // 当前分片参与玩家 ID
+  uint32 shard_id = 5; // 分片 ID；0 表示元数据
+  uint32 shard_size = 6; // 单分片最大角色数，活动首个参与者写入后固定
+  uint32 shard_count = 7; // 当前数据分片数量，仅元数据记录有效
+}
+
+// 三消 PVP 补发分批状态。每批只允许从 pending 切换到 started 一次。
+message pb_tri_match_pvp_reissue_batch {
+  int64 act_id = 1;
+  int64 version = 2;
+  uint32 region_id = 3;
+  uint32 batch_id = 4;
+  bool started = 5;
+  bool finished = 6;
+}

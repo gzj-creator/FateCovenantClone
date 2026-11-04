@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+
+// 助力升超凡角色数据
+message pb_help_up_act_role_info{
+  repeated pb_help_up_act_data act_list = 1; // 活动列表
+}
+
+// 助力升超凡活动数据
+message pb_help_up_act_data{
+  int64 act_id = 1; // 活动id
+  repeated int64 daily_task_tid_list = 2; // 每日任务
+  repeated int64 weekly_task_tid_list = 3; // 每周任务
+  int64 last_update_time = 4; // 上次更新时间
+  repeated int64 stage_tid_list = 5; // 阶段奖励tid列表
+  int64 last_rec_time = 6; // 最新领取时间 任务和进度
+}
+
+message pb_help_up_act_overall_help_data{
+  int64 help_times = 1; // 全服总助力次数
+}
+
+// 助力升超凡登录数据下发
+message pb_help_up_act_login_data{
+  pb_help_up_act_data act_data = 1;
+  int64 help_times = 2; // 全服总助力次数
+}

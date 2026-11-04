@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 租借星级养成数据
+message pb_leaser_star_up {
+    repeated pb_leaser_star_up_reset reset_list = 1;  // 重置数据
+}
+
+// 租借星级养成重置数据
+message pb_leaser_star_up_reset {
+    int32 version = 1;                          // 期数
+    int64 last_reset_refresh_time = 2;          // 上次刷新重置时间
+    int32 cur_reset_times = 3;                  // 当前重置次数
+}

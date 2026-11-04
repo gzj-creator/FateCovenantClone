@@ -12,7 +12,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 import { MAGIC_CIRCLE_MODULE } from '../game/magic-circle-service.mjs';
 
 const codec = createGameCodec();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 
 function addResource(store, tid, num) {
   store.transaction(model => {

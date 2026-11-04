@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/activity/puzzle_act/puzzle_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 拼图活动请求
+message pb_puzzle_act_req {
+    uint64 act_id = 1;                  // 活动id
+    uint32 tid = 2;                     // tid
+}
+
+// 拼图活动返回
+message pb_puzzle_act_back {
+    pb_res_to_client res = 1;           // 资源改变
+    pb_puzzle_act puzzle_act = 2;       // 拼图活动数据
+}

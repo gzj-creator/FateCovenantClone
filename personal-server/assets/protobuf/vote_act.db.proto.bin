@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+// 投票活动玩家数据
+message pb_vote_act_role {
+    pb_vote_act_role_vote vote = 1;                     // 投票数据
+    pb_vote_act_role_task task = 2;                     // 任务数据
+}
+
+// 投票玩家投票数据
+message pb_vote_act_role_vote {
+    uint32 blind_select_times = 1;                      // 盲选次数（随时间刷新）
+    uint32 select_times = 2;                            // 海选次数
+    bytes vote_state = 3;                               // 投票奖励领取状态（非盲选阶段的）
+    repeated pb_vote_act_obj obj_list = 4;              // 记录玩家对某个对象投票的次数（注意阶段刷新了，该列表会清空）
+    repeated uint32 guess_obj_list = 5;                 // 竞猜对象列表（按照顺序，1，2，3名）
+    uint64 last_refresh_sec = 7;                        // 上次刷新时间（如果上次刷新时间在当前阶段开始之前，需要把blind_select_times和obj_list重置）
+}
+
+// 投票玩家任务数据
+message pb_vote_act_role_task {
+    bytes task_state = 3;                               // 每日任务奖励领取状态
+    uint64 last_refresh_sec = 7;                        // 上次刷新时间（如果上次刷新时间在当前阶段开始之前，需要把task_state重置）
+}
+
+// 投票活动全服数据
+message pb_vote_act_server {
+    uint64 act_id = 1;                                  // 投票活动tid
+    repeated pb_vote_act_group group_list = 2;          // 分组列表
+    repeated pb_vote_act_obj guess_obj_list = 3;        // 竞猜对象列表
+    uint64 last_refresh_sec = 4;                        // 上次刷新时间（后台用）
+}
+
+// 投票活动抽奖数据
+message pb_vote_act_server_draw {
+    repeated uint64 join_role_list = 1;                 // 参与抽奖的玩家列表
+    repeated uint64 win_role_list = 2;                  // 获奖玩家列表
+    int64 timer_time = 3;//开奖定时器时间, 活动初始化调用写进去的, 第一个写的有效
+}
+
+// 投票活动分组信息
+message pb_vote_act_group {
+    uint32 group_id = 1;                                // 投票活动分组表tid
+    repeated pb_vote_act_obj obj_list = 2;              // 对象列表
+}
+
+// 投票活动盲选组
+message pb_vote_act_blind_group {
+    uint32 idx = 1;                                     // 盲选组索引
+    repeated uint32 obj_list = 2;                       // 盲选对象列表，只能选一个
+}
+
+// 投票活动对象信息
+message pb_vote_act_obj {
+    uint32 obj_id = 1;                                  // 投票活动对象表tid
+    uint64 cnt = 2;                                     // 计数
+}
+
+// 开奖返回
+message pb_vote_prize_back {
+    repeated int64 role_list = 1;//中奖玩家列表
+}

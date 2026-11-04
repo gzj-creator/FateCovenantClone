@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 选择理财产品请求
+message pb_finance_manage_act_select_product_req {
+    uint32 act_id = 1;      // 活动id
+    uint32 product_tid = 2; // 理财活动产品表tid
+}

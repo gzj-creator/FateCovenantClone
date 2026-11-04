@@ -1,0 +1,14 @@
+syntax = "proto3";
+import "project/attribute/attribute.db.proto.txt";
+
+// 养成玩法单条属性数据结构
+message pb_attr_develop_item{
+    pb_attr_item attr_item = 1; //单条属性
+    uint32 develop_id = 2; //养成玩法所需记录的id
+}
+
+// 养成玩法属性的数据结构
+message pb_attr_develop_info{
+    repeated pb_attr_develop_item attr_list = 1; //养成玩法属性列表
+    repeated pb_attr_develop_item flush_list = 2; //养成玩法洗炼的属性列表
+}

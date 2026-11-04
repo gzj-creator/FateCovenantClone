@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+// 角色英雄好感度数据
+message pb_role_hero_favour {
+  repeated pb_hero_favour favours = 1;  // 所有英雄好感度
+  uint32 all_favour = 2;    // 总好感度
+  uint32 last_refresh_time = 3;   // 上次刷新时间
+  uint32 play_times = 4; // 游玩次数
+  uint32 favour_level = 5; // 总的好感度等级
+}
+
+// 单个英雄好感度数据
+message pb_hero_favour {
+  uint32 hero_tid = 1;    // 英雄配置表tid
+  uint32 favour = 2;      // 英雄好感度
+  uint32 all_play_times = 3; // 总的游玩次数(不会被刷新)
+  uint32 all_gift_times = 4;     // 总的赠礼次数(不会被刷新)
+  bytes got_level_award = 5;     // 已经领取了的好感度等级奖励
+  uint32 day_play_times = 6;     // 当天游玩次数(每日刷新)
+  uint32 break_level = 7;        // 突破等级
+}

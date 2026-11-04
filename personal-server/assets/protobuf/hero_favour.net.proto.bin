@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+import "project/hero/favour/hero_favour.db.proto.txt";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+
+// 宴请/交互返回
+message pb_hero_favour_chat_rsp {
+  pb_hero_favour favour = 1;
+  pb_res_to_client res_change = 2;
+  uint32 all_favour = 3;    // 总好感度
+  uint32 favour_level = 4; // 总的好感度等级
+}
+
+// 赠礼请求
+message pb_hero_favour_gift_req {
+  uint64 hero_tid = 1;
+  repeated pb_res_obj gifts = 2;
+}
+
+// 赠礼返回
+message pb_hero_favour_gift_rsp {
+  pb_hero_favour favour = 1;
+  pb_res_to_client res_change = 2;
+  uint32 all_favour = 3;    // 总好感度
+  uint32 favour_level = 4; // 总的好感度等级
+}
+
+// 游玩返回
+message pb_hero_favour_play_rsp {
+  pb_hero_favour favour = 1;
+  pb_res_to_client res_change = 2;
+  uint32 all_favour = 3;    // 总好感度
+  uint32 favour_level = 4; // 总的好感度等级
+}
+
+message pb_hero_favour_level_award_req {
+  uint32 hero_tid = 1;          // 英雄表tid
+  repeated uint32 tid_list = 2; // 等级奖励配置表tid
+}
+
+// 好感度等级奖励返回
+message pb_hero_favour_level_award_rsp {
+  bytes got_level_award = 1;     // 已经领取了的好感度等级奖励
+  pb_res_to_client res_change = 2; // 资源变化
+}

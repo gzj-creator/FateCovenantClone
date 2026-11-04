@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+import "project/activity/tri_match_tower/tri_match_tower.db.proto.txt";
+import "general/res.net.proto.txt";
+
+
+// 领取进度奖励
+message pb_tri_match_tower_rec_process_award_req{
+  int64 act_id = 1; // 活动id
+  repeated  int64  tid_list = 2; // 进度奖励tid列表
+}
+
+message pb_tri_match_tower_rec_process_award_rsp{
+  pb_tri_match_tower_act_res_data data = 1;
+  bytes award = 2;
+}
+
+// 尝试恢复体力
+message pb_tri_match_tower_recover_stamina_req{
+  int64 act_id = 1;
+}
+
+message pb_tri_match_tower_recover_stamina_rsp{
+  pb_tri_match_tower_act_res_data data = 1;
+}
+
+// 三消爬塔活动资源变化
+message pb_tri_match_tower_act_res_data{
+  pb_tri_match_tower_act_data act_data = 1; // 活动数据
+  pb_res_to_client res = 2; // 资源变化
+}
+
+
+// 获取首通阵容
+message pb_tri_match_tower_act_get_pass_req{
+  int64 act_id = 1;
+}
+
+message pb_tri_match_tower_act_get_pass_rsp{
+  repeated pb_tri_match_tower_pass_lineup_data pass_list = 1; // 首通阵容
+}

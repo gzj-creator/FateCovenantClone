@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+//玩家活动数据列表(用于存数据库)
+message pb_artifact_draw_player_list{
+    repeated pb_artifact_draw_player act_data_list = 1;       //玩家活动数据列表
+}
+
+//玩家活动数据
+message pb_artifact_draw_player{
+    int32 act_tid = 1;                                  //活动表tid
+    bool is_synthesis = 2;                              // 是否合成过圣器，用于判断是否开启碎片抽奖
+    uint64 daily_time = 3;                              //每日时间戳，用于检查刷新每日奖励是否刷新
+    bytes daily_award_state = 4;                         //每日任务奖励领取状态(二进制位, 索引从1开始)
+    bytes period_award_state = 5;                       // 周期任务奖励领取状态(二进制位, 索引从1开始)
+    pb_recharge_limit_info recharge_info = 6;           //充值信息
+    pb_fragments_draw_info fragments_draw_info = 7;      //残片抽奖信息
+    pb_artifact_trials_fight_record fight_record = 8;   //战斗记录列表
+    bool is_get_supply = 9;                              //是否领取过补发奖励，251016专用，补过就标记
+}
+
+// 残片抽奖信息
+message pb_fragments_draw_info{
+    uint32 turn = 1;                                    // 轮次
+    bool turn_over = 2;                                 // 本轮是否已经结束(需要点击进入下一轮)
+    uint32 draw_times = 3;                             // 本轮棋盘格开启步数
+    repeated uint32 bomb_pos = 4;                       // 炸弹的位置
+    repeated uint32 jackpot_pos = 5;                    // 大奖记录数组，第一个为第一轮记录，第二个为第二轮选择...
+    repeated pb_custom_rewards custom_list = 6;        // 定制奖励列表
+    repeated pb_revealed_rewards claimed_list = 7;     // 已翻开领取的奖励记录
+    repeated pb_revealed_rewards unclaimed_list = 8;   // 已翻开未领取的奖励记录
+}
+
+// 本轮已翻开的奖励记录
+message pb_revealed_rewards {
+    uint32 tid = 1;
+    uint32 num = 2;
+    uint32 index = 3;
+}
+
+// 本轮定制奖励
+message pb_custom_rewards {
+    uint32 index = 1; // 位置
+    uint32 tid = 2; // 定制奖励表tid
+}
+
+
+//关卡记录
+message pb_artifact_trials_fight_record{
+    int32 mission_tid = 1;                              //关卡tid
+    int32 last_fight_time_sec = 2;                      //上一次战斗的时间戳(秒)
+    uint64 acc_dmg = 3;                                  //累积伤害
+    uint64 max_dmg = 4;                                  //玩家个人最大伤害
+    bytes award_state = 5;                              //伤害累积奖励领取状态(二进制位)
+}
+
+
+// 圣器试炼活动服务器数据
+message pb_artifact_draw_server_list {
+    repeated pb_artifact_draw_server act_data_list = 1;       // 活动服务器数据列表
+}
+
+// 单个活动服务器数据
+message pb_artifact_draw_server {
+    uint32 act_tid = 1;                                 // 活动表tid
+    uint32 cur_turn = 2;                            // 结算了的轮次
+    repeated uint32 settle_turn = 3;                // 结算轮次
+}

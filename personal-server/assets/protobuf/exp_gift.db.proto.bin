@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 经验礼包数据列表
+message pb_exp_gift_list {
+    repeated pb_exp_gift list = 1;      // 礼包列表
+    pb_recharge_limit_info record = 2;  // 购买记录
+}
+
+// 触发礼包数据
+message pb_exp_gift {
+    uint32 group_tid = 1;               // 经验礼包组tid
+    uint64 exp = 2;                     // 礼包中包含的经验值（请求触发礼包的时候算好）
+    uint64 trigger_sec = 3;             // 触发时间点
+}

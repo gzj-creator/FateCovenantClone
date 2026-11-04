@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+import "project/mail.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//登录
+message pb_rev_login_mail_info {
+    repeated pb_mail_brief mail_list = 1; //邮件列表
+}
+
+//推送新邮件
+message pb_rev_new_mail_info {
+    pb_res_to_client res = 1;
+}
+
+//一键领取
+message pb_rev_one_key_award_mail {
+    pb_res_to_client res = 1; //资源
+    repeated uint64 rev_id_list = 2; //领取的邮件ID
+    repeated pb_mail_brief rev_mail_list = 3; //领取后的邮件信息（含过期转化后的奖励）
+}
+
+//已读
+message pb_to_read_mail {
+    uint64 mailid = 1; //邮件id
+}
+
+//领取
+message pb_to_award_mail {
+    uint64 mailid = 1; //邮件id
+}
+
+//领取
+message pb_rev_award_mail {
+    pb_res_to_client res = 1; //资源
+    repeated pb_mail_award award = 2; //实际发放的奖励（含过期转化后的）
+}
+
+//删除
+message pb_to_del_mail {
+    uint64 mailid = 1; //邮件id
+}
+
+//邮件简略信息，用于登陆的数据推送
+message pb_mail_brief {
+    uint32 tid                  = 1;    //邮件配置TID
+    uint64 id                   = 2;    //邮件ID
+    uint32 send_time            = 3;    //发送时间
+    bool read                   = 4;    //是否已读
+    bool received               = 5;    //是否已领取
+    string title                = 6;    //标题
+    repeated pb_mail_award award   = 7;    //奖励
+    bool is_full_info           = 8;    //是否为全信息（当没有自定义内容，直接使用配置表时，该字段为true）
+    uint32 expire_time          = 9;    //过期时间
+    uint64 expire_convert_time  = 10;  //过期转化时间戳（绝对时间，秒），0=不生效
+}

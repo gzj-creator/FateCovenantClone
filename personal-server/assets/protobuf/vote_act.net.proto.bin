@@ -1,0 +1,23 @@
+syntax = "proto3";
+import "project/activity/vote_act/vote_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 投票活动登录数据
+message pb_vote_act_login {
+    pb_vote_act_role role = 1;              // 玩家数据
+    pb_vote_act_server server = 2;          // 全服数据
+}
+
+// 投票活动通信返回数据
+message pb_vote_act_back {
+    pb_vote_act_role role = 1;              // 玩家数据
+    pb_vote_act_server server = 2;          // 全服数据
+    pb_res_to_client res = 3;               // 资源数据
+}
+
+// 投票活动投票请求
+message pb_vote_act_vote_req {
+    uint32 group_id = 1;                     // 组id
+    uint32 obj_id = 2;                       // 对象id
+    uint32 vote_times = 3;                   // 投票次数
+}

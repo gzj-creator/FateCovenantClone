@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 付费返回
+message pb_skin_recharge_back {
+    uint64 act_id = 1; //活动Id
+    pb_res_to_client res = 2; //资源改变
+    pb_recharge_limit_info buy_limit_info = 5; //礼包限购记录
+}

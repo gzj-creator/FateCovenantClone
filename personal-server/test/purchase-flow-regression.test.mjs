@@ -24,7 +24,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const FIXED_NOW = 1790000000;
 
 function fixture() {
@@ -355,7 +355,7 @@ test('native 16004 monthly-card voucher request returns a decodable flag-5 event
   const game = createLocalGame({
     databasePath,
     statePath,
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     localWallet: true,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
   });

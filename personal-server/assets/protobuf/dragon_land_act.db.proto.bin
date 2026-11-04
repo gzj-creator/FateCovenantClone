@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+// 龙息之地的玩家数据
+message pb_dragon_land_role {
+  repeated pb_dragon_land_role_data act_list = 1;           //活动信息列表
+}
+
+// 龙息之地玩家活动数据结构
+message pb_dragon_land_role_data {
+  int64 version = 1;                                        // 活动表version
+  int64 piece = 2;                                          // 鳞片数量
+  int64 seize_score = 3;                                    // 抢夺积分
+  bool daily_award = 4;                                     // 是否领取过每日奖励
+  repeated int64 boss_award_list = 5;                       // 已领取的boss奖励列表
+  int64 challenge_times = 6;                                // 挑战次数
+  int64 last_challenge_time = 7;                            // 最后一次挑战时间
+  int64 max_damage = 8;                                    // 最高伤害值
+  repeated int64 way_list = 9;                              // 各途径获取记录
+}
+
+// 龙息之地玩家的最高伤害
+message pb_dragon_land_role_max_damage {
+  int64 boss_id = 1;                                         // boss表id
+  int64 max_damage = 2;                                  // 最高伤害值
+}
+
+// 龙息之地公会数据
+message pb_dragon_land_guild {
+  repeated pb_dragon_land_guild_data act_list = 1;           //活动信息列表
+}
+
+// 龙息之地公会数据详情
+message pb_dragon_land_guild_data {
+  int64 version = 1;                                       // 活动表version
+  int64 level = 2;                                         // 难度等级
+  repeated pb_dragon_land_piece piece_list = 3;            // 贡献记录列表
+  int64 boss_id = 4;                                       // boss表id
+  int64 lost_hp = 5;                                       // 丢失血量
+  int64 piece = 6;                                         // 鳞片数量
+  repeated pb_dragon_land_display display_list = 7;        // 贡献记录列表
+}
+
+// 龙息之地贡献记录
+message pb_dragon_land_piece {
+  int64 rid = 1;                                       // 仇人玩家的rid
+  repeated pb_dragon_land_display display_list = 2;    // 贡献记录列表
+  int64 damage = 3;                                     // 伤害值
+}
+
+// 龙息之地贡献记录来源
+message pb_dragon_land_display {
+  int64 tid = 1;                                       // 来源类型
+  int64 piece = 2;                                     // 获取数量
+  int64 day_index = 3;                                   // 贡献记录所属日期索引（从1开始）
+}
+
+message pb_dragon_land_yesterday_report{
+  repeated pb_dragon_land_way_report way_list = 1;  // 各途径昨日战报
+}
+
+message pb_dragon_land_way_report{
+  int64 way_tid = 1;                                       // 途径tid（关联 DragonLandGetWay 表）
+  int64 yesterday_piece = 2;                             // 昨日获取总量
+  repeated int64 rid_list = 3;                           // 昨日前三名成员
+}
+
+message pb_dragon_land_daily_active{
+  int64 today_piece = 1;                                  // 今日已获取鳞片
+  repeated int64 rid_list = 2;                           // 达成成员列表
+}

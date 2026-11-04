@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "project/five_day_boss_act/five_day_boss_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 五日boss活动数据+资源变化通用
+message pb_five_day_boss_act_res_update {
+    pb_res_to_client res = 1;         // 资源变化
+    pb_five_day_boss_act_role_data role = 2;  // 角色数据
+}
+
+// 五日boss活动请求领取奖励通用
+message pb_five_day_boss_act_award_req {
+    repeated uint32 tid = 1; // 任务表tid列表
+    uint64 act_tid = 2; // 活动tid
+}
+
+// 五日boss活动战斗请求
+message pb_five_day_boss_act_fight {
+    uint64 act_tid = 1; // 活动tid
+    uint64 level_tid = 2; // 关卡tid
+}

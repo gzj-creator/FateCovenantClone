@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "project/activity/task_activity/task_activity.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//通用任务完成任务请求
+message pb_task_activity_finish_req{
+  int64 activity_id = 1;//活动id
+  repeated int64 task_id_list = 2;//提交的任务id列表
+
+}
+
+// 通用任务完成任务返回
+message pb_task_activity_finish_rsp {
+  pb_task_activity_info act_info = 1; //活动数据
+  pb_res_to_client res = 2;         // 资源变化
+}
+
+// 通用任务完成任务返回
+message pb_task_activity_data_rsp {
+  int64 server_vitality = 1; //服务器活跃度
+}

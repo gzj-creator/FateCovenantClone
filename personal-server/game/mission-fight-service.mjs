@@ -235,9 +235,12 @@ function reportBattle(codec, model, mission, request) {
     throw new GameError(5, 'Journey lineup location is invalid');
   }
   const seenLocations = new Set();
+  const seenHeroes = new Set();
   const attackers = selected.members.map((entry, index) => {
     if (seenLocations.has(entry.loc)) throw new GameError(5, 'Journey lineup location is duplicated');
+    if (seenHeroes.has(entry.heroId)) throw new GameError(5, 'Journey lineup hero is duplicated');
     seenLocations.add(entry.loc);
+    seenHeroes.add(entry.heroId);
     const hero = model.heroInfo.hero_list.find(value => String(value.uid) === entry.heroId);
     if (!hero) throw new GameError(5, 'Journey lineup hero is missing');
     const role = Number(hero.tid), cfg = unitConfig(config.tables, role, 1);
@@ -445,7 +448,13 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     return store.transaction((model, db) => {
       const { module, value: current } = currentMission(model);
       const previous = Number(current.mission_id ?? 0);
-      let res = { changes: [], is_overflow: false };
+      const stamina = missionTables.sweepConst.get(1);
+      const staminaItem = Number(stamina?.cost_item), staminaCost = Number(stamina?.cost_num);
+      if (!Number.isSafeInteger(staminaItem) || staminaItem <= 0 || !Number.isSafeInteger(staminaCost) || staminaCost <= 0) {
+        throw new GameError(5, 'Mission stamina configuration is invalid');
+      }
+      const spent = consumeResources(model, [[staminaItem, staminaCost]], 301);
+      let res = { changes: spent.changes, is_overflow: false };
       if (pending.result === RESULT_WIN) {
         const completed = pending.mission.missionId;
         const sections = missionTables.sections;
@@ -459,7 +468,11 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
           if (!current.pass_count) current.pass_count = { flush_time: 0, count: 0 };
           current.pass_count.count = Number(current.pass_count.count ?? 0) + 1;
           const section = missionTables.sections.get(completed);
-          res = firstClearReward(model, db, section, gameTables, now);
+          const reward = firstClearReward(model, db, section, gameTables, now);
+          res = {
+            changes: combinedChanges(spent.changes, reward.changes),
+            is_overflow: false
+          };
         }
         // A successful journey battle always grants role experience. Replaying
         // an already cleared section does not repeat its first-clear rewards,
@@ -484,6 +497,13 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     if (!playbackEnabled) throw new GameError(5, 'Mission fight playback is not implemented yet');
     const mission = missionRequest(request.req);
     if (!mission) throw new GameError(5, 'Only ordinary mission fights are implemented');
+    const current = currentMission(store.read()).value;
+    const currentPosition = missionPosition(missionTables.sections, Number(current.mission_id ?? 0));
+    const requestedPosition = missionPosition(missionTables.sections, mission.missionId);
+    if (currentPosition < 0 || requestedPosition < 0) throw new GameError(5, 'Mission progression configuration is missing');
+    if (requestedPosition > currentPosition) {
+      throw new GameError(5, `Mission is not unlocked (current ${current.mission_id}@${currentPosition}, requested ${mission.missionId}@${requestedPosition})`);
+    }
     const reportBattleResult = reportBattle(codec, store.read(), mission, request);
     const { simulation, ...battle } = reportBattleResult;
     const fightTid = Number(request.fight_tid ?? 0) || Number(missionBattleConfig(mission.missionId)?.mission.fight ?? 0);

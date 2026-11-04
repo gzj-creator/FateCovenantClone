@@ -1,0 +1,12 @@
+syntax = "proto3";
+import "project/mission.db.proto.txt";
+
+// 精英主线玩法总数据
+message pb_elite_mission {
+    uint64 mission_id = 1; //当前通过的关卡ID
+    bytes boss_bin = 2; //Boss通关数据
+    bytes box_award_bin = 3; //宝箱奖励数据
+    pb_mission_difficulty difficulty = 4; // 关卡难度限制数据
+}
+
+

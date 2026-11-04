@@ -165,7 +165,8 @@ function advanceRecord(record, target, availableQualities) {
   };
 }
 
-export function createHeroHandbookService({ store, codec, heroTables, tables }) {
+export function createHeroHandbookService({ store, codec, heroTables, tables, logger = () => {} }) {
+  const log = event => { try { logger(event); } catch {} };
   const availableQualities = qualityValues(heroTables);
   const ownAward = ownAwardReward(heroTables);
 
@@ -198,6 +199,7 @@ export function createHeroHandbookService({ store, codec, heroTables, tables }) 
   }
 
   function ensureLoginState() {
+    log({ event: 'hero_handbook_ensureLoginState_entry' });
     return store.transaction(model => {
       const { modules, module, records, ownRev } = readHandbook(model);
       const known = new Set(records.map(record => record.tid));
@@ -214,6 +216,7 @@ export function createHeroHandbookService({ store, codec, heroTables, tables }) 
   }
 
   function raiseOne(heroId) {
+    log({ event: 'hero_handbook_raiseOne_entry', heroId });
     const tid = positiveTid(heroId);
     return store.transaction(model => {
       const target = ownedTargets(model.heroInfo, heroTables).get(tid);
@@ -233,6 +236,7 @@ export function createHeroHandbookService({ store, codec, heroTables, tables }) 
   }
 
   function raiseOneKey(heroIds) {
+    log({ event: 'hero_handbook_raiseOneKey_entry', heroIds });
     if (!Array.isArray(heroIds) || heroIds.length === 0) fail(1, 'Hero handbook raise list is empty');
     const ids = [];
     const seen = new Set();
@@ -276,6 +280,7 @@ export function createHeroHandbookService({ store, codec, heroTables, tables }) 
    * claim-everything behaviour used by local tools and tests.
    */
   function claimOwnAward(heroId) {
+    log({ event: 'hero_handbook_claimOwnAward_entry', heroId });
     const requested = heroId === undefined || heroId === null ? undefined : positiveTid(heroId);
     return store.transaction(model => {
       const targets = ownedTargets(model.heroInfo, heroTables);

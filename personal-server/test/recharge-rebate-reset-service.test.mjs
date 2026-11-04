@@ -17,7 +17,7 @@ import { createRechargeRebateResetService } from '../game/recharge-rebate-reset-
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const OPENED_AT = Date.parse('2026-10-30T21:00:00Z') / 1000;
 
 function setup(t, mode = 'all-open') {
@@ -95,7 +95,7 @@ test('real gateway accepts the client ETF activity and slot tuple', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-rebate-gateway-'));
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'), statePath: path.join(directory, 'absent.json'),
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     localWallet: true, serverOpenedAt: OPENED_AT, activityMode: 'all-open',
     now: () => Date.parse('2026-10-31T00:00:00Z'),
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'

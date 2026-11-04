@@ -1,0 +1,71 @@
+syntax = "proto3";
+import "project/role.db.proto.txt";
+
+//通信后台返回前台的排行榜数据
+message rank_to_client_list {
+    repeated rank_to_client client_list = 1;                //排行榜数据列表
+}
+
+//通信后台返回前台的排行榜数据
+message rank_to_client{
+    uint32 self_rank = 1;						//自己的排名
+    uint64 self_value = 2;          //自己的值
+    uint64 rank_id = 3;			    		//排行榜id
+    repeated bytes rank_list = 4;								//排行榜数据列表
+    bytes extra = 5;								//额外信息
+    repeated pb_rev_rank_bubble bubbles = 6;     //气泡数据
+    int64 total = 7;          //排行榜总数量
+}
+
+//跨服组排行榜前几名数据
+message pb_rank_cross_group_top{
+    repeated pb_rank_top top_list = 1;     //排行榜信息
+}
+
+//排行榜前几名数据
+message pb_rank_top{
+    uint64 server_id = 1;         //服务器id
+    repeated rank_info rank_list = 2;   //排名信息
+}
+
+//排行榜排名信息
+message rank_info{
+    int64 id = 1;             //id
+    uint64 rank_id = 2;         //排行榜id
+    uint32 rank = 3;            //排名
+    uint64 value = 4;         //值
+    bytes extra = 5;         //额外值
+}
+
+//批量请求玩家英雄排名信息
+message pb_batch_seq_rank{
+    repeated pb_seq_rank seq_ranks = 1;     //信息列表
+}
+
+//请求玩家英雄排名信息
+message pb_seq_rank{
+    int64 id = 1;           //id
+    repeated uint64 rank_id_list = 2;       //排行榜id列表
+}
+
+//批量返回玩家英雄排名信息
+message pb_batch_rev_rank{
+    repeated pb_rev_rank rev_ranks = 1;     //信息列表
+}
+
+//返回玩家英雄排名信息
+message pb_rev_rank{
+    int64 id = 1;           //id
+    repeated rank_info infos = 2;       //排名信息列表
+}
+
+//返回气泡数据
+message pb_rev_rank_bubble{
+    uint64 id = 1;          //id
+    string notice = 2;      //气泡内容
+}
+
+// 排行榜变化
+message pb_rank_change_info{
+    repeated rank_info infos = 1;       //排名信息列表
+}

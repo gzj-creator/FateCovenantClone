@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+// 特权卡总数据
+message pb_monthly_card_info {
+    repeated monthly_card card_list = 1; //特权卡列表
+}
+
+// 特权卡数据
+message monthly_card {
+    int32 id = 1; //月卡ID
+
+    int32 invalid_day = 2; //失效日期(失效日期不可领奖)(即将废弃，不要使用)
+    int32 last_get_reward_day = 3; //上一次领奖的日期(即将废弃，不要使用)
+    int32 last_get_add_reward_day = 4; //上一次领VIP特权奖的日期(废弃，不要使用)
+    int32 got_count = 5; //已领奖次数(废弃，可以根据got_reward计算出来)
+
+    uint32 start_day = 6; //开始日期
+    bytes got_reward = 7; //已领奖天数标记
+
+}
+
+// 老特权卡总数据(数据兼容使用)
+message pb_monthly_card_info_ver_0 {
+    repeated monthly_card_ver_0 card_list = 1 ; //特权卡列表
+}
+
+
+// 老特权卡数据(数据兼容使用)
+message monthly_card_ver_0 {
+    int32 id = 1; //月卡ID
+    int32 invalid_day = 2; //失效日期(失效日期不可领奖)
+    int32 last_get_reward_day = 3; //上一次领奖的日期
+    int32 last_get_add_reward_day = 4; //上一次领VIP特权奖的日期
+    int32 got_count = 5; //已领奖次数
+}
+

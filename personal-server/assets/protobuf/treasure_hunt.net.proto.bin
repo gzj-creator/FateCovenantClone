@@ -1,0 +1,71 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+import "project/treasure_hunt/treasure_hunt.db.proto.txt";
+
+// 合成请求
+message pb_treasure_hunt_compose_req{
+    uint32 src_index = 1;              // 拖动的铲子索引
+    uint32 tar_index = 2;              // 目标铲子索引
+}
+
+// 交换请求
+message pb_treasure_hunt_exchange_req{
+    uint32 src_index = 1;              // 拖动的铲子索引
+    uint32 tar_index = 2;              // 目标索引
+}
+
+// 合成返回
+message pb_treasure_hunt_compose_ret{
+    pb_treasure_hunt_res hunt_res = 1;           // 新的资源数据
+    repeated pb_treasure_hunt_compose_item all_compose_list = 2;     // 所有合成的轮次信息
+}
+
+// 一轮合并的信息
+message pb_treasure_hunt_compose_item{
+    repeated uint32 all_compose_indexes = 1;     // 一轮里两两合成的索引列表，按顺序两两组合进行表现就行
+}
+
+
+// 挖宝返回
+message pb_treasure_hunt_ret_all{
+    pb_res_to_client res = 1;       // 实际的所有的资源改变
+    pb_treasure_hunt_map map = 2;   // 新的地图数据
+    repeated pb_treasure_hunt_award_item award_list = 3;    // 获得的格子奖励信息，表现用
+    repeated uint32 new_box_num_list = 4;       // 当前的宝箱奖励剩余数量
+    repeated pb_treasure_hunt_box_award_item box_award_list = 5;    // 获得的宝箱奖励信息，表现用
+    repeated pb_res_obj all_award_list = 6; // 刷新地图后需要展示的所有这一关获得的奖励，注意：没有刷新地图时返回是空列表
+    repeated pb_res_obj new_box_award_list = 7; // 刷新地图后新的所有宝箱奖励，注意：没有刷新地图时返回是空列表
+}
+
+// 一列获得的宝箱奖励信息
+message pb_treasure_hunt_box_award_item{
+    uint32 column_index = 1;        // 哪一列
+    repeated pb_res_obj award_list = 2; // 获得的奖励
+}
+
+// 挖宝奖励信息
+message pb_treasure_hunt_award_item{
+    uint32 index = 1;                   // 格子的索引
+    repeated pb_res_obj award_list = 2; // 获得的奖励
+}
+
+// 删除返回
+message pb_treasure_hunt_delete_ret{
+    pb_res_to_client res = 1;           // 资源改变
+    repeated uint32 deleted_index_list = 2;  // 成功删除的索引
+    uint64 daily_time = 3;              // 每日状态时间
+    uint32 delete_num = 4;              // 当前的删除次数
+}
+
+// 刷新数据返回
+message pb_treasure_hunt_refresh_ret{
+    pb_treasure_hunt_role role_data = 1;        // 探宝玩家数据
+    pb_res_to_client res = 2;                   // 资源改变
+}
+
+// 功能开启时下发的数据
+message pb_treasure_hunt_fun_open_ret{
+    pb_treasure_hunt_role role_data = 1;        // 玩法玩家数据
+    pb_treasure_hunt_map map_data = 2;          // 地图数据
+}

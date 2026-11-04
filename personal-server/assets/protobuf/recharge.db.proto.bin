@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+//充值记录结构
+message recharge_record{
+    int32 day_index = 1;              //充值时间
+    repeated int32 recharge_ids = 2;  // 当天付费档位ID列表
+    uint32 amount = 3;                // 当天充值总金额
+}
+
+// 充值单号信息
+message recharge_order_info{
+    string order_no = 1; // 订单号
+    int32 amount = 2;   // 充值金额（单位：元）
+    int64 product_id = 3;   // 充值产品TID
+    uint32 time = 4; // 充值时间
+}
+
+//英雄周卡记录信息
+message week_reward{
+    int32 fun_open_time = 1; //功能开启时间
+    bool active = 2; //功能是否激活
+    int32 last_rev_free_time = 3; //上一次领取免费奖励的时间
+    bytes reward_state = 4; //领奖状态
+}
+
+//玩家个人的充值记录信息
+message player_recharge_record{
+    int32 total_day = 1; //玩家的自开服以来的累充天数
+    repeated recharge_record recent_record = 2; //玩家充值记录中最近x天的充值记录(没充值的天数不算)，按照时间从晚到早进行排列，可支持配置
+}
+
+// 临时充值记录信息
+message pb_tmp_recharge_info{
+    repeated pb_tmp_recharge_record tmp_record_list = 1;        // 记录列表
+}
+
+// 临时充值记录，用于玩家没收到充值消息时，邮件提醒他充值到账了
+message pb_tmp_recharge_record{
+    string order_no = 1;        // 订单号
+    uint64 recharge_time = 2;   // 充值处理时间
+    uint64 recharge_id = 3;     // 充值付费ID
+    bool is_use_token = 4;      // 是否使用代金券购买的
+    uint64 use_item_tid = 5; // 使用的物品TID（可能是代金券、礼券等）
+}
+
+// 购买礼包记录
+message pb_buy_gift_record{
+    int32 recharge_tid = 1; //充值ID
+    int32 buy_time = 2; //购买时间
+}
+// 购买礼包记录列表
+message pb_buy_gift_record_list{
+    repeated pb_buy_gift_record record_list = 1; //购买礼包记录列表
+}

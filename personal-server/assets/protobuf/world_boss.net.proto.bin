@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+
+import "general/res.net.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "project/world_boss/world_boss.db.proto.txt";
+
+// 世界boss挑战返回
+message pb_world_boss_atk_back{
+    uint64 max_damage = 1;                              // 最大伤害
+    uint32 rank = 2;                                    // 当前排名
+    pb_count_flush atk_count = 3;                       // 攻击次数统计
+    pb_res_to_client res = 4;                           // 资源改变
+    bool is_effect_atk = 5;                             // 是否有效攻击(有效攻击：会扣除boss血量，获得奖励，无效攻击：只刷伤害)
+    uint64 history_max_damage = 6;                      // 历史最高伤害
+}
+
+// 世界boss挑战推送
+message pb_world_boss_atk_push{
+    uint32 tid = 1;                             // boss tid
+    uint64 cur_hp = 2;                          // 当前血量
+    pb_world_boss_damage damage = 3;            // 本次伤害数据(自动扣血的role id为0)
+}
+
+// 世界boss领取击杀奖励返回
+message pb_world_boss_receive_kill_back{
+    pb_world_boss_person person = 1;            // 个人数据
+    pb_res_to_client res = 2;                   // 资源改变
+}
+
+// 世界boss刷新推送
+message pb_world_boss_refresh_push{
+    pb_world_boss cur_boss = 1;                         // 当前boss
+    repeated pb_world_boss_damage damage_list = 2;      // 最近伤害列表(前台弹幕)
+    repeated uint64 skill_list = 3;                     // 当前可选择的技能列表
+    int32 cross_state = 4;  //跨服阶段，（0 单服，1 双子，2 四极）
+}
+
+// 批量领取成就奖励
+message pb_world_boss_achieve_reward_req {
+    repeated uint32 tid_list = 1; //
+}

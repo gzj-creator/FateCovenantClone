@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// 情人节活动数据
+message pb_valentine_day_act {
+    uint32 act_id = 1;                  // 活动id
+    bytes chat_data = 2;                // 聊天数据，key为索引，value为自己发的聊天次数
+    bytes rev_states = 3;               // 奖励领取状态
+}

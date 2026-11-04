@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+import "project/guild_duel/guild_duel.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 航会对决获取匹配信息返回
+message pb_guild_duel_match_data_back{
+  pb_guild_duel_guild duel_guild = 1;            // 自己航会信息(如果参赛成员列表为空，则表示未参赛)
+  pb_guild_duel_guild opponent_duel_guild = 2;   // 对手航会信息(如果为空，则表示轮空)
+}
+
+// 航会对决战斗请求
+message pb_guild_duel_fight_req{
+  uint64 guild_id = 1;                        // 对战航会id
+  uint64 role_id = 2;                         // 对战玩家id(机器人则传位置索引)
+  uint32 atk_team_idx = 3;                    // 进攻方队伍索引
+  uint32 def_team_idx = 4;                    // 防守方队伍索引
+  bool is_attempt = 5;                        // 是否是切磋
+}
+
+// 航会对决战斗返回
+message pb_guild_duel_fight_back{
+  pb_guild_duel_person person = 1;            // 个人数据
+  pb_res_to_client res = 2;                   // 资源改变
+}
+
+// 航会对决战斗推送
+message pb_guild_duel_fight_push{
+  pb_guild_duel_fight_guild atk_guild = 1;    // 进攻方航会
+  pb_guild_duel_fight_guild def_guild = 2;    // 防守方航会
+}
+
+// 航会对决战斗航会信息
+message pb_guild_duel_fight_guild{
+  uint64 guild_id = 1;                        // 航会id
+  uint32 fight_score = 2;                     // 本轮对战点数(防守方航会为0，不进行覆盖)
+  uint64 role_id = 3;                         // 变动的玩家id
+  uint32 sur_atk_n = 4;                       // 剩余攻击次数(进攻方使用)(废弃)
+  uint32 cur_hp = 5;                          // 当前血量(防守方使用)(废弃)
+  uint32 score = 6;                           // 变动后的玩家分数
+  repeated uint32 atk_team_list = 7;          // 攻击队伍信息列表(按队伍索引取值)
+  repeated uint32 def_team_list = 8;          // 防守队伍信息列表(按队伍索引取值)
+}
+
+
+message pb_guild_duel_zone_back_list{
+  repeated pb_g_duel_zone_list list = 1;
+}
+
+message pb_g_duel_zone_list{
+  uint32 zone_id = 1;
+  repeated pb_guild_duel_zone_back list = 2;
+}
+// 航会对决战斗航会信息
+message pb_guild_duel_zone_back{
+  uint32 round = 1;
+  pb_g_duel_zone_g guild1 = 2;
+  pb_g_duel_zone_g guild2 = 3;
+  uint32 result = 4;
+}
+
+message pb_g_duel_zone_g{
+  uint64 guild_id = 1;
+  string name = 2;
+  uint64 power = 3;
+  string leader_name = 4;
+  uint32 rank = 5;
+}
+
+
+// 航会对决结算推送
+message pb_guild_duel_settle_push{
+  uint32 cur_score = 1;                           // 当前积分(可计算出段位)
+  uint32 fight_score = 2;                         // 本轮对战积分
+  pb_guild_duel_person mvp_person = 3;            // 本轮mvp成员(轮空的没有)
+  bool is_win = 4;                                // 本轮是否胜利
+  uint32 last_rank = 5;                           // 上轮排名
+  uint32 last_rank2 = 6;                          // 对方上轮排名
+}
+
+// 航会对决重置推送
+message pb_guild_duel_reset_push{
+  pb_guild_duel_person person = 1;            // 个人数据
+  pb_res_to_client res = 2;                   // 资源改变
+}
+
+// 航会对决读取战报
+message pb_guild_duel_report_back{
+  repeated pb_guild_duel_person_report report_list = 7;   // 本轮成员战报
+}
+
+// 航会对决开始战斗消息
+message pb_duel_match_start{
+  uint64 guild_id1 = 1;               // 公会id1
+  uint64 leader_id1 = 2;              // 会长id1
+  repeated uint64 elite_list1 = 3;    // 精英列表1
+  uint64 guild_id2 = 4;               // 公会id2
+  uint64 leader_id2 = 5;              // 会长id2
+  repeated uint64 elite_list2 = 6;    // 精英列表2
+}
+
+// 航会对决战斗消息
+message pb_duel_fight{
+  uint64 guild_id1 = 1;               // 进攻方公会id1
+  uint32 last_guild_score1 = 2;       // 之前积分
+  uint32 guild_score1 = 3;            // 进攻方当前积分1
+  uint64 role_id1 = 4;                // 进攻方玩家id1
+  uint32 role_score1 = 5;             // 进攻方增加积分1
+  uint64 guild_id2 = 6;               // 防守方公会id2
+  uint32 guild_score2 = 7;            // 防守方当前积分2
+  uint64 role_id2 = 8;                // 防守方玩家id2
+  uint32 hp2 = 9;                     // 防守方2当前血量
+  bool is_elite = 10;                 // 防守方2是否精英
+  uint32 result = 11;                 // 战斗结果
+}
+
+// 航会对决开始战斗消息
+message pb_duel_channel_msg_start{
+  uint64 guild_id = 1;               // 公会id1
+  uint64 leader_id = 2;              // 会长id1
+  repeated uint64 elite_list = 3;    // 精英列表1
+}
+
+
+// 航会对决战斗消息
+message pb_duel_channel_msg_fight{
+  uint64 guild_id1 = 1;               // 进攻方公会id1
+  uint64 role_id1 = 4;                // 进攻方玩家id1
+  uint32 role_score1 = 5;             // 进攻方增加积分1
+  uint64 role_id2 = 8;                // 防守方玩家id2
+  uint32 result = 11;                 // 战斗结果
+}
+// 航会对决积分消息
+message pb_duel_channel_msg_score{
+  uint64 guild_id1 = 1;                // 进攻方公会id1
+  uint32 score1 = 5;                   // 进攻方增加积分1
+  uint64 guild_id2 = 8;                // 防守方玩家id2
+  uint32 score2 = 11;                  // 战斗结果
+}
+
+// 航会对决击杀消息
+message pb_duel_channel_msg_kill{
+  uint64 guild_id1 = 1;                 // 进攻方公会id1
+  uint32 role_id1 = 5;                  // 进攻方增加积分1
+  uint64 guild_id2 = 8;                 // 防守方玩家id2
+  uint32 role_id2 = 11;                 // 战斗结果
+}
+
+
+// 航会对决结束战斗消息
+message pb_duel_channel_msg_end{
+  uint64 guild_id1 = 1;               // 公会id1
+  uint32 guild_score1 = 2;            // 进攻方当前积分1
+  uint64 guild_id2 = 3;               // 公会id2
+  uint32 guild_score2 = 4;            // 防守方当前积分2
+}

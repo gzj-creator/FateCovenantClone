@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// 给客户端的跨服组信息
+message pb_cross_to_client {
+    int32 cross_id = 1;     // 跨服组id，目前等于跨服组中的主逻辑服id
+    repeated pb_cross_server_info servers = 2;  // 逻辑服信息列表（第一个是主逻辑服）
+    uint32 stage = 3;               // 跨服组阶段(1：双子，2：四象...)
+    uint32 create_day = 4;      // 跨服组成时间
+}
+
+// 跨服组中的一个逻辑服信息
+message pb_cross_server_info {
+    int32 server_id = 1;        // 逻辑服id
+    int64 release_time = 2;     // 开服时间戳，单位：秒
+    string name = 3;            // 名字
+}
+
+// 跨服组信息
+message pb_cross_login {
+    repeated bytes cross_infos = 1;  // 跨服组信息列表[pb_cross_to_client]
+    bytes role_info = 2;             // 角色信息pb_role_info
+}

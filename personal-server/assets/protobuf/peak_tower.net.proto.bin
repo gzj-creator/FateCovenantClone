@@ -1,0 +1,37 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/peak_tower.db.proto.txt";
+import "project/role.db.proto.txt";
+import "project/task.db.proto.txt";
+
+//天极之塔返回数据
+message peak_tower_back {
+    pb_peak_tower_data peak_tower_data = 1; //天极之塔数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+//天极之塔扫荡请求数据
+message peak_tower_sweeps_req {
+    uint32 sweeps_layer = 1; //扫荡层数
+}
+
+//天极之塔挑战后返回数据
+message peak_tower_sweep_back {
+    peak_tower_back peak_tower_back = 1; //天极之塔返回数据
+}
+
+//天极之塔小助手自动推图返回
+message pb_peak_tower_assistant_back{
+    pb_peak_tower_data peak_tower_data = 1; //天极之塔数据
+    repeated pb_peak_tower_assistant_res res_list = 3;  // 操作资源改变列表
+    pb_res_to_client tower_res = 4; // 通塔奖励
+    bool is_stop = 5; // 是否停止
+}
+
+//天极之塔小助手资源改变返回
+message pb_peak_tower_assistant_res{
+    uint64 challenge_tid = 1;    // 挑战tid
+    pb_common_task task_data = 2;  // 任务数据
+    pb_res_to_client res = 3; // 资源改变数据
+    uint32 attempt_n = 4;   // 失败尝试次数
+}

@@ -1,0 +1,24 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/weekend_bonus/weekend_bonus.db.proto.txt";
+import "project/shop.db.proto.txt";
+
+// 周末活动领奖返回数据
+message pb_weekend_bonus_back{
+    pb_weekend_bonus info = 1; // 周末活动信息
+    pb_res_to_client res_change = 2; // 资源变化
+}
+
+// 周末活动 - 开启返回数据
+message pb_weekend_bonus_active_back{
+    pb_res_to_client res_change = 1; // 资源变化
+    repeated bytes bin_list = 2; // 各功能数据列表
+    pb_shop_info shop_info = 3; //商店数据（没在周末就是空）
+}
+
+// 周末活动在线跨天返回数据
+message pb_weekend_bonus_cross_back{
+    pb_weekend_bonus info = 1; // 周末活动信息
+    pb_res_to_client res_change = 2; // 资源变化
+    pb_shop_info shop_info = 3; //商店数据（没在周末就是空）
+}

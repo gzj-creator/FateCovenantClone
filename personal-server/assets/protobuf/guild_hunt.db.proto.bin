@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 航会讨伐 - 服务器数据
+message pb_guild_hunt_server{
+  uint64 id = 1; // 唯一id，每开启一次+1
+  uint64 begin_time = 2;  // 当前周期开始时间
+  uint64 end_time = 3;  // 当前周期结束时间
+  repeated pb_guild_hunt_round round_list = 4;  // 轮次列表
+  uint64 settled_round = 5; // 已经结算的s轮次
+  repeated pb_guild_hunt_stage_boss boss_list = 6; // 本期随机的BOSS（对应每个阶段）
+  repeated uint64 join_guild_id_list = 7; // 参加的航会ID列表
+  repeated uint64 super_guild_id_list = 8; // 达到无尽模式的航会id列表
+  uint64 rate = 9; // 膨胀系数（用于计算怪物属性，和上期参加航会及达到无尽模式航会数量有关）
+}
+
+// 轮次数据
+message pb_guild_hunt_round{
+  uint64 tid = 1; // 轮次tid
+  uint64 begin_time = 2; // 轮次开始时间点（时间戳）
+  uint64 end_time = 3; // 轮次结束时间点（时间戳）
+}
+
+// 阶段BOSS数据
+message pb_guild_hunt_stage_boss{
+  uint64 stage_tid = 1; // 阶段tid
+  uint64 boss_tid = 2; // BOSS的tid
+  uint64 level = 3; // BOSS初始等级
+  uint64 damage = 4; // 当前造成的伤害
+  repeated pb_guild_hunt_stage_monster monster_list = 5; // 该阶段小怪数据
+  uint64 base_damage = 6; // 用于计算贡献值
+}
+
+// 阶段小怪数据
+message pb_guild_hunt_stage_monster{
+  uint64 tid = 1; // 怪物tid
+  uint64 level = 2; // 怪物初始等级
+  uint64 damage = 3; // 当前造成的伤害
+  bool is_dead = 4; // 是否击杀
+  uint64 base_damage = 5; // 用于计算贡献值
+}
+
+// 航会讨伐 - 航会数据
+message pb_guild_hunt_guild{
+  uint64 id = 1; // 关联唯一id
+  uint64 support = 2; // 助威值
+  repeated uint64 atk_role_id_list = 3; // 有战斗贡献的玩家id列表，用于显示参与人数（退出后需移除）
+  repeated uint64 supper_role_id_list = 4; // 讨伐战神玩家列表（王牌）
+  repeated pb_guild_hunt_role_rank stage_role_rank_list = 5; // 各阶段航会内玩家排名数据
+  repeated pb_guild_hunt_guild_rank stage_guild_rank_list = 6; // 各阶段航会榜数据（阶段结算后生成）
+  repeated pb_guild_hunt_stage_boss boss_list = 7; // 本期各阶段BOSS数据（初始为空列表）
+  repeated uint64 token_role_id_list = 8; // 有挑战资格的玩家ID列表
+}
+
+// 航会讨伐 - 记录航会各阶段榜单数据
+message pb_guild_hunt_guild_rank{
+  uint64 stage_tid = 1; // 阶段tid
+  uint64 boss_tid = 2; // BossTid
+  uint64 level = 3; // 等级
+  uint64 rank = 4; // 排名
+  uint64 guild_num = 5; // 航会个数
+  uint64 damage = 6; // 当前等级累计伤害
+}
+
+// 航会讨伐 - 记录航会各阶段玩家排行数据
+message pb_guild_hunt_role_rank{
+  uint64 stage_tid = 1; // 阶段tid
+  repeated pb_guild_hunt_role_rank_obj role_list = 2; // 各玩家数据
+}
+
+// 航会讨伐 - 每个阶段玩家个人贡献数据
+message pb_guild_hunt_role_rank_obj{
+  uint64 role_id = 1; // 角色ID
+  uint64 value = 2; // 贡献值
+  uint64 atk_times = 3; // 累计讨伐次数
+}
+
+
+// 航会讨伐 - 玩家数据
+message pb_guild_hunt_role{
+  uint64 id = 1; // 关联唯一id
+  uint64 support_times = 2; // 助威次数
+  uint64 atk_time = 3; // 最近挑战时间（每天更新挑战次数、使用英雄列表）
+  uint64 atk_times = 4; // 当前挑战次数（每天最多5次）
+  repeated uint64 hero_tid_list = 5; // 当天已使用的英雄列表
+  repeated uint64 elves_tid_list = 6; // 当天已使用的精灵列表
+}

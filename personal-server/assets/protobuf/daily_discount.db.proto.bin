@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+//【每日特惠】全部数据
+message pb_daily_discount_all{
+    uint64 refresh_time = 1;                                    // 刷新时间，废弃
+    uint64 buy_additionally = 2;                                // 总补买次数，废弃
+    repeated pb_daily_discount_data daily_discount_list = 3;    // 购买信息
+    repeated pb_daily_discount_select_info select_list = 4;     // 自选奖励信息列表
+    uint32 data_version = 5;                                    // 数据版本号
+}
+
+//【每日特惠】单个礼包购买数据
+message pb_daily_discount_data{
+    uint32 recharge_tid = 1;                                    // 礼包tid
+    uint32 buy_times = 2;                                       // 当日购买总次数
+    uint64 refresh_time = 3;                                    // 补买次数刷新时间
+    uint32 buy_additionally = 4;                                // 剩余补买次数
+}
+
+//【每日特惠】自选奖励信息列表
+message pb_daily_discount_select_info {
+    uint32 recharge_tid = 1;                                    // 付费id
+    uint32 select_tid = 2;                                      // 自选的奖励(没有数据时默认选中表中的第一个)
+    uint64 day_index = 3;                                       // 对应礼包的天数索引
+}

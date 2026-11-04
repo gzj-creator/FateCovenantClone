@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "core/db.db.proto.txt";
+
+// 购买数据
+message pb_recharge_extra_award_info{
+    uint64 flush_day = 1;                                    // 记录的刷新天数，用来重置购买次数用，需求60天就会重置购买次数
+    repeated pb_u64_kv buy_num_list = 2;                    // 购买次数信息记录  key为付费表ID，value为购买次数
+}

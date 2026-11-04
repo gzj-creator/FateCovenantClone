@@ -201,7 +201,7 @@ function grantCurrency(model, modules, id, amount, moduleId, group, codec) {
 }
 
 function grantRoleExp(model, amount) {
-  const next = BigInt(model.role.exp ?? 0) + amount;
+  const next = BigInt(model.role.exp ?? 0) + BigInt(amount);
   if (next > 4294967295n) throw new GameError(1, 'Resource limit reached');
   model.role.exp = Number(next);
   return next.toString();
@@ -276,7 +276,7 @@ function grantTreasure(modules, id, amount, quality, codec) {
   data.treasure_list ??= [];
   let card = data.treasure_list.find(entry => Number(entry.tid) === id);
   if (!card) {
-    card = { tid: String(id), quality };
+    card = { tid: String(id), quality, chip_num: amount };
     data.treasure_list.push(card);
   } else {
     card.chip_num = Number(card.chip_num ?? 0) + amount;
@@ -286,12 +286,12 @@ function grantTreasure(modules, id, amount, quality, codec) {
 }
 
 function grantFantasyEquip(modules, id, amount, codec) {
-  const data = readSerialized(modules, 518, 1, 'pb_fantasy_equip_res', { equips: [], raw_equips: [] }, codec);
+  const data = readSerialized(modules, 518, 0, 'pb_fantasy_equip_res', { equips: [], raw_equips: [] }, codec);
   data.raw_equips ??= [];
   let row = data.raw_equips.find(entry => Number(entry.tid) === id);
   if (!row) { row = { tid: id, num: 0 }; data.raw_equips.push(row); }
   row.num = Number(row.num ?? 0) + amount;
-  writeSerialized(modules, 518, 1, 'pb_fantasy_equip_res', data, codec);
+  writeSerialized(modules, 518, 0, 'pb_fantasy_equip_res', data, codec);
   return String(row.num);
 }
 

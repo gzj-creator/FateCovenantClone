@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/norse_rune/norse_rune.db.proto.txt";
+
+
+// 时空符文 - 抽奖返回
+message pb_norse_rune_draw_back {
+    pb_norse_rune_token add_token = 1; //新增到列表的信物（仅自动抽替换空格子时有，其他时候为空）
+    uint32 exp = 2; //新的经验值
+    pb_norse_rune_token draw_token = 5; // 当前数据库缓存的抽取信物数据（本次抽中，且需要玩家手动替换的信物。自动替换了为空）
+    pb_norse_rune_token hit_token = 6; // 本次抽到的信物数据（本次实际抽中的信物，不会为空）
+    pb_res_to_client res = 7; // 资源改变数据
+}
+
+// 时空符文 - 祈福升级返回
+message pb_norse_rune_wish_level_up_back {
+    uint32 level = 1; //新的祈福等级
+    uint32 exp = 2; //新的经验值
+    pb_res_to_client res = 3; // 资源改变数据
+}

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+// ============== 个人数据（DB存储） ==============
+// 爆竹迎春玩家数据
+message pb_firecracker_act_role_info {
+    repeated pb_firecracker_act_info act_list = 1; // 活动列表
+}
+
+// 爆竹迎春活动数据
+message pb_firecracker_act_info {
+    int64 version = 1;                                       // 活动版本
+    repeated int32 is_get_task_rewards = 2;                  // 已领取任务奖励
+    int32 acc_recharge_get_count = 3;                        // 已领取累充奖励次数
+    repeated pb_firecracker_acc_award_info acc_list = 4;     // 已领取累计奖励
+    int64 last_update_time = 5;                              // 上次更新的时间
+}
+
+// 爆竹迎春活动数据
+message pb_firecracker_acc_award_info {
+    int64 round = 1;                                       // 活动版本
+    repeated int64 acc_award_get = 2;                       // 已领取累计奖励id
+
+}
+
+// ============== 公会数据数据（DB存储） ==============
+// 爆竹迎春公会数据
+message pb_firecracker_act_guild_info {
+    repeated pb_firecracker_guild_act_info act_list = 1; // 活动列表
+}
+
+// 爆竹迎春公会活动数据
+message pb_firecracker_guild_act_info {
+    int64 version = 1;                                       // 活动版本
+    repeated pb_firecracker_round_info round_list = 2;         // 已燃放爆竹轮次信息
+    repeated int64 settle_round_list = 3;                   // 已结算轮次列表
+}
+
+message pb_firecracker_fire_info {
+    int64 rid = 1;                                       // 活动版本
+    int64 fire_count = 2;                                    // 已燃放爆竹次数
+}
+
+message pb_firecracker_round_info {
+    int64 round = 1;                                         // 轮次
+    int64 fire_count = 2;                                    // 已燃放爆竹次数
+    repeated pb_firecracker_fire_info fire_list = 3;         // 已燃放爆竹玩家信息
+}

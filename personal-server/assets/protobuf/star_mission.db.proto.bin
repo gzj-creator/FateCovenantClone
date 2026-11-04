@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+
+// 星星关卡玩家数据
+message pb_star_mission_role_info {
+    repeated pb_star_mission_role role_list = 1; // 玩家数据集合
+}
+message pb_star_mission_role {
+    repeated pb_star_mission_chapter chapters = 1;
+    uint64 version = 2;  // 数据版本
+}
+
+// 星星关卡活动章节数据
+message pb_star_mission_chapter {
+    uint32 chapter = 1;
+    bytes mission_star = 2;  // 关卡星级达成情况
+    bytes chapter_star_award = 3;  // 章节星级奖励领取情况
+}
+
+// 星星关卡技能
+message pb_star_mission_skill_list {
+    repeated pb_star_mission_skill skill_list = 1; // 技能列表信息
+}
+
+message pb_star_mission_skill {
+    repeated pb_star_mission_skill_info skills = 1; // 技能信息
+    int64 version = 2;// 活动版本号
+}
+
+// 星星关卡技能信息
+message pb_star_mission_skill_info {
+    uint32 skill_id = 1; // 技能id
+    uint32 skill_level = 2; // 技能等级
+}

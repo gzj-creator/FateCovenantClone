@@ -9,7 +9,7 @@ export const HANDSHAKE_PROFILE_EVIDENCE = Object.freeze({
   profile: LOCAL_AES_PROFILE,
   runtime: 'CLR 4.0.30319.42000; RijndaelManaged; CBC; PKCS7',
   targetRuntimeMatchEstablished: false,
-  fixtures: 'analysis/reports/private-client-16448/handshake-aes-harness/fixtures.json'
+  fixtures: 'assets/protocol/handshake-fixtures.json'
 });
 
 function requireProfile(profile) {

@@ -415,13 +415,14 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
         awards.push(...fishAwards(fish, version, generated));
         recordCatch(state, fish, generated);
       }
-      consumeResources(model, [[Number(version.ticket_item), count * (Number(map.cost_num) || 1)]], 301);
-      const res = grantResources(model, awards, tables);
+      const spent = consumeResources(model, [[Number(version.ticket_item), count * (Number(map.cost_num) || 1)]], 301);
+      const earned = grantResources(model, awards, tables);
       state.wait_fish_json = '{}';
       state.updated_at = nowIso();
       saveState(db, roleId, state);
-      const value = { data: roleData(state), fish_list: fishList, res: { changes: res.changes, is_overflow: false }, fish_qte_list: qteList };
-      return { value, data: codec.pack('pb_fishing_act_batch_get_rsp', value), count, changes: res.changes.length };
+      const changes = [...spent.changes, ...earned.changes];
+      const value = { data: roleData(state), fish_list: fishList, res: { changes, is_overflow: false }, fish_qte_list: qteList };
+      return { value, data: codec.pack('pb_fishing_act_batch_get_rsp', value), count, changes: changes.length };
     });
     result.valueForLog = { actId, mapId, count: result.count, changes: result.changes };
     return result;
@@ -431,7 +432,10 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
     supports: type => reads.has(type) || refused.has(type) || [110301, 110302, 110305, 110311].includes(type),
     ensureActiveFishingBenefits,
     execute(type, data) {
-      log({ event: 'activity_read_execute_entry', type, dataLength: data?.length, dataHex: data?.toString('base64') });
+      log({
+        event: 'activity_read_execute_entry', type, dataLength: data?.length,
+        dataHex: Buffer.isBuffer(data) || data instanceof Uint8Array ? Buffer.from(data).toString('base64') : undefined
+      });
       if (type === 110301) return castRod(data);
       if (type === 110302) return collectFish(data);
       if (type === 110305) return unlockFishingMap(data);

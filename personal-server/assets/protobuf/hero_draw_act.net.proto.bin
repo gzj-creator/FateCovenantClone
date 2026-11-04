@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "project/activity/hero_draw_act/hero_draw_act.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+
+// 任务完成过后的返回
+message pb_hero_draw_act_task_reward_back {
+  bytes reward_bytes = 1;  // 领取过的任务id
+  pb_res_to_client res = 3; //返回的资源
+}
+
+// 排行榜上的额外数据
+message pb_genre_team_star_rank_extra_data {
+  repeated hero hero_list = 1;  // 英雄列表
+}
+
+// 登录得时候返回数据
+message pb_hero_draw_act_data {
+  pb_hero_draw_act_role role_data = 1;  // 活动数据
+  int32 server_draw_count = 2;  // 全服抽卡次数
+}

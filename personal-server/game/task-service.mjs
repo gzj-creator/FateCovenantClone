@@ -126,7 +126,15 @@ export function createTaskService({ store, codec, tables, now = Date.now, logger
       // example stamina consumption) and produce negative UI progress.
       const task = { type: Number(config.type), receive_tid: id, snapshot_val: 0 };
       const existing = taskData.task_list.find(row => Number(row.type) === Number(config.type));
-      if (Number(existing?.receive_tid) === id) throw new GameError(310, 'Linear task reward already claimed');
+      const requestedOrder = Number(config.sortOrder);
+      if (!Number.isSafeInteger(requestedOrder)) throw new GameError(5, 'Linear task order is invalid');
+      if (existing) {
+        const claimedId = Number(existing.receive_tid);
+        const claimedConfig = tables.LinearTask.get(claimedId);
+        const claimedOrder = Number(claimedConfig?.sortOrder);
+        if (!Number.isSafeInteger(claimedOrder)) throw new GameError(5, 'Linear task login order is invalid');
+        if (requestedOrder <= claimedOrder) throw new GameError(310, 'Linear task reward already claimed');
+      }
       if (existing) Object.assign(existing, task); else taskData.task_list.push(task);
 
       db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'linear_task', String(id), new Date(now()).toISOString());

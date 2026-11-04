@@ -16,7 +16,7 @@ const flags = { encryptC2S: false, encryptS2C: false, signature: false };
 const config = { profile, expectedApplicationVersion, flags };
 const testRoot = new protobuf.Root();
 for (const name of ['channel_push.db.proto', 'login.net.proto', 'net.net.proto']) {
-  protobuf.parse(fs.readFileSync(new URL('../../analysis/reports/private-client-16448/lua-bundles/login-protos/' + name, import.meta.url), 'utf8'), testRoot, { keepCase: true });
+  protobuf.parse(fs.readFileSync(new URL('../assets/protocol/' + name, import.meta.url), 'utf8'), testRoot, { keepCase: true });
 }
 testRoot.resolveAll();
 

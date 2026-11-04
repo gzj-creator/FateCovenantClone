@@ -58,7 +58,10 @@ export function createFantasyDrawService({ store, codec, tables, now = () => Mat
   }
 
   function setWish(request) {
-    log({ event: 'fantasy_draw_setWish_entry', request, requestHex: request?.toString('base64') });
+    log({
+      event: 'fantasy_draw_setWish_entry', request,
+      requestHex: Buffer.isBuffer(request) || request instanceof Uint8Array ? Buffer.from(request).toString('base64') : undefined
+    });
     const list = request?.wish_list;
     if (!Array.isArray(list)) fail(1, 'Invalid fantasy wish list');
     return store.transaction(model => {

@@ -646,6 +646,29 @@ export function createWalletService({
     if ((heroGift || petGift) && product.pay_type === 0) {
       throw new GameError(5, 'This activity gift must be purchased through the recharge flow');
     }
+    if (Number(product.pay_type) === 0) {
+      if (buy_num !== 1) throw new GameError(5, 'Cash gifts must be purchased one at a time');
+      const purchase = buy({
+        account_id,
+        product_id,
+        request_id,
+        extra_buy,
+        period,
+        day_index
+      });
+      const recharge = codec.unpack('res_recharge_success', Buffer.from(purchase.notification, 'base64'));
+      return {
+        order_id: purchase.order_id,
+        product_id,
+        price_cents: purchase.price_cents,
+        balance_cents: purchase.balance_cents,
+        recharge_id: product_id,
+        time: recharge.time,
+        buy_num: 1,
+        res: recharge.res,
+        extra_ret_list: recharge.extra_ret_list ?? []
+      };
+    }
     if (!heroGift && !petGift) {
       if (Number(product.sync_handle ?? 0) !== 0) {
         throw new GameError(5, 'This gift needs an additional gameplay handler');

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/battle_tri_match_lineup/battle_tri_match_lineup.db.proto.txt";
+
+// 新增预设阵容
+message pb_battle_tri_match_lineup_add_req {
+  pb_battle_tri_match_lineup lineup = 1; // 阵容数据
+}
+
+message pb_battle_tri_match_lineup_add_rsp {
+  pb_battle_tri_match_lineup change_lineup = 1; // 变更的阵容数据
+}
+
+// 编辑预设阵容
+message pb_battle_tri_match_lineup_edit_req {
+  pb_battle_tri_match_lineup lineup = 1; // 阵容数据
+}
+
+message pb_battle_tri_match_lineup_edit_rsp {
+  pb_battle_tri_match_lineup change_lineup = 1; // 变更的阵容数据
+}
+
+// 设置阵容名字
+message pb_battle_tri_match_lineup_set_name_req {
+  int64 uid = 1;
+  string name = 2;
+}
+
+message pb_battle_tri_match_lineup_set_name_rsp {
+  pb_battle_tri_match_lineup change_lineup = 1; // 变更的阵容数据
+}
+
+// 删除预设阵容
+message pb_battle_tri_match_lineup_delete_req {
+  int64 uid = 1;
+}
+
+message pb_battle_tri_match_lineup_delete_rsp {
+
+}
+
+// 编辑玩法阵容
+message pb_battle_tri_match_edit_playing_lineup_req{
+  pb_battle_tri_match_playing_lineup lineup = 1;
+}
+
+message pb_battle_tri_match_edit_playing_lineup_rsp{
+  pb_battle_tri_match_playing_lineup lineup = 1;
+}

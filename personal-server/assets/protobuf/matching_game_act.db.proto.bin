@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// 对对碰个人活动数据
+message pb_role_matching_game_act {
+        repeated pb_role_matching_game_act_info info_list = 1;    // 活动列表
+}
+
+message pb_role_matching_game_act_info {
+    int64 luck_card = 1;  // 选中的幸运卡牌
+    repeated int64 card_list = 2;    // 卡牌列表(tid)
+    int64 score = 3;  // 积分
+    int64 act_id = 4;  // 活动id
+    repeated int64 reward_tid_list = 5;  // 已领取奖励列表(tid)
+}
+
+// 对对碰结算奖励类型
+message pb_matching_game_get_type {
+    int64 type = 1;  // 对对碰类型
+    repeated int64 card_index_list = 2;    // 卡牌列表
+}

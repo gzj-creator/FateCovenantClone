@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+import "project/recharge/recharge_role_select.db.proto.txt";
+
+// 宝石迷阵数据
+message pb_chess_revert_act {
+    // 最新还原次数 = revert_num + daily_state 和 recharge_state 中未完成的计数
+    uint32 revert_num = 1;                          // 剩余还原次数
+    bytes turn_state = 2;                           // 轮次奖励状态
+    bytes daily_state = 3;                          // 日常任务状态
+    bytes recharge_state = 4;                       // 充值状态
+    repeated pb_chess_revert_act_gift gifts = 5;    // 礼包数据
+}
+
+// 宝石迷阵礼包数据
+message pb_chess_revert_act_gift {
+    uint64 gift_tid = 1;                            // 礼包表tid
+    uint32 times = 2;                               // 已领取次数
+    pb_recharge_role_select select = 3;             // 选择礼包信息
+}

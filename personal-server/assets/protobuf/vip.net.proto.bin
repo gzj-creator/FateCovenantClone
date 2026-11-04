@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/vip.db.proto.txt";
+
+//vip登陆
+message res_vip_login {
+    int32 vip_level = 1; //vip等级
+    int32 vip_exp = 2; //vip经验
+    pb_vip_reward reward_info = 3; //vip奖励信息
+}

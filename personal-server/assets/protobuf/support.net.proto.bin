@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "project/support.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/role.net.proto.txt";
+
+//玩家点赞返回前台信息
+message support_to_client{
+    pb_role_support info = 1;      //点赞信息
+    pb_supported  supported = 2;    //被点赞的数量
+    pb_res_to_client res = 3;      //奖励
+}

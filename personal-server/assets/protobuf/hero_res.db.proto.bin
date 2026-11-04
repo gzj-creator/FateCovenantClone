@@ -1,0 +1,7 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 英雄数值资源
+message pb_hero_numeric_res{
+    repeated pb_res_obj res_list = 1;   // 资源列表
+}

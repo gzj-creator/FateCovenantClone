@@ -1,0 +1,68 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 夏日活动pve角色数据
+message pb_summer_act_pve_role {
+  uint32 act_id = 1;            // 活动tid(前端可能会用)
+  uint32 split_version = 2;     // 切割版本
+  uint32 stage = 3;             // 当前阶段
+  repeated pb_summer_act_pve_mission missions = 4; // 各阶段关卡信息
+  uint32 timestamp = 5;         // 数据刷新时间戳(每日刷新)
+  pb_summer_act_pve_trial trial = 6; // 试炼信息
+  repeated pb_res_obj stage_change_award = 7; // 状态切换未领取的奖励
+  uint64 yesterday_power = 8;    // 昨日战力
+  uint32 layer_diff = 9;       // 爬塔层数差
+  repeated pb_summer_act_pve_trial_history trial_history = 10; // 试炼历史数据
+}
+
+// 夏日活动pve历史试炼数据
+message pb_summer_act_pve_trial_history {
+    uint32 stage = 1;         // 活动表阶段
+    pb_summer_act_pve_trial trial = 2; // 历史试炼数据
+}
+
+// 夏日活动pve试炼数据
+message pb_summer_act_pve_trial {
+  repeated pb_summer_act_trial_buy_times_info trial_buy_times = 1; // 购买次数(只记录可补买的天数)
+  uint32 pass_trial_tid = 2;    // 通关的试炼tid
+  uint32 max_award_node = 3;    // 已领取的奖励节点
+  uint64 phase_max_damage = 4;  // 本阶段试炼最高伤害
+  bool choose_extra_award = 5;  // 是否选择额外奖励
+  uint32 day_rank_per = 6;      // 天排行榜记录的万分比
+  uint32 phase_rank_per = 7;    // 阶段排行榜记录的万分比
+  uint32 open_stamp = 8;        // 开启时间戳
+  uint32 day_award_index = 9;   // 天奖励索引
+}
+
+// 夏日活动pve关卡数据
+message pb_summer_act_pve_mission {
+  uint32 stage = 1;         // 活动表阶段
+  uint32 pass_mission = 2;  // 通关的关卡数
+  bytes got_task_award = 3; // 领取奖励的标记(需对任务tid取余)
+}
+
+// 购买次数信息
+message pb_summer_act_trial_buy_times_info {
+  uint32 day_index = 1; // 日期索引(flush_time:get_day_index)
+  repeated pb_summer_act_trial_buy_times buy_times = 2; // 购买次数
+}
+// 购买次数
+message pb_summer_act_trial_buy_times {
+  uint32 cost_item_tid = 1;    // 消耗物品tid
+  uint32 buy_times = 2;        // 购买次数
+}
+
+// ------------------------------- 服务器数据 --------------------------
+message pb_summer_act_pve_server {
+  uint32 split_version = 1;   // 切割版本
+  uint32 stage = 2;           // 当前阶段
+  uint32 act_id = 3;          // 开启的活动id
+  uint32 trial_rank_settled_day = 4; // 试炼结算天数
+  pb_summer_act_pve_settle_info settle_info = 5;
+}
+
+message pb_summer_act_pve_settle_info {
+  uint32 summer_phase = 1;
+  uint32 cross_stage = 2;
+  uint32 rank_sub_id = 3;
+}

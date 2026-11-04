@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+import "project/activity/theme_treasure/theme_treasure.db.proto.txt";
+
+message pb_theme_treasure_hunt_login {
+    pb_theme_treasure theme_treasure = 1;    // 活动数据
+    uint32 server_step = 2; // 服务器累计步数
+}
+
+// 请求寻宝
+message pb_theme_treasure_hunt_req {
+  uint32 activity_id = 1; // 活动id
+  uint32 step = 2; // 前进步数
+  bool get_target_player = 3; // 是否需要请求新的展示玩家信息
+}
+
+// 寻宝返回
+message pb_theme_treasure_hunt_rsp {
+  repeated pb_theme_treasure_hunt_step steps = 1; // 前进情况
+  uint32 free_times = 3;              // 免费次数
+  repeated pb_res_obj new_award_list = 4; // 新的奖励列表
+}
+
+message pb_theme_treasure_hunt_step {
+  pb_res_to_client res_changes = 1;   // 资源变化
+  uint32 step = 2;                    // 前进步数
+  repeated pb_res_obj box_award = 3;  // 宝箱奖励
+  repeated uint32 dice = 4;           // 骰子点数
+}
+
+// 领取挑战任务奖励
+message pb_theme_treasure_challenge_req {
+  uint32 activity_id = 1; // 活动id
+  uint32 type = 2; // 类型， 个人： 1， 位面： 2
+  uint32 tid = 3;  // 任务id
+}
+
+// 领取挑战任务奖励返回
+message pb_theme_treasure_challenge_rsp {
+  pb_res_to_client res_changes = 1; // 资源变化
+}
+
+// 兑换商店请求
+message pb_theme_treasure_exchange_req {
+  uint32 activity_id = 1; // 活动id
+  uint32 tid = 2;  // 兑换表tid
+  uint32 exchange_num = 3; // 兑换数量
+}
+
+// 兑换商店返回
+message pb_theme_treasure_exchange_rsp {
+  pb_res_to_client res_changes = 1; // 资源变化
+  pb_theme_treasure_exchange exchange = 2; // 兑换数据
+}
+
+// 挑战轮次奖励
+message pb_theme_treasure_challenge_turn_req {
+  uint32 activity_id = 1; // 活动id
+  uint32 tid = 2;  // 兑换活动分组tid
+}
+
+// 挑战轮次奖励返回
+message pb_theme_treasure_challenge_turn_rsp {
+  pb_res_to_client res_changes = 1; // 资源变化
+}
+
+// 跨天刷新返回
+message pb_theme_treasure_refresh_rsp {
+  pb_res_to_client res_changes = 1; // 资源变化
+  pb_theme_treasure theme_treasure = 2;    // 活动数据
+}
+
+// 跨天刷新返回
+message pb_theme_treasure_server_rsp {
+  uint32 server_step = 1; // 服务器累计步数
+  repeated pb_theme_treasure_server_stat stats = 2; // 服务器统计数据
+}
+
+
+

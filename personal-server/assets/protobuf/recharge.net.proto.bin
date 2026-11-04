@@ -1,0 +1,63 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/recharge.db.proto.txt";
+
+//充值成功消息
+message res_recharge_success {
+    int32 recharge_id = 1; //付费ID
+    int32 time = 2; //充值时间
+    string order = 3; //订单号
+    bool get_token = 4; //是否为重充值出错获取了代金券
+    bytes extra_params = 5; //额外参数
+    bool package_is_full = 6; //背包是否已满
+    pb_res_to_client res = 7; //玩家资源改变
+    repeated recharge_extra_ret extra_ret_list = 8; //额外返回数据列表
+    bool is_use_token = 9; //是否使用的代金券进行充值
+    uint64 display_id = 10; // 充值记录的ID，客户端收到充值成功的消息后，再请求删除该记录，确保表现正常
+    uint64 use_item_tid = 11; // 使用的物品TID（可能是代金券、礼券等）
+}
+
+//用游戏货币或直接领取免费礼包回调
+message res_buy_or_Rev_gift{
+    int32 recharge_id = 1; //付费表ID
+    int32 time = 2;  //领取/购买时间
+    pb_res_to_client res = 3; //玩家资源改变
+    repeated recharge_extra_ret extra_ret_list = 4; //额外返回数据列表
+}
+
+//付费/购买流程中其他系统返回的数据
+message recharge_extra_ret{
+    int32 flag = 1; //系统标识，一般使用 "付费同步操作表" 的ID
+    bytes data = 2; //返回的数据
+}
+
+//登陆消息
+message res_recharge_login {
+    recharge_record max_record = 1; //最大记录
+    int32 total_amount = 2; //累计充值金额
+    bytes diamond_first_state = 4; //钻石直充首次充值状态
+    player_recharge_record recharge_record = 5; //玩家充值记录数据
+    pb_tmp_recharge_info tmp_recharge_record = 6;           // 临时充值记录信息
+    bytes recharge_extra_award_info = 7;   // 额外奖励信息
+    bytes buy_gift_record = 8; //购买礼包记录
+}
+
+//领取英雄周卡免费奖励回调
+message res_rev_week_free_reward {
+    int32 last_rev_free_time = 1; //上一次领取免费奖励的时间
+    pb_res_to_client res = 2; //资源改变
+}
+
+//充值请求固定保留参数
+message pb_recharge_fixed_param{
+    string ipv4 = 1; //IP地址
+    string mac_address = 2;//mac地址
+    string channel_extra_cfg = 3; //渠道营销包标记
+}
+
+// 道具购买请求
+message pb_recharge_buy_or_rev_req{
+    uint64 recharge_id = 1;         // 付费ID
+    string extra_param = 2;         // 额外参数
+    uint32 buy_num = 3;             // 购买数量，用道具购买的可以指定买多个，默认是1
+}

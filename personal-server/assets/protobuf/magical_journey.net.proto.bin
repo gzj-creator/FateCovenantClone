@@ -1,0 +1,158 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/magical_journey/magical_journey.db.proto.txt";
+import "project/fight/fight.db.proto.txt";
+import "project/attribute/attribute.db.proto.txt";
+import "project/fight/fight.net.proto.txt";
+
+
+// 万象历险登录数据
+message pb_magical_journey_login {
+    pb_magical_journey_cross_season season_info = 1; // 跨服赛季信息
+    pb_magical_journey_mission mission_info = 2; // 关卡信息
+    pb_magical_journey_country country_info = 3; // 社稷殿信息
+    pb_magical_journey_season role_season_info = 4; // 角色赛季信息
+}
+
+// 万象历险功能开启
+message pb_magical_journey_open_handle {
+    pb_magical_journey_cross_season season_info = 1; // 跨服赛季信息
+    pb_magical_journey_mission mission_info = 2; // 关卡信息
+    pb_magical_journey_country country_info = 3; // 社稷殿信息
+}
+
+// 万象历险跨赛季信息
+message pb_magical_journey_season_cross {
+    pb_res_to_client res = 1; // 资源
+    pb_magical_journey_task_progress task_progress = 7; // 任务进度
+}
+
+// 请求万象历险铸剑
+message pb_magical_journey_sword_req {
+    repeated pb_res_obj cost = 1; // 消耗(为空时使用免费次数)
+}
+// 万象历险铸剑返回
+message pb_magical_journey_sword_rsp {
+    pb_res_to_client res = 1; // 资源
+    pb_magical_journey_sword sword = 2; // 铸剑信息
+    pb_magical_journey_cross_sword cross_sword = 3; // 跨服铸剑信息
+}
+
+// 请求社稷殿副养成激活
+message pb_magical_journey_country_sub_active_req {
+    uint32 type = 1; // 类型
+    uint32 index = 2; // 索引
+    bool is_merge = 3; // 是否合成材料
+}
+// 社稷殿副养成激活返回
+message pb_magical_journey_country_sub_active_rsp {
+    pb_res_to_client res = 1; // 资源
+    pb_magical_journey_country_sub sub_info = 2; // 副养成信息
+    uint32 journey_power = 3; // 万象历险养成值
+}
+
+
+// 请求激活典藏
+message pb_magical_journey_collect_activate_req {
+    repeated pb_magical_journey_collect_item items = 1; // 典藏激活信息
+}
+
+// 请求激活普通典藏
+message pb_magical_journey_collect_activate_normal_rsp {
+    uint32 exp = 1;         // 激活后的经验
+    uint32 level = 2;       // 激活后的等级
+    uint32 journey_power = 3; // 万象历险养成值
+}
+
+
+// 万象历险关卡战斗请求
+message pb_magical_journey_mission_fight_req {
+    uint32 season = 1; // 赛季
+    uint32 chapter = 2; // 章节
+    uint32 mission = 3; // 关卡
+    repeated pb_team_loc team_loc_list = 4; // 队伍位置列表（仅十连挑战才传）
+}
+
+// 万象历险关卡战斗返回
+message pb_magical_journey_mission_fight_back {
+    pb_magical_journey_mission mission_info = 1; // 关卡信息
+    pb_res_to_client res = 2; // 资源
+    repeated pb_u32_kv normal_award = 3; //基础通关奖励列表
+    repeated pb_u32_kv elite_award = 4; //精英通关星级奖励列表
+    pb_magical_journey_mission_pass mission_pass = 5; // 如果是通过节点关卡，则有该数据返回
+}
+
+// 万象历险关卡 - 连续挑战返回
+message pb_magical_journey_mission_multi_fight_back {
+    pb_magical_journey_mission_fight_back fight_info = 1; // 战斗结算主要信息
+    repeated pb_fight_report report_list = 2; // 战报列表
+}
+
+// 万象历险boss战斗请求
+message pb_magical_journey_boss_fight_req {
+    uint32 season = 1; // 赛季
+    uint32 fight_tid = 2; // 战斗tid
+    uint32 times = 3; // 挑战次数
+}
+
+// 万象历险BOSS战斗返回
+message pb_magical_journey_boss_fight_back {
+    pb_magical_journey_boss boss_info = 1; // boss信息
+    pb_res_to_client res = 2; // 资源
+    uint32 this_score = 3; // 本次得分
+    uint32 rank = 4; // 排名
+}
+
+// 万象历险领任务奖励返回
+message pb_magical_journey_task_rev_back {
+    bytes task_award_bin = 1;   // 任务奖励二进制数据
+    pb_res_to_client res = 2; // 资源
+}
+
+// 万象历险领任务奖励返回
+message pb_magical_journey_progress_rev_back {
+    bytes progress_award_bin = 1; // 章节任务进度奖励二进制数据
+    pb_res_to_client res = 2; // 资源
+}
+
+// 万象历险主养成属性升级返回
+message pb_magical_journey_main_up_rsp {
+    uint32 journey_power = 1; // 万象历险养成值
+    pb_res_to_client res = 2; // 资源
+}
+
+// 万象历险主养成属性升级返回
+message pb_magical_journey_sub_up_rsp {
+    uint32 journey_power = 1; // 万象历险养成值
+    pb_res_to_client res = 2; // 资源
+    pb_magical_journey_country_sub sub_info = 3; // 副养成信息
+}
+
+
+// 万象历险星位图激活
+message pb_magical_journey_star_activate_rsp {
+    pb_res_to_client res = 1; // 资源
+    uint32 journey_power = 2; // 万象历险养成值
+    pb_magical_journey_star_skill skill_info = 3; // 星位技能信息
+}
+
+// 万象历险养成属性
+message pb_magical_attr{
+    repeated pb_attr_item attr = 1; // 属性
+    repeated pb_magical_camp_attr camp_attr = 2; // 阵营属性
+    uint32 power = 3; // 战力
+}
+
+// 万象历险阵营养成属性
+message pb_magical_camp_attr {
+    uint32 camp = 1; // 阵营
+    repeated pb_attr_item attr = 2; // 属性
+}
+
+
+// 万象历险登录后请求返回数据
+message pb_magical_journey_login_after_back {
+    repeated pb_magical_journey_mission_pass simple_pass_list = 1; // 跨服组关卡通关简单信息列表（角色ID列表信息为空）
+}

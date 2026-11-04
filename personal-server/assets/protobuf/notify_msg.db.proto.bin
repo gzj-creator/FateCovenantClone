@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+// 推送tips消息数据列表
+message pb_msg_tip_list{
+    repeated pb_msg_tip tips = 1;
+}
+
+// 推送tips消息数据
+message pb_msg_tip{
+    uint32 type = 1;        // 类型
+    uint64 last_time = 2;   // 上次推送时间
+}
+
+// 推送消息角色树蕨
+message pb_notify_msg_role {
+    repeated pb_notify_msg_send_award send_record = 1;
+}
+
+message pb_notify_msg_send_award {
+    uint64 tid = 1;             // 消息tid
+    uint64 day_times = 2;       // 当天次数
+    uint64 last_time = 3;       // 上次发送时间
+    uint64 refresh_time = 4;    // 刷新时间
+}

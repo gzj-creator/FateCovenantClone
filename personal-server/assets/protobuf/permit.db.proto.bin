@@ -1,0 +1,64 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 通行证资源数据
+message pb_permit_res_data{
+    repeated pb_res_obj res_list = 1;
+}
+
+// 通行证数据
+message pb_permit_data{
+    repeated pb_permit_info permit_list = 1;
+    uint64 compensate_day = 2;   //日常活跃度补偿天数标记，0=未补偿，废弃，作为参数检查
+    uint64 new_compensate_day = 3;   //日常活跃度补偿天数标记，0=未补偿，启用
+}
+
+// 通行证信息
+message pb_permit_info{
+    uint64 id = 1;      //通行证id
+    uint32 period = 2;  //通行证周期
+    uint64 open_day = 3;//开启时间
+    bool is_pay = 4;    //是否购买
+    uint32 buy_num = 5; //购买次数
+    bool is_settle = 6; //是否结算(不循环类型使用)
+    repeated pb_permit_level levels = 7;    //等级数据
+    uint64 buy_exp = 8; //购买的经验
+    uint32 award_idx = 9;    // 选择奖励索引
+    bool is_choose = 10;    // 是否完成自选,首次更新上去过后，已经购买的玩家需要修改成完成自选，没有购买的不管
+    bool is_join_compensate = 11; // 是否已经补偿中途接入
+}
+
+//通行证奖励数据
+message pb_permit_award {
+    uint64 id = 1;     //通行证ID
+    repeated pb_permit_level levels = 2;    //等级数据
+}
+
+//通行证等级数据
+message pb_permit_level{
+    uint32 level = 1;           //等级
+    bool receive_free = 2;      //领取免费奖励
+    bool receive_permit = 3;    //领取通行证奖励
+}
+
+// 通行证全服数据
+message  pb_permit_server_data{
+    repeated pb_permit_server permit_list = 1;//通行证列表
+}
+
+// 通行证全服数据
+message  pb_permit_server{
+    uint64 permit_type = 1; //通行证类型表id
+    uint64 buy_times = 2;   //已购买次数
+}
+
+// 通行证全民福利领取记录数据
+message pb_permit_welfare_data{
+    repeated pb_permit_welfare welfare_list = 1;//领取记录列表
+}
+
+// 通行证全民福利领取记录
+message pb_permit_welfare{
+    uint64 permit_type = 1; //通行证类型表id
+    bytes welfare = 2;      //领取记录
+}

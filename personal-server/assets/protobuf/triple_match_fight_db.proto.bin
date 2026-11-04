@@ -1,0 +1,246 @@
+syntax = "proto3";
+
+
+//战报行动项
+message action {
+    int64 uid = 1;
+	int64 actionType = 2;
+	action_fight_start fightStart = 3;
+	action_fight_end fightEnd = 4;
+	action_round_start roundStart = 5;
+	action_round_end roundEnd = 6;
+	action_skill_start skillStart = 7;
+	action_skill_end skillEnd = 8;
+	action_sing_skill singSkill = 9;
+	action_add_buff addBuff = 10;
+	action_remove_buff removeBuff = 11;
+	action_update_buff updateBuff = 12;
+	action_hurt hurt = 13;
+	action_recover recover = 14;
+	action_update_anger updateAnger = 15;
+	action_add_buff_failed addBuffFailed = 16;
+	action_dead dead = 17;
+	action_hero_attr updateAttr = 18;
+	action_operate_start operateStart = 19;
+	action_operate_end operateEnd = 20;
+	action_board_swap boardSwap = 21;
+}
+
+// 整个战报（这个仅在存db的时候用到，为了压缩数据）
+message triple_match_fight_actions {
+	repeated action actions = 1;
+}
+
+//战斗对象
+message action_fighter {
+	int64 uid = 1; //战斗对象唯一id
+	int64 tid = 2; //英雄tid
+	int64 level = 3; //英雄等级
+	int64 loc = 4; //队内编号
+	int64 maxHp = 5; //最大血量
+	int64 anger = 6; //当前怒气
+	int64 hp = 7; //血量
+	int32 star = 8; //星级等级
+}
+
+//战斗队伍
+message action_team {
+	int64 uid = 1; //队伍id
+	repeated action_fighter fighters = 2; //队伍成员列表
+}
+
+//战斗开始
+message action_fight_start {
+	int64 fightType = 1; //战斗类型
+	int64 fightTid = 2; //战斗编号
+	repeated action_team redTeams = 3; //己方队伍列表
+	repeated action_team blueTeams = 4; //敌方队伍列表
+	int64 redRoleId = 5; //红方角色ID，NPC为0
+	int64 blueRoleId = 6; //蓝方角色ID，NPC为0
+	uint64 red_power = 7; //红方开战总战力
+	uint64 blue_power = 8; //蓝方开战总战力
+}
+//战斗结束
+message action_fight_end {
+	int64 fightResult = 1; //战斗结果
+}
+
+//回合开始
+message action_round_start {
+	int64 roundIndex = 1; //回合序号
+	int32 operate_team = 2; //操作队伍
+}
+
+//回合结束
+message action_round_end {
+	int32 win_team = 1; //胜利队伍
+}
+
+//操作开始
+message action_operate_start {
+	int32 operate_team = 1; //操作队伍
+	int64 round_id = 2; //回合id
+	int64 phase_id = 3; //操作阶段id
+	int32 remaining_ms = 4; //手动操作剩余毫秒；PVE/NPC为0
+	bool is_countdown = 5; //是否需要客户端Ready并显示倒计时
+	repeated bool operate_list = 6; // false已用、true可用
+}
+
+//操作结束
+message action_operate_end {
+	int32 operate_team = 1; //操作队伍
+	repeated bool operate_list = 2; // false已用、true可用
+}
+
+//棋盘交换
+message action_board_swap {
+	repeated pb_triple_match_fight_board_action board_action_list = 1;
+}
+
+//技能开始
+message action_skill_start {
+	int64 casterUid = 1; //施法者id
+	int64 skillTid = 2; //技能编号
+	repeated int64 targetUids = 3; //目标id
+	repeated int64 assistUids = 4; // 援护id （如果是格子伤害就id转换 按照x*棋盘规格+y）
+	int64 triggerSkillTid = 5; // 触发技能tid（指buff使用技能的源技能tid）
+	int64 skillLevel = 6; // 技能等级
+}
+
+//技能结束
+message action_skill_end {
+	int64 casterUid = 1; //施法者id
+	int64 skillTid = 2; //技能编号
+}
+//更新行动列表
+message action_update_actor_list {
+	repeated int64 actorList = 1;
+}
+//技能吟唱
+message action_sing_skill {
+	int64 casterUid = 1; //施法者id
+	int64 skillTid = 2; //技能编号
+}
+//增加buff
+message action_add_buff {
+	int64 targetUid = 1; //目标id
+	action_buff buff = 2; //buff
+}
+//移除buff
+message action_remove_buff {
+	int64 targetUid = 1; //目标id
+	int64 buffUid = 2; //buffid
+	int64 removeType = 3; //移除类型
+}
+//更新buff
+message action_update_buff {
+	int64 targetUid = 1; //目标id
+	action_buff buff = 2; //buff
+}
+// 增加buff失败
+message action_add_buff_failed {
+	int64 targetUid = 1; // 目标id
+	int64 reason = 2; // 失败原因
+}
+//伤害
+message action_hurt {
+	int64 source = 1; //伤害来源：技能或者buff
+	int64 type = 2; //伤害类型：物理，魔法，真实
+	int64 targetUid = 3; //目标id
+	int64 delHp = 4; //血量扣除，小于0
+	bool isCritical = 6; // 是否暴击
+	int64 tid = 7; // 技能或者buff的tid
+	int64 finalHp = 8; // 当前血量
+	int64 sourceUid = 9; // 来源英雄Uid
+	int64 realValue = 10; // 实际扣除的血量
+	int64 hurtType = 11; // 伤害类型
+}
+
+//恢复血量
+message action_recover {
+	int64 targetUid = 1; //目标id
+	int64 value = 2; //实际恢复血量
+	int64 finalHp = 3; //调试用，当前血量
+	int64 sourceUid = 4; // 来源英雄Uid
+}
+
+//更新怒气
+message action_update_anger {
+	int64 targetUid = 1; //目标id
+	int64 value = 2; //数值可大于0或小于0
+}
+
+// 死亡
+message action_dead {
+	int64 uid = 1; // 战斗对象唯一id
+}
+
+// 战斗属性信息
+message action_fight_attr {
+	int64 type = 1; // 属性类型
+	int64 value = 2; // 属性值
+}
+
+// 英雄属性信息
+message action_hero_attr {
+	int64 heroUid = 1; // 英雄uid
+	repeated action_fight_attr fightAttrList = 2; // 属性列表
+}
+
+//战斗中的技能
+message action_skill {
+	int64 tid = 1; //类型id
+	int64 level = 2; // 技能等级
+}
+//战斗中的buff
+message action_buff {
+	int64 uid = 1; //唯一id
+	int64 tid = 2; //类型id
+	int64 round = 3; // 剩余回合数
+	int64 layer = 4; //层数
+	int64 caster = 5; // 施法者id
+	int64 level = 6; // buff等级
+}
+
+
+// 三消战斗服务端完整战报。action_list 逐条保存 db_proto 编码结果，
+// 仅用于后台留档，不参与客户端实时战斗协议。
+message pb_triple_match_fight_report {
+  int64 fight_id = 1;
+  int64 fight_tid = 2;
+  int32 fight_type = 3;
+  int64 create_time = 4;
+  int64 expire_time = 5;
+  repeated bytes action_list = 6;
+    pb_triple_match_fight_map map = 7;     // 消消乐地图数据
+}
+
+// 消消乐地图数据
+message pb_triple_match_fight_map {
+  repeated pb_triple_match_fight_tile tile_list = 1;                //位置列表
+}
+
+
+// 消消乐地图位置数据
+message pb_triple_match_fight_tile {
+  int64 x = 1;                                         //x坐标
+  int64 y = 2;                                         //y坐标
+  int64 tid = 3;                                      //格子tid
+}
+
+// 消消乐操作数据
+message pb_triple_match_fight_board_action {
+  repeated pb_triple_match_fight_del_list del_list = 1; //消失的位置列表
+  repeated pb_triple_match_fight_tile special_list = 2; //特殊格子的初始生成位置列表
+  pb_triple_match_fight_map map = 3;                    //最新的地图数据
+  int64 x1 = 4;                                         //本次操作交换坐标1，仅首个action有效
+  int64 y1 = 5;
+  int64 x2 = 6;                                         //本次操作交换坐标2，仅首个action有效
+  int64 y2 = 7;
+  bool is_refresh = 8;                                  //死局刷新棋盘；与无消除交换区分
+}
+
+// 单次消除的格子列表
+message pb_triple_match_fight_del_list {
+  repeated pb_triple_match_fight_tile tile_list = 1;
+}

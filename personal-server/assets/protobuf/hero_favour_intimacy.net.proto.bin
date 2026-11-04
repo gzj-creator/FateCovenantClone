@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+import "project/hero/favour_intimacy/hero_favour_intimacy.db.proto.txt";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+
+// 剧情选项子消息
+message pb_story_choice {
+  uint32 choice_id = 1;
+  string choice_text = 2;
+}
+
+// 增加好感度请求
+message pb_hero_intimacy_add_req {
+  uint32 hero_tid = 1;
+  repeated pb_res_obj items = 2;
+}
+
+// 增加好感度返回
+message pb_hero_intimacy_add_rsp {
+  pb_hero_intimacy hero_data = 1;
+  pb_hero_favour_intimacy all_data = 2;
+  pb_res_to_client res_change = 3;
+}
+
+// 查询好感度信息(服务端推送)
+message pb_hero_intimacy_info_rsp {
+  pb_hero_favour_intimacy data = 1;
+}
+
+// 约会请求
+message pb_hero_intimacy_date_req {
+  uint32 hero_tid = 1;
+}
+
+// 约会返回
+message pb_hero_intimacy_date_rsp {
+  pb_hero_favour_intimacy all_data = 1;
+  pb_res_to_client award = 2;
+}
+
+// 剧情请求
+message pb_hero_intimacy_story_req {
+  uint32 hero_tid = 1;
+  uint32 page_id = 2;
+}
+
+// 剧情返回
+message pb_hero_intimacy_story_rsp {
+  uint32 hero_tid = 1;
+  pb_res_to_client award = 2;
+  pb_hero_intimacy hero_data = 3;
+}

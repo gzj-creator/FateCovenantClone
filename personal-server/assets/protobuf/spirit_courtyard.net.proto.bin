@@ -1,0 +1,131 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/spirit_courtyard/spirit_courtyard.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 种植请求
+message pb_req_spirit_courtyard_tree_plant {
+    repeated pb_req_spirit_courtyard_tree_plant_info plant_list = 1;
+}
+
+// 种植请求返回
+message pb_rsp_spirit_courtyard_tree_plant {
+    repeated pb_spirit_courtyard_land land = 1;                   // 土地信息
+    pb_res_to_client res = 2;         // 资源变化
+}
+
+// 收获种植返回
+message pb_rsp_spirit_courtyard_tree_get {
+  repeated pb_spirit_courtyard_land land = 1;                   // 土地信息
+  pb_res_to_client res = 2;         // 资源变化
+  repeated pb_res_obj show_res = 3;         // 显示的资源变化
+}
+
+// 灵物合成请求
+message pb_req_spirit_courtyard_fruit_merge {
+    repeated pb_u64_kv item_list = 1;                          // 所选道具及数量
+}
+
+// 委托提交请求
+message pb_req_spirit_courtyard_submit_entrust {
+    int64 uid = 1;                   // 委托UID
+}
+
+// 委托提交响应
+message pb_res_spirit_courtyard_submit_entrust {
+    pb_spirit_courtyard_role role_info = 1; //
+    pb_spirit_courtyard_guild guild_info = 2; //
+    pb_res_to_client res = 3;         // 资源变化
+}
+
+// 发布协作请求
+message pb_req_spirit_courtyard_publish_collaboration {
+    int64 uid = 1;                   // 委托UID
+}
+
+// 发布协作响应
+message pb_res_spirit_courtyard_publish_collaboration {
+    pb_spirit_courtyard_entrust entrust_info = 1; // 更新后的委托信息
+}
+
+// 取消发布协作请求
+message pb_req_spirit_courtyard_cancel_collaboration {
+    int64 uid = 1;                   // 委托UID
+}
+
+// 取消发布协作响应
+message pb_res_spirit_courtyard_cancel_collaboration {
+    pb_spirit_courtyard_entrust entrust_info = 1; // 更新后的委托信息
+    pb_spirit_courtyard_role role_info = 2; // 玩家数据
+    pb_spirit_courtyard_guild guild_info = 3; // 公会数据
+}
+
+// 协助委托请求
+message pb_req_spirit_courtyard_assist_entrust {
+    int64 uid = 1;                   // 委托UID
+    int64 role_id = 2;                   // 委托玩家
+}
+
+// 协助委托响应
+message pb_res_spirit_courtyard_assist_entrust {
+    pb_spirit_courtyard_entrust entrust_info = 1; // 更新后的委托信息
+    pb_res_to_client res = 2;         // 资源变化,
+    pb_spirit_courtyard_role role_info = 3; // 玩家数据
+    pb_spirit_courtyard_guild guild_info = 4; // 公会数据
+}
+
+// 协助委托响应
+message pb_res_spirit_courtyard_update_task {
+    pb_spirit_courtyard_role role_info = 1; // 玩家数据
+    pb_res_to_client res = 2;         // 资源变化,
+}
+
+// 公会盛宴提交响应
+message pb_req_spirit_courtyard_finish_banquet {
+    repeated pb_u64_kv fruit_list = 1;                          // 所选道具及数量
+
+}
+
+// 公会盛宴回复提交
+message pb_rsp_spirit_courtyard_finish_banquet {
+    pb_spirit_courtyard_guild guild_info = 1; // 公会数据
+    pb_res_to_client res = 2;         // 资源变化
+    pb_spirit_courtyard_role role_info = 3; // 玩家数据
+}
+
+
+// 公会盛宴回复提交
+message pb_rsp_spirit_courtyard_banquet_award {
+    pb_spirit_courtyard_role role_info = 1; // 公会数据
+    pb_res_to_client res = 2;         // 资源变化
+}
+
+// 登录数据
+message pb_spirit_courtyard_login {
+    pb_spirit_courtyard_role role_info = 1; //
+    pb_spirit_courtyard_guild guild_info = 2; //
+}
+
+// 亲密度任务返回数据
+message pb_spirit_courtyard_in_task_res {
+  pb_spirit_courtyard_role role_info = 1; //
+}
+
+
+// 请求更新玩家信息
+message pb_req_spirit_courtyard_refresh_role_info {
+    int64 role_id = 1;                   // 玩家roleId
+}
+
+// 请求更新玩家信息响应
+message pb_res_spirit_courtyard_refresh_role_info {
+    pb_spirit_courtyard_role role_info = 1; // 玩家数据
+    pb_spirit_courtyard_guild guild_info = 2; //
+}
+
+// 请求使用道具
+message pb_req_spirit_courtyard_use_item {
+    int64 item_tid = 1;             // 道具表id
+    int64 land_tid = 2;             // 土地id
+    int64 use_num = 3;              // 使用次数
+}

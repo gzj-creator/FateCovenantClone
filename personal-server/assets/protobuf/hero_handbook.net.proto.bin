@@ -1,0 +1,19 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/hero/handbook/hero_handbook.db.proto.txt";
+
+// 领取图鉴奖励返回数据
+message pb_hero_handbook_own_award_back{
+    bytes rev_bin = 1; // 英雄奖励领取记录
+    pb_res_to_client res_change = 2;
+}
+
+message pb_hero_handbook_raise_one_key_req{
+    repeated int32 hero_id = 1; // 英雄id
+}
+
+// 图鉴升星和一键返回数据
+message pb_hero_handbook_raise_up_rsp{
+    repeated pb_hero_handbook_record records = 1; // 图鉴记录
+}
+
