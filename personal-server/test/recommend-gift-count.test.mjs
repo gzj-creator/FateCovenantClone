@@ -14,13 +14,11 @@ import { grantResources } from '../game/resources.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 
 test('recommend gift list reports stored purchase counts so limited offers stop looking buyable', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-recommend-gift-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, activityMode: 'all-open', verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -57,7 +55,6 @@ test('recommend gift list reports stored purchase counts so limited offers stop 
 test('repeat voucher purchase at the limit returns a protocol error instead of waiting for 1900', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-recharge-repeat-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -101,7 +98,6 @@ test('repeat voucher purchase at the limit returns a protocol error instead of w
 test('type-46 purchase pushes the daily-discount protobuf and persists its purchase count', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-daily-discount-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const logs = [];
   const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, localWallet: true, now: () => Date.parse('2026-10-31T04:00:00Z'), verifySession: (uid, code) => uid === 'local-user' && code === 'test-session', logger: event => logs.push(event) });
   let socket;
@@ -192,7 +188,6 @@ test('type-46 purchase pushes the daily-discount protobuf and persists its purch
 test('native 16004 batch offer updates all limited rows, rejects components and acknowledges through 16003', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-daily-batch-tcp-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const logs = [];
   const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session', logger: event => logs.push(event) });
   let socket;
@@ -243,7 +238,6 @@ test('native 16004 batch offer updates all limited rows, rejects components and 
 test('native 16004 uses available vouchers up to the order price and charges the remainder', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-partial-voucher-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const game = createLocalGame({ databasePath, statePath: path.join(directory, 'absent.json'), capturePath, localWallet: true, verifySession: (uid, code) => uid === 'local-user' && code === 'test-session' });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -267,7 +261,10 @@ test('native 16004 uses available vouchers up to the order price and charges the
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
   send(codec.pack('pb_c2s', { type: 16004, seq: 2, data: await encodeEtf([40009, binary(Buffer.from('[]')), 701500]) }));
-  const frames = [codec.unpack('pb_s2c', await next()), codec.unpack('pb_s2c', await next())];
+  const frames = [];
+  while (!(frames.some(frame => frame.seq === 2) && frames.some(frame => frame.type === 1900))) {
+    frames.push(codec.unpack('pb_s2c', await next()));
+  }
   const charged = frames.find(frame => frame.seq === 2);
   assert.ok(charged);
   const pushed = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));

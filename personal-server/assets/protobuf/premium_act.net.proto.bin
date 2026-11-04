@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "project/activity/premium_act/premium_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//付费商城领取免费奖励请求
+message pb_premium_free_award_req{
+  int64 activity_id = 1;//活动id
+  int64 free_gift_id = 2;//礼包id
+
+}
+
+// 付费商城领取免费奖励返回
+message pb_premium_free_award_rsp {
+  pb_premium_act_info act_info = 1; // 活动数据
+  pb_res_to_client res = 2;         // 资源变化
+}

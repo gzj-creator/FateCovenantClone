@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+
+
+// 一个逻辑服下的账号角色列表
+message pb_server_accounts {
+    repeated pb_role_account roles = 1;
+}
+
+// 单个角色和账号信息
+message pb_role_account {
+    int64 role_id = 1;      // 角色ID
+    string channel_id = 2;  // 渠道id
+    string channel_uid = 3; // 渠道uid
+}
+
+// 单个账号的基础信息
+message pb_account_basic {
+    repeated int64 roles = 1;   // 角色id列表
+    int64 reg_time = 2;         // 注册时间（首个角色创建时间）
+}

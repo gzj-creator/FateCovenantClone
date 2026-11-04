@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// 弹幕消息内容，该结构最终会转成二进制存在pb_msg里的content内
+message pb_danmaku_content {
+    int32 num_of_likes = 1;    // 点赞数量，注意：可以为负数，负数表示的是高能弹幕
+    string text_content = 2;    // 文本内容
+    bytes ext_data = 3;         // 额外数据，用于具体业务做扩展
+}

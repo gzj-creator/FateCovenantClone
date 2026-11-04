@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/activity/recycle_act/recycle_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 回收请求领奖
+message pb_recycle_act_recycle_req{
+  repeated pb_u64_kv recycle_list = 1; // 回收列表【{回收表id，次数}】
+  int64 act_tid = 2; // 活动id
+}

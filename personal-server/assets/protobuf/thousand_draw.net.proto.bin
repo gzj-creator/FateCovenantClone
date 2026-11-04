@@ -1,0 +1,26 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/thousand_draw/thousand_draw.db.proto.txt";
+import "core/db.db.proto.txt";
+import "general/res.db.proto.txt";
+
+// 请求抽奖
+message pb_request_thousand_draw{
+    uint64 type = 1; //元素类型
+}
+
+// 抽奖返回数据
+message pb_response_thousand_draw{
+    pb_thousand_draw_role_info role_info = 1; //玩家数据
+}
+
+// 请求领奖
+message pb_request_thousand_award{
+    uint64 type = 1; //元素类型
+}
+
+// 抽奖返回数据
+message pb_response_thousand_award{
+    pb_thousand_draw_role_info role_info = 1; //玩家数据
+    pb_res_to_client res = 2; //资源改变
+}

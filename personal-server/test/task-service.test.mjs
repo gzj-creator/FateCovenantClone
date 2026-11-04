@@ -1,14 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
-import { createGameStore } from '../storage/game-store.mjs';
 import { createTaskService } from '../game/task-service.mjs';
+import { createGameFixture } from './helpers/game-fixture.mjs';
 
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
 const codec = createGameCodec(), tables = readGameTables();
 const fixedNow = 1793300000000;
 
@@ -25,18 +21,14 @@ function setMission(store, missionId) {
 }
 
 function setup(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-task-'));
-  const file = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, file);
-  let store = createGameStore({ databasePath: file, codec });
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-task-' });
+  let store = fixture.store;
   let service = createTaskService({ store, codec, tables, now: () => fixedNow });
-  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
     get store() { return store; },
     get service() { return service; },
     reopen() {
-      store.close();
-      store = createGameStore({ databasePath: file, codec });
+      store = fixture.open();
       service = createTaskService({ store, codec, tables, now: () => fixedNow });
     }
   };
@@ -230,7 +222,7 @@ test('rolls back destiny task claims on encoding or SQLite failure', t => {
 test('claims a completed main linear task into the backpack and persists its high-water mark', t => {
   const env = setup(t);
   setMission(env.store, 30204);
-  const before = BigInt(env.store.read().resources.get('101500').num);
+  const before = BigInt(env.store.read().resources.get('101500')?.num ?? 0);
 
   const result = env.service.execute(9010, 10001);
   const response = codec.unpack('pb_linear_task_receive_back', result.data);
@@ -266,6 +258,20 @@ test('rejects a task already marked received in legacy login data without reward
   const before = env.store.state();
 
   assert.throws(() => env.service.execute(9010, 10001), error => error.code === 310);
+  assert.deepEqual(env.store.state(), before);
+  assert.equal(claimCount(env.store), 0);
+});
+
+test('does not roll back the legacy linear-task receive high-water mark', t => {
+  const env = setup(t);
+  setMission(env.store, 40210);
+  setLinearTask(env.store, { type: 1, receive_tid: 10020, snapshot_val: 0 });
+  const before = env.store.state();
+
+  assert.throws(
+    () => env.service.execute(9010, 10001),
+    error => error.code === 310 && error.message === 'Linear task reward already claimed'
+  );
   assert.deepEqual(env.store.state(), before);
   assert.equal(claimCount(env.store), 0);
 });

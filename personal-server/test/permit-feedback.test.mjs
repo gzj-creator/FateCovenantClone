@@ -14,7 +14,7 @@ import { createMonthPermitService } from '../game/month-permit-service.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const STANDARD_PERMITS = [
   { productId: 191201, permitId: 6701, price: 19800 },
   { productId: 191202, permitId: 6801, price: 19800 },

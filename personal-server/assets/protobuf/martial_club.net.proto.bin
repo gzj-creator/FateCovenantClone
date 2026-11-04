@@ -1,0 +1,177 @@
+syntax = "proto3";
+import "project/martial_club/martial_club.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/fight/fight.db.proto.txt";
+
+//武道馆战斗请求参数
+message pb_martial_club_fight_req{
+    uint32 boss_id = 1;//挑战的boss id
+}
+
+
+//武道馆角色和资源变化
+message pb_martial_club_role_res{
+    pb_martial_club_role role = 1; //角色信息
+    pb_res_to_client res = 2; //资源变化
+    uint32 pass_count = 3;  // 新的通关人数
+}
+
+// 武道馆队伍信息
+message pb_martial_club_team {
+    uint64 leader_id = 1; // 队长id
+    uint64 fight_tid = 2; // 战斗tid
+
+    uint64 fight_power_limit = 3; // 战力限制
+    uint32 enter_limit_type = 4; // 加入限制类型
+    repeated pb_martial_club_team_member members = 5; // 队伍成员(包含队长, 顺序即战斗顺序)
+    uint32 timestamp = 6; // 队伍数据更新的时间戳
+    repeated uint64 invite_roles = 7; // 邀请过的角色id
+    bool invite_all = 8; // 是否邀请过所有人
+    uint32 friend_add_count = 9; // 好友加成数量
+
+    pb_martial_club_team_fight_result fight_result = 10; // 战斗结果
+    uint32 rank_seq = 11; // 排行榜序列号
+
+    uint64 chat_channel_id = 12; // 组队聊天频道id
+}
+
+// 武道馆队伍战斗结算数据
+message pb_martial_club_team_fight_result {
+    bool is_win = 1; // 战斗结果
+    bool need_settle = 2; // 是否需要结算
+    uint32 roles_count = 3; // 角色数量
+    uint32 stamp = 4;   // 战斗时间戳
+    repeated pb_fight_report reports = 5; // 战报
+}
+
+// 武道馆队伍成员信息
+message pb_martial_club_team_member {
+    uint64 role_id = 1; // 角色id
+    bool is_ready = 2; // 是否准备
+    bool is_help = 3; // 是否助战
+    bool is_bot = 4; // 是否是机器人
+    bool need_settle = 5; // 是否需要结算奖励
+    bool is_cost_lack = 6; // 是否战斗消耗不足
+    uint64 bot_type = 7; // 机器人类型
+}
+
+// 请求创建武道馆队伍
+message pb_martial_club_team_create_req {
+    uint64 fight_tid = 1; // 战斗tid
+    uint64 fight_power_limit = 2; // 战力限制
+    uint32 enter_limit_type = 3; // 加入限制类型
+}
+
+// 请求某个难度的武道馆队伍信息
+message pb_martial_club_team_req {
+    uint32 fight_tid = 1; // 战斗tid
+}
+
+// 返回某个难度的武道馆队伍信息
+message pb_martial_club_team_rsp {
+    repeated pb_martial_club_team teams = 1; // 队伍信息
+}
+
+// 请求加入武道馆队伍
+message pb_martial_club_team_join_req {
+    uint32 fight_tid = 1; // 战斗tid
+    uint64 leader_id = 2; // 队伍队长id
+}
+
+// 武道馆组队战斗返回数据
+message pb_martial_club_team_fight_rsp {
+    repeated pb_fight_report report_list = 1;   // 战报信息
+    bool is_win = 2;                            // 是否胜利
+    pb_martial_club_team team = 3;              // 新的队伍信息
+}
+
+// 武道馆组队战斗返回数据
+message pb_martial_club_team_settle_rsp {
+    uint64 daily_refresh_sec = 1; // 上一次刷新数据时间
+    repeated pb_martial_club_award_history award_history = 2; // 奖励历史
+    uint32 pass_team_boss = 3; // 通过的组队boss_id
+    uint32 help_times = 4;  // 助战次数
+    pb_res_to_client res_change = 5; // 资源变化
+    uint64 today_fight_times = 6; // 今日战斗次数
+    uint64 own_fight_times = 7; // 剩余拥有战斗次数
+
+}
+
+// 设置队伍信息请求
+message pb_martial_club_set_team_info_req {
+    uint64 fight_power_limit = 1; // 战力限制
+    uint32 enter_limit_type = 2;  // 加入限制类型
+}
+
+// 设置队伍成员位置
+message pb_martial_club_set_member_pos_req {
+    repeated uint64 role_ids = 1; // 角色id列表
+}
+
+// 收到邀请消息
+message pb_martial_club_team_invite_rev {
+    pb_martial_club_team team = 1;  // 队伍信息
+    uint64 role_id = 2;             // 邀请人
+}
+
+// 邀请消息所有人消息
+message pb_martial_club_team_invite_all {
+    uint64 leader_id = 1;           // 队伍id
+    uint32 tid = 2;                 // bossid
+}
+
+// 请求队伍角色列表
+message pb_martial_club_members_req {
+    uint32 fight_tid = 1; // 战斗tid
+    uint64 team_id = 2; // 队伍id
+}
+
+// 队伍角色列表返回
+message pb_martial_club_members_rsp {
+    repeated uint64 role_ids = 1;   // 角色id列表
+}
+
+// 请求雇佣角色列表
+message pb_martial_club_employ_rsp {
+    repeated uint64 role_ids = 1;   // 角色id列表
+}
+
+// 请求匹配队伍
+message pb_martial_club_match_req {
+    uint64 boss_id = 1;   // bossid
+}
+
+// 匹配队伍角色信息
+message pb_martial_club_match_role{
+    uint64 role_id = 1;   // 角色id
+    uint64 fight_power = 2; // 战力
+}
+
+// 请求匹配队伍返回
+message pb_martial_club_match_rsp {
+    repeated pb_martial_club_match_role roles = 1;   // 匹配到的角色列表
+}
+
+// 兔兔助手返回
+message pb_martial_club_assistant_rsp {
+    repeated pb_martial_club_assistant_fight fight_info = 1; // 战斗结果
+    pb_martial_club_role martial_club = 2; // 角色数据
+}
+
+// 兔兔助手战斗详情
+message pb_martial_club_assistant_fight {
+    uint32 type = 1; // 战斗类型 单人、组队挑战、组队扫荡
+    repeated uint32 fight_result = 2; // 战斗结果序列(可能尝试多次)
+    pb_res_to_client res = 3;   // 奖励
+    bool is_win = 4; // 最终是否胜利
+}
+
+// 请求设置遗物(符文)自动分解的列表
+message pb_martial_club_relic_req {
+    repeated uint32 quality_list = 1; // 品质列表（可传空列表）
+}
+
+// 设置遗物(符文)自动分解返回
+message pb_martial_club_relic_rsp {
+    pb_martial_club_role martial_club = 2; // 角色数据
+}

@@ -1,0 +1,81 @@
+﻿syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+message pb_baking_act_server_info{
+  repeated int64 resend_act_id_list = 1; // 补发的活动id列表
+  repeated pb_baking_act_server_daily_resend_data daily_resend_list = 2; // 按天补发数据列表
+}
+
+message pb_baking_act_server_daily_resend_data{
+  int64 act_id = 1; // 活动id
+  repeated int64 resend_day_list = 2; // 补发的天数列表
+}
+
+// 烘焙活动角色数据
+message pb_baking_act_role_info {
+  repeated pb_baking_act_data act_data_list = 1;
+}
+
+// 烘焙单期活动数据
+message pb_baking_act_data{
+  int64 act_id = 1; // 活动id
+  int64 lv = 2; // 烘焙等级
+  repeated int64 received_lv_tid_list = 3; // 领取的等级tid列表
+  repeated pb_baking_grid_data grids = 4; // 格子数据
+  pb_baking_order_data order = 5; // 订单数据
+  pb_baking_res_data res = 6; // 资源数据
+  pb_recharge_limit_info buy_limit_info = 7;// 礼包限购记录
+  int64 batch_synthesize_model = 8; // 默认0轻模式1重度模式
+}
+
+// 格子数据
+message pb_baking_grid_data{
+  int64 x = 1; // x坐标
+  int64 y = 2; // y坐标
+  int64 grid_type = 3; // 格子类型 1蛋糕 2酵母大军
+  int64 cake_type_tid = 4; // 蛋糕类型tid
+  int64 cake_lv = 5; // 蛋糕等级
+  int64 can_click_times = 6; // 可点击次数
+}
+
+// 订单数据
+message pb_baking_order_data{
+  int64 cur_order_tid = 1; // 当前订单tid
+  int64 order_gen_time = 2; // 订单生成时间
+  int64 order_end_time = 3; // 订单截止时间 有截止时间的就是限时订单，到期后消失
+  int64 finish_order_times = 4; // 完成订单总次数（普通+限时）
+  int64 continuous_common_order_times = 5; // 连续普通订单次数（抽中限时订单清空）
+  repeated pb_baking_give_up_order_data give_up_order_list = 6; // 放弃的订单列表
+}
+
+// 资源数据
+message pb_baking_res_data{
+  int64 score = 1; // 累计积分
+  int64 stamina = 2; // 体力
+  int64 stamina_last_update_time = 3; // 体力上次更新时间
+  int64 daily_score = 4; // 每日积分,在跨结点的时候刷新
+  int64 last_update_time = 5; // 上次更新时间
+}
+
+// 批量合成数据
+message pb_batch_synthesize_data{
+  repeated pb_baking_grid_data grid = 1; // 单次合成数据
+  int64 sort = 2; // 排序
+}
+
+// 放弃订单数据
+message pb_baking_give_up_order_data{
+  int64 order_tid = 1; // 订单tid
+  int64 remain_times = 2; // 剩余次数
+}
+
+// 死局清理数据
+message pb_baking_dead_clear_data{
+  repeated pb_baking_grid_data grids = 1;
+}
+
+// 坐标信息
+message pb_baking_pos{
+  int64 x = 1; // x坐标
+  int64 y = 2; // y坐标
+}

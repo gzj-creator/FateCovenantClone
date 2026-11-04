@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// gmc配置礼包数据
+message pb_cd_key_award{
+  bytes award_bag_id = 1;          // 礼包id
+  repeated pb_gmc_award award = 2; // 礼包奖励内容
+}
+message pb_gmc_award{
+  uint32 type = 1;      // 物品类型
+  uint32 id = 2;        // 物品id
+  uint64 num = 3;       // 物品个数
+}

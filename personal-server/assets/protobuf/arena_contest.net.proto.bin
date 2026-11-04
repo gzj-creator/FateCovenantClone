@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+import "project/arena_contest/arena_contest.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 决赛信息
+message pb_arena_contest_final_match_info{
+    repeated pb_arena_contest_level final_level_list = 1;                // 比赛信息
+    uint32 self_stage_index = 2;                                         // 自己所在的赛场索引 就是pb_arena_contest_level里的stage_idx，0的话表示自己没有
+}
+
+// 战力获取返回
+message pb_arena_contest_role_power_ret{
+    repeated pb_arena_contest_role_power role_power_list = 1;            // 战力列表
+}
+
+// 战力返回
+message pb_arena_contest_role_power{
+    uint64 role_id = 1;                                                   // 角色id
+    uint64 power = 2;                                                     // 战斗力
+}
+
+// 领取战斗奖励返回
+message pb_arena_contest_fight_award_back{
+    pb_res_to_client res = 1;       // 资源变动
+    bytes fight_award_states = 2;   // 奖励领取状态（key为Round）
+}
+
+// 领取任务奖励返回
+message pb_arena_contest_task_award_back{
+    pb_res_to_client res = 1;       // 资源变动
+    bytes task_states = 2;          // 奖励领取状态（key为任务ID）
+}
+
+// 祝贺返回
+message pb_arena_contest_congratulate_back{
+    pb_res_to_client res = 1;       // 资源变动
+    uint32 popularity = 2;          // 人气
+    uint32 congratulate_period = 3;       // 祝贺的活动届数
+    bytes congratulate_states = 4;        // 祝贺状态
+}
+
+// 获取前三名返回
+message pb_arena_contest_top_info{
+    repeated pb_arena_contest_top_role top_role_list = 1;   // 前三名玩家（注意：不是一定有3个）
+}
+
+// 猜排名
+message pb_arena_contest_guess_req {
+    repeated uint64 role_id_list = 1; // 玩家id列表
+}
+
+// 猜排名返回
+message pb_arena_contest_guess_rsp {
+    repeated pb_arena_contest_guess_role guess_role_list = 1; // 玩家猜测信息
+    repeated pb_arena_contest_guess guess = 2;     // 竞猜数据(存7条，插入时删除多余的)
+}
+
+// 请求领取猜排名奖励
+message pb_arena_contest_guess_award_req {
+    repeated uint64 award_guess_time = 1; // 领取奖励的时间
+}
+
+// 领取猜排名奖励返回
+message pb_arena_contest_guess_award_rsp {
+    pb_arena_contest_role contest = 1;
+    pb_res_to_client res = 2;
+}

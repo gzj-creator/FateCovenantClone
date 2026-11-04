@@ -1,0 +1,54 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/auction/auction.db.proto.txt";
+
+// 竞拍返回
+message pb_auction_bid_back{
+    pb_res_to_client res = 1; // 资源改变
+    pb_auction_item auction_item = 2; // 竞拍物品
+    pb_role_auction_bid_win bid_win_item = 3; // 一口价后才返回完成竞品物品
+}
+
+// 竞品抢夺推送（给之前的玩家）
+message pb_auction_rob_push{
+    pb_res_to_client res = 1; // 资源改变
+    pb_role_auction_bid_change change_item = 2; // 竞拍物品改变数据
+    pb_role_auction_bid_win win_item = 3; // 商品组上限变更数据
+    uint64 auction_id = 4; // 拍卖行唯一ID
+}
+
+// 登录信息
+message pb_auction_login{
+    repeated pb_auction_login_info login_info = 1; // 开放中的拍卖行
+    pb_role_auction_info role_auction_info = 2; // 角色拍卖行信息
+}
+
+message pb_auction_login_info {
+    uint64 uid = 1; // 拍卖行uid
+    pb_auction_state_info state_info = 2; // 拍卖行时间状态
+    int64 type = 3; // 拍卖行类型
+}
+
+// 分红领奖返回
+message pb_auction_dividend_rev_back{
+    pb_res_to_client res = 1; // 资源改变
+}
+
+// 竞拍出价请求
+message pb_auction_bid_req{
+    uint64 auction_id = 1; // 拍卖行唯一ID
+    uint64 auction_item_uid = 2; // 拍卖品唯一ID
+    uint64 price = 3; // 价格
+}
+
+// 心愿操作请求
+message pb_auction_wish_req{
+    uint64 auction_id = 1; // 拍卖行唯一ID
+    uint64 auction_item_uid = 2; // 拍卖品唯一ID
+    uint64 do_type = 3; // 处理类型（1.添加 0.删除）
+}
+
+// 拍卖行参加返回
+message pb_role_auction_list{
+    repeated pb_role_auction auction_list = 1; // 新参加的玩家拍卖行数据列表
+}

@@ -1,0 +1,89 @@
+syntax = "proto3";
+import "project/lineup.db.proto.txt";
+import "project/lineup/lineup_private.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+
+// 设置预设阵容
+message pb_edit_pre_lineup_req {
+    repeated pb_pre_lineup pre_lineup_list = 1;
+    repeated uint64 handle_types = 2; // 编辑的类型，包含哪些操作
+}
+
+message pb_edit_pre_lineup_attr_req {
+    pb_pre_lineup lineup = 1;
+    bytes flag = 2;            // 需要编辑的标记(为true的位为需要编辑,其余位保持当前数据)
+    repeated pb_edit_pre_lineup_fighter fighter_edit = 3;
+}
+
+message pb_edit_pre_lineup_fighter {
+    uint32 index = 1;  // 在养成界面的格子位置
+    bytes flag = 2;  // 需要编辑的标记
+}
+
+// 设置预设阵容返回
+message pb_edit_pre_lineup_rsp {
+    repeated pb_lineup copy_lineup = 1; // 需要覆盖的玩法阵容
+    repeated hero change_hero = 2; // 需要更新的英雄
+    pb_role_lineup role_lineup = 3;
+    pb_custom_pre_lineup_list custom_pre_lineup_list = 4;//定制阵容
+}
+
+// 设置玩法阵容
+message pb_edit_lineup_req {
+    repeated pb_lineup lineup_list = 1;
+}
+
+// 设置玩法阵容
+message pb_edit_lineup_rsp {
+    repeated pb_lineup lineup_list = 1;
+}
+
+message pb_edit_lineup_attr_req {
+    repeated pb_edit_lineup_attr edit_lineup = 1;
+}
+
+message pb_edit_lineup_attr {
+    repeated pb_edit_team_attr edit_team = 1;
+}
+
+message pb_edit_team_attr {
+    pb_lineup_team lineup = 1;
+    bytes flag = 2;            // 需要编辑的标记(为true的位为需要编辑,其余位保持当前数据)
+    repeated pb_edit_pre_lineup_fighter fighter_edit = 3;
+}
+
+// 设置当前预设阵容索引返回
+message pb_set_pre_lineup_index_rsp {
+    repeated pb_lineup copy_lineup = 1; // 需要覆盖的玩法阵容
+}
+
+// 服务器推送阵容变化
+message pb_lineup_update_rev {
+    repeated pb_lineup lineup_list = 1; // 需要覆盖的玩法阵容
+}
+
+// 登录数据
+message pb_lineup_login {
+    repeated bytes lineups = 1; // 阵容数据
+    repeated bytes lineup_hero_libs = 2; // 阵容编辑英雄库
+    bytes pre_lineup = 3;// 预设阵容
+    bytes custom_pre_lineup = 4;// 自定义预设阵容
+}
+
+
+// 新增一个自定义预设阵容
+message pb_custom_lineup_set_name_req {
+    uint64 index = 1;       // 索引
+    string name = 2;        // 名字
+}
+
+// 设置自定义预设阵容
+message pb_custom_lineup_set_req {
+    uint64 index = 1;       // 索引
+    pb_lineup lineup = 2;   // 阵容
+}
+
+// 玩法阵容列表
+message pb_lineup_list_rev {
+    repeated pb_lineup lineup_list = 1;
+}

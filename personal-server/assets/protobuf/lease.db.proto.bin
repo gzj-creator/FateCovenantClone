@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+import "core/db.db.proto.txt";
+
+// 角色单功能租借数据
+message pb_lease_role {
+  uint64 func_tid = 1;  // 租借功能(航会、万界)
+  repeated pb_lease_unit_role unit_role = 2;
+  uint64 day_flush_stamp = 3; // 租借刷新时间戳
+}
+
+// 角色租借数据
+message pb_lease_unit_role {
+  uint64 type = 1;  // 租借类型(魔灵、精灵、圣武)
+  repeated pb_lease_place_info place_info = 2; // 租借位置信息
+  repeated pb_lease_take_info take_info = 3; // 租借获取信息
+}
+
+// 放置信息(租出去)
+message pb_lease_place_info {
+  bytes unit = 1;  // 租借单位数据
+  uint64 lease_times = 2; // 被租借次数
+  uint64 unit_id = 3; // 租借id
+  uint32 index = 4; // 放置位置
+  uint64 place_stamp = 5; // 放置时间戳
+}
+
+// 获取信息(租进来)
+message pb_lease_take_info {
+  bytes unit = 1;  // 租借单位数据
+  uint32 lease_stamp = 3; // 租借时间戳
+  uint32 unit_id = 4;    // 英雄tid
+  repeated pb_lease_use_info use_info = 5; // 使用情况
+}
+
+// 租借英雄使用情况
+message pb_lease_use_info {
+  uint32 lineup_type = 1;  // 阵容类型
+  uint32 used_times = 2;  // 使用次数
+}
+
+//  -------------- 租借单位结构 -------------
+// 租借魔灵
+message pb_lease_pet {
+  uint64 tid = 1;
+  uint32 star = 2;
+  uint32 quality = 3;
+  repeated pb_lease_pet_core_slot core_slots = 4;     // 灵核列表
+  repeated pb_u32_kv global_attr = 5;   // 给英雄加的全局属性
+}
+
+// 魔灵灵核槽位
+message pb_lease_pet_core_slot {
+  uint32 index = 1;                                   // 槽位索引
+  uint64 core_tid = 2;                                // 灵核tid
+  uint32 core_star = 3;                               // 灵核星级
+}
+
+// 租借精灵
+message pb_lease_elves {
+  uint64 tid = 1;
+  uint32 star = 2;
+  uint32 quality = 3;
+  repeated pb_lease_elves_bead_slot bead_slots = 4;   // 灵珠列表
+  repeated pb_u32_kv global_attr = 5; // 给英雄加的全局属性
+}
+
+// 精灵灵珠槽位
+message pb_lease_elves_bead_slot {
+  uint32 index = 1;                                   // 槽位索引
+  uint64 bead_tid = 2;                                // 灵珠tid
+  uint32 bead_star = 3;                               // 灵珠星级
+}
+
+// 租借圣武
+message pb_lease_artifact {
+  uint64 tid = 1;
+  uint32 star = 2;
+  uint32 quality = 3;
+  repeated pb_u32_kv global_attr = 4;   // 给英雄加的全局属性
+}

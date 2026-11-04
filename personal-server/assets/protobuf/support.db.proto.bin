@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+//玩家点赞信息
+message pb_role_support{
+    uint32 support_day = 1;     //点赞时间
+    repeated pb_type_support support_list = 2;    //点赞列表
+}
+
+// 一个类型的点赞数据
+message pb_type_support {
+    uint32 type = 1;
+    repeated pb_support support = 2;
+    uint32 times = 3; // 点赞次数
+}
+
+// 单个点赞数据
+message pb_support {
+    uint64 role_id = 1;
+    uint32 count = 2;
+}
+
+// 被点赞信息
+message pb_supported {
+    repeated pb_supported_info supported = 1; // 被点赞信息
+    uint32 last_notify = 2;        // 上次推送时间戳
+
+}
+
+// 修复数据用，老结构
+message pb_supported_version1 {
+    uint32 server_count = 1;       // 本服玩法被点赞次数
+    uint32 cross_server_count = 2; // 跨服玩法被点赞次数
+    uint32 last_notify = 3; // 上次推送时间戳
+}
+
+// 单个类型被点赞数据
+message pb_supported_info {
+    uint32 type = 1;        // 点赞功能类型
+    uint32 count = 2;       // 被点赞次数
+}
+
+// 数据修复用
+message support_info{
+    uint32 support_day = 1;     //点赞时间
+    repeated support support_list = 2;    //点赞列表
+}
+
+//点赞目标信息（数据修复用）
+message support{
+    int64 role_id = 1;          //角色id
+    uint32 type = 2;            //点赞类型
+    uint32 count = 3;           //点赞次数
+}

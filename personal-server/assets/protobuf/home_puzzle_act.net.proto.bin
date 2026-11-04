@@ -1,0 +1,103 @@
+syntax = "proto3";
+import "project/activity/home_puzzle_act/home_puzzle_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 1. 任务领奖
+message pb_home_puzzle_task_reward_req {
+  int64 activity_id = 1;           // 活动 TID
+  repeated int64 task_id_list = 2; // 领取的任务 ID 列表
+}
+
+message pb_home_puzzle_task_reward_rsp {
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2;             // 资源变化
+}
+
+// 2. 赠送碎片给好友（需要对方领取）
+message pb_home_puzzle_gift_req {
+  int64 activity_id = 1;     // 活动 TID
+  int64 piece_tid = 2;       // 赠送的碎片 TID
+  int64 friend_role_id = 3;  // 好友角色 ID
+}
+
+message pb_home_puzzle_gift_rsp {
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2;             // 资源变化（赠送可获得奖励）
+}
+
+// 3. 请求碎片
+message pb_home_puzzle_request_req {
+  int64 activity_id = 1; // 活动 TID
+  int64 piece_tid = 2;   // 请求的碎片 TID
+}
+
+message pb_home_puzzle_request_rsp {
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据（含 my_requests）
+}
+
+// 4. 分解碎片
+message pb_home_puzzle_decompose_req {
+  int64 activity_id = 1; // 活动 TID
+  repeated pb_home_puzzle_fragment decompose_piece = 2; // 分解的碎片
+}
+
+
+message pb_home_puzzle_decompose_rsp {
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2;             // 资源变化（获得星愿纸）
+}
+
+// 5. 领取进度奖励
+message pb_home_puzzle_rec_process_award_req{
+  int64 activity_id = 1; // 活动 TID
+  repeated int64 process_tid_list = 2; // 进度id
+}
+
+message pb_home_puzzle_rec_process_award_rsp {
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2;             // 资源变化（进度奖励）
+}
+
+// 6. 获取好友请求数据
+message pb_home_puzzle_get_friend_request_data_req{
+  int64 activity_id = 1; // 活动 TID
+}
+
+message pb_home_puzzle_get_friend_request_data_rsp{
+  repeated pb_home_puzzle_friend_request_data request_data_list = 1; // 好友请求碎片数据
+}
+
+// 7. 领取好友赠送碎片
+message pb_home_puzzle_rec_gift_piece_req{
+  int64 activity_id = 1; // 活动 TID
+  int64 gift_uid = 2; // 唯一id用于交互
+  int64 friend_role_id = 3; // 赠送者role_id
+}
+
+message pb_home_puzzle_rec_gift_piece_rsp{
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据
+}
+
+// 8.开拼图包
+message pb_home_puzzle_open_pack_req{
+  int64 activity_id = 1; // 活动 TID
+  int64 pack_tid = 2; // 拼图包tid
+  int32 num = 3; // 开启数量
+}
+
+message pb_home_puzzle_open_pack_rsp{
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2;             // 资源变化（扣除拼图包）
+  repeated pb_home_puzzle_fragment get_piece_list = 3; //获得的碎片
+}
+
+
+// 9. 取消请求碎片
+message pb_home_puzzle_cancel_request_req {
+  int64 activity_id = 1; // 活动 TID
+  int64 piece_tid = 2;   // 请求的碎片 TID
+}
+
+message pb_home_puzzle_cancel_request_rsp{
+  pb_home_puzzle_act_data act_data = 1; // 最新活动数据（含 my_requests）
+}

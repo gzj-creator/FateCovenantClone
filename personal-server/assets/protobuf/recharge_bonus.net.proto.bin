@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/recharge_bonus/recharge_bonus.db.proto.txt";
+
+// 福利返回数据
+message pb_recharge_bonus_back{
+    pb_recharge_bonus info = 1; //福利数据
+    pb_res_to_client res = 2; //资源
+}

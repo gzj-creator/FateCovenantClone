@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+import "project/activity/summer_act/summer_act.db.proto.txt";
+import "project/activity/summer_act/summer_mission/summer_act_mission.db.proto.txt";
+import "project/activity/summer_act/summer_pve/summer_act_pve.db.proto.txt";
+import "project/activity/summer_act/summer_water_gun/summer_water_gun.db.proto.txt";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+import "project/shop.db.proto.txt";
+import "project/activity/summer_act/summer_pvp/summer_act_pvp.db.proto.txt";
+
+// 夏日活动主活动 - 玩家数据
+message pb_summer_preview_req{
+    int32 act_id = 1; // 活动id
+    int32 tid = 2;// 领奖条目id
+}
+
+// 夏日活动 - 初始化处理数据下发
+// 在玩家进入预告阶段就开始初始化处理
+message pb_summer_init {
+    int32 act_id = 1; // 活动id
+    pb_summer_person summer_person = 2; // 夏日活动主活动玩家数据
+    pb_summer_act_mission mission_person = 3; //主线支线数据
+    pb_summer_act_pve_role pve_person = 4; //pve数据
+    pb_summer_water_gun_person gun_person = 5;//水枪养成
+    pb_summer_task task_person = 6; //任务数据
+    pb_shop_info_list shop_list = 7; //商店数据
+}
+
+// 夏日活动 - 运行状态切换
+message pb_summer_run_state {
+    int32 act_id = 1;           // 活动id
+    pb_res_to_client res = 2;   // 资源变化
+    pb_summer_act_pve_role pve_person = 3; //pve数据
+    pb_summer_server summer_server = 4; //服务器阶段数据
+    pb_summer_challenge_person challenge_person = 5; //段位赛玩家数据
+}
+
+// 夏日活动 - 任务返回数据
+message pb_summer_task_back {
+    int32 act_id = 1;           // 活动id
+    pb_res_to_client res = 2;   // 资源变化
+    pb_summer_phase_task phase_task_info = 3; // 阶段任务数据
+}
+
+// 夏日活动 - 角色退出阶段返回数据
+message pb_summer_role_exit_stage_back {
+    int32 act_id = 1;           // 活动id
+    pb_res_to_client res = 2;   // 资源变化
+    pb_summer_task task_info = 3; // 跨天任务变更数据
+    repeated pb_res_obj res_obj_list = 4; //返还资源列表
+}
+
+// 夏日活动 - 每日刷新返回数据
+message pb_summer_role_day_change {
+    int32 act_id = 1;           // 活动id
+    pb_res_to_client res = 2;   // 资源变化
+    pb_summer_task task_info = 3; // 跨天任务变更数据
+    pb_summer_challenge_person challenge_person = 4; //跨天段位赛数据
+    pb_summer_act_pvp_role pvp = 5; // 跨天pvp数据
+}
+
+// 夏日活动 - 请求获取指定角色战斗力
+message pb_summer_power_req {
+    uint64 role_id = 1; // 目标角色id
+    uint64 act_tid = 2; // 活动tid
+}
+
+// 夏日活动 - 预览基准线奖励
+message pb_summer_show_show_standard {
+    repeated pb_res_obj award_list = 1; // 奖励列表
+}
+
+// 夏日活动 - 预览结算奖励
+message pb_summer_settle_rewards_preview_req {
+    int32 act_id = 1;           // 活动id
+    int32 rewards_type = 2;     // 奖励类型 1- 支线奖励 2- 主线奖励 3- 水枪养成奖励 4-PVE难度奖励 5-PVE层数奖励 6- PVP奖励 7- 泳装皮肤奖励 8-水枪皮肤奖励 0-所有奖励
+}
+
+// 夏日活动 - 预览结算奖励
+message pb_summer_settle_rewards_preview_rsp {
+    repeated pb_summer_settle_preview_info award_type_list = 1; // 奖励列表
+    repeated int32 pve_pass_list = 2; // PVE线性关卡通关列表
+    repeated int32 pve_pass_trail_list = 3; // PVP试炼通关列表
+    int32 pvp_count = 4; // PVP通关列表
+    int32 skin_count = 5; // 泳装皮肤数量
+    int32 gun_skin_count = 6; // 水枪皮肤数量
+}
+
+// 夏日活动 - 领取结算奖励req
+message pb_summer_settle_rewards_req {
+    int32 act_id = 1;           // 活动id
+}
+
+// 夏日活动 - 领取结算奖励
+message pb_summer_settle_rewards_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+}

@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+//渠道推送固定参数
+message pb_channel_push_param{
+  string push_type = 1; //推送类型 NOTICE
+  string target = 2; //推送目标 DEVICE
+  string target_value = 3; //根据Target来设定 这里一般是 推送的设备id
+  string device_type = 4; //设备类型 ANDROID IOS
+  int32 app_key = 5; //应用的app key
+  string android_notify_type = 6; //通知的震动类型 "BOTH"是 两种都有
+  string android_open_type = 7; //点击通知后的动作 "APPLICATION"
+  string android_notification_channel = 8; //底层显示通知的渠道，当前固定为32
+  int32 android_target_user_type = 9; //正式还是测试 0是正式，1是测试
+  int32 android_notification_id = 10;
+  string android_popup_activity = 11;
+  string device_id = 12; //设备id (平台调试用)
+  string user_id = 13; //用户id (平台调试用)
+
+  string ios_app_env = 14; //ios应用环境 DEV, PRODUCT
+  int32 ios_remind = 15;
+  string ios_remind_body = 16;
+  int32 language = 17; //语言 zh_CN en
+  string ios_device_token = 18; //用于ios远程推送的参数
+  repeated pb_channel_push_open open_list = 19;    // 推送开启列表
+}
+
+//渠道推送记录列表
+message pb_channel_push_record_list{
+  repeated pb_channel_push_record record_list = 1;
+}
+
+//渠道推送记录
+message pb_channel_push_record{
+  string message_id = 1; //推送消息id
+  int32 app_key = 2; //应用的app key
+}
+
+// 渠道推送开关列表
+message pb_channel_push_open_list{
+  repeated pb_channel_push_open open_list = 1;    // 列表
+}
+
+//渠道推送开关
+message pb_channel_push_open{
+  int32 message_id = 1; //推送消息id
+  bool is_open = 2;
+}
+

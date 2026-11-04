@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+// 公会boss服务器数据
+message pb_guild_boss_server{
+    uint64 last_avg_power = 1;          // 前一天平均战力(用于计算boss血量)
+    uint32 last_calc_day = 2;           // 上次计算战力的时间/天
+    uint64 last_reset_rank_time = 3;    // 上次重置排行榜时间
+    bool is_cross = 4;                  // 是否已跨服
+}
+
+// 公会boss公会数据
+message pb_guild_boss_guild{
+    uint64 guild_id = 1;                //公会ID
+    pb_guild_boss cur_boss = 2;         // 当前boss
+    repeated pb_guild_boss_member member_list = 3;  // 成员列表(报名后才有数据，前台可用于排名，需要在结算时清空)
+    uint64 last_atk_time = 4;           // 上次自动攻击时间
+
+    //需要通过该时间计算上次刷新的轮次。如果轮次与当前轮次不符，需要重置 cur_boss的tid
+    uint64 last_refresh_time = 5;        // 上次刷新时间(秒)
+    repeated uint64 last_hp_list = 6;   // 前一天boss最大血量(跨天刷新时确定)
+    repeated uint64 map_role_list = 7;  // 在地图内的玩家(用于推送，不一定很精准)
+    uint32 last_settle_time = 8;       // 上次结算时间（秒）
+    repeated pb_guild_boss_member last_member_list = 9;  // 上一期的成员列表, 用于在结算后显示排行榜
+    repeated pb_guild_boss_buff_skill_info buff_skill_info_list = 10; //buff型技能信息列表
+}
+
+// 公会boss数据
+message pb_guild_boss{
+    uint32 tid = 1;                     // boss tid
+    uint64 cur_hp = 2;                  // boss 当前血量
+    uint64 auto_atk_damage = 3;         // boss 最近造成的自动攻击伤害
+    uint64 max_hp = 4;                  // boss 最大血量
+}
+
+// 公会boss成员数据
+message pb_guild_boss_member{
+    uint64 id = 1;                      // 成员id
+    uint64 acc_damage = 2;              // 累积造成的伤害
+    uint64 last_damage = 3;             // 上次自动攻击造成的伤害
+    uint64 last_atk_time = 4;           // 上次自动攻击时间
+    uint32 cur_atk_count = 5;           // 当前boss中，该玩家的攻击次数
+    uint64 ice_time = 6;                // 冰冻效果失效时间
+    uint32 activity = 7;                // 活跃度
+    uint32 last_base_damage = 8;        // 上次自动攻击找造成的基础伤害（未被技能加成的伤害）
+}
+
+
+// 公会boss个人数据
+message pb_guild_boss_person{
+    uint64 role_id = 1;                  // 角色id
+
+    uint64 last_refresh_time = 2;             // 上一次数据刷新的时间（秒）
+    uint64 up_hurt_end = 3;             // 提升伤害结束时间/秒
+    repeated pb_guild_boss_dmg_award pb_guild_boss_dmg_award_list = 4; // 需重置：boss伤害奖励领取信息列表，未领取的奖励通过邮件发放
+    repeated int32 use_skill_award_list = 5;  // 使用道具所获得的待领取奖励列表(存的 “航会boss技能奖励表” tid)
+    bytes use_skill_award_state = 6;        // 使用道具奖励领取状态(对应 use_item_award_list 的索引)
+    repeated pb_guild_boss_skill skill_list = 7;  // 航会boss技能列表(如果列表中不存在某个技能，则表示该技能充能已满，可以直接使用)
+    uint64 last_rev_daily_skill_item_time = 8;      // 上一次白嫖技能消耗道具的时间
+    repeated pb_guild_boss_award_box award_box_list = 9;  // 宝箱列表
+    bytes award_box_state = 10;   //宝箱领取状态
+    int32 join_time = 11; //需重置：加入公会boss战斗时间(秒) 注意：该值有可能大于当前时间戳，是因为在公会boss开打前报名会认为是在公会boss开始时间参与
+    repeated int32 online_awards = 12; //需重置：在线奖励列表(航会boss奖励表tid列表)
+    bytes online_awards_state = 13; //需重置：在线奖励领取状态
+    repeated pb_guild_boss_skill_item_buy_info skill_item_buy_info_list = 14; //需重置：技能消耗道具购买信息
+    uint64 last_clean_skill_item = 15; //上一次清理技能消耗道具的时间. 在登录后判断该时间和当前时间如果不在同一天，则需要请求一次清理技能消耗道具
+}
+
+//公会boss 单boss奖励领取信息
+message pb_guild_boss_dmg_award{
+    int32 boss_tid = 1;                 // 航会boss基础表 tid
+    repeated pb_guild_boss_dmg_award_state dmg_award_state_list = 2;  // 当前boss伤害奖励领取状态列表
+}
+
+// 公会boss伤害奖励领取状态
+message pb_guild_boss_dmg_award_state{
+    uint32 idx = 1;                    // 伤害万分比所对应的索引
+    bytes rev_state = 2;               // 奖励领取状态
+}
+
+// 公会boss技能相关技能信息
+message pb_guild_boss_skill{
+    uint32 tid = 1;                     // 航会Boss技能表 tid
+    uint64 last_enter_cd_time = 2;      // 上一次进入充能的时间戳(毫秒)
+    uint32 cur_cd_count = 3;            // 当前需要充能的层数
+    uint64 last_use_time = 4;           // 上一次玩家使用该道具的时间（秒）
+}
+
+// 公会boss奖励宝箱
+message pb_guild_boss_award_box{
+    uint32 box_type = 1;            // 宝箱类型  1.击杀奖励宝箱  2.公会排行奖励宝箱  3.个人排行宝箱
+
+    // 宝箱额外参数: erlang 的数据结构直接编码的二进制，客户端可调用 Codec.DecodeErl() 进行解码
+    // 如果是击杀宝箱，则额外参数为boss tid
+    bytes extra = 2;
+    repeated int32 award_tid_list = 3;  //奖励tid列表
+}
+
+//公会boss技能消耗道具购买信息
+message pb_guild_boss_skill_item_buy_info{
+	uint32 item_tid = 1; //物品表 tid
+	uint32 buy_count = 2; //购买次数
+}
+
+//公会boss buff型技能信息
+message pb_guild_boss_buff_skill_info{
+	uint32 skill_tid = 1; //航会boss技能表tid
+    uint32 start_time = 2; //buff开始时间（秒时间戳）
+    uint32 end_time = 3; //buff结束时间（秒时间戳）
+}
+
+//公会boss 公会排行榜额外信息
+message pb_guild_boss_rank_extra_info{
+	uint32 join_member_count = 1; //参与人数
+	uint32 cur_boss_tid = 2; //当前boss tid
+}
+

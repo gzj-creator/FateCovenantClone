@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+import "project/dream/dream.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+
+// 命运梦境完成事件请求
+message pb_dream_finish_event_req {
+    bytes param = 1; // 参数
+}
+
+// 命运梦境完成事件返回
+message pb_dream_fight_event_rsp {
+    uint32 week_finish_event = 1;       // 当前周完成的轮次数
+    uint32 month_finish_event = 2;        // 总共完成的轮次数
+    repeated pb_dream_task tasks = 3;   // 任务列表
+    repeated uint32 buffs = 4;          // buff列表
+    uint32 group = 5;                   // 当前进行的组
+    repeated pb_dream_event group_events = 6; // 当前组的事件
+
+    pb_res_to_client res_change = 7;    // 资源变化
+    bytes collect = 8;                 // 档案馆收集情况
+    pb_dream_story story = 9;          // 故事，档案馆
+}
+
+// 命运梦境奖励返回
+message pb_dream_award_rsp {
+    pb_res_to_client res_change = 1;    // 资源变化
+    uint32 got_day_award_stamp = 2;     // 领取每日奖励的时间戳
+    bytes got_week_event_award = 3;    // 已领取的周奖励
+    bytes got_month_event_award = 4;     // 已领取的总奖励
+    bytes got_collect_award = 5;       // 已领取的收集奖励
+    repeated pb_dream_task tasks = 6;   // 任务列表
+    repeated pb_dream_event group_events = 7; // 当前组的事件
+    bytes got_single_collect_award = 8; // 已领取的单个收集奖励
+}
+
+// 命运梦境周期刷新返回
+message pb_dream_auto_flush {
+    pb_res_to_client res_change = 1;    // 资源变化
+    pb_dream_role dream_info = 2;       // 梦境信息
+}
+
+// 命运梦境请求战斗镜像
+message pb_dream_npc_lineup_rsp{
+    repeated pb_lineup_snapshot npc_lineups = 1; // npc阵容
+}
+
+
+// 命运梦境刷新事件返回
+message pb_dream_refresh_event_rsp {
+    pb_dream_event event = 1;   // 新事件数据
+    pb_res_to_client res = 2;   // 资源变化
+    pb_count_flush day_refresh_event_times = 3; // 每日已刷新事件次数
+}

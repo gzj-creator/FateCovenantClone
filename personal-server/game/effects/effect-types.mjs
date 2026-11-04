@@ -40,6 +40,16 @@ export const STAT_TYPES = Object.freeze({
   IGNORE_DEFENSE: 'ignore-defense', // Percentage (0-1)
   DAMAGE_BONUS: 'damage-bonus',   // Percentage (0-1)
   DAMAGE_REDUCTION: 'damage-reduction', // Percentage (0-1)
+  CRIT_DAMAGE_REDUCTION: 'crit-damage-reduction',
+  CRIT_RESIST: 'crit-resist',
+  CRIT_RESISTANCE: 'crit-resistance',
+  ANTI_CRIT: 'anti-crit',
+  HIT_RATE: 'hit-rate',
+  EVASION: 'evasion',
+  STATUS_HIT: 'status-hit',
+  STATUS_RESIST: 'status-resist',
+  REBOUND_RATE: 'rebound-rate',
+  MAX_HP_PERCENT: 'max-hp-percent',
   HEAL_BONUS: 'heal-bonus',       // Percentage (0-1)
   SHIELD_BONUS: 'shield-bonus',   // Percentage (0-1)
   ENERGY_BONUS: 'energy-bonus',   // Percentage (0-1)

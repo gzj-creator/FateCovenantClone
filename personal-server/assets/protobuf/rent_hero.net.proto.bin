@@ -1,0 +1,57 @@
+syntax = "proto3";
+import "project/hero/rent/rent_hero.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 出租英雄请求
+message pb_req_rent_out{
+    repeated uint64 hero_uid_list = 1;      // 出租的英雄UID列表
+    repeated uint32 hero_index_list = 2;    // 出租的英雄的索引位置
+    uint32 rent_tid = 3;                    // 出租的玩法TID
+}
+
+// 出租英雄返回
+message pb_req_rent_out_back{
+    pb_role_rent_out_one rent_out_one = 1;      // 该玩法的出租信息
+    pb_res_to_client res = 2;                   // 资源信息
+    bytes to_client = 3;                        // 同步操作返回客户端的数据
+}
+
+// 租借英雄请求
+message pb_req_rent{
+    uint32 rent_tid = 1;                                    // 租借tid，自己是哪个玩法
+    uint32 dest_rent_tid = 2;                               // 要租借哪个玩法出租的英雄
+    repeated uint32 index_list = 3;                         // 租借英雄的索引
+    repeated pb_req_rent_one rent_req_list = 4;             // 要租借的多个人的多个英雄的集合
+    bool is_clear_cur = 5;                  // 租借前是否先清理掉指定玩法所有的租借英雄
+}
+
+// 对一个人的租借请求
+message pb_req_rent_one{
+    uint64 dest_role_id = 1;                  // 目标角色ID
+    repeated uint64 rent_hero_uid_list = 3;   // 要租借的英雄UID列表
+    repeated uint32 index_list = 5;           // 租借英雄的索引列表
+}
+
+// 租借英雄返回
+message pb_req_rent_back{
+    pb_role_rent_one rent_data = 1;             // 租借信息
+    pb_res_to_client res = 2;                   // 资源改变
+    bytes to_client = 3;                        // 同步操作返回客户端的数据
+}
+
+// 查询返回
+message pb_req_query_rent_hero_ret{
+    repeated pb_role_rent_out_ret role_rent_out_list = 1;    // 玩家出租列表
+}
+
+// 玩家的出租信息
+message pb_role_rent_out_ret{
+    uint64 role_id = 1;                         // 玩家ID
+    pb_role_rent_out_one rent_out = 2;          // 租借信息
+}
+
+// 刷新数据
+message pb_rent_flush_ret{
+    pb_role_rent_one rent_in_one = 1;           // 指定玩法的租借数据
+    pb_role_rent_out_one rent_out_one = 2;      // 指定玩法的出租数据
+}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/login_reward_act/login_reward_act.db.proto.txt";
+
+// 领奖返回数据
+message pb_login_reward_act_rev_back{
+    pb_login_reward_act_single single = 1; //单个活动数据
+    pb_res_to_client res = 2;     //资源改变
+}
+

@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+import "project/arena/hunter_arena/hunter_arena.db.proto.txt";
+import "project/fight/fight.net.proto.txt";
+import "general/res.net.proto.txt";
+
+// 登录数据
+message pb_hunter_arena_login {
+    pb_role_hunter_arena hunter_arena = 1; // 角色数据
+    uint32 score = 2;       // 当前分数
+    uint32 rank = 3;        // 当前排名
+    pb_hunter_arena_login_season season_state = 4; // 赛季状态
+    pb_hunter_role_palace palace = 5; // 角色巅峰战斗数据
+    uint32 open_double_time = 6; // 双子服开启时间 0是没有开启
+}
+
+message pb_hunter_arena_login_season {
+    uint32 cur_season = 1;
+    uint32 cur_season_close_stamp = 2;
+    uint32 next_season_open_stamp = 3;
+}
+
+// 被攻击推送
+message pb_hunter_arena_fought {
+    pb_hunter_arena_fight_report fight_report = 1;
+    int32 cur_score = 2;      // 当前积分
+    uint32 max_score = 3;      // 最高积分(任务进度需要用)
+    int32 score_change = 4;   // 分数变化
+    pb_hunter_role_palace palace = 5; // 角色(自己)巅峰战斗数据
+    repeated pb_hunter_arena_best_record best_rank = 6; // 最近N天最佳排名
+    repeated pb_hunter_arena_best_record best_stage = 7; // 最近N天最佳段位
+}
+
+// 战斗返回
+message pb_hunter_arena_fight_rsp {
+    int64 role_id = 1;               // 敌方角色id
+    pb_hunter_fight_change atk_change = 2;       // 进攻方积分变化
+    pb_hunter_fight_change def_change = 3;       // 防守方积分变化
+    pb_hunter_role_palace palace = 4; // 角色(自己)巅峰战斗数据
+    repeated pb_hunter_arena_best_record best_rank = 5; // 最近N天最佳排名
+    repeated pb_hunter_arena_best_record best_stage = 6; // 最近N天最佳段位
+}
+
+// 排行榜额外数据
+message pb_hunter_arena_rank_extra {
+    uint64 fight_uid = 1;       // 战斗唯一id
+    uint32 atk_power = 2;       // 进攻方战力
+    uint32 def_power = 3;       // 防守方战力
+    pb_hunter_fight_change atk_change = 4;       // 进攻方积分变化
+    pb_hunter_fight_change def_change = 5;       // 防守方积分变化
+}
+
+// 跨天刷新返回
+message pb_hunter_arena_day_flush {
+    pb_res_to_client res_change = 1;
+    pb_role_hunter_arena hunter_arena = 2;
+}
+
+// 读取历史排名
+message pb_hunter_arena_history_rank_rsp {
+    uint32 rank = 1;
+    uint32 score = 2;
+    uint32 season = 3;
+    pb_role_hunter_arena hunter_arena = 4;
+}
+
+// 设置战报锁定标记
+message pb_hunter_arena_set_report_lock {
+    uint64 fight_uid = 1;
+    bool lock = 2;
+}

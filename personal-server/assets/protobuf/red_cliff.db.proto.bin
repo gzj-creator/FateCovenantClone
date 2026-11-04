@@ -1,0 +1,33 @@
+syntax = "proto3";
+import "project/role.db.proto.txt";
+import "project/lineup.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+import "general/res.db.proto.txt";
+
+// 赤壁关卡数据
+message pb_red_cliff_data{
+    int32 cur_level = 1;                // 当前关卡
+    uint32 last_reset_second = 2;       // 上次重置时间
+    repeated uint32 assemble_buff_list = 3;      // 装配的buff技能
+    repeated int32 select_buff_list = 4;         // 待选buff列表
+    int32 box_level_id = 5;              // 宝箱奖励
+    repeated pb_red_cliff_opponent  opponents = 6;   // 对手
+    int32 star_count = 7;              // 星星数量
+    int32 refresh_count = 8;            // 当日刷新次数
+    int32 challenge_points = 9;         // 当前轮挑战积分分数
+    repeated int32 cross_level = 10;    // 通关的关卡列表
+    int32 reset_times = 11;             // 重置次数
+    int32 last_challenge_points = 12;   // 上轮挑战积分分数
+    repeated pb_res_obj award_list = 13; // 本轮所有获得奖励
+}
+
+// 赤壁对手信息
+message pb_red_cliff_opponent {
+    bytes role_name = 1;                            // 对手名称(功能自己的npc使用)
+    pb_figure_simple_info figure = 2;               // 形象数据(功能自己的npc使用)
+    uint32 level = 3;                               // 对手等级(功能自己的npc使用)
+    int64 fight_tid = 4;                            // 对应战斗tid(功能自己的npc使用)
+    pb_lineup_snapshot_key key = 5;                 // 阵容镜像key
+    int32 level_id = 6;                              // 对应星级等级关卡tid
+}

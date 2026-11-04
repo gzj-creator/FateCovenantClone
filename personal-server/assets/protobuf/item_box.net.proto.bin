@@ -1,0 +1,8 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 批量开宝箱请求
+message pb_batch_use_box_req {
+    repeated pb_res_obj box_list = 1;       // 宝箱列表（随机宝箱和固定宝箱）
+    repeated pb_res_obj lottery_list = 2;   // 乐乐卡列表
+}

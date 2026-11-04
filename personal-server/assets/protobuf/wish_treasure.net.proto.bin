@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/wish_treasure/wish_treasure.db.proto.txt";
+
+// 领奖返回
+message pb_wish_treasure_rev_back{
+    pb_wish_treasure_data data = 1; // 单个类型数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 付费推送
+message pb_wish_treasure_push{
+    repeated pb_wish_treasure_push_item item_list = 1; // 类型天数增加列表
+}
+
+message pb_wish_treasure_push_item{
+    uint64 type = 1;  // 类型
+    uint64 add_day = 2; // 增加的天
+}
+
+// 跨天刷新返回
+message pb_wish_treasure_flush_day_back{
+    pb_wish_treasure info = 1; // 整体数据
+    pb_res_to_client res = 2; //资源改变
+}

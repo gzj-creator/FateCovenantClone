@@ -1,0 +1,31 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/princess/princess.db.proto.txt";
+
+// 公主奖励请求数据
+message pb_princess_req {
+    repeated pb_princess_req_item req_list = 1; //请求奖励结构的列表
+}
+
+// 公主奖励请求返回数据
+message pb_princess_back {
+    pb_princess_login login_back = 1; //登录奖励返回数据（无修改时为空）
+    pb_princess_energy energy_back = 2; //体力奖励返回数据（无修改时为空）
+    pb_princess_holiday holiday_back = 3; //节日奖励返回数据（无修改时为空）
+    //    repeated pb_res_obj login_award_list = 4; //登录奖励列表
+    //    repeated pb_res_obj energy_award_list = 5; //体力奖励列表
+    //    repeated pb_res_obj holiday_award_list = 6; //节日奖励列表
+    pb_res_to_client res = 7; //资源返回数据
+}
+
+// 各类奖励请求结构
+message pb_princess_req_item {
+    uint32 type_tid = 1; //奖励类型
+    uint32 param = 2; //传入的奖励参数
+}
+
+// 公主奖励请求返回数据
+message pb_princess_supplement_back {
+    pb_princess_energy_supplement supplement = 1;//补领数据
+    pb_res_to_client res = 2; //返回资源改变数据
+}

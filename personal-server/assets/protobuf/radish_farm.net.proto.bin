@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+import "project/activity/radish_farm/radish_farm.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 农场基础操作请求
+message pb_radish_farm_normal_req {
+    repeated uint32 id = 1; // 格子索引列表
+}
+// 农场基础操作请求返回
+message pb_radish_farm_normal_rsp {
+    repeated pb_radish_farm_cell cells = 1; // 格子信息
+}
+
+// 请求领取萝卜奖励返回
+message pb_radish_farm_reward_rsp {
+    repeated pb_radish_farm_cell cells = 1; // 格子信息
+    pb_res_to_client res = 2;   // 奖励
+    repeated pb_radish_farm_cell_multiplier multipliers = 3;//倍率list
+}
+//领取奖励暴击信息
+message pb_radish_farm_cell_multiplier {
+    uint32 cell_index = 1;//格子索引
+    uint32 multiplier = 2;//倍率1,2,3
+}
+
+// 请求拜访返回
+message pb_radish_farm_visit_rsp {
+    uint64 role_id = 1;     // 角色id
+    repeated pb_radish_farm_cell cells = 2;  // 格子信息
+}
+
+// 请求帮助某个玩家
+message pb_radish_farm_help_req {
+    uint64 role_id = 1;     // 角色id
+    uint32 cell_id = 2;     // 格子id
+}
+
+// 请求帮助某个玩家返回
+message pb_radish_farm_help_rsp {
+    pb_radish_farm_cell cell = 1;  // 帮助后的格子信息
+    pb_res_to_client award = 2;     // 奖励
+}
+
+// 请求选择礼包物品
+message pb_radish_farm_gift_select_req {
+    uint32 gift_tid = 1;        // 礼包id
+    repeated uint32 select_idx = 2; // 选择的奖励索引
+}
+
+// 跨天刷新返回
+message pb_radish_farm_day_change_rsp {
+    pb_res_to_client award = 1;     // 邮件奖励
+    pb_radish_farm_role radish_farm_role = 2; // 刷新后的玩家数据
+}

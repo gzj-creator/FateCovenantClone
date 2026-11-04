@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "project/activity/matching_game_act/matching_game_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//  --后续删除
+message pb_matching_game_act_big_award_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    int64 new_score = 2;    // 新的积分
+}
+
+// 兑换大奖返回
+message pb_matching_game_act_score_award_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    repeated int64 reward_tid_list = 2;  // 已领取奖励列表(tid)
+}
+
+// 兑换大奖请求
+message pb_matching_game_act_score_award_req {
+    int64 act_id = 1;  // 活动id
+    int64 tid = 2;  // 兑换的tid
+}
+
+// 使用卡片返回
+message pb_matching_game_act_use_card_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_role_matching_game_act_info info = 2;    // 信息变化
+    repeated int64 settle_card_list = 3;    // 结算前的卡牌列表（满格子或者遇到闪光卡）
+    repeated pb_matching_game_get_type get_card_list = 4;    // 本次结算的卡牌奖励列表（记录奖励类型对应的卡牌索引）
+    int64 big_award_count = 5; // 本次兑换大奖次数
+}
+
+// 选中幸运卡牌请求
+message pb_matching_game_act_luck_req {
+    int64 act_id = 1;  // 活动id
+    int64 select_card = 2;  // 选中的卡牌
+}
+
+// 登陆数据
+message pb_matching_game_act_login_data {
+    pb_role_matching_game_act_info info = 1;
+}

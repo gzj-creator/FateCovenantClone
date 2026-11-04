@@ -1,0 +1,49 @@
+syntax = "proto3";
+import "project/elves_bead/elves_bead.db.proto.txt";
+import "project/elves/elves.db.proto.txt";
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+// 请求卸下灵珠
+message pb_bead_un_equip_req{
+    int64 elves_id = 1; // 精灵id
+    int32 slot = 2; // 槽位
+    int64 bead_uid = 3; // 灵珠id
+}
+
+// 请求镶嵌灵珠
+message pb_bead_equip_req{
+    repeated pb_bead_equip beads_slots = 1; // 镶嵌的灵珠列表
+}
+
+message pb_bead_equip{
+    int64 elves_id = 1; // 精灵id
+    repeated pb_elves_bead_slot beads_slots = 2; // 镶嵌的灵珠列表
+}
+
+// 镶嵌灵珠返回数据
+message pb_bead_equip_rsp {
+    repeated pb_elves elves_list = 1; // 精灵数据列表
+}
+
+// 卸下灵珠返回数据
+message pb_bead_un_equip_rsp {
+    pb_elves elves = 1; // 精灵数据
+}
+
+// 灵珠养成返回数据
+message pb_bead_develop_rsp {
+    pb_elves_bead_back bead = 1; // 灵珠数据
+    pb_res_to_client res_change = 2; // 资源变化
+}
+
+// 请求灵珠进化
+message pb_bead_up_star_req{
+    int64 bead_uid = 1; // 灵珠uid
+    repeated int64 use_bead_uid_list = 2; // 被吞的灵珠uid列表
+}
+
+// 请求灵珠升级
+message pb_bead_level_up_req {
+    uint64 bead_uid = 1;            // 灵珠uid
+    uint32 up_level = 2;            // 升级等级
+}

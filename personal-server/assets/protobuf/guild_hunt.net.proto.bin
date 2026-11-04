@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+import "project/guild_hunt/guild_hunt.db.proto.txt";
+
+// 登录/创建/加入航会下发数据
+message pb_guild_hunt_login{
+    pb_guild_hunt_server server_info = 1; // 服务器数据
+    pb_guild_hunt_guild guild_info = 2; // 航会数据
+    pb_guild_hunt_role role_info = 3; // 玩家数据
+}
+
+// 客户端请求通信后推送（给本航会玩家）
+message pb_guild_hunt_attend_support_push{
+    bool is_attend = 1; // 是否是报名操作（报名需要加到服务器数据中）
+    uint64 guild_id = 2; // 航会ID
+    uint64 support = 3; // 航会最新助威值
+}
+
+// Boss战斗通信请求
+message pb_guild_hunt_boss_fight_req{
+    uint64 stage_tid = 1; // 阶段Tid
+    uint64 boss_tid = 2; // BossTid
+}
+
+// Boss战斗通信请求返回
+message pb_guild_hunt_boss_fight_back{
+    pb_res_to_client res = 1; // 资源变化
+    pb_guild_hunt_role role_info = 2; // 玩家数据
+}
+
+// Boss战斗结算推送（给航会成员）
+message pb_guild_hunt_boss_fight_push{
+    pb_res_to_client res = 1; // 资源变化（BOSS击杀才有值）
+    uint64 stage_tid = 2; // 阶段tid
+    uint64 boss_tid = 3; // BOSS的tid
+    uint64 level = 4; // BOSS初始等级
+    uint64 damage = 5; // 当前造成的伤害
+    pb_guild_hunt_role_rank_obj role_rank_obj = 6; // 进攻玩家最新贡献数据
+}
+
+// 小怪战斗通信请求
+message pb_guild_hunt_monster_fight_req{
+    uint64 stage_tid = 1; // 阶段Tid
+    uint64 monster_tid = 2; // 小怪Tid
+}
+
+// 小怪战斗通信请求返回
+message pb_guild_hunt_monster_fight_back{
+    pb_res_to_client res = 1; // 资源变化
+    pb_guild_hunt_role role_info = 2; // 玩家数据
+}
+
+// 小怪战斗结算推送（给航会成员）
+message pb_guild_hunt_monster_fight_push{
+    uint64 stage_tid = 1; // 阶段tid
+    uint64 monster_tid = 2; // 小怪Tid
+    uint64 level = 3; // 怪物等级
+    uint64 damage = 4; // 当前造成的伤害
+    bool is_dead = 5; // 是否击杀
+    pb_guild_hunt_role_rank_obj role_rank_obj = 6; // 进攻玩家最新贡献数据
+}
+
+// BOSS基准伤害item推送
+message pb_guild_hunt_base_damage_item{
+    uint64 stage_tid = 1; // 阶段tid
+    uint64 base_damage = 2; // 用于计算贡献值
+}
+
+// 航会讨伐 - 跨天信息推送
+message pb_guild_hunt_day_change_push{
+    repeated uint64 supper_role_id_list = 1; // 讨伐战神玩家列表（王牌）
+    repeated uint64 token_role_id_list = 2; // 有挑战资格的玩家ID列表
+    repeated pb_guild_hunt_base_damage_item item_list = 3; // 各阶段BOSS基准伤害（只有报名结束时有数据，其他为空列表）
+}

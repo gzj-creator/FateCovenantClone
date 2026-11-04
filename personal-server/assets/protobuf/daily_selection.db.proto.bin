@@ -1,0 +1,13 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 每日精选
+message pb_daily_selection {
+    repeated pb_u32_kv extra_buy_count = 1;  //每日精选礼包组额外奖励总购买次数数据库
+    int32 buy_day = 2;  //每日精选有购买记录的天数
+    int32 all_buy_day = 3;  //每日精选购买了全部奖励的天数
+    uint64 last_buy_time = 4;   //上一次购买的时间
+    uint64 add_all_buy_time = 5; //增加全部购买的时间
+    uint32 reward_state = 6; //领取免费奖励的状态 0未领取 1领取了不要条件的奖励  2领取了所有奖励
+    uint64 reward_time = 7; //上次领取免费奖励的时间
+}

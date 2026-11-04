@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+import "project/activity/summer_act/summer_act.db.proto.txt";
+import "project/activity/summer_act/summer_mission/summer_act_mission.db.proto.txt";
+import "project/activity/summer_act/summer_water_gun/summer_water_gun.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 水枪升级请求
+message pb_summer_wg_up_lv_req{
+    uint32 act_id = 1;//活动id
+    uint32 up_times = 2;//升级次数
+}
+
+// 水枪养成通用返回
+message pb_summer_wg_universal_back {
+    pb_res_to_client res = 1; //资源变化
+    pb_summer_water_gun_person person = 2; //水枪玩家数据
+    int32 power = 3;//新战力
+    int32 skin_id = 4;//获得的皮肤id
+}
+
+// 水枪灵珠激活、升品请求
+message pb_summer_wb_universal_req {
+    uint32 act_id = 1;//活动id
+    uint32 beads_id = 2;//灵珠id
+}
+
+// 水枪灵珠强化请求
+message pb_summer_wb_up_strong_req {
+    uint32 act_id = 1;//活动id
+    uint32 beads_id = 2;//灵珠id
+    uint32 strong_times = 3;//强化次数
+}
+
+// 夏日活动 - 切换水枪皮肤
+message pb_summer_water_skin_change_req {
+    int32 act_id = 1;           // 活动id
+    int32 skin_id = 2;  //皮肤id
+}
+
+// 夏日活动 - 水枪走马灯消息
+message pb_summer_water_gun_msg {
+    int32 act_id = 1; //活动id
+    int32 gun_id = 2; //水枪id
+    int32 star = 3; //水枪星级
+}
+
+// 夏日活动 - 灵珠走马灯消息
+message pb_summer_beads_msg {
+    int32 act_id = 1; //活动id
+    int32 beads_id = 2; // 灵珠id
+    int32 quality = 3; // 品质
+}

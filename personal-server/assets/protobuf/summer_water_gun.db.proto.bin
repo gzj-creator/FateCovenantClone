@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+// 水枪 - 玩家数据
+message pb_summer_water_gun_person {
+    int32 act_id = 1; // 活动id
+    int32 tid = 2;//水枪id
+    int32 level = 3;//等级
+    int32 stage = 4; //阶
+    int32 star = 5; // 星
+    repeated pb_summer_water_beads beads = 6;//灵珠镶嵌
+    int32 skin_id = 7; //穿戴的皮肤id
+    repeated int32 skin_list = 8; //获得的皮肤id列表
+    bool active = 9; // 是否激活水枪
+    repeated int32 active_skill_tid = 10;//技能激活列表
+}
+
+// 灵珠
+message pb_summer_water_beads {
+    int32 tid = 1;//灵珠tid
+    bool active = 2;//是否激活
+    int32 strong = 3;//强化
+    int32 quality = 4;//品质
+}

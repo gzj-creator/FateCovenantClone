@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 单个活动数据
+message pb_act_draw_data{
+  uint32 act_tid = 1;                         // 当前活动tid
+  uint32 draw_num = 2;                        // 抽卡次数
+  repeated uint32 draw_awards = 3;            // 已经领奖进度tid列表
+}
+
+// 活动数据
+message pb_act_draw_data_list{
+  repeated pb_act_draw_data list = 1;  // 活动数据
+}

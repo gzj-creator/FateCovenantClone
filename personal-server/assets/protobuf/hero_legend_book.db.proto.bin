@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// SP英雄图鉴
+message pb_hero_legend_book{
+    repeated pb_hero_legend_book_active active_list = 1;  //激活的SP图鉴英雄数据列表
+}
+
+// 激活的SP单个英雄数据
+message pb_hero_legend_book_active{
+    uint64 tid = 1;               //英雄tid
+    uint32 star = 2;              //当前英雄点亮的星级
+    uint32 level = 4;             //当前英雄的铸魂等级
+    uint32 stage = 5;             //当前英雄的天极之力阶级
+    repeated uint32 bless_hero_list = 6; //解锁的庇佑英雄列表
+}

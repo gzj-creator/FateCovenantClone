@@ -1,0 +1,173 @@
+syntax = "proto3";
+import "project/activity/baking_act/baking_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+
+// 领取等级奖励
+message pb_baking_rec_lv_award_req{
+  int64 act_id = 1; // 活动id
+  repeated int64 lv_tid_list = 2; // 等级tid列表
+}
+
+message pb_baking_rec_lv_award_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+}
+
+// 交换位置
+// {x1,y1}和{x2,y2}存在蛋糕互换位置
+// {x2,y2}上没蛋糕那就是把{x1,y1}移动到{x2,y2}
+message pb_baking_swap_req{
+  int64 act_id = 1; // 活动id
+  int64 x1 = 2;
+  int64 y1 = 3;
+  int64 x2 = 4;
+  int64 y2 = 5;
+}
+
+message pb_baking_swap_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+}
+
+// 合成
+message pb_baking_synthesize_req{
+  int64 act_id = 1; // 活动id
+  int64 x1 = 2;
+  int64 y1 = 3;
+  int64 x2 = 4;
+  int64 y2 = 5;
+}
+
+message pb_baking_synthesize_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+}
+
+// 批量合成
+message pb_baking_batch_synthesize_req{
+  int64 act_id = 1; // 活动id
+}
+
+message pb_baking_batch_synthesize_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  repeated pb_batch_synthesize_data synthesizes = 2; // 合成中间数据
+  int64 min_lv = 3; // 合成的最小等级
+}
+
+// 制作蛋糕
+message pb_baking_make_cake_req{
+  int64 act_id = 1; // 活动id
+  int64 num = 2; // 数量
+}
+
+message pb_baking_make_cake_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化 死局之后自动清理返还
+  pb_baking_dead_clear_data dead_data = 3; // 死局数据
+}
+
+// 放弃订单
+message pb_baking_give_up_order_req{
+  int64 act_id = 1; // 活动id
+}
+
+message pb_baking_give_up_order_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+}
+
+// 使用道具恢复体力
+message pb_baking_use_item_req{
+  int64 act_id = 1;//活动id
+  int64 num = 2;//使用的道具数量
+}
+
+message pb_baking_use_item_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+}
+
+// 使用作弊道具
+message pb_baking_use_cheat_item_req{
+  int64 act_id = 1;//活动id
+  int64 cheat_tid = 2; //作弊道具tid
+}
+
+message pb_baking_use_cheat_item_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+  pb_baking_dead_clear_data dead_data = 3; // 死局数据
+}
+
+// 酵母点击
+message pb_baking_yeast_click_req{
+  int64 act_id = 1; // 活动id
+  int64 x = 2;
+  int64 y = 3;
+}
+
+message pb_baking_yeast_click_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+  pb_baking_dead_clear_data dead_data = 3; // 死局数据
+}
+
+// 获取最新活动数据
+message pb_baking_get_new_act_data_req{
+  int64 act_id = 1;
+}
+
+message pb_baking_get_new_act_data_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+}
+
+// 处理事件
+message pb_baking_handle_event_req{
+  int64 act_id = 1; // 活动id
+  int64 x = 2;
+  int64 y = 3;
+  int64 param1 = 4; // 参数1
+}
+
+message pb_baking_handle_event_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+}
+
+// 提交订单
+message pb_baking_submit_order_req{
+  int64 act_id = 1; // 活动id
+  repeated pb_baking_pos pos = 2; // 提交的格子位置
+}
+
+message pb_baking_submit_order_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+  pb_res_to_client res = 2; // 资源变化
+}
+
+// 刷新限时订单
+message pb_baking_refresh_time_limit_order_req{
+  int64 act_id = 1; // 活动id
+}
+
+message pb_baking_refresh_time_limit_order_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+}
+
+// 一键排序
+message pb_baking_one_key_sort_req{
+  int64 act_id = 1;
+}
+
+message pb_baking_one_key_sort_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+}
+
+// 选择一键合成模式
+message pb_baking_select_batch_synthesize_model_req{
+  int64 act_id = 1;
+  int64 model = 2; // 0 默认轻模式1重度模式
+}
+
+message pb_baking_select_batch_synthesize_model_rsp{
+  pb_baking_act_data act_data = 1; // 最新活动数据
+}

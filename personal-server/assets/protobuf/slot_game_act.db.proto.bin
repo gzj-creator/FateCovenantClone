@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 老虎机活动玩家数据
+message pb_slot_game_act_role_info {
+  repeated pb_slot_game_act_role_data data_list = 1;              // 玩家数据
+}
+
+// 老虎机玩家数据
+message pb_slot_game_act_role_data {
+  int64 act_id = 1;                                   // 老虎机活动tid
+  int64 draw_num = 2;                                 // 抽奖次数
+  int64 award_lib_tid = 3;                            // 抽取到的奖励库的tid（0表示未抽取）
+}

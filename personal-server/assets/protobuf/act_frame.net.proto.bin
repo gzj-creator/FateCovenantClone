@@ -1,0 +1,46 @@
+syntax = "proto3";
+import "project/act_frame/act_frame.db.proto.txt";
+
+// 玩家登录数据
+message pb_act_role_login{
+    repeated pb_act_role_login_data data_list = 1;      // 数据列表
+}
+
+// 玩家登录活动数据
+message pb_act_role_login_data{
+    pb_act_player_stage act_stage = 1;                  // 活动阶段数据
+    bytes module_login_data = 2;                        // 活动功能模块登录数据
+}
+
+// 玩家活动阶段改变返回
+message pb_act_role_stage_change_back{
+    repeated pb_act_role_stage_change change_list = 1;    // 改变列表(保证单活动有序)
+}
+
+// 玩家活动阶段改变返回数据
+message pb_act_role_stage_change{
+    uint32 act_id = 1;                        // 活动id
+    uint32 exit_stage = 2;                    // 退出阶段
+    uint32 enter_stage = 3;                   // 进入阶段
+    bytes module_exit_data = 5;               // 退出阶段功能模块数据
+    bytes module_enter_data = 6;              // 进入阶段功能模块数据
+    bytes login_data = 7;                     // 登录数据(进入活动首个阶段会赋值)
+    bool is_login = 8;                        // 是否登录(进入活动首个阶段为true)
+    bool is_fail = 9;                         // 功能报错导致失败，前台抛弃该活动数据
+}
+
+// 玩家活动跨天返回信息
+message pb_act_role_cross_day_back{
+    repeated pb_act_role_cross_day data_list = 1;    // 数据列表
+}
+
+// 玩家活动跨天返回数据
+message pb_act_role_cross_day{
+    uint32 act_id = 1;                        // 活动id
+    bytes module_data = 2;                    // 活动功能模块数据
+}
+
+// 后台推送活动阶段
+message pb_act_frame_stage_push{
+    repeated pb_act_stage_data act_stage_list = 1;  //改变的活动列表
+}

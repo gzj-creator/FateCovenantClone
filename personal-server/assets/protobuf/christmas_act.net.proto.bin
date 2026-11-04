@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "project/activity/christmas_act/christmas_act.db.proto.txt";
+import "project/shop.db.proto.txt";
+
+message pb_christmas_act_dress_req {
+    uint32 act_id = 1;          // 活动id
+    uint32 dress_cnt = 2;       // 请求装扮次数
+}
+
+// 活动初始化数据
+message pb_christmas_act_init{
+    pb_christmas_act act_data = 1;      // 活动数据
+    pb_shop_info shop_data = 2;        // 商店数据
+}

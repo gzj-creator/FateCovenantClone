@@ -1,0 +1,99 @@
+syntax = "proto3";
+import "project/triple_match_fight/triple_match_fight_db.proto.txt";
+
+// 历史录像：开局快照和保持原顺序的棋盘/战斗增量。
+message pb_triple_match_fight_replay {
+    pb_triple_match_fight_response response = 1;
+    repeated pb_triple_match_fight_swap_record updates = 2;
+    pb_triple_match_fight_settlement settlement = 3;
+}
+
+
+// 三消战斗发起请求数据
+message pb_triple_match_fight_request {
+    int64 fight_tid = 1;
+    int64 enemy_id = 2; // 敌人的角色id
+    bytes req = 3; // 战斗发起的功能数据
+}
+
+// 三消战斗发起返回数据
+message pb_triple_match_fight_response {
+    int64 id = 1; // 战斗Id
+    int64 tid = 2; // 战斗Tid
+    int32 type = 3; // 战斗类型
+    int64 red_role_id = 4; // 红方角色Id
+    int64 blue_role_id = 5; // 蓝方角色Id
+    pb_triple_match_fight_map map = 6;     // 消消乐地图数据
+    uint64 atk_power = 7;  // 进攻方总战力
+    uint64 def_power = 8;  // 防守方总战力
+    repeated action action_list = 9; // 全量战报对战数据列表  -- 断线重连需要
+    int64 round_id = 10; // 当前回合id
+    int64 phase_id = 11; // 当前操作阶段id，同回合内也会递增
+    int32 remaining_ms = 12; // 当前手动操作剩余毫秒；PVE为0
+    bool is_pve = 13; // PVE不启用操作倒计时
+    repeated action_team red_teams = 14; // 红方队伍列表
+    repeated action_team blue_teams = 15; // 蓝方队伍列表
+}
+
+// 三消pvp匹配开战推送
+message pb_tri_match_pvp_match_start_push {
+    pb_triple_match_fight_response fight = 1; // 战斗响应
+    int64 match_role_id = 2; // 匹配到的玩家角色ID，机器人则为0
+    int64 grade = 3; // 匹配对手段位tid，机器人为0
+}
+
+// 三消战斗交换位置请求
+message pb_triple_match_fight_swap_tile_req{
+      int64 id = 1; //战斗id
+      int64 x1 = 2; //x坐标1
+      int64 y1 = 3; //y坐标1
+      int64 x2 = 4; //x坐标2
+      int64 y2 = 5; //y坐标2
+      bool is_auto = 6; //是否自动选择
+      int64 round_id = 7; //客户端看到的回合id
+      int64 phase_id = 8; //客户端看到的操作阶段id
+      int64 client_op_id = 9; //客户端单调递增操作id，用于幂等
+}
+
+// 三消战斗开始倒计时（Ready）
+message pb_triple_match_fight_ready_req{
+      int64 fight_id = 1; //战斗id
+      int64 round_id = 2; //回合id
+      int64 phase_id = 3; //操作阶段id
+}
+
+message pb_triple_match_fight_ready_rsp{
+      int32 remaining_ms = 1; //剩余操作毫秒
+      int64 round_id = 2; //生效回合id
+      int64 phase_id = 3; //生效操作阶段id
+}
+
+// 取消托管
+message pb_triple_match_fight_cancel_takeover_req{
+    int64 fight_id = 1;
+}
+message pb_triple_match_fight_cancel_takeover_rsp{
+    int64 round_id = 1; //取消后生效回合id
+    int64 phase_id = 2; //取消后生效操作阶段id
+    bool is_takeover = 3; //服务端最终托管状态
+}
+
+//------------  主动推送数据  ------------//
+// 三消战斗战报推送（通用的战报推送，正常用于操作用）
+message pb_triple_match_fight_swap_record{
+      int64 id = 1; //战斗id
+      repeated action battle_list = 2; // 增量-战报对战数据列表
+      int64 round_id = 3; //推送产生时的回合id
+      int64 phase_id = 4; //推送产生时的操作阶段id
+      bool is_player = 5; // 是否玩家操作
+}
+
+// 三消战斗结算推送
+message pb_triple_match_fight_settlement{
+    int32 result = 1; // 战斗结果，部分战斗会在结算时修改结果，例如：挑战关卡必胜等
+    bytes stm_data = 2; //结算数据，由各个模块自己解析
+    int64 fight_tid = 3; // 战斗Tid
+    int32 fight_type = 4; // 战斗类型
+    int64 fight_id = 5; // 战斗Id
+}
+

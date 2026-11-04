@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/hero_blazon_draw/hero_blazon_draw.db.proto.txt";
+import "project/attribute/attribute.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 请求英雄纹章抽奖
+message pb_hero_blazon_draw_req{
+    int32 draw_type = 1;        // 抽奖类型
+    int32 times = 2;            // 抽奖次数
+    bool is_open_replace = 3;   // 是否开启消耗替代资源
+}
+message pb_hero_blazon_draw_rsp{
+    pb_hero_blazon_draw_group blazon_draw_group = 1;    // 英雄纹章抽奖数据
+    pb_res_to_client res_change = 2;                    // 资源变化
+}

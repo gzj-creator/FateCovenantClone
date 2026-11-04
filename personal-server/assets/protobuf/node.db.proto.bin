@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+// 游服节点信息
+message pb_game_node {
+    int32 id = 1;                   // 机器编号，平台生成
+    bool enable = 2;                // 是否启用：true=启用，false=停用
+    string name = 3;                // 节点名字符串，比如"game@192.168.20.143"
+    string login_addr = 4;          // 外网登录地址 = Host:Port，比如"192.168.20.143:3030"
+    int32 login_limit = 5;          // 登录限制人数：在线角色数超过限制后不允许登录，给予提示
+    int32 reconnect_limit = 6;      // 重连限制人数：重连时超过此限制，则给予提示，然后回到登录界面
+    int32 enqueue_limit = 7;        // 排队限制人数：游服网关允许的最大排队人数，超过人数则不会推荐逻辑服
+}
+
+// 游服节点内存缓存信息
+message pb_game_node_mem{
+    bool boot_finish = 1;          // 服务器是否启动完成
+}

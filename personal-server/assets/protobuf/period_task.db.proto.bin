@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// 周期任务数据列表
+message pb_period_task_all {
+    repeated pb_period_task_info list = 1;        // 周期任务数据列表
+}
+
+// 周期任务数据
+message pb_period_task_info {
+    uint64 version = 1;                           // 版本
+    repeated pb_period_task_item task_list = 2;   // 任务奖励领取记录
+    bytes stage_award_state = 3;                  // 阶段奖励领取状态
+    bytes score_award_state = 4;                  // 积分奖励领取状态
+}
+
+// 单个任务完成状态记录
+// 周期刷新/永久-有该条记录表示奖励已领
+// 每日刷新-有该条记录且refresh_sec与今日时间一致表示奖励已领
+message pb_period_task_item {
+    uint64 task_id = 1;                           // 任务id
+    uint64 refresh_sec = 2;                       // 刷新时间
+}

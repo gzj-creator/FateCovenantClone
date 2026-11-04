@@ -1,0 +1,7 @@
+syntax = "proto3";
+import "general/module.db.proto.txt";
+
+// 系统开关推送消息
+message pb_switch_change_rev{
+    repeated pb_switch switch_list = 1;// 发生变化的功能开关
+}

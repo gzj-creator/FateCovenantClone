@@ -1,0 +1,384 @@
+syntax = "proto3";
+
+import "project/role.db.proto.txt";
+
+// 战斗者基础数据
+message pb_fighter_base_info {
+    int64 id = 1; // 战斗者ID
+    int64 tid = 2; //战斗者配置TID
+    int32 role_type = 3; //战斗者角色类型【英雄、NPC、队长...】
+    int64 uid = 5; //英雄唯一id
+    int64 role = 6; //角色【英雄表Tid|Npc表Tid|定制队长表Tid】
+    int32 team = 7; //队伍
+    int32 team_index = 8;
+    int32 loc = 9; //站位
+    int32 star = 10; //卡牌星级
+    int32 level = 11; //战斗者等级
+    int32 quality = 12; // 战斗者品质
+    int64 hp = 13; //气血
+    int64 max_hp = 14; // 气血上限
+    bool enable = 15; // 是否激活
+    int64 final_hp = 16;// 最终气血
+    int64 style = 17;// 形象【形象表tid】
+    repeated uint64 pet = 18;// 被动魔灵（魔灵技能表tid）
+    int32 source = 19;// 来源标识，目前只有增援小队
+    repeated pb_fighter_attr init_attr = 20;    //初始属性
+    repeated int64 ability_list = 21;    // 技能列表(技能表tid，队长使用)
+    repeated pb_fighter_inherit_common inherit_list = 22; // 通用继承数据列表(继承数据使用)
+    bool is_mutant = 23;     // 是否变异
+    int64 fantasy_equip_tid = 24; // 穿戴专武tid
+    int32 mastery = 25;     // 专精等级(突破等级*1000+等级)
+    uint64 hero_diff = 26;  // 全英雄变异标记(和英雄保持一致)
+    repeated pb_fighter_attr all_attr = 27;    //全属性(主要用于日志记录，记录后清除，不落地)
+    repeated int64 hero_other_ab_list = 28;     // 英雄其他技能列表(主要用于日志记录)
+    int32 reforge_skill_n = 29;     // 洗炼激活技能数量
+    uint64 water_gun = 31;          // 水枪信息
+    repeated uint64 skin_tid = 32; // 皮肤tid
+    repeated uint64 help_elves = 33; // 助战精灵列表(空位为0)
+}
+
+//战斗者属性数据
+message pb_fighter_attr{
+    int32 type = 1; // 战斗属性类型，对应“战斗属性表”的Tid
+    int64 value = 2;// 战斗属性值
+}
+
+// 战斗者初始数据
+message pb_fighter_info {
+    // 基础数值
+    int64 tid = 1; //战斗者配置TID
+    int32 type = 2; //战斗者类型【对应战斗者表中配置的普通怪、boss怪】
+    int32 role_type = 3; //战斗者角色类型【英雄、NPC、队长...】
+    bool custom_caption = 4; //是否是定制队长(前台表现和队长有区别)
+    int64 uid = 5; //英雄唯一id
+    int64 role = 6; //角色【英雄表Tid|NPC表Tid|定制队长表Tid】，按照战斗者类型来区分
+    int64 hero_tid = 7; //英雄id，主要用于战斗中目标选择判断
+    int32 style = 8; //形象
+    int32 name = 9; //名字
+    int32 camp = 10; //阵营
+    int32 profession = 11; //职业
+    int32 sex = 12; //性别
+    int32 team = 13; //队伍
+    int32 loc = 14; //站位
+    int32 star = 15; //战斗者星级
+    int32 level = 16; //战斗者等级
+    int32 quality = 17; // 战斗者品质
+    int32 team_index = 18;// 阵容队伍编号
+    int32 source = 19;// 来源标识，目前只有增援小队
+    bool is_soul = 20;  // 是否是魂将
+    bool is_guards = 21;    // 是否主角团成员
+    bool is_mutant = 22;     // 是否变异
+    // 技能属性数据
+    repeated uint32 ability_list = 23;    // 技能列表
+    repeated int32 extra_ab_list = 24; // 额外附带的技能效果
+    repeated pb_fighter_attr attr_list = 25; // 属性列表
+
+    int64 fantasy_equip_tid = 26;   // 穿戴专武tid
+    int32 mastery = 27;     // 专精等级(突破等级*1000+等级)
+    int32 init_quality = 28; // 初始品质
+    uint64 hero_diff = 29;  // 全英雄变异标记(和英雄保持一致)
+    int32 reforge_skill_n = 30;     // 洗炼激活技能数量
+    uint64 water_gun = 31;          // 水枪信息
+    repeated uint64 skin_tid = 32; // 皮肤tid
+    repeated uint64 sp_skill = 33; // sp技能列表(可能包含0占位)
+    int32 fantasy_equip_star = 34; // 穿戴专武星级
+}
+
+// 战斗者数据继承key
+message pb_fighter_inherit_key {
+    int64 role_id = 1; // pvp战斗时，需要区分英雄uid
+    int64 uid = 2; // 英雄Uid
+    int64 tid = 3; // Npc的fighter表tid
+    int32 team = 4;
+    int32 loc = 5;
+    int64 fight_tid = 6; // 战斗表TID
+}
+
+// 战斗者数据继承通用数据
+message pb_fighter_inherit_common{
+    uint32 type = 1; // 继承类型
+    int64 value = 2; // 继承值
+}
+
+// 战斗者数据继承
+message pb_fighter_inherit {
+    pb_fighter_inherit_key key = 1;
+    int64 hp = 2; // 血量继承
+    int32 hp_type = 3;// 血量继承的类型【0剩余血量百分比，1已消耗绝对值，2剩余绝对值，具体的定义在fight.hrl中定义】
+    repeated pb_fighter_inherit_common common_list = 4; // 通用继承数据列表
+}
+
+// 战斗数据继承
+message pb_fight_inherit {
+    int32 fight_type = 1;
+    repeated pb_fighter_inherit fighter_list = 2; // 进攻方数据池
+    int64 update_time = 3;// 刷新时间
+}
+
+// ============================= 战斗额外数据
+// 额外定制属性
+message pb_custom_attr{
+    int32 type = 1;// 属性类型：属性种类表
+    int64 value = 2;//属性数值
+    bool is_fix = 3;// 是否是固定值
+}
+
+// 战斗者额外定制数据
+message pb_npc_custom{
+    int32 team_index = 1;// 第几队
+    int32 loc = 2;// 指定站位
+    int64 npc_tid = 3;//指定NPC
+    int32 star = 4;// 指定的星级
+    int32 level = 5;// 指定等级
+    int32 break_lv = 6; // 突破等级
+    repeated pb_custom_attr attr_list = 7;// 属性修正
+    repeated pb_attr_item fixed_attr_list = 8;// 固定值属性修正
+}
+
+// 战斗英雄额外修正数据
+message pb_hero_custom{
+    int64 uid = 1; // 唯一id
+    repeated pb_custom_attr attr_list = 7;// 属性修正，修正英雄数值的计算后的最终值
+}
+
+// 战报缓存集合
+message pb_fight_report_list{
+    repeated pb_fight_report reports = 1;
+}
+
+// 战报信息
+message pb_fight_report {
+    int64 id = 1; // 战斗Id
+    int64 tid = 2; // 战斗Tid
+    int32 type = 3; // 战斗类型
+    int64 atk_role_id = 4; // 进攻方角色Id
+    int64 def_role_id = 5; // 防守方角色Id
+    repeated pb_fight_report_battle battle_list = 6; // 战报对战数据列表
+    int64 time = 7; // 战报时间/秒
+    int32 final_result = 8;// 战斗最终结果
+    bool finish = 9; // 是否已结算
+    bytes req = 10; // 发起战斗的数据缓存（战报回放会用到，就直接放战报里）
+    repeated pb_fight_report_battle add_battle_list = 11; // 加时赛对战数据列表
+    bool ignore_inherit = 12;       // 忽略战斗数据继承(有继承的类型生效)
+    int32 atk_rank = 13; // 进攻方团队评级
+    int32 def_rank = 14; // 防守方团队评级
+    int32 team_count = 15;  // 队伍数量(进攻方数量*100+防守方数量)]
+    uint64 atk_power = 16;  // 进攻方总战力
+    uint64 def_power = 17;  // 防守方总战力
+}
+
+// 战报简易阵容
+message pb_fight_report_lineup{
+    repeated pb_fight_report_lineup_team team_list = 1;
+}
+
+// 战报简易阵容队伍
+message pb_fight_report_lineup_team {
+    uint64 team_index = 1;      // 第几队
+    repeated pb_fight_report_fighter fighter_list = 2; // 战斗者简要信息
+}
+
+message pb_fight_report_fighter {
+    uint64 tid = 1;     // 英雄tid
+    bool is_mutant = 2;     // 是否变异
+}
+
+// 战报对战数据
+message pb_fight_report_battle {
+    int32 atk_team_index = 1; // 进攻方队伍下标
+    int32 def_team_index = 2; // 防守方队伍下标
+    repeated pb_fighter_base_info fighter_list = 3; // 战斗者列表
+    repeated bytes action_list = 4; // 战斗行为列表
+    int32 over_reason = 5;// 对战结束原因
+    int32 over_round = 6; // 结束回合
+    int32 result = 7; // 每场对战的结果
+    bool is_add_battle = 8; // 是否是附加赛
+    uint64 atk_power = 9;  // 进攻方战力
+    uint64 def_power = 10;  // 防守方战力
+    pb_fight_report_lineup atk_brief_lineup = 11; // 进攻方阵容
+    pb_fight_report_lineup def_brief_lineup = 12; // 防守方阵容
+}
+
+//战报ID，用于聊天分享
+message pb_fight_report_id {
+    int64 id = 1; //战报ID
+    string name = 2; //战报名字
+    int64 atk_role_id = 3; // 进攻方角色Id
+    int64 def_role_id = 4; // 防守方角色Id
+    int64 time = 5; // 战报时间/秒
+    int64 tid = 6; // 战斗Tid
+    int32 type = 7; // 战斗类型
+    int32 final_result = 8;// 战斗最终结果
+    bytes req = 9; // 发起战斗的数据缓存（战报回放会用到，就直接放战报里）
+}
+
+/// 战斗事件定义
+
+// 行动开始
+message pb_fat_action_before {
+    int32 id = 1; // 行动id
+    int32 src_id = 2; // 施法者
+    repeated int32 assist_list = 3; // 协战者列表
+    repeated int32 aim_list = 4; // 目标列表
+    int64 ab_tid = 5; // 技能tid
+    int32 type = 6; // 行动类型
+}
+
+// 行动结束
+message pb_fat_action_after {
+    int32 id = 1; // 行动id
+}
+
+// buff对象
+message pb_buff_obj {
+    int32 aim_id = 1; // 目标战斗者
+    int64 tid = 2; // buff表格tid
+    int64 ab_tid = 3; // 当前挂载buff的技能Tid(主要用于前台羁绊飘字，目前仅添加时有效)
+    int32 overlay = 4; // Buff改变的层数
+    bool sign = 5; // 符号标识，true:增加，false:移除
+    int32 caster_id = 6;// buff的施法者
+    int32 change_reason = 7; //0.普通增加/移除 1.驱散 2.死亡 3.引爆
+}
+
+// buff变化
+message pb_fat_buff_change {
+    int32 id = 1; // 行动id
+    repeated pb_buff_obj buff_list = 2; // 当前增加的buff列表
+}
+
+// 战斗者死亡
+message pb_fat_fighter_die {
+    int32 id = 1; // 行动id
+    int32 src_id = 2; // 施法者
+    int32 aim_id = 3; // 目标
+    int32 count = 4; // 击杀数量
+}
+
+// 战斗者复活
+message pb_fat_fighter_relive {
+    int32 id = 1; // 行动id
+    int32 aim_id = 2; // 目标
+}
+
+// 伤害对象 - 如果有新增需要修改fight_action的is_record_harm_obj_
+message pb_harm_obj {
+    int32 aim_id = 1; // 伤害目标
+    int32 src_id = 2; // 施法者
+    int32 type = 3; // 伤害类型
+    bool is_ab_aim = 4; // 是否是技能伤害目标
+    int64 value = 5; // 伤害数值
+    int64 old_hp = 6; // 结算前的气血值
+    int64 hp = 7; // 结算后的气血值
+    int64 old_shield = 8; // 原有护盾值
+    int64 shield = 9; // 当前护盾值
+    repeated pb_harm_obj sub_harm_list = 10; //该伤害附带造成的其他伤害（如：分担、溅射等）
+    bool is_ignore_dmg = 11; // 忽略伤害统计（根据技能效果类型判断，注意：目前不支持buff效果）
+    int64 old_cf_hp = 12; // 原有超凡生命
+    int64 cf_hp = 13; // 当前超凡生命
+    int64 old_second_shield = 14; // 原有二级护盾值
+    int64 second_shield = 15; // 当前二级护盾值
+}
+
+// 伤害
+message pb_fat_harm {
+    int32 id = 1; // 行动id
+    repeated pb_harm_obj harm_list = 2; // 伤害列表
+}
+
+// 移除战斗者
+message pb_fat_remove_fighter {
+    repeated int32 aim_list = 1;
+}
+
+// 护盾变化
+message pb_fat_shield {
+    int32 id = 1; // 行动id
+    int32 aim_id = 2; // 目标战斗者
+    int64 shield = 3; // 护盾值
+}
+
+// 二级护盾变化
+message pb_fat_second_shield {
+    int32 id = 1; // 行动id
+    int32 aim_id = 2; // 目标战斗者
+    int64 second_shield = 3; // 二级护盾值
+}
+
+// 战斗者入场
+message pb_fat_fighter_enter {
+    int32 id = 1; // 行动ID
+    int32 aim_id = 2;
+    pb_fighter_base_info fighter = 3; // 入场的战斗者
+}
+
+// 战斗者离场
+message pb_fat_fighter_out {
+    int32 aim_id = 1;
+}
+
+// 回合准备
+message pb_fat_round_ready {
+    int32 round = 1; // 当前回合
+}
+
+// 回合结束
+message pb_fat_round_over {
+    int32 round = 1; // 当前回合
+}
+
+// 战斗结束
+message pb_fat_battle_over {
+    int32 why = 1; // 结束原因
+}
+
+// 战斗中提示
+message pb_fat_tip {
+    int32 id = 1; // 行动id
+    int32 aim_id = 2; // 目标(前台不使用该字段)
+    int32 tip = 3; // 飘子类型(前台不使用该字段)
+    int32 show_delay = 4;   // 展示延时(前台不使用该字段)
+    repeated pb_tip_obj tip_list = 5;   // 用于收集一次行动中的所有提示
+}
+
+// 战斗提示对象
+message pb_tip_obj {
+    int32 aim_id = 1; // 目标
+    int32 tip = 2; // 飘子类型
+    int32 show_delay = 3;   // 行动开始延迟展示时间/毫秒(为0则前面的行动表现完再展示)
+}
+
+// 属性同步
+message pb_fat_attr_sync{
+    int32 id = 1; // 行动id
+    int32 aim_id = 2; // 目标(前台不使用该字段)
+    int32 attr_type = 3;// 战斗属性类型(前台不使用该字段)
+    int64 attr_val = 4; // 战斗属性值(前台不使用该字段)
+    bool ignore_tip = 5; // 忽略飘字(前台不使用该字段)
+    repeated pb_fat_attr_obj attr_list = 6;     // 用于收集一次行动中的所有属性改变
+}
+
+// 属性对象
+message pb_fat_attr_obj{
+    int32 aim_id = 1; // 目标
+    int32 attr_type = 2;// 战斗属性类型
+    int64 attr_val = 3; // 战斗属性值
+    bool ignore_tip = 4; // 忽略飘字
+}
+
+// 死斗开始
+message pb_fat_deathmatch_start{
+    int32 round = 1;// 当前回合
+}
+
+// 内网同步属性对象
+message pb_local_fat_attr_obj{
+    int32 aim_id = 1; // 目标
+    repeated pb_fighter_attr attr_list = 2;// 战斗属性列表
+}
+
+// 超凡生命变化
+message pb_fat_cf_hp {
+    int32 id = 1; // 行动id
+    int32 aim_id = 2; // 目标战斗者
+    int64 cf_hp = 3; // 超凡生命值
+}

@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+import "core/db.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+import "project/count_statistics/count_statistics.db.proto.txt";
+
+// 大富翁活动公会数据
+message pb_monopoly_act_guild_info{
+    repeated monopoly_act_guild_data act_data_list = 1;            // 活动数据列表
+}
+
+// 大富翁活动公会数据
+message monopoly_act_guild_data{
+    repeated pb_monopoly_act_supply supply_list = 1;           // 补给列表
+    repeated pb_monopoly_act_order order_list = 2;             // 订单列表
+    uint64 version = 3;                                        // 数据版本号
+    int64 score = 4;                                           // 总积分
+    int64 supply_uid_index = 5;                                // 补给uid索引记录
+    repeated pb_monopoly_act_report_data day_record_list = 6;      // 每日战报列表
+    repeated pb_monopoly_act_report_data last_record_list = 7;      // 昨日战报列表
+    int64 record_update_time = 8;                                // 战报更新时间戳
+    int64 day_award_index = 9;                                // 每日奖励索引记录
+    repeated pb_monopoly_act_score_report_data score_record_list = 10;      // 人员变动积分记录列表
+    repeated pb_monopoly_act_role_score_data role_score_list = 11;      // 人员积分记录列表
+}
+
+// 大富翁公会人员积分记录
+message pb_monopoly_act_role_score_data{
+    int64 role_id = 1;  // 角色id
+    int64 score = 2;                          // 积分
+}
+
+// 大富翁公会人员变动积分记录
+message pb_monopoly_act_score_report_data{
+    int64 role_id = 1;  // 角色id
+    int64 delta_score = 2;                          // 积分变动
+}
+
+// 大富翁公会昨日战报数据
+message pb_monopoly_act_report_data{
+    int64 type = 1;  // 战报类型 - <大富翁活动战报类型表表>
+    repeated pb_u64_kv value_info = 2;                          // {角色id, 值}
+}
+
+// 大富翁公会订单
+message pb_monopoly_act_order{
+    int64 role_id = 1;             // 角色id
+    uint32 tid = 2;             // 《大富翁活动格子表》tid
+    int64 finish_role_id = 3;             // 完成订单的角色id
+    int64 event_uid = 4;             // 事件uid
+    int64 param = 5;             // 事件动态参数，比如敌方id
+}
+
+// 大富翁公会补给
+message pb_monopoly_act_supply{
+    uint32 uid = 1;             // 事件uid
+    int64 role_id = 2;             // 发起人角色id
+    repeated int64 get_role_ids = 3;             // 获得补给的角色id
+    int64 supply_tid = 4;             // 支付礼包
+}
+
+// 大富翁活动角色数据
+message pb_monopoly_act_role_info{
+    repeated monopoly_act_role_data act_data_list = 1;            // 活动数据列表
+}
+
+message monopoly_act_role_data{
+    uint32 cur_index = 1;                                        // 当前走到的格子索引
+    repeated pb_monopoly_act_event event_list = 2;                   // 事件列表
+    int64 next_multiple = 3;            // 下一个格子倍数
+    repeated int64 role_total_award_gets = 4;             // 个人累计积分领取记录
+    repeated int64 guild_total_award_gets = 5;             // 公会成就领取记录
+    repeated int64 role_live_award_gets = 6;             // 个人活跃领取记录
+    uint64 version = 7;             // 数据版本号
+    int64 score = 8; // 积分
+    int64 event_uid_index = 9;  // 事件uid索引记录
+    repeated int64 pvp_match_list = 10; // 匹配过的玩家列表
+    int64 day_help_num = 11; // 今日帮助次数
+    int64 day_update_time = 12; // 今日更新时间(时间戳)
+    pb_recharge_limit_info recharge_info = 13;           //充值信息
+    int64 pvp_keep_win_num = 14;                                // pvp胜利次数记录
+    int64 pvp_keep_lose_num = 15;                                // pvp失败次数记录
+    int64 firm_money = 16;                                // 商行本金
+    int32 firm_save_num = 17;                                // 商行本金保存次数
+}
+
+// 大富翁事件
+message pb_monopoly_act_event{
+    uint32 tid = 1;             // 《大富翁活动格子表》tid
+    int64 uid = 2;           // 事件索引
+    uint32 finish_stage = 3;         // 完成状态（0未完成  1已处理（发起订单）  2完成）
+    int64 param = 4;            // 事件动态参数，比如敌手id
+}

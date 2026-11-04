@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+import "project/hero/base/hero.db.proto.txt";
+
+//通用玩家简单信息
+message common_simple_play_info {
+    sint64 id = 1; //ID
+    bytes alliance_info = 2; //联盟信息
+    int32 server_id = 3; //服务器id
+    bytes name = 4; //名字
+    int32 level = 5; //等级
+    pb_figure_simple_info figure_simple_info = 6; //形象数据
+    int32 value = 7; //值
+    int32 power = 8; //战力
+    bool is_robot = 9; //是否是机器人
+    bytes extra = 10;   //额外数据
+}
+
+//当前形象item数据
+message pb_figure_item {
+    uint64 tid = 1;           //配置tid
+    uint64 expire_time = 2;   //到期时间,永久为0
+    bool is_red = 3;          //是否显示红点
+    int32 level = 4;          //形象等级
+}
+
+//未激活的称号item数据
+message pb_figure_inactive_title_item {
+    uint64 tid = 1;        //配置tid
+    uint64 get_time = 2;   //获得奖励的时间
+    uint64 duration = 3;   //持续时间
+    bool is_red = 4;       //是否显示红点
+}
+
+//角色形象简单数据（即玩家当前使用的数据，会在很多地方使用，所以独立出来）
+message pb_figure_simple_info {
+    pb_figure_item head_info = 1;         //当前使用头像
+    pb_figure_item frame_info = 2;        //当前使用头像框
+    pb_figure_item title_info = 3;        //当前使用称号
+    uint64 default_head = 4;              //初始随机的头像，过期后根据该数值设置
+    int32 sex = 5;                        //性别
+    pb_figure_vow vow = 6;                //誓约对象信息
+    uint64 style_id = 7;                  //角色展示形象id
+    uint32 rank = 8;                      //头衔
+    uint32 set_sex_times = 9;             //设置性别次数
+    bytes rank_award_bin = 10;            //头衔奖励领取状态
+    uint64 chat_bubble = 11;              //设置的聊天气泡tid(废弃)
+    pb_figure_item new_chat_bubble = 12;  //设置的聊天气泡tid
+}
+
+//玩家拥有的形象数据（不会经常访问，只在玩家更换头像、头像框、称号时用到）
+message pb_figure_have_info {
+    bytes stable_head_info = 1;             //永久性头像数据
+    bytes stable_frame_info = 2;            //永久性头像框数据
+    bytes stable_title_info = 3;            //永久性称号数据
+    repeated pb_figure_item limit_head_list = 4;    //限时头像list
+    repeated pb_figure_item limit_frame_list = 5;   //限时像框list
+    repeated pb_figure_item limit_title_list = 6;   //限时称号list
+    repeated pb_figure_inactive_title_item inactive_title_list = 7;    //待激活的称号list
+    bytes stable_head_red = 8;             //永久性头像红点数据
+    bytes stable_frame_red = 9;            //永久性头像框红点数据
+    bytes stable_title_red = 10;            //永久性称号红点数据
+    bytes stable_style_red = 11;            //形象红点数据
+    bytes stable_bubble_info = 12;          // 永久聊天气泡数据
+    repeated pb_figure_item limit_bubble_list = 13; // 限时聊天气泡列表
+    bytes stable_bubble_red = 14;            //聊天气泡红点数据
+}
+
+// 活跃玩家数据
+message pb_active_role_info {
+    repeated pb_active_role sort_active_role = 1;   // 根据登陆时间排序的活跃玩家列表
+}
+
+// 单个活跃玩家信息
+message pb_active_role {
+    uint64 role_id = 1;         // 角色id
+    uint32 login_stamp = 2;     // 登录时间
+    uint32 logout_stamp = 3;    // 登出时间
+    uint32 level = 4;           // 等级
+    bytes name = 5;             // 角色名字
+}
+
+// 玩家形象誓约相关信息
+message pb_figure_vow{
+    bytes partner_name = 1;                 //誓约对象名字
+    uint32 relation = 2;                    //誓约关系
+}
+
+// 角色杂项数据
+message pb_role_sundry {
+    repeated pb_role_sundry_item list = 1;
+    bytes video_award_states = 2;       // 看视频奖励领取状态，key是配置表的tid
+}
+
+message pb_role_sundry_item {
+    uint32 tid = 1;         // 角色杂项数据表的tid
+    uint32 value_int = 2;   // 如果值是整数，则有此字段
+    bytes value_pb = 3;     // 如果值是pb格式，则有此字段
+    uint32 time_day = 4;    // 如果配置了有效时间，则有此字段
+}

@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+import "project/lineup_snapshot/lineup_snapshot.db.proto.txt";
+import "project/count_statistics/count_statistics.db.proto.txt";
+
+// 注意：地图节点的数据，前2个必须为tid和map_node_id！！！
+
+// 龙息之地航会数据
+message pb_guild_explore_guild{
+    uint64 explore_exp = 1;                             // 航会累积调查值
+    uint64 wish_item_count = 2;                         // 许愿道具(龙珠)数量
+    repeated uint64 wish_item_fetch_role = 3;                 // 许愿道具(龙珠)获得玩家，最多7人
+    repeated pb_guild_explore_build build_list = 4;     // 建筑列表
+    pb_guild_explore_boss boss = 5;                     // boss数据
+    pb_count_list_flush flush_data = 6;                 // 刷新时间(1.龙珠，2.boss...)
+    pb_count_statics_data stat_data = 7;                // 统计数据
+    pb_guild_explore_active active_data = 8;            // 活跃数据
+    repeated pb_u32_kv event_stat_list = 9;             // 事件统计列表(每个事件总共执行多少次，前台展示使用)
+    repeated pb_u64_kv wish_item_touch_list = 10;       // 许愿道具触发点列表(有序)(k为触发的次数，v为触发的人)
+    uint32 join_item_count = 11;                        // 由成员加入发放的道具数量
+    repeated uint64 unlock_list = 12;                   // 传送门解锁成员
+}
+
+// 龙息之地个人数据
+message pb_guild_explore_person{
+    pb_guild_explore_map_person map_person = 1;         // 个人地图数据
+    uint32 wish_round = 2;                              // 当前许愿轮次
+    pb_guile_explore_task task_data = 3;                // 任务数据
+    uint32 boss_count = 4;                              // 攻打boss的次数信息
+    bytes explore_award = 5;                            // 调查营地等级奖励领取状
+    repeated pb_guild_explore_build_person build_list = 6;  // 建筑个人数据列表
+    repeated uint32 portal_list = 7;                    // 传送门列表
+    uint64 refresh_sec = 8;                             // 刷新时间（回收钥匙，刷新每日豺狼人次数，刷新开宝箱次数）
+    repeated pb_guild_e_boss_box boss_award = 9;        // 发放的boss奖励（需要玩家主动领取）
+    uint64 boss_ref_sec = 10;                           // boss奖励刷新时间（给与boss宝箱的时间，用于判断换公会后是否发放宝箱）
+    uint32 wolf_count = 11;                             // 已领取豺狼人次数
+    uint32 open_box_count = 12;                         // 每日开宝箱次数（触发豺狼人后重置）
+    bool is_unlock_boss = 13;                           // 是否解锁过boss
+    uint32 last_boss_stage = 14;                        // 上次领取boss的阶段
+}
+
+// 龙息之地个人地图数据
+message pb_guild_explore_map_person{
+    uint64 refresh_sec = 1;                                     // 刷新时间/秒
+    repeated pb_guild_explore_box box_list = 2;                 // 宝箱列表
+    repeated pb_guild_explore_monster monster_list = 3;         // 怪物列表
+    repeated pb_guild_explore_monster elite_monster_list = 4;   // 精英怪物列表
+    repeated pb_guild_explore_box senior_box_list = 5;          // 高级宝箱列表
+}
+
+// 龙息之地前置地图个人数据
+message pb_guild_explore_pre_person{
+    uint32 state = 1;                                           // 数据状态(0未开始，1进行中，2已完成)
+    repeated pb_guild_explore_box box_list = 2;                 // 宝箱列表
+    repeated pb_guild_explore_monster monster_list = 3;         // 怪物列表
+    repeated pb_guild_explore_monster elite_monster_list = 4;   // 精英怪物列表
+    repeated pb_guild_explore_box senior_box_list = 5;          // 高级宝箱列表
+}
+
+// 龙息之地建筑个人数据
+message pb_guild_explore_build_person{
+    uint32 map_node_id = 1;                             // 建筑对应的地图节点
+    bytes level_award_state = 2;                        // 等级奖励领取状态
+}
+
+// 龙息之地地图数据
+message pb_guild_explore_map{
+    repeated pb_guild_explore_box box_list = 1;         // 宝箱列表
+    repeated pb_guild_explore_monster monster_list = 2; // 怪物列表
+    repeated pb_guild_explore_wolf wolf_list = 3;       // 豺狼人列表
+}
+
+// 龙息之地宝箱
+message pb_guild_explore_box{
+    uint32 tid = 1;                                 // 宝箱tid
+    uint32 map_node_id = 2;                         // 地图节点id(X * 1000 + Y)
+    uint32 type = 3;                                // 类型(公共/私有，自动操作使用)
+    repeated uint64 role_list = 4;                  // 捡过宝箱的人
+    repeated pb_res_obj consume_list = 5;           // 消耗钥匙列表
+}
+
+// 龙息之地怪物
+message pb_guild_explore_monster{
+    uint32 tid = 1;                                 // 怪物tid
+    uint32 map_node_id = 2;                         // 地图节点id
+    uint32 index = 3;                               // 怪物索引
+    pb_lineup_snapshot_key snapshot_key = 5;        // 阵容镜像key
+    uint32 type = 6;                                // 类型(公共/私有，自动操作使用)
+    repeated uint64 role_list = 7;                  // 打过小怪的人
+}
+
+// 龙息之地豺狼人
+message pb_guild_explore_wolf{
+    uint32 tid = 1;                                                     // 怪物tid
+    uint32 map_node_id = 2;                                             // 地图节点id
+    uint32 hp = 3;                                                      // 当前血量
+    repeated pb_guild_explore_wolf_role role_list = 4;                 // 打豺狼的人
+    uint64 start_time = 5;                                              // 触发豺狼人战斗时间
+}
+
+message pb_guild_explore_wolf_role{
+    uint64 role_id = 1;      //玩家id
+    bool is_rev = 2;        //是否领取奖励
+}
+
+// 龙息之地小游戏数据
+message pb_guild_explore_game_data{
+    repeated pb_guild_explore_game game_list = 1;   // 小游戏列表
+    uint64 last_touch_time = 2;                     // 上次触发时间/秒
+    uint64 today_count = 3;                         // 今天触发总次数(包含失败的)
+    uint64 today_touch_count = 4;                   // 今天触发成功次数
+    uint64 yesterday_touch_count = 5;               // 昨天触发成功次数
+}
+
+// 龙息之地小游戏
+message pb_guild_explore_game{
+    uint32 tid = 1;                                                 // 小游戏索引
+    uint32 map_node_id = 2;                                         // 地图节点id
+    repeated pb_guild_explore_game_person person_list = 3;          // 累积值
+    uint64 touch_time = 4;                                          // 触发时间/秒
+    uint64 touch_player = 5;                                        // 触发玩家
+    repeated pb_u64_kv award_state_l = 6;                           // 玩家领奖状态<角色id,最后一个奖励tid>
+}
+
+// 龙息之地小游戏个人
+message pb_guild_explore_game_person{
+    uint64 role_id = 1;                             // 玩家id
+    uint64 acc_value = 2;                           // 累积值
+    uint32 join_count = 3;                          // 参与次数
+    bool is_playing = 4;                            // 是否正在游戏中
+}
+
+// 龙息之地建筑
+message pb_guild_explore_build{
+    uint32 tid = 1;                                 // 建筑tid
+    uint32 map_node_id = 2;                         // 地图节点id
+    uint32 level = 3;                               // 等级
+    repeated uint64 occupy_list = 4;                // 占领玩家列表(按等级排列)
+}
+
+// 龙息之地boss
+message pb_guild_explore_boss{
+    uint32 tid = 1;                                 // boss tid
+    uint32 map_node_id = 2;                         // 地图节点id
+    uint64 max_hp = 3;                              // 最大血量
+    uint64 cur_hp = 4;                              // 当前血量
+    uint64 open_time = 5;                           // 开启时间
+    uint64 end_time = 6;                            // 挑战结束时间
+    repeated pb_guild_e_boss_box box_list = 7;      // 掉落宝箱列表
+}
+
+message pb_guild_e_boss_box{
+    uint32 type = 1;                //类型
+    uint64 num = 2;                 //数量
+}
+
+// 龙息之地任务数据
+message pb_guile_explore_task{
+    bytes person_task = 1;                          // 航会个人任务的领取状态
+    uint64 ref_guild_day_time = 2;                  // 航会个人任务刷新时间
+    bytes guild_glory_task = 3;                     // 航会成就任务的领取状态（不刷新）
+    bytes person_glory_task = 4;                    // 个人成就任务的领取状态（不刷新）
+    bytes guide_task = 5;                           // 新手任务的领取状态
+    bool is_rev_person = 6;                         // 个人任务进度的领取状态
+}
+
+// 航会活跃人数数据
+message pb_guild_explore_active{
+    uint32 day = 1;                                 // 当前天
+    uint32 last_active_count = 2;                   // 前一天活跃人数
+    repeated uint64 active_list = 3;                // 当天活跃列表
+}
+
+// 服务器相关数据
+message pb_guild_explore_server{
+    uint64 last_avg_power = 1;                      // 前一天活跃玩家的平均战力
+    repeated uint64 active_list = 2;                // 当天活跃列表
+    uint32 power_update_count = 3;                  // 战力更新次数
+    uint64 next_refresh_time = 4;                    // 下次天刷新时间
+    uint32 max_camp_lv = 5;                         // 最大龙息之地营地等级
+    uint64 next_rank_settle_time = 6;               // 下次排行榜结算时间
+}
+
+// 龙息之地商品数据
+message pb_guild_explore_shop{
+    uint64 next_reset_time = 1;                     // 下次重置时间/秒
+    repeated pb_guild_explore_shop_item item_list = 2;  // 商品列表
+}
+
+// 龙息之地商品
+message pb_guild_explore_shop_item{
+    uint32 tid = 1;                                 // 商品tid
+    uint32 buy_num = 2;                             // 购买次数
+}

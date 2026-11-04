@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+// 活动角色数据
+message pb_anniversary_game_act {
+  uint32 left_award_times = 1;    // 剩余有奖励的游戏次数(跨天没用掉可能会累计)
+  uint32 last_refresh_stamp = 2;  // 上次刷新时间戳(每日)
+  repeated pb_anniversary_game_act_best best = 3; // 玩法最佳成绩
+}
+
+// 玩法最佳成绩
+message pb_anniversary_game_act_best {
+  uint32 type = 1; // 玩法类型
+  uint32 score = 2; // 最佳成绩
+}

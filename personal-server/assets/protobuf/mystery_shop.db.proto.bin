@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+// 神秘商店随机数据
+message pb_mystery_times_data{
+    uint64 tid = 1;       // 配置表随机的tid
+    uint32 stage = 2;     // 随到次数段位
+    uint32 times = 3;     // 已经随机到的次数
+}
+
+// 神秘商店表格数据数据
+message pb_mystery_times{
+    uint32 times_type = 1;  // 随机配置类型
+    repeated pb_mystery_times_data times_data = 2;  //随机数据
+}
+
+// 神秘商店数据
+message pb_mystery_shop{
+    uint64 next_auto_refresh_time = 1;                          // 下次自动刷新时间点
+    uint64 last_manual_refresh_time = 2;                        // 上次手动刷新时间
+    int32 manual_refresh_count = 3;                             // 当日已手动刷新次数
+    repeated pb_mystery_shop_item discount_items = 4;           // 折扣商品列表
+    repeated pb_mystery_times all_times_data = 5;               // 各表随机数据
+    uint32 customize_auto_refresh_times = 6;                    // 定制自动刷新次数
+    uint64 buy_times = 7;                                       // 已购买次数
+}
+
+// 折扣商品信息
+message pb_mystery_shop_item {
+    int32 cell_id = 1;                      // 格子id
+    uint64 discount_item_tid = 2;           // 折扣道具tid
+    uint64 discount_price_index = 3;        // 折扣价格index
+    bool is_bought = 4;                     // 是否已购买
+}

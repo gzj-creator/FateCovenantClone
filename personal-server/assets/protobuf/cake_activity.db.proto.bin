@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+// 年糕活动数据
+message pb_cake_activity {
+    int64 last_update_time = 1; // 上次更新时间
+    bytes daily_task_revs = 2; // 当天任务领取状态
+    bytes recharge_task_revs = 3; // 充值任务领取状态
+    int32 daily_cake_count = 4; // 当天年糕数量
+}

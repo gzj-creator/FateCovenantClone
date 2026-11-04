@@ -1,0 +1,58 @@
+syntax = "proto3";
+import "project/elves/elves.db.proto.txt";
+import "project/elves_bead/elves_bead.db.proto.txt";
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 精灵升星
+message pb_elves_up_star_req {
+  int64 elves_tid = 1; // 精灵tid
+}
+
+// 天赋升级
+message pb_elves_up_talent_req {
+  int64 elves_tid = 1; // 精灵tid
+  int32 page = 2; // 天赋页
+  int32 talent_id = 3; // 天赋id
+  int32 up_level = 4; // 升级等级
+}
+
+// 图鉴升级
+message pb_elves_up_book_req {
+  int64 elves_tid = 1; // 精灵tid
+}
+
+// 精灵养成返回数据
+message pb_elves_develop_rsp {
+  pb_elves elves = 1; // 精灵数据
+  pb_res_to_client res_change = 2; // 资源变化
+}
+
+// 精灵上阵灵祠
+message pb_elves_lineup_help_req {
+  repeated pb_elves_help_slot help_slots = 1;
+}
+
+// 精灵穿戴皮肤
+message pb_elves_wear_skin_req {
+  int64 elves_tid = 1; // 精灵tid
+  int32 skin_tid = 2; // 皮肤tid
+}
+
+// 精灵实力对比信息
+message pb_elves_play_data_block{
+  pb_elves_develop elves_develop = 1; // 精灵列表
+  repeated int32 equip_list = 2; // 精灵上阵列表
+  repeated pb_elves_bead_back elves_beads = 3; // 灵珠列表
+}
+
+// 精灵变异返回数据
+message pb_elves_mutant_back{
+    pb_elves elves = 1;                 // 精灵
+    pb_res_to_client res_change = 2;  // 资源变化
+}
+
+// 精灵破格
+message pb_elves_up_break_lv_req {
+  int64 elves_tid = 1; // 精灵tid
+}

@@ -1,0 +1,108 @@
+syntax = "proto3";
+import "project/guild_war/guild_war.db.proto.txt";
+import "project/realtime_challenge/realtime_challenge.db.proto.txt";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+
+// 龙息战场进入据点请求
+message pb_guild_war_entry_base_req{
+    uint64 id = 1;                      // 进入据点的玩家id(离线玩家需要使用)
+    uint32 base_tid = 2;                // 请求进入的据点tid
+}
+
+// 龙息战场据点操作推送
+message pb_guild_war_base_operate_push{
+    pb_guild_war_base base = 1;             // 据点信息
+    uint64 guild_id = 2;                    // 积分改变的航会id(注意：可能没有)
+    uint64 acc_score = 3;                   // 积分改变的航会当前累积积分
+    uint64 output_rate = 4;                 // 积分产出速率
+    uint64 last_output_time = 5;            // 上次积分产出计算时间/秒
+    uint64 operate_id = 6;                  // 触发操作的id(可能为0)
+    uint32 operate_type = 7;                // 触发操作类型
+    uint32 area_idx = 8;                    // 赛区
+}
+
+// 龙息战场结算数据推送
+message pb_guild_war_settle_push{
+    repeated pb_guild_war_guild guild_list = 1;         // 航会列表
+    repeated pb_guild_war_guess guess_list = 2;         // 竞猜列表
+    repeated pb_guild_war_settle_person person_list = 3;// 玩家列表(按排名有序)
+    pb_guild_war_settle settle_data = 4;                // 记录的结算数据
+    repeated pb_u32_kv stat_list = 5;                   // 个人统计数据(key为类型，value为数值)
+    uint32 stage = 6;                                   // 活动阶段
+    uint32 area_idx = 7;                                // 结算的赛区
+}
+
+// 龙息战场结算玩家数据
+message pb_guild_war_settle_person{
+    uint64 role_id = 1;             // 玩家id
+    uint32 kill_n = 2;              // 击杀数量
+}
+
+// 龙息战场奖励补发推送数据
+message pb_guild_war_reissue_push{
+    pb_guild_war_person war_person = 1;                 // 个人数据
+    pb_res_to_client res = 2;                           // 资源改变
+}
+
+// 龙息战场竞猜请求
+message pb_guild_war_guess_req{
+    uint32 tid = 1;                             // 竞猜tid
+    uint64 support_obj_id = 2;                  // 支持对象id
+    uint32 area_idx = 3;                        // 竞猜赛区索引
+}
+
+// 龙息战场竞猜推送
+message pb_guild_war_guess_push{
+    uint32 area_idx = 1;                        // 赛区
+    pb_guild_war_guess guess = 2;               // 竞猜信息
+}
+
+// 进入地图发给客户端的数据
+message pb_guild_war_enter_map_data{
+    pb_guild_war war_data = 1;                  // 战场数据
+}
+
+// 战斗请求
+message pb_guild_war_fight_req{
+    uint64 atk_id = 1;   // 攻击者id
+    uint64 def_id = 2;  // 防守者id
+}
+
+// 获得阶段改变推送
+message pb_guild_war_act_stage_change{
+    uint32 stage = 1;                        // 活动阶段
+    pb_guild_war_data guild_war = 2;             // 活动数据
+    pb_guild_war_entry entry = 3;           // 参赛数据
+}
+
+// 龙息战场被击杀推送
+message pb_guild_war_be_kill_push{
+    uint64 killer_id = 1;                               // 击杀者id
+    repeated pb_u32_kv stat_list = 5;                   // 个人统计数据(key为类型，value为数值)
+    repeated pb_u32_kv add_stat_list = 6;               // 个人新增统计数据(key为类型，value为数值)
+}
+
+// 龙息战场消息推送
+message pb_guild_war_msg_push{
+    uint32 msg_tid = 1;                                 // 消息tid
+    bytes role_name = 2;                                // 玩家名字
+    uint32 value = 3;                                   // 消息值
+}
+
+// 龙息战场托管返回
+message pb_guild_war_host_back{
+    repeated uint64 host_member_list = 1;               // 托管玩家列表
+}
+
+// 龙息战场合并消息推送
+message pb_guild_war_merge_push{
+    repeated bytes data_list = 1;                       // 数据列表
+}
+
+//公会召集数据
+message pb_guild_war_help{
+    uint64 role_id = 1;			//玩家id
+    uint32 map_node_id = 2;		//节点id
+    uint32 period = 3;			//当前期数
+}

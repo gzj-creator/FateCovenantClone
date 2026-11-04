@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 金字塔活动数据
+message pb_pyramid{
+    uint32 version = 1; //当前版本号
+    uint32 round = 2; //轮次
+    uint32 ceil = 3; //当前层数
+    bytes award_bin = 4; //奖励领取数据
+    pb_recharge_limit_info buy_limit_info = 5; //限购数据
+    bool is_over = 6; //是否结束
+}
+
+// 金字塔pve数据
+message pb_pyramid_pve{
+    uint32 pass_tid = 1; //当前通过的关卡tid
+}
+
+// 金字塔任务数据
+message pb_pyramid_task{
+    bytes task_bin = 1; //任务奖励领取数据
+    uint64 refresh_time = 2; //任务刷新时间
+    uint32 online_day_index = 5; //玩家最近在线天数索引
+}
+
+// 金字塔活动服务器数据
+message pb_pyramid_act_s {
+    repeated pb_pyramid_act_pass pass_list = 1; // 通关列表
+}
+
+// 金字塔通关数据
+message pb_pyramid_act_pass {
+    uint32 tid = 1;             // 关卡id
+    uint32 role_count = 2;      // 通关人数
+}

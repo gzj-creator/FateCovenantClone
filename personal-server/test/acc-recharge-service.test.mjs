@@ -9,7 +9,7 @@ import { createGameCodec, decodeEtf, rawBinary, serializedBinary } from '../prot
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createAccRechargeService } from '../game/acc-recharge-service.mjs';
-import { activityWindow } from '../game/activity-calendar.mjs';
+import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 import { hasBit } from '../game/bit-block.mjs';
 import { createWalletService } from '../game/wallet-service.mjs';
 import { createLocalGame } from '../local-game.mjs';
@@ -18,7 +18,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const SERVER_OPENED_AT = 1792789200;
 const WINDOW = activityWindow(tables.ActFrameAct.get(106036), SERVER_OPENED_AT);
 const dayIndex = timestampSeconds => Math.floor((timestampSeconds + 10800) / 86400);
@@ -64,7 +64,7 @@ function unwrapActivityLoginData(value) {
   return bytes.subarray(6);
 }
 
-function setup(t, initialTables = tables, calendarMode = null) {
+function setup(t, initialTables = tables, calendarMode = null, initialTime = WINDOW.start + 3600) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-acc-recharge-'));
   const databasePath = path.join(directory, 'game.sqlite');
   const seed = () => ({
@@ -74,8 +74,17 @@ function setup(t, initialTables = tables, calendarMode = null) {
     guides: {}, lineups: null
   });
   let store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
-  const calendar = { serverOpenedAt: SERVER_OPENED_AT, ...(calendarMode ? { mode: calendarMode } : {}) };
   let activeTables = initialTables;
+  let currentTime = initialTime;
+  const makeCalendar = () => calendarMode
+    ? createActivityCalendar({
+      tables: activeTables,
+      serverOpenedAt: SERVER_OPENED_AT,
+      mode: calendarMode,
+      now: () => currentTime * 1000
+    })
+    : { serverOpenedAt: SERVER_OPENED_AT };
+  let calendar = makeCalendar();
   const logs = [];
   const make = () => createAccRechargeService({ store, codec, tables: activeTables, calendar, logger: event => logs.push(event) });
   let service = make();
@@ -85,9 +94,11 @@ function setup(t, initialTables = tables, calendarMode = null) {
     get service() { return service; },
     get logs() { return logs; },
     setRechargeRecords: (records, total) => setRechargeRecords(store, records, total),
+    setTime(seconds) { currentTime = seconds; },
     reopen(nextTables = activeTables) {
       store.close();
       activeTables = nextTables;
+      calendar = makeCalendar();
       store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
       service = make();
     }
@@ -206,6 +217,20 @@ test('all-open cumulative recharge uses account-wide records for a future-schedu
   const result = claim(e.service, 37001105, 106037);
   assert.equal(codec.unpack('pb_res_to_client', result.data).changes.find(change => change.tid === '494002').diff_num, '10');
   assert.equal(e.store.inspect(db => db.prepare("SELECT count(*) n FROM activity_claims WHERE act_id=106037 AND task_id=37001105 AND period='v37'").get().n), 1);
+});
+
+test('schedule mode rejects claims after the cumulative-recharge activity closes', t => {
+  const e = setup(t, tables, 'schedule');
+  e.setRechargeRecords([{ day_index: startDay, recharge_ids: [11], amount: 20400 }]);
+  e.setTime(WINDOW.end + 1);
+  const before = e.store.state();
+
+  assert.throws(
+    () => claim(e.service, 36001101),
+    error => error.code === 309 && error.message === 'Activity is not running'
+  );
+  assert.deepEqual(e.store.state(), before);
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM activity_claims').get().n), 0);
 });
 
 test('wallet purchases accumulate in the 98620 activity day range', t => {
@@ -367,7 +392,7 @@ test('real gateway routes 98620 instead of returning LOCAL_NOT_IMPLEMENTED', asy
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
-    capturePath: new URL('../fixtures/login-modules.local-only.json', import.meta.url),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     localWallet: true,
     serverOpenedAt: SERVER_OPENED_AT,
     activityMode: 'all-open',

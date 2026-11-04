@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 活动累积领奖总数据
+message pb_rebate_shop_act {
+  repeated pb_rebate_shop_award_data shop_award_list = 1;    // 活动领奖列表
+}
+
+// 活动累积领奖总数据
+message pb_rebate_shop_award_data {
+  uint32 act_id = 1;                          // 活动id
+  repeated uint32 got_shop_award = 2;         // 已领取限时商店进度奖励
+}

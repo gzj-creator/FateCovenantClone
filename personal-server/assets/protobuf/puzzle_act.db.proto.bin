@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+// 所有期拼图活动数据
+message pb_puzzle_act_all {
+    repeated pb_puzzle_act list = 1;
+}
+
+// 拼图活动数据
+message pb_puzzle_act {
+    uint64 act_id = 1;          // 活动id
+    bytes task_state = 2;       // 任务完成情况
+    bytes puzzle_state = 3;     // 拼图完成情况
+    bytes progress_state = 4;   // 进度完成情况
+}

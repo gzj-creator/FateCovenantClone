@@ -1,0 +1,80 @@
+syntax = "proto3";
+import "project/shop.db.proto.txt";
+import "project/demigod_act/demigod_act.db.proto.txt";
+import "project/fantasy_equip/fantasy_equip.db.proto.txt";
+import "project/activity/fantasy_equip_act/fantasy_equip_act.db.proto.txt";
+import "project/hero/draw/hero_draw.db.proto.txt";
+import "general/res.net.proto.txt";
+
+message pb_demigod_act_enter_back{
+    pb_demigod_act fantasy_data = 1;  //活动数据
+    repeated pb_shop_info shop_info_list = 2;             //商店数据
+    pb_marbles_award_info marbles = 3;  //钢珠
+    pb_res_to_client res = 4;           // 返回前台的资源改变列表
+    pb_hero_recruit recruit = 5;        // 抽卡保底信息
+}
+
+// 活动退出返回数据
+message pb_demigod_act_exit_back{
+    repeated pb_res_to_client res_list = 1;     // 返回前台的资源改变列表
+}
+
+// 领取挑战奖励请求
+message pb_demigod_act_receive_trial_req{
+    uint32 tid = 1;             // 副本tid
+    uint32 receive_tid = 2;     // 请求领取的奖励tid
+}
+
+// 穿戴幻武请求
+message pb_demigod_act_wear_equip_req{
+    uint32 tid = 1;             // 副本tid
+    pb_fantasy_equip_id fantasy_id = 2;     // 幻武id
+}
+
+// 穿戴护佑请求
+message pb_demigod_act_wear_bless_req{
+    uint32 tid = 1;                     // 副本tid
+    repeated pb_demigod_act_bless_info bless_list = 2;  // 护佑列表
+}
+
+// 穿戴护佑的信息
+message pb_demigod_act_bless_info{
+    pb_fantasy_equip_id bless_fantasy_id = 1;       // 护佑幻武id
+    uint32 pos = 2;                                 // 穿戴护佑位置
+}
+
+message pb_demigod_act_wear_bless_back{
+    pb_demigod_act_trial challenge = 1;   // 挑战数据
+    repeated pb_fantasy_equip fantasy_list = 2;         // 幻武数据(可能没有)
+}
+
+// 穿戴返回
+message pb_demigod_act_wear_back{
+    pb_demigod_act_trial challenge = 1;   // 挑战数据
+    pb_fantasy_equip fantasy_equip = 2;         // 幻武数据(可能没有)
+}
+
+// 领取专武活动任务奖励
+message pb_demigod_act_task_reward_req{
+    uint32 task_id = 1;         // 任务id
+}
+
+// 领取专武活动任务奖励返回
+message pb_demigod_act_task_reward_rev{
+    uint32 task_id = 1;         // 任务id
+    bytes task_records = 2;                     // 召唤任务数据记录
+    pb_res_to_client res_change = 3;                   // 奖励
+}
+
+// 抽卡返回数据
+message pb_demigod_act_draw_back{
+    uint32 draw_num = 1;                        // 抽卡次数
+    repeated pb_demigod_act_wish_item wish_list = 2; // 抽中的心愿数据列表
+    uint64 version_draw_num = 3;                        //  每期抽卡次数
+}
+
+// 进度领奖返回
+message pb_demigod_act_draw_award_back{
+    pb_res_to_client res_change = 1;                    // 奖励
+    uint32 draw_award_id = 2;                           // 已经领奖进度Id
+}

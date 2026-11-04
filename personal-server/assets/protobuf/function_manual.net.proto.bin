@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+
+// 领取功能预告奖励返回
+message pb_function_manual_award_rsp {
+  bytes got_award = 1; // 已领取的奖励
+  pb_res_to_client res_change = 2; // 资源变化
+}

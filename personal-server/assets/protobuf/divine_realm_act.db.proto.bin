@@ -1,0 +1,13 @@
+syntax = "proto3";
+import "project/recharge/recharge_role_select.db.proto.txt";
+
+message pb_divine_realm_act_data {
+    repeated pb_divine_realm_act_gift gifts = 1;     // 礼包数据
+}
+
+// 秘市礼包数据
+message pb_divine_realm_act_gift {
+    uint64 gift_tid = 1;                        // 礼包表tid
+    uint32 times = 2;                           // 已领取次数
+    pb_recharge_role_select role_select = 3;    //选择礼包信息
+}

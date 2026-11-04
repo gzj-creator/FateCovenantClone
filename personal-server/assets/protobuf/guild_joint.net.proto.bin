@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+import "project/guild_joint/guild_joint.db.proto.txt";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+import "project/fight/fight.db.proto.txt";
+import "project/guild.db.proto.txt";
+
+// 攻打小怪返回
+message pb_guild_joint_atk_monster{
+    pb_guild_joint_monster monster = 1;     // 战斗后的怪物数据
+    pb_res_to_client res = 2;               // 资源
+    pb_guild_joint_person person = 3;       // 战斗后的玩家数据
+    uint64 hurt = 4;                        // 扣除血量
+}
+
+// 攻打怪物推送
+message pb_guild_joint_atk_monster_push{
+    uint64 atk_role = 1;                    // 进攻的玩家id
+    pb_guild_joint_monster monster = 2;     // 战斗后的怪物数据
+    repeated pb_guild_log log_list = 3;     // 增加的公会日志
+}
+
+// 自动攻击城门完整推送
+message pb_guild_joint_door_push_l{
+    repeated pb_guild_joint_atk_door_push push_list = 1;    //城门定时推送数据
+    repeated pb_guild_log log_list = 2;                     //增加的公会日志
+    repeated pb_guild_joint_auto_monster_push push_monster_list = 3;    //城门定时推送数据
+}
+
+// 自动攻击城门单个推送
+message pb_guild_joint_atk_door_push{
+    uint64 atk_role = 1;                    // 进攻的玩家id
+    pb_guild_joint_door door = 2;           // 战斗后的城门数据
+}
+
+// 自动攻击城门单个推送
+message pb_guild_joint_auto_monster_push{
+  uint64 atk_role = 1;                          // 进攻的玩家id
+  pb_guild_joint_monster monster = 2;           // 战斗后的怪物数据
+}
+
+// 加入或离开城门推送
+message pb_guild_joint_door_push{
+    uint64 role = 1;                        // 玩家id
+    uint32 type = 2;                        // 加入1|离开0
+    uint32 map_node_id = 3;                 // 节点id
+    pb_kick_role kick_data = 4;             // 节点数据
+}
+
+// 矿脉派遣返回
+message pb_guild_joint_pick_lode_rsp{
+    pb_guild_joint_lode lode_info = 1;           // 矿脉派遣后数据信息
+    pb_res_to_client res = 2;                    // 资源
+    pb_guild_joint_person person = 3;            // 派遣后的玩家数据
+}
+
+// 矿脉领奖返回
+message pb_guild_joint_rev_lode_rsp{
+    pb_res_to_client res = 1;               // 资源
+    pb_guild_joint_person person = 2;       // 领奖后的玩家数据
+}
+
+// 矿脉派遣s2c返回
+message pb_guild_joint_pick_lode_s2c_rsp{
+    repeated pb_guild_joint_lode lode_list = 1;           // 矿脉派遣后数据信息
+}
+
+// 成就任务领奖返回
+message pb_guild_joint_rev_task_rsp{
+    pb_guild_joint_task task_data = 1; // 任务数据
+    pb_res_to_client res = 2;            // 资源
+}
+
+// 一键领取领奖请求
+message pb_guild_joint_rev_one_get_req{
+     repeated pb_guild_joint_task_req get_task_list = 1; // 一键领取任务列表
+     repeated int64 map_list = 2; // 地图宝箱id列表
+}
+
+message pb_guild_joint_task_req{
+     int32 task_tid = 1;
+     int32 task_group_tid = 2;
+}
+
+
+// 进入地图返回
+message pb_guild_joint_enter_map_back{
+    pb_guild_joint_person role_data = 1;           // 玩家数据
+    pb_guild_joint_map map = 2;                    // 地图数据
+    pb_guild_joint_guild guild_data = 3;           // 航会GVE航会数据
+    pb_guild_joint_server period = 4;              // 周期
+    pb_res_to_client res = 5;                      // 第一次进地图给与的攻击次数奖励
+    pb_guild_joint_role_map single_map = 6;        // 单人地图数据
+}
+
+// 请求设置先锋
+message pb_guild_j_set_pioneer_req{
+    uint32 index = 1;               //地图节点id
+    uint64 role_id = 2;             //玩家id
+}
+
+// 请求设置先锋返回以及推送
+message pb_guild_j_pioneer_rsp{
+    repeated pb_guild_joint_pioneer pioneer_list = 1;   //  先锋列表
+}
+
+//贡献度排行榜展示列表
+message pb_guild_role_rank_show_list{
+    repeated pb_guild_role_rank_show show_list = 1; //排行数据列表
+}
+
+//玩家排行数据
+message pb_guild_role_rank_show{
+    uint64 role_id = 1;         //玩家id
+    uint32 score = 2;           //贡献积分
+    uint32 have_times = 3;      //剩余次数
+}
+
+//请求战报返回数据列表
+message pb_guild_j_report_rsp{
+    repeated pb_guild_joint_report report_list = 1;     //战报列表
+}
+
+//公会召集数据
+message pb_guild_joint_help{
+    uint64 role_id = 1;            //玩家id
+    uint32 map_node_id = 2;        //节点id
+    uint32 period = 3;            //当前期数
+}

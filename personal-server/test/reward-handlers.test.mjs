@@ -11,7 +11,7 @@ import { hasBit } from '../game/bit-block.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 
 function itemWithObjClass(objClass) {
   for (const item of tables.Item.values()) {
@@ -81,7 +81,7 @@ test('preflight rejects unknown rewards and grants every dedicated family throug
   for (const id of dedicatedContainerIds) assert.match(rewardHandlerFor(id, tables).key, /^2:.*:item-container:0$/);
 
   const awards = [
-    [3030501, 1], [300610, 1], [157112, 1], [400313, 1], [141717, 1],
+    [3030501, 1], [300610, 1], [157112, 1], [400313, 1], [141717, 3], [141117, 3],
     [1202919, 1], [400220, 1], [1030922, 2], [10063200, 1], [355708, 1], [400108, 1],
     ...dedicatedContainerIds.map(id => [id, 1])
   ];
@@ -97,8 +97,9 @@ test('preflight rejects unknown rewards and grants every dedicated family throug
   assert.ok(codec.unpack('pb_pet_develop_data', rawBinary(modules.get(158).value[0])).pets.some(row => Number(row.tid) === 400313));
   const treasures = codec.unpack('pb_treasure_data', rawBinary(modules.get(534).value[0]));
   assert.equal(treasures.treasure_list.filter(row => Number(row.tid) === 141717).length, 1);
-  assert.equal(treasures.treasure_list.find(row => Number(row.tid) === 141717).chip_num, 1);
-  assert.equal(codec.unpack('pb_fantasy_equip_res', rawBinary(modules.get(518).value[1])).raw_equips.find(row => Number(row.tid) === 1202919).num, 1);
+  assert.equal(treasures.treasure_list.find(row => Number(row.tid) === 141717).chip_num, 4);
+  assert.equal(treasures.treasure_list.find(row => Number(row.tid) === 141117).chip_num, 3);
+  assert.equal(codec.unpack('pb_fantasy_equip_res', rawBinary(modules.get(518).value[0])).raw_equips.find(row => Number(row.tid) === 1202919).num, 1);
   assert.ok(codec.unpack('pb_elves_develop', rawBinary(modules.get(538))).elves.some(row => Number(row.tid) === 400220));
   assert.equal(codec.unpack('pb_elves_bead_data', rawBinary(modules.get(539))).elves_beads.filter(row => Number(row.tid) === 1030922).length, 2);
   assert.equal(codec.unpack('pb_house_assistant_info', rawBinary(modules.get(148).value[0])).res.find(row => Number(row.tid) === 10063200).num, '1');
@@ -109,4 +110,20 @@ test('preflight rejects unknown rewards and grants every dedicated family throug
   assert.equal(hasBit(Buffer.from(role.figure_have_info.stable_bubble_info, 'base64'), 1001), true);
   assert.equal(store.read().resources.has('300610'), false);
   assert.equal(store.read().resources.has('3030501'), false);
+});
+
+test('role experience rewards accept safe numeric amounts', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-role-exp-'));
+  const seed = () => ({
+    version: 1, roleId: 100001, serverId: 1, createdAt: 1700000000,
+    modules: structuredClone(capture.privateFlows.find(flow => flow.messageId === 'game:tcp-69:s2c:103').decoded[2]),
+    rolePb: codec.pack('to_client_role_info', { level: 9, exp: 7 }).toString('base64'),
+    guides: {}, lineups: null
+  });
+  const store = createGameStore({ databasePath: path.join(directory, 'game.sqlite'), seed, codec, serverOpenedAt: 1792789200 });
+  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  const result = store.transaction(model => grantResources(model, [[1140000, 10]], tables));
+  assert.equal(result.changes[0].new_num, '17');
+  assert.equal(store.read().role.exp, 17);
 });

@@ -1,0 +1,8 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+
+// 英雄下放活动个人数据
+message pb_hero_down_act_data {
+  pb_recharge_limit_info buy_limit_info = 1;  // 礼包限购记录
+}

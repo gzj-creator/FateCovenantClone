@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "project/activity/chess/chess.db.proto.txt";
+
+// 有哪些棋局被开启
+message pb_open_flip_card{
+    repeated uint32 tid = 1;
+}
+
+message pb_flip_card_tid_list{
+    repeated pb_flip_card_tid pb_flip_card_tid = 1;
+}
+
+message pb_flip_card_tid {
+    uint32 tid = 1; // 翻牌tid
+    uint32 turns = 2; // 翻牌轮次
+    uint32 flip_times = 3; //当前层开启次数
+    repeated pb_chess_award award = 4;  // 奖励记录
+}
+
+

@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/recharge/line_first_recharge/line_first_recharge.db.proto.txt";
+
+// 领隔天奖励返回数据
+message pb_line_first_recharge_rev_back {
+    pb_res_to_client res = 1; // 资源改变
+    pb_line_first_recharge_buy buy_info = 2; // 购买奖励数据
+}
+

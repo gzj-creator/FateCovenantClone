@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+// 服务器当前所有全服活动数据
+message pb_act_server_data{
+    repeated pb_act_stage_data act_stage_list = 1; //活动数据
+}
+
+// 服务器活动阶段数据
+message pb_act_stage_data{
+    uint32 act_id = 1;                          // 活动表id
+    uint32 type = 2;                            // 活动类型(定制活动使用)
+    uint64 start_time = 3;                      // 活动开启时间
+    uint64 end_time = 4;                        // 活动结束时间
+    uint32 cur_stage_id = 5;                    // 活动阶段
+    bool is_pause = 6;                          // 是否暂停
+    bool ignore_fix_time = 7;                   // 忽略修正时间(定制活动和手动开启活动不根据配置修正时间)
+    uint32 loop_count = 8;                      // 循环次数(循环类型使用，从0开始)
+    repeated pb_act_stage_time stage_time_list = 9; // 活动阶段时间列表(配置活动用于玩家登录获取，定制活动用于存储时间，时间有序)
+}
+
+// 活动状态时间
+message pb_act_stage_time{
+    uint32 stage_id = 1;                    // 阶段id
+    uint64 start_time = 2;                  // 开始时间
+    uint64 end_time = 3;                    // 结束时间
+}
+
+// 玩家当前所有活动数据
+message pb_act_player_data{
+    repeated pb_act_player_stage act_stage_list = 1;       //活动数据
+}
+
+// 玩家活动状态数据
+message pb_act_player_stage{
+    uint32 act_id = 1;                          // 活动表id
+    uint64 start_time = 2;                      // 活动开启时间
+    uint64 end_time = 3;                        // 活动结束时间
+    uint32 cur_stage_id = 4;                    // 活动阶段
+    uint32 loop_count = 5;                      // 循环次数(循环类型使用，从0开始)
+    repeated pb_act_player_stage_time history_time = 6; // 活动历史阶段时间
+}
+
+// 活动时间
+message pb_act_player_stage_time{
+    uint32 stage_id = 1;           // 活动阶段
+    uint64 enter_time = 2;      // 实际进入阶段时间
+}
+
+
+// 玩家活动通知邮件数据
+message pb_act_notify_role_info{
+    repeated pb_act_notify_mail_info notify_list = 1;                          // 活动通知邮件列表
+}
+
+// 玩家活动通知邮件数据
+message pb_act_notify_mail_info{
+    uint32 act_id = 1;                          // 活动表id
+    uint64 start_time = 2;                      // 活动开启时间
+}

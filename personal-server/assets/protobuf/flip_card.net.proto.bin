@@ -1,0 +1,36 @@
+syntax = "proto3";
+import "project/activity/chess/chess.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 登录获取翻牌数据
+message  pb_flip_card_date_list{
+    repeated pb_flip_card_date list = 1;
+}
+
+// 单功能翻牌数据
+message pb_flip_card_date {
+    uint32 tid = 1; // 翻牌tid
+    uint32 turns = 2; // 翻牌轮次
+    repeated pb_chess_award award = 3;  // 奖励记录
+}
+
+// 玩家请求进入下一轮次
+message pb_flip_card_turn_req {
+    uint32 tid = 1;  // 翻牌tid
+}
+
+// 玩家翻牌请求
+message pb_flip_card_req {
+    uint32 tid = 1;  // 翻牌tid
+    uint32 index = 2; // 格子下标
+}
+
+// 翻牌返回
+message pb_flip_card_rsp {
+    pb_chess_award award = 1;  // 新增的奖励记录
+    pb_res_to_client res_changes = 2;   // 资源变化
+}
+
+
+
+

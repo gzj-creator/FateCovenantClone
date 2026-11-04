@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+message pb_special_train_gift {
+    pb_recharge_limit_info buy_limit_info = 1; // 充值次数信息
+}

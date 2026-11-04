@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+import "project/activity/new_hero_exclusive/new_hero_exclusive.db.proto.txt";
+import "project/shop.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 剧情体验数据
+message pb_new_hero_exclusive_open_ret{
+    pb_new_hero_exclusive_story story_data = 1; // 剧情数据
+    pb_new_hero_exclusive_draw draw_data = 2;   // 抽卡数据
+    pb_shop_info shop_data = 3;                 // 商店数据
+    pb_new_hero_exclusive_gift gift_data = 4;   // 礼包数据
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+import "project/red_envelope/red_envelope.db.proto.txt";
+import "general/res.net.proto.txt";
+
+message pb_client_red_envelopes {
+  repeated pb_red_envelope red_envelopes = 1;
+}
+
+message pb_red_envelope_award_rsp {
+  pb_res_to_client res_changes = 1;   // 资源变化
+  uint32 nth_received = 2;            // 第几个领取的红包
+}

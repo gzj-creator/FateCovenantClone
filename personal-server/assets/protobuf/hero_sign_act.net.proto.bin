@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/hero_sign_act/hero_sign_act.db.proto.txt";
+
+// 领奖返回数据
+message pb_hero_sign_act_rev_back{
+    pb_hero_sign_act_role_data act_data = 1; //活动数据
+    pb_res_to_client res = 2;     //资源改变
+}
+
+// 领奖请求数据
+message pb_hero_sign_act_req{
+    int64 act_id = 1; //活动id
+    repeated int64 tid_list = 2; //奖励id列表
+}

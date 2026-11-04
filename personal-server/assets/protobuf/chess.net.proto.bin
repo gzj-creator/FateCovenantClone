@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+import "project/activity/chess/chess.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 玩家请求抽奖
+message pb_chess_draw_req {
+  uint32 activity_id = 1;  // 活动id
+  uint32 index = 2;        // 格子索引
+}
+message pb_chess_draw_rsp {
+  bool got_special = 1;               // 是否抽到了大奖
+  bool bomb = 2;                      // 是否抽到了炸弹
+  repeated pb_chess_award award = 3;  // 新增的奖励记录
+  pb_res_to_client res_changes = 4;   // 资源变化
+}
+
+// 玩家请求领取每日任务
+message pb_chess_task_award_rsp {
+  bytes day_got_award = 1;            // 每日领取奖励
+  bytes period_got_award = 2;         // 周期领取奖励
+  pb_res_to_client res_changes = 3;   // 资源变化
+}
+
+
+// 玩家请求兑换
+message pb_chess_exchange_req {
+  uint32 activity_id = 1; // 活动id
+  uint32 tid = 2;  // 兑换表tid
+  uint32 exchange_num = 3; // 兑换数量
+}
+message pb_chess_exchange_rsp {
+  pb_res_to_client res_changes = 1; // 资源变化
+  pb_chess_exchange exchange = 2; // 兑换数据
+}
+
+// 活动数据返回
+message pb_chess_back{
+  pb_chess chess = 1; //活动数据
+  pb_res_to_client res = 2; //资源改变
+}
+
+// 玩家请求轮次奖励
+message pb_chess_turn_award_req {
+  repeated int32 turns = 1; // 轮次列表
+  uint32 activity_id = 2;  // 活动id
+}
+message pb_chess_turn_award_rsp {
+  bytes turn_got_award = 1; // 轮次奖励领取记录
+  pb_res_to_client res_changes = 2; // 资源变化
+}
+
+// 玩家请求进入下一轮次
+message pb_chess_new_turn_req {
+  uint32 activity_id = 1;  // 活动id
+}

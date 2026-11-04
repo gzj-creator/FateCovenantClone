@@ -1,0 +1,33 @@
+syntax = "proto3";
+import "project/fight/fight.db.proto.txt";
+
+// 请求通关信息
+message pb_pass_record_req {
+    uint32 pass_tid = 1; //通关记录表id
+    int64  id = 2; //功能业务id：比如暗能魔城的关卡id
+}
+
+// 获取战报
+message pb_get_fight_report {
+    repeated int64 fight_id = 1; // 战斗id
+}
+
+// 获取战报返回
+message pb_fight_report_res {
+    repeated pb_fight_report report = 1; // 战报
+}
+
+// 战报分享
+message pb_share_report {
+    int64 fight_id = 1;
+    int32 fight_type = 2;// 战斗类型
+}
+
+// 通关记录赞踩请求
+message pb_pass_record_vote_req {
+    uint32 pass_tid = 1; //通关记录表id
+    int64  id = 2; //功能业务id：比如暗能魔城的关卡id
+    uint64 fight_id = 3; //战报id
+    uint32 type = 4; // 通关类型
+    bool is_up_vote = 5; //是否赞
+}

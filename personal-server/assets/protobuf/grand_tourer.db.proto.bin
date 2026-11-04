@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 飞车活动数据
+message pb_grand_tourer{
+    pb_recharge_limit_info buy_limit_info = 1; //礼包限购记录
+    bytes task_award = 2; //任务项奖励领取数据（每日刷新）
+    bool is_invited = 3; //玩家是否已接受邀请（用于新主题第一次进入时送门票）
+    uint64 task_award_time = 4; //任务项奖励最近领取时间（用于每日刷新）
+    uint32 online_day_index = 5; //玩家最近在线天数索引
+    uint32 max_distance = 6; //玩家最大冲刺距离
+    bytes distance_award = 7; //距离奖励领取数据
+    repeated uint32 node_list = 8; //当前已解锁的节点列表
+    uint64 distance_refresh_time = 9; //冲刺距离刷新时间
+    uint32 version = 10; // 版本号
+}
+
+// 飞车活动全服数据
+message pb_grand_tourer_server{
+    bytes rank_award = 1; // 排行榜奖励领取数据
+}

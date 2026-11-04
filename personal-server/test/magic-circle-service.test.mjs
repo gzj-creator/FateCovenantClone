@@ -11,7 +11,7 @@ import { createLocalGame } from '../local-game.mjs';
 
 const codec = createGameCodec();
 const tables = readMagicCircleTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const fixtureModules = () => structuredClone(capture.privateFlows.find(flow => flow.messageId === 'game:tcp-69:s2c:103').decoded[2]);
 

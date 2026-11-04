@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/war_rune.db.proto.txt";
+
+// 公会守护源石操作数据
+message pb_guild_rune_stone_operate {
+    int32 index = 1; // 公会守护槽位索引
+    int64 tid = 2; // 公会守护源石tid
+}
+
+// 请求穿戴公会守护源石（可单个或批量穿戴、替换）
+message pb_guild_rune_stone_take_on_req {
+    int64 rune_tid = 1; // 守护tid
+    repeated pb_guild_rune_stone_operate operates = 2; // 守护源石操作数据
+}
+
+// 请求卸下公会守护源石（可单个或批量穿戴、替换）
+message pb_guild_rune_stone_take_off_req {
+    int64 rune_tid = 1; // 守护tid
+    repeated pb_guild_rune_stone_operate operates = 2; // 守护源石操作数据
+}
+
+// 请求合成公会守护源石（可单个或批量合成）
+message pb_guild_rune_stone_compose_req {
+    repeated pb_u64_kv sources = 1; // 消耗守护源石tid和数量
+    repeated pb_u64_kv targets = 2; // 目标守护源石tid和数量
+}

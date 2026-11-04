@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 月度战令资源数据
+message pb_month_permit_res_data{
+    repeated pb_res_obj res_list = 1;
+}
+
+// 月度战令数据
+message pb_month_permit_data{
+    repeated pb_month_permit_info month_permit_list = 1;
+    int64 send_gm_day = 2; // 补发日期
+}
+
+// 月度战令信息
+message pb_month_permit_info{
+    uint64 id = 1;      //月度战令id
+    uint64 open_day = 2;//开启时间
+    repeated int64 pay_list = 3;    //购买付费项列表
+    bool is_settle = 4; //是否结算
+    repeated int64 get_gear_lv_list = 5;    // 领取的档位奖励tid列表
+    uint64 buy_exp_num = 6; // 购买经验的次数
+    uint64 week_add_exp = 7; // 每周获取的经验
+    uint64 week_update_time = 8; // 每周获取更新时间
+    repeated pb_month_permit_task_info task_get = 9; // 任务领取记录
+    bool is_notice = 10; // 是否通知邮件过
+}
+
+message pb_month_permit_task_info {
+    uint64 tid = 1;      //任务id
+    uint64 get_time = 2; // 领取时间
+}

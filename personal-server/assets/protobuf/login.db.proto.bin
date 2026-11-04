@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+// 登录时间信息
+message pb_login_time {
+    uint64 last_login = 1;  // 最近一次登录时间戳，单位：秒
+    uint64 last_logout = 2; // 最近一次登出时间戳，单位：秒
+    uint64 day_count = 3;   // 累计登录天数
+    bytes login_bits = 4;   // 历史登录状态的二进制位数据（记录天数上限受block_util.erl中的?MAX_BITS控制）
+                            // 第0位表示创建第1天是否登录, 第1位表示第2天是否登录, ...
+    uint64 create_time = 5; // 角色创建时间戳（首次登录时间），单位：秒
+    uint64 online_time = 6; // 累计在线时间
+    bool maybe_online = 7;  // 当前是否在线（注意：这个值不完全可靠，如果没有正常执行登出流程就一直是true）
+                            // 使用maybe_online字段时，要考虑如果其状态错误是否会带来严重后果，如果影响不大就可以使用
+                            // 因为登入登出可能在在同一秒内完成，所以增加此标记用于记录最后的状态是上线或下线
+}
+
+// 登录设备信息
+message pb_login_device {
+    string label = 1; // 设备标识
+    string model = 2; // 设备名称
+    string ip = 3;    // 登录IP
+    string app_id = 4; // 包体ID
+    int64 ads_app_id = 5; // 广告统计的appid，营销包ID
+    string app_version = 6; // 应用版本号
+    string ads_channel = 7; // 广告统计媒体，比如今日头条，广点通等
+    string res_ver = 8;                 	// 资源版本号
+}
+
+message pb_device_suspend_info {
+    repeated pb_device_suspend suspend = 1; // 所有设备封停信息
+}
+
+// 设备封停信息
+message pb_device_suspend {
+    string device = 1;          // 设备号
+    uint32 sec_suspend_to = 2;  // 封禁结束时间
+}
+
+// 账号封停列表
+message pb_account_suspend_info {
+    repeated pb_account_suspend suspend = 1; // 所有设备封停信息
+}
+
+// 账号封停信息
+message pb_account_suspend {
+    string channel_id = 1;     // 渠道id
+    string channel_uid = 2;    // 渠道uid
+    uint32 sec_suspend_to = 3;  // 封禁结束时间
+}
+
+
+//玩家创角信息
+message pb_role_create{
+    uint64 reg_time = 1;    //渠道账号注册时间
+    uint64 create_time = 2; //角色创建时间
+}

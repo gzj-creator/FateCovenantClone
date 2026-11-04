@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+
+// 排行榜成就服务器数据
+message pb_rank_achieve_server {
+    repeated pb_rank_achieve_finish finish_info = 1;
+    repeated pb_rank_achieve_backup_guild backup_guild = 2;
+}
+
+// 排行榜成就跨服服务器数据
+message pb_rank_achieve_cross {
+    repeated pb_rank_achieve_cross_finish finish_info = 1;
+    repeated pb_rank_achieve_backup_guild backup_guild = 2;
+}
+
+// 航会备份数据(如果达成成就的航会解散了会备份解散时的数据用来做显示)
+message pb_rank_achieve_backup_guild {
+    uint64 guild_id = 1;   // 航会id
+    string name = 2;       // 航会名
+    uint64 badge = 3;      // 航会吧唧
+}
+
+// 成就完成信息
+message pb_rank_achieve_finish {
+    uint64 tid = 1;         // 成就id
+    uint64 unit_id = 2;     // 完成单位(角色/航会)id
+    uint64 time = 3;        // 完成时间
+}
+
+// 成就完成信息
+message pb_rank_achieve_cross_finish {
+    uint64 tid = 1;         // 成就id
+    uint64 unit_id = 2;     // 完成单位(角色/航会)id
+    uint64 time = 3;        // 完成时间
+    uint32 cross_stage = 4; // 跨服阶段
+}
+
+// 单个类型成就数据
+// 分类型存储，方便后续扩展，否则只能在所有成就后依次加入新成就
+message pb_rank_achieve_type {
+    uint64 type = 1;        // 成就类型
+    bytes got_award = 2;    // 已领取奖励
+}
+
+// 个人成就数据
+message pb_rank_achieve_role {
+    repeated pb_rank_achieve_type got_award = 1;
+}

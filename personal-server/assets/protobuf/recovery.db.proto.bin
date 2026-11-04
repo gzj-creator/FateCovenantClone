@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+// 资源找回数据
+message pb_recovery_data{
+    repeated pb_recovery_privilege privilege_list = 1;    //特权功能列表
+    pb_recovery_free_award award = 2;
+}
+
+// 特权功能信息
+message pb_recovery_privilege{
+    uint32 id = 1;           // 加成特权找回功能id
+    uint32 last_day = 2;      // 上次天数
+    uint32 update_time = 3;   // 上次更新时间
+    uint32 enable_time = 4;   // 功能开启时间
+    bytes extra_param = 6;    // 额外数据
+}
+
+// 免费领奖整体数据
+message pb_recovery_free_award{
+    repeated pb_recovery_free_award_item item_list = 1; // 免费领奖item数据列表
+    uint64 last_login_day = 2; // 最近一次登录天数索引
+}
+
+// 单条免费找回数据
+message pb_recovery_free_award_item{
+    uint32 tid = 1; // 找回id
+    uint64 res_tid = 2; // 资源id
+    uint64 res_num = 3; // 资源累计数量
+    uint32 recovery_day = 4; //找回资源的天数
+}

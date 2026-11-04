@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 请求选择礼包物品
+message pb_divine_realm_gift_select_req {
+    uint64 gift_tid = 1;                    // 礼包id
+    repeated uint32 select_idx = 2;         // 选择的奖励索引
+}

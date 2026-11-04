@@ -1,6 +1,7 @@
 import { readGeneratedTables } from './hero-tables.mjs';
+import { tableAsset } from '../assets.mjs';
 
-const defaultPath = new URL('../../analysis/tmp/endgame-fixes/DestinyTable.data.json', import.meta.url);
+const defaultPath = tableAsset('DestinyTable.data.json');
 let defaultCache;
 
 export function readDestinyTables(file = defaultPath) {

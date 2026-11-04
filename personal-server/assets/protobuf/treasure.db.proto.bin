@@ -1,0 +1,57 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 秘宝系统数据
+message pb_treasure_data{
+    repeated pb_treasure_card treasure_list = 1;                 // 秘宝列表
+    repeated pb_treasure_suit suit_list = 3;                     // 套装列表
+    pb_treasure_draw draw_award_data = 5;                        // 赛季抽卡进度领奖
+    pb_recharge_limit_info common_buy_gift_info = 6;             // 常驻礼包限购记录
+    pb_treasure_limit_gift limit_buy_gift_info = 7;              // 当前阶段限时礼包限购记录
+    pb_treasure_custom_draw custom_draw = 8;                     // 自选抽卡数据
+    repeated pb_treasure_box treasure_box_list = 9;              // 秘宝魔法罐列表
+    uint64 common_draw_count = 10;                               // 秘宝常驻抽卡次数
+}
+
+// 自选秘宝抽卡信息
+message pb_treasure_custom_draw{
+    uint32 draw_lib = 1;                // 特聘抽卡库
+    uint32 treasure_index = 2;          // 自选秘宝index(秘宝自选抽卡表)
+}
+
+// 秘宝卡
+message pb_treasure_card{
+    int64 tid = 1;      // 秘宝tid
+    int32 star = 2;     // 星级，默认-1星，0星表示激活
+    int32 quality = 3;  // 品质
+    uint32 chip_num = 4;     // 当前拥有碎片数量
+    uint64 active_time = 5; // 激活时间
+}
+
+// 秘宝套装
+message pb_treasure_suit{
+    int32 tid = 1;      // 套装tid
+    int32 star = 2;     // 星级，默认-1星，0星表示激活
+}
+
+// 抽卡奖励领取
+message pb_treasure_draw{
+  uint32 season_id = 1;           // 赛季id
+  uint32 draw_num = 2;            // 赛季总抽奖次数
+  uint32 award_phase_num = 3;     // 赛季领奖阶段数值
+  bytes award_state = 4;          // 阶段领奖状态（可以跳着领奖）
+}
+
+// 限时礼包购买记录
+message pb_treasure_limit_gift{
+    int32 phase_id = 1;                             // 阶段id
+    pb_recharge_limit_info buy_limit_info = 2;      // 购买记录
+}
+
+// 秘宝魔法罐
+message pb_treasure_box{
+    int64 tid = 1; // 秘宝tid
+    int32 last_delta_day = 2; // 上次变化天数（用于计算当前星级可用天数，最大天数-历史未用天数）
+    repeated pb_u32_kv history_days_list = 3; // 历史未用天数（星级=>未用天数）
+}

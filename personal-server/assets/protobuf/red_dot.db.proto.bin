@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+//单个存储的红点信息
+message single_red_info {
+    bool state = 1; //红点自身状态
+    bytes path_bin = 2; //红点路径 这里并不是存储字符串路径。而是，将红点ID和红点参数的列表转换为二进制进行存储
+    int32 show_count = 3; // 展示数量
+    bytes extra = 4; //红点的额外数据
+}

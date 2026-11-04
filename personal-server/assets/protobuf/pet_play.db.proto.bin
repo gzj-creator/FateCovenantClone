@@ -1,0 +1,17 @@
+syntax = "proto3";
+import "project/common_map/common_map.db.proto.txt";
+
+// 宠物玩法整体数据
+message pb_pet_play_master{
+    pb_pet_play old_play = 1;   // 旧的玩法
+    pb_pet_play new_play = 2;   // 新的玩法
+}
+
+// 单期宠物玩法数据
+message pb_pet_play{
+    uint64 init_time = 1;       // 初始化第一张图的天数(每周一的5点)
+    uint32 period = 2;          // 第几期
+    uint32 map_index = 3;          // 第几张地图
+    pb_common_map map = 4;  // 地图数据
+    bool is_rev = 5;             // 是否已经领取奖励
+}

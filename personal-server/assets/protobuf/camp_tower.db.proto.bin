@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "project/role.db.proto.txt";
+
+message pb_camp_tower_info {
+    bytes first_award = 1;          //首次通关塔后得到的奖励领取记录
+    bytes cross_server_award = 2;   //双子全服奖励领取记录
+    uint64 open_time = 3;           //玩法开启时间
+}
+
+// 关卡首通玩家数据
+message pb_camp_tower_cross_pass {
+    repeated pb_camp_tower_pass_info cross_pass_list = 1; //双子全服通关数据
+}
+
+message pb_camp_tower_pass_info {
+    uint32 id = 1; //  首通id
+    uint32 total_level = 2; // 累积层级
+    uint64 pass_time = 3; // 首通时间
+    uint64 pass_power = 4; // 首通战力
+    uint64 role_id = 5; // 首通玩家
+}
+
+// 推送首通消息
+message pb_put_camp_tower_first_pass{
+    pb_camp_tower_cross_pass cross_pass_info = 1; //双子全服通关数据
+}

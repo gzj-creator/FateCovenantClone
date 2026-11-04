@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// 皮肤整体数据(英雄、精灵...)
+message pb_skin_info {
+  repeated pb_skin skin_list = 1; //皮肤列表
+}
+
+// 皮肤数据
+message pb_skin {
+  int64 id = 1; //皮肤的配置表ID
+  int32 num = 2; //数量（定义该字段的目的是为了和pb_res_obj的结构一致）
+  int32 increase_level = 3; //增幅等级
+}
+
+// 皮肤图鉴数据
+message pb_skin_handbook {
+  repeated int32 skin_list = 1; //激活的皮肤图鉴列表 存的skin_handbook_show_cfg表的id
+  int32 score = 2; //英雄皮肤评分 + 团长时装评分
+}
+
+
+

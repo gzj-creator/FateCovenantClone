@@ -1,0 +1,14 @@
+ syntax = "proto3";
+
+// 渠道入口数据
+message pb_channel_entry {
+    int32 channel_id = 1;           // 渠道ID(废弃)
+    bool is_open = 2;               // 是否开启
+    int64 start_time = 3;           // 开始时间
+    int64 end_time = 4;             // 结束时间
+    string link_url = 5;            //  链接地址
+    repeated int64 server_id_list = 6;   // 服务器ID列表
+    int32 server_open_min_day = 7;      // 开服最小天数
+    int32 server_open_max_day = 8;      // 开服最大天数
+    string str_channel_id = 9;          // 渠道ID
+}

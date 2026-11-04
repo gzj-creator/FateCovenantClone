@@ -1,0 +1,96 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { once } from 'node:events';
+import { spawn } from 'node:child_process';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { createProtobufJsCodec } from '../server-list-codec.mjs';
+import { encodeServerListRequest } from '../server-list.mjs';
+
+const sourceRoot = fileURLToPath(new URL('..', import.meta.url));
+
+function copyServer(target) {
+  const sourceDependencies = path.join(sourceRoot, 'node_modules');
+  const skipped = new Set([
+    sourceDependencies,
+    path.join(sourceRoot, 'runtime.local-only.data')
+  ]);
+  fs.cpSync(sourceRoot, target, {
+    recursive: true,
+    filter(source) { return !skipped.has(source); }
+  });
+  fs.symlinkSync(sourceDependencies, path.join(target, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+}
+
+async function waitForReady(file, child, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) throw new Error(`Deployment server exited with code ${child.exitCode}`);
+    try {
+      return JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('Deployment server did not write its ready status');
+}
+
+test('a clean personal-server copy boots without the repository analysis tree', { timeout: 60000 }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-self-contained-'));
+  const serverCopy = path.join(directory, 'personal-server');
+  const dataDirectory = path.join(directory, 'runtime');
+  let child;
+  t.after(async () => {
+    if (child && child.exitCode === null) child.kill('SIGTERM');
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  copyServer(serverCopy);
+  const stderr = [];
+  child = spawn(process.execPath, [path.join(serverCopy, 'local-server.mjs')], {
+    cwd: directory,
+    env: {
+      ...process.env,
+      FC_LOCAL_DATA: dataDirectory,
+      FC_SDK_PORT: '0',
+      FC_SERVER_LIST_PORT: '0',
+      FC_STARTUP_PORT: '0',
+      FC_GAME_PORT: '0',
+      FC_ADMIN_PORT: '0'
+    },
+    stdio: ['ignore', 'ignore', 'pipe']
+  });
+  child.stderr.setEncoding('utf8');
+  child.stderr.on('data', chunk => stderr.push(chunk));
+
+  const status = await waitForReady(path.join(dataDirectory, 'server.local-only.json'), child);
+  assert.deepEqual(Object.keys(status.boundPorts).sort(), ['admin', 'game', 'list', 'sdk', 'startup']);
+  assert.equal(status.ports.length, 5);
+  assert.ok(status.ports.every(port => Number.isInteger(port) && port > 0 && port <= 65535));
+  assert.ok(fs.existsSync(path.join(dataDirectory, 'game.local-only.sqlite')));
+  assert.ok(fs.existsSync(path.join(dataDirectory, 'admin-key.local-only.txt')));
+
+  const signingKey = JSON.parse(fs.readFileSync(path.join(serverCopy, 'config', 'server-list-signing-key.json'), 'utf8')).key;
+  const form = encodeServerListRequest('channel_login_servers', { channel_id: 'local-channel', channel_uid: 'local-account', device_label: 'local-device' }, signingKey);
+  const listResponse = await fetch(`http://127.0.0.1:${status.boundPorts.list}/server_list`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: form.toString(),
+    signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(listResponse.status, 200);
+  const decoded = createProtobufJsCodec().decode('pb_login_servers', Buffer.from(await listResponse.arrayBuffer()));
+  assert.equal(decoded.servers[0].extranet_ip, `127.0.0.1:${status.boundPorts.game}`);
+
+  const exited = once(child, 'exit');
+  child.kill('SIGTERM');
+  const stopTimeout = new Promise((_, reject) => {
+    const timer = setTimeout(() => reject(new Error('Deployment server did not stop')), 10000);
+    timer.unref();
+  });
+  await Promise.race([exited, stopTimeout]);
+  assert.equal(stderr.join(''), '');
+});

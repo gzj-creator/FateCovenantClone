@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+import "project/slg_map/slg_map.db.proto.txt";
+
+// 请求关注block
+message pb_slg_map_view_req{
+    uint32 fun_tid = 1;             // 功能tid
+    repeated uint64 block_list = 2; // 关注的block列表
+}
+
+// 可视区域改变推送
+message pb_slg_map_view_push{
+    repeated pb_slg_map_view_block list = 1;
+}
+
+// 可视block数据
+message pb_slg_map_view_block{
+    uint64 block_id = 1;                // block id
+    repeated pb_slg_map_view_block_obj obj_list = 2;    // 物件列表
+    repeated uint64 del_obj_list = 3;    // 删除物件列表
+    repeated pb_slg_map_march march_list = 5;   // 行军列表
+    repeated uint64 del_march_list = 6;   // 删除行军列表
+    repeated pb_slg_map_territory territory_list = 7;   // 领地列表
+    repeated uint64 del_territory_list = 8; // 删除领地行军列表
+}
+
+// 可视block中的物件信息
+message pb_slg_map_view_block_obj{
+    int64 gxy = 1;                      // 坐标(包含服务器id)
+    uint32 tid = 2;                     // 物件tid
+    int64 belong = 3;                   // 归属
+    bytes data = 4;                     // 物件详细数据
+}

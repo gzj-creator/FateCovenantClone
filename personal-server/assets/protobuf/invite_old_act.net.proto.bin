@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/invite_old_act/invite_old_act.db.proto.txt";
+
+// 邀约任务奖励领取
+message pb_invite_old_bind_rsp{
+    pb_invite_old_info act_data = 1;          //活动数据
+    pb_res_to_client res = 2;                   //资源数据
+}
+
+// 邀约任务奖励领取
+message pb_invite_old_task_req{
+    int32 act_id = 1;   // 活动表id
+    int32 task_id = 2;  // 任务id
+    int32 count = 3;    // 任务完成次数
+}
+
+// 邀约任务奖励领取
+message pb_invite_old_task_rsp{
+    pb_invite_old_info act_data = 1;          //活动数据
+    pb_res_to_client res = 2;                   //资源数据
+}
+
+// 邀约人员列表
+message pb_invite_old_invited_list_req{
+    int32 act_id = 1;   // 活动表id
+}
+
+// 邀约受邀人列表
+message pb_invite_old_invited_list_rsp {
+    pb_invite_old_info act_data = 1;          //活动数据
+}

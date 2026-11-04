@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+// 精灵养成数据
+message pb_elves_develop {
+    repeated pb_elves elves = 1; // 拥有的精灵
+    repeated pb_elves_help_slot help_slots = 2; // 精灵灵祠
+}
+
+// 精灵数据
+message pb_elves {
+    int64 tid = 1; // 精灵编号
+    int32 star = 2; // 精灵星级
+    int32 book_level = 3; // 图鉴等级
+    int32 quality = 4; // 品质
+    int32 book_quality = 5; // 图鉴品质
+    repeated pb_elves_talent_page talent_pages = 6; // 天赋页
+    repeated pb_elves_bead_slot beads_slots = 7;    // 镶嵌的灵珠列表
+    uint64 skin_tid = 8;                            // 穿戴的皮肤tid
+    bool is_mutant = 9;                             // 是否变异
+    int32 break_lv = 10;            // 破格等级
+}
+
+
+// 精灵天赋数据
+message pb_elves_talent_page {
+    int32 page = 1; // 天赋页
+    repeated pb_elves_talent talents = 2; // 天赋节点
+}
+
+// 精灵天赋数据
+message pb_elves_talent {
+    int32 id = 1; // 天赋id
+    int32 level = 2; // 天赋等级
+}
+
+// 精灵灵祠槽位数据
+message pb_elves_help_slot {
+    int32 index = 1; // 槽位索引
+    int64 elves_tid = 2; // 精灵tid
+}
+
+// 精灵灵珠槽位
+message pb_elves_bead_slot {
+    int32 index = 1; // 槽位索引
+    int64 elves_bead_uid = 2; // 灵珠uid
+}

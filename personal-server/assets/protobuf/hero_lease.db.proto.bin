@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+import "core/db.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+
+
+// 角色租借英雄数据
+message pb_role_lease_hero {
+    uint32 func_tid = 1; // 租借功能tid
+    repeated pb_lease_hero_info lease_heroes = 2; //雇佣的英雄
+    repeated pb_lease_place_hero_info place_heroes = 3; //自己放置的英雄
+    uint32 stamp = 4;   // 数据时间戳（用于判断数据是否过期）
+    uint32 total_lease_times = 5; // 总租借次数
+    uint32 lease_award_times = 6; // 发放租借奖励的次数
+    uint32 last_lease_uid = 7; // 上一个租借的唯一id
+}
+
+// 单个租借来的英雄数据
+message pb_lease_hero {
+    uint32 lease_tid = 1;    // 租借tid(哪个功能租来的)
+    uint64 owner_id = 2;    // 拥有者id
+    uint32 hero_tid = 3;    // 英雄tid
+    uint32 star = 4;        // 星级
+    uint32 quality = 5;     // 品质
+    uint32 skin_tid = 6;    // 穿戴的皮肤tid
+    uint32 uid = 7;         // 唯一id
+    uint32 level = 8;       // 等级
+    pb_lease_fantasy fantasy = 9; // 幻武
+    uint32 mutant = 10;                // 变异tid
+    uint32 mastery_level = 11;         // 专精技能等级
+    uint32 mastery_break = 12;         // 专精突破等级
+    repeated pb_lease_hero_relic relics = 13; //遗物列表
+    uint32 sp_relic = 14; // 专属符纹等级
+    uint64 diff = 15; // 全英雄变异
+    bool rare = 16;   // 英雄升稀有
+    uint32 breakthrough_level = 17;      // 英雄突破等级
+    repeated pb_u32_kv attr = 18;   // 给英雄加的属性
+    uint32 fetter_star = 19; // 羁绊星级
+    pb_hero_reforge reforge = 20; // 英雄洗练
+    repeated uint64 source_point_list = 21; // 英雄源点
+}
+
+// 租借英雄上的遗物
+message pb_lease_hero_relic {
+    int64 tid = 1; //遗物的配置表ID
+    int32 star = 2; //遗物等级
+    int32 stage = 3; //遗物星级
+    repeated int64 cur_skills = 4; //遗物当前的技能列表
+}
+
+// 租借英雄信息
+message pb_lease_hero_info {
+    pb_lease_hero hero = 1; // 英雄信息
+    uint32 lease_stamp = 3; // 租借时间戳
+    uint32 hero_tid = 4;    // 英雄tid
+    repeated pb_lease_hero_use use_info = 5; // 使用情况
+}
+
+// 租借英雄使用情况
+message pb_lease_hero_use {
+    uint32 lineup_tid = 1;  // 阵容类型
+    uint32 used_times = 2;  // 使用次数
+}
+
+// 放置英雄信息
+message pb_lease_place_hero_info {
+    pb_lease_hero hero = 1; // 英雄信息
+    uint32 lease_times = 2; // 租借次数
+    uint32 place_stamp = 3; // 租借时间戳
+    uint32 hero_tid = 4;    // 英雄tid(便于查找)
+    uint32 index = 5;       // 位置索引
+}
+//
+
+// 租借的幻武数据
+message pb_lease_fantasy {
+    pb_lease_fantasy_base base = 1;             // 基础数据
+    repeated pb_lease_fantasy_base bless = 2;   // 护佑数据
+}
+
+// 租借的幻武基础数据
+message pb_lease_fantasy_base {
+    int32 tid = 1;
+    int32 level = 2;
+    int32 star = 3;
+    int32 quality = 4;
+}
+
+

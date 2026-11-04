@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "project/lease/lease.db.proto.txt";
+import "project/lineup.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 租借信息更新返回
+message pb_lease_update_ret {
+  repeated pb_lineup changed_lineups = 1; // 有变更的阵容数据
+  pb_lease_role lease_info = 2; // 租借信息
+}

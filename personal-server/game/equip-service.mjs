@@ -1,6 +1,7 @@
 import { GameError } from './hero-progression.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readEquipTables } from '../config/equip-tables.mjs';
+import { consumeResources } from './resources.mjs';
 
 const ROLE_EQUIP_MODULE = 26;
 const BAG_EQUIP_MODULE = 16;
@@ -63,6 +64,51 @@ function cloneEquip(equip) {
   return structuredClone(equip);
 }
 
+function configuredEquip(tables, tid) {
+  const config = tables.Equip?.get(Number(tid));
+  if (!config) fail(5, 'Equip configuration is missing');
+  return config;
+}
+
+function addCosts(target, costs, multiplier = 1) {
+  for (const pair of costs ?? []) {
+    if (!Array.isArray(pair) || pair.length !== 2) fail(5, 'Equip cost configuration is invalid');
+    const tid = Number(pair[0]);
+    const count = Number(pair[1]) * multiplier;
+    if (!Number.isSafeInteger(tid) || tid <= 0 || !Number.isSafeInteger(count) || count <= 0) fail(5, 'Equip cost configuration is invalid');
+    target.set(String(tid), (target.get(String(tid)) ?? 0n) + BigInt(count));
+  }
+}
+
+function consumeConfiguredCosts(model, totals) {
+  const costs = [...totals].map(([tid, count]) => {
+    if (count > BigInt(Number.MAX_SAFE_INTEGER)) fail(1, 'Equip cost is too large');
+    return [Number(tid), Number(count)];
+  });
+  return consumeResources(model, costs).changes;
+}
+
+function levelCostRows(tables, template, fromLevel, addLevel) {
+  const rows = [];
+  const type = Number(template.type);
+  for (let level = fromLevel; level < fromLevel + addLevel; level++) {
+    const row = tables.Level?.get(type * 10000 + level);
+    if (!row) fail(5, 'Equip level configuration is missing');
+    rows.push(row);
+  }
+  return rows;
+}
+
+function developmentCostRows(tables, tableName, fromLevel, targetLevel) {
+  const rows = [];
+  for (let level = fromLevel + 1; level <= targetLevel; level++) {
+    const row = tables[tableName]?.get(10000 + level);
+    if (!row) fail(5, 'Equip development configuration is missing');
+    rows.push(row);
+  }
+  return rows;
+}
+
 export function createEquipService({ store, codec, tables = readEquipTables() }) {
   return {
     supports: type => type === 1001 || type === 1002 || type === 1003 || type === 1004 || type === 1005 || type === 1006,
@@ -78,15 +124,23 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
           for (const equip of [...roleEquips, ...bagEquips]) byId.set(String(equip.id), equip);
 
           const updated = [];
+          const costs = new Map();
           for (const request of requests) {
             const id = safeNumber(request?.id, 'equip id', { min: 1 });
             const addLevel = safeNumber(request?.add_level, 'add level', { min: 1 });
             const equip = byId.get(String(id));
             if (!equip) fail(5, 'Equip does not exist');
-            equip.level = Number(equip.level ?? 0) + addLevel;
+            const template = configuredEquip(tables, equip.tid);
+            const currentLevel = Number(equip.level ?? 1);
+            const nextLevel = currentLevel + addLevel;
+            if (!Number.isSafeInteger(nextLevel) || nextLevel > Number(template.lv_max)) fail(305, 'Equip level limit reached');
+            for (const row of levelCostRows(tables, template, currentLevel, addLevel)) addCosts(costs, row.cost);
+            equip.level = nextLevel;
             equip.level_exp = Number(equip.level_exp ?? 0);
             updated.push(structuredClone(equip));
           }
+
+          const consumed = consumeConfiguredCosts(model, costs);
 
           writeModuleEquips(modules, ROLE_EQUIP_MODULE, codec, roleEquips);
           writeModuleEquips(modules, BAG_EQUIP_MODULE, codec, bagEquips);
@@ -94,7 +148,7 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
 
           const value = {
             equips: updated,
-            res_change: { changes: [], is_overflow: false }
+            res_change: { changes: consumed, is_overflow: false }
           };
           return {
             schema: 'pb_equip_level_up_rsp',
@@ -111,23 +165,37 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
           const modules = new Map(model.state.modules.value);
           const bagEquips = readModuleEquips(modules, BAG_EQUIP_MODULE, codec);
           const created = [];
+          const normalized = [];
+          const costs = new Map();
+          const cellCount = Number(tables.Const?.get(1)?.cell_count ?? 0);
           for (const request of requests) {
             const index = safeNumber(request?.index, 'forge index', { min: 0 });
             const equipId = safeNumber(request?.equip_id, 'equip id', { min: 1 });
             const times = safeNumber(request?.times ?? 1, 'forge times', { min: 1 });
-            const newId = (bagEquips.reduce((max, equip) => Math.max(max, Number(equip.id ?? 0)), 0) + created.length + 1);
-            const equip = {
-              id: newId,
-              tid: equipId,
-              level: 1,
-              level_exp: 0,
-              inscription: 0,
-              refine: 0,
-              refine_exp: 0,
-              random_develop_cost: []
-            };
-            bagEquips.push(equip);
-            created.push(structuredClone(equip));
+            if (times > 1000) fail(1, 'Equip forge count is too large');
+            if (!(cellCount > 0) || index >= cellCount) fail(1, 'Invalid forge index');
+            const template = configuredEquip(tables, equipId);
+            addCosts(costs, template.cost, times);
+            normalized.push({ equipId, times });
+          }
+
+          const consumed = consumeConfiguredCosts(model, costs);
+          let nextId = bagEquips.reduce((max, equip) => Math.max(max, Number(equip.id ?? 0)), 0) + 1;
+          for (const { equipId, times } of normalized) {
+            for (let count = 0; count < times; count++) {
+              const equip = {
+                id: nextId++,
+                tid: equipId,
+                level: 1,
+                level_exp: 0,
+                inscription: 0,
+                refine: 0,
+                refine_exp: 0,
+                random_develop_cost: []
+              };
+              bagEquips.push(equip);
+              created.push(structuredClone(equip));
+            }
           }
 
           writeModuleEquips(modules, BAG_EQUIP_MODULE, codec, bagEquips);
@@ -135,7 +203,7 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
 
           const curPre = currentPreLineup(model);
           const value = {
-            res_change: { changes: [], is_overflow: false },
+            res_change: { changes: consumed, is_overflow: false },
             equip: created,
             change_lineup: [],
             ...(curPre ? { cur_pre_lineup: curPre } : {})
@@ -158,10 +226,13 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
           const equip = all.find(item => Number(item.id) === id);
           if (!equip) fail(5, 'Equip does not exist');
 
-          const template = tables?.Equip?.get(Number(equip.tid));
+          const template = configuredEquip(tables, equip.tid);
           const limit = Number(template?.refine_limit_lv ?? 0);
           const current = Number(equip.refine ?? 0);
           if (limit > 0 && current >= limit) fail(305, 'Equip refine limit reached');
+          const costs = new Map();
+          for (const row of developmentCostRows(tables, 'Refine', current, current + 1)) addCosts(costs, row.cost);
+          const consumed = consumeConfiguredCosts(model, costs);
           equip.refine = current + 1;
           equip.refine_exp = 0;
 
@@ -172,7 +243,7 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
           const value = {
             equip: cloneEquip(equip),
             multi: 1,
-            res_change: { changes: [], is_overflow: false }
+            res_change: { changes: consumed, is_overflow: false }
           };
           return {
             schema: 'pb_equip_refine_rsp',
@@ -192,13 +263,16 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
           const equip = all.find(item => Number(item.id) === request.equip_id);
           if (!equip) fail(5, 'Equip does not exist');
 
-          const template = tables?.Equip?.get(Number(equip.tid));
+          const template = configuredEquip(tables, equip.tid);
           const limit = Number(template?.refine_limit_lv ?? 0);
           const current = Number(equip.refine ?? 0);
           let target = request.target_level;
           if (limit > 0 && target > limit) target = limit;
           if (target < current) target = current;
           const gained = target - current;
+          const costs = new Map();
+          for (const row of developmentCostRows(tables, 'Refine', current, target)) addCosts(costs, row.cost);
+          const consumed = consumeConfiguredCosts(model, costs);
           equip.refine = target;
           equip.refine_exp = 0;
 
@@ -208,7 +282,7 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
 
           const value = {
             equip: cloneEquip(equip),
-            res_change: { changes: [], is_overflow: false },
+            res_change: { changes: consumed, is_overflow: false },
             multi: Array(Math.max(gained, 0)).fill(1),
             times: Math.max(gained, 0)
           };
@@ -230,11 +304,14 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
           const equip = all.find(item => Number(item.id) === request.equip_id);
           if (!equip) fail(5, 'Equip does not exist');
 
-          const template = tables?.Equip?.get(Number(equip.tid));
+          const template = configuredEquip(tables, equip.tid);
           const limit = Number(template?.inscription_limit_lv ?? 0);
           let target = request.target_level;
           if (limit > 0 && target > limit) target = limit;
           if (target < Number(equip.inscription ?? 0)) target = Number(equip.inscription ?? 0);
+          const costs = new Map();
+          for (const row of developmentCostRows(tables, 'Inscription', Number(equip.inscription ?? 0), target)) addCosts(costs, row.cost);
+          const consumed = consumeConfiguredCosts(model, costs);
           equip.inscription = target;
 
           writeModuleEquips(modules, ROLE_EQUIP_MODULE, codec, roleEquips);
@@ -243,7 +320,7 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
 
           const value = {
             equip: cloneEquip(equip),
-            res_change: { changes: [], is_overflow: false }
+            res_change: { changes: consumed, is_overflow: false }
           };
           return {
             schema: 'pb_equip_inscription_rsp',
@@ -260,31 +337,28 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
           const modules = new Map(model.state.modules.value);
           const roleEquips = readModuleEquips(modules, ROLE_EQUIP_MODULE, codec);
           const bagEquips = readModuleEquips(modules, BAG_EQUIP_MODULE, codec);
-          const byId = new Map();
-          for (const equip of [...roleEquips, ...bagEquips]) byId.set(String(equip.id), equip);
-
           const updated = [];
+          const seenIndexes = new Set();
           for (const request of requests) {
             const index = safeNumber(request?.index, 'wear index', { min: 0 });
-            const id = safeNumber(request?.id, 'equip id', { min: 0 });
+            const id = safeNumber(request?.id, 'equip id', { min: 1 });
             const tid = safeNumber(request?.tid, 'equip tid', { min: 0 });
-            let equip = byId.get(String(id));
-            if (!equip) {
-              equip = {
-                id,
-                tid: tid || id,
-                level: 1,
-                level_exp: 0,
-                inscription: 0,
-                refine: 0,
-                refine_exp: 0,
-                random_develop_cost: []
-              };
-              roleEquips.push(equip);
-              byId.set(String(id), equip);
-            } else if (tid) {
-              equip.tid = tid;
+            if (index >= roleEquips.length) fail(1, 'Invalid wear index');
+            if (seenIndexes.has(index)) fail(1, 'Wear index is duplicated');
+            seenIndexes.add(index);
+            const bagIndex = bagEquips.findIndex(equip => Number(equip.id) === id);
+            if (bagIndex < 0) fail(5, 'Equip is not in the bag');
+            const equip = bagEquips[bagIndex];
+            const template = configuredEquip(tables, equip.tid);
+            if (tid && tid !== Number(equip.tid)) fail(5, 'Equip id and template do not match');
+            if (!tables.Type?.has(Number(template.type))) fail(5, 'Equip type configuration is missing');
+            bagEquips.splice(bagIndex, 1);
+            const replaced = roleEquips[index];
+            if (replaced && Number(replaced.id) > 0 && tables.Equip?.has(Number(replaced.tid))) {
+              bagEquips.push(replaced);
+              updated.push(structuredClone(replaced));
             }
+            roleEquips[index] = equip;
             updated.push(structuredClone(equip));
           }
 

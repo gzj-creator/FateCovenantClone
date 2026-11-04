@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+// 英雄纹章抽奖数据
+message pb_hero_blazon_draw{
+    int64 last_draw_time = 1;                               // 上次抽奖时间
+    repeated pb_hero_blazon_draw_group draw_group_list = 2; // 抽奖卡池数据
+}
+
+// 英雄纹章抽奖卡池数据
+message pb_hero_blazon_draw_group{
+    int32 draw_type = 1;                    // 抽奖类型
+    int32 daily_draw_times = 2;             // 每日抽奖使用次数
+    int32 daily_replace_times = 3;          // 每日替代使用次数
+    pb_hero_blazon_guarantee guarantee = 4; // 保底数据
+}
+
+// 英雄纹章保底数据
+message pb_hero_blazon_guarantee{
+    uint32 open_count = 1;              // 开启次数
+    uint32 without_guarantee_count = 2; // 未触发保底的次数(正保底使用)
+    uint32 counter_guarantee_count = 3; // 触发反保底次数(反保底使用)
+    uint64 total_open_count = 4;        // 开启总次数
+}

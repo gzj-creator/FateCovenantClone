@@ -1,0 +1,85 @@
+syntax = "proto3";
+import "project/carnival/carnival.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 请求数据返回
+message pb_mono_req_data_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    pb_monopoly monopoly = 2;                   // 大富翁信息
+}
+
+// 使用道具返回
+message pb_mono_use_item_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    pb_monopoly_item use_item = 2;              // 使用的道具
+}
+
+// 丢骰子返回
+message pb_mono_throw_dice_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    pb_monopoly monopoly = 2;                   // 大富翁信息
+    bool is_flush_map = 3;                      // 地图是否刷新了
+    uint32 dice_count = 4;                      // 一次丢骰子丢的点数
+    uint32 cur_index = 5;                       // 最新的位置
+    pb_mono_build_data build_data_before_magnet = 6;      // 丢骰子后吸磁铁之前的建筑数据
+}
+
+// 完成事件返回
+message pb_mono_finish_ev_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    repeated pb_monopoly_item use_item_list = 2;    // 当前的道具使用列表
+}
+
+// 刷新骰子返回
+message pb_mono_auto_flush_dice_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    int64 dice_flush_time = 2;                 // 骰子刷新时间
+}
+
+// 购买骰子返回
+message pb_mono_buy_dice_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    int64 daily_flush_time = 2;                 // 骰子购买时间
+    uint32 today_buy_num = 3;                  // 每日购买了的骰子数量
+}
+
+// 领取成就奖励返回
+message pb_mono_rev_achieve_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    pb_mono_achieve_data achieve_data = 2;      // 成就数据
+}
+
+// 驻扎
+message pb_mono_dispatch_req {
+    repeated pb_mono_dispatch_one_build dispatch = 1; // 驻扎请求列表
+}
+
+// 单个建筑驻扎请求信息
+message pb_mono_dispatch_one_build {
+    uint32 index = 1;            // 驻扎建筑索引
+    pb_mono_dispatch one_dispatch = 2; // 驻扎英雄id
+}
+
+// 跨天刷新推送
+message pb_mono_flush_rsp {
+    pb_res_to_client res = 1;			        // 资源数据
+    pb_monopoly monopoly = 2;                   // 大富翁信息
+}
+
+// 处理建筑额外数据请求
+message pb_mono_build_handle_req{
+    uint64 build_id = 1; // 建筑tid
+    bytes custom_bin = 2; // 自定请求数据
+}
+
+// 处理建筑额外数据返回
+message pb_mono_build_handle_back{
+    pb_res_to_client res = 1;			        // 资源数据
+    pb_mono_one_build one_build = 2;      // 处理建筑数据
+}
+
+// 兔兔助手返回
+message pb_carnival_assistant_rsp {
+    pb_res_to_client res = 1; // 资源变化
+    pb_monopoly monopoly = 2; // 大富翁数据
+}

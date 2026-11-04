@@ -18,7 +18,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 const codec = createGameCodec();
 const tables = readNorseRuneTables();
 const gameTables = readGameTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const MODULE = 156;
 

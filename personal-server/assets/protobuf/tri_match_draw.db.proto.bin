@@ -1,0 +1,17 @@
+﻿syntax = "proto3";
+
+// 招募全服跑马灯列表
+message pb_tri_match_draw_overall_marquee_data{
+  repeated pb_tri_match_draw_marquee_data data = 1;
+}
+
+// 招募全服跑马灯数据
+message pb_tri_match_draw_marquee_data{
+  int64 role_id = 1; // 角色id
+  int64 type = 2; // 跑马灯类型
+  int64 num = 3; // 抽奖次数
+  int64 trigger_time = 4; // 触发时间
+  int64 target_tid = 5; // 大奖tid
+  string name = 6; // 角色名字
+  int64 item_num = 7; // 道具数量
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "project/mystery_wish/mystery_wish.db.proto.txt";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+
+// 系统开发初始数据
+message pb_mystery_wish_init{
+    pb_mystery_wish_data wish_data = 1;     // 初始系统数据
+    pb_res_to_client res = 2;               // 初始奖励物品
+}
+
+// 神秘许愿走马灯推送数据
+message pb_notify_push_data{
+  int32 lib_tid = 1; //商品库tid
+  repeated pb_res_obj award_list = 2; //获得奖励
+}

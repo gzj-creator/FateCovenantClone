@@ -1,0 +1,53 @@
+syntax = "proto3";
+import "project/activity/cashback_draw/cashback_draw_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//充值返利抽奖领取返利抽奖次数
+message pb_cashback_draw_get_times_req{
+  int64 activity_id = 1;//活动id
+}
+
+// 充值返利抽奖领取返利抽奖次数
+message pb_cashback_draw_get_times_rsp {
+  pb_cashback_draw_act_info act_info = 1; //活动数据
+  pb_res_to_client res = 2;               // 资源变化
+}
+
+//充值返利抽奖
+message pb_cashback_draw_draw_req{
+  int64 activity_id = 1;//活动id
+  int64 times = 2;//抽奖次数
+  int64 turn = 3;// 轮次
+  bool is_reset = 4;// 是否抽到大奖重置
+}
+
+// 充值返利抽奖
+message pb_cashback_draw_draw_rsp {
+  pb_cashback_draw_act_info act_info = 1; //活动数据
+  pb_res_to_client res = 2;               // 资源变化
+  repeated int64 award_tid_list = 3;      // 抽到的奖励列表
+}
+
+//充值返利领取服务器进度奖励
+message pb_cashback_draw_server_award_req{
+  int64 activity_id = 1;     //活动id
+  repeated int64 id_list = 2;//要领取的奖励列表
+}
+
+//充值返利领取服务器进度奖励
+message pb_cashback_draw_server_award_rsp {
+  pb_cashback_draw_act_info act_info = 1; //活动数据
+  pb_res_to_client res = 2;               // 资源变化
+}
+
+//充值返利请求服务器进度
+message pb_cashback_draw_server_progress_req{
+  int64 activity_id = 1;//活动id
+}
+
+//充值返利请求服务器进度
+message pb_cashback_draw_server_progress_rsp {
+  pb_cashback_draw_server_act_info act_info = 1; //活动数据
+}
+
+

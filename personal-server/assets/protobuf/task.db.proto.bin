@@ -1,0 +1,86 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 日常任务数据
+message pb_daily_task {
+    bytes finish_tid_list = 1; //完成任务列表
+    uint32 vitality = 2; //活跃度
+    bytes vitality_stage = 3; //已领取活跃度阶段(5个阶段,按二进制位计算)
+    uint64 refresh_time = 4; //刷新时间
+    repeated pb_res_obj weekend_acc_res_list = 5; //今天累计的周末奖励列表
+    repeated pb_daily_task_weekend_record weekend_record_list = 6; //周末奖励领取记录列表
+    repeated pb_daily_task_group_compensate compensate_list = 7;    // 分组补偿数据
+    uint64 compensate_open_time = 8;                                // 分组补偿开启时间
+}
+
+// 补偿数据
+message pb_daily_task_group_compensate{
+    uint32 group_id = 1;                    // 任务组id
+    uint32 compensate_count = 2;            // 当前可补领总天数
+    uint64 last_got_time = 3;               // 上次领取奖励时间
+    uint64 last_compensate_time = 4;        // 上次补发天数时间
+}
+
+// 每个任务随机领导的奖励资源数据
+message pb_daily_task_weekend_record{
+    uint32 task_id = 1; //任务id
+    uint64 res_tid = 2; //资源id
+    uint64 res_num = 3; //资源数量
+}
+
+// 周常任务数据
+message pb_weekly_task {
+    bytes finish_tid_list = 1; //完成任务列表
+    uint64 refresh_time = 4; //刷新时间
+}
+
+// 成就任务数据
+message pb_main_task {
+    repeated main_task_single task_list = 1; //任务列表
+    bool is_compensate = 2; // 是否完成补偿
+}
+
+// 成就任务单个数据
+message main_task_single {
+    uint32 task_type = 1; // 任务类型
+    uint32 tid = 2; //tid
+}
+
+// 通用任务数据
+message pb_common_task {
+    bytes receive_list = 1; //已领取任务列表
+}
+
+// 周期任务数据
+message pb_period_task{
+    uint64 task_tid = 1;    //任务tid
+    uint64 rev_day = 2;     //任务领取的天数
+}
+
+// 角色任务组
+message pb_role_task_group {
+    uint32 func_id = 1;     // 功能id
+    repeated pb_task_group task_groups = 2; // 任务组数据
+    bytes got_award = 3;    // 已领取的章节奖励
+    bool func_open = 4;     // 功能是否开启
+}
+
+// 任务组
+message pb_task_group {
+    uint32 group_id = 1;    // 任务组id
+    bytes got_award = 2;    // 当前任务组已领取的奖励
+}
+
+// 线性任务数据
+message pb_linear_task_data{
+    repeated pb_linear_task task_list = 1;
+    uint32 data_version = 2; // 数据版本号
+}
+
+// 线性任务
+message pb_linear_task{
+    uint32 type = 1;                // 类型
+    uint32 receive_tid = 2;         // 当前领取的tid
+    uint64 snapshot_val = 3;        // 统计快照值(正在进行且需要激活的任务使用)
+}

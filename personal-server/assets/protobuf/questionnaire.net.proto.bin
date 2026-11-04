@@ -1,0 +1,13 @@
+syntax = "proto3";
+import "project/questionnaire/questionnaire.db.proto.txt";
+import "general/res.net.proto.txt";
+
+message pb_questionnaire_finish_req{
+  int64 questionnaire_tid = 1;
+  repeated pb_questionnaire_data questionnaire_data = 2;
+}
+
+message pb_questionnaire_finish_rsp{
+  pb_questionnaire_role_info role_info = 1;
+  pb_res_to_client res = 2;
+}

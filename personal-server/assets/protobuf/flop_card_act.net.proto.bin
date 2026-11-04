@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/activity/flop_card_act/flop_card_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// ============== 活动信息 ==============
+// 翻牌
+message pb_flop_card_act_flop_req {
+    int64 activity_id = 1;          // 活动ID
+    int32 flop_type = 2;            // 翻牌类型
+}
+
+// 领奖
+message pb_flop_card_act_get_reward_req {
+    int64 activity_id = 1;          // 活动ID
+}
+
+// 领累计奖
+message pb_flop_card_act_get_total_reward_req {
+    int64 activity_id = 1;          // 活动ID
+    repeated int32 reward_tid_list = 2;           // 累计奖励tid
+}
+
+// 响应
+message pb_flop_card_act_rsp {
+    pb_flop_card_data act_info = 1;              // 活动数据
+    pb_res_to_client res = 2;                    // 资源变化
+}

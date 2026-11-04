@@ -1,0 +1,205 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/guild.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+
+//请求创建公会
+message pb_req_create_guild {
+    string name = 1; //公会名称
+    int32 badge = 2; //公会徽章
+    string notice = 3; //公会公告
+}
+
+//请求修改公会基础信息
+message pb_req_guild_base_info{
+    int64 guild_id = 1; //公会ID
+    uint32 audit_type = 2;   //验证方式
+    uint32 level_limit = 3;     //等级限制
+    string notice = 4;  //公告
+    uint32 badge = 5;   //徽章
+    uint64 power_limit = 6; // 战力限制
+    pb_guild_social_info social_info = 7; // 社交信息
+}
+
+//公会基础信息
+message pb_guild_base_info{
+    string name = 1; //公会名称
+    uint32 badge = 2; //公会徽章
+    string notice = 3; //公会公告
+    int64 impeach_uid = 4; //公会弹劾uid
+    pb_guild_social_info social_info = 5; // 社交信息
+}
+
+//处理加入公会请求
+message pb_req_handle_join_apply {
+    repeated int64 applies = 1; //处理的角色ID列表
+    int64 guild_id = 2; //公会ID
+    bool agree = 3; //是否同意
+}
+
+//公会模块登陆数据
+message pb_res_guild_login {
+    int64 guildId = 1; //公会ID，如果公会ID为0，则代表没有公会
+    int32 last_leave_time = 2; // 上一次离开公会的时间
+    bytes leave_count = 3;      //离开公会次数
+    pb_guild guild = 4;// 公会数据
+    pb_count_list_flush count_info = 5;        //次数信息
+    repeated int64 guild_applies = 6;           //申请的公会列表
+    bytes contribute_info = 7;      //捐献信息
+    bytes guild_active = 8;           //公会活跃信息
+    bytes guild_box_receive = 9;                //公会宝箱领取信息
+    bytes func_data = 12;               //子功能数据
+    bool need_rename = 13; // 需要强制改名
+    bytes guild_rename = 14; // 航会改名信息 pb_guild_rename_info
+    bytes role_social = 15; // 角色的航会社交信息 pb_guild_social_role
+    bytes sundry = 16; // 其他杂项信息 pb_guild_sundry_role
+    bytes auto_trans = 17; // 自动转让会长状态 pb_guild_leader_auto_transfer
+    bytes auto_dissolve_role = 18;
+    bytes auto_dissolve_guild = 19;
+    bytes pay_and_box = 20; //资金和宝箱数据
+}
+
+//公会通信返回信息(统一整合)
+message pb_res_guild_info{
+    pb_guild guild = 1;    //公会数据
+    pb_guild_base_info base_info = 2;  //公会基础信息
+    repeated pb_guild_log log_list = 3; //日志列表
+    pb_res_guild_join_limit_change join_limit = 4;     //加入限制
+    pb_guild_day_active guild_active = 5;           //公会活跃信息
+    pb_count_list_flush count_info = 6;        //招募次数信息
+    pb_guild_contribute contribute_info = 7;      //捐献信息
+    pb_guild_box guild_box_info = 8;                //公会宝箱领取信息
+    pb_res_to_client res = 9; //资源数据
+    bytes func_data = 10;               //子功能数据,
+    pb_guild_sundry_role sundry = 11; // 杂项
+    pb_guild_pay_box pay_box = 12; //工资和宝箱
+}
+
+//公会创建返回
+message pb_guild_create_back{
+    pb_guild guild = 1;    //公会数据
+    bytes func_data = 2;               //子功能数据
+    pb_res_to_client res = 3; //资源数据
+    pb_guild_sundry_role sundry = 4; // 杂项
+}
+
+//公会加入推送
+message pb_guild_join_push{
+    pb_guild guild = 1;    //公会数据
+    bytes func_data = 2;               //子功能数据
+    pb_guild_day_active guild_active = 3;           //公会活跃信息
+    repeated pb_guild_log log_list = 4; //日志列表
+    pb_count_list_flush count_info = 5;        // 招募次数信息
+    bytes fun_open_state = 6; //功能开启
+}
+
+//公会解散推送
+message pb_guild_dissolve_push{
+    pb_guild guild = 1;    //公会数据
+    pb_res_to_client res = 2; //资源数据
+    repeated bytes func_data = 3;               //子功能数据
+}
+
+//公会改名返回
+message pb_guild_rename_back{
+    string name = 1;        //公会名字
+    uint64 rename_stamp = 2; // 改名时间
+    pb_res_to_client res = 3; //资源数据
+}
+
+//公会推荐列表请求回调
+message pb_res_recommends {
+    repeated pb_guild_simple_info guild_infos = 1; // 公会简略信息列表
+}
+
+//公会成员改变
+message pb_res_guild_member_change {
+    repeated pb_guild_member member_list = 1; //成员列表
+    repeated pb_guild_log log_list = 2; //新增日志列表
+    int64 impeach_uid = 3; //公会弹劾uid
+    uint64 can_transfer_time = 4; //可以转让会长的时间
+}
+
+//公会申请列表改变
+message pb_res_guild_apply_list_change {
+    repeated pb_guild_apply_info apply_list = 1; //申请列表
+    repeated pb_guild_member member_list = 2; //成员列表
+    repeated pb_guild_log log_list = 3; //新增日志列表
+}
+
+//玩家申请公会列表改变
+message pb_player_apply_guild{
+    repeated int64 guild_applies = 1;           //申请的公会列表
+}
+
+//公会加入条件改变
+message pb_res_guild_join_limit_change {
+    int32 audit_type = 1; //审核类型
+    int32 level_limit = 2; //等级限制
+    uint64 power_limit = 3; // 战力限制
+}
+
+//公会活跃度与经验改变
+message pb_res_guild_act_and_exp_change {
+    int32 level = 1; //公会等级
+    int32 today_active = 2; //今日活跃度
+    int32 total_active = 3; //总活跃度
+    int32 exp = 4; //经验
+    int64 causer = 5; //引起改变的角色ID
+    int32 active_refresh_day = 6; //刷新公会每日活跃度的日期
+    pb_guild_active guild_active = 7; //玩家活跃度
+}
+
+// 发布招募信息
+message pb_guild_recruit_info {
+    pb_count_list_flush count_info = 1;        //次数信息
+    pb_res_to_client res = 2; //资源数据
+}
+
+//公会养成回调信息
+message pb_guild_develop {
+    pb_guild guild = 1;    //公会
+    pb_guild_day_active guild_active = 2;           //公会活跃信息
+    pb_guild_contribute contribute_info = 3;      //捐献信息
+    pb_guild_box guild_box_info = 4;                //公会宝箱领取信息
+    pb_res_to_client res = 5; //资源数据
+}
+
+// 请求发起招募信息
+message pb_guild_send_recruit_req {
+    bytes data = 1; // 招募信息序列化数据
+}
+
+// 请求修改航会名
+message pb_guild_rename_req {
+    string name = 1; // 公会名字
+}
+
+// 请求发送航会通知邮件
+message pb_guild_send_notice_mail_req {
+    string title = 1; //标题
+    string content = 2; //内容
+}
+
+// 推送航会通知邮件改变
+message pb_guild_notice_mail_back {
+    uint64 last_notice_mail_time = 1; // 上次发送通知邮件时间
+}
+
+//航会宝箱
+message pb_guild_box_rsp {
+    pb_role_box_award pb_role_box_award = 1; //宝箱
+    pb_res_to_client res = 2; //资源数据
+}
+
+//工资添加记录
+message pb_req_guild_pay_record{
+    repeated pb_pay_add_record add_record = 1; //工资添加记录
+}
+
+//工资领奖
+message pb_guild_pay_rsp{
+    pb_role_box_award role_pay_award = 1; //工资
+    pb_res_to_client res = 2; //资源数据
+}

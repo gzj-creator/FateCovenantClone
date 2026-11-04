@@ -1,0 +1,53 @@
+﻿syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+import "project/battle_tri_match_hero/battle_tri_match_hero.db.proto.txt";
+
+// 三消爬塔活动角色数据
+message pb_tri_match_tower_act_info{
+  repeated pb_tri_match_tower_act_data act_data_list = 1;            // 活动数据列表
+}
+
+// 三消爬塔活动数据
+message pb_tri_match_tower_act_data{
+  uint32 act_tid = 1; // 活动id
+  int64 tower = 2; // 爬塔通关关卡
+  bytes got_progress_award = 3; // 已经领取的进度奖励
+  pb_recharge_limit_info buy_limit_info = 4;   // 充值购买次数信息
+  int64 stamina = 5; // 体力
+  int64 stamina_last_update_time = 6; // 体力上次更新时间
+  int64 last_settlement_fight_id = 7; // 最近一次已处理的战斗结算ID
+}
+
+// 三消爬塔全服通关阵容数据 整个逻辑大区一份
+message pb_tri_match_tower_overall_pass_lineup_data{
+  repeated pb_tri_match_tower_pass_lineup_act_data act_list = 1;
+}
+
+// 三消爬塔活动通关阵容数据
+message pb_tri_match_tower_pass_lineup_act_data{
+  int64 act_id = 1; // 活动id
+  repeated pb_tri_match_tower_pass_lineup_data pass_lineup_list = 2; // 通关阵容数据
+}
+
+// 通关阵容数据
+message pb_tri_match_tower_pass_lineup_data{
+  int64 tower = 1; // 通关关卡
+  int64 role_id = 2; // 角色id
+  repeated pb_tri_match_pass_hero hero_list = 3; // 通关英雄数据
+  int64 power = 4; // 首通阵容战力
+  int64 min_power = 5; // 关卡最低通关战力
+}
+
+// 三消爬塔活动主线数据
+message pb_tri_match_tower_act_mission{
+  int64 act_id = 1; // 活动id
+  int64 mission_id = 2; // 主线id
+}
+
+// 英雄数据
+message pb_tri_match_pass_hero{
+  pb_battle_tri_match_hero_data base_data = 1; // 基础数据
+  int64 lv = 2; // 等级
+}

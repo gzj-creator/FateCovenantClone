@@ -11,12 +11,12 @@ import { createGuildRosterService, GUILD_JOB } from '../game/guild-roster-servic
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
-const staticInterfacesPath = new URL('../../agent/workflow/interface-catalog/static-interfaces.json', import.meta.url);
-const staticSchemasPath = new URL('../../agent/workflow/interface-catalog/static-schemas.json', import.meta.url);
-const moduleTablePath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_general.bundle/bytecode/ModuleTable.data.lua.json', import.meta.url);
-const guildInfoFormPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/6925042128488278000-GuildInfoForm.lua.bin', import.meta.url);
-const guildMgrPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/textassets/17742175181654671000-GuildMgr.lua.bin', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
+const staticInterfacesPath = new URL('./fixtures/static-interfaces.json', import.meta.url);
+const staticSchemasPath = new URL('./fixtures/static-schemas.json', import.meta.url);
+const moduleTablePath = new URL('./fixtures/ModuleTable.data.lua.json', import.meta.url);
+const guildInfoFormPath = new URL('./fixtures/GuildInfoForm.lua.bin', import.meta.url);
+const guildMgrPath = new URL('./fixtures/GuildMgr.lua.bin', import.meta.url);
 const SERVER_OPENED_AT = 1792789200;
 const codec = createGameCodec();
 

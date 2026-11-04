@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+import "general/channel_push.db.proto.txt";
+
+message login_dev {
+    login login = 1;
+    uint64 uid_base = 2;
+    uint64 random_seed = 3;
+    bool is_robot = 4;// 是否是机器人
+}
+
+// 登录请求
+message login {
+    string channel_id = 1;              	// 渠道编号
+    string channel_uid = 2;             	// 玩家账号
+    int64 role_id = 3;                	    // 角色ID
+    string verify_code = 4;             	// 认证码
+    int32 server_id = 5;                	// 要登录的服务器编号
+    uint32 os_type = 6;                 	// 操作系统类型
+    string app_ver = 7;                 	// 应用版本号
+    string res_ver = 8;                 	// 资源版本号
+    device device = 9;               		// 设备信息
+    string channel_extra = 10;              // 渠道额外信息
+    string src_channel_id = 11;              // SDK原渠道编号
+    bool is_reconnect = 12;                 // 是否是重连请求
+    uint64 takeover_id = 13;                // 接管的角色ID
+    uint64 app_id = 14;                     // app id
+    string ad_channel = 15;              // 应用id
+    pb_channel_push_param channel_push_param = 16; // 渠道推送参数
+    string distinct_id = 17;              // 访客id
+    bool ignore_res_ver = 18;              // 是否忽略登录资源版本号
+}
+
+// 设备信息
+message device {
+    string device_label             = 1;    // 设备标识
+    string device_model             = 2;    // 设备名称
+    string device_os_info           = 3;    // 设备系统信息
+    string device_cpu               = 4;    // 设备处理器
+    string device_cpu_count         = 5;    // 设备处理器核心数
+    string device_memory            = 6;    // 设备内存
+    string device_graphic           = 7;    // 设备显卡
+    string device_graphic_type      = 8;    // 设备显卡类型
+    string device_graphic_memory    = 9;    // 设备显存内存
+    string device_shader_level      = 10;    // 设备显卡着色器
+    string device_recommend_level   = 11;    // 设备质量分级
+    string device_mac               = 12;   // 设备mac地址
+    string device_ip                = 13;   // 设备ip地址
+    string device_quality           = 14;   //设备质量分级
+}
+
+// 登录排队信息
+message pb_queue_obj{
+    uint32 index = 1;       // 排队的序号
+    bool reconnect = 2;     // 是否为断线重连（重连过程中排队了，需要把玩家切到登录界面）
+}
+
+// 登录排队结束通知
+message pb_alert_turn{
+    uint32 state = 1;      // 通知的状态：0：可以登录了，1：排队异常结束
+}

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 选择故事玩家数据
+message pb_choice_story_role_info {
+  repeated pb_choice_story_act_info act_list = 1;           //活动信息
+}
+
+// 选择故事玩家数据
+message pb_choice_story_act_info {
+  int64 version = 1;                                   //活动表version
+  repeated int64 get_list = 2;                         // 奖励领取记录
+}

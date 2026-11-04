@@ -1,0 +1,86 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+
+// 小助手数据信息
+message pb_assistant_data{
+    repeated pb_assistant_func func_list = 1;   // 功能列表
+    uint64 open_time = 2; // 功能开启时间
+}
+
+// 小助手单个功能数据
+message pb_assistant_func{
+    uint32 tid = 1;     // 功能tid
+    bool is_off = 2;   // 功能开关
+    pb_count_flush count_data = 3; // 每天执行次数数据
+    bytes setting_extra = 4;   // 功能额外设置数据
+}
+
+// 小助手灵魂历练翻牌设置数据
+message pb_assistant_set_soul_trial{
+    bool only_free = 1;
+    uint32 quality = 2;
+}
+
+// 小助手云中遗迹推图设置数据
+message pb_assistant_set_cliff_mission{
+    uint32 challenge_star = 1;  // 挑战星级
+    bool auto_refresh = 2;  // 是否自动刷新
+    bool lower_star = 3;    // 降低星级
+    bool auto_buy_artifact = 4;     // 自动购买圣武碎片
+    bool auto_buy_develop = 5;  // 自动购买养成道具
+    bool auto_reset = 6;    // 自动重置
+}
+
+// 小助手每周商店设置
+message pb_assistant_set_week_shop{
+    uint32 mission_energy_count = 1;    // 体力购买数量
+    uint32 martial_energy_count = 2;    // 精力购买数量
+}
+
+// 小助手偶遇设置数据
+message pb_assistant_set_visit{
+    repeated uint64 hero_list = 1;   // 偶遇的英雄列表
+}
+
+// 小助手宿舍设置
+message pb_assistant_set_campsite{
+    bool auto_dispatch = 1;     // 自动派遣
+    bool auto_receive = 2;      // 自动领奖
+}
+
+// 小助手主线推图设置
+message pb_assistant_set_mission{
+    bool fail_retry = 1;            // 失败重试
+    bool auto_add_energy = 2;       // 自动补充体力
+}
+
+// 小助手装备锻造设置
+message pb_assistant_set_equip_forge{
+    bool auto_forge = 1;            // 自动锻造
+    bool auto_strength = 2;         // 自动强化
+}
+
+// 小助手四柱试炼设置
+message pb_assistant_set_martial_club {
+    bool auto_trial = 1;        // 自动试炼/扫荡
+    bool auto_challenge = 2;    // 自动挑战
+}
+
+// 小助手黄金小镇设置
+message pb_assistant_set_carnival {
+    bool auto_buy_dice = 1;    // 自动购买骰子
+    bool auto_collect = 2;      //自动收集藏品
+}
+
+// 小助手命运梦境设置
+message pb_assistant_set_dream{
+    int32 difficulty = 1;    // 难度：1=强，2=中，3=弱，等价“命运梦境怪物类型”表tid
+    bool fail_reduce = 2;    // 失败是否减少难度
+    bool challenge_award = 3;    // 是否自动领取挑战奖励
+    bool daily_award = 4;    // 是否自动领取每日奖励
+}
+
+// 小助手魔灵大陆设置
+message pb_assistant_set_pet_play{
+    bool auto_get_key = 1;    // 是否自动领取钥匙
+}

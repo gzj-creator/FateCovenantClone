@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+import "project/activity/summer_act/summer_pvp/summer_act_pvp.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/rank/rank.net.proto.txt";
+
+// pvp数据更新
+message pb_summer_act_pvp_update {
+    pb_summer_act_pvp_role pvp = 1; // pvp数据
+    pb_res_to_client res = 2; // 资源变化
+}
+
+// pvp请求领取任务奖励
+message pb_summer_act_pvp_award {
+    uint64 act_tid = 1;          // 活动tid
+    repeated uint32 task_id = 2; // 任务id
+}
+
+// pvp竞猜
+message pb_summer_act_pvp_guess_req {
+    uint64 act_tid = 1; // 活动tid
+    repeated uint64 role_id_list = 2; // 竞猜玩家id
+}
+
+// pvp换位购买次数
+message pb_summer_act_pvp_swap_buy {
+    uint64 act_tid = 1; // 活动tid
+    uint64 times = 2; // 购买次数
+}
+
+// pvp换位赛请求初始化阵容
+message pb_summer_act_pvp_swap_init_lineup {
+    uint64 act_tid = 1; // 活动tid
+    uint64 role_id = 2; // 玩家id
+}
+
+// pvp换位赛战斗请求
+message pb_summer_act_pvp_swap_fight {
+    uint64 act_tid = 1;          // 活动tid
+    uint32 target_rank = 2;     // 目标排名
+}
+
+// pvp排名更新
+message pb_summer_act_pvp_rank_update {
+    pb_summer_act_pvp_role pvp = 1; // pvp数据
+    uint64 rank_info = 2; // 自己最新排名数据
+}
+
+// 段位赛 - 战斗后消息返回
+message pb_summer_challenge_fight_back {
+    repeated pb_summer_challenge_enemy match_person = 1; //匹配对手数据
+    int32 old_atk_score = 2; // 进攻方战斗前积分
+    int32 new_atk_score = 3; // 进攻方战斗后积分
+    int32 new_atk_rank = 4;  // 进攻方战斗后排名
+    int32 atk_change_rank = 5; // 进攻方换位赛排名
+    pb_summer_act_pvp_role atk_change_role = 6; //进攻方换位赛数据
+
+    int32 old_def_score = 7; // 防守方战斗前积分
+    int32 new_def_score = 8; // 防守方战斗后积分
+    int32 new_def_rank = 9;  // 防守方战斗后排名
+    int32 def_change_rank = 10; // 进攻方换位赛排名
+    pb_summer_act_pvp_role def_change_role = 11; //进攻方换位赛数据
+    pb_summer_pvp_report report = 12; //战报
+    int32 act_id = 13; // 活动id
+}
+
+// 段位赛 - 发起战斗请求
+message pb_summer_challenge_fight_req {
+    int32 act_id = 1; // 活动id
+    bool is_bot = 2; // 是否是机器人
+}

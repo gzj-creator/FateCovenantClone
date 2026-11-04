@@ -1,0 +1,13 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 礼包活动数据列表
+message pb_gift_act_all {
+    repeated pb_gift_act list = 1;            // 数据列表
+}
+
+// 礼包活动数据
+message pb_gift_act {
+    uint64 act_id = 1;                        // 活动id
+    pb_recharge_limit_info limit_info = 2;    // 限购记录
+}

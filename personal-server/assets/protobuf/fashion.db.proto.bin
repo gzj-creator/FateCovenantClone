@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 时装数据
+message pb_fashion_data{
+   int32 cur_id = 1;    // 当前穿戴时装
+   bytes state = 2;     // 时装激活状态
+   repeated pb_fashion_info info_list = 3;        // 时装数据列表
+}
+
+message pb_fashion_info{
+   int32 id = 1;        // 时装id
+   int32 lv = 2;        // 等级
+}

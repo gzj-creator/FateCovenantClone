@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+
+//功能开启时的额外返回数据
+message fun_open_to_client{
+    int32 flag = 1; //数据标识(建议使用功能ID*倍率+索引)
+    bytes data = 2; //数据
+    uint32 enable_time = 3;   //开启时间
+}
+
+//功能开启返回数据
+message res_fun_open{
+    repeated fun_open_target_data target_list = 1; //功能开启目标数据列表
+    repeated int32 fail_id_list = 2;  //开启失败(同步逻辑出错)的功能ID列表
+    repeated fun_open_to_client extra_ret_list = 3; //功能开启返回给客户端的自定义数据
+    pb_res_to_client res = 4; // 功能开启奖励
+}
+
+//某个功能开启目标的功能开启数据
+message fun_open_target_data{
+    int32 target_tid = 1; //功能开启目标表 tid
+    bytes fun_open_state = 2; //功能开启状态
+}
+
+
+//功能开启登录数据
+message res_fun_open_login{
+    repeated fun_open_target_data target_list = 3; //功能开启目标数据列表
+}
+
+//服务器主动推送功能开启
+message res_notify_fun_open{
+    int32 target_tid = 1; //功能开启目标表 tid
+    repeated fun_open_to_client extra_ret_list = 2; //功能开启返回给客户端的自定义数据
+}

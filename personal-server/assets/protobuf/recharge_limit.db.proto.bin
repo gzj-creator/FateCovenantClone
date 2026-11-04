@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// 限购信息
+message pb_recharge_limit_info{
+    uint64 refresh_time = 1;                                // 刷新时间，统一刷新的用这个值
+    repeated pb_recharge_buy_num buy_num_list = 2;          // 购买列表
+}
+
+// 单个礼包购买数量
+message pb_recharge_buy_num{
+    uint32 recharge_id = 1;             // 付费ID
+    uint32 buy_num = 2;                 // 购买数量
+    uint64 refresh_time = 3;            // 下一次刷新的时间 单个购买的刷新时间（特殊情况下，同一个玩法的礼包有不同的刷新时间，就设置这个值）
+    uint32 used_extra_times = 4;        // 已经使用的额外次数
+}

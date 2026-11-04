@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 阵容推荐激活请求
+message pb_hero_team_suggest_active {
+    uint32 type = 1; // 阵营类型
+    repeated pb_hero_team_suggest_active_hero heroes = 2; // 英雄列表
+}
+
+message pb_hero_team_suggest_active_hero {
+    uint32 hero_tid = 1; // 英雄tid
+    uint32 target_star = 2; // 目标星级
+}

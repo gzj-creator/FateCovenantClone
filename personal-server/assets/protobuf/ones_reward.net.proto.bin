@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+
+// 领取一次性奖励返回
+message pb_get_ones_reward_rsp {
+  bytes get_list = 1; // 领取记录
+  pb_res_to_client res = 2; // 资源变化
+}

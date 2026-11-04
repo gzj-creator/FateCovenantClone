@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+//vip奖励数据
+message pb_vip_reward {
+    bytes add_reward_state = 3; //vip加成奖励领奖状态
+    bytes gift_buy_state = 4; //vip特惠礼包的购买状态
+    bytes extra_recharge_state = 5; // vip直冲充值状态
+}

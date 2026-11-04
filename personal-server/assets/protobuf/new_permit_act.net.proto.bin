@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "project/activity/new_permit_act/new_permit_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//通行证请求获取奖励
+message pb_new_permit_award_req{
+  int64 activity_id = 1;            //活动id
+  repeated int64 id_list = 2;       //领取的档位奖励tid列表
+}
+
+//通行证请求获取奖励返回
+message pb_new_permit_award_rsp {
+  pb_res_to_client res = 1;                       //资源变化
+  pb_new_permit_act_info act_info = 2;            //活动信息
+}
+
+//通行证活动结算奖励返回
+message pb_new_permit_settle_rsp {
+  pb_res_to_client res = 1;                       //资源变化
+  pb_new_permit_act_info act_info = 2;            //活动信息
+}

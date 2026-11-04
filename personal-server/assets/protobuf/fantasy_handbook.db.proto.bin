@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+// 专武图鉴
+message pb_fantasy_handbook {
+    repeated pb_fantasy_handbook_equip equips = 1;  // 专武图鉴列表
+}
+
+message pb_fantasy_handbook_equip {
+    uint32 tid = 1;     // 激活的专武
+    uint32 star = 2;    // 星级
+}

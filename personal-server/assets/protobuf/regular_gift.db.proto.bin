@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+//商城礼包结构
+message pb_regular_gift_info {
+    repeated regular_gift gift_list = 1; //礼包列表
+}
+
+//商城礼包礼包结构
+message regular_gift {
+    int32 tid = 1; //礼包tid
+    int32 type = 2; //礼包类型
+    pb_recharge_limit_info buy_limit_info = 3;  // 购买次数限购信息
+}

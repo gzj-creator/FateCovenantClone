@@ -10,7 +10,7 @@ import { createWalletService } from '../game/wallet-service.mjs';
 import { createWishTreeService, WISH_TREE_MODULE } from '../game/wish-tree-service.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const fixedAt = Date.parse('2026-10-31T06:00:00.000Z');
 const day = milliseconds => Math.floor((Math.floor(milliseconds / 1000) + 10800) / 86400);
 

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+message pb_relationship {
+  repeated pb_role_relationship relationship = 1; //
+}
+
+// 角色关系信息
+message pb_role_relationship {
+  uint32 tid = 1;             // 关系tid
+  repeated pb_relationship_mark mark = 2;   // 标记的role_id
+  repeated pb_relationship_marked marked = 3; // 被role_id标记的
+  repeated pb_relation_event do_event = 4; // 自己发生的行为事件
+}
+
+// 单个关系信息
+message pb_relationship_marked {
+  uint64 role = 1;          // 被role_id标记
+  uint32 valid_stamp = 2;   // 对方标记自己可能有一个有效期
+}
+
+message pb_relationship_mark {
+  uint64 role = 1;               // 被role_id标记
+  bytes un_notify_event = 2;     // 不通知标记
+}
+
+// 关系中发生的事件
+message pb_relation_event {
+  uint32 tid = 1;       // 事件tid
+  bytes param = 2;      // 序列化事件自定义参数
+  uint32 timestamp = 3; // 事件发生时间戳
+  uint64 role = 4;      // 事件源role_id
+}

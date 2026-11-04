@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// 任务奖励-整体数据
+message pb_task_award_master{
+  repeated pb_task_award data_list = 1; //所有活动数据列表
+}
+
+// 任务奖励-活动数据
+message pb_task_award{
+  uint32 version = 1;           //版本号
+  uint32 progress_value = 2;    //进度值
+  bytes progress_award = 3;     //任务进度奖励领取数据
+  bytes task_award = 4;         //任务项奖励领取数据
+  bool rev_overdue = 5;         //表示过期后，是否可以领最高进度的奖励
+}

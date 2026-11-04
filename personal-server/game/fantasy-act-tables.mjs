@@ -1,4 +1,5 @@
 import { readGeneratedTables } from '../config/hero-tables.mjs';
+import { tableAsset } from '../assets.mjs';
 
 export const FANTASY_ACTIVITY_FUNC = 74;
 export const FANTASY_ACTIVITY_TIDS = Object.freeze([74001, 74002, 74003, 74004, 74005]);
@@ -11,23 +12,10 @@ export const DEMIGOD_ACT_VERSIONS = Object.freeze(Array.from({ length: 38 }, (_,
 // DemigodAct contract and routing it here would merge two activity families.
 export const LEGACY_TICKET_ACTIVITY_FUNC = 98;
 
-const activityTableUrl = new URL(
-  '../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/' +
-  'assets__Android__script__lua__64_lua_project.bundle/bytecode/ActivityTable.data.lua.json',
-  import.meta.url
-);
-const fantasyTableUrl = new URL(
-  '../../analysis/work/relic-divine-activities/tables/FantasyEquipActTable.data.json',
-  import.meta.url
-);
-const miniGameTableUrl = new URL(
-  '../../analysis/work/relic-divine-activities/MiniGameTable.data.json',
-  import.meta.url
-);
-const demigodTableUrl = new URL(
-  '../../analysis/work/relic-divine-activities/tables/DemigodActTable.data.json',
-  import.meta.url
-);
+const activityTableUrl = tableAsset('ActivityTable.data.lua.json');
+const fantasyTableUrl = tableAsset('FantasyEquipActTable.data.json');
+const miniGameTableUrl = tableAsset('MiniGameTable.data.json');
+const demigodTableUrl = tableAsset('DemigodActTable.data.json');
 
 const fantasyTableNames = Object.freeze([
   'Task', 'DrawWish', 'Draw', 'DrawShow', 'Gift', 'GiftRelease', 'Pre', 'PreShow',

@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 钻石重置返利活动
+message pb_recharge_rebate_reset {
+  uint64 act_id = 1; // 活动id
+  bytes award_bin = 2; // 预览奖励在0号为
+}

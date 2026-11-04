@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+// 推荐礼包活动角色数据
+message pb_recommend_gift_role {
+    repeated pb_recommend_gift gift_list = 1;   // 所有活动数据
+}
+
+// 单个活动数据
+message pb_recommend_gift {
+    uint32 act_tid = 1; // 活动表tid
+    repeated pb_recommend_gift_buy buy_list = 2; // 购买数据
+}
+
+// 购买数据
+message pb_recommend_gift_buy {
+    uint32 recharge_tid = 1; // 推荐礼包付费表tid
+    uint32 buy_times = 2;    // 购买次数
+}

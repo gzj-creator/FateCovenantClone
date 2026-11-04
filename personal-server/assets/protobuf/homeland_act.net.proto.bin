@@ -1,0 +1,47 @@
+syntax = "proto3";
+import "project/activity/homeland_act/homeland_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 1. 选择冲榜英雄
+message pb_homeland_act_select_hero_req {
+  int64 activity_id = 1;    // 活动TID
+  int64 hero_tid = 2;       // 英雄TID
+}
+message pb_homeland_act_select_hero_rsp {
+  pb_homeland_act_role_data act_info = 1; // 最新活动信息
+}
+
+// 2. 领取任务奖励
+message pb_homeland_act_task_award_req {
+  int64 activity_id = 1;    // 活动TID
+  int64 task_tid = 2;       // 任务TID
+}
+message pb_homeland_act_task_award_rsp {
+  pb_homeland_act_role_data act_info = 1; // 最新活动信息
+  pb_res_to_client res = 2;               // 资源变化
+}
+
+// 3. 装饰家具（批量，按品类去重）
+message pb_homeland_act_decorate_req {
+  int64 activity_id = 1;             // 活动TID
+  repeated pb_homeland_act_decorate furniture_list = 2; // 装饰列表
+}
+message pb_homeland_act_decorate_rsp {
+  pb_homeland_act_role_data act_info = 1; // 最新活动信息
+}
+
+// 4. 幸福值变更推送（S2C）
+message pb_homeland_act_happiness_update_push {
+  int64 activity_id = 1; // 活动TID
+  int64 happiness = 2;   // 当前幸福值
+  int64 delta = 3;       // 变化量
+  int64 src_type = 4;    // 来源类型: 1=英雄养成 2=符纹 3=好感度 4=家具图鉴 5=套装图鉴 6=繁荣度
+}
+
+// 5. 打扫房间
+message pb_homeland_act_clear_room_req {
+  int64 activity_id = 1; // 活动TID
+}
+message pb_homeland_act_clear_room_rsp {
+  pb_homeland_act_role_data act_info = 1; // 最新活动信息
+}

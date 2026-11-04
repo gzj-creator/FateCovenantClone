@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/linear_level/linear_level.db.proto.txt";
+
+// 请求线性关卡宝箱奖励
+message pb_linear_level_box_award_req{
+    uint32 type = 1; // 类型
+    repeated uint32 indexes = 2; // 奖励索引
+}
+
+message pb_linear_level_box_award_rsp{
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_linear_level linear_level = 2; // 线性关卡数据
+}
+
+// 请求线性关卡战斗
+message pb_linear_level_fight_req {
+    uint64 type = 1; // 类型
+    uint64 level = 2; // 关卡
+}
+
+message pb_linear_level_fight_rsp {
+    pb_linear_level linear_level = 1; // 线性关卡数据
+    pb_res_to_client res = 2; //资源改变
+}

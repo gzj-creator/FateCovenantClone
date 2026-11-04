@@ -262,7 +262,7 @@ export function createGuildRosterService({ store, codec, now = () => Math.floor(
     loginPayload,
     supports: type => [21005, 21006, 21007, 21010].includes(Number(type)),
     async execute(type, input) {
-      log({ event: 'guild_roster_execute_entry', type, input, inputHex: input?.toString('base64') });
+      log({ event: 'guild_roster_execute_entry', type, input, inputHex: Buffer.isBuffer(input) ? input.toString('base64') : null });
       switch (Number(type)) {
         case 21005: return queryGuild(input);
         case 21006:

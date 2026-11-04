@@ -1,0 +1,12 @@
+syntax = "proto3";
+import "project/hero_mutant/hero_mutant.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/role.db.proto.txt";
+
+// 英雄变异礼包返回数据
+message pb_hero_mutant_gift_buy_back{
+    pb_hero_mutant mutant_info = 1; // 英雄变异整体数据
+    hero hero_info = 2; // 新的英雄数据
+    uint32 style_id = 3; // 设置新的形象（为0表示没有修改形象）
+    pb_figure_item head_info = 4; // 设置新的头像（为空表示没有修改头像信息）
+}

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "project/activity/martial_club_act/martial_club_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 首通奖励返回
+message pb_martial_club_act_pass_award_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    bytes got_pass_award = 2;    // 已领取的首通奖励
+}
+
+// 服务器奖励返回
+message pb_martial_club_act_server_award_rsp {
+    pb_res_to_client res_change = 1; // 资源变化
+    bytes got_server_award = 2;    // 已领取的服务器奖励
+}
+
+// 登陆通关数据
+message pb_martial_club_act_login_data {
+    pb_role_martial_club_act award = 1;      // 通关奖励数据
+    repeated pb_role_martial_club_act_pass roles = 2;                     // 通关的队伍数据
+}
+
+message pb_role_martial_club_act_pass{
+    uint32 boss_id = 1;                              // 武道馆配置表id
+    repeated uint64 role_id = 2;                     // 通关的角色id
+}

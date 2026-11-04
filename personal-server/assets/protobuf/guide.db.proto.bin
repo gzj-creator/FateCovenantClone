@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+//引导数据
+message pb_guide {
+    repeated pb_guide_process process_list = 1; //引导进度数据
+    bytes award = 2; //引导奖励数据
+}
+
+//引导进度
+message pb_guide_process {
+    int32 process_id = 1; //当前操作的引导流程ID
+    int32 key_id = 2; //当前操作通过的步骤ID
+    bool is_over = 3; //标记该步骤是否完成
+}

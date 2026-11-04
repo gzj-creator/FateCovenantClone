@@ -22,7 +22,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 const codec = createGameCodec();
 const tables = readGameTables();
 const heroTables = readHeroTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const SERVER_OPENED_AT = 1792789200;
 const ACTIVITY_ID = 117001;

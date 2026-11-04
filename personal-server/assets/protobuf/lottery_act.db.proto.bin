@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 活动个人数据
+message pb_lottery_act{
+    pb_recharge_limit_info buy_limit_info = 1; //礼包购买信息
+    repeated pb_u64_kv lib_list = 2; //当前增加了权重的数据列表(废弃)
+    uint32 rev_day = 3; //最近一次发放免费抽奖道具的天数索引
+    uint32 draw_count = 4; //未中大奖前累计总抽卡次数
+    uint64 total_draw_count = 5; //总的抽卡次数
+    repeated uint64 big_lib_list = 6; //当前抽中的大奖记录列表
+}
+
+// 活动服务器数据
+message pb_lottery_act_server{
+    repeated pb_lottery_act_award_log log_list = 1; // 抽中大奖的玩家数据列表（最多10个）
+}
+
+// 抽中大奖的玩家数据
+message pb_lottery_act_award_log{
+    uint64 role_id = 1; // 角色id
+    uint64 award_tid = 2; // 奖励
+    uint64 award_num = 3; // 数量
+}

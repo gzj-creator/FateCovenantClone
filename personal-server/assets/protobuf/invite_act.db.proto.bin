@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+// 活动数据
+message pb_invite_info{
+    uint32 version = 1;                  // 期数
+    uint64 inviter_rid = 2;                 // 我被谁邀请的rid
+    repeated uint64 task_list = 4;    // 任务领取列表
+    uint64 bind_award_time = 5;            // 绑定奖励领取时间
+}

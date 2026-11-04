@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+// 开服冲榜走马灯消息
+message pb_lantern_db_sprint_settles {
+  repeated pb_lantern_db_sprint_settle sprint_lantern = 1;
+}
+
+// 单条冲榜走马灯消息
+message pb_lantern_db_sprint_settle {
+  uint32 type = 1;            // 冲榜类型
+  repeated bytes names = 2;   // 评定结果玩家名字
+  uint32 timestamp = 3;       // 评定时间
+}
+
+// 系统公告走马灯参数
+message pb_notice_lantern {
+  repeated pb_one_notice_lantern lantern = 1;
+}
+
+// 一条系统公告走马灯参数
+message pb_one_notice_lantern {
+  uint32 type = 1;        // 走马灯配置表tid
+  bytes lantern = 2;      // 走马灯各自数据结构序列化数据
+}
+
+
+

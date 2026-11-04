@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "project/spring_festival_act/spring_festival_act.db.proto.txt";
+import "project/shop.db.proto.txt";
+
+// 活动初始化数据
+message pb_spring_festival_act_init{
+    pb_spring_festival_act_data act_data = 1;       // 活动数据
+    repeated pb_shop_info shop_list = 2;            // 商店数据列表
+}

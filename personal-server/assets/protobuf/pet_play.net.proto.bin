@@ -1,0 +1,3 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/pet_play/pet_play.db.proto.txt";

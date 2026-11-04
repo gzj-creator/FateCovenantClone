@@ -413,13 +413,14 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
         awards.push(...fishAwards(fish, version, generated));
         recordCatch(state, fish, generated);
       }
-      consumeResources(model, [[Number(version.ticket_item), count * (Number(map.cost_num) || 1)]], 301);
-      const res = grantResources(model, awards, tables);
+      const spent = consumeResources(model, [[Number(version.ticket_item), count * (Number(map.cost_num) || 1)]], 301);
+      const earned = grantResources(model, awards, tables);
       state.wait_fish_json = '{}';
       state.updated_at = nowIso();
       saveState(db, roleId, state);
-      const value = { data: roleData(state), fish_list: fishList, res: { changes: res.changes, is_overflow: false }, fish_qte_list: qteList };
-      return { value, data: codec.pack('pb_fishing_act_batch_get_rsp', value), count, changes: res.changes.length };
+      const changes = [...spent.changes, ...earned.changes];
+      const value = { data: roleData(state), fish_list: fishList, res: { changes, is_overflow: false }, fish_qte_list: qteList };
+      return { value, data: codec.pack('pb_fishing_act_batch_get_rsp', value), count, changes: changes.length };
     });
     result.valueForLog = { actId, mapId, count: result.count, changes: result.changes };
     return result;

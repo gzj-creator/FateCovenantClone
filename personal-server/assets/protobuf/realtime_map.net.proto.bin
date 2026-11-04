@@ -1,0 +1,86 @@
+syntax = "proto3";
+import "project/realtime_map/realtime_map.db.proto.txt";
+
+// 进入地图请求
+message pb_realtime_enter_map_req{
+    uint64 map_id = 1;      // 地图ID
+    uint64 dest_loc = 2;    // 目标位置信息
+    bool is_watch = 3;      // 是否是观战者
+}
+
+// 离开地图请求
+message pb_realtime_leave_map_req{
+    uint64 map_id = 1;      // 地图ID
+    bool is_watch = 2;      // 是否是观战者
+}
+
+// 进入地图返回数据
+message pb_realtime_enter_map_back{
+    uint64 id = 1;                                              // 地图配置TID
+    repeated pb_realtime_map_node role_list = 2;                // 地图内的节点列表
+    repeated pb_realtime_map_node dynamic_node_list = 3;        // 地图上的动态节点的数据（玩法维护的）
+    bytes func_data = 4;                                        // 功能数据
+}
+
+// 增加地图节点返回
+message pb_realtime_map_add_node_back{
+    uint64 map_id = 1;                        // 地图ID
+    repeated pb_realtime_map_node nodes = 2;  // 增加的节点列表
+}
+
+// 删除地图节点返回
+message pb_realtime_map_remove_node_back{
+    uint64 map_id = 1;          // 地图ID
+    repeated int64 rm_id_list = 2;          // 删除的节点ID列表
+    bool is_player = 3;         // 是否是玩家
+}
+
+// 删除地图节点返回
+message pb_realtime_map_update_node_back{
+    uint64 map_id = 1;          // 地图ID
+    repeated pb_realtime_map_update_info update_infos = 2;          // 更新的信息
+}
+
+// 更新的数据
+message pb_realtime_map_update_info{
+    int64 id = 1;              // 更新的节点ID
+    bytes extra_data = 2;      // 更新的额外数据
+    int32 type = 3;            // 节点类型
+    uint32 update_type = 4;    // 更新类型
+    bytes show_extra_data = 5; // 表现额外数据
+}
+
+// 重新进入地图更新的数据
+message pb_realtime_map_reenter_update{
+    uint32 node_state = 1;   // 节点状态
+    uint64 map_id = 2;       // 地图ID
+    uint64 role_id = 3;      // 角色ID
+    bytes extra = 4;        // 额外更新的数据
+}
+
+// 节点移动返回
+message pb_realtime_map_node_move_back{
+    uint64 map_id = 1;          // 地图ID
+    int64 node_id = 2;          // 节点ID
+    uint32 loc_index = 3;       // 位置
+    bool direct_position = 4;   // 是否直接定位
+    bytes extra_bin = 5;        // 额外返回数据
+    repeated int64 point = 6;  // 坐标点（客户端透传）
+}
+
+message pb_realtime_map_move_back_list{
+    repeated pb_realtime_map_node_move_back move_back_list = 1;          // 移动返回列表
+}
+
+// 删除地图节点返回
+message pb_realtime_map_update_node_back_list{
+    repeated pb_realtime_map_update_node_back update_list = 1;      // 更新列表
+}
+
+// 移动请求参数
+message pb_realtime_map_role_move_req{
+    uint64 map_id = 1;          // 地图ID
+    uint64 dest_loc = 2;        // 目标位置
+    repeated uint64 move_other_id_list = 3;          // 移动的玩家ID列表，移动别人时传这个，自己移动不传这个参数
+    repeated int64 point = 4;  // 玩家坐标点信息（客户端透传使用）
+}

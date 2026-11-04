@@ -1,0 +1,35 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 半神活动
+message pb_demigod_act{
+    pb_recharge_limit_info buy_limit_info = 1;  // 礼包限购记录
+    uint32 act_tid = 4;                         // 当前活动tid
+    uint32 draw_num = 5;                        // 抽卡次数
+    uint32 draw_award_id = 6;                   // 已经领奖进度Id(废弃）
+    repeated uint32 draw_awards = 7;            // 已经领奖进度tid列表
+    uint64 wish_tid = 8;                        // 当前心愿选择（为0时不能抽奖）
+    repeated pb_demigod_act_wish_item wish_list = 9; // 抽中的心愿数据列表
+    uint64 version_draw_num = 10;                        // 每期重置的抽卡次数
+}
+
+// 半神活动挑战数据
+message pb_demigod_act_trial_data{
+    repeated pb_demigod_act_trial challenge_list = 1;     // 挑战列表
+}
+
+// 半神活动挑战数据(单个)
+message pb_demigod_act_trial{
+    uint32 tid = 1;                             // 副本tid
+    uint64 fantasy_equip = 2;                   // 穿戴的幻武uid
+    repeated uint64 bless_list = 3;             // 护佑的幻武
+    int64 max_damage = 4;                       // 最高伤害
+    repeated uint32 receive_list = 5;           // 已领取的奖励tid
+}
+
+// 半神心愿单个数据
+message pb_demigod_act_wish_item{
+    uint64 tid = 1;                             // 半神tid
+    uint64 hit = 2;                             // 当前抽中次数
+    uint64 rate = 3;                            // 当前累计的额外概率
+}

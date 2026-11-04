@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/activity/sign_act/sign_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 签到活动请求
+message pb_sign_act_req {
+    uint64 act_id = 1;          // 活动id
+    uint32 day = 2;             // 天数
+}
+
+// 活动返回数据
+message pb_sign_act_back{
+    pb_sign_act info = 1;       //活动数据
+    pb_res_to_client res = 2;   //资源数据
+}

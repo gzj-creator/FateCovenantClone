@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+// 特卖折上折玩家数据
+message pb_flash_sale_role{
+    uint64 buy_recharge_id = 1;     // 已购买的付费ID
+    bytes task_states = 2;          // 任务状态，领取了奖励或者砍过价的记录到这里面
+    uint32 cur_price = 3;           // 当前的价格（单位：分）
+    uint32 no_crit_time = 4;        // 没有触发暴击的次数
+    uint32 bargain_time = 5;        // 当前已经砍价的次数
+    uint64 hero_tid = 6;            // 本期活动选择的英雄tid
+}

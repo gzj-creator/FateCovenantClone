@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+// 夏日活动pvp角色数据
+message pb_summer_act_pvp_role {
+  repeated pb_summer_pvp_report report_list = 1; // 战报数据(最多30条)
+  repeated pb_summer_pvp_swap_match match_list = 2; // 匹配对手数据
+  repeated uint64 guess_roles = 3; // 竞猜角色
+  bytes phase_task_award = 4; // 阶段任务奖励
+  bytes day_task_award = 5; // 日常任务奖励
+  uint32 last_refresh_stamp = 6; // 上次刷新时间戳
+  bool swap_open = 7; // 换位赛是否开启
+  uint64 act_tid = 8; // 活动tid
+  uint64 unused_fight_times = 9; // 未使用的战斗次数
+  uint64 unused_match_times = 10; // 未使用的匹配次数
+  uint32 fight_times = 11; // 战斗次数
+}
+
+// 夏日活动pvp换位赛数据
+message pb_summer_pvp_swap_info {
+  repeated pb_summer_pvp_swap_match match_list = 1; // 匹配对手数据
+}
+//
+message pb_summer_pvp_swap_match {
+  uint64 role_id = 1;
+  uint32 rank = 2;
+}
+
+// 匹配赛对手数据
+message pb_summer_pvp_level_match {
+  int64 role_id = 1; // 玩家id
+  int32 score = 2; // 积分
+  bool is_bot = 3; // 是否是机器人
+}
+
+// 夏日活动pvp段位赛数据
+message pb_summer_pvp_rank_info {
+  repeated pb_summer_pvp_report report_list = 2; // 战报数据
+}
+
+// 战报数据
+message pb_summer_pvp_report {
+  uint64 fight_uid = 1; // 战斗唯一id，用来取战报
+  uint64 time = 2; // 战斗时间
+  int64 atk_role_id = 3; // 进攻方角色id
+  uint64 def_role_id = 4; // 防守方角色id
+  uint32 final_result = 5; // 进攻方战斗结果（1：胜利，0：失败）
+  uint32 atk_before_fight_value = 6; // 进攻方战前排名
+  uint32 atk_after_fight_value = 7; // 进攻方战后排名
+  uint32 def_before_fight_value = 8; // 防守方战前排名
+  uint32 def_after_fight_value = 9; // 防守方战后排名
+  bool def_is_bot = 10; // 是否是机器人
+  int32 act_id = 11; //活动id
+  int32 def_power = 12; //防守方战力
+  int32 atk_power = 13; //进攻方战力
+}
+
+// 夏日pvp段位赛
+message pb_summer_challenge_person {
+  int32 score = 1; // 积分
+  int32 challenge_times = 2; // 挑战次数
+  int32 match_times = 3; // 匹配次数
+  repeated pb_summer_challenge_enemy enemy_list = 4; // 匹配对手数据
+  int32 win_times = 5; // 胜利次数
+  int32 fight_times = 6; // 战斗次数(整个预选赛参与战斗次数)
+  int32 refresh_day = 7; // 数据刷新天
+  int32 def_before_score = 8; // 防守战斗前积分 主动发起战斗就更新
+  int32 buy_challenge_times = 9; // 购买挑战次数
+  int32 buy_match_times = 10; // 购买匹配次数
+  int32 max_score = 11; //最高积分
+  int64 act_id = 12; //活动id
+  repeated pb_summer_pvp_report report_list = 13;//战报数据
+  uint64 summer_phase = 14;    // 夏日活动阶段(用于玩家数据刷新)
+  uint32 cross_stage = 15; // 跨服阶段缓存玩家初始跨服阶段，存储在历史数据中
+  repeated pb_summer_challenge_person_history history_list = 16; // 历史数据
+}
+
+message pb_summer_challenge_person_history {
+  uint64 summer_phase = 1;    // 夏日活动阶段(用于玩家数据刷新)
+  int32 score = 2;            // 积分
+  int32 max_score = 3;        //最高积分
+  int32 cross_stage = 4;      // 排行榜类型，用于查询参加换位历史玩家排名
+}
+
+
+// 预选赛 - 匹配对手数据
+message pb_summer_challenge_enemy {
+  int64 role_id = 1; // 玩家id
+  int32 score = 2; // 积分
+  bool is_bot = 3; // 是否是机器人
+}
+
+
+// --------------------------------服务到数据--------------------------------------
+// 夏日pvp头部排名历史数据
+message pb_summer_act_pvp_head_history {
+  uint32 act_tid = 1;   // 活动tid
+  repeated pb_summer_act_pvp_head_history_item item_list = 2; // 各阶段排名数据
+}
+message pb_summer_act_pvp_head_history_item {
+  uint32 summer_phase = 1; // 夏日活动阶段
+  repeated uint64 role_id = 2; // 角色id
+}
+
+// 夏日pvp服务器数据
+message pb_summer_act_pvp_server {
+  uint64 act_tid = 1;         // 活动tid
+  uint64 server_split = 2;    // 服务器切割版本
+  uint64 summer_phase = 3;    // 夏日活动阶段
+  uint32 cross_stage = 4;     // 跨服阶段
+}
+
+// 夏日pvp服务器竞猜数据
+message pb_summer_act_pvp_guess_server {
+  repeated uint64 role_id = 1; // 参与竞猜的角色id
+}

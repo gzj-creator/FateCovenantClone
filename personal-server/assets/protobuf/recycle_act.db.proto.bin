@@ -1,0 +1,12 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+message pb_recycle_act_version_info{
+    uint64 version = 1; // 活动版本号
+    repeated pb_u64_kv use_list = 2; // 回收记录
+}
+
+// 回收商店玩家信息 -- 支持多期
+message pb_recycle_act_info{
+       repeated pb_recycle_act_version_info info_list = 1;
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 礼盒活动玩家数据
+message pb_gift_box_role_info {
+    repeated pb_gift_box_act_data act_list = 1;           //活动信息列表
+}
+
+// 礼盒活动数据
+message pb_gift_box_act_data {
+    int64 version = 1;                              // 礼盒活动ID
+    repeated int64 box_bought_list = 2;             // 已购买的礼盒ID列表
+    repeated int64 gift_get_list = 3;               // 已领取的礼包ID列表
+}

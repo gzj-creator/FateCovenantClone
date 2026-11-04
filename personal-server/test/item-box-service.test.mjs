@@ -1,29 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { createGameCodec, serializedBinary } from '../protocol/game-codec.mjs';
-import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createItemBoxService } from '../game/item-box-service.mjs';
+import { createGameFixture } from './helpers/game-fixture.mjs';
 
-// Temp database copied from the consistent handoff backup: never the running server database.
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
 const codec = createGameCodec(), tables = readGameTables();
 
 function setup(t, options = {}) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-itembox-'));
-  const file = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, file);
-  let store = createGameStore({ databasePath: file, codec });
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-itembox-' });
+  let store = fixture.store;
   const make = () => createItemBoxService({ store, codec, tables, random: options.random ?? (() => 0) });
-  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
-  return { get store() { return store; }, service: make(), reopen() { store.close(); store = createGameStore({ databasePath: file, codec }); } };
+  let service = make();
+  return {
+    get store() { return store; },
+    get service() { return service; },
+    reopen() {
+      store = fixture.open();
+      service = make();
+    }
+  };
 }
 
-// Handoff backup intentionally has no optional-box stock. Inject a stack in the
-// same module-6 layout the live store uses, before exercising the service.
+// Inject optional-box stock in the same module-6 layout the live store uses.
 function addBox(env, tid, num, group = 1) {
   env.store.transaction(model => {
     const groups = new Map(model.state.modules.value).get(6).value;

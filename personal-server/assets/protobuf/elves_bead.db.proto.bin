@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 精灵灵珠养成数据
+message pb_elves_bead_data {
+    int64 max_uid = 1;  // 当前灵珠最大uid
+    repeated pb_elves_bead elves_beads = 2;   // 灵珠列表
+}
+
+// 精灵灵珠数据
+message pb_elves_bead {
+    int64 tid = 1; // 灵珠tid
+    int64 uid = 2; // 灵珠uid
+    int32 level = 3; // 灵珠等级
+    int32 star = 4; // 灵珠星级
+    repeated pb_res_obj gulp_elves_beads = 5; // 吞噬掉的灵珠列表
+}
+
+// 精灵灵珠数据返回客户端数据
+message pb_elves_bead_back {
+    int64 tid = 1; // 灵珠tid
+    int64 uid = 2; // 灵珠uid
+    int32 level = 3; // 灵珠等级
+    int32 star = 4; // 灵珠星级
+}

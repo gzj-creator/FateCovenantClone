@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/battle_tri_match_equip/battle_tri_match_equip.db.proto.txt";
+
+
+// 装备升级 包含升品
+message pb_battle_tri_match_equip_up_req{
+  int64 site_idx = 1;     // 槽位idx
+  int64 equip_type_id = 2;  // 装备类型tid
+  bool is_one_key = 3; // 是否一键升级 是的话 装备类型tid可不用传
+}
+
+message pb_battle_tri_match_equip_up_rsp{
+  pb_res_to_client res_change = 1; // 资源变化
+  repeated pb_battle_tri_match_equip_data change_equips = 2; // 变更的装备列表
+}
+
+
+// 装备交换
+// site_idx1和site_idx2必须有值，类型不传就是整个交换，类型传就是针对类型交换
+message pb_battle_tri_match_equip_swap_req{
+  int64 site_idx1 = 1; // 槽位idx
+  int64 equip_type_id1 = 2;  // 装备类型tid
+  int64 site_idx2 = 3; // 槽位idx
+  int64 equip_type_id2 = 4;  // 装备类型tid
+}
+
+message pb_battle_tri_match_equip_swap_rsp{
+  repeated pb_battle_tri_match_equip_data change_equips = 1; // 变更的装备列表
+}
+
+// 装备批量升级 包含升品
+message pb_battle_tri_match_equip_multiple_up_req{
+  int64 site_idx = 1; // 槽位idx
+  int64 times = 2;
+}
+
+message pb_battle_tri_match_equip_multiple_up_rsp{
+  pb_res_to_client res_change = 1; // 资源变化
+  repeated pb_battle_tri_match_equip_data change_equips = 2; // 变更的装备列表
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/open_server_box/open_server_box.db.proto.txt";
+
+// 数据返回
+message pb_open_server_box_back{
+    pb_open_server_box data = 1; //活动数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 请求进度奖励
+message pb_open_server_box_req{
+    uint32 tid = 1; //进度奖励Tid
+    uint32 select = 2; //选择的英雄id
+}

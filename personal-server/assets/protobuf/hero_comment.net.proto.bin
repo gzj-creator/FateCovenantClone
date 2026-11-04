@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+import "project/hero/comment/hero_comment.db.proto.txt";
+
+//一个英雄同步的服务器数据
+message pb_hero_comment_info{
+    bytes score_info = 1;                  //评分pb_hero_comment_all_score
+    bytes comments = 2;     //现在是200条评论 pb_hero_comments
+    uint32 hero_tid = 3;                                //英雄tid
+}
+
+//请求插入评论
+message pb_hero_comment_insert_req{
+    uint32 hero_tid = 1;
+    string content = 2;
+}
+
+//修改英雄评分
+message pb_hero_comment_set_score_req{
+    uint32 hero_tid = 1;
+    uint32 score = 2;
+}
+////修改英雄评分返回
+//message pb_resp_hero_comment_modify_score{
+//    pb_role_comment_info role_comment_info = 1;
+//    pb_hero_comment_all_score score_info = 2;
+//}
+
+//请求点赞
+message pb_req_add_like_count{
+    uint64 uid = 1;
+    uint32 hero_tid = 2;
+}
+

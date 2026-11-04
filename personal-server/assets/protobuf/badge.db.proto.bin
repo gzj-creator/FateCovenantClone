@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+// 角色徽章信息
+message pb_badge_role {
+  repeated pb_badge_page badge_pages = 1;   // 徽章分页信息
+}
+
+// 徽章分页信息
+message pb_badge_page {
+  uint32 page_id = 1;             // 分页id
+  repeated pb_badge badges = 2;   // 激活的徽章列表
+}
+
+// 单个徽章数据
+message pb_badge {
+  uint64 tid = 1;
+}

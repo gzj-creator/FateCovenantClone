@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/battle_tri_match_hero/battle_tri_match_hero.db.proto.txt";
+
+
+// 升级 包含突破
+message pb_battle_tri_match_hero_up_lv_req{
+  int64 site_idx = 1; // 槽位索引
+  int64 up_lv_times = 2; // 升级次数
+}
+
+message pb_battle_tri_match_hero_up_lv_rsp{
+  pb_res_to_client res = 1; // 改变的资源
+  pb_battle_tri_match_site_data change_site_data = 2; // 变更槽位数据
+}
+
+
+// 升星
+message pb_battle_tri_match_hero_up_star_req{
+  int64 hero_tid = 1;
+}
+
+message pb_battle_tri_match_hero_up_star_rsp{
+  pb_res_to_client res = 1; // 改变的资源
+  pb_battle_tri_match_hero_data change_hero_data = 2; // 改变的英雄数据
+}

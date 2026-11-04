@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+// 角色群雄逐鹿信息
+message pb_role_hunter_arena {
+    uint32 season = 1;     // 赛季
+
+    uint32 max_score = 2;      // 最高积分(任务进度需要用)
+    uint32 last_max_score = 3; // 上个赛季最高积分(新赛季可能会被人打，但是自己还没结算)
+    int32 score_change = 4 ;  // 分数变化
+
+    int32 recent_fight_result = 5; // 最近战斗情况(连胜为正、连败为负)
+    uint32 fight_times = 6; // 战斗次数(显示胜率)
+    uint32 win_times = 7;   // 胜利次数(显示胜率)
+
+    bytes got_day_award = 8;   // 已经领取的每日奖励
+    bytes got_season_award = 9; // 已经领取的赛季奖励
+    uint32 last_flush_stamp = 10; // 上次刷新时间戳(每日)
+
+    repeated pb_hunter_arena_fight_report fight_reports = 11; // 个人战报列表
+    uint32 read_report_time = 12;   // 阅读战报时间
+
+    bool ignore_match_show = 13; // 跳过匹配动画
+    bytes season_award_tips = 14; // 赛季奖励提示是否已经显示
+
+    uint32 last_join_season = 15; // 上个参与的赛季(点了进入新赛季后更新为当前赛季)
+    uint32 last_season_win_times = 16;// 上个赛季胜利次数
+    uint32 last_season_fight_times = 17;// 上个赛季最高积分
+    uint32 new_stage_fight_times = 18;//进入新段位时的战斗次数
+
+    uint64 cross_open_day = 19; // 跨服开启时间,用于区分是否更新了跨服组
+    uint64 last_cross_open_day = 20; // 上次跨服开启时间,用于区分是否更新了跨服组(点了进入新赛季后更新为当前赛季)
+    repeated hunt_stage_wins stage_wins = 21; // 段位胜利次数
+
+    repeated pb_hunter_arena_best_record best_rank = 22; // 最近N天最佳排名
+    repeated pb_hunter_arena_best_record best_stage = 23; // 最近N天最佳段位
+}
+
+// 玩法最佳记录
+message pb_hunter_arena_best_record {
+    uint32 day_index = 1;
+    uint32 best_value = 2;
+}
+
+// 段位胜利次数
+message hunt_stage_wins{
+    uint32 stage = 1; // 段位
+    uint32 wins = 2; // 已经胜利次数
+}
+
+// 群雄逐鹿个人战报列表
+message pb_hunter_arena_fight_report {
+    int32 score_change = 1;  // 积分变化(区分正负)
+    uint64 fight_uid = 2;    // 战斗唯一id，用来取战报
+    uint32 fight_stamp = 3;  // 战斗时间
+    int64 enemy = 4;         // 敌人role_id
+    bool is_atk = 5;         // 是否是进攻方
+    pb_hunter_fight_change atk_change = 6; // 进攻方变化
+    pb_hunter_fight_change def_change = 7; // 防守方变化
+    bool locked = 8;         // 是否锁定
+    bool is_win = 9;         // 是否胜利
+}
+
+// 战斗积分变化
+message pb_hunter_fight_change {
+    uint32 old_rank = 1;        // 旧排名
+    uint32 new_rank = 2;        // 新排名
+    uint32 old_score = 3;       // 旧积分
+    uint32 new_score = 4;       // 新积分
+    uint32 rank_type = 5;       // 排行榜类型
+}
+
+// 角色巅峰战斗数据
+message pb_hunter_role_palace {
+    repeated pb_hunter_role_palace_one palaces = 1; // 角色巅峰战斗数据
+}
+
+// 单个角色巅峰战斗数据
+message pb_hunter_role_palace_one {
+    uint32 type = 1; // 类型  (时空冠位赛服务器类型表)
+    uint64 fight_uid = 2;       // 战斗唯一id
+    uint64 atk_power = 3;       // 进攻方战力
+    uint64 def_power = 4;       // 防守方战力
+    pb_hunter_fight_change atk_change = 5;       // 进攻方积分变化
+    pb_hunter_fight_change def_change = 6;       // 防守方积分变化
+}
+
+//-----------------------------服务器数据-------------------------------
+// 群雄逐鹿跨服数据
+message pb_hunter_arena_cross {
+    uint32 season = 1; // 赛季
+    uint32 state = 2;  // 状态
+    uint32 start_day = 3; // 第几天开启(1970/1/1)
+    repeated pb_left_state left_state = 4; // 剩余状态
+    uint64 cross_open_day = 5; // 跨服开启时间,用于区分是否更新了跨服组
+}
+
+message pb_left_state {
+    uint32 state = 1;   // 状态
+    uint32 stamp = 2;   // 触发时间戳
+}
+
+// 荣誉殿堂
+message pb_hunter_arena_palace {
+    repeated pb_hunter_arena_season_palace palaces = 1;
+}
+
+// 单个赛季荣誉殿堂
+message pb_hunter_arena_season_palace {
+    uint32 season = 1; // 赛季
+    uint32 start_day = 2; // 赛季开始天数
+    repeated pb_hunter_arena_palace_role roles = 3; // 展示角色
+}
+
+// 单个角色结算时的数据
+message pb_hunter_arena_palace_role {
+    int64 role_id = 1; // 角色id
+    uint64 fight_power = 2; // 战力
+    string name = 3; // 名字
+    uint32 title = 4; // 头衔
+    uint32 score = 5; // 积分
+    uint64 style_id = 6; // 形象id
+}
+
+
+// 单服历史排行数据
+message pb_hunter_arena_history_rank {
+    repeated pb_hunter_arena_season_history_rank history_ranks = 1; // 历史数据
+}
+
+// 单个赛季历史排行数据
+message pb_hunter_arena_season_history_rank {
+    repeated pb_hunter_arena_season_role_rank ranks = 1;   // 排名列表
+    uint32 season = 2;              // 赛季
+}
+
+message pb_hunter_arena_season_role_rank{
+    uint64 role_id = 1; // 角色id
+    uint32 rank = 2; // 排名
+    uint32 score = 3; // 积分
+}

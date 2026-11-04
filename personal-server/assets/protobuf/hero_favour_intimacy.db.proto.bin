@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// 单个英雄好感度（亲密值）数据
+message pb_hero_intimacy {
+  uint32 hero_tid = 1;           // 英雄配置表 tid
+  uint32 intimacy_value = 2;     // 好感度数值
+  uint32 intimacy_level = 3;     // 好感度等级
+  bytes story_got_bin = 4;      // 已领取的故事剧情奖励位标记
+  uint32 cycle_date_times = 5;  // 当前周期约会次数
+  uint32 total_date_times = 6;  // 总约会次数
+  uint32 last_date_time = 7;    // 上次约会时间
+}
+
+// 角色级别总亲密值数据（DB 顶层消息）
+message pb_hero_favour_intimacy {
+  uint32 charm_level = 1;                  // 魅力值等级
+  uint32 total_intimacy = 2;               // 总好感度
+  bytes charm_got_bin = 3;                // 已领取的魅力等级奖励位标记
+  repeated pb_hero_intimacy hero_list = 4; // 各英雄好感度数据列表
+  uint32 cycle_date_times = 5;            // 玩家当前周期约会次数
+  uint32 last_date_time = 6;              // 玩家上次约会时间
+}

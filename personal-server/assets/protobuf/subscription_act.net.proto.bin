@@ -1,0 +1,41 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/activity/subscription_act/subscription_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 轮次切换（登录返回）
+message pb_subscription_act_login {
+     pb_subscription_act_role_info role_info = 1;             // 玩家数据
+     pb_subscription_act_data act_data = 2;             // 活动数据
+}
+
+// 轮次切换（服务端主动返回）
+message pb_subscription_act_state_changed {
+     pb_subscription_act_data act_data = 1;             // 活动数据
+}
+
+// 中奖者信息（公示阶段公开）
+message pb_subscription_act_winner {
+    uint64 role_id = 1;                                 // 玩家ID
+    string name = 2;                                    // 玩家名字
+}
+
+// ============== 申购 ==============
+// 请求申购
+message pb_subscription_act_subscribe_req {
+    int64 activity_id = 1;                              // 活动ID
+    int64 round_id = 2;                                 // 轮次ID
+}
+
+// 响应申购
+message pb_subscription_act_subscribe_rsp {
+    pb_subscription_act_data act_data = 1;              // 活动数据
+    pb_res_to_client res = 2;                           // 资源变化
+    pb_subscription_act_role_data role_data = 3;        // 玩家数据
+}
+
+// 响应奖励
+message pb_subscription_act_award_rsp {
+    pb_res_to_client res = 1;                           // 资源变化
+    pb_subscription_act_role_data role_data = 2;        // 玩家数据
+}

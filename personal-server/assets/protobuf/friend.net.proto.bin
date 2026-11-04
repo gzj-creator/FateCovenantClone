@@ -1,0 +1,52 @@
+syntax = "proto3";
+import "project/friend.db.proto.txt";
+import "project/role.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 好友系统登陆数据推送
+message res_friend_login{
+    pb_friend friend_data = 1; //好友数据
+    pb_friendship friendship_data = 2; //好友爱心数据
+}
+
+
+//好友减少
+message res_friend_reduce{
+    int64 friend_role_id = 1; //好友的角色ID
+}
+
+
+//申请添加好友回调
+message res_apply_friends{
+    repeated int64 friend_list = 1; //新的好友列表
+    repeated  int64 err_list = 3; //错误列表
+}
+
+//同意申请
+message res_agree_applies{
+    repeated int64 success_list = 1; //成功的列表
+    repeated int64 err_list = 2; //错误列表
+}
+
+//赠送/领取爱心回调
+message res_friendship_change{
+    pb_friendship friendship = 1; //爱心赠送信息
+    pb_res_to_client res = 2; //资源改变
+    repeated pb_friend_data friend_list = 3;    //改变的好友数据列表
+}
+
+//查询玩家回调
+message res_query_friend_player{
+    repeated pb_friend_recommend player_info_list = 1; // 玩家信息列表
+}
+
+message pb_friend_recommend{
+    int64 role_id = 1; // 玩家id
+    repeated int32 recommend_types = 2; // 推荐类型
+}
+
+//查询玩家回调
+message pb_friend_data_block{
+    int64 guest_count = 1; // 访客数量
+    int64 flower_count = 2; // 鲜花数量
+}

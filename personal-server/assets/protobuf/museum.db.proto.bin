@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// 博物馆数据
+message pb_museum{
+    bytes got_popularity_award = 1;     // 已经领取奖励的知名度奖励等级二进制
+}
+
+// 小镇资源
+message pb_museum_res {
+    repeated pb_museum_collection collection = 1;
+}
+
+// 小镇藏品
+message pb_museum_collection {
+    int64 tid = 1;
+    int64 num = 2;
+    bool active = 3;
+    uint64 award_times = 4;
+}
+

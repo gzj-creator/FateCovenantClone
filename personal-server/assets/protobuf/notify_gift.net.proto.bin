@@ -1,0 +1,43 @@
+// 推送礼包net
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 登录数据
+message pb_notify_gift_login {
+    repeated pb_notify_gift_client gifts = 1;
+}
+
+// 推送增加礼包
+message pb_notify_gift_add {
+    repeated pb_notify_gift_client  gift = 1; //
+}
+
+// 推送删除礼包
+message pb_notify_gift_delete {
+    repeated uint64 deletes = 1 ; //
+}
+
+// 激活礼包返回
+message pb_notify_gift_activate_rsp{
+    repeated pb_notify_gift_client gifts = 1;
+}
+
+// 给前端的礼包结构
+message pb_notify_gift_client {
+    uint64 gift_uid     = 1;         // 礼包唯一id
+    uint32 price_tid    = 2;         // 价格挡位tid
+    uint32 gear_tid     = 3;         // 原价挡位tid
+    uint32 bg_tid       = 4;         // 礼包描述信息表tid
+    repeated pb_res_obj award = 5;   // 奖励
+    uint32 id           = 6;         // 礼包id(有的话就是预设礼包，不然就取上面的定制信息)
+    uint32 delete_time  = 7;         // 删除时间
+    uint32 vip_min      = 8;         // vip最低限制
+    uint32 vip_max      = 9;         // vip最高限制
+    uint32 recharge_min = 10;       // 充值最低限制
+    uint32 recharge_max = 11;       // 充值最高限制
+    uint32 level_min  = 12;        // 等级最低限制
+    uint32 level_max  = 13;        // 等级最高限制
+    uint32 buy_count    = 14;        // 已购买次数
+}
+

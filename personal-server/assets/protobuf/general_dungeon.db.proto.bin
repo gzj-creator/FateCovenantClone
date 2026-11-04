@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+//副本中的数据
+message pb_general_dungeon {
+    int32 cur_level = 1; //当前关卡id
+    repeated pb_dungeon_level level_data = 2; //关卡列表数据
+}
+
+//单个关卡数据
+message pb_dungeon_level {
+    int32 level_tid = 1; //关卡id
+    int32 cur_scene = 2; //当前所在场景索引
+    repeated pb_dungeon_scene scene = 3; //单个场景的数据
+    repeated int32 buff_list = 5; //当前关卡存储所选buff列表
+    repeated int32 prop_list = 7;   //这个关卡种获得的道具
+}
+
+//单个场景数据
+message pb_dungeon_scene{
+    int32 index = 1; //这个场景在配置表中索引
+    bytes fog = 2; //迷雾数据
+    int32 pos = 3; //玩家当前位置 高3位储存x，低3位储存y，如3014，表示x=3,y=14
+    repeated pb_dungeon_event events = 4; //当前场景事件列表
+}
+
+//通用副本事件
+message pb_dungeon_event{
+    int32 event_id = 1; //事件id
+    int32 result = 2; //事件执行结果，等于0时表示未执行
+    pb_dungeon_opponent opponent = 3; //对手信息
+    repeated int64 draw_list = 4; //可供召唤的英雄列表
+    repeated int32 buff_list = 5; //初始化时随机出来的buff列表
+}
+
+//对手数据
+message pb_dungeon_opponent{
+    int64 fight_tid = 1;                            // 对应战斗tid
+}

@@ -9,7 +9,17 @@ export function createStartupService({ appVersion, assetVersion, updateManifest,
   const version = Buffer.from(JSON.stringify({ version: `${appVersion}.${assetVersion}`, reqAppVer: appVersion }));
   const manifestRoute = `/update/res/Android/FixAll/update.txt_${assetVersion}`;
   const server = http.createServer((request, response) => {
-    const path = new URL(request.url, 'http://127.0.0.1').pathname;
+    let path;
+    try {
+      path = new URL(request.url, 'http://127.0.0.1').pathname;
+    } catch {
+      request.resume();
+      const body = Buffer.from('Invalid request target.');
+      response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-store', Connection: 'close' });
+      response.end(body);
+      logger({ event: 'startup_response', route: 'invalid_request_target', status: 400 });
+      return;
+    }
     const versionRequest = request.method === 'GET' && path === '/update/res/version_adr.txt';
     const manifestRequest = request.method === 'GET' && path === manifestRoute && updateManifest !== undefined;
     const recognized = versionRequest || manifestRequest;

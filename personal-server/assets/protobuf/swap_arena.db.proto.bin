@@ -1,0 +1,54 @@
+syntax = "proto3";
+import "project/function_cache/player_data/player_data.db.proto.txt";
+
+// 服务器玩法数据
+message pb_swap_arena_srv{
+  uint64 reward_time = 1;//上次发奖时间
+  repeated pb_swap_arena_bot_info bot_list = 2;//机器人列表
+}
+
+// 机器人信息
+message pb_swap_arena_bot_info {
+  uint64 tid = 1;
+  uint64 level = 2;
+  uint64 power = 3;
+}
+
+// 个人玩法数据
+message pb_swap_arena_role{
+  uint64 reset_time = 1;//重置时间：重置【已挑战次数】、【已购买的挑战次数】、【刷新匹配对手的次数】的时间
+  uint32 fight_times = 2;//已挑战次数
+  uint32 buy_fight_times = 3;//已购买的挑战次数
+  uint32 refresh_match_times = 4;//手动刷新匹配对手的次数
+  repeated uint32 match_list = 5;//匹配队列：元素的值为排名;
+  bool show_rank_change_red = 6;//是否显示排名下降的红点
+  uint64 refresh_match_time = 7;//手动刷新匹配的时间
+  bool init_match = 8;//匹配队列是否已初始化
+  uint32 history_rank = 9;//历史最高排名
+  uint32 last_rank = 10;//上一次的排名:注意：这个字段只会在排名下降时更新
+  bytes rank_award = 11;// 名次奖励领取情况
+  uint64 cross_stage = 12;// 跨服赛阶段
+  uint32 win_times = 13; // 连胜次数
+  uint32 defend_times = 14; // 连续防守成功次数
+}
+
+//竞技场对战记录数据
+message pb_swap_arena_fight_report_data{
+  repeated pb_swap_arena_fight_report fight_report_list = 1;//战报列表
+  uint64 read_time = 2; // 阅读战报时间
+}
+
+//竞技场对战记录信息
+message pb_swap_arena_fight_report{
+  uint64 fight_id = 1;           //战斗录像ID
+  int32 before_fight_rank = 2;   //自己战斗前的排名
+  int32 after_fight_rank = 3;    //自己战斗后的排名
+  uint64 time = 4;               //时间
+  uint64 attack_role_id = 5;     //进攻方角色id
+  uint64 def_role_id = 6;        //防守方角色id
+  uint32 self_fight_result = 7;  //自己的战斗结果:胜利;失败
+  uint32 enemy_rank = 8;         //敌方战斗前的排名：客户端通过排名对机器人表数量求余，得到该排名的机器人形象
+}
+
+
+

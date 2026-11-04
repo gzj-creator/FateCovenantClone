@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "project/activity/growth_road/growth_road.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 成长之路活动返回数据
+message pb_growth_road_back{
+    pb_growth_road info = 1; //活动数据
+    pb_res_to_client res = 2; //资源数据
+}

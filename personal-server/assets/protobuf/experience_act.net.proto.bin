@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/experience_act/experience_act.db.proto.txt";
+
+// 【历练活动】排遣返回数据
+message pb_experience_go_rsp {
+  repeated pb_area area_info = 1; // 有变动的区域历练活动数据
+}
+
+// 请求【历练活动】排遣
+message pb_experience_go_req{
+  uint32 act_tid = 1; // 期数=活动表id
+  repeated pb_experience_go_req_unit area_unit_list = 2; // 设置英雄信息列表
+}
+
+message pb_experience_go_req_unit{
+  int64 tid = 1; // 关卡tid
+  repeated uint32 area_unit_list = 2; // 英雄id列表
+}
+
+// 【历练活动】领取奖励返回数据
+message pb_experience_award_rsp{
+  uint32 act_tid = 1; // 期数=活动表id
+  pb_res_to_client res_change = 2; // 资源变化
+  repeated pb_area area_info = 3; // 有变动的区域历练活动数据
+}
+
+// 请求【历练活动】领取奖励
+message pb_experience_award_req{
+  uint32 act_tid = 1; // 期数=活动表id
+  repeated uint32 award_list = 2; // 领取奖励的关卡tid列表
+}

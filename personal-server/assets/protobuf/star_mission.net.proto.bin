@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+import "project/activity/star_mission/star_mission.db.proto.txt";
+import "general/res.net.proto.txt";
+
+
+// 战斗请求
+message pb_star_mission_fight_req {
+    uint32 chapter = 1;  // 章节
+    uint32 mission = 2;  // 关卡
+    int64 act_id = 3;//活动id
+}
+
+// 战斗返回
+message pb_star_mission_fight_rsp {
+    pb_star_mission_chapter chapter = 1;
+    pb_res_to_client res_change = 2;
+}
+
+// 领取章节奖励返回
+message pb_star_mission_chapter_award_req {
+    int64 activity_id = 1;   //活动id
+    int64 award_tid = 2;    // 奖励id
+}
+
+// 领取章节奖励返回
+message pb_star_mission_chapter_award_rsp {
+    pb_star_mission_chapter chapter = 1;
+    pb_res_to_client res_change = 2;
+}
+
+// 【星星关卡】技能加点
+message pb_star_mission_skill_req {
+    int64 activity_id = 1;   //活动id
+    int64 skill_tid = 2; //技能tid
+}
+
+// 星星关卡】技能加点重置
+message pb_star_mission_skill_reset_req {
+    int64 activity_id = 1;   //活动id
+}
+
+
+
+

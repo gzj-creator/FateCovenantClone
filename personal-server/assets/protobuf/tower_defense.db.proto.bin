@@ -1,0 +1,54 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 塔防功能基础信息list
+message pb_tower_defense_list {
+    repeated pb_tower_defense list = 1; //全部塔防列表
+}
+
+// 塔防功能基础信息
+message pb_tower_defense {
+    int32 tower_defense_tid = 1; //塔防类型
+    int64 version = 2; //期数
+    int64 version_defense_time = 3; //本期驻防开始时间
+    int32 ack_turns = 4; //当前轮次
+    int32 ack_time = 5; //当前轮次计算时间
+    int32 turns_hp = 6; //当前轮次剩余血量
+    int32 wait_turns = 7; //等待轮次
+    int32 receive_award_turns = 8;  //领取过的轮次
+    repeated wait_award_turns wait_award_turns = 9; //通关轮次列表
+    int64 last_award_time = 10; //上次领取奖励时间 只能领上次领取过的时间戳后24小时奖励
+    repeated pb_tower_defense_obj defense_obj = 11; //驻防的攻击者对象
+    int64 acc_turns_num = 12; //本期领取波次奖励次数
+    bytes turns_award_bin = 13; //本期波次奖励领取记录
+    bool is_pass_version = 14; //本期是否通关
+    int32 harm_sc = 15; //每秒伤害
+    int64 fun_open_time = 16; //功能开启时间
+}
+
+
+// 驻防对象
+message pb_tower_defense_obj {
+    int32 tid = 1; //位置tid
+    int32 ack_tid = 2; //上阵驻防角色tid
+    int32 defense_time = 3;//驻防时间
+    int32 ack = 4; //攻击力
+}
+// 等待领奖轮次
+message wait_award_turns {
+    int32 turns = 1; // 轮次id
+    int64 defense_time = 2; //防御成功时间点
+    repeated pb_res_obj awards = 3;// 奖励
+}
+
+// 黄金小镇塔防部分数据
+message pb_tower_defense_carnival {
+    repeated elves_atk elves_atk = 1; // 精灵攻击力缓存
+    int64 refresh_time = 2;   // 塔防周期刷新时间
+}
+
+// 缓存精灵攻击力
+message elves_atk {
+    int32 elves_tid = 1; //精灵id
+    int32 atk = 2; //塔防攻击力
+}

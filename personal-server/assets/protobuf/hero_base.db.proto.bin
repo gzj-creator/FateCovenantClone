@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+// 单个英雄信息
+message pb_single_hero {
+    uint64 tid = 1;
+    int32 count = 2;
+    uint64 uid = 3;			                // 唯一id
+    uint32 level = 4;		                // 等级，默认1级，放入格子后变成格子的等级，下架后变为1级
+    uint32 star = 5;			              // 星级，所有英雄默认1星
+    int32 source = 6;                   // 来源id
+    uint64 lineup_sign = 7;             // 阵容标识，按位存储，每一位代表所处的阵容类型
+    uint32 break_level = 8;             // 英雄突破等级，默认0级，放入格子后变成格子的突破等级，下架后变为0级
+    uint64 skin_tid = 9;                // 穿戴的皮肤tid
+}
+
+// 英雄格子
+message pb_hero_cell {
+    uint32 index = 1;           // 索引
+    uint32 level = 2;           // 等级
+    uint32 break_level = 3;     // 突破等级
+    uint64 hero_uid = 4;        // 格子里放的英雄uid，注意：该字段现在已经废弃，不再使用
+}
+
+// 英雄总信息
+message pb_hero_data {
+    repeated pb_single_hero hero_list = 1;                 // 英雄列表
+    repeated pb_hero_cell cell_list = 2;         // 英雄格子列表
+}

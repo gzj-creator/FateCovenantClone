@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+// 角色进程角色信息
+message pb_role_agent_role {
+    uint64 role_id = 1; // 角色id
+    uint32 login_stamp = 2; // 登录时间
+    uint32 logout_stamp = 3; // 登出时间
+    uint32 level = 4; // 等级
+    string name = 5; // 名字
+    uint32 genre = 6; // 流派
+    uint64 guild_id = 7; // 航会id
+    repeated pb_friend_fight friend_fight = 8; // 历史切磋数据
+    uint32 rank = 9; // 战力排名
+}
+
+// 单服所有角色信息
+message pb_role_agent_roles {
+    repeated pb_role_agent_role roles = 1;
+}
+
+// 单服所有角色好友缓存信息
+message pb_role_agent_friends {
+    repeated pb_role_agent_friend friends = 1;
+}
+
+message pb_role_agent_friend {
+    uint64 role_id = 1;           // 角色id
+    repeated int64 applies = 2;   // 申请列表
+    repeated int64 blacklist = 3; // 黑名单列表
+    repeated int64 friend = 4;    // 好友列表
+}
+
+// 历史切磋数据
+message pb_friend_fight {
+    uint64 role_id = 1; // 角色id
+    uint32 time = 2; // 时间
+}

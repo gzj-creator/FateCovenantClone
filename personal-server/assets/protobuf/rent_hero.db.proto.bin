@@ -1,0 +1,82 @@
+syntax = "proto3";
+import "project/hero/base/hero.db.proto.txt";
+
+// 出租英雄信息
+message pb_rent_out_hero{
+    int64 hero_uid = 1;                     // 英雄UID
+    hero hero = 2;                          // 原始的英雄
+    uint32 power = 3;                       // 提交时的战力
+    repeated int64 rent_list = 4;           // 租借人列表
+    uint64 submit_time = 5;                 // 提交时间
+    uint32 index = 6;                       // 提交的英雄的索引（提交到哪个位置）
+    uint64 owner_id = 7;                    // 出租人的ID
+}
+
+// 租借到的英雄的信息
+message pb_rent_hero{
+    int64 hero_uid = 1;                     // 英雄UID
+    hero hero = 2;                          // 原始英雄
+    uint32 power = 3;                       // 战力
+    uint64 owner_id = 4;                    // 出租人的ID
+    uint32 index = 5;                       // 租借英雄的索引（哪个位置租借的英雄）
+}
+
+// 玩家提交的所有英雄的属性数据，单独存储
+message pb_rent_all_hero_attr{
+    repeated pb_rent_hero_attr all_attr_list = 1;   // 所有英雄的属性数据
+}
+// 租借英雄的属性数据
+message pb_rent_hero_attr{
+    uint64 uid = 1;                                     // 英雄uid
+    bytes attr_data = 2;                                // 属性数据
+}
+
+
+// 玩家所有玩法的出租信息
+message pb_role_rent_out_info{
+    repeated pb_role_rent_out_one rent_out_list = 1;       // 所有的出租信息
+}
+
+// 玩家所有玩法的租借信息
+message pb_role_rent_info{
+    repeated pb_role_rent_one rent_list = 1;               // 所有的租借信息
+}
+
+// 玩家一个玩法的出租信息
+message pb_role_rent_out_one{
+    uint32 rent_tid = 1;                                      // 出租的类型,是哪里出租的
+    repeated pb_rent_out_hero rent_out_hero_list = 2;         // 出租的英雄列表
+    uint64 valid_time = 3;                                    // 出租截止时间
+    repeated pb_rent_out_off_hero take_off_list = 4;          // 脱下的英雄的列表
+}
+
+// 脱下的英雄的信息（记录之前租借过的人）
+message pb_rent_out_off_hero{
+    uint64 uid = 1;                 // 脱下的英雄的UID
+    repeated uint64 rent_list = 2;  // 租借的角色ID列表
+}
+
+// 玩家一个玩法的租借信息
+message pb_role_rent_one{
+    uint32 rent_tid = 1;                                // 出租类型,是哪里出租的
+    repeated pb_rent_hero rent_hero_list = 2;         // 租借到的英雄列表
+    uint64 valid_time = 3;                            // 租借截止时间
+}
+
+// 各个功能的租借英雄使用信息数据
+message pb_rent_use_info{
+    repeated pb_rent_use_one use_list = 1;        // 租借英雄使用信息
+}
+
+// 单个战斗类型对应的租借英雄使用次数
+message pb_rent_use_one{
+    uint32 use_type = 1;                                    // 使用类型
+    repeated pb_rent_hero_use_num use_num_list = 2;         // 英雄使用信息列表
+    uint64 flush_time = 3;                                  // 刷新时间
+}
+
+// 单个租借英雄使用次数
+message pb_rent_hero_use_num{
+    uint64 hero_uid = 1;        // 英雄UID
+    uint32 use_num = 2;       // 参战次数
+}

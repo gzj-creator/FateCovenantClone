@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+
+// 领取战力返回
+message pb_power_award_toc {
+  pb_res_to_client res = 1; //资源改变
+  bytes gain_award_data = 2; //奖励领取记录
+}

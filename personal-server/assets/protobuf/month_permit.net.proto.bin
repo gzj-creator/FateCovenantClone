@@ -1,0 +1,58 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/month_permit.db.proto.txt";
+
+// 月度战令操作领取返回
+message pb_month_permit_receive_back{
+    repeated int64 get_list = 1;     // 已领取列表
+    pb_res_to_client res = 2;           //资源改变
+    pb_month_permit_info month_permit = 3;               // 完整的月度战令数据(完成开启下期类型会返回该值)
+}
+
+// 月度战令购买等级返回
+message pb_month_permit_buy_level_back{
+    uint64 buy_exp_num = 1;     // 购买经验次数
+    pb_res_to_client res = 2;      //资源改变
+}
+
+// 月度战令结算返回
+message pb_month_permit_settle_back{
+    pb_month_permit_data month_permit_data = 1;     // 月度战令数据
+    pb_res_to_client res = 2;      //资源改变
+}
+
+// 月度战令手动更新返回
+message pb_month_permit_manual_update_back{
+    repeated pb_month_permit_info month_permit = 1;     // 月度战令数据
+    pb_res_to_client res = 2;      //资源改变
+}
+
+// 月度战令奖励请求
+message pb_month_permit_receive_req{
+    uint64 tid = 1;                         // 月度战令tid
+    uint32 gear_lv_tid = 2;                  // 月度战令档位等级奖励表id
+}
+
+// 月度战令经验购买请求
+message pb_month_permit_buy_exp_req{
+    uint64 tid = 1;                         // 月度战令tid
+    uint64 buy_num = 2;                  // 购买数量
+}
+
+// 月度战令登录返回
+message pb_month_permit_login_back{
+    pb_month_permit_data month_permit_data = 1;     // 月度战令数据
+    pb_month_permit_res_data res = 2;      //资源
+}
+
+// 月度战令任务领取返回
+message pb_month_permit_task_back{
+    pb_month_permit_info month_permit_info = 1; // 更新单战令数据
+    pb_res_to_client res = 2;      //资源改变
+}
+
+// 月度战令任务领取返回
+message pb_month_permit_task_req{
+    int64 activity_id = 1;//活动id
+    repeated int64 task_id_list = 2;      //任务id列表
+}

@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+import "core/db.db.proto.txt";
+import "project/rank/rank.db.proto.txt";
+
+// 巅峰竞技场跨服活动数据库（数据在进程有缓存，进程外不可读写，不可热更）
+message pb_top_arena_activity{
+  uint32 season = 1; // 赛季=活动表id
+  uint32 state_id = 2;  // 活动状态id
+  uint64 start_time = 3; // 活动开始时间(秒)
+  uint64 end_time = 4; // 活动结束时间(秒)
+  repeated pb_top_arena_promote_role promote_list = 5; // 晋级数据
+  uint64 stage_start_time = 6; // 大阶段开始时间(秒)
+  repeated uint64 captain_list = 7; // 队长列表
+  uint64 calc_score_start_time = 8; // 分数开始计算时间
+  uint64 rank_tid = 9; // 绑定排行榜id
+}
+
+// 巅峰竞技场晋级玩家数据
+message pb_top_arena_promote_role{
+  uint64 role_id = 1; // 玩家id
+  uint32 server_id = 2; // 服务器id
+  uint32 group = 3; // 分组id
+  uint32 rank = 4; // 玩家排名
+}
+
+// 巅峰竞技场跨服玩法数据库（数据在进程有缓存，进程外可读不可写，不可热更）
+message pb_top_arena{
+  uint32 season = 1; // 赛季=活动表id
+  repeated pb_top_arena_server_help_data server_help_list = 2; // 各服助力值
+  repeated pb_server_top_arena_data server_area_data_list = 3; // 全服擂台占领数据
+  repeated pb_top_arena_server_contribute_data arena_contribute_list = 4; // 全服总计积分值
+  repeated pb_top_arena_pre_favorite_data pre_favorite_list = 5; // 预告夺冠热门
+}
+
+// 预选个人爬塔数据库
+message pb_top_arena_tower_data{
+  uint32 season = 1; // 赛季
+  uint32 pass_tower = 2;  // 当前通关层数
+  uint32 day_attack_num = 3; // 每日攻击次数
+  uint64 update_time = 4; // 数据更新时间
+  bytes server_pass_got_award = 5;  // 首通已领取奖励
+}
+
+// 预选服务器通关信息
+message pb_top_arena_tower_pass_info {
+  repeated pb_top_arena_tower_pass pass_list = 1; // 通关信息
+  uint64 season = 2;
+  repeated pb_top_arena_tower_pass history_pass_list = 3; // 上一期通关信息(服务端补发用)
+}
+
+// 指定层通关信息
+message pb_top_arena_tower_pass {
+  uint64 tower_level = 1; // 通关层数
+  uint64 num = 2; // 通关人数(超过条件后仍然增加)
+  repeated uint64 role_list = 3; // 通关玩家(超过条件后不再添加)
+}
+
+// 海选、决赛个人数据库
+message pb_top_arena_semi_data{
+  uint32 season = 1; // 赛季=活动表id
+  repeated pb_top_arena_score_info score_list = 2;  // 当前积分
+  uint32 day_attack_num = 3; // 每日攻击次数
+  uint32 day_refresh_num = 4; // 每日刷新次数
+  uint64 update_time = 5; // 每日数据更新时间
+  int32 area_tid = 6; // 当前区域id
+  repeated pb_top_arena_fight_report fight_reports = 7; // 个人战报列表
+  uint32 read_report_time = 8;   // 阅读战报时间
+  repeated uint32 day_got_award = 9;  // 每日任务领取奖励
+  bytes server_help_award = 10;  // 全服助力领取奖励
+  repeated pb_top_arena_team_info team_list = 11; // 队伍列表
+  int32 group_id = 12; // 组id
+  repeated uint32 promotion_award = 13; // 晋级奖励
+  int32 con_win_num = 14; // 连胜次数
+  int32 def_con_win_num = 15; // 防守连胜次数
+  bool got_server_award = 16;   //是否领取服务器奖励
+  bytes help_exchange = 17; // 助力资源兑换情况，每日重置
+  bool is_help = 18;   //是否助力过
+  bool got_max_server_award = 19; // 是否领取最高服务器奖励
+  bool has_counted = 20; // 本期是否已计数参加次数
+}
+
+// 分数信息
+message pb_top_arena_score_info{
+  int32 stage = 1; // 阶段
+  int32 score = 2; // 分数
+  int32 last_score = 3; // 昨天积分
+}
+
+// 队伍信息
+message pb_top_arena_team_info{
+  int32 team_id = 1; // 队伍id
+  int64 healthy_time = 2; // 可挑战时间
+  int64 last_update_score = 3;  // 上次积分刷新时间
+  bool last_is_win = 4; // 上次是胜利还是失败（用来判断是否重伤）
+}
+
+// 全服区域数据
+message pb_server_top_arena_data {
+  int32 group_area_uid = 1; // 组id * 100000 + 区域tid
+  repeated pb_arena_role_info role_list = 2; // 擂台玩家数据
+}
+
+message pb_arena_role_info {
+  int32 index = 1; // 擂台占领位置（序号）
+  uint64 role_id = 2; // 占领玩家
+  int32 team_id = 3; // 占领玩家队伍id
+  int64 lode_time = 4; // 占领时间
+  int32 scatter_tid = 5; // 擂台tid(巅峰擂台分布表tid)
+  int32 group_area_uid = 6;  // 组id * 100000 + 区域tid
+}
+
+// 个人竞猜数据库
+message pb_top_arena_guess{
+  uint32 season = 1; // 赛季=活动表id
+  repeated pb_top_arena_guess_info guess_list = 2; // 竞猜信息
+}
+
+// 历届冠军数据库
+message pb_top_arena_history_win {
+  uint32 now_term = 1; // 赛季=活动表id
+  repeated pb_top_arena_history_win_info win_list = 2; // 历届冠军
+}
+message pb_top_arena_history_win_info {
+  uint32 term = 1; // 届数
+  repeated pb_rank_obj rank_list = 2; // 历届冠军{可能需要显示前3个}
+  repeated pb_top_arena_server_contribute_data arena_contribute_list = 3; // 全服总计积分值
+}
+
+// 个人战报列表
+message pb_top_arena_fight_report {
+  uint64 fight_uid = 1; // 战斗唯一id，用来取战报
+  uint32 time = 2; // 战斗时间
+  int64 atk_role_id = 3; // 进攻方角色id
+  uint64 def_role_id = 4; // 防守方角色id
+  uint32 final_result = 5; // 进攻方战斗结果（1：胜利，0：失败）
+  uint32 atk_scatter_tid = 6; // 进攻方擂台tid
+  uint32 def_scatter_tid = 7; // 防守方擂台tid
+}
+
+// 个人竞猜信息
+message pb_top_arena_guess_info{
+  uint32 tid = 1; // 竞猜编号
+  repeated pb_top_arena_guess_obj obj_list = 2; // 获胜对象id(存在多个胜利结果，同分的时候)
+  bool is_got_award = 3; // 是否领取竞猜奖励
+}
+message pb_top_arena_guess_obj {
+  uint64 win_obj_id = 1;  // 获胜对象id
+  bool is_win = 2; // 是否猜对结果
+}
+
+// 服务器助力值
+message pb_top_arena_server_help_data {
+  uint32 server_id = 1; // 服务器id  小组范围为战区时该字段为0
+  uint32 help = 2;  // 助力值
+  uint32 cross_id = 3; // 小组范围为战区时该字段有值
+}
+
+// 服务器贡献值
+message pb_top_arena_server_contribute_data {
+  uint32 server_id = 1; // 服务器id 小组范围为战区时该字段为0
+  uint64 score = 2;  // 各服分数值
+  uint32 cross_id = 3; // 小组范围为战区时该字段有值
+}
+
+// 预告夺冠热门
+message pb_top_arena_pre_favorite_data {
+  uint32 server_id = 1; // 服务器id 小组范围为战区时该字段为0
+  repeated int64 role_id_lists = 2;  // 玩家id
+  uint32 cross_id = 3; // 小组范围为战区时该字段有值
+}
+
+// 对手信息
+message pb_top_arena_match{
+  uint32 rank = 1;//排名
+  uint64 role_id = 2;//角色id：等于0表示机器人
+}
+
+// 单个点赞数据
+message pb_top_arena_support {
+  uint64 role_id = 1;
+  uint32 count = 2;
+}
+
+// 战区分组信息
+message pb_top_arena_group_info {
+  repeated pb_top_arena_group groups = 1;
+}
+
+// 战区分组
+message pb_top_arena_group {
+  uint32 group_id = 1; // 战区id,玩法定义的顺序，从1开始(1、2、3、4)
+  uint32 cross_id = 2; // 战区跨服id
+  repeated uint64 servers = 3; // 跨服组下的服务器id
+}
+
+// 跨服分配数据
+message pb_top_arena_cross_gen{
+  uint64 no_match_times = 1;                       // 未匹配次数
+}
+
+// 预选赛机器人池
+message pb_top_arena_pre_bot_pool {
+  repeated pb_top_arena_pre_bot bots = 1;
+}
+// 预选赛机器人
+message pb_top_arena_pre_bot {
+  uint64 role_id = 1; // 玩家id
+  uint32 rank = 2; // 排名
+  uint64 power = 3; // 战力
+}

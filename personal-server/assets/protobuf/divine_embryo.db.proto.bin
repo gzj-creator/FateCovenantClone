@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 神域胚子投放活动数据
+message pb_divine_embryo_data {
+    uint32 select_id = 1;                       // 自选道具编号（神域胚子抽奖表tid）
+    uint32 guaranteed_item = 2;                 // 保底道具没有抽中多少次
+    pb_recharge_limit_info buy_limit_info = 3;  // 礼包限购记录
+}

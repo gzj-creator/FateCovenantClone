@@ -1,0 +1,18 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+import "general/res.db.proto.txt";
+
+// 抽奖相关数据
+message pb_stock_up_act_draw_data{
+  uint32 draw_times = 1;                      // 当期活动抽奖次数
+  repeated uint32 got_phase_award = 2;        // 已领取抽将次数奖励
+  uint32 cycle_draw_award_times = 3;          // 可领取的循环大奖的抽奖次数
+}
+
+// 囤货活动数据
+message pb_stock_up_act_data{
+  uint32  act_id = 1;
+  pb_stock_up_act_draw_data draw_data = 2;    // 抽奖数据
+  pb_recharge_limit_info record = 3;          // 付费购买记录
+}
+

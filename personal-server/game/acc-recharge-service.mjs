@@ -218,6 +218,21 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
     if (slot < 1) throw new GameError(5, 'Cumulative-recharge award slot is invalid');
 
     const modules = new Map(store.state().modules.value);
+    if (calendar?.isActivityRunning) {
+      let activity = null;
+      const activityModule = modules.get(92);
+      if (activityModule) {
+        try {
+          activity = codec.unpack('pb_act_login', rawBinary(activityModule));
+        } catch {
+          throw new GameError(5, 'Activity login data is invalid');
+        }
+      }
+      const at = typeof calendar.currentSeconds === 'function' ? calendar.currentSeconds() : undefined;
+      if (!calendar.isActivityRunning(actId, null, activity, at)) {
+        throw new GameError(309, 'Activity is not running');
+      }
+    }
     const expectedModule = JSON.stringify(modules.get(MODULE_ID) ?? null);
     return store.transaction((model, db) => {
       const freshModules = new Map(model.state.modules.value);

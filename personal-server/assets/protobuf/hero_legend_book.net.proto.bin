@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/hero_legend/hero_legend_book.db.proto.txt";
+
+
+// 返回图鉴英雄数据和资源改变
+message pb_hero_legend_book_active_back{
+    pb_hero_legend_book_active elem = 1; //图鉴英雄数据
+    pb_res_to_client res = 2;            //资源改变
+}

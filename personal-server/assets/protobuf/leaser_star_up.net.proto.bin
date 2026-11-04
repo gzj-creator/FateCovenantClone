@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/lease/lease.net.proto.txt";
+import "project/leaser_star_up/leaser_star_up.db.proto.txt";
+import "project/hero/hero_lease/hero_lease.net.proto.txt";
+
+// 请求升星
+message pb_leaser_star_up_req {
+    int32 version = 1;          // 周期
+    uint64 tid = 2;             // 升级目标tid
+}
+
+// 请求升星返回
+message pb_leaser_star_up_rev {
+    pb_res_to_client res = 1;                       // 资源改变
+    pb_lease_update_ret lease_ret = 2;              // 租借数据改变
+    pb_lease_hero_update_rsp hero_lease_ret = 3;    // 英雄租借数据
+}
+
+// 请求重置
+message pb_leaser_star_up_reset_req {
+    int32 version = 1;          // 周期
+    uint64 tid = 2;             // 升级目标tid
+}
+
+// 请求重置返回
+message pb_leaser_star_up_reset_rev {
+    pb_res_to_client res = 1;                       // 资源改变
+    pb_leaser_star_up_reset reset_data = 2;         // 重置数据
+    pb_lease_update_ret lease_ret = 3;              // 租借数据改变
+    pb_lease_hero_update_rsp hero_lease_ret = 4;    // 英雄租借数据
+}

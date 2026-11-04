@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message pb_wish_treasure{
+    repeated pb_wish_treasure_data data_list = 1; // 投奖对应的秘宝领取活动数据
+}
+
+message pb_wish_treasure_data{
+    uint64 type = 1;  // 类型
+    uint64 open_day = 2; // 开服天数索引（如果是10.16号之前开的服，值就是10.16那天）
+    repeated uint64 buy_day_list = 3; // 最近N天哪些天买了礼包
+    repeated uint64 rev_list = 4; // 奖励领取过的id记录
+}

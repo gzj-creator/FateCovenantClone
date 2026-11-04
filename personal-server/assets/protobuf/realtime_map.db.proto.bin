@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+// 地图副本集
+message pb_realtime_maps{
+    repeated pb_realtime_map_data map_list = 1;     // 一个玩法所有的地图（副本）
+}
+
+// 地图数据
+message pb_realtime_map_data{
+    uint64 id = 1;                                 // 地图ID(可能是配置表的TID，可能是副本ID = Tid * 1000 + Index)
+    repeated pb_realtime_map_node role_list = 2;   // 地图内的节点列表
+}
+
+// 地图节点信息
+message pb_realtime_map_node{
+    int64 id = 2;           // 节点ID，可能是角色id，也可引用具体功能的id
+    uint32 style_id = 3;    // 形象ID
+    int32 loc_index = 4;    // x位置
+    uint32 state = 5;       // 节点状态，活跃/非活跃等
+    uint32 type = 6;        // 节点类型，玩家/or 其他
+    bytes extra_data = 7;     // 节点额外扩展数据
+    repeated int64 point = 9;// 坐标（客户端透传使用）
+}
+
+// 玩家节点额外信息
+message pb_realtime_map_node_extra{
+    uint32 combat_power = 1;        // 战力
+}

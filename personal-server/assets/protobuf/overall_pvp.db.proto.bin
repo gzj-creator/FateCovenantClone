@@ -1,0 +1,188 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+import "project/overall_pvp/overall_final/overall_final.db.proto.txt";
+
+// 全服pvp 单阶段时间数据
+message pb_overall_pvp_stage {
+    int32 stage = 1; // 阶段
+    int64 start_time = 2; // 开始时间
+    int64 continued_time = 3; // 持续时间
+}
+
+// 全服pvp版本数据
+message pb_overall_pvp_data {
+    int32 version = 1; // 版本
+    int32 stage = 2; //当前阶段
+    repeated pb_overall_pvp_stage stage_control_list = 3; // 阶段时间数据
+    int64 start_time = 4; // 开始时间
+    int64 end_time = 5; // 结束时间
+}
+
+// 全服pvp 进程落地数据
+message pb_overall_pvp_data_list {
+    repeated pb_overall_pvp_data data_list = 1; // 进程数据
+}
+
+// 淘汰赛 - 全服数据
+message pb_overall_pvp_elms_server {
+    int64 rule_tid = 1; // 淘汰赛晋级阶段tid
+    bool is_over = 2; // 淘汰赛是否完结
+}
+
+// 淘汰赛 - 个人数据
+message pb_overall_pvp_elms_person {
+    bool is_ticket = 1; // 是否获得淘汰赛挑战资格
+    bool is_win = 2; // 是否属于淘汰赛胜者组
+    uint64 rank = 3; // 当前所在排名
+    uint64 best_win_rank = 4; // 胜者组最高排名
+    uint64 best_fail_rank = 5; // 败者组最高排名
+    pb_overall_pvp_count_flush attack_flush = 6; // 挑战次数
+    pb_overall_pvp_count_flush match_flush = 7; // 匹配次数
+    repeated pb_overall_pvp_elms_match_person match_list = 8; // 匹配对手数据
+    bool group_dirty = 9; // 分组变更后的显示标记
+    uint64 group_dirty_rank = 10; // 分组变更前的组排名
+    bool final_dirty = 11; // 获得决赛后的显示标记
+    repeated uint64 fail_report_list = 12; // 被击败时记录的战报id列表(保留10个)
+}
+
+// 淘汰赛 - 匹配对手数据
+message pb_overall_pvp_elms_match_person {
+    int64 role_id = 1; // 玩家id
+    uint64 rank = 2; // 排名
+}
+
+// 通用刷新时间
+message pb_overall_pvp_count_flush{
+    uint32 time = 1; //刷新时间
+    uint32 use_count = 2; //当前使用的次数
+    uint32 buy_count = 3; //当前购买的次数
+}
+
+// 预选赛 - 个人数据
+message pb_overall_pvp_pre_person {
+    int32 score = 1; // 积分
+    int32 challenge_times = 2; // 挑战次数
+    int32 match_times = 3; // 匹配次数
+    repeated pb_overall_pvp_pre_match_person match_list = 4; // 匹配对手数据
+    int32 win_times = 5; // 胜利次数
+    int32 fight_times = 6; // 战斗次数(整个预选赛参与战斗次数)
+    int32 refresh_day = 7; // 数据刷新天
+    int32 def_before_score = 8; // 防守战斗前积分 主动发起战斗就更新
+    int32 buy_challenge_times = 9; // 购买挑战次数
+    int32 buy_match_times = 10; // 购买匹配次数
+    bool is_settle = 11;    //是否结算奖励
+    bool is_init = 12; //是否初始化
+    int32 max_score = 13; //最高积分
+}
+
+// 预选赛 - 匹配对手数据
+message pb_overall_pvp_pre_match_person {
+    int64 role_id = 1; // 玩家id
+    int32 score = 2; // 积分
+    bool is_bot = 3; // 是否是机器人
+}
+
+// 战报对象列表
+message pb_overall_pvp_report_obj_list {
+    repeated pb_overall_pvp_report_obj report_obj_list = 1; // 战报对象
+}
+
+// 战报对象
+message pb_overall_pvp_report_obj {
+    int32 version = 1; // 版本
+    int32 stage = 2; // 阶段
+    repeated pb_overall_pvp_report report_list = 3; // 战报数据
+}
+
+// 战报数据
+message pb_overall_pvp_report {
+    int32 stage = 1; // 阶段，不同阶段战报有些许不同
+    uint64 fight_uid = 2; // 战斗唯一id，用来取战报
+    uint64 time = 3; // 战斗时间
+    int64 atk_role_id = 4; // 进攻方角色id
+    uint64 def_role_id = 5; // 防守方角色id
+    uint32 final_result = 6; // 进攻方战斗结果（1：胜利，0：失败）
+    uint32 atk_before_fight_value = 7; // 战斗前值（预赛积分，淘汰赛排名）
+    uint32 atk_after_fight_value = 8; // 战斗后值（预赛积分，淘汰赛排名）
+    uint32 def_before_fight_value = 9; // 战斗前值（预赛积分，淘汰赛排名）
+    uint32 def_after_fight_value = 10; // 战斗后值（预赛积分，淘汰赛排名）
+    bytes other_data = 11; // 其他数据（需要特殊处理的数据，各个功能编成二进制发进来）
+    bool def_is_bot = 12; // 是否是机器人
+}
+
+// 玩家个人任务数据
+message pb_overall_pvp_task_role{
+    bytes day_bin = 1; // 每日任务数据
+    uint64 day_ref_time = 2; // 每日任务数据刷新时间
+    bytes season_bin = 3; // 周期任务数据
+    uint32 receive_sign_tid = 4;    // 签到奖励领取tid
+}
+
+// 全服预告阶段玩家个人数据
+message pb_overall_pvp_preview_person {
+    bool is_reward = 1; // 是否领取奖励
+}
+
+// 玩家个人数据 - 在整个功能都需要用到的数据可以放这里面
+message pb_overall_pvp_person {
+    repeated int32 team_award_list = 1; // 队伍奖励列表
+    bool settle_index = 2; //玩家结算标记
+    bool init_index = 3; //玩家初始化标记
+    int32 version = 4; //功能周期
+    bool spec_handle = 5; //特殊处理代币充值
+}
+
+// 公示期玩家数据
+message pb_overall_pvp_show_person {
+    bool is_reward = 1; // 是否已经领取奖励
+}
+
+// 历史周期数据列表
+message pb_overall_pvp_history_version_list {
+    repeated pb_overall_pvp_history_version history_version_list = 1; // 历史数据
+}
+
+// 每期数据
+message pb_overall_pvp_history_version {
+    int32 version = 2; // 周期
+    repeated pb_overall_pvp_history_person history_person_list = 3; // 玩家数据
+}
+
+// 历史玩家数据
+message pb_overall_pvp_history_person {
+    int32 rank = 1; // 排名
+    int64 role_id = 2; // 玩家id
+}
+
+// 玩家竞猜数据
+message pb_overall_pvp_guess_person {
+    repeated pb_overall_pvp_guess_type guess_list = 1; // 竞猜数据
+}
+// 每轮竞猜数据
+message pb_overall_pvp_guess_type {
+    int32 guess_type = 1; // 竞猜类型
+    repeated pb_overall_pvp_guess guess_person_list = 2; // 竞猜数据
+    repeated int64 rank_role_list = 3;           // 玩家猜测的排行榜前三玩家id
+    int32 guess_times = 4;           // 竞猜次数
+    int32 guess_change_times = 5;           // 竞猜变更次数
+    bool is_rank_reward = 6;           // 是否已经领取排行竞猜奖励
+
+}
+// 单次胜负竞猜数据
+message pb_overall_pvp_guess {
+    uint32 round = 1;           // 轮次 决赛数据里面的轮次
+    int64 win_role_id = 2;           // 玩家猜测的胜利玩家id
+    pb_overall_final_battle final_battle = 3;           // 决赛单场对战数据
+    bool is_reward = 4;           // 是否已经领取奖励
+}
+
+// 竞猜 - 排行榜人气
+message pb_overall_pvp_rank_guess_num {
+    int64 role_id = 1; // 玩家id
+    int32 score = 3; // 人气值
+}
+
+// 竞猜 - 排行榜人气list
+message pb_overall_pvp_rank_guess_num_list {
+    repeated pb_overall_pvp_rank_guess_num rank_guess_num_list = 1; // 玩家人气值列表
+}

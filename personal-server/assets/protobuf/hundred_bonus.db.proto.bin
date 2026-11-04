@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+// 活动个人数据
+message pb_hundred_bonus_role{
+    repeated uint32 value_list = 1; // 当前随机值列表，顺序为个位、十位、百位
+    bool is_rev = 2; // 标记是否已领取奖励
+    uint32 recharge_times = 3; // 当期活动充值次数
+}
+
+// 活动服务器数据
+message pb_hundred_bonus_server{
+    repeated pb_hundred_bonus_award_log log_list = 1; // 已经领取奖励的玩家信息列表(记录上限)
+}
+
+// 已经领取的数据格式
+message pb_hundred_bonus_award_log{
+    uint64 role_id = 1; // 角色id
+    uint32 award_num = 2; // 领取的奖励数
+}

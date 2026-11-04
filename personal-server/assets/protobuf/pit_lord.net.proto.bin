@@ -1,0 +1,18 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/pit_lord/pit_lord.db.proto.txt";
+
+// 补发排行榜奖励
+message pb_pit_lord_rank_award_rsp{
+  pb_res_to_client res = 1;             //补发的奖励
+  pb_pit_lord_sys lord_sys = 2;         //最新的数据
+}
+
+// 深渊首领战斗返回
+message pb_pit_lord_fight_rsp {
+    pb_pit_lord_sys lord = 1;              // 领主信息
+    repeated uint32 award_progress_tid = 2;     // 本次战斗达成的进度奖励
+    uint32 rank = 3;                            // 新排名
+    pb_res_to_client res = 4;                   // 奖励
+    uint64 turn_damage = 5;                     // 本次战斗造成的伤害
+}

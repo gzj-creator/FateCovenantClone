@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+// 接水管 play操作请求， 返回pb_pipe_connect_game
+message pb_pipe_connect_play_req {
+    uint32 block_id = 1;         // 块id
+    uint32 dir = 2;         // 块方向
+    uint32 center = 3;         // 块x
+    uint32 next_block_id = 4;         // 下一个块id
+}

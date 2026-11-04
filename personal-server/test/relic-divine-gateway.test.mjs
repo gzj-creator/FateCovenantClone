@@ -16,8 +16,7 @@ import {
 import { decodeModuleLoginBlocks, mergeRelicLoginContainer } from '../game/relic-divine-login.mjs';
 
 const codec = createGameCodec();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const SERVER_OPENED_AT = 1792789200;
 const GAME_NOW = (SERVER_OPENED_AT + 3600) * 1000;
 
@@ -195,7 +194,6 @@ function loginActivity(loginBytes) {
 test('gateway preserves login blocks, routes every relic command, and pushes after committed draws', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-relic-gateway-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   const logs = [];
   const options = {
     databasePath,

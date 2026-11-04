@@ -1,0 +1,124 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/function_cache/player_data/player_data.db.proto.txt";
+
+// 星钻矿脉活动服务器数据
+message pb_diamond_vein_act_server_info {
+   repeated pb_diamond_vein_act_server_data server_data = 1;
+}
+
+// 星钻矿脉活动服务器数据
+message pb_diamond_vein_act_server_data {
+    int64 act_tid = 1; // 活动tid
+    repeated pb_diamond_vein_act_map_data map_list = 2; // 地图数据
+    int64 handle_high_day_index = 3; // 处理盛产天数
+    bool is_settle = 4; // 是否最后一天结算了
+}
+
+// 星钻矿脉活动地图数据
+message pb_diamond_vein_act_map_data {
+    int64 map_id = 1; // 地图id
+    repeated pb_diamond_vein_act_map_role_data role_list = 2;
+    int64 owner_guild_id = 3; // 归属公会id(每天10点会计算一次)
+    int64 high_day_index = 4; // 盛产天数（如果是今天，结算就多倍）
+    int64 high_rate = 5; // 盛产倍数
+}
+
+// 星钻矿脉活动地图角色数据
+message pb_diamond_vein_act_map_role_data {
+    int64 role_id = 1; // 角色id
+    int64 lode_time = 2; // 占领时间
+    int64 award_time = 3; // 上次奖励结算时间
+    int64 action_point = 4; // 行动力（相当于血量）
+    int64 power = 5; // 战斗力
+    int64 guild_id = 6;          //公会id
+    repeated pb_diamond_vein_act_res_obj  fix_award_list = 7;       //提前结算的奖励列表
+}
+
+// 挂机缓存资源
+message pb_diamond_vein_act_res_obj {
+  int64 tid = 1;  //资源tid
+  float num = 2;  //缓存的带小数的资源数量(5位小数)
+}
+
+message pb_diamond_vein_act_guild_rank_info {
+    pb_player_info player_info = 1; // 第一玩家基础信息
+    int64 guild_id = 2; //公会id
+    string guild_name = 3;//公会名字
+    uint64 guild_badge = 4; //公会徽章
+    int64 merit = 5; // 总功勋值
+}
+
+/// ==============================================================
+// 星钻矿脉活动公会数据
+message pb_diamond_vein_act_guild_info {
+   repeated pb_diamond_vein_act_guild_data guild_data = 1;
+}
+
+// 星钻矿脉活动公会数据
+message pb_diamond_vein_act_guild_data {
+    int64 act_tid = 1; // 活动tid
+    int64 focus_map_id = 2; // 集火地图id
+    int64 merit_total = 3;       // 总功勋
+    repeated pb_u64_kv  merit_list = 4;       // 公会功勋列表[{玩家id：功勋}]
+}
+
+/// ==============================================================
+// 星钻矿脉活动角色数据
+message pb_diamond_vein_act_role_info {
+   repeated pb_diamond_vein_act_role_data role_data = 1;
+}
+
+// 星钻矿脉活动角色数据
+message pb_diamond_vein_act_role_data {
+    int64 act_tid = 1; // 活动tid
+    int64 action_point = 2; // 行动力（相当于血量）
+    int64 action_point_update_time = 3; // 行动力更新时间
+    int64 attack_point = 4; // 攻击令(攻击次数)
+    int64 move_point = 5; // 行军令牌（入驻地图用）
+    int64 move_point_update_time = 6; // 行军令牌更新时间
+    int64 day_update_time = 7; // 日更新时间
+    repeated pb_diamond_vein_act_pvp_report reports = 8; // 战报
+    int64 map_id = 10;
+    int64 keep_kill_num = 11; // 本轮击退次数
+    int64 merit = 12; // 离开和进入公会携带的备份功勋值（如果没有公会暂时也不加）
+    int64 day_buy_attack = 13; // 日购买攻击次数
+    bool has_counted = 14; // 本期是否已计数参加次数
+}
+
+
+// 战报数据
+message pb_diamond_vein_act_pvp_report {
+  uint64 fight_uid = 1; // 战斗唯一id，用来取战报
+  uint64 time = 2; // 战斗时间
+  uint64 atk_role_id = 3; // 进攻方角色id
+  uint64 def_role_id = 4; // 防守方角色id
+  uint32 final_result = 5; // 进攻方战斗结果（1：胜利，0：失败）
+  uint64 atk_before_action_value = 6; // 进攻方战前行动力
+  uint64 atk_after_action_value = 7; // 进攻方战后行动力
+  uint64 def_before_action_value = 8; // 防守方战前行动力
+  uint64 def_after_action_value = 9; // 防守方战后行动力
+  uint64 def_power = 12; //防守方战力
+  uint64 atk_power = 13; //进攻方战力
+}
+
+/// ==============================================================
+//星钻矿脉公会呼叫消息数据
+message pb_diamond_vein_act_msg_share_info {
+    int64 build_id = 1;// 建筑id
+    int64 role_id = 2; // 角色id
+    int64 act_tid = 3; // 活动tid
+}
+
+// 星钻矿脉活动地图数据
+message pb_diamond_vein_act_role_high_rate_change_data {
+    int64 map_id = 1;       //地图id
+    int64 high_day_index = 2; // 盛产天数（如果是今天，结算就多倍）
+    int64 high_rate = 3; // 盛产倍数
+}
+
+// 星钻矿脉活动地图归属公会数据 - 推送
+message pb_diamond_vein_act_owner_map_data {
+    int64 map_id = 1; // 地图id
+    int64 owner_guild_id = 2; // 归属公会id(每天10点会计算一次)
+}

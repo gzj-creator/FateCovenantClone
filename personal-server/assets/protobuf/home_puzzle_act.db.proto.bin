@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 单个主题的拼图数据（用 block_util 操作 bitset）
+message pb_home_puzzle_theme {
+  int64 theme_tid = 1;
+  bytes collected_bitmap = 2;    // block_util: bit 1-9 标记各位置碎片是否已收集
+  bool reward_claimed = 3;       // 该主题集齐奖励是否已领取
+}
+
+// 碎片背包条目（重复碎片：已收集后多出的、用于分解/赠送的碎片）
+message pb_home_puzzle_fragment {
+  int64 piece_tid = 1;  // 碎片配置表 TID，直接从配置表读取稀有度等信息
+  int64 count = 2;      // 多出的数量
+}
+
+// 商店购买记录
+message pb_home_puzzle_shop_item {
+  int64 shop_item_id = 1;  // 商店商品 TID
+  int64 bought_count = 2;  // 已购买次数（用于限购判断）
+}
+
+// 我发起的碎片请求
+message pb_home_puzzle_my_request {
+  int64 piece_tid = 1;     // 请求的碎片 TID
+  int64 request_time = 2;  // 请求发起时间
+}
+
+// 单期活动数据
+message pb_home_puzzle_act_data {
+  int64 act_tid = 1;                             // 活动期数 ID（替代 version，多期隔离）
+  repeated pb_home_puzzle_theme themes = 2;      // 9 个主题的拼图数据（bitset + 领取标记）
+  repeated pb_home_puzzle_fragment fragments = 3; // 碎片背包（重复碎片，用于分解/赠送）
+  int64 daily_gift_count = 4;                    // 今日已赠送次数
+  int64 daily_request_count = 5;                 // 今日已请求次数
+  int64 daily_reset_second = 6;                  // 每日重置锚点（赠送/请求/任务/商店共用）
+  int64 weekly_reset_second = 7;                 // 每周重置锚点（每周任务）
+  repeated int64 daily_task_list = 8;            // 每日已完成任务 ID（跨天惰性清空）
+  repeated int64 weekly_task_list = 9;           // 每周已完成任务 ID（跨周惰性清空）
+  repeated pb_home_puzzle_shop_item shop_bought = 10; // 商店已购记录（含限购计数）
+  repeated pb_home_puzzle_my_request my_requests = 11; // 我发起的碎片请求列表
+  repeated int64 received_process_list = 12; // 领取的进度奖励tid列表
+  repeated pb_home_puzzle_gift_data get_gifts = 13; // 获得的赠送碎片数据 需要保留
+  repeated pb_home_puzzle_gift_data my_gifts = 14; // 我发起赠送碎片数据 这个冗余用于碎片的退还
+}
+
+// 角色级容器（DB 表直接存这个，act_data_list 按 act_tid 区分多期）
+message pb_home_puzzle_role_act_info {
+  repeated pb_home_puzzle_act_data act_data_list = 1;
+}
+
+// 好友请求数据
+message pb_home_puzzle_friend_request_data{
+  int64 friend_role_id = 1; // 好友角色id
+  int64 piece_tid = 2; // 碎片配置表 TID
+  int64 request_time = 3; // 请求碎片时间
+}
+
+// 赠送数据
+message pb_home_puzzle_gift_data{
+  int64 gift_role_id = 1; // 赠送者roleId
+  int64 gift_time = 2; // 赠送时间
+  int64 piece_tid = 3;  // 碎片配置表 TID
+  int64 gift_uid = 4; // 唯一id用于交互
+  bool is_finish = 5; // 是否完成
+}

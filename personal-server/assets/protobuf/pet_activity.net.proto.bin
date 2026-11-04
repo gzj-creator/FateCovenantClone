@@ -1,0 +1,77 @@
+syntax = "proto3";
+import "project/fight/fight.db.proto.txt";
+import "project/pet_activity/pet_activity.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/shop.db.proto.txt";
+import "project/pet/pet.db.proto.txt";
+import "project/lineup.db.proto.txt";
+
+//请求关卡战斗回调数据
+message pb_res_pet_act_fight{
+    pb_pet_act_fight_record fight_record = 1;   //战斗关卡数据
+    uint64 fight_damage = 2;                     //战斗伤害
+    int32 my_rank = 3;                          //玩家自己排名
+}
+
+//请求疗伤返回数据
+message pb_res_pet_act_cure{
+    pb_pet_act_wound wound = 1;                 //被疗伤的伤口数据
+    pb_res_to_client res = 2;                   //客户端资源改变
+}
+
+// 请求自选魔灵
+message pb_req_pet_act_select_pet{
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 pet_tid = 2;                         // 魔灵tid
+}
+
+// 请求领取每日任务奖励
+message pb_req_pet_act_daily_reward{
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 challenge_tid = 2;                   // 挑战tid
+    repeated uint32 task_id = 3;                // 任务id列表(支持一键领取奖励)
+}
+
+// 请求领取好感度奖励
+message pb_req_pet_act_claim_likability_rewards {
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 favor_tid = 2;                       // 好感度奖励tid
+}
+
+// 请求治疗伤口
+message pb_req_pet_act_cure{
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 wound_tid = 2;                       // 伤口tid
+}
+
+// 请求战斗
+message pb_req_pet_act_fight{
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 challenge_tid = 2;                   // 关卡tid
+}
+
+// 活动开启数据
+message pb_pet_act_begin {
+    pb_shop_info shop_info = 1;                 // 商店信息
+    pb_pet_act_player act_player = 2;           // 活动玩家信息
+}
+
+// 跨天刷新数据
+message pb_pet_act_flush {
+    pb_pet_act_player_list act_player_list = 1; // 活动玩家信息列表
+    pb_res_to_client res = 2;                   // 补发邮件资源
+}
+
+// 请求领取活跃奖励
+message pb_rev_pet_vitality_award_ret{
+    pb_res_to_client res = 1; // 获得的资源
+    pb_pet_act_player_list act_player_list = 2; // 活动玩家信息列表
+}
+
+// 魔灵兑换
+message pb_pet_exchange_ret{
+    pb_res_to_client res = 1;                   // 获得的资源
+    pb_pet_develop_data pet_data = 2;           // 魔灵数据
+    pb_role_lineup role_lineup = 3;             // 预设阵容
+    repeated pb_lineup lineup_list = 4;          // 所有阵容
+}

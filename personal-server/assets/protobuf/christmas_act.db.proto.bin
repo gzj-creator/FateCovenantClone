@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 圣诞活动数据
+message pb_christmas_act {
+    uint32 act_id = 1;                  // 活动id
+    pb_christmas_act_dress dress = 2;   // 装扮数据
+    pb_christmas_act_wish wish = 3;     // 祈愿数据
+    repeated uint32 got_shop_award = 4; // 已领取限时商店进度奖励(圣诞活动商店购买奖励表tid)
+}
+
+// 圣诞活动装扮数据
+message pb_christmas_act_dress {
+    bytes award_state = 1;              // 装扮奖励领取状态
+}
+
+// 圣诞活动祈愿数据
+message pb_christmas_act_wish {
+    uint32 select_wish = 1;             // 选择的心愿
+    bool big_award_get = 2;             // 是否已经获取大奖
+}

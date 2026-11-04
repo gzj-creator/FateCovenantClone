@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 角色航会活跃信息
+message pb_role_guild_active {
+    bytes got_award = 1; // 已领取的奖励
+    uint32 active_refresh_day = 2; // 活跃刷新时间
+    repeated pb_guild_active_finish active_finish = 3;// 航会活动完成次数信息
+    uint32 active = 4; // 日活跃度
+    uint32 week_active = 5; // 周累计活跃度
+    bytes week_award = 6; // 周奖励领取记录
+    bytes finish_award = 7; // 完成任务的奖励领取记录
+    uint32 special_active = 8; //特殊贡献度，公会宝箱和工资再用
+    uint64 active_sum = 9; // active + special_active 一直累积
+    repeated pb_guild_active_finish special_active_finish = 10;// 航会特殊贡献类型完成次数信息
+    bytes special_finish_award = 11; // 完成特殊贡献任务的奖励领取记录
+    uint32 yesterday_active = 12; // 昨天活跃 active + day_special_active 每天刷新的时候更新
+    uint32 last_week_active = 13; //上周贡献值
+    uint32 day_special_active = 14; //每天的特殊贡献值
+}
+
+// 航会活跃活动完成次数信息
+message pb_guild_active_finish {
+    uint32 tid = 1;             // 完成活动tid
+    uint32 finish_times = 2;    // 完成次数
+}
+
+// 上期排行榜信息(按排行榜顺序)
+message pb_guild_active_history {
+    repeated pb_guild_active_history_guild award_history = 1; // 奖励
+}
+
+// 单个航会上期排行榜信息
+message pb_guild_active_history_guild {
+    uint64 guild_id = 1;    // 航会id
+    uint32 active = 2;      // 活跃度
+    uint32 score = 3;       // 积分
+    repeated pb_res_obj award = 4; // 奖励
+}
+
+// 一周航会活跃活动详细信息
+message pb_guild_active_detail_week {
+    repeated pb_guild_active_detail active_detail = 1; // 活动详细信息
+    uint32 refresh_stamp = 2; // 刷新时间
+}
+
+// 航会活跃活动详细信息
+message pb_guild_active_detail {
+    uint32 tid = 1;         // 活动tid(表：航会活跃积分玩法类型)
+    uint32 times = 2;
+    uint32 score = 3;
+}
+
+// 航会自动解散信息
+message pb_guild_auto_dissolve {
+    uint64 dissolve_stamp = 1;      // 自动解散时间戳
+    uint64 match_cond_days = 2;     // 满足条件的天数(达到指定天数后自动解散)
+}
+
+// 航会自动解散 角色信息
+message pb_guild_auto_dissolve_role {
+    bool dissolve_read = 1;      // 解散消息是否已读
+    bool pre_dissolve_read = 2;  // 预解散消息是否已读
+    uint64 dissolve_stamp = 3;   // 自动解散时间戳(已经解散了才有)
+}

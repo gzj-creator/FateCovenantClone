@@ -12,7 +12,7 @@ import { grantResources } from '../game/resources.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const CREATED_AT = Date.parse('2026-10-29T21:30:00Z') / 1000;
 
 function setup(t) {

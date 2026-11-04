@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "project/hero/visit/visit.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 拜访返回
+message pb_hero_visit_rsp {
+    pb_res_to_client res_change = 1;        // 资源变化
+    pb_role_hero_visit hero_visit = 2;      // 拜访数据
+}
+
+// 偶遇返回
+message pb_hero_meet_rsp {
+    pb_res_to_client res_change = 1;        // 资源变化
+    pb_role_hero_visit hero_visit = 2;      // 拜访数据
+}

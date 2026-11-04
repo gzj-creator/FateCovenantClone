@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 钻石储蓄活动角色数据
+message pb_diamond_bank_act_role_info {
+   repeated pb_diamond_bank_act_role_data role_data = 1;
+}
+
+// 钻石储蓄活动角色数据
+message pb_diamond_bank_act_role_data {
+    int64 act_tid = 1; // 活动tid
+    repeated pb_diamond_bank_daily_discount_data daily_discount_list = 2;    // 购买信息
+    repeated pb_diamond_bank_act_task_info task_get = 3; // 任务领取记录
+    bool is_buy = 4; // 是否购买过投入钻石
+    bool is_get = 5; // 是否领取最终奖励
+    int64 daily_time = 6; // 每日任务补领取时间
+}
+
+//【钻石储蓄罐每日特惠】单个礼包购买数据
+message pb_diamond_bank_daily_discount_data{
+    uint32 recharge_tid = 1;                                    // 礼包tid
+    uint32 buy_times = 2;                                       // 当日购买总次数
+    uint64 refresh_time = 3;                                    // 补买次数刷新时间
+    uint32 buy_additionally = 4;                                // 剩余补买次数
+}
+
+message pb_diamond_bank_act_task_info {
+    uint64 tid = 1;      //任务id
+    uint64 get_time = 2; // 领取时间
+}

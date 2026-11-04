@@ -1,0 +1,85 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+
+//商品信息
+message pb_shop_item_info {
+    //int32 cell_id = 1;          // 商品格子id,（移除商品格子,依据商品在商品列表中的位置确定）
+    int64 tid = 2;              // 商品tid
+    int32 buy_count = 3;        // 已购买次数
+}
+
+// 商店信息列表
+message pb_shop_info_list {
+    repeated pb_shop_info list = 1;                 // 商店信息列表
+}
+
+// 商店信息
+message pb_shop_info {
+    int32 id = 1;                                   // 商店id
+    repeated pb_shop_items_group items_groups = 2;   // 商品分组列表信息
+    int32 version = 3;                               // 商店版本号
+}
+
+// 商品列表信息
+message pb_shop_items_group {
+    repeated pb_shop_item_info item_list = 1;       // 商品列表
+    bytes group_data_bin = 2;                       // 商品分组描述信息
+}
+
+// 手动刷新信息
+message pb_shop_manual_refresh {
+    int32 last_refresh_time = 1;            // 上一次手动刷新的时间
+    int32 next_free_count_time = 2;         // 下次增加刷新免费次数的时间戳(秒)
+    int32 free_refresh_count = 3;           // 当前免费刷新次数
+    int32 pay_refresh_count = 4;            // 今日的付费刷新次数
+    int32 all_refresh_count = 5;            // 今日总共刷新次数
+    int64 last_auto_refresh_time = 6;       // 上次自动刷新的时间
+    int64 privilege_used_times = 7;         // 特权已用次数
+}
+
+//快捷购买商店数据
+message pb_shop_quick{
+    repeated pb_shop_quick_buy buy_list = 1;  // 所有购买信息
+}
+
+//快捷购买信息
+message pb_shop_quick_buy{
+    uint64 tid = 1;                     //物品tid
+    pb_count_flush count_info = 2;      //次数信息
+}
+
+//整体自动刷新商店信息
+message pb_shop_auto_refresh{
+    uint64 next_refresh_time = 1;                               // 下次刷新时间
+    uint64 limit_bought_count = 2;                              // 限购商品本周期总购买次数
+    repeated pb_shop_item_bought items_history_bought = 3;      // 特殊商品历史购买次数
+}
+
+// 商品已购买数据
+message pb_shop_item_bought{
+    int32 buy_count = 1;        // 购买次数
+    int64 day = 2;              // 跨天时间秒数
+}
+
+//格子自动刷新功能的商店
+message pb_shop_cell_auto_refresh{
+    repeated uint64 next_refresh_time = 1;      // 格子下次自动刷新时间
+}
+
+//截止时间结束商店
+message pb_shop_end_time{
+    uint64 deadline_time = 1;           // 截止时间
+}
+
+//周期开关商店
+message pb_shop_period{
+    uint32 period = 1;                  // 周期id
+    uint64 deadline_time = 2;           // 周期截止时间
+    uint64 act_id = 3;                  // 活动ID，如果有的话，没有就是0
+}
+
+//开关刷新商店
+message pb_shop_switch_refresh{
+    bool state = 1;                     // 开关标记
+}
+

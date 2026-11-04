@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// 玩家活动数据
+message pb_three_admonition{
+  uint32 draw_num = 1;              // 已经抽取奖励的次数
+  bytes draw_award_states = 2;      // 抽奖奖励状态
+  bytes box_award_states = 3;       // 宝箱领取状态
+  repeated uint32 award_index_list = 4;    // 奖励索引列表，每个人参加活动的时候初始化这个列表，每次抽取的时候从这里面按顺序抽取
+  bool is_enter_act = 5;            // 是否进入过活动，客户端用来做特殊表现（不能存客户端）
+  uint32 total_win_count = 6;       // 总共猜拳胜利的次数
+  bytes draw_award_index_info = 7;  // 抽到的奖励索引
+  uint32 act_version = 8;           // 活动版本号
+  uint32 act_id = 9;                // 活动id
+}
+

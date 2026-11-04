@@ -892,7 +892,7 @@ export function createFantasyEquipmentService({
   }
 
   function execute(type, input) {
-    log({ event: 'fantasy_equipment_execute_entry', type, input, inputHex: input?.toString('base64') });
+    log({ event: 'fantasy_equipment_execute_entry', type, input, inputHex: Buffer.isBuffer(input) ? input.toString('base64') : null });
     switch (Number(type)) {
       case 87601: return putOn(input);
       case 87603: return takeOff(input);

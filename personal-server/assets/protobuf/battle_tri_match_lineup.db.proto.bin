@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+import "project/attribute/attribute.db.proto.txt";
+
+// 战斗三消阵容角色数据
+message pb_battle_tri_match_role_lineup{
+  repeated pb_battle_tri_match_lineup lineup_list = 1; // 阵容数据
+  repeated pb_battle_tri_match_playing_lineup playing_lineup = 2; // 玩家阵容数据
+  int64 add_max_num = 3; // 新增的最大数量
+}
+
+// 战斗三消阵容数据
+message pb_battle_tri_match_lineup{
+  int64 uid = 1; // 唯一id
+  int64 gen_time = 2; // 生成时间
+  repeated pb_battle_tri_match_lineup_team team_list = 3; // 队伍列表
+  string name = 4; // 阵容名字
+}
+
+// 战斗三消阵容预设队伍数据
+message pb_battle_tri_match_lineup_team{
+  int64 team_id = 1; // 队伍id
+  repeated pb_battle_tri_match_lineup_site sites = 2; // sites列表
+}
+
+// 战斗三消阵容 fighter
+message pb_battle_tri_match_lineup_fighter {
+  int64 site_index = 1;       // 槽位idx
+  int64 hero_tid = 2;     // 英雄tid
+  int64 fighter_power = 3;       // fighter战力
+  repeated pb_attr_item attrs = 4; // 属性
+  repeated uint64 skills = 5; // 技能Tid列表
+  int64 star = 6; // 英雄当前星级
+  int64 lv = 7; // 英雄等级
+  repeated int64 equip_lvs = 8; // 装备等级列表
+}
+
+// 三消阵容槽位
+message pb_battle_tri_match_lineup_site{
+  int64 site_index = 1;       // 槽位idx
+  int64 hero_tid = 2;     // 英雄tid
+}
+
+// 战斗三消玩法阵容数据
+message pb_battle_tri_match_playing_lineup{
+  int64 type = 1; //  布阵类型
+  repeated pb_battle_tri_match_lineup_team team_list = 2; // 队伍列表
+}
+
+// 玩家阵容数据
+message pb_battle_tri_match_playing_lineup_data{
+  repeated pb_battle_tri_match_playing_single_site_data site_list = 1;
+}
+
+// 玩家单槽位数据
+message pb_battle_tri_match_playing_single_site_data{
+  pb_battle_tri_match_lineup_site site = 1; // 槽位信息
+  int64 star = 2; // 英雄当前星级
+  int64 lv = 3; // 英雄等级
+}

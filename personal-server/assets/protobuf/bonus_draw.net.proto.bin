@@ -1,0 +1,22 @@
+syntax = "proto3";
+import "project/bonus_draw/bonus_draw.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 福利抽奖请求
+message pb_bonus_draw_req {
+    uint32 id = 1;                  // 福利抽奖表tid
+    uint32 num = 2;                 // 抽奖次数
+    bool stop = 3;                  // 是否抽到大奖停止
+}
+
+// 福利抽奖返回
+message pb_bonus_draw_back {
+    pb_res_to_client res = 1;       // 资源改变
+    pb_bonus_draw bonus_draw = 2;   // 福利抽奖数据
+}
+
+// 选择奖励池
+message pb_bonus_draw_choose_pool {
+    uint32 version = 1;              // 版本号
+    uint32 pool_id = 2;              // 奖励池id
+}

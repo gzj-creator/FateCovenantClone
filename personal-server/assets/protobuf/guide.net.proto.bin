@@ -1,0 +1,18 @@
+syntax = "proto3";
+import "project/guide.db.proto.txt";
+
+//保存进度
+message pb_req_save_process{
+    repeated pb_req_save_process_param req_list = 1; //新的请求列表
+}
+
+// 单个引导请求保存的参数
+message pb_req_save_process_param{
+    uint32 process_id = 1; //进度ID
+    uint32 key_id = 2 ; //关键步骤ID
+}
+
+//保存进度后返回数据
+message pb_req_save_process_back{
+    repeated pb_guide_process process_list = 1; //修改后的进度列表
+}

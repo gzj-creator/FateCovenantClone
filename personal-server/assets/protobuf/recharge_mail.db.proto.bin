@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+message pb_recharge_mail {
+    uint32 daily_day = 1;             		// 当前日标识，跨天时重置每日位图
+    uint32 daily_max_tid = 2;        	// 每日累充已发档位
+    uint32 all_max_tid = 3;    		// 永久累充已发档位
+}

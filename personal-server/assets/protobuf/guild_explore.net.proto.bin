@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+import "project/guild_explore/guild_explore.db.proto.txt";
+import "project/guild_explore_trial/guild_explore_trial.db.proto.txt";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+
+// 登录数据
+message pb_guild_explore_login{
+    bytes explore_guild_bin = 1;                            // 航会相关数据
+    bytes explore_person_bin = 2;                           // 个人相关数据
+    bytes explore_game_bin = 3;                             // 游戏相关数据
+    bytes explore_museum_bin = 4;                           // 博物馆相关数据
+    bytes explore_shop_bin = 5;                             // 商店相关数据
+    bytes explore_pre_person = 6;                           // 前置地图数据
+}
+
+// 传送门请求
+message pb_guild_explore_portal_req{
+    uint32 start_tid = 1;           // 起点tid
+    uint32 target_tid = 2;          // 目标tid
+    repeated int64 point = 3;       // 坐标
+}
+
+// 移动请求
+message pb_guild_explore_move_req{
+    uint64 target_loc = 1;          // 目标tid
+    uint64 energy = 2;              // 消耗精力
+}
+
+// 任务请求返回数据
+message pb_guild_explore_task_back{
+    pb_guile_explore_task task_data = 1; // 任务数据
+    pb_res_to_client res = 2;            // 资源
+}
+
+// 今日前置地图返回数据
+message pb_guild_explore_enter_pre_back{
+    pb_guild_explore_pre_person pre_person = 1;     // 前置地图数据
+    pb_res_to_client res = 2;                       // 资源
+}
+
+// 获取许愿道具推送
+message pb_guild_explore_wish_item_push{
+    uint32 count = 1;           // 道具数量
+    repeated uint64 wish_item_fetch_role = 2;   // 许愿道具获得玩家
+    uint32 event_type = 3;      // 事件类型
+    pb_guild_explore_trial trial = 4;   // 宝藏数据
+}
+
+// 许愿请求返回
+message pb_guild_explore_wish_back{
+    uint32 round = 1;       // 最新轮次
+    pb_res_to_client res = 2;            // 资源
+}
+
+// 攻打小怪返回
+message pb_guild_explore_atk_monster{
+    repeated pb_guild_explore_box box_list = 1;         // 宝箱列表
+    pb_res_to_client res = 2;            // 资源
+}
+
+// 攻打boss返回
+message pb_guild_explore_atk_boss_back{
+    repeated uint64 auction_list = 1;   // 拍卖物品tid列表
+    pb_res_to_client res = 2;           // 资源改变
+    pb_guild_explore_boss boos = 3;     // boss信息
+}
+
+// 龙息之地小游戏请求
+message pb_guild_explore_play_game_req{
+    int64 map_node_id = 1;      // 地图节点id
+}
+
+// 龙息之地完成小游戏请求
+message pb_guild_explore_finish_game_req{
+    int64 map_node_id = 1;      // 地图节点id
+    int64 value = 2;            // 完成值
+}
+
+// 龙息之地领取小游戏奖励请求
+message pb_guild_explore_get_game_award_req{
+    int64 map_node_id = 1;      // 地图节点id
+}
+
+// 龙息之地小游戏请求返回
+message pb_guild_explore_play_game_back{
+    int64 map_node_id = 1;                          // 地图节点id
+    pb_guild_explore_game_person person_info = 2;   // 个人信息
+    pb_res_to_client res = 3;                       // 资源变化
+}
+
+// 龙息之地完成小游戏返回
+message pb_guild_explore_finish_game_back{
+    int64 map_node_id = 1;                          // 地图节点id
+    int64 total_value = 2;                          // 总累计值
+    pb_res_to_client res = 3;                       // 资源变化
+}
+
+// 龙息之地领取小游戏奖励返回
+message pb_guild_explore_get_game_award_back{
+    int64 map_node_id = 1;                          // 地图节点id
+    int64 award_tid = 2;                            // 奖励tid
+    pb_res_to_client res = 3;                       // 资源变化
+}
+
+// 龙息之地领取建筑等级奖励请求
+message pb_guild_explore_build_award_req{
+    int64 map_node_id = 1;                          // 地图节点id
+    uint32 level = 2;                               // 领取等级
+}
+
+// 龙息之地建筑等级奖励返回
+message pb_guild_explore_build_award_back{
+    bytes level_award_state = 1;                    // 等级奖励领取状态
+    pb_res_to_client res = 2;                       // 资源变化
+}
+
+// 龙息之地阵营经验同步
+message pb_guild_explore_camp_sync{
+   int32 explore_exp = 1;                           // 探索经验
+}
+
+// 龙息之地进入地图返回
+message pb_guild_explore_enter_map_back{
+    pb_guild_explore_map_person map_person = 1;     // 玩家个人地图数据
+    pb_res_to_client res = 2;                       // 资源变化
+    pb_res_to_client ret_res = 3;                   // 回收资源
+    pb_guild_explore_guild guild_data = 4;          // 航会数据
+}
+
+// 客户端使用的小游戏数据
+message client_guild_explore_game_data{
+    repeated client_guild_explore_game game_l = 1;  // 小游戏列表
+}
+
+// 客户端使用的单个小游戏数据（用于奖励判断和红点）
+message client_guild_explore_game{
+    uint32 tid = 1;                                 // 小游戏tid
+    uint32 map_node_id = 2;                         // 地图节点id
+    int64 total_value = 3;                          // 总累计值
+    int64 award_tid = 4;                            // 奖励tid
+    uint32 join_count = 5;                          // 参与次数
+}
+
+// S2C 小游戏更新
+message pb_guild_explore_game_update{
+    client_guild_explore_game game = 1;             // 小游戏数据
+}
+
+// S2C 小游戏删除
+message pb_guild_explore_game_delete{
+    uint32 map_node_id = 1;                         // 地图节点id
+}
+
+// 请求营地统计数据
+message pb_guild_explore_camp_stat{
+    repeated pb_u32_kv event_stat_list = 1;             // 事件统计列表
+}
+
+// 购买商品返回
+message pb_guild_explore_shop_back{
+    pb_guild_explore_shop_item item = 1;                // 商品信息
+    pb_res_to_client res = 2;                           // 资源变化
+}
+
+// 批量领取boss宝箱 返回
+message pb_guild_explore_get_boss_box_back{
+    repeated pb_guild_e_boss_box box_list = 1;                       // 宝箱列表
+    pb_res_to_client res = 2;                           // 资源变化
+}

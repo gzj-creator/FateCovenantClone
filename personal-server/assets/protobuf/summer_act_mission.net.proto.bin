@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+import "project/activity/summer_act/summer_mission/summer_act_mission.db.proto.txt";
+import "project/count_statistics/count_statistics.net.proto.txt";
+
+// 夏日活动主支线挑战请求
+message pb_summer_act_mission_fight_req {
+    uint64 act_tid = 1; //活动tid
+    bool is_main = 2; //是为主线否为支线
+    uint64 mission_tid = 3; //攻打的关卡tid
+    uint64 game_score = 4; //小游戏积分
+}
+
+// 夏日活动主支线挑战请求返回
+message pb_summer_act_mission_fight_back {
+    pb_res_to_client res = 1; //资源改变
+    pb_summer_act_mission mission_info = 2; //主线数据
+    bool is_main = 3; //是为主线否为支线
+    uint64 mission_tid = 4; //通过的关卡tid
+    pb_count_statics_send stat_send = 5; //统计返回数据
+}
+
+// 夏日活动支线进度奖励返回
+message pb_summer_act_mission_progress_award_back{
+    pb_res_to_client res = 1; //资源改变
+    pb_summer_act_mission_sub sub_info = 2; //返回支线数据
+}

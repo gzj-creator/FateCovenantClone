@@ -1,0 +1,37 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/wish_tree/wish_tree.db.proto.txt";
+
+// 许愿树抽奖返回数据
+message pb_wish_tree_draw_back{
+    pb_wish_tree_data tree_data = 1; //单个许愿树数据
+    uint32 award_tid = 2; //抽中的奖励tid
+    pb_res_to_client res = 3; //资源改变
+    bool is_last_draw = 4; //是否最后一次抽奖
+}
+
+// 投投乐自选秘宝返回数据（废弃）
+message pb_wish_tree_rev_treasure_back{
+    pb_res_to_client res = 1; //资源改变
+    uint64 acc_treasure_times = 2; // 用于秘宝自选的累计投投次数
+}
+
+// 在线跨天返回数据
+message pb_wish_tree_flush_day_back{
+    pb_wish_tree_new tree_info = 1; //许愿树数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 许愿树自选大奖请求数据
+message pb_wish_tree_select_req{
+    uint64 type = 1; //类型
+    uint64 award_tid = 2; //奖励表tid
+    uint64 select_tid = 3; //自选表tid
+}
+
+
+// 许愿树自选大奖返回数据
+message pb_wish_tree_select_back{
+    uint64 type = 1; //类型
+    pb_wish_tree_select select_info = 2; //自选大奖数据
+}

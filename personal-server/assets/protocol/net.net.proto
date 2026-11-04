@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+//错误信息
+message pb_net_err {
+    sint32 err = 1;
+    bytes vars = 2;
+    string stacktrace = 3;
+}
+
+// 客户端发给服务端的消息
+message pb_c2s {
+    uint32 seq = 1;
+    sint32 type = 2;    // 心跳消息类型为-1，所以定义为sint32
+    bytes data = 3;
+    int64 time_ms = 4;  // 发送消息的时间戳，单位：毫秒
+                        // 这里考虑了用单位秒或者基于最近年份的时间偏移来减少数据包大小，但实际只能减少1~2字节，所以还是用更精确的毫秒时间戳
+}
+
+// 服务端发给客户端的消息
+message pb_s2c {
+    uint32 seq = 1;
+    uint32 type = 2;
+    bytes data = 3;
+    pb_net_err err = 4;
+}

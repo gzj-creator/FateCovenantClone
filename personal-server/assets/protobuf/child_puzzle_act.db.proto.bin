@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 拼图 - 支持并行 - 版本号区分 - 列表结构
+message pb_puzzle_person_list {
+    repeated pb_puzzle_person person_list = 1;//玩家数据列表
+}
+
+// 拼图 - 玩家个人数据
+message pb_puzzle_person {
+    int32 version = 1;//版本号
+    int32 cur_turn = 2; //当前轮次
+    repeated pb_puzzle_turn turn_list = 3;//轮次数据列表
+    int32 draw_times = 4; //累积抽奖次数
+    repeated int32 pile_award = 5; //领取累积奖励id
+    int32 left_energy = 6; //没有计算抽奖次数的体力
+    repeated pb_puzzle_day_task task = 7; //任务数据
+    uint32 select_award_index = 8; // 大奖选择索引
+}
+
+// 拼图 - 单个轮次数据
+message pb_puzzle_turn {
+    int32 turn = 1; // 第几轮
+    repeated int32 draw_puzzle_id = 2; //本轮抽中的拼图id
+    repeated int32 puzzle_award = 3;//拼图奖励(横、竖、全部奖励id)
+}
+
+
+// 拼图 - 任务
+message pb_puzzle_day_task {
+    uint32 day_index = 1; //第几天(从活动开始时间计算)
+    bytes award_state = 2; // 奖励领取状态(block_util按位获取,从1开始索引)
+}

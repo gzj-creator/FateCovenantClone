@@ -1,0 +1,23 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+
+//天极之塔数据
+message pb_peak_tower_data {
+    uint32 layer = 1; //当前层级
+    uint32 award_time = 3; //领奖时间
+    uint32 max_layer_time = 4; //高层数刷新时间
+    uint32 max_layer = 5; //昨天达到的最高层数
+    uint32 layer_change_time = 6;   //层级刷新时间(排行榜使用)
+    repeated uint32 buy_goods = 7;  //已购买的商品
+    pb_count_flush count_limit = 8; //每天限制次数
+    uint64 fail_equip_score = 9;    //失败时的装备刻度值(用于计算关卡难度提升，胜利清空)
+    uint64 fail_time = 10;          //失败时记录的时间点(用于计算关卡难度衰减)
+    uint64 fail_power = 11;         //失败时的最高战力
+    bytes tower_award = 12;         //通关塔后得到的奖励领取记录
+}
+
+// 天极之塔战斗请求
+message peak_tower_req {
+    int32 challenge_tid = 1; // 挑战层级
+}

@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+import "project/wear/equip/equip.db.proto.txt";
+import "general/res.net.proto.txt";
+import "general/res.db.proto.txt";
+import "project/lineup.db.proto.txt";
+
+// 装备强化请求
+message pb_equip_level_up_req {
+  repeated pb_equip_level_up_equip equips = 1; // 强化单个装备请求
+}
+message pb_equip_level_up_equip {
+  uint32 id = 1;   // 强化装备id
+  uint32 add_level = 2; // 强化的等级
+}
+// 装备强化返回
+message pb_equip_level_up_rsp {
+    repeated pb_equip equips = 1;
+    pb_res_to_client res_change = 2;
+}
+
+// 装备打造返回
+message pb_equip_forge_rsp {
+  pb_res_to_client res_change = 1; // 资源变化
+  repeated pb_equip equip = 2;    // 打造的装备
+  repeated pb_lineup change_lineup = 3;  // 有变化的阵容
+  pb_pre_lineup cur_pre_lineup = 4;      // 当前预设阵容
+}
+
+// 装备精炼返回
+message pb_equip_refine_rsp {
+  pb_equip equip = 1;
+  uint32 multi = 2;
+  pb_res_to_client res_change = 3;
+}
+
+// 装备精炼
+message pb_equip_refine_one_key_req {
+  uint32 equip_id = 1;  // 装备id
+  uint32 target_level = 2; //目标等级
+}
+
+// 装备精炼返回
+message pb_equip_refine_one_key_rsp {
+  pb_equip equip = 1;               // 新装备
+  pb_res_to_client res_change = 2;  // 资源变化
+  repeated uint32 multi = 3;        // 倍率
+  uint32 times = 4;                 // 精炼次数
+}
+
+// 批量装备精炼
+message pb_equip_refine_one_key_batch_req {
+  repeated pb_equip_refine_one_key_req equips = 1; // 装备精炼请求列表
+}
+
+// 批量装备精炼返回
+message pb_equip_refine_one_key_batch_rsp {
+  repeated  pb_equip equips = 1;               // 新装备
+  pb_res_to_client res_change = 2;          // 资源变化
+  repeated uint32 multi = 3;              // 倍率
+  uint32 times = 4;                            // 精炼次数
+}
+
+// 装备铭文请求
+message pb_equip_inscription_req {
+  uint32 equip_id = 1;  // 装备id
+  uint32 target_level = 2; //目标等级
+}
+
+// 装备铭文返回
+message pb_equip_inscription_rsp {
+  pb_equip equip = 1;
+  pb_res_to_client res_change = 2;
+}
+
+// 装备列表
+message pb_equip_list {
+  repeated pb_equip equips = 1;
+}
+
+// 将背包的装备换到阵容上
+message pb_swap_equip_from_bag_req {
+  repeated pb_swap_equip_from_bag swaps = 1; // 交换请求列表
+}
+message pb_swap_equip_from_bag {
+  uint32 tid = 1;   // 装备tid
+  uint32 id = 2;    // 装备格子id
+}
+
+// 将背包的装备换到阵容上返回
+message pb_swap_equip_from_bag_rsp {
+  pb_res_to_client res_changes = 1; // 资源变化
+  repeated pb_equip equips = 2;     // 发生变化的装备数据
+}
+
+// 穿戴装备
+message pb_equip_wear_req {
+  repeated pb_equip_wear wears = 1;
+}
+message pb_equip_wear {
+  uint32 index = 1;
+  uint32 id = 2;
+  uint32 tid = 3;
+}
+
+// 穿戴装备返回
+message pb_equip_wear_rsp {
+  pb_res_to_client res_change = 1; // 资源变化
+  repeated pb_equip equips = 2;    // 变化了的装备
+  repeated pb_lineup change_lineup = 3;  // 有变化的阵容
+  pb_pre_lineup cur_pre_lineup = 4;      // 当前预设阵容
+}
+
+// 觉醒
+message pb_equip_awake_rsp {
+  pb_equip equip = 1;
+  pb_res_to_client res_change = 2; // 资源变化
+}
+
+// 装备打造
+message pb_equip_forge_req {
+  repeated pb_equip_forge_one equips = 1; // 打造请求列表
+  bool is_one_key = 2;// 是否一键打造
+}
+
+// 打造请求中单个装备
+message pb_equip_forge_one {
+  uint32 index = 1;     // 养成格子索引
+  uint32 equip_id = 2;  // 装备id
+  uint32 times = 3;    // 打造次数
+}
+
+// 装备材料兑换
+message pb_equip_res_exchange_req {
+  repeated pb_equip_res_exchange exchanges = 1; // 兑换请求列表
+}
+
+// 装备材料兑换单个请求
+message pb_equip_res_exchange {
+  uint32 src = 1;   // 原材料
+  uint32 num = 2;   // 兑换原材料数量
+  uint32 dst = 3;   // 目标材料
+}

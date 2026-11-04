@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+
+// 神魔抽活动数据
+message pb_magic_draw{
+  uint64 draw_hero_tid = 1; //当前选中英雄id
+  uint64 version = 2; //当前版本号
+  uint64 draw_count = 3; //当前抽卡次数
+  bytes draw_count_award = 4; //当前周期已经领取成就奖励的编号记录（记录1-10位）
+  repeated pb_magic_draw_star_award star_award_list = 5; //领取的所有英雄星级奖励数据（不随周期刷新）
+  repeated pb_magic_draw_gift buy_gift_list = 6; //当前周期内已购买的礼包数据（包括英雄星级礼包数据、神魔抽功能礼包数据）
+  uint64 diamond_draw_count = 7; //当前砖石招募次数（活动周期限制的钻石抽次数）
+  pb_count_flush diamond_count_info = 8; //每天钻石抽次数
+}
+
+// 英雄星级领奖数据
+message pb_magic_draw_star_award{
+  uint64 hero_id = 1; //领取英雄的id
+  bytes award_state = 2; //该英雄星级奖励领取标记
+}
+
+// 购买礼包数据
+message pb_magic_draw_gift{
+  uint64 gift_id = 1; //礼包id
+  uint64 count = 2; //当前已购买次数
+}
+
+

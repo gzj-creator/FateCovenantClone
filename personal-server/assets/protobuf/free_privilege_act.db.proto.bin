@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+
+// 免费特权活动玩家数据
+message pb_free_privilege_act_act_role_info {
+    repeated pb_free_privilege_act_act_role_data data_list = 1;              // 玩家数据
+}
+
+// 免费特权玩家免费特权数据
+message pb_free_privilege_act_act_role_data {
+    int64 act_id = 1;                                   // 免费特权活动tid
+    int64 active_time = 2;                           // 永久卡激活时间
+    int64 monthly_card_active_time = 3;                           // 月卡激活时间
+}

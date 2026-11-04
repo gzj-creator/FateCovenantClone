@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import protobuf from 'protobufjs';
-import erlang from '../../analysis/tools/protocol/node_modules/erlang_js/Erlang.js';
+import erlang from '../vendor/erlang_js/Erlang.js';
+import { protobufAssetDirectory } from '../assets.mjs';
 
 export const E = erlang.Erlang;
 function prepareEtf(value) {
@@ -59,7 +60,7 @@ export function revive(value) {
 }
 export function loadGameSchemas() {
   const root = new protobuf.Root();
-  const directory = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__protobuf.bundle/textassets/', import.meta.url);
+  const directory = protobufAssetDirectory;
   for (const name of fs.readdirSync(directory).filter(name => name.endsWith('.proto.bin'))) protobuf.parse(fs.readFileSync(new URL(name, directory), 'utf8'), root, { keepCase: true });
   return root.resolveAll();
 }

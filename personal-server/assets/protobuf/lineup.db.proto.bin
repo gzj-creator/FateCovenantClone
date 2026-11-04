@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+import "project/hero/hero_lease/hero_lease.db.proto.txt";
+
+// 角色阵容数据
+message pb_role_lineup {
+    repeated pb_pre_lineup pre_lineups = 1; // 预设阵容
+    uint32 cur_pre_index = 2; // 当前查看的预设阵容
+    repeated pb_pre_lineup pre_lineups_standby = 3; // 备用数据(随时进行交换)
+    uint32 version = 4; // 版本号
+}
+
+// 单个预设阵容
+message pb_pre_lineup {
+    uint32 index = 1;
+    pb_lineup_team lineup = 2;
+    int32 select_camp = 3;//阵容选择阵营（0为未选择阵营）
+}
+
+// 阵容自定义属性
+message pb_lineup_custom_attr {
+    uint32 type = 1; // 属性类型
+    bytes value = 2; // 属性值
+}
+
+// 玩法阵容数据
+message pb_lineup {
+    int32 type = 1; // 布阵类型
+    repeated pb_lineup_team team_list = 2;
+    repeated pb_lineup_custom_attr custom_attr = 3; // 阵容自定义属性
+    int32 custom_lineup_index = 4;//关联的定制阵容序号（0为未使用预设阵容）
+    int32 select_camp = 5;//阵容选择阵营（0为未选择阵营）
+}
+
+// 阵容队伍
+message pb_lineup_team {
+    int32 team_id = 1; //  队伍ID
+    uint64 max_power = 2; // 历史最大战力
+    repeated pb_lineup_fighter fighter_list = 3; // 当前上阵的战斗者
+    repeated int32 artifact_list = 4; //上阵圣约tid列表
+    uint64 power = 5; // 当前战力，目前用于向客户端发送战力值，客户端暂时没有提供计算战力的方式
+    repeated pb_lineup_lease_fighter lease_fighter_list = 6; // 租借英雄
+    repeated uint32 pet_list = 7; // 上阵宠物
+    repeated uint64 elves_list = 8; // 上阵精灵
+    repeated pb_lease_unit lease_pet = 9; // 租借魔灵
+    repeated pb_lease_unit lease_elves = 10; // 租借精灵
+    repeated pb_lease_unit lease_artifact = 11; // 租借圣武
+}
+
+// 阵容租借单位
+message pb_lease_unit {
+    uint32 type = 1;
+    bytes unit = 2;
+    uint32 tid = 3;
+}
+
+// 阵容上阵租借英雄
+message pb_lineup_lease_fighter {
+    uint32 loc = 1;  // 站位
+    pb_lease_hero hero = 2; // 租借英雄
+    uint64 replace_hero_id = 3; // 替换的英雄id
+}
+
+// 布阵战斗
+message pb_lineup_fighter {
+    uint32 loc = 1;         // 站位
+    uint32 index = 2;       // 在养成界面的格子位置
+    uint64 hero_id = 3;     // 英雄唯一id(即英雄表tid，因为现在一个英雄tid只会有一个，多的会转为碎片)
+    repeated uint32 equip_ids = 4; // 穿戴的装备
+    uint64 power = 5;       // 战力
+    uint32 fetter_tid = 6;  // 龙魂羁绊英雄tid
+    repeated uint64 relic_ids = 7; // 穿戴的遗物
+}
+
+// 阵容npc
+message pb_lineup_npc {
+    uint32 tid = 1;         // npc tid
+    uint32 pos = 2;         // npc站位
+}
+
+// 布阵英雄库
+message pb_lineup_hero_lib {
+    uint32 tid = 1; // 英雄库tid
+    repeated uint64 hero_ids = 2; // 英雄id列表
+}
+
+// 自定义阵容遗物套装
+message pb_lineup_custom_lineup_relic_suit {
+    repeated pb_lineup_custom_team_relic_suit team_suits = 1;
+}
+
+// 自定义队伍遗物套装
+message pb_lineup_custom_team_relic_suit {
+    uint32 team_id = 1;
+    repeated pb_lineup_custom_loc_relic_suit loc_suits = 2;
+}
+
+// 自定义具体站位遗物套装
+message pb_lineup_custom_loc_relic_suit {
+    uint32 loc = 1;
+    uint32 suit_id = 2;
+}
+
+// 自定义阵容属性：临时专武
+message pb_lineup_custom_fantasy_info {
+    repeated pb_lineup_custom_fantasy fantasy_list = 1;
+}
+
+// 自定义阵容属性：临时专武
+message pb_lineup_custom_fantasy {
+    uint64 hero_tid = 1;
+    uint64 fantasy_uid = 2;
+    repeated uint64 bless_fantasy = 3;
+}
+
+// 养成修改同步预设阵容子项
+message pb_lineup_flag{
+    int64 type = 1;
+    bool switch = 2;
+    repeated int64 lineup_list = 3;
+}
+
+// 养成修改同步预设阵容
+message pb_lineup_sync {
+    repeated pb_lineup_flag pet_lineup_list = 2; // 同步列表
+}
+

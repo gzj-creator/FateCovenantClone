@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+// 皮肤兑换数据
+message pb_skin_exchange{
+  uint64 choose_res_tid = 1;  // 选择兑换的碎片TID
+}

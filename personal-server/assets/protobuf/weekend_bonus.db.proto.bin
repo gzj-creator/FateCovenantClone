@@ -1,0 +1,17 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 周末活动数据
+message pb_weekend_bonus{
+    int32 rev_day = 1;  //上次领取周末奖励的天数
+    uint32 seq_num = 2; // 当前为周末活动开启的第几次
+    uint32 func_tid = 3; // 当前开启的周循环活动功能Tid
+    uint64 end_time = 4; // 当前周末活动结束的时间
+    uint32 total_play_count = 5; //总游玩次数
+    uint32 today_play_count = 6; //今日游玩次数
+    uint64 play_ref_time = 7; //最近一次游玩时间
+    bytes reward_bin = 8; //奖励领取记录
+    uint32 active_progress = 9; // 当前活动进度值
+    uint64 active_ref_time = 10; // 进度刷新时间
+    pb_recharge_limit_info buy_limit_info = 11; //礼包限购记录
+}

@@ -1,0 +1,39 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/grand_tourer/grand_tourer.db.proto.txt";
+import "project/shop.db.proto.txt";
+import "general/res.db.proto.txt";
+import "project/rank/rank.net.proto.txt";
+
+// 飞车活动参加时返回的数据
+message pb_grand_tourer_enter_back{
+    pb_grand_tourer data_info = 1; //飞车活动数据
+    pb_shop_info shop_info = 2; //商店数据
+    pb_res_to_client res = 3; //资源改变数据
+}
+
+
+// 飞车活动任务领取返回数据
+message pb_grand_tourer_task_back{
+    pb_res_to_client res = 1; //资源数据
+    bytes task_bin = 2; //任务数据
+    uint64 task_award_time = 3; //任务项奖励最近领取时间
+    uint32 online_day_index = 4; //玩家最近在线天数索引
+}
+
+
+// 飞车小游戏结算的请求
+message pb_grand_tourer_mini_game_req{
+    uint64 award_num = 1; // 请求结算的钻石数量（后端会验证）
+//    uint32 version = 1; //版本号
+//    uint32 speed = 2; //速度
+//    repeated pb_res_obj res_list = 3; //额外获得资源列表
+//    uint32 distance = 4; //冲刺距离
+}
+
+// 飞车小游戏结算的返回
+message pb_grand_tourer_mini_game_rsp {
+    rank_to_client rank_info = 1; //排行榜数据
+    rank_info old_rank_info = 2; //老的排行榜数据
+    uint32 start_rank = 3; // 排行榜列表开始排名
+}

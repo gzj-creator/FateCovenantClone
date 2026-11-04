@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "project/activity/magic_draw/magic_draw.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 神魔抽活动数据
+message pb_magic_draw_back{
+  pb_magic_draw data = 1; //活动数据
+  pb_res_to_client res = 2;     //资源改变
+}

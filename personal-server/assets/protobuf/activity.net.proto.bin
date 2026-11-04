@@ -1,0 +1,51 @@
+syntax = "proto3";
+import "project/activity/activity.db.proto.txt";
+
+
+
+// 活动数据登录同步
+message pb_act_login{
+    repeated pb_act_data act_list = 1;                          // 单个活动登录数据信息
+    repeated pb_act_parallel_data act_parallel_list = 2;        // 并行活动登录数据信息
+    repeated uint32 act_pause_list = 3;                         // 活动暂停列表
+    repeated pb_act_custom_config act_custom_list = 4;          // 定制活动配置列表
+}
+
+// 活动暂停数据推送
+message pb_act_pause{
+    repeated uint32 all_pause_list = 1;                         // 所有暂停活动id
+    repeated uint32 new_act_list = 2;                           // 此轮推送状态改变活动id列表，这样可以重复推送
+    bool is_pause = 3;                                          // 是否暂停
+}
+
+// 单个活动登录同步数据
+message pb_act_data{
+    pb_act_state_data state_data = 1;               // 活动状态数据
+    bytes module_login_data = 2;                    // 活动功能模块登录数据
+}
+
+// 并行活动登录同步数据
+message pb_act_parallel_data{
+    repeated pb_act_state_data states_data = 1;     // 并行活动状态数据
+    bytes module_login_data = 2;                    // 并行活动功能模块登录数据
+}
+
+// 活动状态改变数据
+message pb_act_state_change_data{
+    uint32 id = 1;                              // 活动
+    uint32 exit_state = 2;                      // 活动退出状态
+    uint32 enter_state = 3;                     // 活动进入新状态
+    uint32 enter_time = 4;                      // 活动进入新状态时间
+    bytes module_exit_data = 5;                 // 活动退出状态功能模块数据
+    bytes module_enter_data = 6;                // 活动进入状态功能模块数据
+}
+
+// 活动状态改变回执数据
+message pb_act_state_change_back{
+    repeated pb_act_state_change_data change_back_data = 1;        // 活动状态改变回执数据
+}
+
+// 定制活动推送
+message pb_act_custom_push{
+    pb_act_custom_config config = 1;            // 定制活动配置
+}

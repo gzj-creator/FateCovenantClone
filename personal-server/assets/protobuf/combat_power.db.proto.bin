@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// 英雄战力信息
+message pb_hero_power {
+  int64 uid = 1;//英雄唯一id
+  int64 tid = 2;//英雄tid
+  uint64 power = 3;//英雄战力
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "project/activity/enjoy_blessing_act/enjoy_blessing_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 摇动请求
+message pb_enjoy_blessing_act_shake_req {
+    int64 act_id = 1; // 活动id
+}
+
+// 摇动返回
+message pb_enjoy_blessing_act_shake_back {
+    pb_enjoy_blessing_act_role_data act_data = 1; // 活动数据
+    pb_res_to_client res = 2; // 奖励
+}
+

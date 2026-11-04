@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 单个礼包购买数量
+message pb_recharge_role_select{
+    uint32 recharge_id = 1;             // 付费ID
+    repeated uint32 select_idx = 2;     //选择的索引列表
+}

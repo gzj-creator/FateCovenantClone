@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+// 触发记录结构
+message pb_trigger_record {
+    int32 tid = 1; //触发礼包tid / 触发礼包子礼包tid
+    int32 trigger_times = 2; //触发次数
+    int32 give_up_times = 3; //放弃次数
+    int32 last_trigger_time = 4; //上次触发的时间
+    int32 last_give_up_time = 5; //上次放弃的时间
+    int32 record_trigger_time = 6; //最近一次触发的时间戳
+}
+
+//触发礼包子礼包购买结构
+message pb_trigger_buy_record{
+    int32 tid = 1; //子礼包tid
+    int32 buy_times = 2; //购买次数
+}
+
+//单个触发礼包数据（用于表示已触发的礼包）
+message pb_trigger_gift {
+    int32 id = 1; //触发礼包唯一ID
+    int32 tid = 2; //触发礼包tid
+    int32 trigger_time = 3; //触发时间
+    repeated pb_trigger_buy_record buy_records = 4; //购买次数记录
+}
+
+
+//用于记录触发礼包/子礼包失效的数据
+message pb_trigger_invalid_record{
+    int32 type = 1; //礼包类型
+    bytes flag = 2; //失效索引二进制位标识
+}
+
+//玩家触发礼包总数据
+message pb_player_trigger_gift{
+    int32 max_id = 1; //触发礼包自增id
+    repeated pb_trigger_gift active_list = 2;  //当前已激活的触发礼包列表
+    repeated pb_trigger_record trigger_records = 3; //触发礼包触发记录列表
+    repeated pb_trigger_record gift_records = 4; //触发礼包子礼包触发记录列表
+    repeated pb_trigger_invalid_record invalid_triggers = 5; //已失效的触发礼包数据列表
+    repeated pb_trigger_invalid_record invalid_gifts = 6; //已失效的触发礼包子礼包数据列表
+    repeated pb_trigger_gift reset_list = 7;  //每日重置的触发礼包已买完列表
+    int32 last_reset_day = 8;               //上次重置的天数
+}

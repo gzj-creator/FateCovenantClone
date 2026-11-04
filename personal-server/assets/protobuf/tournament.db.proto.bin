@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+import "project/match_pvp/match_pvp.db.proto.txt";
+
+// 位面锦标赛角色信息
+message pb_tournament_role {
+    pb_match_pvp_base base = 1; // 匹配赛基础数据
+    repeated pb_tournament_promote promote = 2; // 晋级赛战斗情况
+    uint32 stage = 3; // 段位id
+    int32 score_cache = 4; // 晋级赛积分缓存(区分正负)
+}
+
+
+// 晋级赛信息
+message pb_tournament_promote {
+    int64 role_id = 1; // 匹配对手id,负数为机器人
+    uint32 state = 2; // 使用位面锦标赛表中的定义
+    uint32 score = 3; // 积分
+}

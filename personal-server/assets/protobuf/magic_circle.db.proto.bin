@@ -1,0 +1,17 @@
+syntax = "proto3";
+// 魔导时阵
+
+// 角色魔导时阵数据
+message pb_magic_circle_role {
+    repeated pb_magic_circle magic_circle = 1;  // 魔导时阵数据
+}
+
+// 单个魔导时阵数据
+message pb_magic_circle {
+    uint32 id = 1;                  // 魔导时阵id
+    uint32 level = 2;               // 魔导时阵等级
+    uint32 star = 3;                // 魔导时阵星级(废弃)
+    uint32 break_level = 4;         // 魔导时阵突破等级
+    repeated int32 points = 5;      // 魔导时阵已激活节点（当前等级）
+    int64 last_reset_time = 6;      // 上次重置时间
+}

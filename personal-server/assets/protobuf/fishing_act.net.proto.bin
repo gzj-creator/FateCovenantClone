@@ -1,0 +1,74 @@
+syntax = "proto3";
+import "project/activity/fishing_act/fishing_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 钓鱼活动玩家数据
+message pb_fishing_act_data_res {
+    pb_fishing_act_role_data data = 1;              // 玩家数据
+    pb_res_to_client res = 2;                        // 奖励
+}
+
+// 钓鱼活动通用请求
+message pb_fishing_act_common_req {
+    int64 act_id = 1;                                  // 钓鱼活动tid
+    int64 value = 2;                                  // 值
+}
+
+// 钓鱼活动通用请求
+message pb_fishing_act_common_list_req {
+    int64 act_id = 1;                                  // 钓鱼活动tid
+    repeated int64 value = 2;                                  // 值列表
+}
+
+// 钓鱼活动玩家甩杆请求
+message pb_fishing_act_rod_req {
+    int64 map_id = 1;                                  // 地图tid
+    int64 act_id = 2;                                  // 钓鱼活动tid
+}
+
+// 钓鱼活动玩家收获请求
+message pb_fishing_act_get_req {
+    int64 act_id = 1;                                  // 钓鱼活动tid
+    bool is_get = 2;                                  // 是否全量领取（失败需要打八折）
+    bool is_auto = 3;                                  // 是否自动钓鱼
+}
+
+// 钓鱼活动玩家收获返回
+message pb_fishing_act_get_rsp {
+      pb_fishing_act_role_data data = 1;              // 玩家数据
+      int64 fish_id = 2;                                  // 鱼tid
+      int64 size = 3;                                    // 鱼大小
+      int64 score = 4;                                    // 鱼分数
+      pb_res_to_client res = 5;                        // 奖励
+}
+
+// 钓鱼活动玩家批量收获请求
+message pb_fishing_act_batch_get_req {
+    int64 act_id = 1;                                  // 钓鱼活动tid
+    bool is_jump_qte = 2;                                  // 是否跳过qte
+    int64 map_id = 3;                                  // 地图tid
+}
+
+// 钓鱼活动玩家批量收获返回
+message pb_fishing_act_batch_get_rsp {
+      pb_fishing_act_role_data data = 1;              // 玩家数据
+      repeated pb_fishing_act_fish fish_list = 2;  // 渔获记录列表
+      pb_res_to_client res = 3;                        // 奖励
+      repeated bool fish_qte_list = 4;  // 渔获qte列表
+}
+
+// 钓鱼活动图鉴返回
+message pb_fishing_act_get_top_rsp {
+     repeated pb_fishing_act_fish_record high_score_list = 1;  // 渔获高分列表(记录每个鱼的前三名)
+}
+
+// 钓鱼活动购买鱼竿返回
+message pb_fishing_act_bug_rod_rsp {
+     pb_fishing_act_role_info role_info = 1;
+     pb_res_to_client res = 2;
+}
+
+// 钓鱼活动跑马灯返回
+message pb_fishing_act_get_record_rsp {
+     repeated pb_fishing_act_new_fish_record record_list = 1;  // 渔获高分列表(记录每个鱼的前三名)
+}

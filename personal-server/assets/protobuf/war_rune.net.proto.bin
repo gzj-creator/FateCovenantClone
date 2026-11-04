@@ -1,0 +1,37 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+import "project/war_rune.db.proto.txt";
+import "project/attribute_develop/attribute_develop.db.proto.txt";
+import "project/attribute/attribute.db.proto.txt";
+
+// 秘宝激活返回数据
+message pb_war_rune_active_back{
+    pb_war_rune_grid grid = 1; //兵符格子数据
+    pb_res_to_client res = 2;  //资源变化
+}
+
+// 秘宝随机属性后返回数据
+message pb_war_rune_random_attr_back{
+    repeated pb_attr_develop_item develop_list = 1; //随机到的最新玩法属性数据列表
+    pb_res_to_client res = 2;  //资源变化
+}
+
+// 秘宝洗炼请求数据
+message pb_war_rune_recast_req{
+    uint64 rune_tid = 1; //秘宝tid
+    uint32 from_id = 2; //来源的随机属性id
+    uint32 target_id = 3; //需要替换的属性id
+}
+
+// 秘宝培养返回数据
+message pb_war_rune_edu_back{
+    repeated pb_attr_item level_attr_list = 1; //新的等级属性列表
+    pb_res_to_client res = 2;  //资源变化
+}
+
+// 秘宝升星返回数据
+message pb_war_rune_up_star_back{
+    pb_war_rune_item war_rune = 1; // 秘宝数据
+    pb_res_to_client res = 2;  //资源变化
+}

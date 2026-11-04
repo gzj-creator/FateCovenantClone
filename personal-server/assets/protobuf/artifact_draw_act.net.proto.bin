@@ -1,0 +1,89 @@
+syntax = "proto3";
+import "project/fight/fight.db.proto.txt";
+import "project/activity/artifact_draw_act/artifact_draw_act.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/lineup.db.proto.txt";
+
+//请求关卡战斗回调数据
+message pb_res_artifact_trials_fight{
+    pb_artifact_trials_fight_record fight_record = 1;   //战斗关卡数据
+    uint64 fight_damage = 2;                     //战斗伤害
+    int32 my_rank = 3;                          //玩家自己排名
+}
+
+
+// 请求领取每日任务奖励
+message pb_req_artifact_trials_daily_reward_req{
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 challenge_tid = 2;                   // 挑战tid
+    repeated uint32 task_id = 3;                // 任务id列表(支持一键领取奖励)
+}
+
+// 请求战斗
+message pb_req_artifact_trials_fight{
+    uint32 act_tid = 1;                         // 活动tid
+    uint32 challenge_tid = 2;                   // 关卡tid
+}
+
+// 活动开启数据
+message pb_artifact_draw_begin {
+    pb_artifact_draw_player act_player = 2;           // 活动玩家信息
+}
+
+// 请求领取每日任务奖励
+message pb_artifact_draw_task_award_req{
+    uint32 act_tid = 1;                         // 活动tid
+    repeated uint32 task_ids = 2;                // 任务id列表(支持一键领取奖励)
+}
+
+// 请求领取任务奖励
+message pb_artifact_draw_task_award_rsp{
+    pb_res_to_client res = 1; // 获得的资源
+    bytes daily_award_state = 2; // 当期活动每日任务奖励状态
+    bytes period_award_state = 3; // 当期活动周期任务奖励状态
+}
+
+// 跨天刷新数据
+message pb_artifact_draw_flush {
+    pb_artifact_draw_player_list act_player_list = 1; // 活动玩家信息列表
+    pb_res_to_client res = 2;                   // 补发邮件资源
+}
+
+// 玩家请求圣器残片抽奖
+message pb_artifact_fragments_draw_req {
+    uint32 act_tid = 1;  // 活动id
+    uint32 index = 2;        // 格子索引
+}
+
+message pb_artifact_fragments_draw_rsp {
+    bool got_special = 1;                       // 是否抽到了大奖
+    bool bomb = 2;                              // 是否抽到了炸弹
+    repeated pb_revealed_rewards awards = 3;     // 新增的奖励记录
+    pb_res_to_client res_changes = 4;           // 资源变化
+    int32 draw_times = 5;                      // 抽卡次数
+}
+
+// 玩家请求领取已获得的奖励
+message pb_artifact_fragments_claim_req {
+    uint32 act_tid = 1;  // 活动id
+}
+
+message pb_artifact_fragments_claim_rsp {
+    repeated pb_revealed_rewards awards = 1;     // 领取后的奖励记录
+    pb_res_to_client res_changes = 2;           // 资源变化
+}
+
+
+// 玩家请求进入下一轮次
+message pb_artifact_fragments_new_turn_req {
+    uint32 act_tid = 1;  // 活动id
+}
+
+// 玩家请求合成圣器残片
+message pb_artifact_fragments_synthesis_req {
+    uint32 act_tid = 1;  // 活动id
+}
+
+message pb_artifact_fragments_synthesis_rsp {
+    pb_res_to_client res_changes = 1;           // 资源变化
+}

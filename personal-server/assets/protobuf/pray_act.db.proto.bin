@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// 祈愿活动总数据
+message pb_pray_act {
+    uint64 act_tid = 1; // 活动配置表tid
+    repeated pb_pray_act_info pray_list = 2; // 当期抽奖数据
+}
+
+// 祈愿活动数据
+message pb_pray_act_info {
+    uint64 select_award_tid = 1; // 选中tid
+    uint64 pray_index_tid = 2; // 祈愿档位tid
+    uint64 draw_cnt = 3; // 抽奖次数
+    uint64 progress_value = 4; // 进度值
+    repeated pb_pray_award_info pray_award_info_list = 5; // 所有次数
+}
+
+// 自选奖励信息
+message pb_pray_award_info {
+    uint64 select_award_tid = 1; // 选中的奖励id
+    uint64 history_cnt = 2; // 抽中次数
+}

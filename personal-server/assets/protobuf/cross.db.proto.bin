@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+// 一个跨服组的db数据
+message pb_cross {
+    repeated int64 servers = 1;     // 逻辑服id列表（第一个是主逻辑服）
+    bool refuse_add = 2;            // 拒绝新增服务器(满员或定制跨服组)
+    uint32 stage = 3;               // 跨服组阶段(已废弃，不要用)
+    uint32 create_day = 4;          // 跨服组创建时间/天(首次创建时赋值)
+    uint64 close_time = 5;          // 跨服组关闭时间
+}
+
+// 预分配数据
+message pb_cross_pre_generate {
+    repeated pb_cross_type_pre_generate pre_gen_list = 1;
+}
+
+// 单个类型预分配数据
+message pb_cross_type_pre_generate {
+    uint64 type = 1;
+    uint64 generate_time = 2;
+    repeated pb_cross_pre_generate_group group_list = 3;
+}
+
+// 预分配组数据
+message pb_cross_pre_generate_group {
+    repeated uint64 server_id = 1;         // 逻辑服id列表
+}
+
+// 跨服合并数据
+message pb_cross_merge{
+    repeated int64 cross_list = 1;     // 跨服id列表
+    uint64 merge_time = 2;             // 合并的时间
+}
+
+// 跨服个人数据
+message pb_cross_role{
+    uint32 cur_stage = 1;                           // 当前跨服组阶段
+    uint32 notice_receive_n = 2;                    // 预告奖励领取次数(阶段不同时，需重置部分数据)
+    repeated pb_cross_role_fun fun_list = 3;        // 功能数据
+}
+
+// 跨服功能数据
+message pb_cross_role_fun{
+    uint32 fun_id = 1;              // 功能id
+    bool receive_free = 2;          // 领取免费奖励
+    bool receive_pay = 3;           // 领取付费奖励
+    uint64 receive_day = 4;         // 领取天数(开服天数)
+}
+
+// 单服跨服信息
+message pb_server_cross_info {
+    repeated pb_server_cross_times cross_times = 1;         // 跨服次数
+}
+
+// 跨服次数
+message pb_server_cross_times {
+    uint64 type = 1;    // 类型
+    uint64 times = 2;    // 次数
+    uint64 cross_id = 3;    // 跨服组id
+}
+
+message pb_cluster_share_code_cn{
+    repeated pb_role_code_info role_code_list = 1;   //分享码
+}
+
+message pb_role_code_info{
+    string code	= 1;        //分享码
+    uint64 role_id = 2;     //角色id
+}

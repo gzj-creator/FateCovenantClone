@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 全部阵容领奖数据
+message pb_team_genre_role{
+    repeated pb_team_genre genre_list = 1;      // 阵容领奖数据列表
+}
+
+// 单个阵容领奖数据
+message pb_team_genre{
+    uint32 team_id = 1;                         // 阵容id
+    bytes receive_award = 2;                    // 已领取的进度奖励
+    uint32 cycle_id = 3;                        // 周期
+}

@@ -1,0 +1,29 @@
+// 平台活动奖励db
+syntax = "proto3";
+
+// 平台活动奖励物品信息
+message pb_award_info {
+	uint32 tid = 1;
+	uint64 count = 2;
+}
+
+// 平台活动奖励数据
+message pb_platform_award_info {
+	uint64 awardUid = 1;                        // 奖励独有uid
+	repeated pb_award_info award = 2;           // 奖励内容
+	uint32 awardLimit = 3;                      // 奖励领取限制次数
+	string mailTitle = 4;                       // 平台活动奖励邮件标题
+	string mailInfo = 5;                        // 平台活动奖励邮件内容
+	uint32 mailType = 6;                        // 操作类型
+}
+
+// 平台活动奖励领取数据列表
+message pb_platform_award_list {
+	repeated pb_platform_award_data data_list = 1; // 领取记录
+}
+
+// 平台活动奖励领取数据
+message pb_platform_award_data {
+	uint64 uid = 1; // 奖励uid
+	uint32 count = 2; // 领取次数
+}

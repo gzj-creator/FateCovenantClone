@@ -1,0 +1,17 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/heat_gift/heat_gift.db.proto.txt";
+
+// 登录数据
+message pb_heat_gift_login{
+    pb_heat_gift server_info = 1; //服务器活动数据
+    pb_heat_gift_role role_info = 2; //玩家个人数据
+    bytes role_bin = 3; //玩家个人数据二进制
+}
+
+// 应援返回数据
+message pb_heat_gift_support_back{
+    pb_heat_gift server_info = 1; //服务器活动数据
+    pb_heat_gift_role role_info = 2; //玩家个人数据
+    pb_res_to_client res = 3; //返回的资源
+}

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "project/activity/beat_gopher_act/beat_gopher_act.db.proto.txt";
+
+// 请求打地鼠
+message pb_beat_gopher_req {
+    int32 version = 1; //版本
+    int32 score = 2; //分数
+}
+
+// 打地鼠请求返回
+message pb_beat_gopher_back {
+    pb_beat_gopher_person person = 1; // 玩家数据更新
+    int32 rank = 2; //新排名
+    pb_res_to_client  res = 3; //资源变化
+}

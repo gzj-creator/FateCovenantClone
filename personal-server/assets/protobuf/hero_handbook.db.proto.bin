@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// 图鉴英雄记录
+message pb_hero_handbook_record{
+  uint32 tid = 1;               // 英雄tid
+  uint32 quality = 2;           //当前英雄升级到对应品质
+  uint32 star = 3;              //当前英雄升级到对应品质
+  bool is_mutant = 4;           //是否变异
+}
+
+// 所有英雄图鉴信息记录
+message pb_hero_all_handbook_record{
+  repeated pb_hero_handbook_record records = 1;
+  bytes own_rev = 2;            //获得英雄后，领取的奖励记录（按英雄表的index索引进行记录）
+}
+

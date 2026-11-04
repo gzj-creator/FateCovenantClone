@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "project/destiny_pve/destiny_pve.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/fight/fight.db.proto.txt";
+
+//命运回廊战斗请求参数
+message pb_destiny_pve_fight_req{
+    uint32 activity_id = 1;//活动id
+}
+
+// 命运回廊队伍战斗结算数据
+message pb_destiny_pve_fight_rsp {
+    bool is_win = 1; // 战斗结果
+    pb_destiny_pve_role role_info = 2; // 玩家信息
+    pb_destiny_pve_server server_info = 3; // 服务器数量
+    repeated pb_fight_report reports = 4; // 战报
+    pb_res_to_client res = 5;         // 资源变化
+}
+
+//命运回廊层数数据请求参数
+message pb_destiny_pve_layer_info_req{
+    repeated uint32 layer_list = 1;//查询信息
+}
+
+// 命运回廊层数数据返回参数
+message pb_destiny_pve_layer_info_rsq {
+    repeated pb_destiny_pve_layer_info layer_info_list = 1; // 层数信息列表
+}

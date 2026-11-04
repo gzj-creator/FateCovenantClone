@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 合服补偿活动数据
+message pb_combine_compensate_act {
+    repeated pb_combine_compensate_gift gift_list = 1;      // 礼包列表
+}
+
+// 合服补偿活动礼包
+message pb_combine_compensate_gift {
+    uint64 recharge_tid = 1;                                // 充值id
+    uint32 buy_times = 2;                                   // 已购买次数
+}

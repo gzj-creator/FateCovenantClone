@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+// 签到活动多期数据
+message pb_sign_act_all {
+    repeated pb_sign_act list = 1;      // 多期数据列表
+}
+
+// 签到活动数据
+message pb_sign_act{
+    bytes award_bin = 1;                // 奖励领取数据
+    uint32 level = 2;                   // 奖励验证等级
+    bytes resign_bin = 3;               // 补签领取数据
+    uint64 act_id = 4;                  // 活动id
+}

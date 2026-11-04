@@ -1,0 +1,45 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// ============== 战区数据（DB存储） ==============
+// 限时申购活动全服数据
+message pb_subscription_act_info {
+    repeated pb_subscription_act_data act_list = 1; // 活动列表
+}
+
+// 限时申购活动数据
+message pb_subscription_act_data {
+    int64 act_tid = 1;                                    // 活动表tid
+    repeated pb_subscription_act_round_data round_data = 2; // 轮次数据列表
+    int32 stage_id = 3;                                  // 阶段ID - 申购轮次时间表tid
+}
+
+// 限时申购轮次数据
+message pb_subscription_act_round_data {
+    int64 round_id = 1;                                   // 轮次ID - 申购活动主表tid
+    repeated pb_subscription_act_round_role_data role_ids = 2;                           // 申购玩家ID
+    bool is_open = 3;                            // 是否开奖
+    repeated pb_subscription_act_round_role_data winners = 4;                                  // 中奖玩家列表
+}
+
+message pb_subscription_act_round_role_data {
+    int64 role_id = 1;                                   // 轮次ID
+    int64 num = 2;                                   // 购买次数、中奖次数
+}
+
+// 限时申购玩家数据
+message pb_subscription_act_role_info {
+    repeated pb_subscription_act_role_data role_data = 1; // 玩家数据列表
+}
+
+message pb_subscription_act_role_data {
+    int64 act_tid = 1;                                    // 活动表tid
+    repeated pb_subscription_act_role_round_data round_list = 2; // 玩家轮次数据列表
+}
+
+message pb_subscription_act_role_round_data {
+    int64 round_id = 1;                            // 轮次ID - 申购活动主表tid
+    bool has_received = 2;                              // 是否已领取奖励
+    int64 buy_num = 3;                              // 购买次数
+}
+

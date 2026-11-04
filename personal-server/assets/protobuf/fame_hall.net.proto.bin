@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+import "project/fame_hall/fame_hall.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 进入难度请求数据
+message pb_fame_hall_enter_difficult{
+    repeated uint64 hero_id = 1;    // 英雄列表
+    int32 difficult = 2;            // 难度
+}
+
+// 进入难度请求返回数据
+message pb_fame_hall_enter_difficult_rsp{
+    pb_fame_hall_role fame_hall_data = 1;               // 名人堂数据
+    pb_res_to_client pass_settle_res = 2;               // 通关结算奖励
+}
+
+// 补领关卡邮件奖励
+message pb_fame_hall_reissue_rsp{
+    pb_fame_hall_role fame_hall_data = 1;               // 名人堂数据
+    pb_res_to_client pass_settle_res = 2;               // 通关结算奖励
+}
+
+// 布阵名人堂圣武
+message pb_fame_hall_artifact_req {
+    repeated uint64 artifact_id = 1;    // 上阵圣武
+    int32 team_index = 2;               // 队伍id
+}
+
+// 初始队伍选择返回
+message pb_fame_hall_choose_hero_rsp {
+    repeated pb_fame_hall_hero heroes = 1; // 英雄
+    uint64 enemy_role_id = 2;              // 对手role_id
+    uint64 stage = 3;
+}
+
+// 选择掉落
+message pb_fame_hall_choose_drop_req {
+    uint64 target_tid = 1; // 目标tid（目前就英雄交换需要）
+    uint64 drop_tid = 2; // 掉落tid
+    bool is_give_up = 3; // 是否放弃本次选择
+}
+
+// 选择掉落返回
+message pb_fame_hall_choose_drop_rsp {
+    repeated pb_fame_hall_hero heroes = 1; // 变化的英雄
+    repeated pb_fame_hall_artifact artifacts = 2; // 变化的圣物
+    repeated uint64 badge_list = 3; // 新增的徽章
+    pb_res_to_client res = 4;              // 资源变化
+    pb_fame_hall_drop drop = 5; // 新的掉落数据
+    uint64 drop_stage = 6; // 掉落层数
+    repeated pb_fame_hall_fantasy_equip fantasy_equips = 7; // 变化的专武
+}
+
+// 战斗返回
+message pb_fame_hall_fight_rsp {
+    uint64 error = 1;  // 错误码(需要特殊处理的才在这里返回,其他的直接抛异常)
+    pb_fame_hall_drop drop = 2; // 掉落
+    pb_res_to_client res = 3; // 资源变化
+    uint64 stage = 4; // 当前层数
+    uint64 enemy_id = 5; // 对手id
+    uint64 drop_stage = 6; // 掉落层数
+    uint64 max_stage = 7;  // 本轮最大层数
+    int32 enemy_team_format = 8;                       // 敌方防守队形
+}
+
+// 奖励请求
+message pb_fame_hall_reward_req {
+    repeated uint64 tid_list = 1;
+}
+
+// 奖励返回
+message pb_fame_hall_reward_rsp {
+    bytes award_bin = 1; // 奖励标记
+    pb_res_to_client res = 2;              // 资源变化
+}
+
+// 重置请求返回
+message pb_fame_hall_reset_rsp {
+    pb_res_to_client res = 1;
+    pb_fame_hall_role fame_hall = 2;
+}
+
+// 扫荡返回
+message pb_fame_hall_sweep_rsp{
+    pb_res_to_client res = 1;       // 奖励
+    uint64 last_sweep_time = 2;     // 扫荡时间
+}

@@ -1,0 +1,24 @@
+syntax = "proto3";
+import "project/intelli.db.proto.txt";
+import "general/res.net.proto.txt";
+
+
+// 情报返回前台数据
+message intelli_to_client {
+    pb_res_to_client res = 1;           // 资源改变
+    repeated intelli intelli_list = 2;  // 情报列表
+}
+
+// 情报一键处理
+message pb_intelli_batch_handle {
+    repeated uint32 finish_list = 1;  // 完成列表
+    repeated uint32 start_list = 2;   // 开始列表
+    bool is_assistant = 3;// 是否使用小助手
+}
+
+// 解锁情报
+message pb_intelli_unlock_req {
+    repeated uint32 intelli_id_list = 1; // 情报id列表
+}
+
+

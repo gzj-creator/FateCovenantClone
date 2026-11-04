@@ -12,7 +12,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 import { hasBit } from '../game/bit-block.mjs';
 
 const codec = createGameCodec();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const FIXED_NOW = Date.parse('2026-10-31T10:30:00Z');
 
 test('linear first-recharge purchase synchronizes module 547 and exposes both activity commands', async t => {

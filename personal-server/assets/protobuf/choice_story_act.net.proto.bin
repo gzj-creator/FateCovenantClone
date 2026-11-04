@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "project/activity/choice_story/choice_story_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+
+//选择故事领取奖励
+message pb_choice_story_award_req{
+  int64 activity_id = 1;        //活动id
+  repeated int64 id_list = 2;   //要领取的奖励列表
+}
+
+//充值返利领取服务器进度奖励
+message pb_choice_story_award_rsp {
+  pb_choice_story_act_info act_info = 1;  //活动数据
+  pb_res_to_client res = 2;               // 资源变化
+}

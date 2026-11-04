@@ -1,0 +1,41 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 扭蛋活动全数据
+message pb_capsule_toy_all {
+   repeated pb_capsule_toy act_list = 1; // 活动全数据
+}
+
+// 扭蛋活动数据
+message pb_capsule_toy {
+   uint64 act_id = 1;                                          // 活动Id
+   uint64 version = 2;                                         // 活动版本号
+   repeated pb_capsule_toy_collect collect_list = 3;           // 搜集扭蛋数据
+   bytes progress_award = 4;                                   // 搜集扭蛋已领取进度奖励
+   pb_recharge_limit_info buy_limit_info = 5;                  // 礼包限购记录
+   uint64 draw_count = 6;                                      // 当前抽奖次数（每期重置）
+   uint64 day_hit_count = 7;                                   // 每天抽中大奖时总抽奖次数
+   repeated pb_capsule_toy_draw draw_list = 8;                 // 扭蛋抽奖数据
+   uint64 draw_ref_time = 9;                                   // 抽奖数据刷新时间（用于每天刷抽奖数据、转换扭蛋）
+   repeated pb_capsule_toy_exchange_info exchange_list = 10;   // 兑换记录数据
+   uint64 exchange_time = 11;                                  // 最近一次兑换时间
+}
+
+// 扭蛋道具搜集
+message pb_capsule_toy_collect {
+   int64 toy_tid = 1;               // 扭蛋tid
+   bool is_award = 2;               // 是否已领取搜集奖励
+}
+
+// 扭蛋类型抽奖记录
+message pb_capsule_toy_draw {
+   int64 tid = 1;                   // 扭蛋tid
+   int64 num = 3;                   // 当前抽到次数
+}
+
+// 扭蛋兑换记录
+message pb_capsule_toy_exchange_info {
+   int64 tid = 1;                   // 扭蛋兑换tid
+   int64 num = 3;                   // 当天兑换次数
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// 成长之路整体数据
+message pb_growth_road_master{
+    repeated pb_growth_road data_list = 1; //所有活动数据列表
+}
+
+
+// 成长之路活动数据
+message pb_growth_road{
+    uint32 version = 1; //版本号
+    uint32 progress_value = 2; //进度值
+    bytes progress_award = 3; //任务进度奖励领取数据
+    bytes task_award = 4; //任务项奖励领取数据
+    bool rev_overdue = 5; //表示过期后，是否可以领最高进度的奖励
+}

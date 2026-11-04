@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "project/stock_up_act/stock_up_act.db.proto.txt";
+import "project/shop.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 活动初始化数据
+message pb_stock_up_act_init {
+    pb_stock_up_act_data act_data = 1;    // 活动数据
+    repeated pb_shop_info shop_list = 2;  // 商店数据
+    pb_res_to_client res = 3;             // 资源改变列表
+}
+
+// 抽奖循环奖励领取
+message pb_stock_up_act_cycle_award_back {
+    uint32 cycle_draw_award_times = 1;    // 已领取奖励次数
+    pb_res_to_client res = 2;             // 资源改变列表
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+//vip城市数据
+message pb_vip_city_data{
+    repeated pb_vip_city city_list = 1;// 城市列表
+}
+
+//vip城市
+message pb_vip_city{
+    uint32 tid = 1;//vip城市表id
+    uint32 build_index = 2;//最新被重建的建筑下标
+}
+

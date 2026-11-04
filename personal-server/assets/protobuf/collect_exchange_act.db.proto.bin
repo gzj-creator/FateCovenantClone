@@ -1,0 +1,13 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 集福活动玩家数据
+message pb_collect_exchange_role {
+    repeated pb_collect_exchange_act act_list = 1;  // 活动列表
+}
+
+message pb_collect_exchange_act {
+    int32 act_id = 1;                      // 活动id
+    repeated pb_u32_kv exchange_list = 2;  // 玩家已兑换列表（兑换id => 兑换次数）
+    uint32 left_energy = 3;                // 玩家未转换的能量
+}

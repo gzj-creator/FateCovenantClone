@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+//玩家活动数据列表(用于存数据库)
+message pb_pet_act_player_list{
+    repeated pb_pet_act_player act_data_list = 1;       //玩家活动数据列表
+}
+
+//玩家活动数据
+message pb_pet_act_player{
+    int32 act_tid = 1;                                  //活动表tid
+    pb_pet_act_fight_record fight_record = 2;           //战斗记录列表
+    repeated pb_pet_act_wound wounds = 3;               //伤口列表
+    int32 selected_pet_tid = 4;                         //抽卡自选魔灵tid
+    bytes likability_award_state = 5;                   //好感度奖励领取状态(二进制位, 索引从1开始)
+    pb_recharge_limit_info recharge_info = 6;           //充值信息
+    uint32 rev_daily_award_num = 7;                     //已领取每日奖励累计个数（已废弃）
+    uint64 daily_time = 8;                              //每日时间戳，用于检查刷新每日奖励是否刷新
+    bytes vitality_award_state = 9;                     //活跃度奖励领取状态(二进制位, 索引从1开始)
+}
+
+
+//关卡记录
+message pb_pet_act_fight_record{
+    int32 mission_tid = 1;                              //关卡tid
+    int32 last_fight_time_sec = 2;                      //上一次战斗的时间戳(秒)
+    uint64 acc_dmg = 3;                                  //累积伤害
+    uint64 max_dmg = 4;                                  //玩家个人最大伤害
+    bytes award_state = 5;                              //伤害累积奖励领取状态(二进制位)
+}
+
+//伤口数据
+message pb_pet_act_wound{
+    int32 wound_tid = 1;                                //伤口tid
+    int32 last_cure_time_sec = 2;                       //上一次执行治疗/换药的时间戳（秒） 服务端在刷新治疗生效次数后会将该值置为0
+    int32 cure_times = 3;                               //已治疗生效次数
+    bool today_finish = 4;                              //今日是否已完成
+}
+
+// 魔灵活动服务器数据
+message pb_pet_act_server_list {
+    repeated pb_pet_act_server act_data_list = 1;       // 活动服务器数据列表
+}
+
+// 单个活动服务器数据
+message pb_pet_act_server {
+    uint32 act_tid = 1;                                 // 活动表tid
+    uint32 cur_turn = 2;                            // 结算了的轮次
+}

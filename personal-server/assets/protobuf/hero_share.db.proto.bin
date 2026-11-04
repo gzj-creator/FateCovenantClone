@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+// 分享数据
+message pb_hero_share_info{
+    repeated pb_hero_one_share share_list = 1;      // 分享的数据列表
+    uint64 hero_uid = 2;                            // 英雄的UID
+}
+
+// 单个分享数据
+message pb_hero_one_share{
+    uint32 share_type = 1;               // 数据类型
+    bytes data = 2;                      // 分享的数据
+}
+

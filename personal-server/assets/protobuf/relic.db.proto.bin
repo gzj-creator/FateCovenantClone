@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+//遗物属性
+message pb_relic_attr {
+    int32 type = 1;//属性类型
+    int32 value = 2; //属性值
+}
+
+//遗物仓库
+message pb_relic_depot {
+    int64 max_uid = 1;  //下一遗物应该使用的uid
+    repeated pb_relic relic_list = 2;   //背包中的遗物列表
+}
+
+//遗物对象
+// 注意：必须包含pb_res_obj的字段
+message pb_relic {
+    int64 tid = 1; //遗物的配置表ID
+    int32 num = 2; //数量（定义该字段的目的是为了和pb_res_obj的结构一致）
+    int64 uid = 3; //遗物的唯一ID
+    int32 star = 4; //遗物等级
+    repeated int64 recast_skills = 5; //遗物洗炼出来的未保存的技能列表
+    repeated int64 cur_skills = 6; //遗物当前的技能列表
+    uint64 recast_times = 7; //遗物洗炼次数(废弃)
+    uint64 recast_normal_times = 8; // 遗物普通洗炼次数(废弃)
+    uint64 guarantee_times = 9; // 遗物保底次数(废弃)
+    int32 stage = 10; //遗物星级
+    repeated pb_relic_recast_data recast_datas = 11; //遗物洗炼数据列表
+    repeated pb_res_obj stage_cost_relics = 12;
+    bool is_variation = 13; //是否变异
+}
+
+message pb_relic_recast_data {
+    uint64 recast_times = 1; //遗物洗炼次数
+    uint64 recast_normal_times = 2; // 遗物普通洗炼次数
+    uint64 guarantee_times = 3; // 遗物保底次数
+}
+
+// 遗物抽卡数据
+message pb_relic_draw {
+    uint32 bless = 1; //祝福值
+    uint32 no_red_times = 2; // 未来的抽到红色遗物的次数
+}
+

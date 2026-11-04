@@ -1,0 +1,50 @@
+syntax = "proto3";
+import "project/time_temple/time_temple.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 胚子养成回复
+message pb_embryo_up_back{
+    pb_time_temple_bond bond_data = 1;             // 羁绊组信息
+    pb_res_to_client res_change = 2;               // 资源更新
+}
+
+// 符文进度搜集回复
+message pb_runes_collect_back{
+    pb_time_temple_runes runes = 1;                  // 新符文数据
+    repeated pb_time_temple_bond bond_data = 2;       // 羁绊组数据
+}
+
+// 抽卡阶段奖励领取回复
+message pb_draw_phase_award_back{
+    pb_time_temple_draw draw = 1;               // 抽卡信息
+    pb_res_to_client res_change = 2;            // 奖励资源
+}
+
+// 选择战斗符文
+message pb_time_temple_select_runes_skills{
+    repeated pb_time_temple_season_runes select_runes = 1;   // 赛季选择用于战斗的符文
+}
+
+// 装配符文数据块
+message pb_time_temple_runes_block{
+    uint32 id = 1;          // 符文id
+    uint32 level = 2;       // 符文等级
+}
+
+// 阵营数据块
+message pb_time_temple_camp_block{
+    uint32 camp_id = 1;     // 阵营id
+    repeated pb_time_temple_quality_block quality_block = 2; // 胚子星级搜集数据
+}
+
+// 品质胚子星级数据块
+message pb_time_temple_quality_block{
+    uint32 quality_id = 1;          // 品质id
+    uint32 acc_star = 2;            // 累积星级和
+}
+
+// 时空神殿玩家对比数据
+message pb_time_temple_block{
+    repeated pb_time_temple_runes_block runes_block = 1;        // 装配符文数据
+    repeated pb_time_temple_camp_block camps_block = 2;         // 胚子星级搜集
+}

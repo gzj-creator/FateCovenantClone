@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 家园仓库
+message pb_homeland_depot {
+    int64 max_uid = 1;  // 下一家具应该使用的uid
+    repeated pb_furniture furniture_list = 2;   // 家具列表
+    int64 level = 3;                                    // 家园等级
+    int64 prosperity = 4;                               // 家园繁荣度缓存值
+    repeated pb_homeland_house house_list = 5;          // 楼栋玩家状态
+    repeated int64 finish_tasks = 6;                    // 已领取每日任务记录
+    repeated int64 today_like_role_ids = 7;             // 今日已点赞玩家id列表
+    repeated int64 today_visit_role_ids = 8;            // 今日已拜访玩家id列表
+    repeated int64 today_visit_record_list = 9;        // 他人拜访我的记录
+    repeated int64 today_like_record_list = 10;         // 他人点赞我的记录
+    int64 total_like_count = 11;                        // 自己家园累计被点赞次数
+    int64 refresh_time = 12;                            // 每日刷新时间
+}
+
+// 家具对象
+message pb_furniture {
+    int64 tid = 1;                                      // 家具配置表ID
+    int64 uid = 2;                                      // 家具唯一ID
+    int64 room_tid = 3;                                 // 当前摆放房间tid，0=未摆放
+}
+
+
+// 楼栋玩家状态
+message pb_homeland_house {
+    int64 house_tid = 1;                                // 家园楼栋表tid
+    int64 sort_index = 2;                               // 楼栋页签显示顺序
+    int64 house_style_tid = 3;                          // 当前楼栋使用的皮肤tid
+    repeated pb_homeland_room room_list = 4;            // 房间玩家状态
+}
+
+// 房间玩家状态
+message pb_homeland_room {
+    int64 room_tid = 1;                                 // 家园房间表tid
+    bool is_cleaned = 2;                                // 是否已打扫
+    int64 hero_tid = 3;                                 // 入住英雄tid，0=未入住
+    int64 sort_index = 4;                               // 同楼栋内显示顺序
+    repeated pb_furniture_wear_info furniture_list = 5; // 房间内家具列表
+}
+
+// 家具穿戴信息
+message pb_furniture_wear_info{
+    int64 furniture_type = 1;                           // 家具品类
+    int64 furniture_uid = 2;                            // 家具唯一ID
+    int64 x = 3;                                        // 摆放x坐标
+    int64 y = 4;                                        // 摆放y坐标
+    int64 furniture_tid = 5;                            // 家具配置tid
+}

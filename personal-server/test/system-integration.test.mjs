@@ -9,7 +9,7 @@ import { createLocalGame } from '../local-game.mjs';
 import { grantResources } from '../game/resources.mjs';
 
 const codec = createGameCodec();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const SERVER_OPENED_AT = 1792789200;
 const REQUIRED_MODULES = [10, 24, 114, 156, 157, 159];
 const GIFT_TID = 33002;

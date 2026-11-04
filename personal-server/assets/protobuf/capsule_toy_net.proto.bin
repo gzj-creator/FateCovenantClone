@@ -1,0 +1,51 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+import "project/activity/capsule_toy/capsule_toy.db.proto.txt";
+
+// 扭蛋抽奖回复
+message pb_capsule_toy_draw_back {
+    pb_res_to_client res = 1;                                   // 资源改变
+    repeated pb_capsule_toy_collect collect_list = 2;           // 搜集扭蛋数据
+    uint64 draw_count = 3;                                      // 当期总抽奖次数
+    uint64 day_hit_count = 4;                                   // 每天抽中大奖时总抽奖次数
+    repeated pb_capsule_toy_draw draw_list = 5;                 // 扭蛋抽奖数据
+}
+
+// 扭蛋购买礼包回复
+message pb_capsule_toy_recharge_back {
+    uint64 act_id = 1;                                          // 活动Id
+    pb_recharge_limit_info buy_limit_info = 5;                  // 礼包限购记录
+}
+
+// 扭蛋搜集奖励回复
+message pb_capsule_toy_collect_back {
+    pb_res_to_client res = 1;                                   // 资源改变
+    pb_capsule_toy_collect collect_info = 2;                    // 单个搜集扭蛋数据
+}
+
+// 扭蛋进度奖励回复
+message pb_capsule_toy_progress_back{
+    pb_res_to_client res = 1;                                   // 资源改变
+    bytes progress_award = 2;                                   // 搜集扭蛋已领取进度奖励
+}
+
+// 扭蛋兑换请求
+message pb_capsule_toy_exchange_req {
+    uint64 act_id = 1;                                         // 活动Id
+    uint64 exchange_tid = 2;                                   // 兑换表tid
+    repeated pb_capsule_toy_exchange_slot exchange_list = 3;   // 兑换信息列表
+}
+
+// 扭蛋兑换孔位信息
+message pb_capsule_toy_exchange_slot {
+    uint64 index = 1;                                          // 位置
+    repeated pb_u64_kv item_list = 2;                          // 所选道具及数量
+}
+
+// 刷新后推送数据
+message pb_capsule_toy_flush_push {
+    pb_res_to_client res = 1;   // 资源改变
+    pb_capsule_toy_all act_data = 2; // 活动总数据
+}

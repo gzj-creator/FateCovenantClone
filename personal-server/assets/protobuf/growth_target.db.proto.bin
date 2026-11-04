@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// 成长目标玩家数据
+message pb_growth_target_role {
+    repeated pb_growth_target_act act_data_list = 1; // 活动数据列表
+    uint32 data_version = 2; // 数据版本号
+}
+
+// 成长之路活动数据
+message pb_growth_target_act {
+    uint32 act_tid = 1;                       // 活动tid
+    repeated uint32 phase_award_list = 2;     // 已领取的阶段奖励tid列表
+    repeated uint32 task_award_list = 3;      // 已领取的任务奖励tid列表
+    repeated uint32 finish_task_list = 4;     // 已完成的任务tid列表
+}

@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+import "project/activity/open_server_sprint/open_server_sprint.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/count_statistics/count_statistics.db.proto.txt";
+
+// 领取任务奖励返回
+message pb_sprint_receive_task_back {
+    bool exception = 1;         //是否领取异常：true|异常,false|正常；界面上显示可以领，请求到达服务端之后，发现领取次数不足，客户端需要刷新界面
+    uint32 received_times = 2;  //该任务奖励已被领取的次数
+    pb_res_to_client res = 3;   //资源改变
+    bytes receive_data = 4;     //个人已领奖的任务tid二进制数据
+    repeated pb_sprint_task_player player_list = 5;     //领取奖励的玩家列表(按完成时间倒序)
+}
+
+// 全服榜单任务奖励领取信息
+message pb_sprint_receive_info{
+    uint32 type_tid = 1;    //开服冲榜表-冲榜类型表id
+    repeated pb_sprint_task_receive task_list = 2;
+}
+
+// 任务领取奖励次数
+message pb_sprint_task_receive{
+    uint32 task_tid = 1;//任务tid
+    uint32 received_times = 2;//该任务奖励已被领取的次数
+}
+
+// 任务领取奖励次数
+message pb_sprint_server_process_req{
+    uint32 act_id = 1;  // 活动tid
+    uint32 tid = 2;     // 任务tid
+}
+
+// 任务领取奖励次数
+message pb_sprint_server_process_rsp{
+    pb_res_to_client res = 1;   //资源改变
+    bytes receive_data = 2;     //个人已领奖的任务tid数据
+}
+
+// 活动进入返回给client的数据结构
+message pb_sprint_enter_data{
+    repeated pb_sprint_task_receive task_receive_list = 1;//任务完成tid list
+    pb_count_statics_data server_process_data = 2;//全服进度
+}
+
+// 领取排行榜分数任务
+message pb_sprint_rank_task_receive_req{
+    uint32 act_id = 1;  // 活动tid
+    repeated uint32 task_tid_list = 2; // 任务tid
+}
+
+// 领取排行榜分数任务返回
+message pb_sprint_rank_task_receive_rsp{
+    pb_sprint_rank_task task_data = 1; // 任务数据
+    pb_res_to_client res = 2;   //资源改变
+}
+
+// 跨天刷新
+message pb_sprint_day_flush {
+    pb_res_to_client res = 1; // 资源变化
+    pb_sprint_task_data sprint_task = 2; // 任务数据
+}

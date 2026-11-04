@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+
+// 实时挑战怪物信息
+message pb_realtime_challenge_monster{
+    uint32 id = 1; // id，用来区分是哪个怪
+    uint64 hp = 2; // 当前血量
+    uint64 max_hp = 3; // 最大血量
+    uint32 level = 4; // 等级
+    uint32 type = 5; // 类型
+    uint32 state = 6; // 状态
+    repeated uint32 buff_list = 7; // buff列表
+    uint32 quality = 8; // 品质
+    uint32 loc = 9; // 位置
+    uint64 final_hit_guild_id = 10; // 最后一击公会id
+    bytes last_hit_guild_name = 11; // 最后一击公会名字
+    repeated uint64 fight_role_list = 12;  //战斗过的玩家ID列表
+    uint64 power = 13;      // 战力
+    uint64 change_role_id = 14; // 导致变化的玩家id
+}
+
+// 角色信息
+message pb_realtime_challenge_role{
+    uint64 id = 1;                      // 角色id
+    uint32 hp = 2;                      // 当前血量（上限值是一个固定值）
+    uint64 last_atk_time = 3;           // 上次攻击时间
+    uint64 last_rebirth_time = 4;       // 上次复活时间（死亡后立即复活，就是死亡时间，前端自己做表现）
+    uint64 last_move_time = 5;          // 上次移动时间
+    uint32 score = 6;                   // 积分值
+    uint32 start_loc = 7;               // 起点
+    uint32 end_loc = 8;                 // 终点
+    uint64 last_atk_monster_time = 9;   // 上次攻击怪物时间
+    uint32 win_count = 10;              // 连胜次数
+    uint64 hp_reset_time = 11;          // 气血恢复的时间
+    uint64 guild_id = 12;               // 航会ID
+    uint64 power = 13;                  // 战力，进入地图时初始化
+
+    repeated uint64 fight_id_list = 14; // 战报列表
+    uint32 inspire_time = 15;           // 玩家的鼓舞次数
+    repeated pb_realtime_challenge_buff buff_list = 16; // buff列表
+    bool is_buff_over = 17;             // buff是否结束
+
+    uint32 state = 18;                  // 状态
+    bool is_leader = 19;                // 是否是指挥官
+    bytes func_data = 20;               // 功能数据
+    uint32 atk_count = 21;              // 攻击次数
+    uint32 kill_count = 22;             // 击杀次数
+    uint32 continuous_kill_count = 23;  // 连续击杀次数
+    bytes name = 24;                    // 名字
+    uint32 job = 25;                    // 航会职务
+}
+
+// buff信息
+message pb_realtime_challenge_buff{
+    uint32 tid = 1;         // buff tid
+    uint32 effect_time = 2; // 生效次数
+}
+
+// 怪物位置
+message pb_realtime_challenge_map_target{
+    uint32 map_id = 1;              // 地图ID
+    uint32 loc = 2;                 // 位置
+}

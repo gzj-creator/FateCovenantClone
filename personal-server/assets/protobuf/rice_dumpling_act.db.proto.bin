@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+// 玩家活动数据
+message pb_rice_dumpling_role {
+  bool is_mail = 1; //是发过邮件了
+}

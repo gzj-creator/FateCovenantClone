@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+//单个英雄评分的总数
+message pb_hero_comment_all_score{
+    int32 score = 1;           //总分
+    int32 count = 2;            //评论总人数
+}
+
+//评论保存结构
+message pb_hero_comment{
+    int32 uid = 1;                  //评论id
+    uint64 role_id = 2;              //角色uid
+    int32 like_count = 3;           //点赞数量
+    string content = 4;             //评论内容
+    string name = 5;                //发表评论玩家名字,服务未支持跨服获取玩家名字
+    int32 score = 6;                //发布或者修改时的评分
+    uint32 create_time = 7;         //创建新时间
+    bool is_shield = 8;             //是否被屏蔽
+}
+
+
+message pb_hero_comments{
+    int32 cur_max_id = 1;                   //当前服务器最大id
+    repeated pb_hero_comment comments = 2; //英雄的所有评论，按照从新到久排序
+}
+
+
+
+//单个英雄自己的评分记录
+message pb_hero_comment_score_record{
+    int32 tid = 1;                       //英雄tid
+    int32 score = 2;                        // 自己的打分
+    int32 modify_count = 3;                 //今日修改次数
+    int32 time = 4;                         //上一次修改次数
+}
+
+// 玩家评论点赞数量
+message pb_role_comment_info{
+    int32 remind_like_count = 1;                                //今日剩余点赞数量
+    int32 remind_like_count_time = 2;                           //修改时间
+    repeated pb_hero_comment_score_record  all_record = 3;      //所有英雄的自评分数记录
+    uint32 ban_end_stamp = 4;                                   //禁止评论结束时间
+}
+
+
+
+
+

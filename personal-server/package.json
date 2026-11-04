@@ -6,7 +6,9 @@
     "node": ">=26"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "start": "node local-server.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
+    "test:deployment": "node --test --test-concurrency=1 test/self-contained-deployment.test.mjs"
   },
   "dependencies": {
     "protobufjs": "8.8.1"

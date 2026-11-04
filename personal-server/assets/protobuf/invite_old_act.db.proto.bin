@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+// 活动数据
+message pb_invite_old_info{
+    uint32 version = 1;                  // 期数
+    string invited_code = 2;                 // 我的邀约码
+    repeated uint64 invite_rid_list = 3;    // 我邀请rid列表
+    repeated pb_invite_old_task_info task_list = 4;    // 任务列表
+    uint64 share_award_time = 5;           // 邀请奖励领取时间
+}
+
+message pb_invite_old_task_info{
+    uint32 task_id = 1;               // 任务id
+    uint32 task_progress = 2;        // 任务进度，可领取次数
+    uint32 task_get_count = 3;       // 任务进度，领取次数
+}

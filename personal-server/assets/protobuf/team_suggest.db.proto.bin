@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+// 阵容推荐角色信息
+message pb_hero_team_suggest {
+    uint32 select = 1; // 当前选择推荐队伍tid(阵容推荐队伍表)
+    repeated pb_hero_team_suggest_collect collects = 2; // 收集信息
+    repeated bytes collect_award = 3;   // 3种类型奖励领取情况
+    repeated pb_hero_team_suggest_stage stages = 4; // 阵营推荐进度
+}
+
+message pb_hero_team_suggest_stage {
+    uint32 camp = 1;    // 阵营类型
+    uint32 stage = 2;   // 进度
+}
+
+// 单个阵容收集信息
+message pb_hero_team_suggest_collect {
+    uint32 type = 1; // 当前选择推荐队伍tid(阵容推荐队伍表)
+    repeated uint32 progress = 2; // 收集进度，进度=英雄星级+1，激活有1点进度
+}
+
+// 单个阵容收集信息(旧版本1)
+message pb_hero_team_suggest_collect_old_1 {
+    uint32 type = 1; // 当前选择推荐队伍tid(阵容推荐队伍表)
+    bytes collect_hero = 2; // 当前选择的阵容激活的英雄索引二进制
+}
+
+// 阵容推荐角色信息
+message pb_hero_team_suggest_old_1 {
+    uint32 select = 1; // 当前选择推荐队伍tid(阵容推荐队伍表)
+    repeated pb_hero_team_suggest_collect_old_1 collects = 2; // 收集信息
+    repeated bytes collect_award = 3;   // 3种类型奖励领取情况
+}

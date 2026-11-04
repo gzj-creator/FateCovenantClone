@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+// 抽奖信息
+message pb_ticket_draw_info{
+    repeated pb_ticket_draw_pool pool_list = 1; // 奖池列表
+}
+
+// 奖池
+message pb_ticket_draw_pool{
+    uint32 id = 1;                                      // 奖池的ID = Type * 100 + Day
+    repeated uint64 ticket_list = 2;                    // 奖券列表，就是角色ID列表，可以有重复的角色ID
+    repeated pb_ticket_draw_lucky_role draw_roles = 3;  // 中奖的玩家
+}
+
+// 幸运玩家信息
+message pb_ticket_draw_lucky_role{
+    uint64 role_id = 1;         // 角色ID
+    uint32 rank = 2;            // 第几名
+    uint32 id = 3;              // 标识ID = Type * 100 + Day
+}
+
+// 玩家抽奖信息
+message pb_ticket_draw_role_data{
+    repeated pb_ticket_draw_role draw_list = 1;    // 抽奖信息列表
+}
+
+// 角色抽奖信息
+message pb_ticket_draw_role{
+    uint32 id = 1;                 // 标识ID = Type * 100 + Day
+    uint32 draw_rank = 2;           // 中的几等奖
+    bool received = 3;              // 是否领取奖励
+    uint32 ticket_num = 4;          // 奖票数量
+}

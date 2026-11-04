@@ -1,8 +1,8 @@
-import fs from 'node:fs';
+import { readJsonAsset, tableAsset } from '../assets.mjs';
 
-const defaultPath = new URL('../../analysis/reports/private-client-16448/lua-bundles/candidate/decoded/assets__Android__script__lua__64_lua_project.bundle/bytecode/HeroTable.data.lua.json', import.meta.url);
-const defaultFantasyEquipPath = new URL('../../analysis/recruitment-debug/bytecode/FantasyEquipTable.data.json', import.meta.url);
-const defaultLeaderEquipPath = new URL('../../analysis/recruitment-debug/bytecode/LeaderEquipTable.data.lua.json', import.meta.url);
+const defaultPath = tableAsset('HeroTable.data.lua.json');
+const defaultFantasyEquipPath = tableAsset('FantasyEquipTable.data.json');
+const defaultLeaderEquipPath = tableAsset('LeaderEquipTable.data.lua.json');
 let defaultCache;
 let defaultFantasyEquipCache;
 let defaultLeaderEquipCache;
@@ -40,7 +40,7 @@ export function readLeaderEquipTables(file = defaultLeaderEquipPath) {
 }
 
 export function readGeneratedTables(file, names) {
-  const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const parsed = readJsonAsset(file);
   return readGeneratedDump(parsed, names);
 }
 
@@ -56,8 +56,8 @@ export function readGeneratedDump(parsed, names) {
   }
   const tables = {};
   for (const name of names) {
-    const p = parsed.prototypes[constructors.get(name)];
-    if (!p) throw new Error('Missing hero configuration: ' + name);
+    const p = name === '$root' ? root : parsed.prototypes[constructors.get(name)];
+    if (!p) throw new Error('Missing generated configuration: ' + name);
     const r = [];
     const literal = c => new Map([...c.array.map((v, i) => [i, v]), ...c.hash].filter(([, v]) => v !== null));
     let result;
@@ -80,6 +80,22 @@ export function readGeneratedDump(parsed, names) {
           r[b].fieldIndices = r[a].fieldIndices; break;
         case 'TSETB': r[b].set(c, r[a]); break;
         case 'TSETV': r[b].set(r[c], r[a]); break;
+        case 'TSETM': {
+          // LuaJIT uses TSETM to append the result range from the preceding
+          // call to the table in A-1. Generated table files mostly use it for
+          // engine values such as Vector3 that are irrelevant to server rules;
+          // retain any ordinary array result and leave external references as
+          // unsupported values instead of rejecting the whole table family.
+          const target = r[a - 1];
+          const source = r[a];
+          if (!(target instanceof Map)) throw new Error('Invalid TSETM destination');
+          const values = source instanceof Map
+            ? [...source].filter(([key]) => Number.isInteger(key) && key > 0).sort(([left], [right]) => left - right).map(([, value]) => value)
+            : Array.isArray(source) ? source : [];
+          const start = Number(d) > 0 ? Number(d) : 1;
+          for (let offset = 0; offset < values.length; offset++) target.set(start + offset, values[offset]);
+          break;
+        }
         case 'TGETB': r[a] = r[b].get(c); break;
         case 'TGETS': r[a] = r[b] instanceof Map ? r[b].get(p.constants[c].value) : { reference: String(r[b]?.reference ?? '') + '.' + p.constants[c].value }; break;
         case 'TGETV': r[a] = r[b] instanceof Map ? r[b].get(r[c]) : { reference: String(r[b]?.reference ?? '') + '.' + String(r[c]) }; break;

@@ -1,9 +1,10 @@
 import { readGeneratedTables } from './hero-tables.mjs';
+import { tableAsset } from '../assets.mjs';
 
 // EquipTable only ships as LuaJIT bytecode in the client bundle. The dump is
 // generated from textassets/4378987152432345000-EquipTable.data.lua.bin with
 // tools/dump-table-prototypes.mjs; no row is transcribed by hand.
-const defaultPath = new URL('../../analysis/tmp/equipment-decompiled/EquipTable.data.lua.json', import.meta.url);
+const defaultPath = tableAsset('EquipTable.data.lua.json');
 
 export const EQUIP_TABLE_NAMES = [
   // Equip rows are the template rows behind pb_equip.tid: type, quality, cost,

@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/common_map/common_map.db.proto.txt";
+
+// 玩家活动数据列表
+message pb_five_day_boss_act_role_data{
+    uint32 act_id = 1;                      // 活动id
+    repeated uint32 time_pass_gain = 2;// 限时通关奖励领取数据
+    repeated uint32 active_medals = 3;// 激活的勋章
+    repeated uint32 got_task_award = 4; // 已经领取的任务奖励
+    repeated pb_u64_kv max_pass_list = 5; // 线性关卡通关
+}
+
+// 全服活动数据列表
+message pb_five_day_boss_act_server_data{
+    uint32 act_id = 1;                      // 活动id
+    repeated pb_five_day_boss_act_server_rank_data pass_list = 2; // 线性层首通列表
+}
+
+// 全服活动首通排行数据
+message pb_five_day_boss_act_server_rank_data{
+    int64 layer = 1; // 层数
+    repeated pb_five_day_boss_act_server_rank_info rank_list = 2; // 排行
+}
+
+message pb_five_day_boss_act_server_rank_info{
+    int64 role_id = 1; // 角色id
+    int64 power = 2; // 战力
+    string name = 3;        // 角色名字
+}
+
+

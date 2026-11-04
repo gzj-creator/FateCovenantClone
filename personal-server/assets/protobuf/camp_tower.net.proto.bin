@@ -1,0 +1,57 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/linear_level/linear_level.db.proto.txt";
+import "project/camp_tower/camp_tower.db.proto.txt";
+
+// 登录信息处理返回
+message pb_camp_tower_back{
+    pb_camp_tower_info tower_info = 1;  // 玩家阵营之塔信息
+    pb_camp_tower_cross_pass server_award = 2; // 双子服首通信息
+}
+
+// 双子(全服)奖励请求数据
+message pb_camp_tower_cross_award_req{
+    uint64 first_tid = 1; // 首通tid
+}
+
+// 双子(全服)奖励请求奖励返回数据
+message pb_camp_tower_cross_award_rsp{
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_camp_tower_info camp_tower_data = 2; //阵营之塔任务数据
+}
+
+// 个人首通奖励请求数据
+message pb_camp_tower_first_award_req{
+    uint64 first_tid = 1; // 首通tid
+}
+
+// 个人首通奖励请求奖励返回数据
+message pb_camp_tower_first_award_rsp{
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_camp_tower_info camp_tower_data = 2; //阵营之塔全服任务数据
+}
+
+// 请求首通玩家列表处理返回
+message pb_camp_tower_get_first_pass_list_rsp{
+    repeated pb_camp_tower_pass_info pb_camp_tower_pass_list = 1; //阵营之塔全服任务数据
+}
+
+// 兔兔助手扫塔请求处理返回
+message pb_camp_tower_assist_fight_back {
+    repeated pb_camp_tower_assist_fight_award fight_data_list = 1;
+    repeated pb_linear_level linear_levels = 2; //线性关卡数据
+}
+
+// 兔兔助手奖励请求处理返回
+message pb_camp_tower_assist_award_back {
+    repeated pb_res_to_client tower_res = 1; // 通塔奖励
+    repeated pb_linear_level linear_levels = 2; //线性关卡数据
+}
+
+message pb_camp_tower_assist_fight_award {
+    uint32 tower_type = 1;
+    uint32 tower_tid = 2;
+    pb_res_to_client res_changes = 3; // 资源变化
+    bool is_pass = 4; // 是否通关
+    uint32 attempt_n = 5;   // 失败尝试次数
+}

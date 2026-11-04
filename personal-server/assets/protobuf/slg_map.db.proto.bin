@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+
+// 地图基础节点(注意：所有地图节点数据都需要包含基础节点的字段)
+message pb_slg_map_obj{
+    int64 gxy = 1;                      // 坐标(包含服务器id)
+    uint32 tid = 2;                     // 物件tid
+    int64 belong = 3;                   // 归属
+    uint64 sub_belong = 4;              // 次级归属
+    uint64 timer_id = 5;                // 定时器ID
+}
+
+// 地图行军数据
+message pb_slg_map_march{
+    int64 id = 1;                       // 行军id
+    uint32 type = 2;                    // 行军类型
+    uint32 obj_tid = 3;                 // 目标物件tid
+    int64 src_id = 4;                   // 发起者id
+    int64 dst_id = 5;                   // 目标id
+    int64 src_gxy = 6;                  // 源坐标
+    int64 dst_gxy = 7;                  // 目标坐标
+    int64 start_time = 8;               // 发起时间
+    int64 end_time = 9;                 // 结束时间
+    int64 org_end_time = 10;            // 初始结束时间(主要用于前台显示)
+    bytes extra_data = 11;              // 额外数据
+}
+
+// 地图领地数据
+message pb_slg_map_territory{
+    int64 gxy = 1;                      // 坐标(包含服务器id)
+    uint32 tid = 2;                     // 物件tid
+    int64 belong = 3;                   // 归属
+    int64 belong_gxy = 4;               // 归属的中心坐标
+}
+
+// 地图定时数据
+message pb_slg_map_timer{
+    int64 id = 1;                       // 定时id
+    int64 belong = 2;                   // 归属
+    int64 gxy = 3;                      // 物件坐标
+    uint32 obj_tid = 4;                 // 物件tid
+    int64 end_time = 5;                 // 结算时间
+    uint64 type = 6;                    // 类型
+}

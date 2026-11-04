@@ -1,0 +1,62 @@
+syntax = "proto3";
+import "project/wear/skin/skin.db.proto.txt";
+import "project/hero/base/hero_base.db.proto.txt";
+
+// 标记一个幻武
+message pb_fantasy_equip_id{
+    int32 uid = 1;                                              //uid==0，则代表使用的tid到未操作的列表中
+    int32 tid = 2;                                              // 幻武tid
+}
+
+// 幻武装备
+message pb_fantasy_equip {
+    uint64 tid = 1;
+    uint64 uid = 2;                                                          // 唯一id
+    uint64 level = 3;                                                        // 等级
+    uint64 star = 4;                                                         // 星级
+    uint64 star_node = 5;                                                   // 星节点
+    uint64 break_level = 6;                                                 // 突破等级
+    uint64 quality = 7;                                                     // 品质
+    repeated int32 bless = 8;                                               //护佑的幻武
+    uint64 level_exp = 9;                                                   // 等级经验(总)
+}
+
+// 未操作过的幻武节点
+message pb_fantasy_equip_raw{
+    int32 tid = 1;
+    int32 num = 2;
+}
+
+// 所有幻武数据
+message pb_fantasy_equip_res{
+    repeated pb_fantasy_equip equips = 1;                               //所有培养过的幻武列表
+    repeated pb_fantasy_equip_raw raw_equips = 2;                       //所有未培养过的所有幻武,为了性能
+    int32 max_equip_id = 3;                                             //最大的幻武id
+}
+
+// 获得的英雄的额外数据
+message pb_fantasy_equip_extra{
+    uint32 star = 1;                    // 指定星级
+    uint32 level = 2;                    // 指定等级
+}
+
+// 半神派驻数据
+message pb_fantasy_formation_list{
+    repeated pb_fantasy_formation formation_list = 1;
+}
+
+message pb_fantasy_formation{
+    int64 uid = 1;  //目标半神（专武）uid
+    uint32 slot_index = 2; // 槽位id
+}
+
+
+
+// 幻武抽卡数据
+message pb_fantasy_draw {
+    repeated uint32 wish_list = 1; // 心愿列表
+    uint64 total_draw_times = 2; // 总抽卡次数
+    uint64 wish_fail_times = 3; // 心愿失败次数
+    uint32 refresh_stamp = 4; // 上次刷新时间戳
+    uint32 left_buy_times = 5; // 剩余购买次数(抽卡道具)
+}

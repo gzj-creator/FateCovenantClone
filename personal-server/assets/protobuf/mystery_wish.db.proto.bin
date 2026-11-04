@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+// 神秘许愿数据
+message pb_mystery_wish_data{
+    uint64 opened_login_day = 1;            // 功能开放后累积登录天数(废弃)
+    uint64 show_count = 2;                  // 当前入口出现总次数
+    int32 lifelong_range_tid = 3;           // 终生固定基础开放分布类型(废弃)
+    repeated uint64 cur_show_days = 4;      // 当前周期入口出现时间天数(废弃)
+    repeated int32 libs = 5;                // 当前可选择商品库
+    bool is_exchange = 6;                   // 当前是否已兑换
+    repeated int32 period_opened_days = 7;  // 本周期已经出现的天数(废弃)
+    int32 cur_period_range_tid = 8;         // 当前周期分布类型(废弃)
+    uint64 sys_open_day = 9;                // 玩家触发系统功能开放时间(废弃)
+    uint64 next_refresh_time = 10;          // 下次刷新时间
+}
+
+// 神秘许愿商品出现历史数据
+message pb_mystery_wish_exchange_history{
+    repeated pb_mystery_wish_item_history exchange_history = 1;     // 商品出现历史
+}
+
+// 神秘许愿商品出现历史
+message pb_mystery_wish_item_history{
+    int32 item_tid = 1;                     // 商品tid
+    uint64 last_entry_show_times = 2;       // 上次兑换该商品入口出现次数
+}
+

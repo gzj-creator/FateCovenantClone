@@ -1,0 +1,23 @@
+syntax = "proto3";
+import "project/activity/free_privilege_act/free_privilege_act.db.proto.txt";
+import "project/monthly_card.db.proto.txt";
+import "project/permanent_card/permanent_card.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 激活返回
+message pb_free_privilege_act_activate_back {
+    pb_free_privilege_act_act_role_data act_data = 1; // 活动数据
+    pb_permanent_card permanent_card = 2; // 永久卡数据（含体验过期时间）
+}
+
+// 激活月卡返回
+message pb_free_privilege_act_activate_month_back {
+    pb_free_privilege_act_act_role_data act_data = 1; // 活动数据
+    pb_monthly_card_info monthly_card = 2;  // 月卡数据
+    pb_res_to_client res = 3;               // 奖励
+}
+
+// 激活请求
+message pb_free_privilege_act_activate_req {
+    int64 act_id = 1; // 活动id
+}

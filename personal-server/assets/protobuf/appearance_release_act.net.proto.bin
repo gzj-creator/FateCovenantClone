@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// 交互请求
+message pb_appearance_release_act_interact_req {
+    uint32 act_id = 1;              // 活动id
+    uint32 recharge_tid = 2;        // 付费表tid
+    uint32 idx = 3;                 // 交互位置索引
+}

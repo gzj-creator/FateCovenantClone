@@ -1,0 +1,139 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+// 万象历险
+
+// ------------------------------角色数据-------------------------------
+// 万象历险关卡
+message pb_magical_journey_mission {
+    uint32 chapter = 1;     // 章节
+    uint32 mission = 2;     // 关卡
+    bytes elite_star_bin = 3;    // 精英关卡星级记录二进制数据
+    bytes task_award_bin = 4;   // 任务奖励二进制数据
+    uint32 pass_stamp = 5; // 通关时间
+    uint32 settle_rank = 6; // 结算排名(只有需要发结算排名奖励的才有)
+    pb_magical_journey_task_progress task_progress = 7; // 任务进度
+}
+
+
+// 万象历险BOSS
+message pb_magical_journey_boss {
+    uint32 fight_times = 1; // 当前战斗次数
+    uint64 refresh_time = 2;    // 最近一次战斗时间
+    uint64 score = 3; // 当天最高积分
+}
+
+// 玩家通关信息
+message pb_magical_journey_pass_role {
+    repeated pb_magical_journey_chapter_pass chapter_list = 1; // 玩家个人章节的通关数据
+    bytes pass_bin = 2; // 领取的通关排名奖励记录
+}
+
+// 时空关卡角色赛季数据
+message pb_magical_journey_season {
+    uint32 season = 1;  // 赛季
+    bool settled = 2;   // 是否已结算
+}
+
+// 万象历险社稷殿
+message pb_magical_journey_country {
+    uint32 main_level = 1;      // 主养成等级
+    repeated pb_magical_journey_country_sub sub = 2; // 副养成
+    repeated pb_magical_journey_star_skill star_skill_active = 3;  // 星位图技能激活情况
+}
+
+// 万象历险社稷殿星位图技能激活情况
+message pb_magical_journey_star_skill {
+    uint32 page = 1;   // 分页
+    bytes active = 2;  // 激活情况(第n位对应第n个技能激活与否)
+}
+
+// 万象历险社稷殿副养成
+message pb_magical_journey_country_sub {
+    uint32 type = 1;    // 类型(阵营)
+    uint32 level = 2;   // 等级
+    bytes active = 3;   // 激活情况(第n位对应第n个格子激活与否)
+}
+
+// 万象历险典藏
+message pb_magical_journey_collect_info {
+    pb_magical_journey_collect_normal normal_collect = 1; // 普通典藏
+    pb_magical_journey_collect_season season_collect = 2; // 赛季典藏
+}
+
+// 万象历险典藏普通
+message pb_magical_journey_collect_normal {
+    repeated pb_magical_journey_collect_item item_list = 1;
+    uint32 exp = 2;     // 当前等级的经验
+    uint32 level = 3;  //
+}
+
+// 万象历险典藏赛季
+message pb_magical_journey_collect_season {
+    repeated pb_magical_journey_collect_item item_list = 2;
+}
+
+// 万象历险典藏物品
+message pb_magical_journey_collect_item {
+    uint32 tid = 1;
+    uint32 star = 2;
+}
+
+// 角色铸剑数据
+message pb_magical_journey_sword {
+    uint32 use_free_times = 1;  // 使用免费次数
+    uint32 today_zero_stamp = 2; // 今日零点时间戳
+    uint32 exp_contributed = 3;  // 总贡献经验
+}
+
+
+// ------------------------------服务器数据---------------------------
+// 万象历险跨服铸剑数据
+message pb_magical_journey_cross_sword {
+    uint32 sword_exp = 1;   // 铸剑经验
+    uint32 sword_level = 2; // 铸剑等级(升级时记一下，避免每次都要算)
+    uint32 last_refresh_stamp = 3;   // 时间戳
+    uint32 day_exp = 4; // 当天经验
+}
+
+// 万象历险铸剑记录
+message pb_magical_journey_sword_record_info {
+    repeated pb_magical_journey_sword_record record_list = 1; // 铸剑记录
+}
+
+message pb_magical_journey_sword_record {
+    string role_name = 1;   // 角色名
+    uint32 sword_exp = 2;   // 铸剑经验
+    uint32 type = 3;    // 类型
+}
+
+// 万象历险跨服赛季数据
+message pb_magical_journey_cross_season {
+    uint32 season = 1;  // 赛季
+    uint32 season_start_time = 2;  // 赛季开始时间
+    uint32 season_end_time = 3;    // 赛季结束时间
+    uint64 settle_boss_time = 4; // 上次结算boss排名奖励时间
+}
+
+// 服务器通关信息
+message pb_magical_journey_pass {
+    repeated pb_magical_journey_chapter_pass chapter_list = 1; // 所有章节的通关数据
+}
+
+// 章节通关人数
+message pb_magical_journey_chapter_pass {
+    uint32 chapter = 1;     // 章节
+    repeated pb_magical_journey_mission_pass mission_list = 2; // 当前章节部分关卡的通关数据
+}
+
+// 关卡通关人数
+message pb_magical_journey_mission_pass {
+    uint32 mission = 1;   // 关卡
+    uint32 number = 2;      // 通关人数(跨服)；通关时排名（个人）
+    repeated uint64 role_id_list = 3; // 反序通关人ID列表(跨服)；空列表（个人）
+}
+
+// 万象历险章节任务结算的数据
+message pb_magical_journey_task_progress {
+    uint32 settle_chapter_tid = 1; // 已结算到的章节tid
+    bytes note_bin = 7; // 章节任务记录达成状态
+}

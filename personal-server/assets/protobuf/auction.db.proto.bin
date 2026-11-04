@@ -1,0 +1,81 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// -------------------------- 服务器数据 -----------------------
+//单条物品拍卖数据
+message pb_auction_item{
+    uint32 auction_item_tid = 1; // 拍卖品配置tid
+    uint64 uid = 2;             //拍卖物品唯一id
+    uint32 bid_price = 3;       //当前竞价
+    uint64 bid_role_id = 4;     //当前竞拍玩家id
+    uint64 upfront_role_id = 5; //一口价玩家id
+    uint32 record_time = 6;     //记录(拍卖)时间
+}
+
+// 单场拍卖行信息
+message pb_auction {
+    uint32 type = 1; // 类型
+    uint64 uid = 2; // 拍卖行唯一id
+    repeated pb_auction_item items = 3; // 拍卖品列表
+    bool is_settle = 4; // 标记是否结算过
+    uint32 cross_range = 5; // 跨服拍卖范围
+    bool is_cross = 6; // 是否跨服
+}
+
+// 正在开启的拍卖
+message pb_auction_info {
+    repeated uint64 opening = 1; // 正在开启的拍卖
+}
+
+// 拍卖行状态
+message pb_auction_state_info {
+    repeated pb_auction_state states = 1; // 拍卖行状态
+    uint32 cur_state = 2; // 当前状态
+}
+message pb_auction_state {
+    uint32 state = 1; // 状态
+    uint32 stamp = 2; // 时间戳
+}
+
+// 拍卖行分红信息
+message pb_auction_dividend_info {
+    repeated pb_auction_dividend dividends = 1; // 分红信息
+}
+// 拍卖行单个角色分红信息(可能只记录额外分红,领取时需要加上配置的基础分红)
+message pb_auction_dividend {
+    uint64 role_id = 1; // 玩家id
+    uint32 dividend = 2; // 分红钻石数量
+    repeated pb_res_obj award_list = 3; // 分红奖励列表
+}
+
+// -------------------------- 角色数据 -----------------------
+// 角色拍卖品数据
+message pb_role_auction_info{
+    repeated pb_role_auction auctions = 1; // 拍卖行列表
+}
+
+// 角色单场拍卖行的数据
+message pb_role_auction{
+    uint32 type = 1;  // 拍卖行类型
+    uint64 uid = 2; // 拍卖行uid
+    repeated pb_auction_item join_items = 3;//正在参加拍卖的商品
+    repeated pb_role_auction_bid_change finish_items = 4;//已完成的拍卖商品的记录
+    uint32 dividend = 5;  // 分红钻石数量
+    bool is_dividend = 6; // 是否已领取分红
+    repeated uint64 wish_list = 7; // 心愿拍卖品uid列表
+    repeated pb_role_auction_bid_win bid_win_list = 8; // 拍卖组上限记录列表
+    uint64 over_time = 9; // 玩家拍卖数据结束时间（目前设置为拍卖行活动结束时间）
+    repeated pb_res_obj award_list = 10; // 玩法给的分红奖励列表
+}
+
+// 角色竞拍变更记录
+message pb_role_auction_bid_change{
+    pb_auction_item item = 1; // 变化的最新竞品数据
+    uint64 bid_price = 2; // 之前自己的出价
+}
+
+// 角色竞拍组上限数据
+message pb_role_auction_bid_win{
+    uint64 tid = 1; // 拍卖商品组tid
+    uint64 num = 2; // 成功竞拍次数
+}

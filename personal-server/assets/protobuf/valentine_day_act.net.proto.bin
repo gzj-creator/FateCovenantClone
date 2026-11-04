@@ -1,0 +1,27 @@
+syntax = "proto3";
+import "project/activity/valentine_day_act/valentine_day_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 情人节请求领取奖励
+message pb_valentine_day_rev_award_req{
+    uint64 act_id = 1;      // 活动ID
+    uint32 award_id = 2;    // 奖励ID，就是ValentineDayAct配置表的ID
+}
+
+// 情人节活动领取奖励返回
+message pb_valentine_day_rev_award_rsp{
+    bytes rev_states = 1;               // 领取状态
+    pb_res_to_client res = 2;           // 资源变化
+}
+
+// 情人节活动结算返回
+message pb_valentine_day_act_settle_rsp{
+    pb_valentine_day_act act_data = 1;  // 活动数据
+    pb_res_to_client res = 2;           // 资源变化
+}
+
+// 情人节请求保存聊天记录
+message pb_valentine_day_save_chat_progress_req{
+    uint32 act_cfg_tid = 1;      // 配置tid
+    uint32 index = 2;            // 聊天索引
+}

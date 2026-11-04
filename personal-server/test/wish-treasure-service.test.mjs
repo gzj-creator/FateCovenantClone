@@ -10,7 +10,7 @@ import { createWalletService } from '../game/wallet-service.mjs';
 import { createWishTreasureService, WISH_TREASURE_MODULE } from '../game/wish-treasure-service.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const fixedAt = Date.parse('2026-10-31T04:00:00.000Z');
 
 function setup(t) {

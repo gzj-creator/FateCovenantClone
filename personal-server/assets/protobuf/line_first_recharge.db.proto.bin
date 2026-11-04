@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+//线性首充礼包db结构
+message pb_line_first_recharge {
+    uint64 tid = 1;  // 当前解锁到的tid
+    uint64 open_time = 2; // 礼包解锁的时间
+    uint64 end_time = 3; // 礼包失效时间
+    uint64 choose_tid = 4; // 当前解锁礼包自选tid
+    repeated pb_line_first_recharge_buy buy_list = 5; // 已购买礼包数据列表
+    pb_recharge_limit_info buy_limit_info = 6; // 付费限制
+}
+
+// 已购买礼包数据
+message pb_line_first_recharge_buy {
+    uint64 tid = 1;  // 线性首充tid
+    uint64 buy_time = 2; // 礼包购买时间
+    bytes rev_bin = 3; // 领奖记录标记
+    uint64 choose_tid = 4; // 购买时选择的礼包
+}
+

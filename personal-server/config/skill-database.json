@@ -737,17 +737,21 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
-                "conditionKey": null,
+                "conditionKey": "hp-above-50",
                 "cooldown": 0,
                 "maxTriggers": 0,
                 "oncePerBattle": false,
@@ -763,10 +767,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -3012,9 +3019,14 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "instant"
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -3035,10 +3047,15 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "instant"
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
-                }
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
+                },
+                "conditionKey": "hp-above-50"
               }
             ],
             "notes": "Passive: when HP > 50%, anti-crit +20%."
@@ -6507,8 +6524,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -6524,7 +6541,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -7308,9 +7327,9 @@
               {
                 "triggerType": "on-round-start",
                 "conditionKey": null,
-                "oncePerBattle": false,
+                "oncePerBattle": true,
                 "oncePerRound": false,
-                "maxTriggers": 2,
+                "maxTriggers": 1,
                 "cooldown": 0,
                 "effect": {
                   "target": {
@@ -7326,7 +7345,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 }
               }
             ]
@@ -8121,8 +8142,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -8138,7 +8159,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -9016,8 +9039,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -9033,7 +9056,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -10017,17 +10042,21 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
-                "conditionKey": null,
+                "conditionKey": "hp-above-50",
                 "cooldown": 0,
                 "maxTriggers": 0,
                 "oncePerBattle": false,
@@ -10043,10 +10072,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -12341,17 +12373,21 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
-                "conditionKey": null,
+                "conditionKey": "hp-above-50",
                 "cooldown": 0,
                 "maxTriggers": 0,
                 "oncePerBattle": false,
@@ -12367,10 +12403,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0,
                 "chance": 1
@@ -13665,7 +13704,9 @@
                   "durationType": "timed",
                   "rounds": 2
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -13674,8 +13715,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -13691,7 +13732,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -14855,7 +14898,9 @@
                   "durationType": "timed",
                   "rounds": 2
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -14864,8 +14909,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -14881,7 +14926,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -15957,7 +16004,9 @@
                   "durationType": "timed",
                   "rounds": 2
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -15966,8 +16015,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -15983,7 +16032,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -17346,10 +17397,14 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -17372,10 +17427,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0,
                 "chance": 1
@@ -19206,7 +19264,9 @@
                   "durationType": "timed",
                   "rounds": 2
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -19215,8 +19275,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -19232,7 +19292,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0,
                 "chance": 1
@@ -24230,7 +24292,9 @@
                   "durationType": "timed",
                   "rounds": 2
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -24239,8 +24303,8 @@
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 2,
-                "oncePerBattle": false,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -24256,7 +24320,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0,
                 "chance": 1
@@ -28726,10 +28792,14 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -28752,10 +28822,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0,
                 "chance": 1
@@ -31142,10 +31215,14 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -31168,10 +31245,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0,
                 "chance": 1
@@ -37465,10 +37545,14 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
@@ -37491,10 +37575,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0,
                 "chance": 1
@@ -44093,17 +44180,21 @@
                   "isPercentage": true
                 },
                 "duration": {
-                  "durationType": "permanent",
-                  "rounds": 0
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
                 },
-                "chance": 1
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
               }
             ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
-                "conditionKey": null,
+                "conditionKey": "hp-above-50",
                 "cooldown": 0,
                 "maxTriggers": 0,
                 "oncePerBattle": false,
@@ -44119,10 +44210,13 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 },
                 "priority": 0
               }
@@ -46475,9 +46569,9 @@
               {
                 "triggerType": "on-round-start",
                 "conditionKey": null,
-                "oncePerBattle": false,
+                "oncePerBattle": true,
                 "oncePerRound": false,
-                "maxTriggers": 2,
+                "maxTriggers": 1,
                 "cooldown": 0,
                 "effect": {
                   "target": {
@@ -46493,7 +46587,9 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
                 }
               }
             ]
@@ -46628,7 +46724,30 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null
+            "abilityDes": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 1,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Project fallback basic attack."
           }
         },
         {
@@ -46657,7 +46776,57 @@
               "text": 604400166,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-reduction",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Mastery: final damage reduction +5% on battle start."
           }
         },
         {
@@ -46686,7 +46855,57 @@
               "text": 604400167,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "max-hp-percent",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "max-hp-percent",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Mastery: max HP +5% on battle start."
           }
         },
         {
@@ -46715,7 +46934,99 @@
               "text": 604400168,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "status-hit",
+                  "magnitude": 0.1,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "status-resist",
+                  "magnitude": 0.1,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "status-hit",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              },
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "status-resist",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Mastery: status hit and resist +10% on battle start."
           }
         },
         {
@@ -46744,7 +47055,64 @@
               "text": 604400169,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "dispel",
+            "targetType": "random-ally",
+            "energyCost": 0,
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "random-ally"
+                  },
+                  "effect": {
+                    "type": "dispel",
+                    "count": 1,
+                    "removeType": "debuff"
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              },
+              {
+                "triggerType": "on-skill-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "random-ally"
+                  },
+                  "effect": {
+                    "type": "dispel",
+                    "count": 1,
+                    "removeType": "debuff"
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Mastery: after normal/skill, dispel 1 debuff from a random ally (targeting approximated as random-ally)."
           }
         },
         {
@@ -46773,7 +47141,53 @@
               "text": 604400170,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "shield",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "shield",
+                  "shieldType": "percent-max-hp",
+                  "multiplier": 0.15
+                },
+                "duration": {
+                  "durationType": "instant"
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-hp-threshold",
+                "condition": null,
+                "conditionKey": "hp-below-40",
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "shield",
+                    "shieldType": "percent-max-hp",
+                    "multiplier": 0.15
+                  },
+                  "duration": {
+                    "durationType": "instant"
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Mastery: first time HP < 40%, gain shield = 15% max HP."
           }
         },
         {
@@ -46802,7 +47216,80 @@
               "text": 601509006,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "energy",
+                  "energyType": "gain",
+                  "magnitude": 50
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 50
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              },
+              {
+                "triggerType": "on-skill-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 50
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: on ally normal/skill, self gains 50 energy (self-only approximation)."
           }
         },
         {
@@ -46831,7 +47318,64 @@
               "text": 601509048,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "anti-crit",
+                  "magnitude": 0.2,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "conditional",
+                  "rounds": 0,
+                  "conditionKey": "hp-above-50"
+                },
+                "chance": 1,
+                "conditionKey": "hp-above-50",
+                "unique": true,
+                "refresh": true
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": "hp-above-50",
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "anti-crit",
+                    "magnitude": 0.2,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "conditional",
+                    "rounds": 0,
+                    "conditionKey": "hp-above-50"
+                  },
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: when HP > 50%, anti-crit +20%."
           }
         },
         {
@@ -46860,7 +47404,55 @@
               "text": 601509051,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "energy",
+                  "energyType": "gain",
+                  "magnitude": 100
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-kill",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 100
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: when enemy knocked back/killed, self gains 100 energy (approximated as on-kill)."
           }
         },
         {
@@ -46889,7 +47481,57 @@
               "text": 601509056,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-damage",
+                  "magnitude": 0.3,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-skill-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-damage",
+                    "magnitude": 0.3,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: on energy skill use, crit damage +30%."
           }
         },
         {
@@ -46918,7 +47560,57 @@
               "text": 601509058,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-reduction",
+                  "magnitude": 0.2,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 1,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.2,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: after first ultimate, damage reduction +20%."
           }
         },
         {
@@ -46947,7 +47639,57 @@
               "text": 601509079,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "heal",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "heal",
+                  "healType": "percent-attack",
+                  "multiplier": 0.3,
+                  "overheal": false
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": "hp-below-30",
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "heal",
+                    "healType": "percent-attack",
+                    "multiplier": 0.3,
+                    "overheal": false
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: at round start if HP < 30%, heal self for 30% ATK."
           }
         },
         {
@@ -46976,7 +47718,58 @@
               "text": 601509089,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "evasion",
+                  "magnitude": 0.2,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 1
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-ultimate-use",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "evasion",
+                    "magnitude": 0.2,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 1
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: after ultimate, evasion +20% for 1 round (evasion stat approximated; requiresInvestigation).",
+            "requiresInvestigation": true
           }
         },
         {
@@ -46998,7 +47791,30 @@
               "run_type": 1
             },
             "abilityDes": null,
-            "catalogTypeMatch": null
+            "catalogTypeMatch": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 2,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant"
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Ultimate: metadata fallback -> 2.0x physical damage single (requiresInvestigation).",
+            "requiresInvestigation": true
           }
         }
       ]
@@ -47027,7 +47843,30 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null
+            "abilityDes": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 1,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Project fallback basic attack."
           }
         },
         {
@@ -47056,7 +47895,34 @@
               "text": 604400171,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47085,7 +47951,34 @@
               "text": 604400172,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "max-hp-percent",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47114,7 +48007,57 @@
               "text": 604400173,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-resist",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              },
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-damage-reduction",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47143,7 +48086,67 @@
               "text": 604400174,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "trigger-count",
+                    "rounds": 0,
+                    "triggers": 1,
+                    "trigger": "damage-taken"
+                  },
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
+                }
+              },
+              {
+                "triggerType": "on-skill-use",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "trigger-count",
+                    "rounds": 0,
+                    "triggers": 1,
+                    "trigger": "damage-taken"
+                  },
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
+                }
+              }
+            ]
           }
         },
         {
@@ -47172,7 +48175,64 @@
               "text": 604400175,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 3,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.08,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 1
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              },
+              {
+                "triggerType": "on-round-end",
+                "condition": null,
+                "conditionKey": "round-3",
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "heal",
+                    "healType": "percent-max-hp",
+                    "multiplier": 0.05
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ]
           }
         },
         {
@@ -47201,7 +48261,33 @@
               "text": 601509005,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-being-hit",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 150
+                  },
+                  "duration": {
+                    "durationType": "instant"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47230,7 +48316,35 @@
               "text": 601509060,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": "has-debuff",
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1,
+                  "conditionKey": "has-debuff"
+                }
+              }
+            ]
           }
         },
         {
@@ -47259,7 +48373,35 @@
               "text": 601509065,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-hp-threshold",
+                "conditionKey": "hp-below-50",
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1,
+                  "conditionKey": "hp-below-50"
+                }
+              }
+            ]
           }
         },
         {
@@ -47288,7 +48430,33 @@
               "text": 601509068,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 25
+                  },
+                  "duration": {
+                    "durationType": "instant"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47317,7 +48485,36 @@
               "text": 601509069,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "conditionKey": "target-hp-above-self",
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-rate",
+                    "magnitude": 0.3,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 1
+                  },
+                  "chance": 1,
+                  "conditionKey": "target-hp-above-self"
+                }
+              }
+            ]
           }
         },
         {
@@ -47346,7 +48543,37 @@
               "text": 601509073,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 1,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "heal-bonus",
+                    "magnitude": 0.2,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 2
+                  },
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
+                }
+              }
+            ]
           }
         },
         {
@@ -47375,7 +48602,35 @@
               "text": 601509077,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "shield",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-hp-threshold",
+                "conditionKey": "hp-below-70",
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "shield",
+                    "shieldType": "percent-defense",
+                    "multiplier": 0.8
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 2
+                  },
+                  "chance": 1,
+                  "conditionKey": "hp-below-70"
+                }
+              }
+            ]
           }
         },
         {
@@ -47397,7 +48652,31 @@
               "run_type": 1
             },
             "abilityDes": null,
-            "catalogTypeMatch": null
+            "catalogTypeMatch": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 2,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Ultimate: metadata fallback (missing description). Implemented as generic 2.0x physical damage single target (requires investigation).",
+            "requiresInvestigation": true
           }
         }
       ]
@@ -47426,7 +48705,30 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null
+            "abilityDes": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 1,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Project fallback basic attack."
           }
         },
         {
@@ -47455,7 +48757,34 @@
               "text": 604400176,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47484,7 +48813,34 @@
               "text": 604400177,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "max-hp-percent",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47513,7 +48869,57 @@
               "text": 604400178,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-resist",
+                    "magnitude": 0.05,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              },
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-damage-reduction",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47542,7 +48948,59 @@
               "text": 604400179,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 1
+                  },
+                  "chance": 1
+                }
+              },
+              {
+                "triggerType": "on-skill-use",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 1
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47571,7 +49029,64 @@
               "text": 604400180,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": null,
+                "cooldown": 0,
+                "maxTriggers": 3,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.08,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 1
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              },
+              {
+                "triggerType": "on-round-end",
+                "condition": null,
+                "conditionKey": "round-3",
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "heal",
+                    "healType": "percent-max-hp",
+                    "multiplier": 0.05
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ]
           }
         },
         {
@@ -47600,7 +49115,33 @@
               "text": 601509005,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-being-hit",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 150
+                  },
+                  "duration": {
+                    "durationType": "instant"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47629,7 +49170,35 @@
               "text": 601509060,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": "has-debuff",
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.1,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1,
+                  "conditionKey": "has-debuff"
+                }
+              }
+            ]
           }
         },
         {
@@ -47658,7 +49227,35 @@
               "text": 601509065,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-hp-threshold",
+                "conditionKey": "hp-below-50",
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "damage-reduction",
+                    "magnitude": 0.15,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "permanent"
+                  },
+                  "chance": 1,
+                  "conditionKey": "hp-below-50"
+                }
+              }
+            ]
           }
         },
         {
@@ -47687,7 +49284,33 @@
               "text": 601509068,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "energy",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "conditionKey": null,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "energy",
+                    "energyType": "gain",
+                    "magnitude": 25
+                  },
+                  "duration": {
+                    "durationType": "instant"
+                  },
+                  "chance": 1
+                }
+              }
+            ]
           }
         },
         {
@@ -47716,7 +49339,36 @@
               "text": 601509069,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "conditionKey": "target-hp-above-self",
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "maxTriggers": 0,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-rate",
+                    "magnitude": 0.3,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 1
+                  },
+                  "chance": 1,
+                  "conditionKey": "target-hp-above-self"
+                }
+              }
+            ]
           }
         },
         {
@@ -47745,7 +49397,37 @@
               "text": 601509073,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "stat-modifier",
+            "effects": [],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "conditionKey": null,
+                "oncePerBattle": true,
+                "oncePerRound": false,
+                "maxTriggers": 1,
+                "cooldown": 0,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "heal-bonus",
+                    "magnitude": 0.2,
+                    "isPercentage": true
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 2
+                  },
+                  "chance": 1,
+                  "unique": true,
+                  "refresh": true
+                }
+              }
+            ]
           }
         },
         {
@@ -47774,7 +49456,57 @@
               "text": 601509079,
               "detail_text": 0
             },
-            "catalogTypeMatch": true
+            "catalogTypeMatch": true,
+            "effectType": "heal",
+            "targetType": "self",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "heal",
+                  "healType": "percent-attack",
+                  "multiplier": 0.3,
+                  "overheal": false
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-round-start",
+                "condition": null,
+                "conditionKey": "hp-below-30",
+                "cooldown": 0,
+                "maxTriggers": 0,
+                "oncePerBattle": false,
+                "oncePerRound": false,
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "heal",
+                    "healType": "percent-attack",
+                    "multiplier": 0.3,
+                    "overheal": false
+                  },
+                  "duration": {
+                    "durationType": "instant",
+                    "rounds": 0
+                  },
+                  "chance": 1
+                },
+                "priority": 0
+              }
+            ],
+            "notes": "Passive: at round start if HP < 30%, heal self for 30% ATK."
           }
         },
         {
@@ -47796,7 +49528,31 @@
               "run_type": 1
             },
             "abilityDes": null,
-            "catalogTypeMatch": null
+            "catalogTypeMatch": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "multiplier": 2,
+                  "canCrit": true
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Ultimate: metadata fallback (missing description). Implemented as generic 2.0x physical damage single target (requires investigation).",
+            "requiresInvestigation": true
           }
         }
       ]

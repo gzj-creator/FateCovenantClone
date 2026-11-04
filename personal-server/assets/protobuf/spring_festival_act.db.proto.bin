@@ -1,0 +1,18 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 春节活动数据
+message pb_spring_festival_act_data{
+    uint32 act_id = 1;                          // 活动id
+    pb_spring_festival_act_dress dress = 2;     // 装扮数据
+    repeated uint32 got_shop_award = 3;         // 已领取限时商店进度奖励(春节活动商店购买奖励表tid)
+    pb_recharge_limit_info buy_limit_info = 4;  // 礼包限购记录
+    pb_recharge_limit_info skin_buy_limit_info = 5;  // 皮肤抽奖礼包限购记录(临时,因需要热更避免加数据库)
+}
+
+// 装扮阶段数据
+message pb_spring_festival_act_dress{
+    bytes award_state = 1;                      // 装扮奖励领取状态
+    uint32 day_dress_cnt = 2;                   // 当日装扮次数
+    uint64 refresh_sec = 3;                     // 刷新时间
+}

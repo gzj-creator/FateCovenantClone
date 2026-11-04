@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 登录领奖通信请求pb
+message pb_multi_login_award_req{
+    uint32 act_id = 1; // 活动id
+    repeated pb_multi_login_award_req_item req_item_list = 2; // 请求的奖励tid列表
+}
+
+message pb_multi_login_award_req_item{
+    uint32 award_tid = 1; // 第几天的奖励tid配置
+    uint32 hero_tid = 2; // 选择的英雄tid（如果没有配置选择奖励组，则传0）
+}

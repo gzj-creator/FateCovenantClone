@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "project/guild_explore_trial/guild_explore_trial.db.proto.txt";
+
+// 龙息试炼挑战返回
+message pb_guild_explore_trial_fight_back{
+    pb_count_flush atk_info = 1;                // 玩家的挑战信息
+    pb_res_to_client res = 2;                   // 资源改变
+}
+
+// 龙息试炼领奖返回
+message pb_guild_explore_trial_receive_back{
+    pb_guild_explore_trial_receive receive_data = 1;    // 领奖信息
+    pb_res_to_client res = 2;                           // 资源改变
+}
+
+// 龙息试炼请求航会成员挑战信息返回
+message pb_guild_explore_trial_member_back{
+    repeated pb_guild_explore_trial_member member_list = 1;     // 成员列表
+}
+
+// 龙息试炼请求航会成员挑战信息
+message pb_guild_explore_trial_member{
+    uint64 id = 1;                      // 成员id
+    pb_count_flush atk_info = 2;        // 挑战信息
+}
+
+// 龙息试炼退出航会结算返回
+message pb_guild_explore_trial_leave_settle{
+    repeated pb_guild_explore_trial_receive receive_list = 1;    // 领奖信息
+    pb_res_to_client res = 2;                           // 资源改变
+}

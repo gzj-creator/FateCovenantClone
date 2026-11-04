@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/overall_pvp/overall_pvp.db.proto.txt";
+import "project/shop.db.proto.txt";
+import "project/lease/lease.net.proto.txt";
+import "project/hero/hero_lease/hero_lease.db.proto.txt";
+import "project/lineup.db.proto.txt";
+import "project/overall_pvp/overall_final/overall_final.db.proto.txt";
+
+// 淘汰赛 - 购买次数返回
+message pb_overall_pvp_elms_buy_count_back {
+    pb_overall_pvp_count_flush flush = 1; // 新的次数数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 淘汰赛 - 匹配返回
+message pb_overall_pvp_elms_match_back {
+    repeated pb_overall_pvp_elms_match_person match_list = 1; // 匹配列表
+    uint64 cur_rank = 2; // 新的当前排名
+}
+
+// 淘汰赛 - 分组变更推送
+message pb_overall_pvp_elms_group_change_push {
+    bool is_win = 1; // 当前分组
+    uint64 rank = 2; // 当前排名
+}
+
+// 淘汰赛 - 战斗返回
+message pb_overall_pvp_elms_fight_back {
+    pb_res_to_client res = 1; // 资源改变
+    repeated pb_overall_pvp_elms_match_person match_list = 2; // 新匹配列表
+    uint64 cur_rank = 3; // 新的当前排名
+}
+
+// 预选赛 - 玩家主动发起匹配的返回
+message pb_overall_pvp_prelims_refresh_opponent_back {
+    int32 match_times = 1; // 匹配次数
+    repeated pb_overall_pvp_pre_match_person match_person = 2; //匹配对手数据
+}
+
+// 任务 - 领取奖励返回
+message pb_overall_pvp_rev_task_award_back {
+    pb_overall_pvp_task_role info = 1; // 数据
+    pb_res_to_client res = 2; //资源改变
+}
+
+// 购买挑战次数返回
+message pb_overall_pvp_buy_times_back {
+    int32 buy_challenge_times = 1; // 新挑战次数
+    int32 buy_match_times = 2; // 新匹配次数
+    pb_res_to_client res = 3; //资源改变
+}
+
+// 预赛战斗返回
+message pb_overall_pvp_prelims_fight_back {
+    repeated pb_overall_pvp_pre_match_person match_person = 1; //匹配对手数据
+    int32 old_atk_score = 2; // 进攻方战斗前积分
+    int32 new_atk_score = 3; // 进攻方战斗后积分
+    int32 old_def_score = 4; // 防守方战斗前积分
+    int32 new_def_score = 5; // 防守方战斗后积分
+}
+
+// 领取队伍数量变化奖励返回
+message pb_overall_pvp_team_num_award_back {
+    pb_res_to_client res = 1; //资源改变
+    repeated int32 team_award_list = 2; // 领取的奖励id
+}
+
+// 预赛 - 玩家匹配对手数量不足时的特殊匹配的返回
+message pb_overall_pvp_prelims_special_match_back {
+    repeated pb_overall_pvp_pre_match_person match_person = 1; //匹配对手数据
+}
+
+// 进入功能界面
+message pb_overall_pvp_enter_view_back {
+    pb_lease_update_ret lease_update = 1; // 租借重置
+    pb_shop_info_list shop_info_list = 2; // 商店信息
+    pb_overall_pvp_pre_person pre_person = 3; // 预赛个人信息
+    pb_res_to_client res = 4; //资源变化
+    bool is_init = 5; // 是否是初始化操作,
+    pb_role_lease_hero lease_hero = 6;      // 租借英雄
+    repeated pb_lineup lineup_list = 7;     // 租借英雄阵容
+}
+
+// 滚动条
+message pb_overall_pvp_scroll {
+    string win_role = 1; // 胜利者
+    string lose_role = 2; // 失败者
+    int32 bot_id = 3; //机器人id
+}
+
+// 滚动条
+message pb_overall_pvp_scroll_list {
+    repeated pb_overall_pvp_scroll scroll_list = 1; // 滚动条
+}
+
+// 主动调用功能数据返回
+message pb_overall_pvp_get_info {
+    pb_overall_pvp_pre_person pre_person = 1; // 预赛个人信息
+    pb_overall_pvp_elms_person elms_person = 2; // 淘汰赛个人信息
+    pb_overall_final_person final_person = 3; // 决赛个人信息
+    pb_overall_pvp_task_role task_role = 4; // 任务信息
+    pb_overall_pvp_data pvp_data = 5; // 功能数据
+    pb_overall_pvp_preview_person preview_person = 6; // 预告个人信息
+    pb_overall_pvp_person pvp_person = 7; // 玩家个人数据 - 在整个功能都需要用到的数据可以放这里面
+    pb_overall_pvp_enter_view_back enter_view_back = 8; // 进入功能界面
+    pb_overall_pvp_show_person show_person = 9; // 显示个人信息
+    pb_overall_pvp_guess_person guess_person = 10; //玩家竞猜数据
+}
+
+// 战斗胜负领取奖励请求
+message pb_overall_pvp_guess_req {
+    int32 guess_type = 1; // 竞猜类型
+    int32 guess_turn = 2; // 轮次
+    int64 guess_role_id = 3; // 竞猜id
+}
+
+// 领取竞猜奖励的返回
+message pb_overall_pvp_guess_award_back {
+    pb_res_to_client res = 1; //资源改变
+    pb_overall_pvp_guess_type guess_type = 2; // 当前类型竞猜数据
+}
+
+// 战斗胜负竞猜请求
+message pb_overall_pvp_fight_guess_req {
+    int32 guess_turn = 1; // 轮次
+    int64 guess_role_id = 2; // 竞猜id
+}
+
+// 排行榜竞猜请求
+message pb_overall_pvp_rank_guess_req {
+    repeated int64 role_list = 1; // 竞猜id列表
+}

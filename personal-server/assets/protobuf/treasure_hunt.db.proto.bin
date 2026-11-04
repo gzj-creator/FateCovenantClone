@@ -1,0 +1,45 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+
+// 玩家挖宝数据
+message pb_treasure_hunt_role{
+    pb_treasure_hunt_res res = 1;              // 资源数据
+    repeated uint32 award_num_list = 2;        // 宝箱数量列表
+    uint32 box_award_num = 3;                  // 已经获得宝箱奖励的次数
+    uint64 last_award_coin_time = 4;           // 上一次奖励代币的时间
+    repeated pb_res_obj all_award_list = 5;             // 获得的所有奖励
+    uint64 daily_flush_time = 6;               // 每次状态刷新时间
+    uint32 daily_deleted_time = 7;             // 每日已经删除的次数
+    uint32 normal_award_num = 8;               // 获得普通奖励的数量
+    repeated pb_res_obj box_award_list = 9;    // 宝箱奖励列表
+}
+
+// 挖宝地图
+message pb_treasure_hunt_map{
+    repeated pb_treasure_hunt_grid grid_list = 1;    // 所有格子数据
+    uint32 refresh_time = 2;                         // 已经刷新次数（每一列刷新1次会增加1）
+    uint32 collection_flush_num = 3;                 // 已经刷新收藏品奖励数量
+    uint32 mission_index = 4;                        // 当前是第N关（刚开始是1）
+}
+
+// 挖宝格子
+message pb_treasure_hunt_grid{
+    uint32 level = 1;     // 格子等级
+    uint64 res_tid = 2;   // 奖励道具的TID
+    uint32 index = 3;     // 格子索引
+    uint32 res_num = 4;   // 奖励道具数量
+    uint32 hp = 5;        // 格子气血
+}
+
+// 铲子包裹信息
+message pb_treasure_hunt_res{
+    repeated pb_treasure_hunt_shovel shovel_list = 1;       // 铲子列表
+}
+
+// 挖宝铲子
+message pb_treasure_hunt_shovel{
+    uint32 tid = 1;         // tid
+    uint32 level = 2;       // 等级
+    uint32 index = 3;       // 在包裹内的位置
+    uint32 hp = 4;          // 气血（这个值默认都是0，挖宝的时候根据等级临时赋值下，不然还要处理升级时改变，为了计算过程中方便些放到这里）
+}

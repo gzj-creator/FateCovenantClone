@@ -1,0 +1,61 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/common_map/common_map.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 地图初始化返回数据
+message pb_common_map_init_back {
+    bytes fun_bin = 1; // 玩法返回的数据
+    pb_res_to_client res = 2; // 资源改变数据
+}
+
+// 地图节点触发 （路径触发、事件触发）
+message pb_common_map_node_trigger {
+    uint32 map_tid = 1; // 地图表tid
+    uint32 sub_id = 2; // 玩法内的子编号
+    bool is_line = 3; // 是否为路径
+    uint32 x = 4;   // x轴
+    uint32 y = 5;   // y轴
+    bytes param = 6; // 参数（剧情、钥匙事件处理请求pb，默认为int）
+}
+
+// 地图节点触发后返回数据
+message pb_common_map_node_trigger_back {
+    pb_res_to_client res = 1; // 资源消耗
+    uint32 map_tid = 2; // 地图表tid
+    uint32 sub_id = 3; // 玩法内的子编号
+    pb_common_map_node trigger_node = 4; // 触发后节点的最新数据
+    repeated uint32 add_buff_list = 5;   // 触发后增加的BUFF列表
+}
+
+
+// 钥匙组随机事件节点 - 触发参数
+message pb_common_map_random_key_trigger_param {
+    repeated uint32 mix_num_list = 1; // 合成万能钥匙的3中钥匙消耗列表[Num1, Num2, Num3]（传空列表表示放弃合成）
+    pb_u32_kv trans_key = 2; // 转换钥匙的消耗（传nil表示放弃转换）
+    repeated uint32 change_key_list = 3; // 交换钥匙的列表[钥匙A,钥匙B]（传空列表表示放弃转换）
+    bool ignore_average = 4; // 是否放弃平均钥匙处理事件
+}
+
+// 小游戏事件节点 - 触发参数
+message pb_common_map_game_trigger_param {
+    repeated uint32 award_tid_list = 1; // 获得的小游戏奖励tid列表
+}
+
+// 魔灵玩法路径 - 触发参数
+message pb_common_map_line_trigger_param {
+    repeated pb_res_obj sub_res_list = 1; // 钥匙消耗列表
+}
+
+// 地图扫荡触发
+message pb_common_map_sweep_trigger {
+    uint32 map_tid = 1; // 地图表tid
+    uint32 sub_id = 2; // 玩法内的子编号
+}
+
+// 地图扫荡返回
+message pb_common_map_sweep_trigger_back {
+    pb_res_to_client res = 1; // 资源消耗
+    pb_common_map map_info = 2; // 地图数据
+}

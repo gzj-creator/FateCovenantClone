@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+
+// 投票信息
+message pb_guild_vote_list {
+  repeated pb_guild_vote_info vote_list = 1;
+}
+
+// 单个类型投票数据
+message pb_guild_vote_info {
+  uint64 type = 1;    // 投票类型
+  repeated pb_guild_vote_member member_vote = 2; // 单个成员投票数据
+  uint64 deadline = 3;    // 截止时间
+  uint64 start_time = 4;    // 开始时间
+}
+
+// 各成员投票信息
+message pb_guild_vote_member {
+  uint64 role_id = 1;
+  uint64 vote = 2;    // 赞成、反对、角色id等
+}

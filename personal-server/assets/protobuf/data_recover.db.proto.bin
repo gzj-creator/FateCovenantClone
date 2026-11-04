@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 数据修复的存储数据
+message pb_recover_data{
+  repeated pb_recover_ver recover_list = 1;    // 数据修复的版本列表
+}
+
+// 数据修复的版本定义
+message pb_recover_ver{
+  int64 id = 1;    // 修复的id，和数据修复表中的标识定义符对应
+  int64 ver = 2;    // 数据修复的版本号
+  int64 old_ver = 3; // 上一个数据版本号
+}

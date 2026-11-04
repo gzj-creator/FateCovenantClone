@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "project/count_statistics/count_statistics.db.proto.txt";
+
+// 货币资源存储结构
+// 注意：必须包含res.db中pb_res_obj的字段
+message pb_currency_res_obj {
+    int64 tid = 1;
+    int64 num = 2;      // 总数量
+    int64 pay_num = 3;  // 付费所得数量
+}
+
+message pb_currency_data {
+    repeated pb_currency_res_obj res_list = 1;      // 货币资源列表
+    pb_count_statics_data statistics = 2;           // 次数统计数据
+}

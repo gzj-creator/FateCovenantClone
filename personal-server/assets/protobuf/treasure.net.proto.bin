@@ -1,0 +1,33 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/treasure/treasure.db.proto.txt";
+
+// 秘宝升星回复
+message pb_treasure_star_ret{
+    pb_treasure_card card = 1;      // 新秘宝信息
+    pb_res_to_client res = 2;       // 资源改变信息
+    pb_treasure_box box = 3;        // 秘宝魔法罐信息
+}
+
+// 抽卡阶段奖励领取回复
+message pb_treasure_draw_phase_award_back{
+    pb_treasure_draw draw = 1;                  // 抽卡信息
+    pb_res_to_client res_change = 2;            // 奖励资源
+}
+
+// 秘宝实力对比数据
+message pb_treasure_player_data_block{
+    repeated pb_treasure_card treasure_list = 1;                 // 秘宝列表
+    repeated pb_treasure_suit suit_list = 2;                     // 套装列表
+}
+
+// 请求秘宝魔法罐奖励
+message pb_treasure_box_req{
+    repeated int64 treasure_tid_list = 1; // 秘宝tid列表
+}
+
+// 秘宝奖励领取返回
+message pb_treasure_box_rsp{
+    repeated pb_treasure_box treasure_boxes_change = 1; // 更变的秘宝魔法罐列表
+    pb_res_to_client res_change = 2; // 资源变化
+}

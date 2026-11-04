@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/online_gift.db.proto.txt";
+
+//领取奖励返回数据
+message pb_online_gift_back{
+    pb_online_gift_info online_gift = 1; //在线礼包
+    pb_res_to_client res = 2;         //奖励
+}

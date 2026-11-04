@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 囤囤乐 - 玩家数据列表
+message pb_hoard_wheel_person_list {
+    repeated pb_hoard_wheel_person person_list = 1; //数据列表
+}
+
+// 囤囤乐 - 玩家数据（单个版本）
+message pb_hoard_wheel_person {
+    int32 version = 1; //版本号
+    int32 pool_id = 2; //选择的抽卡池
+    int32 pile_draw_times = 3; // 活动期间累积抽奖次数
+    repeated pb_hoard_wheel_pool pool_list = 4; //抽卡类型数据列表
+    int32 reset_times = 5; //进度奖励重置次数
+    repeated int32 daily_award_list = 6;//每日任务奖励
+    repeated int32 period_award_list = 7;//周期性任务奖励
+    repeated int32 reset_award_list = 8;//可重置进度奖励
+    int64 ref_daily_time = 9;//每日任务刷新时间
+    pb_recharge_limit_info record = 10;          // 付费购买记录
+}
+
+// 囤囤乐 - 抽卡类型数据
+message pb_hoard_wheel_pool {
+    int32 pool_id = 1;//抽卡池id
+    int32 prize_id = 2;//玩家选择的保底奖励id
+}

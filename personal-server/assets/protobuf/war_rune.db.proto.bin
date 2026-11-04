@@ -1,0 +1,35 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+import "project/attribute_develop/attribute_develop.db.proto.txt";
+import "project/attribute/attribute.db.proto.txt";
+
+message pb_war_rune_item {
+    uint32 tid = 1;        //配置表id
+    uint32 num = 2;        //数量（定义该字段的目的是为了和pb_res_obj的结构一致）
+    uint32 quality = 3;    //品质
+    uint32 stage = 4; //当前阶位
+    uint32 level = 5; //当前等级
+    uint32 star = 6; //当前等级
+    pb_attr_develop_info attr_info = 7; //养成属性信息
+    repeated pb_attr_item level_attr_list = 8; //等级属性列表
+    repeated pb_guild_rune_stone_slot rune_stone_slots = 9; //源石槽位列表
+}
+
+//兵符格子
+message pb_war_rune_grid{
+    uint32 type = 1;        //兵符格子类型（位置）
+    uint32 rune_tid = 2; //兵符物品的tid
+}
+
+//兵符总数据库
+message pb_war_rune {
+    repeated pb_war_rune_item runes = 1;    //已鉴定兵符背包
+    repeated pb_war_rune_grid grids = 2;   //格子数据列表
+}
+
+//公会守护源石槽位
+message pb_guild_rune_stone_slot {
+    uint32 index = 1; // 槽位索引
+    uint64 tid = 2; // 源石tid
+}

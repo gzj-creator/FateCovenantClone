@@ -1,0 +1,56 @@
+syntax = "proto3";
+import "project/leader_equip/leader_equip.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 装备穿戴请求
+message pb_leader_equip_wear_req {
+    repeated pb_leader_equip_wear wear_list = 1;    // 请求穿戴的装备
+}
+
+message pb_leader_equip_wear {
+    int64 uid = 1;                      // 请求穿戴的装备uid
+    int32 type = 2;                     // 请求穿戴的装备类型tid(槽位位置)
+}
+
+// 升星返回
+message pb_leader_equip_wear_back {
+    repeated pb_leader_equip_slot slots = 1;          // 装备的槽位信息
+    repeated pb_leader_equip  add_equip_list = 2;         // 添加的装备数据
+    repeated pb_leader_equip  sub_equip_list = 3;         // 删去的装备数据
+}
+
+// 升星返回
+message pb_leader_equip_up_level_back {
+    pb_leader_equip_slot slot = 1;      // 升级后的槽位信息
+    pb_res_to_client res = 2;           // 资源改变
+}
+
+// 升星请求
+message pb_leader_equip_up_star_req {
+    int64 uid = 1;                      // 请求升星的装备uid
+    repeated int64 cost_uid_list = 2;   // 消耗的装备uid列表
+}
+
+// 单个装备操作返回
+message pb_leader_equip_back {
+    pb_leader_equip  equip = 1;         // 改变的装备数据
+    pb_res_to_client res = 2;           // 资源改变
+}
+
+// 装备打造返回
+message pb_leader_equip_forge_back{
+    pb_leader_equip_forge leader_equip_forge = 1;  // 团长装备打造信息
+    bool is_wish_hit = 2;                     // 本次是否祝福暴击
+}
+
+// 增幅返回
+message pb_leader_equip_intensify_back {
+    bool success = 1;                   // 是否成功
+    pb_res_to_client res = 2;           // 资源变化
+    pb_leader_equip  equip = 3;         // 改变的装备数据
+}
+
+// 主角装备玩家数据
+message pb_leader_equip_role_data{
+    repeated pb_leader_equip_slot slots = 1;          // 装备的槽位信息
+}

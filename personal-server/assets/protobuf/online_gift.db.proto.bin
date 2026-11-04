@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message pb_online_gift_info{
+    bool open = 1;                  //是否开启(主要用于服务端登出时判断是否要累计时长用)
+    uint32 last_receive_id = 2;     //上一次领奖的id
+    uint64 receive_time = 3;        //领取时间
+    uint64 acc_sec = 4;             //累计时长(本次登录以前、并且没有使用过的)
+    uint64 period = 5;              //当前期数(领完本期的奖励后期数+1,不管是否下一期已经解锁)
+    uint64 open_day_index = 6;      //功能开启时那天的天数索引（用于判断当前时间开到了第几期）
+}

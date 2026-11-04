@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "core/db.db.proto.txt";
+
+// 抽奖信息
+message pb_role_random_draw_info{
+    repeated pb_role_random_draw_item draw_list = 1;    // 所有的抽奖信息
+}
+
+// 每个抽奖
+message pb_role_random_draw_item{
+    uint32 draw_lib = 1;        // 抽奖库
+    uint64 wish_tid = 2;        // 选择的资源id
+}
+

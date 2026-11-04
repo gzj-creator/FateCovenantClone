@@ -1,0 +1,167 @@
+syntax = "proto3";
+import "general/res.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/guild_trial/guild_trial.db.proto.txt";
+
+// 登录数据：服务器数据二进制、航会数据二进制、角色数据二进制
+// 跨天刷新数据：服务器数据二进制、航会数据二进制
+
+// ------------- 救援令 ------------------------------------------
+
+// 救援令界面信息
+message pb_guild_trial_help_info{
+  repeated pb_guild_trial_help help_list = 1;//救援列表
+}
+
+// 救援信息
+message pb_guild_trial_help{
+  uint64 role_id = 1;//角色id
+  uint32 helped_times = 2;//被救援次数
+}
+
+// 请求救援日志返回
+message pb_guild_trial_help_log_toc{
+  repeated pb_guild_trial_help_log log_list = 1;//日志列表
+}
+
+// 请求赠送救援次数返回
+message pb_guild_trial_help_toc{
+  bool exception = 1;//是否异常
+  pb_res_to_client res = 2;//资源变化
+}
+
+// 赠送救援次数后，推送给对方
+message pb_guild_trial_help_push {
+    repeated pb_guild_trial_helped helped_list = 1;//被救援次数列表
+    repeated pb_guild_trial_help_log help_log_list = 2;//救援日志
+}
+
+// ------------- 宝箱 ------------------------------------------
+
+// 请求领取宝箱
+message pb_guild_trial_gain_box_tos{
+    uint64 camp = 1; // 阵营
+    uint32 mon_tid = 2;//航会试炼怪物表id
+    uint32 index = 3;//宝箱下标
+}
+
+// 请求领取宝箱返回
+message pb_guild_trial_gain_box_toc{
+    uint32 box_tid = 1;//航会试炼宝箱表id（随机到哪个宝箱）
+    pb_res_to_client res = 2;//资源改变
+    pb_guild_trial_r_box_lv role_box_lv = 3;//角色身上记录的单个关卡宝箱领取数据
+}
+
+// （领取宝箱后）实时推送给航会其他成员
+message pb_guild_trial_gain_box_push {
+    uint64 camp = 1; // 阵营
+    uint32 mon_tid = 2; // 哪个怪物
+    pb_guild_trial_box box = 3; // 领取信息
+}
+
+// ------------- 战斗 ------------------------------------------
+
+// 战斗请求
+message pb_guild_trial_fight_tos{
+  uint32 group = 1;//航会试炼怪物组表id
+  uint32 mon_tid = 2;//航会试炼怪物表id
+  uint32 mon_diff_tid = 3;//航会试炼怪物难度表
+
+  // suppress_times 值大于0，表示不走战斗流程，直接进行胜利结算
+  uint32 suppress_times = 4;//压制次数:击败该怪物之后，可以请求压制，不走战斗流程，直接进行胜利结算
+}
+
+// 战斗返回
+message pb_guild_trial_fight_toc{
+    pb_res_to_client res = 1;//资源改变
+    uint32 defeat_num = 2;//击败英雄数量
+
+    uint32 add_score = 3; // 玩家此次获得的压制值
+    // 如果战斗失败，则这个值是接受失败应该获得的积分，实际还未获得
+
+    // 如果mon_group为nil, 则不更新
+    pb_guild_trial_g_mon_group mon_group = 4;//航会怪物组
+
+    pb_guild_trial_box_mon box_mon = 5;//激活的宝箱（只有打死怪物时才有此字段值）
+
+    repeated pb_res_obj fight_award = 6; // 挑战奖励
+    repeated pb_guild_trail_defeat_mon defeat_mon_list = 7;//击败过的怪物列表:为空客户端就不需要更新
+
+    pb_guild_trial_r role_trial = 8; // 角色航会试炼信息
+}
+
+// 接受挑战失败返回
+message pb_guild_trial_rev_fail_toc{
+    pb_res_to_client res = 1;//资源改变
+    uint32 add_score = 2;//玩家此次获得的压制值
+    pb_guild_trial_g_mon_group mon_group = 3;//航会怪物组
+
+    pb_guild_trial_box_mon box_mon = 4;//激活的宝箱（只有打死怪物时才有此字段值）
+
+    pb_guild_trial_r role_trial = 5; // 角色航会试炼信息
+}
+
+// 实时推送怪物压制值
+message pb_guild_trial_mon_score_toc{
+  uint32 group = 1;//航会试炼怪物组表id
+  uint32 mon_tid = 2;//航会试炼怪物表id
+  uint32 mon_score = 3;//该怪物当前压制值
+  // 客户端自己判断是否压制，如果压制就增加宝箱信息，更新红点
+
+  // 如果mon_group为nil, 则不更新
+  pb_guild_trial_g_mon_group mon_group = 4;//航会怪物组
+
+  pb_guild_trial_box_mon box_mon = 5;//激活的宝箱（只有打死怪物时才有此字段值）
+}
+
+// 设置帮助日志已读标记返回
+message pb_guild_trial_read_help_log_req {
+    uint32 type = 1;        // 帮助/被帮助
+    uint64 role_id = 2;     // 角色id
+}
+
+// 设置帮助日志已读标记返回
+message pb_guild_trial_read_help_log_rsp {
+    repeated pb_guild_trial_help_log help_log_list = 1; //
+}
+
+// 感激推送
+message pb_guild_trial_read_help_log_rev {
+    pb_guild_trial_help_log log = 1;   // 更新的日志
+    repeated pb_guild_trial_help_log help_log_list = 2; // 新的日志列表
+}
+
+// 小助手自动战斗返回
+message pb_guild_trial_assistant_fight_rsp {
+    pb_guild_trial_r trial_r = 1;
+    pb_guild_trial_g trial_g = 2;
+    repeated pb_res_to_client res_changes = 3;
+}
+
+// 小助手自动送救援令
+message pb_guild_trial_assistant_help_rsp {
+    pb_guild_trial_r trial_r = 1;
+    repeated pb_res_to_client res_changes = 2;
+}
+
+// 小助手自动领取宝箱
+message pb_guild_trial_assistant_box_rsp {
+    pb_guild_trial_r trial_r = 1;   // 个人数据
+    pb_guild_trial_g trial_g = 2;   // 公会数据
+    repeated pb_guild_trial_assistant_box_award award_list = 3; // 领取的宝箱
+}
+
+// 单个宝箱领取数据
+message pb_guild_trial_assistant_box_award {
+    pb_res_to_client res_change = 1;
+    uint32 mon_tid = 2; // 怪物tid
+    uint32 box_index = 3; // 宝箱索引
+    uint32 camp = 4;    // 阵营
+}
+
+
+
+
+
+
+

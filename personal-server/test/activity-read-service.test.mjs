@@ -1,45 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
 import { createGameCodec } from '../protocol/game-codec.mjs';
-import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createActivityCalendar } from '../game/activity-calendar.mjs';
 import { createActivityReadService } from '../game/activity-read-service.mjs';
+import { createGameFixture } from './helpers/game-fixture.mjs';
 
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
 const codec = createGameCodec();
 const tables = readGameTables();
 const SERVER_OPENED_AT = 1792789200;
 const DAY = 86400;
 
 function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-fishing-'));
-  const file = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, file);
-  // The handoff database is also used for manual acceptance and can carry a
-  // later server-opening timestamp. Normalize the disposable fixture so this
-  // test remains deterministic without changing the shared evidence file.
-  const fixture = new DatabaseSync(file);
-  const update = fixture.prepare('UPDATE roles SET metadata_json=? WHERE role_id=?');
-  for (const row of fixture.prepare('SELECT role_id,metadata_json FROM roles').all()) {
-    const metadata = JSON.parse(row.metadata_json);
-    metadata.serverOpenedAt = SERVER_OPENED_AT;
-    update.run(JSON.stringify(metadata), row.role_id);
-  }
-  fixture.close();
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-fishing-', serverOpenedAt: SERVER_OPENED_AT });
   let nowSeconds = initialSeconds;
-  const openStore = () => {
-    const opened = createGameStore({ databasePath: file, codec, serverOpenedAt: SERVER_OPENED_AT });
-    // The saved fixture is already schema v8, so pin its persisted opening time
-    // instead of relying on the one-time v7 migration to replace the value.
-    opened.transaction(model => { model.state.serverOpenedAt = SERVER_OPENED_AT; });
-    return opened;
-  };
-  let store = openStore();
+  let store = fixture.store;
   const calendar = createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
   const make = () => createActivityReadService({
     codec,
@@ -50,14 +25,12 @@ function setup(t, initialSeconds = SERVER_OPENED_AT + 3600) {
     random: () => 0.5
   });
   let service = make();
-  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
     get store() { return store; },
     get service() { return service; },
     setNow(seconds) { nowSeconds = seconds; },
     reopen() {
-      store.close();
-      store = openStore();
+      store = fixture.open();
       service = make();
     }
   };
@@ -168,6 +141,7 @@ test('batch fishing consumes available bait and records every catch atomically',
   assert.equal(response.fish_list.length, 10);
   assert.equal(response.data.get_num, '30');
   assert.equal(response.fish_qte_list.every(Boolean), true);
+  assert.equal(response.res.changes.find(change => change.tid === '821202').diff_num, '-10');
   assert.equal(resource(env.store, 821202), 0n);
   assert.throws(
     () => env.service.execute(110311, codec.pack('pb_fishing_act_batch_get_req', { act_id: 1074003, map_id: 201 })),

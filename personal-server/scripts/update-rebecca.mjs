@@ -1,6 +1,7 @@
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-const FILE = 'F:/projects/FateCovenantClone/personal-server/config/skill-database.json';
+const FILE = fileURLToPath(new URL('../config/skill-database.json', import.meta.url));
 const db = JSON.parse(fs.readFileSync(FILE, 'utf8'));
 const hero = db.heroes.find(h => h.id === 2040201);
 if (!hero) { console.error('hero not found'); process.exit(1); }

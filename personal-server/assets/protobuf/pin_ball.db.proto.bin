@@ -1,0 +1,23 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+import "project/mini_game/mini_game.db.proto.txt";
+
+// 活动 - 角色数据
+message pb_act_pin_ball_role{
+    pb_recharge_limit_info buy_limit_info = 1; //礼包限购记录
+    uint32 total_play_count = 2; //总游玩次数
+    uint32 today_play_count = 3; //今日游玩次数
+    uint64 play_ref_time = 4; //最近一次游玩时间
+    pb_mini_game_pin_ball ball_info = 5; //弹球小游戏基础数据
+    bytes reward_bin = 6; //奖励领取记录
+    uint32 active_progress = 7; // 当前活动进度值
+    uint64 active_ref_time = 8; // 进度刷新时间
+    uint32 version = 9; // 版本号
+}
+
+// 活动 - 航会数据
+message pb_act_pin_ball_guild{
+    uint32 total_play_count = 1; //总游玩次数
+    uint32 red_packet_count = 2; //触发红包的次数
+    uint64 refresh_time = 3; //刷新时间（每天重置保底和红包次数）
+}

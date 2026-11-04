@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// 启程礼包数据
+message pb_departure_gift_info{
+    int32 tid = 1;  //付费表tid
+    int32 last_buy_seconds = 2; //上次购买时间
+    int32 buy_times = 3; //已购买次数
+}

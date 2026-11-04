@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+// 缓存数据 - 通信请求
+message pb_function_cache_req {
+    uint32 type = 1; //功能缓存类型表id
+    repeated pb_function_cache_req_item item_list = 2; //请求数据列表
+    repeated string name_list = 3; //客户端调用模块信息列表
+}
+
+// 缓存数据 - 通信请求单个数据
+message pb_function_cache_req_item {
+    uint64 id = 1; //功能的ID，比如玩家ID或航会ID
+    repeated uint32 block_id_list = 2; //数据块ID列表
+}
+
+// 缓存数据 - 通信返回
+message pb_function_cache_back {
+    repeated pb_function_cache_back_item item_list = 2; //返回数据列表
+}
+
+// 缓存数据 - 通信返回
+message pb_function_cache_back_item {
+    uint64 id = 1; //功能的ID，比如玩家ID或航会ID
+    repeated pb_function_cache_back_block block_list = 2; //数据块列表
+}
+
+// 缓存数据 - 通信返回数据块
+message pb_function_cache_back_block {
+    uint32 block_id = 1; //数据块ID
+    bytes block_bin = 2; //数据块数据
+}

@@ -1,0 +1,168 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/guild_racing/guild_racing.db.proto.txt";
+import "core/db.db.proto.txt";
+
+// 进入玩法获取的数据
+message pb_guild_racing_enter_info {
+    repeated pb_guild_racing_g info_list = 2; //当前参加了活动的航会数据列表
+    repeated pb_guild_racing_rank_item rank_list = 3; //当前已经跑完的航会榜单数据
+}
+
+// 达到终点，推送的数据 （航会达到终点后，推给本航会所有成员）
+message pb_guild_racing_arrive_info {
+    uint64 award_tid = 1; // 排名奖励tid
+    bool score_mark = 2; // 积分奖励标记（在积分榜单上时为true）
+    uint64 rank = 3; // 当前排名
+}
+
+// 活动结束，需要推给地图上所有的玩家数据
+message pb_guild_racing_over_info {
+    repeated pb_guild_racing_rank_item rank_list = 1; //结算后的排行数据
+}
+
+// 报名时推送地图玩家的数据
+message pb_guild_racing_attend_push {
+    uint64 guild_id = 1; //航会ID
+    uint64 role_id = 2; //玩家ID
+    uint64 power = 3; //战力
+    string guild_name = 4; //公会名字
+    uint64 speed = 5; //速度
+    uint64 refresh_time = 6; //刷新时间(毫秒)
+    string role_name = 7; //角色名字
+    uint32 car_tid = 8; // 赛车Tid
+    uint64 move_meter = 9; //移动的毫米数
+    uint64 fix_speed = 10; //玩家修正速度
+}
+
+// 助威返回给自己的数据
+message pb_guild_racing_support {
+    pb_guild_racing_r role_info = 1; //玩家竞速数据
+    pb_res_to_client res = 2; //资源变化数据
+}
+
+// 助威推送给地图上玩家的数据
+message pb_guild_racing_support_push {
+    uint64 guild_id = 1; //航会ID
+    uint64 role_id = 2; //玩家ID
+    uint64 move_meter = 3; //移动的毫米数
+    uint64 speed = 4; //速度
+    string guild_name = 5; //公会名字
+    uint64 refresh_time = 6; //刷新时间(毫秒)
+}
+
+// 道具使用请求数据格式
+message pb_guild_racing_buff_use_req {
+    uint32 buff_tid = 1; //Buff道具的tid
+    uint32 use_num = 2; //使用个数
+    uint64 use_guild_id = 3; //使用方航会ID
+    uint64 target_guild_id = 4; //使用目标航会ID
+}
+
+// 使用道具后返回给自己的数据
+message pb_guild_racing_buff_use_back {
+    pb_guild_racing_r role_info = 1; //玩家竞速数据
+}
+
+// 使用道具后推送的数据
+message pb_guild_racing_buff_use_push {
+    uint64 use_guild_id = 1; //使用方的航会ID
+    uint64 target_guild_id = 2; //目标的航会ID
+    uint32 buff_tid = 3; //使用的道具tid
+    uint32 use_num = 4; //使用的个数
+}
+
+// 投票后的推送的数据
+message pb_guild_racing_vote_push {
+    uint32 event_tid = 1;
+    repeated pb_u32_kv random_buff_list = 3;
+}
+
+// 参赛玩家离开航会推送消息
+message pb_guild_racing_role_leave_push {
+    repeated uint64 role_id_list = 1; //离开的参赛玩家ID列表
+    uint64 guild_id = 2; //航会ID
+    bool is_dissolve = 3; //是否是遣散航会操作
+    uint64 fix_speed = 4; //基于玩家人数和战力计算出的一个修正速度
+    uint64 move_meter = 5; //移动的毫米数
+    uint64 refresh_time = 6; //刷新时间(毫秒)
+}
+
+message pb_guild_racing_login {
+    pb_guild_racing_r role_data = 1; //竞速角色数据
+    pb_guild_racing_time time_info = 2; //活动时间数据
+    bool is_arrive = 3; //航会是否已到达终点
+    pb_guild_racing_time next_time_info = 4; //下次活动时间数据
+    uint32 award_tid = 5; //当前自己航会可以领取的奖励tid
+    bool score_mark = 6; //标记是否有积分奖励可以领取
+}
+
+// 道具生效时，推送的数据
+message pb_guild_racing_buff_trigger {
+    uint64 guild_id = 1; //航会ID
+    repeated uint32 buff_tid_list = 2; // 道具tid
+    repeated pb_guild_racing_down add_down_list = 3; //新增的下船玩家列表
+    repeated pb_guild_racing_bar add_bar_list = 4; //新增的车把使用情况列表
+    uint64 defense_time = 5; //最新屏障失效时间
+    uint64 bomb_time = 6; //最新炸弹失效时间
+    uint64 refresh_time = 7; //刷新时间(毫秒)
+    pb_guild_racing_event_monster monster_data = 8; // 海怪数据
+    uint64 move_meter = 9; //移动的毫米数
+    uint64 stone_time = 10; //最新障碍物失效时间
+}
+
+// 水怪生效事件数据推送
+message pb_guild_racing_monster_event_trigger {
+    uint64 guild_id = 1; // 触发的航会id
+    pb_guild_racing_event_monster monster_data = 2; // 当前海怪事件数据
+}
+
+// 投票BUFF生效事件数据推送
+message pb_guild_racing_vote_event_active {
+    uint64 guild_id = 1; // 生效的航会id
+    pb_guild_racing_vote_buff vote_buff_info = 2; // 当前海怪事件数据
+}
+
+// 参赛或助威成员基础信息
+message pb_guild_racing_role_info_list {
+    repeated pb_guild_racing_role_info role_list = 1; // 角色列表
+}
+
+// 参赛或助威成员基础信息列表
+message pb_guild_racing_role_info {
+    uint64 role_id = 1; // 角色ID
+    string role_name = 2; // 角色名
+    uint32 support_num = 3; // 角色助威次数
+}
+
+// 玩家参加后返回给客户端的数据
+message pb_guild_racing_attend_back {
+    pb_guild_racing_g guild_info = 1; //航会的数据
+    pb_guild_racing_r role_info = 2; //自己的数据
+    pb_res_to_client res = 3; //资源改变数据
+}
+
+// 玩家领奖后返回数据
+message pb_guild_racing_rev_award_back {
+    uint64 next_prepare_time = 1; //下一次比赛的报名时间
+    pb_res_to_client res = 2; //资源变化数据
+}
+
+// 竞速道具使用推送
+message pb_guild_racing_msg_push{
+    uint32 buff_id = 1; // 技能ID
+    string use_guild_name = 2; // 使用道具的航会名
+    string use_role_name = 3; // 使用道具的玩家名
+    string target_guild_name = 4; // 目标航会名
+    string target_role_name = 5; // 目标玩家名
+    uint64 use_guild_id = 6; // 使用方航会ID
+    uint64 use_role_id = 7; // 使用方玩家ID
+    string target_guild_id = 8; // 目标航会ID
+    string target_role_id = 9; // 目标玩家ID
+}
+
+// 玩家领道具奖励后返回数据
+message pb_guild_racing_rev_buff_back {
+    uint64 output_award_time = 1; //下一次比赛的报名时间
+    pb_res_to_client res = 2; //资源变化数据
+}

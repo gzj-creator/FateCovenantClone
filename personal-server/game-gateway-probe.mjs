@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import { createHash } from 'node:crypto';
 import protobuf from 'protobufjs';
+import { protocolAsset } from './assets.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from './game-framing.mjs';
 import { createServerHandshakeChallenge } from './game-handshake.mjs';
 
@@ -23,7 +24,7 @@ function integer(value, name, maximum) {
 function loadSchemas() {
   const root = new protobuf.Root();
   for (const [name, expectedHash] of SCHEMAS) {
-    const source = fs.readFileSync(new URL('../analysis/reports/private-client-16448/lua-bundles/login-protos/' + name, import.meta.url));
+    const source = fs.readFileSync(protocolAsset(name));
     if (digest(source) !== expectedHash) throw new Error('Exported gateway protobuf schema hash mismatch');
     protobuf.parse(source.toString('utf8'), root, { keepCase: true });
   }

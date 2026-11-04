@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+import "project/top_arena/top_arena.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/shop.db.proto.txt";
+import "project/function_cache/player_data/player_data.net.proto.txt";
+
+// 【巅峰赛_爬塔】获取塔信息请求
+message pb_top_arena_get_tower_data_req {
+  repeated int64 tower_tid_list = 1;  // 塔id列表
+}
+
+// 【巅峰赛_爬塔】获取塔信息返回前台数据
+message pb_top_arena_get_tower_data_rsp {
+  int64 tower_hero = 1;  // 塔驻守的镜像形象tid(英雄tid)
+  repeated int64 tower_stop_role_list = 2;  // 当前塔的停留玩家（随机取3个）
+  pb_player_lineup lineup = 3;  // 阵容
+}
+
+// 【巅峰赛_预告】夺冠热门
+message pb_top_arena_favorite_rsp {
+  repeated pb_top_arena_pre_favorite_data favorite_list = 1;  // 热门玩家列表
+}
+
+// 【巅峰赛_服务器排名】服务器排名列表
+message pb_top_arena_get_server_rank_rsp {
+  repeated pb_top_arena_get_server_rank_data server_rank_list = 1;  // 服务器排名列表
+}
+
+// 【巅峰赛_服务器排名】获取服务器排名
+message pb_top_arena_get_server_rank_data {
+  int64 server_id = 1;  // 服务器id 小组范围为战区时该字段为0
+  int64 score = 2;  // 服务器积分，用于排名
+  int64 captain_id = 3;  // 队长Id
+  uint32 cross_id = 4; //  小组范围为战区时该字段有值
+}
+
+// 【巅峰赛_爬塔】领取首通奖励请求返回
+message pb_top_arena_get_tower_pass_award_rsp {
+  pb_res_to_client res = 1; // 资源变化
+  pb_top_arena_tower_data tower_data = 2; // 爬塔数据
+}
+
+// 【巅峰赛_海选】获取对手信息返回前台数据
+message pb_top_arena_get_enemy_rsp {
+  repeated pb_top_arena_match enemy_list = 1; // 对手列表
+}
+
+// 【巅峰赛_海选】获取对手信息返回前台数据
+message pb_top_arena_refresh_enemy_rsp {
+  repeated pb_top_arena_match enemy_list = 1; // 对手列表
+  pb_top_arena_semi_data semi_data = 2; // 海选个人数据
+}
+
+// 【巅峰赛】获取全服助力信息 返回前台数据
+message pb_top_arena_server_help_info_rsp {
+  int64 help_point = 1; // 全服助力点数
+}
+
+//  【巅峰赛】获取全服助力进度奖励请求
+message pb_top_arena_server_help_req {
+  uint32 count = 1;                             // 助力次数
+}
+
+//  【巅峰赛】获取全服助力进度奖励请求
+message pb_top_arena_server_help_reward_req {
+  repeated uint32 tid_list = 1;                             // 奖励进度tid列表
+}
+
+// 【巅峰赛_海选】全服助力 返回前台数据
+message pb_top_arena_server_help_rsp {
+  pb_res_to_client res = 1; // 资源
+  int64 help_point = 2; // 全服助力点数
+  bytes server_help_award = 3; // 全服助力奖励记录
+}
+
+//  【巅峰赛】竞猜
+message pb_top_arena_guess_req {
+  uint32 tid = 1;                             // 竞猜tid
+  uint64 support_obj_id = 2;                  // 支持对象id
+  uint32 area_idx = 3;                        // 竞猜赛区索引
+}
+
+// 【巅峰赛_海选】资源变动数据
+message pb_top_arena_res_rsp {
+  pb_res_to_client res = 1; // 资源
+  pb_top_arena_semi_data semi_data = 2; // 海选个人数据
+}
+
+// 活动状态变化
+message pb_top_arena_state_changed{
+  uint32 state_id = 1; // 状态id
+  int64 calc_score_start_time = 2; // 结算开始时间
+}
+
+// 跨服数据变化
+message pb_top_arena_cross_changed{
+  pb_top_arena top_arena = 1; // 玩法数据
+  pb_top_arena_activity top_arena_activity = 2; // 活动数据
+  pb_top_arena_group_info group_info = 3; // 战区分组信息
+  pb_top_arena_tower_pass_info first_pass = 4; // 预选赛通关信息
+  pb_top_arena_pre_bot_pool bot_pool = 5; // 机器人池(有子跨服的类型才用)
+}
+
+// 区域数据变化
+message pb_top_arena_area_changed{
+  repeated pb_server_top_arena_data server_area_data_list = 1;
+}
+
+// 晋级下一区域数据返回数据
+message pb_top_arena_next_area_data{
+  pb_server_top_arena_data server_area_data = 1;
+  pb_top_arena_semi_data semi_data = 2; // 个人数据
+}
+
+// 活动开始返回
+message pb_top_arena_act_start {
+  pb_top_arena_tower_data tower_data = 1; // 爬塔(预选)数据
+  pb_top_arena_history_win history_win = 2; // 历史冠军
+  pb_top_arena_tower_pass_info first_pass = 3; // 爬塔首通信息
+  pb_shop_info shop_data = 4; // 商店数据
+  pb_top_arena_semi_data role_semi = 5; // 个人数据
+  pb_top_arena_pre_bot_pool bot_pool = 6; // 机器人池(有子跨服的类型才用)
+}
+
+// 【巅峰赛_预选】战斗返回数据
+message pb_top_arena_pre_fight_rsp {
+  pb_res_to_client res = 1; // 资源
+  pb_top_arena_tower_data tower_data = 2; // 爬塔(预选)数据
+  uint64 new_rank = 3; // 新排名
+  uint64 old_rank = 4; // 旧排名
+    pb_top_arena_tower_pass tower_pass = 5; // 本层爬塔首通信息
+  uint64 tower_hero = 6; // 塔驻守的镜像形象tid(英雄tid)
+  pb_player_lineup lineup = 7;  // 塔驻守的阵容
+}
+
+// 【巅峰赛】进入巅峰赛返回数据
+message pb_top_arena_enter_rsp {
+  pb_top_arena_area_changed area_data = 1; // 区域数据
+}
+
+//  【巅峰赛】战斗请求额外数据
+message pb_top_arena_fight_ex_req {
+  int32 group_id = 1; // 组id
+  int32 area_tid = 2; // 区域tid
+  int32 index = 3; // 擂台占领位置（序号）
+  int32 team_id = 4; // 玩家队伍id
+}
+
+//  【巅峰赛】战斗推送数据
+message pb_top_arena_fight_push_rsp {
+  int64 atk_role_id = 1; // 攻击玩家id
+  int64 def_role_id = 2; // 防守玩家id
+  repeated pb_arena_role_info arena_role_info_list = 3; // 变动擂台列表（如果没有对应的 说明被踢下擂台了）
+  int32 group_id = 4; // 组id
+  int32 area_tid = 5; // 区域tid
+}
+
+// 【巅峰赛_决赛】占领空擂台请求
+message pb_top_arena_attack_req {
+  int32 group_id = 1; // 组id
+  int32 area_tid = 2; // 区域tid
+  int32 index = 3; // 擂台占领位置（序号）
+  int32 team_id = 4; // 玩家队伍id
+}
+
+// 【巅峰赛_决赛】占领空擂台返回
+message pb_top_arena_attack_rsp {
+  repeated pb_arena_role_info area_data_list = 1; // 变动擂台列表
+  pb_top_arena_semi_data role_top_arena_data = 2; // 个人数据
+}
+
+// 【巅峰赛_每日任务奖励】
+message pb_top_arena_daily_award_rsp {
+   repeated uint32 day_got_award = 1;//领取列表
+   pb_res_to_client res = 2; // 资源
+}
+
+// 【巅峰赛_晋级奖励】
+message pb_top_arena_promotion_award_rsp {
+  repeated uint32 promotion_award = 1;//领取列表
+  pb_res_to_client res = 2; // 资源
+}
+
+// 【巅峰赛_历届数据读取】获取历届数据
+message pb_top_arena_winner_history_req {
+  int32 term_list = 1; // 第几届
+}
+
+// 【巅峰赛_决赛】占领空擂台返回
+message pb_top_arena_winner_history_rsp {
+  uint32 now_term = 1; // 赛季=活动表id
+  repeated pb_top_arena_history_win_info history_wins_list = 2; // 历届数据
+}
+
+// 【巅峰赛_海选】五点跨天奖励补发
+message pb_top_arena_auto_flush_rsp {
+    pb_res_to_client res = 1; // 资源
+    repeated uint32 promotion_award = 2;//晋级奖励领取列表
+}

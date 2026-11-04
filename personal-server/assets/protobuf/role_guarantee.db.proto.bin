@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 玩家保底数据列表
+message pb_role_guarantee {
+    repeated pb_guarantee guarantee_list = 1;   // 保底列表
+}
+
+// 玩家保底数据
+message pb_guarantee {
+    uint64 tid = 1;                     // 正反保底tid
+    uint32 open_count = 2;              // 开启次数
+    uint32 without_guarantee_count = 3; // 未触发保底的次数(正保底使用)
+    uint32 counter_guarantee_count = 4; // 触发反保底次数(反保底使用)
+    uint64 total_open_count = 5;        // 开启总次数
+}

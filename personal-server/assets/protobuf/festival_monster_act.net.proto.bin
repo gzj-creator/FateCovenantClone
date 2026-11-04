@@ -1,0 +1,11 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/festival_monster_act/festival_monster_act.db.proto.txt";
+
+// 年兽操作结果返回
+message pb_festival_monster_op_back{
+    uint32 op_type = 1;                             // 操作类型
+    uint32 rank_id = 3;                             // 排名
+    pb_festival_monster_act_data act_data = 2;      // 年兽数据
+    pb_res_to_client res = 5;                       // 资源改变
+}

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// 功能开启失败记录
+message pb_fun_open_fail_record {
+    repeated pb_fun_open_fail fail_list = 1; // 功能开启失败记录
+}
+
+// 功能开启失败记录
+message pb_fun_open_fail {
+    uint32 fun_id = 1; // 功能id
+    uint32 count = 2; // 失败次数
+}

@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import net from 'node:net';
 import { createStartupService } from '../startup-service.mjs';
+
+function rawRequest(address, payload) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host: address.address, port: address.port });
+    const chunks = [];
+    socket.setTimeout(2000, () => socket.destroy(new Error('raw request timed out')));
+    socket.once('error', reject);
+    socket.on('data', chunk => chunks.push(chunk));
+    socket.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    socket.once('connect', () => socket.end(payload));
+  });
+}
 
 test('startup serves confirmed version schema over loopback and leaves unknown contracts unimplemented', async () => {
   const events = [];
@@ -19,6 +32,9 @@ test('startup serves confirmed version schema over loopback and leaves unknown c
     assert.equal((await fetch(`${base}/update/res/Android/FixAll/update.txt_364109`)).status, 501);
     assert.equal((await fetch(`${base}/server_config.txt?token=private-test`)).status, 501);
     assert.equal((await fetch(`${base}/update/res/version_adr.txt`, { method: 'POST', body: 'private-test' })).status, 501);
+    const malformed = await rawRequest(address, 'GET http://[ HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n');
+    assert.match(malformed, /^HTTP\/1\.1 400 /);
+    assert.equal((await fetch(`${base}/update/res/version_adr.txt`)).status, 200);
     assert.ok(!JSON.stringify(events).includes('private-test'));
   } finally { await service.close(); }
 });

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+import "project/lineup.db.proto.txt";
+
+// 角色自定义预设阵容数据
+message pb_custom_lineup_role {
+  repeated pb_custom_pre_lineup custom_pre_lineups = 1; // 自定义预设阵容
+  uint64 cur_index = 2; // 当前使用的预设阵容索引
+}
+
+// 自定义预设阵容列表
+message pb_custom_pre_lineup_list {
+  repeated pb_custom_pre_lineup custom_pre_lineups = 1; // 自定义预设阵容
+}
+
+// 自定义预设阵容
+message pb_custom_pre_lineup {
+  int64 index = 1;           // 索引
+  pb_lineup lineup = 2;       // 阵容
+  string name = 3;            // 自定义名称
+  uint64 type = 4;            // 类型(单队、双队、三队...)
+  repeated int64 lineup_type_list = 5; // 使用预设的阵容类型
+}
+
+// 1. new_lineup
+// 2. set_name
+// 3. set_lineup
+// 4. delete_lineup

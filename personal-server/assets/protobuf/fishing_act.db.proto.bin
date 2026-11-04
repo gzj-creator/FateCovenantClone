@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 钓鱼活动服务器数据
+message pb_fishing_act_server_info {
+    repeated pb_fishing_act_server_data data_list = 1;              // 服务器数据
+}
+
+// 钓鱼玩家服务器数据
+message pb_fishing_act_server_data {
+    int64 act_id = 1;                                   // 钓鱼活动tid
+    repeated pb_fishing_act_fish_record high_score_list = 2;  // 渔获高分列表(记录每个鱼的前三名)
+    repeated pb_fishing_act_new_fish_record record_list = 3;  // 渔获记录列表（记录最近的好渔获）
+}
+
+// 钓鱼活动玩家数据
+message pb_fishing_act_role_info {
+    repeated pb_fishing_act_role_data data_list = 1;              // 玩家数据
+    repeated pb_res_obj res_list = 2;                          // 资源列表(鱼竿)
+}
+
+// 钓鱼玩家钓鱼数据
+message pb_fishing_act_role_data {
+    int64 act_id = 1;                                   // 钓鱼活动tid
+    int64 get_num = 2;                                  // 钓鱼次数
+    repeated pb_fishing_act_fish high_size_list = 3;   // 最高尺寸列表
+    int64 score = 4;                                    // 当前分数（鱼竿加成后）
+    int64 base_score = 5;                               // 基础分数（不算鱼竿加成 做补发用）
+    int64 high_size = 6;                               // 特殊鱼总尺寸
+    int64 rod = 7;                                      // 钓鱼杆
+    repeated pb_fishing_act_weather weather_list = 8;   // 天气数据
+    bytes book_state = 9;                               // 图鉴奖励领取记录
+    repeated int64 unlock_map_list = 10;                // 解锁地图列表(领奖)
+    bytes level_state = 11;                             // 等级奖励领取记录
+    bool go_rank_reward = 12;                           // 是否领取上榜奖励
+    repeated int64 have_rod_list = 13;                  // 激活的钓鱼杆
+    int64 get_money_num = 14;                           // 获得稀有特殊货币（不算加成）
+    pb_fishing_act_fish_wait wait_fish = 15;            // 待捕捞鱼数据
+    pb_recharge_limit_info buy_limit_info = 16;         // 礼包限购记录
+    bytes progress_state = 17;                          // 进度奖励领取记录
+}
+
+// 钓鱼活动天气数据
+message pb_fishing_act_weather {
+    int64 weather_id = 1;                                  // 钓鱼活动天气tid
+    int64 last_num = 2;                                    // 剩余生效次数
+    int64 map_id = 3;                                  // 地图tid
+    int64 weather_num = 4;                             // 获得天气计数
+}
+
+// 钓鱼活动个人渔获待捕捞数据
+message pb_fishing_act_fish_wait {
+    int64 fish_id = 1;                                  // 鱼tid
+    int64 map_id = 2;                                  // 地图tid
+}
+
+// 钓鱼活动个人渔获数据
+message pb_fishing_act_fish {
+    int64 fish_id = 1;                                  // 鱼tid
+    int64 size = 2;                                    // 鱼大小
+    int64 score = 3;                                    // 鱼分数
+}
+
+// 钓鱼活动全服渔获记录数据
+message pb_fishing_act_fish_record {
+    int64 fish_id = 1;                                  // 鱼tid
+    repeated pb_fishing_act_fish_record_data data_list = 2;  // 渔获记录列表
+}
+
+// 钓鱼活动全服渔获记录数据
+message pb_fishing_act_fish_record_data {
+    int64 size = 1;                                    // 鱼大小
+    int64 score = 2;                                    // 鱼分数
+    int64 role_id = 3;                                  // 玩家tid
+}
+
+// 钓鱼活动全服最近渔获记录数据
+message pb_fishing_act_new_fish_record {
+    int64 fish_id = 1;                                  // 鱼tid
+    int64 size = 2;                                    // 鱼大小
+    int64 score = 3;                                    // 鱼分数
+    string name = 4;                                  // 玩家名字
+    int64 map_id = 5;                                  // 地图tid
+}
+
+// 钓鱼活动消息分享数据
+message pb_fishing_act_share {
+    int64 act_id = 1;                                   // 钓鱼活动tid
+    pb_fishing_act_fish fish = 2;                  // 鱼数据
+    int64 score_rate = 3;                                // 积分加成
+    string share_name = 4;                               // 分享玩家名字
+}

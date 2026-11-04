@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+// 所有预热活动数据
+message pb_preheat_act_all {
+    repeated pb_preheat_act list = 1;           // 预热活动数据列表
+}
+
+// 预热活动数据
+message pb_preheat_act {
+    uint64 act_id = 1;                          // 活动id
+    bytes award_state = 2;                      // 预热奖励领取状态
+    uint32 preheat_cnt = 3;                     // 当日预热次数
+    uint64 refresh_sec = 4;                     // 刷新时间
+}

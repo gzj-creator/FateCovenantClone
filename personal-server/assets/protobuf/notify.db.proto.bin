@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+// 单个推送任务
+message pb_notify {
+  uint64 uid = 1;
+  uint64 type = 2;
+  repeated uint64 targets = 3;
+  bytes custom_notify = 4;
+}

@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+//【每日特惠】自选奖励请求
+message pb_daily_discount_select_req {
+    uint32 recharge_tid = 1;        // 礼包tid
+    uint32 select_tid = 2;          // 选择的奖励tid(每日特惠奖励自选表tid)
+    uint64 day_index = 3;           // 对应礼包的天数索引
+}

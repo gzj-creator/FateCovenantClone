@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+//武道馆角色数据
+message pb_martial_club_role{
+    uint32 pass_boss = 1; //通过的boss_id
+    uint64 daily_refresh_sec = 2; //每日数据刷新的时间
+    repeated pb_martial_club_award_history award_history = 3; // 奖励历史
+    uint32 pass_team_boss = 4; // 通过的组队boss_id
+    bytes pass_team_award = 5; // 组队首通奖励领取情况
+    uint32 normal_award_times = 6; // boss获得普通奖励次数
+    uint32 help_times = 7;  // 助战次数
+    uint64 today_fight_times = 8;
+    pb_martial_club_fight_temp fight_temp = 10; // 战斗结果
+    uint64 own_fight_times = 11;                // 拥有挑战次数
+    repeated uint64 relic_resolve_quality_list = 12;       // 符文自动分解品质列表
+}
+
+message pb_martial_club_fight_temp {
+    uint64 tid = 1;     // 打的哪关
+    //    repeated pb_martial_club_match_role match_teammate = 2; // 匹配到的队友
+    reserved 2;// 这里做数据兼容，这个字段废弃不能使用
+    bool is_win = 3;    // 输了还是赢了
+}
+
+// 武道馆雇佣数据
+message pb_martial_club_employ_role {
+    uint64 next_refresh_stamp = 1;  // 下次刷新时间
+    uint64 today_times = 2;         // 今日被雇佣次数
+    uint64 total_times = 3;         // 总被雇佣次数(没发起战斗也算)
+    uint64 fight_times = 4;         // 战斗次数
+    uint64 win_times = 5;           // 胜利次数
+    repeated pb_martial_club_employ employs = 6;
+    repeated pb_martial_club_employ_thank thank_infos = 7; // 感谢消息
+}
+
+// 雇佣感谢信息
+message pb_martial_club_employ_thank {
+    uint64 role_id = 1; //角色id
+    uint64 msg_tid = 2; //感谢消息tid
+    uint64 time = 3; //感谢时间
+}
+
+// 单关雇佣数据
+message pb_martial_club_employ {
+    uint64 tid = 1;     // 关卡tid
+    uint64 times = 2;   // 被雇佣次数
+}
+
+
+
+// 武道馆奖励记录
+message pb_martial_club_award_history {
+    uint32 tid = 1; // 难度tid
+    uint32 success_times = 2; // 成功讨伐次数
+    repeated pb_res_obj award = 3; // 奖励
+}
+
+// 武道馆通关信息
+message pb_martial_club_pass_info {
+    repeated pb_martial_club_pass_one passes = 1; // 机器人id
+    uint32 rank_seq = 2;    // 上榜序列号
+}
+
+// 单个难度武道馆组队机器人匹配池
+message pb_martial_club_pass_one {
+    uint32 tid = 1; // 难度tid
+    uint32 pass_role_count = 2; // 通关角色数量
+    repeated uint64 bots = 3; // 机器人id(部分通关角色id)
+    uint64 pass_team_role_count = 4; // 组队通关角色数量
+}
+
+//队伍邀请数据
+message pb_martial_club_team_invite {
+    uint32 team_tid = 1; //武道馆组队表 tid
+    uint64 team_id = 2; //队伍ID
+}
+
+// 武道馆雇佣数据分享信息
+message pb_martial_club_employ_share_info {
+    uint64 role_id = 1; // 角色id
+    string role_name = 2; // 角色昵称
+    uint32 rank = 3; // 排名
+}

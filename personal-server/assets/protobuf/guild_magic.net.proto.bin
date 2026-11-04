@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+// 请求升级
+message pb_guild_magic_up_lv_tos{
+   uint32 tid = 1;//魔导时阵表
+   uint32 up_lv = 2;//升X级
+}

@@ -1,0 +1,34 @@
+syntax = "proto3";
+import "general/flush_time.db.proto.txt";
+
+// 玩家：每日可领取奖励
+message pb_career_life{
+    bytes boss_bin = 1; //领取的BOSS奖励数据
+    uint64 refresh_time = 2; //刷新数据的时间
+    bytes story_bin = 3; //冒险之旅奖励领取记录
+    uint64 fight_boss = 4; //当前已挑战的BOSS
+    pb_count_flush fight_count = 5; //当前挑战BOSS次数
+    bytes pass_award = 6; //首通奖励数据
+}
+
+// 玩家： 协会悬赏战斗请求数据
+message pb_career_life_fight_req {
+    uint64 boss_tid = 1; //BossTid
+}
+
+// 单服： 首通BOSS相关数据
+message pb_career_boss_pass {
+    repeated pb_career_boss_pass_info info_list = 2; //所有BOSS首通数据列表
+}
+
+// 单服：通过每个BOSS的玩家相关数据
+message pb_career_boss_pass_info {
+    uint32 boss_tid = 1; //BossTid
+    repeated uint64 role_list = 2; //角色ID列表
+}
+
+// 玩家登录的数据
+message pb_career_login_back {
+    bytes career_life_info = 1;
+    bytes boss_pass_info = 2;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 英雄变异数据
+message pb_hero_mutant{
+    pb_recharge_limit_info limit_info = 1;  // 礼包限购信息（一次都没买过为空）
+    repeated pb_hero_mutant_single single_list = 2; // 变异英雄记录数据(初始空列表，解锁后就会插入一条数据)
+}
+
+// 英雄变异数据 - 单个
+message pb_hero_mutant_single{
+    uint32 tid = 1; // 英雄变异表tid
+    uint64 open_sec = 2; // 对应变异礼包解锁时，生成礼包的时间戳
+    uint64 mission_id = 3; // 购买变异礼包时玩家的通关关卡
+    uint64 buy_time = 4; // 购买变异礼包的时间戳
+}

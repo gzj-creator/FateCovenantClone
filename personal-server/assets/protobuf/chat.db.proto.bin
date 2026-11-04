@@ -1,0 +1,90 @@
+syntax = "proto3";
+import "project/hero/base/hero.db.proto.txt";
+import "project/wear/equip/equip.db.proto.txt";
+
+//聊天消息内容
+message pb_chat_msg_content {
+    string text_content = 1; //文本内容
+    repeated pb_chat_data_param link_params = 2; //链接参数
+    pb_chat_data_param share_param = 3; //分享参数
+    int32 msg_type = 4; //消息类型，用于区分不同的消息
+    string be_reply_content = 5; // 被回复的文本内容
+}
+
+//系统消息内容 有id的时候不需要自定义内容，反之同理
+message pb_sys_msg_content {
+    int32 id = 1; //系统消息ID
+    string custom_content = 2; //系统消息自定义文本内容
+    bytes param = 3; //系统消息参数
+}
+
+//聊天链接参数结构
+message pb_chat_data_param {
+    int32 type = 1; //参数类型
+    bytes data = 2; //参数数据
+}
+
+//聊天禁言状态数据
+message pb_chat_ban_state {
+    bool is_banned = 1; //是否被禁言
+    uint64 auto_cancel_time = 2; //自动解除禁言的时间
+    bool is_all_banned = 3; // 是否被完全禁言
+    uint64 cancel_all_banned_time = 4; // 完全禁言解除时间
+    repeated pb_chat_ban_proof proof_list = 5; //聊天自动禁言时的消息列表
+}
+
+//聊天禁言证明
+message pb_chat_ban_proof{
+    uint64 time = 1;  //消息时间
+    string content = 2;  //消息内容
+}
+
+//聊天英雄分享数据
+message pb_chat_share_hero{
+    hero hero = 1;                              //英雄数据
+}
+
+// 聊天举报数据
+message pb_role_chat_report {
+    uint64 time_stamp = 1;
+    repeated uint64 reported = 2; // 今天已举报过的玩家
+}
+
+// 聊天记录
+message pb_chat_record_info{
+    repeated pb_chat_record record_list = 1;        // 记录列表
+}
+
+// 聊天记录内容
+message pb_chat_record{
+    string text_content = 1; // 文本内容
+    uint64 record_time = 2;     // 记录时间
+}
+
+
+// 消息点赞奖励
+message pb_msg_like_award_list {
+    repeated pb_msg_like_award like_award_list = 1; // 点赞奖励列表
+}
+
+//
+message pb_msg_like_award {
+    uint64 index = 1; // 消息索引
+    repeated uint64 role_id_list = 2; // 获得了奖励的角色列表
+}
+
+// 角色:点赞领奖记录
+message pb_role_msg_like_award_record {
+    repeated pb_role_msg_channel_like_award_record record_list = 1; // 频道点赞奖励记录列表
+}
+
+message pb_role_msg_channel_like_award_record {
+    uint64 channel_id = 1; // 频道ID
+    repeated uint64 index_list = 2; // 点赞奖励消息索引列表
+}
+
+// 聊天回复消息
+message pb_chat_reply_msg {
+    string reply_content = 1; // 回复的文本内容
+    string be_reply_content = 2; // 被回复的文本内容
+}

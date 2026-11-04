@@ -1,0 +1,71 @@
+syntax = "proto3";
+import "project/lineup.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "project/wear/equip/equip.db.proto.txt";
+import "project/artifact.db.proto.txt";
+import "project/role.db.proto.txt";
+import "project/attribute/attribute.db.proto.txt";
+
+// 阵容快照列表
+message pb_lineup_snapshot_list{
+    repeated pb_lineup_snapshot snapshot_list = 1;
+}
+
+// 阵容数据快照
+message pb_lineup_snapshot{
+    int64 role_id = 1; // 角色ID
+    bytes role_name = 2; // 对手名称
+    pb_figure_simple_info figure = 3; // 形象数据
+    uint32 level = 4; // 对手等级
+    pb_lineup lineup = 5; // 当前使用的阵容
+    uint64 power = 6; // 战力
+    repeated hero hero_list = 7; // 当前使用的英雄数据
+    repeated pb_attr_final_item hero_attr = 8; // 当前英雄属性数据
+    uint32 day = 9; // 镜像数据时间(天)
+    uint32 reference = 10;  // 引用计数
+}
+
+// 阵容镜像索引(功能存储)
+message pb_lineup_snapshot_key{
+    int64 role_id = 1; // 角色ID(机器人id为负)
+    uint32 day = 2; // 镜像数据时间
+    uint64 power = 3;   // 战力(方便功能使用)
+}
+
+// 阵容排序数据
+message pb_lineup_sort{
+    int64 id = 1; // ID
+    uint64 value = 2;   // 值
+}
+
+// 全服阵容战力匹配数据
+message pb_lineup_match_server{
+    repeated pb_lineup_sort match_list = 1; // 用于匹配的列表
+    uint64 day = 2; // 记录天数
+}
+
+// 全服阵容战力更新数据
+message pb_lineup_update_server{
+    repeated pb_lineup_sort update_list = 1; // 用于更新的列表
+}
+
+// 全服排名前X阵容镜像英雄数据
+message pb_lineup_hero_server{
+    uint64 day = 1;         // 更新时间/天
+    repeated pb_lineup_snapshot_hero_data hero_list = 2;     // 英雄列表
+}
+
+// 阵容英雄数据
+message pb_lineup_snapshot_hero_data{
+    repeated pb_lineup_snapshot_hero heros = 1;    // 英雄列表
+}
+
+// 阵容镜像英雄
+message pb_lineup_snapshot_hero{
+    int64 tid = 1;          // 英雄tid
+    uint32 mutant = 2;      // 变异tid
+    uint64 diff = 3;        // 全英雄变异标记（和英雄的保持一致）
+    uint32 loc = 4;         // 位置
+    bool rare = 5;          // 是否升稀有
+}
+

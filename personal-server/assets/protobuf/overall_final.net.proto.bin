@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "project/overall_pvp/overall_final/overall_final.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 请求全服pvp决赛记录返回
+message pb_overall_final_record_back{
+    pb_overall_final_record record = 1;  // 落地的记录数据
+    pb_overall_final_server server = 2;     // 服务器数据
+}
+
+// 领取观赛奖励返回
+message pb_receive_watch_award_back{
+    pb_overall_final_person person = 1;                 // 玩家数据
+    pb_res_to_client res = 2;                           // 资源改变
+}
+

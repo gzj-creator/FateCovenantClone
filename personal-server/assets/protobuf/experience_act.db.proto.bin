@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+// 历练活动总数据
+message pb_experience_act_data {
+    repeated pb_experience_data area_list = 1; // 历练活动数据列表
+}
+
+// 历练活动数据
+message pb_experience_data {
+    uint32 act_tid = 1; // 期数=活动表id
+    repeated pb_area area_list = 2;  // 区域信息列表
+    uint32 begin_time = 3;
+    uint32 end_time = 4;
+    uint32 go_count = 5;    // 派遣次数
+}
+
+// 区域历练活动数据
+message pb_area {
+    uint32 tid = 1; // 对应《历练活动关卡表》tid
+    repeated pb_area_unit unit_list = 2; // 区域派遣英雄列表
+    repeated uint32 finish_time_list = 3; // 记录每日领奖时间列表 (记录的是派遣时间 可兼容每日多次)
+    bool is_get_ex_reward = 4; // 本次派遣是否领取额外奖励 (派遣的时候就决定了)
+    uint32 go_time = 5; // 本次派遣时间
+}
+
+// 区域历练活动数据-英雄信息
+message pb_area_unit {
+    uint32 tid = 1; // 单子tid
+    uint32 num = 2; // 星级或其他
+}
+

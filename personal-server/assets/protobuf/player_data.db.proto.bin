@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "project/role.db.proto.txt";
+
+//玩家基础数据
+message pb_player_info{
+    int64 id = 1;    //玩家id
+    uint32 server_id = 2; //服务器id
+    bytes name = 3; //名字
+    uint32 level = 4; //等级
+    pb_figure_simple_info figure_simple_info = 5; //形象数据
+    uint32 vip = 6; //vip等级
+    bool is_robot = 7; //是否是机器人
+    bytes server_name = 8; //服务器名字
+    uint32 cross_stage = 9; // 跨服阶段
+}

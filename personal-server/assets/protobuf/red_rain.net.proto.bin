@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "project/activity/red_rain/red_rain.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 红包雨随机返回数据
+message pb_red_rain_back{
+  pb_red_rain info = 1; //新的活动数据
+  pb_res_to_client res = 2; // 资源改变
+}
+
+// 红包雨请求领奖
+message pb_red_rain_rev_award_req{
+  uint64 round_tid = 1; // 轮次tid
+  repeated pb_u64_kv rev_list = 5; // 各类型奖励领取次数
+}

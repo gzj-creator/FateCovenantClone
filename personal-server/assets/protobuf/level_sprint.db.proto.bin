@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+// 等级冲刺角色数据
+message pb_level_sprint {
+    bytes got_free_award = 1;       // 已领取的免费奖励
+}

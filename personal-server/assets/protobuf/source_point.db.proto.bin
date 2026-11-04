@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "core/db.db.proto.txt";
+
+//源点仓库
+message pb_source_point_depot {
+    int64 max_uid = 1;  //下一源点应该使用的uid
+    repeated pb_source_point source_point_list = 2;   //背包中的源点列表
+    bytes hero_tasks = 3; // 已领取试炼奖励记录
+}
+
+//源点对象
+message pb_source_point {
+    int64 tid = 1; //源点的配置表ID
+    int64 uid = 2; //源点的唯一ID
+}
+
+// 他人源点数据
+message pb_source_point_player_data_block{
+     repeated pb_source_point source_point_list = 1;   //背包中的源点列表
+}

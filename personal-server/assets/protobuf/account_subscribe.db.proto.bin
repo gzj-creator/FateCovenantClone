@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+// 单个账号的订阅数据
+message pb_account_subscribe {
+    repeated pb_role_subscribe role_subscribe_list = 1;     // 角色订阅数据列表
+}
+
+// 角色的订阅数据
+message pb_role_subscribe {
+    int64 role_id = 1;                          // 角色ID
+    repeated pb_subscribe subscribe_list = 2;   // 订阅数据列表
+}
+
+// 订阅数据
+message pb_subscribe {
+    int64 recharge_id = 1;  // 付费ID
+    int64 start_time = 2;   // 订阅开始时间
+}

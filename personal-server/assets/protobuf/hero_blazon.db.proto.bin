@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+// 英雄纹章数据
+message pb_hero_blazon{
+    repeated pb_hero_blazon_chapter chapter_list = 1;  // 阵营列表，字段概念相似先不改
+    repeated int32 skill_list = 2;                     // 技能列表（技能表编号）
+    repeated pb_hero_blazon_talent talent_list = 3;    // 天赋列表
+    repeated pb_hero_blazon_chapter_bond bond_list = 4; // 羁绊升星列表
+    uint32 reset_times = 5;                             // 重置次数
+    uint32 reset_timestamp = 6;                         // 重置时间
+    uint64 max_chart = 7;                               // 最大星魂值
+}
+
+// 英雄纹章阵营数据
+message pb_hero_blazon_chapter{
+    int32 chapter_id = 1;                                               // 阵营id，字段概念相似先不改
+    repeated pb_hero_blazon_material_cell normal_blazon_list = 2;        // 普通纹章列表，对应蓝紫材料孔消耗量
+    repeated pb_hero_blazon_cell special_blazon_list = 3;               // 特殊纹章列表
+}
+
+message pb_hero_blazon_chapter_bond{
+    int32 chapter_id = 1;                                               // 阵营id，字段概念相似先不改
+    repeated uint64 bond_list = 2;                                      // 羁绊升星Tid列表
+}
+
+// 英雄纹章天赋数据
+message pb_hero_blazon_talent{
+    uint64 tid = 1;     // 属性tid
+    uint32 attr_val = 2;   // 属性值，这块数值是可以用户自定义保存的，最终结算以这份为准
+}
+
+//英雄纹章格子，暂时废弃，先保留用于后续找回
+message pb_hero_blazon_cell{
+    int32 cell_id = 1;      //镶嵌格子id，下标自行获取
+    uint64 attr_id = 2;     //属性表id包含了等级
+}
+
+//英雄纹章材料孔，蓝紫色孔，暂时废弃，先保留用于后续找回
+message pb_hero_blazon_material_cell{
+    uint64 tid = 1;      //物品tid，对应的蓝紫色物品材料tid
+    uint32 count = 2;     // 对应材料已使用数量
+}

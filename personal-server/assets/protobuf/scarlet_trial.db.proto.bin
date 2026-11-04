@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+// 猩红试炼角色数据
+message pb_scarlet_trial_role_info {
+  repeated pb_scarlet_trial_data act_data_list = 1;    // 玩家数据
+}
+
+// 猩红试炼角色活动数据
+message pb_scarlet_trial_data {
+  uint64 day_max_damage = 1;            // 今天最高伤害
+  uint64 turn_max_damage = 2;           // 活动最高伤害
+  repeated uint32  received_tasks = 3;  // 已领奖的每日任务id
+  uint32 timestamp = 4;                 // 下次刷新时间每日数据时间戳
+  repeated pb_scarlet_trial_source_stone source_stone = 5;    // 源石套装
+  int64 version = 6 ;// 活动版本号
+}
+
+
+// 猩红试炼选择源石套装
+message pb_scarlet_trial_source_stone {
+  uint32 pos = 1;  // 阵容位置
+  uint32 tid = 2;  // 源石套装id
+}
+
+// 猩红试炼服务器数据
+message pb_scarlet_trial_server_info {
+  repeated pb_scarlet_trial_server act_data_list = 1; //活动数据
+}
+// 猩红试炼服务器活动数据结构
+message pb_scarlet_trial_server {
+  uint32 turn = 1;                       // 活动轮次
+  uint64 state = 2;                      // 活动状态
+  int64 version = 3 ;                   // 活动版本号
+}

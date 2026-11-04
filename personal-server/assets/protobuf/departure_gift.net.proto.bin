@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "project/activity/departure_gift/departure_gift.db.proto.txt";
+
+
+// 启程礼包数据list
+message pb_departure_gift_back{
+    repeated pb_departure_gift_info data = 1; //启程礼包数据
+}

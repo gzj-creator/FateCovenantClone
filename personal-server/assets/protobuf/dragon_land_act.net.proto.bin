@@ -1,0 +1,48 @@
+syntax = "proto3";
+import "project/activity/dragon_land_act/dragon_land_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//领取每日奖励请求
+message pb_dragon_land_daily_award_req{
+  int64 activity_id = 1;//活动id
+}
+
+//领取每日奖励返回
+message pb_dragon_land_daily_award_rsp {
+  pb_dragon_land_role_data act_info = 3;           //活动信息
+  pb_res_to_client res = 2;                        // 资源变化
+}
+
+//领取试炼奖励请求
+message pb_dragon_land_trial_award_req{
+  int64 activity_id = 1;//活动id
+  repeated int64 id_list = 2;//请求的奖励id列表
+}
+
+//领取试炼奖励返回
+message pb_dragon_land_trial_award_rsp {
+  pb_dragon_land_role_data act_info = 3;           //活动信息
+  pb_res_to_client res = 2;                        // 资源变化
+}
+
+//龙息之地战斗请求参数
+message pb_dragon_land_fight_req{
+  uint32 activity_id = 1;//活动id
+}
+
+// 命运回廊队伍战斗结算数据
+message pb_dragon_land_fight_rsp {
+  bool is_win = 1; // 战斗结果
+  pb_dragon_land_role_data role_info = 2; // 玩家信息
+  pb_dragon_land_guild_data guild_info = 3; // 公会信息
+}
+
+//龙息之地请求公会数据
+message pb_dragon_land_guild_data_req{
+  uint32 activity_id = 1;//活动id
+}
+
+// 命运回廊队伍战斗结算数据
+message pb_dragon_land_guild_data_rsp {
+  pb_dragon_land_guild_data guild_info = 1; // 公会信息
+}

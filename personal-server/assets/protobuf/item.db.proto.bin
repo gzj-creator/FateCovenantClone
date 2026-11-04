@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+// 角色自动产出道具信息
+message pb_role_res_auto_produce {
+    repeated pb_res_auto_produce items = 1; // 自动产出道具列表
+}
+// 自动产出道具类型
+message pb_res_auto_produce {
+    int64 tid = 1;            // 资源tid
+    int64 num = 2;            // 资源数量
+    uint32 produce_time = 3;  // 上次产出时间
+}
+
+// 限时资源数据库
+message pb_item_time_res_db {
+    repeated pb_item_time_res res_list = 1; // 限时资源列表
+    int64 max_uid = 2; // 最大id
+}
+
+message pb_item_time_res {
+    int64 uid = 1;            // id
+    int32 tid = 2;            // 物品tid
+    int32 num = 3;            // 资源数量
+    int64 end_time = 4;  // 到期时间
+    bytes extra_param = 5; //额外参数
+}

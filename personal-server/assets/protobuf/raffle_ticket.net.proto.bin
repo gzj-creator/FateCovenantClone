@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "project/raffle_ticket/raffle_ticket.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 阶段领奖回复
+message pb_raffle_ticket_phase_award_back{
+    pb_raffle_ticket raffle_ticket_data = 1;        // 刮刮乐最新数据
+    pb_res_to_client res_change = 2;                // 奖励资源
+}

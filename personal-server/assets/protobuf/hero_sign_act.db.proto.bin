@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+
+// 英雄签到活动玩家数据
+message pb_hero_sign_act_role_info {
+    repeated pb_hero_sign_act_role_data data_list = 1;              // 玩家数据
+}
+
+// 英雄签到玩家英雄签到数据
+message pb_hero_sign_act_role_data {
+    int64 act_id = 1;                                   // 英雄签到活动tid
+    bytes sign_bit = 2;                              // 签到记录
+}

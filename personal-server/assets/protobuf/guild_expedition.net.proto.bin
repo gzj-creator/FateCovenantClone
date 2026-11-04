@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+import "project/guild_expedition/guild_expedition.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+import "general/res.net.proto.txt";
+import "core/db.db.proto.txt";
+
+// 登录数据
+message pb_guild_expedition_login{
+    pb_guild_expedition_info server_info = 1;   //航会远征信息（仅包含简要信息）
+    pb_guild_expedition_role role_info = 2;     //角色信息
+    pb_guild_expedition_guild guild_info = 3;   //公会信息
+}
+
+// 据点战斗请求数据（pve、pvp）
+message pb_guild_expedition_pos_fight_req{
+    uint64 build_tid = 1; // 建筑tid
+    uint64 pos = 2;       // 位置索引（无上限的点位就不记在服务器数据上）
+    uint64 team_id = 3;   // 队伍id
+}
+
+// 据点战斗返回数据（pve、pvp）
+message pb_guild_expedition_pos_fight_back{
+    pb_res_to_client res = 1; // 资源
+    repeated pb_guild_expedition_pos pos_info_list = 2; // 据点信息
+    pb_guild_expedition_role role_info = 3;     //角色信息
+}
+
+// 返回战报数据
+message pb_guild_expedition_req_report_back{
+    repeated pb_guild_expedition_report_obj report_list = 8; //本公会战报列表
+}
+
+// 航会宣战返回数据
+message pb_guild_expedition_declare_push{
+    repeated pb_guild_expedition_city city_list = 1;   // 最新城市列表
+    pb_guild_expedition_guild guild_info = 2; // 被宣战公会信息
+}
+
+// 航会助威返回数据
+message pb_guild_expedition_inspire_back{
+    pb_res_to_client res = 1;
+    pb_count_flush count_info = 2;  // 玩家最新助威次数信息
+    uint64 role_point = 3; // 玩家最新积分
+}
+
+// 城市内航会排名
+message pb_guild_expedition_city_guild_rank{
+    repeated pb_guild_expedition_city_guild_rank_obj rank_list = 1;
+}
+
+// 城市内航会排名 - 单个航会数据
+message pb_guild_expedition_city_guild_rank_obj{
+    uint64 guild_id = 1; // 公会id
+    string guild_name = 2; // 公会名称
+    uint64 score = 3; // 当前战功
+    uint64 power = 4; // 当前航会总战力
+    uint64 role_num = 5; // 当前航会总人数
+}
+
+// 航会内个人排名
+message pb_guild_expedition_city_role_rank{
+    repeated pb_guild_expedition_city_role_rank_obj rank_list = 1;
+}
+
+// 航会内个人排名 - 单个玩家数据
+message pb_guild_expedition_city_role_rank_obj{
+    uint64 role_id = 1; // 角色id
+    uint64 score = 2; // 当前战功
+    uint64 power = 3; // 战力
+}
+
+// 建筑内航会加成排名
+message pb_guild_expedition_build_guild_rank{
+    repeated pb_guild_expedition_build_guild_rank_obj rank_list = 1;
+}
+
+// 建筑内航会加成排名 - 单个航会加成数据
+message pb_guild_expedition_build_guild_rank_obj{
+    uint64 guild_id = 1; // 公会id
+    string guild_name = 2; // 公会名称
+    uint64 pos_num = 3; // 占领的据点数
+    uint64 value = 4; // 加成值
+}
+
+// 请求竞猜详情数据返回
+message pb_guild_expedition_guess_info_back{
+    repeated pb_guild_expedition_guess_role guess_role_list = 1;      // 被竞猜的玩家列表
+}
+
+message pb_guild_expedition_guess_req{
+    repeated uint64 role_id_list = 1; // 被竞猜的玩家id
+}
+
+message pb_guild_expedition_guess_back{
+    repeated pb_guild_expedition_guess_role guess_role_list = 1;      // 被竞猜的玩家列表,
+    pb_guild_expedition_role role_info = 2; // 玩家信息
+}
+
+//先锋boss战斗返回
+message pb_guild_expedition_boss_fight_back{
+    int64 challenge_damage = 1; // 本次伤害
+    int64 max_damage = 2; // 最高伤害
+    int32 rank = 3; // 本次排名
+}
+
+// 据点数据列表
+message pb_guild_expedition_pos_list{
+    repeated pb_guild_expedition_pos pos_list = 1;     // 航会远征据点列表
+}
+
+// 据点被抢占的推送信息
+message pb_guild_expedition_lose_pos{
+    int64 pos_uid = 1;         // 据点uid
+    int64 team_id = 2;         // 被抢占的队伍id
+    uint64 atk_role_id = 3;     // 攻击者id
+    int64 atk_pos_uid = 4;      // 攻击者原本的位置（会被换到这个位置）
+    uint64 def_role_point = 5;         // 防守玩家据点积分
+    uint64 def_role_inspire_point = 6; // 防守玩家助威积分
+}
+
+// 各城市情况列表
+message pb_guild_expedition_city_info_list{
+    repeated pb_guild_expedition_city city_list = 1;   // 城市信息列表
+}

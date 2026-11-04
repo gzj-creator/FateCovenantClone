@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+import "general/flush_time.db.proto.txt";
+
+// 玩家挂机数据
+message pb_hook_info {
+  repeated pb_hook hooks = 1; // 挂机产出数据
+  repeated pb_fast_hook fast_hooks = 2; // 快速挂机数据
+}
+
+// 单个挂机模块数据
+message pb_hook {
+  uint32 type = 1; // 挂机类型tid
+  repeated pb_hook_res_obj cache_list = 2; // 缓存的带小数的资源数量列表
+  uint32 last_reap_time = 3;   //上次产出时间
+  uint32 last_gather_time = 4; //上次收获时间
+  repeated uint32 old_stage = 5;  //上次收获时的关卡
+  uint32 rand_reap_time = 6; //随机奖励产出时间
+}
+
+// 单个快速挂机数据
+message pb_fast_hook {
+  uint32 type = 1;
+  pb_count_list_flush fast_count = 2;      //快速挂机次数
+}
+
+// 挂机缓存资源
+message pb_hook_res_obj {
+  int64 tid = 1;  //资源tid
+  float num = 2;  //缓存的带小数的资源数量
+}

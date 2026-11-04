@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "project/energy_burst/energy_burst.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 体力爆发跨天刷新
+message pb_energy_burst_day_change_rsp {
+    pb_energy_burst data = 1;       //刷新后的数据
+    pb_res_to_client award = 2;     // 邮件奖励
+}

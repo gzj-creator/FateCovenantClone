@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "project/fight/report/fight_report.db.proto.txt";
+import "project/lineup.db.proto.txt";
+import "project/hero/base/hero.db.proto.txt";
+import "core/db.db.proto.txt";
+import "project/fight/fight.db.proto.txt";
+
+//命运回廊角色数据
+message pb_destiny_pve_role{
+    uint64 layer = 1; //层数
+    uint64 fight_count = 2; // 挑战次数
+    uint64 fight_time = 3; // 战斗时间
+    uint64 cd_time = 4; // 冷却时间
+}
+
+//命运回廊服务器级数据
+message pb_destiny_pve_server {
+    repeated pb_destiny_pve_layer_info layer_info_list = 1; // 层级信息
+    repeated pb_npc_custom npc_attr_list = 2;// npc基础属性列表
+    int64 power = 3; // 战力
+}
+
+// 塔层数信息
+message pb_destiny_pve_layer_info {
+    int64 layer = 1;// 层级
+    int64 count = 2;// 通关人数
+    repeated hero hero_list = 3;//英雄信息
+    repeated pb_lineup lineup_list = 4;//阵型列表
+    int64 update_time = 5;//虚假进度更新时间
+    int64 role_id = 6;//首通玩家信息
+    int64 pass_time = 7;//通关时间
+    int64 power = 8;//通关战力
+}

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// 预热请求
+message pb_preheat_req {
+    uint64 act_id = 1;          // 活动id
+    uint32 preheat_cnt = 2;     // 预热次数
+}
+
+// 领取预热奖励请求
+message pb_preheat_award_req {
+    uint64 act_id = 1;          // 活动id
+    uint32 award_tid = 2;       // 预热活动奖励表tid
+}

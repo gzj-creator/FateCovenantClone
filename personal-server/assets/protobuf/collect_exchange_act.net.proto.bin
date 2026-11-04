@@ -1,0 +1,12 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+
+// 玩家请求兑换奖励
+message pb_collect_exchange_award_req {
+    int32 act_id = 1; // 活动id
+    int32 exchange_id = 2; // 兑换id
+}
+
+message pb_collect_exchange_award_rsp {
+    pb_res_to_client res = 1;   // 奖励信息
+}

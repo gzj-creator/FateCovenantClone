@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+// 剧情数据
+message story_data {
+    uint32 tid = 1; // 当前的剧情组tid
+    repeated uint32 finish_story_list = 2; // 完成过的剧情
+}
+
+
+

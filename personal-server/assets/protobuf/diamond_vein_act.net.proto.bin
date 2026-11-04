@@ -1,0 +1,134 @@
+syntax = "proto3";
+import "project/activity/diamond_vein_act/diamond_vein_act.db.proto.txt";
+import "general/res.net.proto.txt";
+
+//星钻矿脉活动基础请求
+message pb_diamond_vein_act_base_req {
+   int64 act_id = 1;    //活动id
+   int64 value = 2;     //值
+}
+
+//星钻矿脉活动争夺矿脉请求
+message pb_diamond_vein_act_attack_req {
+   int64 act_id = 1;        //活动id
+   int64 map_id = 2;        //地图id
+   int64 role_id = 3;       //角色id
+   int64 attack_num = 4;       //攻击次数
+}
+
+//星钻矿脉活动公会集火请求
+message pb_diamond_vein_act_guild_focus_req {
+    int64 act_id = 1;        //活动id
+    int64 map_id = 2;        //地图id
+}
+
+//【星钻矿脉】入驻矿脉 返回
+message pb_diamond_vein_act_enter_rsp {
+    pb_diamond_vein_act_map_data map_data = 1;        //地图数据
+    pb_diamond_vein_act_role_data role_data = 2;      //角色数据
+}
+
+//【星钻矿脉】争夺矿脉 返回
+message pb_diamond_vein_act_attack_rsp {
+    pb_diamond_vein_act_guild_data guild_data = 1;        //公会数据
+    pb_diamond_vein_act_role_data role_data = 2;      //角色数据
+    uint64 atk_before_action_value = 3; // 进攻方战前行动力
+    uint64 atk_after_action_value = 4; // 进攻方战后行动力
+    uint64 def_before_action_value = 5; // 防守方战前行动力
+    uint64 def_after_action_value = 6; // 防守方战后行动力
+    uint64 def_power = 7; //防守方战力
+    uint64 atk_power = 8; //进攻方战力
+    uint64 add_merit = 9; //获得功勋
+    int64 fight_result = 10;								//战斗结果
+}
+
+//【星钻矿脉】领取矿脉产出奖励 返回
+message pb_diamond_vein_act_get_award_rsp {
+     pb_res_to_client  res = 1; //资源变化
+     pb_diamond_vein_act_role_data role_data = 2;      //角色数据
+     int64 award_time = 3; // 上次奖励结算时间
+}
+
+//【星钻矿脉】购买攻击令 返回
+//【星钻矿脉】购买行动力 返回
+message pb_diamond_vein_act_role_res_rsp {
+     pb_res_to_client  res = 1; //资源变化
+     pb_diamond_vein_act_role_data role_data = 2;      //角色数据
+}
+
+//【星钻矿脉】公会集火 返回
+message pb_diamond_vein_act_guild_rsp {
+    pb_diamond_vein_act_guild_data guild_data = 1;        //公会数据
+}
+
+//【星钻矿脉】登录返回
+message pb_diamond_vein_act_login {
+    pb_diamond_vein_act_role_data role_data = 1;      //角色数据
+      pb_diamond_vein_act_server_data server_data = 2;      //服务器数据
+      pb_diamond_vein_act_guild_data guild_data = 3;      //公会数据
+}
+
+
+//玩家基本信息
+message pb_diamond_vein_act_guild_rank_player_info {
+    repeated pb_diamond_vein_act_guild_rank_info player_info_list = 1; //玩家基础信息列表
+    int32 my_guild_rank = 2; //我的公会排名
+    int64 my_guild_merit = 3; //我的公会功勋值
+}
+
+//【星钻矿脉】战报请求返回
+message pb_diamond_vein_act_fight_reports_rsp {
+     repeated pb_diamond_vein_act_pvp_report reports = 1; // 战报
+}
+
+
+/// === 主动推送
+
+//【星钻矿脉】玩家地图变动
+message pb_diamond_vein_act_role_map_change {
+    int64 act_id = 1;           //活动id
+    int64 new_map_id = 2;       //地图id
+    int64 old_map_id = 3;       //旧地图id
+    pb_diamond_vein_act_map_role_data map_role_data = 4;      //地图角色数据
+}
+
+//  【星钻矿脉】玩家行动力变化
+message pb_diamond_vein_act_action_change {
+    int64 role_id = 1;       //角色id
+    int64 action_point = 2;       //行动力
+    int64 act_id = 3;           //活动id
+    int64 action_role_id = 4;       // 攻击方角色id
+    int64 power = 5; // 战斗力
+}
+
+// 【星钻矿脉】同地图变动(跟玩家行动力变化互斥)  只要有玩家做了本地图变动（进入、离开），本地图都会收到一条
+message pb_diamond_vein_act_same_map_role_data_change {
+    int64 act_id = 1;           //活动id
+    pb_diamond_vein_act_map_role_data map_role_data = 2;      //地图角色数据
+    int64 map_id = 3; // 地图id
+}
+
+//【星钻矿脉】玩家盛产变动
+message pb_diamond_vein_act_role_high_rate_change {
+    int64 act_id = 1;           //活动id
+    repeated pb_diamond_vein_act_role_high_rate_change_data lists = 2; // 盛产倍数数据列表
+}
+
+//【星钻矿脉】玩家公会变动
+message pb_diamond_vein_act_role_guild_change {
+    int64 role_id = 1;           //角色id
+    int64 guild_id = 2;           //公会id
+}
+
+// 【星钻矿脉】玩家数据变动
+message pb_diamond_vein_act_role_data_rsp {
+     int64 act_id = 1;           //活动id
+     pb_diamond_vein_act_role_data role_data = 2;      //角色数据
+     int64 action_role_id = 3;       // 攻击方角色id
+}
+
+// 【星钻矿脉】公会归属变化
+message pb_diamond_vein_act_push_owner_guild {
+     int64 act_id = 1;           //活动id
+     repeated pb_diamond_vein_act_owner_map_data lists = 2; // 公会归属地图数据列表
+}

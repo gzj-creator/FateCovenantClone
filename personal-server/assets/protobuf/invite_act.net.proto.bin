@@ -1,0 +1,38 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/invite_act/invite_act.db.proto.txt";
+
+// 邀约奖励
+message pb_invite_share_reward_req {
+    int32 act_id = 1;   // 活动表id
+}
+
+// 邀约绑定
+message pb_invite_bind_req {
+    int32 act_id = 1;   // 活动表id
+    string code = 2;    // 邀约
+}
+
+// 邀约任务奖励领取
+message pb_invite_bind_rsp{
+    pb_invite_info act_data = 1;          //活动数据
+    pb_res_to_client res = 2;                   //资源数据
+}
+
+// 邀约任务奖励领取
+message pb_invite_task_req{
+    int32 act_id = 1;   // 活动表id
+    int32 task_id = 2;  // 任务id
+    int32 count = 3;    // 任务完成次数
+}
+
+// 邀约任务奖励领取
+message pb_invite_task_rsp{
+    pb_invite_info act_data = 1;          //活动数据
+    pb_res_to_client res = 2;                   //资源数据
+}
+
+// 邀约受邀人列表
+message pb_invite_invited_list_rsp {
+    pb_invite_info act_data = 1;          //活动数据
+}

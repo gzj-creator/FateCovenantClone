@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+import "general/res.db.proto.txt";
+import "general/flush_time.db.proto.txt";
+// 单个红包数据
+message pb_guild_red_envelope_info {
+    uint32 id = 1;                    // 红包唯一id
+    uint32 tid = 2;                   // 红包配置tid
+    uint32 end_time = 3;              // 红包失效时间, 只有在红包领取完后，才有值
+    uint64 sender_role_id = 4;        // 发红包的玩家id
+    repeated uint64 role_id = 5;        //领取红包所有人
+    repeated uint32 gold = 6;            //领取红包奖励金币数量
+    bytes extra = 7;                  // 额外数据,比如付费tid等信息
+}
+
+//保存未抢完红包的数据结构
+message pb_guild_red_envelope_active_db{
+    repeated pb_guild_red_envelope_info list = 1;
+    uint32 cur_max_uid = 2;           //当前红包的最大id
+}
+
+//保存已经抢完红包的数据结构
+message pb_guild_red_envelope_fetched_db{
+    repeated pb_guild_red_envelope_info list = 1;
+}
+
+
+// 玩家保存的红包相关数据
+message pb_role_guild_red_envelope {
+    pb_count_flush fetch_count = 1;                    // 今日红包已领取次数
+    pb_count_flush fetch_gold_count = 2;               // 今日累计领取红包总额
+    bytes created_envelope = 3;                  // bit位记录红包tid是否已经创建过了
+    repeated pb_role_red_envelope_end_time inactive_envelope = 4; // 未激活红包
+    repeated pb_role_red_envelope_end_time create_end_times = 5; // 红包创建记录失效记录(为了做未激活红包，重复发送的情况)
+    repeated pb_role_red_envelope_type_fetch type_fetch_list = 6; // 红包类型每天的领取次数数据（类型表配置了每天限领次数的才会记录数据）
+    pb_count_flush thanks_count = 7;                    // 今日感谢次数
+    uint32 fetch_join = 8;           // 是否领取过入会红包，0未领取，1已领取
+    uint32 big_envelope_count = 9;   // 大红包领取次数 (只有服务器需要使用，用于成就）
+}
+
+// 红包id和对应失效时间
+message pb_role_red_envelope_end_time {
+    uint32 tid = 1;                   // 红包配置tid
+    uint32 end_time = 2;              // 失效时间
+    bytes extra = 3;                  // 额外数据,比如付费tid等信
+}
+
+
+
+//生成的的弹幕红包列表
+message pb_guild_red_envelope_bullet_chat_list{
+    repeated pb_guild_red_envelope_bullet_chat chat_list = 1; //所有的大红包
+}
+
+//单个弹幕红包内容
+message pb_guild_red_envelope_bullet_chat{
+    uint64 role_id = 1; //领取英雄id
+    uint32 id = 2; //红包id
+    uint32 award_gold = 3; //红包金额
+    uint32 create_time = 4; //生成记录时间
+//    uint32 tid = 5; //红包配置表tid
+    string role_name = 6; //触发的玩家名字
+}
+
+// 红包类型每天的领取次数数据
+message pb_role_red_envelope_type_fetch{
+    uint32 type = 1; //红包类型
+    pb_count_flush count = 2; //领取次数
+}
+
+//生成的的红包排行榜列表
+message pb_guild_red_envelope_rank_list{
+    repeated pb_guild_red_envelope_rank rank_list = 1; //排行榜数据
+}
+
+//单个红包排行榜内容
+message pb_guild_red_envelope_rank{
+    uint64 role_id = 1; //领取英雄id
+    uint32 rank_val = 2; //排行值 共享值
+    uint64 day_gold = 3; //当天发放红包的金额
+    uint64 flush_stamp = 4; // 刷新时间戳
+    uint64 last_day_gold = 5; //昨天发放红包的金额
+}

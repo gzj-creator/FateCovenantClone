@@ -1,0 +1,7 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+
+// 玩家分享数据
+message pb_role_share {
+    repeated pb_u32_kv share_list = 1; // 分享列表(key为类型，value为分享奖励次数)
+}

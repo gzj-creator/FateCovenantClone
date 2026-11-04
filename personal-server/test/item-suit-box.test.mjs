@@ -15,7 +15,7 @@ import { createItemBoxService } from '../game/item-box-service.mjs';
 // textassets/13508732289462840000-ItemSuitBoxSelectNode.lua.bin resolves
 // OptionalSuitRes[OptionalSuitBox[tid].range[awardIndex]] for display.
 
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
+const backup = new URL('./fixtures/wallet-admin.sqlite', import.meta.url);
 const codec = createGameCodec(), tables = readGameTables();
 
 function setup(t, overrides = {}) {

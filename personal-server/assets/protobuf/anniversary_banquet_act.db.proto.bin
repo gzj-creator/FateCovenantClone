@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+// 周年庆宴会活动玩家数据
+message pb_anniversary_banquet_act_role {
+  repeated pb_anniversary_banquet_act_info act_list = 1;
+}
+
+// 周年庆宴会活动数据
+message pb_anniversary_banquet_act_info {
+	int32 act_tid = 1;          			// 活动tid
+	
+    int32 daily_day = 2;               		// 当前每日任务领取记录所属日序
+    bytes daily_award_bin = 3;         		// 每日任务奖励领取位图
+    bytes challenge_award_bin = 4;     		// 挑战任务奖励领取位图
+    bytes star_award_bin = 5;               // 蜜约回馈星级奖励领取位图
+	
+    int32 progress_value = 6;               // 宴会总进度
+    bytes progress_award_bin = 7;           // 累计进度奖励领取位图
+}

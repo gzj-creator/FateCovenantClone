@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+import "project/homeland/homeland.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/function_cache/player_data/player_data.db.proto.txt";
+
+
+// 家园升级返回
+message pb_homeland_level_up_rsp {
+  pb_homeland_depot homeland = 1; // 最新家园数据
+  pb_res_to_client res = 2;       // 资源变化
+}
+
+// 家园任务完成返回
+message pb_homeland_task_finish_rsp{
+  repeated int64 task_tid_list = 1; // 任务id列表
+  pb_res_to_client res = 2;       // 资源变化
+}
+
+// 家园请求熟悉的人返回
+message pb_homeland_familiar_info_rsp{
+  repeated  pb_homeland_familiar_role familiar_role_list = 1; // 熟悉的人列表
+}
+
+// 家园玩家数据
+message pb_homeland_familiar_role{
+  pb_player_info player_info = 1; // 熟悉的人信息
+  int32 prosperity = 2; // 繁荣度
+  int32 total_like_count = 3; // 总赞数
+}
+
+//家园家具交换请求
+message pb_homeland_replace_req{
+  repeated pb_homeland_house house_list = 1; // 楼栋信息
+}
+
+
+// 家园访问记录返回
+message pb_homeland_visit_record_list_rsp{
+     repeated int64 today_visit_record_list = 10;        // 他人拜访我的记录
+     repeated int64 today_like_record_list = 11;         // 他人点赞我的记录
+}
+
+// 家园拜访数据返回
+message  pb_homeland_visit_record_rsp{
+  int64 level = 1;                                    // 家园等级
+  int64 prosperity = 2;                               // 家园繁荣度
+  repeated pb_homeland_house house_list = 3;          // 楼栋状态
+  int64 total_like_count = 4;                         // 总赞数
+  repeated int64 today_visit_role_ids = 9;            // 今日已拜访玩家id列表
+}
+
+// 家园点赞返回
+message pb_homeland_like_rsp{
+  repeated int64 today_like_role_ids = 1; //今日已点赞玩家id列表
+  pb_res_to_client res = 2;        // 资源变化
+}
+
+

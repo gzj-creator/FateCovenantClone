@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+import "general/res.db.proto.txt";
+
+// 夏日活动主活动 - 玩家数据
+message pb_summer_person{
+    int32 act_id = 1; // 活动id
+    bytes preview_reward = 2; //预告期间领取奖励
+    pb_recharge_limit_info record = 3;          // 付费购买记录
+    bool is_buy_privilege = 4; //是否购买特权
+    int32 last_func_stage = 5; // 上一个活动状态
+    repeated pb_res_obj standard_award = 6; // 基准线奖励
+    bool has_final_settle = 7;  // 是否已经领取结算奖励
+    pb_summer_settle_award settle_award = 8; // 夏日活动结算奖励数据
+}
+
+// 夏日活动 - 奖励领取列表
+message pb_summer_settle_award{
+    repeated pb_summer_settle_preview_info award_type_list = 1; // 奖励列表
+    repeated int32 pve_pass_list = 2; // PVE线性关卡通关列表
+    repeated int32 pve_pass_trail_list = 3; // PVP试炼通关列表
+    int32 pvp_count = 4; // PVP通关列表
+    int32 skin_count = 5; // 泳装皮肤数量
+    int32 gun_skin_count = 6; // 水枪皮肤数量
+}
+
+message pb_summer_settle_preview_info {
+    int32 rewards_type = 1;
+    repeated pb_res_obj award_list = 2; // 奖励列表
+}
+
+// 夏日活动动 - 任务数据
+message pb_summer_task{
+    repeated pb_summer_phase_task phase_list = 1; // 各阶段任务数据列表（包含版本所有阶段对应的数据）
+}
+
+// 夏日活动动 - 阶段任务数据
+message pb_summer_phase_task{
+    uint64 tid = 1; // 夏日活动阶段表tid
+    uint64 progress = 2; // 进度值
+    bytes progress_bin = 3; // 进度奖励领取状态
+    bytes normal_bin = 4; // 阶段任务奖励领取状态
+    bool is_settle = 5; // 标记该阶段是否结算过了
+    uint64 ref_time = 6; // 数据最近刷新时间（用于每日任务刷新）
+}
+
+// -------------------------------服务器数据-------------------------------------------------
+message pb_summer_server {
+    uint32 phase = 1; // 当前阶段
+    uint32 cross_stage = 2; // 进入阶段时的跨服阶段(跨服阶段表tid)
+}

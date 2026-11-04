@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "project/activity/cycle_hero_draw_act/cycle_hero_draw_act.db.proto.txt";
+import "project/shop.db.proto.txt";
+
+// 活动初始化数据
+message pb_cycle_hero_draw_act_init{
+    pb_cycle_hero_draw_act act_data = 1;    // 活动数据
+    pb_shop_info shop_data = 2;             // 商店数据
+}

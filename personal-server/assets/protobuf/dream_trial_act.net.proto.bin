@@ -1,0 +1,66 @@
+syntax = "proto3";
+import "project/activity/dream_trial_act/dream_trial_act.db.proto.txt";
+import "general/res.net.proto.txt";
+import "project/rank/rank.net.proto.txt";
+
+//挑战boss请求
+message pb_dream_trial_challenge_boss_req{
+  int64 activity_id = 1;//活动id
+  int64 boss_id = 2;//boss表id
+}
+
+//挑战boss返回
+message pb_dream_trial_challenge_boss_rsp {
+  pb_dream_trial_role_data act_info = 1;           // 活动信息
+  pb_res_to_client res = 2;                        // 资源变化
+  rank_info pre_self_rank_info = 3;                // 战斗前自己的排名信息
+  rank_info after_self_rank_info = 4;              // 战斗后自己的排名信息
+  int64 damage = 5;                                // 伤害值
+  int64 activity_id = 6;                            //活动id
+}
+
+//抢夺其他玩家积分请求
+message pb_dream_trial_rob_req{
+  int64 activity_id = 1;//活动id
+  int64 score = 2;//发起抢夺时的积分
+}
+
+//抢夺其他玩家积分请求返回
+message pb_dream_trial_rob_rsp {
+  pb_dream_trial_role_data act_info = 1;           //活动信息
+  pb_res_to_client res = 2;                        // 资源变化
+  rank_info pre_self_rank_info = 3;                // 战斗前自己的排名信息
+  rank_info pre_tar_rank_info = 4;                 // 战斗后对手的排名信息
+  rank_info after_self_rank_info = 5;              // 战斗前自己的排名信息
+  rank_info after_tar_rank_info = 6;               // 战斗后对手的排名信息
+  int64 activity_id = 7;                            //活动id
+}
+
+
+//查询掠夺对手清单的请求
+message pb_dream_trial_query_rob_req{
+  int64 activity_id = 1;//活动id
+}
+
+//查询掠夺对手清单返回
+message pb_dream_trial_query_rob_rsp {
+  repeated pb_dream_trial_query_rob_info rob_infos = 1;           //对手信息
+}
+
+message pb_dream_trial_query_rob_info {
+  int64 rid = 1;           //玩家id
+  int64 rank = 2;          // 排名
+  int64 score = 3;         // 积分
+}
+
+//查询掠夺对手清单的请求
+message pb_dream_trial_guild_info_req{
+  int64 activity_id = 1;//活动id
+}
+
+//查询掠夺对手清单返回
+message pb_dream_trial_guild_info_rsp {
+  pb_dream_trial_server_data server_info = 1;           //服务器信息
+  repeated rank_info rank_list = 2;   //排名信息
+  repeated pb_dream_trial_report report_list = 3;          // 战斗记录列表
+}

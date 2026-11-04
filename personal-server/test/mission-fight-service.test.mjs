@@ -1,36 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
-import { createGameStore } from '../storage/game-store.mjs';
 import { createMissionFightService } from '../game/mission-fight-service.mjs';
+import { createGameFixture } from './helpers/game-fixture.mjs';
 
-// Temp database copied from the consistent handoff backup: never the running server database.
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
 const codec = createGameCodec();
 
 function setup(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-fight-'));
-  const file = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, file);
-  let store = createGameStore({ databasePath: file, codec });
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-fight-' });
+  let store = fixture.store;
+  addResource(store, 100012900, 1000);
   let service = createMissionFightService({ store, codec, playbackEnabled: true });
-  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
     get store() { return store; },
     get service() { return service; },
     playbackDisabled: () => createMissionFightService({ store, codec }),
     reopen() {
-      store.close();
-      store = createGameStore({ databasePath: file, codec });
+      store = fixture.open();
       service = createMissionFightService({ store, codec, playbackEnabled: true });
     }
   };
 }
 
 const missionModule = store => codec.unpack('pb_mission', rawBinary(new Map(store.state().modules.value).get(8).value[0]));
+const resourceAmount = (store, tid) => BigInt(store.read().resources.get(String(tid))?.num ?? 0);
 const setMission = (store, missionId) => store.transaction(model => {
   const module = new Map(model.state.modules.value).get(8);
   const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
@@ -60,7 +53,7 @@ const actions = report => report.battle_list[0].action_list.map(bytes => codec.u
 
 test('ordinary mission fight commits at start and 207 replays without duplicate progress', async t => {
   const env = setup(t);
-  assert.equal(missionModule(env.store).mission_id, '20205');
+  setMission(env.store, 30201);
   const passCount = Number(missionModule(env.store).pass_count?.count ?? 0);
   const beforeRewards = Object.fromEntries(['122802', '201500', '101800'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
   const next = 30201;
@@ -150,6 +143,7 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   assert.equal(settlement.mission.mission_id, String(advanced));
   assert.equal(settlement.fight_result, '1');
   assert.deepEqual(settlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
+    { tid: '100012900', diff_num: '-5' },
     { tid: '122802', diff_num: '2' },
     { tid: '201500', diff_num: '190' },
     { tid: '101800', diff_num: '100' },
@@ -181,9 +175,10 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   const repeatedAfterRestart = env.service.execute(201, fightRequest(next));
   const restartedSettlement = codec.unpack('mission_to_client', Buffer.from(codec.unpack('pb_fight_response', repeatedAfterRestart.data).stm.stm_data, 'base64'));
   assert.deepEqual(restartedSettlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
+    { tid: '100012900', diff_num: '-5' },
     { tid: '140000', diff_num: '45' }
   ]);
-  assert.deepEqual(await decodeEtf(Buffer.from(restartedSettlement.res.changes[0].extra, 'base64')), [10, 0]);
+  assert.deepEqual(await decodeEtf(Buffer.from(restartedSettlement.res.changes.at(-1).extra, 'base64')), [10, 0]);
   assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
   assert.equal(Number(env.store.read().role.level), 10);
@@ -206,6 +201,7 @@ test('fight exit acknowledges, report read returns the settled report and progre
 
 test('mission progress committed at start survives the confirmation exit', t => {
   const env = setup(t);
+  setMission(env.store, 30201);
   env.service.execute(201, fightRequest(30201));
   assert.equal(Number(missionModule(env.store).mission_id), 30202);
   assert.equal(env.service.execute(202, codec.pack('pb_fight_exit', { fight_type: 1, is_force: false })).data.length, 0);
@@ -226,6 +222,7 @@ test('non-mission fights are refused without touching saved state', t => {
 test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)', t => {
   const env = setup(t);
   const next = 30201;
+  setMission(env.store, next);
   // Wire shape produced by MissionUIMgr: chapter_tid/section_idx stay at protobuf defaults.
   const wire = (extra = {}) => codec.pack('pb_fight_request', {
     fight_tid: 301, stm_type: 0,
@@ -241,6 +238,7 @@ test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)
 
 test('30204 uses the documented local pursuer fallback and commits on start', t => {
   const env = setup(t);
+  setMission(env.store, 30204);
   const result = env.service.execute(201, fightRequest(30204, { fight_tid: 304 }));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '304');
@@ -252,7 +250,7 @@ test('30204 uses the documented local pursuer fallback and commits on start', t 
 
 test('40210 uses the documented local chapter-boss fallback and advances to chapter five', t => {
   const env = setup(t);
-  setMission(env.store, 40209);
+  setMission(env.store, 40210);
   const result = env.service.execute(201, fightRequest(40210, { fight_tid: 410 }));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '410');
@@ -263,12 +261,12 @@ test('40210 uses the documented local chapter-boss fallback and advances to chap
 test('mission chapter box grants configured rewards once and persists its BitBlock', async t => {
   const env = setup(t);
   setMission(env.store, 30205);
-  const before = Object.fromEntries(['25002', '101500', '201500'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
+  const before = Object.fromEntries(['25002', '101500', '201500'].map(tid => [tid, resourceAmount(env.store, tid)]));
   const claim = async id => env.service.execute(506, await encodeEtf([id]));
   await assert.rejects(() => claim(2), error => error.code === 5);
   await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 2])), error => error.code === 5);
   assert.equal(missionModule(env.store).box_award ?? '', '');
-  for (const tid of ['25002', '101500', '201500']) assert.equal(BigInt(env.store.read().resources.get(tid).num), before[tid]);
+  for (const tid of ['25002', '101500', '201500']) assert.equal(resourceAmount(env.store, tid), before[tid]);
   await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 1])), error => error.code === 1);
   // 3-5 is still the first unpassed node. Its completion unlocks the chapter
   // three box only after the mission cursor advances to 4-1.
@@ -300,7 +298,7 @@ test('mission chapter box grants configured rewards once and persists its BitBlo
 test('mission one-key claim skips previously claimed boxes and is idempotent across reopen', async t => {
   const env = setup(t);
   setMission(env.store, 50201);
-  const before = Object.fromEntries(['25002', '101500', '201500'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
+  const before = Object.fromEntries(['25002', '101500', '201500'].map(tid => [tid, resourceAmount(env.store, tid)]));
 
   await env.service.execute(506, await encodeEtf([1]));
   const result = await env.service.execute(506, await encodeEtf([1, 2, 3, 4]));
@@ -330,7 +328,7 @@ test('mission one-key claim skips previously claimed boxes and is idempotent acr
 test('mission box reconciles a missing reward claim from the BitBlock without granting twice', async t => {
   const env = setup(t);
   setMission(env.store, 50201);
-  const before = BigInt(env.store.read().resources.get('101500').num);
+  const before = resourceAmount(env.store, '101500');
   const claim = async () => env.service.execute(506, await encodeEtf([1]));
 
   const first = codec.unpack('pb_mission_rsp', (await claim()).data);
@@ -457,6 +455,7 @@ test('mission fight playback stays disabled until a real action stream exists', 
 
 test('story mission 30205 advances the mission module through req_mission_custom', t => {
   const env = setup(t);
+  setMission(env.store, 30201);
   // Reach the chapter-3 story node through the real fight path so the
   // story-pass precondition is the same one the client has in game.
   for (const mission of [30201, 30202, 30203, 30204]) {
@@ -495,7 +494,7 @@ test('ordinary victory advances the saved and returned cursor to the next journe
   env.store.transaction(model => {
     const module = new Map(model.state.modules.value).get(8);
     const current = codec.unpack('pb_mission', rawBinary(module.value[0]));
-    current.mission_id = '40207';
+    current.mission_id = '40208';
     module.value[0] = serializedBinary(codec.pack('pb_mission', current));
     const modules = new Map(model.state.modules.value);
     modules.set(8, module);

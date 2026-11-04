@@ -12,7 +12,7 @@ import { createGameStore } from '../storage/game-store.mjs';
 
 const codec = createGameCodec();
 const heroTables = readHeroTables();
-const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.local-only.json', import.meta.url)));
+const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 
 function fixture() {
   const modules = structuredClone(capture.privateFlows.find(flow => flow.messageId === 'game:tcp-69:s2c:103').decoded[2]);

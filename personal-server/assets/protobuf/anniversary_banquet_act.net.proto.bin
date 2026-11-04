@@ -1,0 +1,27 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/activity/anniversary_banquet_act/anniversary_banquet_act.db.proto.txt";
+
+// 领取任务奖励。
+message pb_anniversary_banquet_act_task_award_req {
+    int64 act_tid = 1;
+	int32 task_type = 2;
+    repeated int64 task_tid_list = 3;
+}
+
+message pb_anniversary_banquet_act_task_award_rsp {
+	int32 task_type = 1;
+    pb_anniversary_banquet_act_info act_info = 2;
+    pb_res_to_client res = 3;
+}
+
+// 领取进度奖励。
+message pb_anniversary_banquet_act_process_award_req {
+    int64 act_tid = 1;
+    repeated int64 process_tid_list = 2;
+}
+
+message pb_anniversary_banquet_act_process_award_rsp {
+    pb_anniversary_banquet_act_info act_info = 1;
+    pb_res_to_client res = 2;
+}

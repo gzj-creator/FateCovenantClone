@@ -19,7 +19,7 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables(), tables = readGameTables();
-const capturePath = new URL('../fixtures/login-modules.local-only.json', import.meta.url);
+const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const fixtureTids = [1020301, 1020601, 2010101, 2010201, 2020601, 4030801];
 

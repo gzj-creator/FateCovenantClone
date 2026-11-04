@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "project/bonus_draw/bonus_draw.db.proto.txt";
+import "project/shop.db.proto.txt";
+import "project/activity/hero_down_act/hero_down_act.db.proto.txt";
+
+message pb_hero_down_act_init {
+  pb_bonus_draw bonus_data = 1;                // 福利抽奖数据
+  pb_shop_info_list bonus_shop_data = 2;       // 福利抽奖普通商店数据
+  pb_hero_down_act_data hero_down_data = 3;    // 下放活动数据
+}

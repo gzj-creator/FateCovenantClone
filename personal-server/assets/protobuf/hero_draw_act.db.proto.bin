@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "project/recharge/recharge_limit.db.proto.txt";
+
+// 英雄招募数据
+message pb_hero_draw_act_role {
+  int32 draw_count = 1; // 抽奖次数
+  bytes reward_bytes = 2;  // 领奖id 二进制
+  int32 draw_exchange_id = 3;   // 使用心愿id 在配置表普通招募心愿阵容推荐表 normal_draw_exchange_lineup_cfg
+  pb_recharge_limit_info recharge_limit_info = 4; // 礼包数据结构
+  bool is_mail_reward = 5; // 是否发放邮件奖励
+}

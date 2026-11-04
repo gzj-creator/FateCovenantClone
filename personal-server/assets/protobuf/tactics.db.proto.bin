@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+// 战法全局数据
+message pb_tactics_master{
+    repeated pb_tactics_chapter info_list = 1; // 当前开启的战法章节数据列表(章节有加点，才会生成一个章节数据)
+}
+
+// 单个战法章节数据
+message pb_tactics_chapter{
+    uint32 chapter_tid = 1; // 章节配置tid
+    pb_tactics_node root_node = 2; // 根节点（调整完后删除）
+    repeated pb_tactics_node sub_list = 3; // 其他所有子节点(节点有加点，才会生成一个节点数据)
+}
+
+// 战法节点数据
+message pb_tactics_node{
+    uint32 node_tid = 1; // 战法节点表的tid
+    uint32 level = 2; // 当前等级
+}

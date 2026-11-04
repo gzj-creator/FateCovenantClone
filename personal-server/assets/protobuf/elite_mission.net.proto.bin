@@ -1,0 +1,31 @@
+syntax = "proto3";
+import "general/res.net.proto.txt";
+import "project/elite_mission/elite_mission.db.proto.txt";
+import "project/task.db.proto.txt";
+
+// 精英主线战斗请求数据（战斗为关卡或者BOSS）
+message pb_elite_mission_req {
+    uint64 mission_id = 1; // 关卡ID
+    int32 boss_id = 2; // BOSS
+}
+
+// 精英主线战斗返回数据
+message pb_elite_mission_back{
+    pb_elite_mission mission_info = 1; // 精英主线信息
+    pb_res_to_client res = 2; // 资源
+    bool is_boss = 3; //是否是BOSS关
+    uint64 boss_tid = 4; //boss编号
+}
+
+// 精英主线章节奖励请求数据
+message pb_elite_mission_box_award_req{
+    repeated uint32 box_id_list = 1; // 奖励宝箱ID列表
+    repeated uint32 common_task_id_list = 2; // 章节星级列表
+}
+
+// 精英主线章节奖励返回数据
+message pb_elite_mission_box_award_back{
+    pb_res_to_client res_change = 1; // 资源变化
+    pb_elite_mission mission_info = 2; // 精英主线信息
+    pb_common_task common_task = 3; //通用任务数据
+}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "core/db.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 每日精选
+message pb_daily_selection_res {
+    pb_res_to_client res = 1; //资源信息
+    uint32 reward_state = 2; //领取免费奖励的状态 0未领取 1领取了不要条件的奖励  2领取了所有奖励
+    uint64 reward_time = 3; //上次领取免费奖励的时间
+}

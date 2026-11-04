@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "project/destiny/destiny.db.proto.txt";
+import "general/res.net.proto.txt";
+
+// 升级天命返回数据
+message pb_destiny_up_back{
+  pb_destiny_data destiny = 1;        // 最新天命数据
+  pb_res_to_client res_client = 2;    // 资源变化
+}

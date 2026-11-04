@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+// 功能预告
+message pb_function_manual {
+  bytes got_award = 1; // 已领取的奖励
+}
