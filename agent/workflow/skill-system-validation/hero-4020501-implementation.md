@@ -8,8 +8,10 @@
 - Requires investigation: 2 (生命偷取 120001002, ultimate 6910001055)
 
 ## Source templates
-- Assassin basic/passive templates cloned from hero 4020301 光枪守卫 (same Assassin kit).
-- 生命偷取 (120001002) cloned from hero 2020201 武姬月 (lifesteal approximation).
+- Assassin basic/passive/mastery templates cloned from hero 2020601 影之菖蒲 (same Assassin kit).
+- 破盾 (120000018) cloned from hero 1010201 鱼缸头 (shared passive).
+- 生命偷取 (120001002) cloned from hero 1030301 观星者 (lifesteal approximation).
+- Ultimate (6910001055) cloned from hero 1010101 吟游诗人 (metadata fallback generic damage).
 
 ## Skill list
 | Skill ID | Name | Type | effectType | targetType |
@@ -30,7 +32,7 @@
 | 6910001055 | Skill 6910001055 | Ultimate | damage | single (requiresInvestigation) |
 
 ## Notes
-- All tid fields remapped to hero 4020501 skill IDs.
+- All tid fields remapped to hero 4020501 skill IDs (hero-specific) / shared IDs (passives).
 - No new effect types/target types/trigger types needed.
 - Test: personal-server/test/hero-4020501-skill-validation.test.mjs (20/20 passing).
 EOF
