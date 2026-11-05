@@ -29,22 +29,21 @@ Branch: skill-system-validation
 13. normal-profession-1 Warrior Basic Attack (攻击) - project fallback (damage 1.0x single).
 
 ### Ultimate (2)
-14. 6303060111 莉莉丝_稀有技能 - rare skill: enemy adventurers removing burn stacks add {0} layers; allies attacking {0} targets heal 1% max HP per layer (max 3/round, 6 for element). Complex; approximated as generic 2.0x magical damage single. requiresInvestigation.
+14. 6303060111 莉莉丝_稀有技能 - rare skill: on burn removal adds stacks; attacking targets with stacks heals. Approximated as single damage. requiresInvestigation.
 15. 6910001033 Skill 6910001033 - metadata fallback -> 2.0x physical damage single. requiresInvestigation.
 
 ## Skills Fixed
-- Previously all 15 skills had no effectType/effects/triggers (only ability/abilityDes metadata), except normal-profession-1 (already fallback).
+- Previously all 15 skills had no effectType/effects/triggers (only ability/abilityDes metadata, except normal attack).
 - Added effectType, targetType, energyCost, effects[], and triggers[] to all skills using existing effect system (stat-modifier, energy, damage).
-- Cloned implemented templates from 赏金猎人 (3010301) for mastery skills 333060171/333060172/333060173, 狂暴玛丽 (1020301) for 地狱业火 (333060175), and 猎魔人 (1020201) for shared passive skills (120001031, 120000001, 120000006, 120000009, 120000014, 120000015), 哞哞号手 (2020401) for 奋力一击 (120001008).
-- 怒火焚身 (333060174) hand-authored: attack-percent +0.03 timed 1 round on attack/skill-use.
+- Cloned implemented templates from 焰舞 (3030701) (same Warrior mastery/passive pattern) for mastery skills 333060171/333060172/333060173/333060174/333060175 and shared passive skills (120001031, 120000001, 120000006, 120000009, 120000014, 120000015, 120001008), adapted to 莉莉丝 skill IDs.
+- 喷薄焰火... (怒火焚身 333060174) hand-authored: attack-percent +0.03 timed 1 round on attack/skill-use.
 - ability/abilityDes tid fields preserved from original hero's metadata.
 - No new effect types, status types, or target types required; reused existing framework.
 
 ## Remaining Issues
-- 鼓舞 (120000009) catalog says "友方普攻/绝招时能量回复25点" (ally normal/skill), but implementation triggers on self attack only (approximation; ally condition requires engine integration). requiresInvestigation.
 - 格挡 (120000014) catalog says "释放第2次终结技前，受到终结技伤害降低20%" but approximated as battle-start permanent reduction. requiresInvestigation.
 - 奋力一击 (120001008) catalog says "终结技对敌方生命最高单位造成的最终伤害提升30%" but target-HP condition not enforced. requiresInvestigation.
-- Rare skill 6303060111 is complex (burn-removal layer conversion, ally heal per layer, element-camp doubling); approximated as generic 2.0x magical damage. requiresInvestigation.
+- Ultimate 6303060111 is rare skill with complex burn-removal stacking; approximated as single damage. requiresInvestigation.
 - Ultimate 6910001033 is metadata fallback (missing description). requiresInvestigation.
 - Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
 - Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending). Passive triggers are registered at battle start but processTriggers is not yet called in executeTurn loop (integration pending). Consistent with prior hero implementations.
@@ -54,8 +53,3 @@ Branch: skill-system-validation
 
 ## Test Results
 - personal-server/test/hero-3030601-skill-validation.test.mjs: 23/23 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
-- Battle engine tests: pre-existing passing
-EOF
-echo written
