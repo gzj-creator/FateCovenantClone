@@ -7478,7 +7478,30 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null
+            "abilityDes": null,
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "single"
+                },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "physical",
+                  "canCrit": true,
+                  "multiplier": 1
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "notes": "Project-defined fallback basic attack."
           }
         },
         {
@@ -7511,14 +7534,31 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-reduction",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -7537,7 +7577,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -7572,14 +7613,31 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "max-hp-percent",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -7598,7 +7656,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -7633,14 +7692,47 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-resist",
+                  "magnitude": 0.05,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-damage-reduction",
+                  "magnitude": 0.1,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -7659,14 +7751,15 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               },
               {
                 "triggerType": "on-round-start",
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -7685,7 +7778,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -7720,7 +7814,24 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-reduction",
+                  "magnitude": 0.15,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 1
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-attack",
@@ -7746,7 +7857,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               },
               {
                 "triggerType": "on-skill-use",
@@ -7772,7 +7884,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -7807,7 +7920,39 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-reduction",
+                  "magnitude": 0.08,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 1
+                },
+                "chance": 1
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "heal",
+                  "healType": "percent-max-hp",
+                  "multiplier": 0.05
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
@@ -7833,14 +7978,15 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               },
               {
                 "triggerType": "on-round-end",
                 "condition": null,
                 "conditionKey": "round-3",
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -7858,7 +8004,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -7893,7 +8040,23 @@
             "effectType": "energy",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "energy",
+                  "energyType": "gain",
+                  "magnitude": 150
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-being-hit",
@@ -7918,7 +8081,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -7953,14 +8117,31 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-reduction",
+                  "magnitude": 0.15,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "permanent",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-hp-threshold",
                 "condition": null,
                 "conditionKey": "hp-below-50",
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -7979,7 +8160,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -8014,7 +8196,23 @@
             "effectType": "energy",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "energy",
+                  "energyType": "gain",
+                  "magnitude": 25
+                },
+                "duration": {
+                  "durationType": "instant",
+                  "rounds": 0
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-attack",
@@ -8039,7 +8237,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -8074,7 +8273,24 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-rate",
+                  "magnitude": 0.3,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 1
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-attack",
@@ -8100,7 +8316,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -8135,7 +8352,26 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "heal-bonus",
+                  "magnitude": 0.2,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 2
+                },
+                "chance": 1,
+                "unique": true,
+                "refresh": true
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
@@ -8163,7 +8399,8 @@
                   "unique": true,
                   "refresh": true
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -8198,14 +8435,30 @@
             "effectType": "shield",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "shield",
+                  "shieldType": "percent-defense",
+                  "multiplier": 0.8
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 2
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-hp-threshold",
                 "condition": null,
                 "conditionKey": "hp-below-70",
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -8223,7 +8476,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -8258,14 +8512,31 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "damage-reduction",
+                  "magnitude": 0.2,
+                  "isPercentage": true
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 1
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -8284,7 +8555,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
@@ -8319,14 +8591,30 @@
             "effectType": "shield",
             "targetType": "front-row-allies",
             "energyCost": 0,
-            "effects": [],
+            "effects": [
+              {
+                "target": {
+                  "targetType": "front-row-allies"
+                },
+                "effect": {
+                  "type": "shield",
+                  "shieldType": "percent-max-hp",
+                  "multiplier": 0.05
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 2
+                },
+                "chance": 1
+              }
+            ],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
                 "conditionKey": null,
                 "cooldown": 0,
-                "maxTriggers": 0,
+                "maxTriggers": 1,
                 "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
@@ -8344,7 +8632,8 @@
                   },
                   "chance": 1
                 },
-                "priority": 0
+                "priority": 0,
+                "chance": 1
               }
             ]
           }
