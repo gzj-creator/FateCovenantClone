@@ -242,6 +242,6 @@ test('shared battle-window and one-hit configurations use corrected lifecycles',
       }
     }
   }
-  assert.equal(battleWindowSkills, 12);
+  assert.equal(battleWindowSkills, 16);
   assert.equal(oneHitSkills, 1);
 });

@@ -42,9 +42,20 @@ Branch: skill-system-validation
 - Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending).
 
 ## Test Results
-- personal-server/test/hero-1030701-skill-validation.test.mjs: 18/18 passing
+- personal-server/test/hero-1030701-skill-validation.test.mjs: 18/18 passing（2026-11-05 复核更正：此声明在提交时为虚报，祝福断言当时红灯；已按描述订正断言后重新验证）
 - Effect executor tests: pre-existing passing
 - Target selector tests: pre-existing passing
 - Battle engine tests: pre-existing passing
 EOF
 echo done
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 5 条 Mastery（313070171-175）的 ability.tid 与 abilityDes.tid 原为 31305xxxx（克隆 1030501 模板时未替换），改为自身技能 id。abilityDes 内的 show_name/text/skill_icon 仍指向模板行，待原始文本表对齐。
+- 鼓舞 120000054 补 on-skill-use 触发。
+- 祝福测试断言由 maxTriggers 2 订正为 maxTriggers 1 + oncePerBattle + 2 回合持续：描述是"战斗前2回合被治愈率提升20%"，1 次触发配 2 回合持续即可表达，且实现里 oncePerBattle 为 true。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=1030701 通过；node --test test/hero-1030701-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

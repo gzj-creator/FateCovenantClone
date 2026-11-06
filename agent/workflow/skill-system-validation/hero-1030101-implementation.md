@@ -1,73 +1,50 @@
-# Hero 1030101 (露奈尔) Skill Validation & Implementation
+# Hero 1030101（露奈尔）技能实现与验证
 
-Date: 2026-11-01
-Branch: investigate-5-3 (skill-system-validation integration)
+日期：2026-11-05
+技能库：`personal-server/config/skill-database.json`
+补丁：`agent/workflow/skill-system-validation/patches/20261105/hero-1030101.json`
+写入方式：`node scripts/apply-hero-skill-patch.mjs ../agent/workflow/skill-system-validation/patches/20261105/hero-1030101.json`（cwd `personal-server`）
 
-## Hero
-- ID: 1030101, Name: 露奈尔, Role: Knight
-- Stats: HP 1320, ATK 180, DEF 60, SPD 112
-- Hero Type: Rare hero (稀有角色)
+## 英雄信息
 
-## Skills Validated (15 total)
+- ID 1030101，露奈尔，Knight
+- 本轮前 15 个技能中 14 个 `implementation.effects` 为空，普攻缺 `effectType`/`damage`。
 
-### Mastery skills (5)
-1. 313010171 不屈 - 终极减伤 +5% on battle start -> stat-modifier damage-reduction 0.05 (on-round-start, oncePerBattle)
-2. 313010172 健壮 - 最大HP +5% on battle start -> stat-modifier max-hp-percent 0.05 (on-round-start, oncePerBattle)
-3. 313010173 泰然自若 - 抗暴+5%, 暴击伤害减免+10% -> stat-modifier crit-resist 0.05 + crit-damage-reduction 0.10
-4. 313010174 盘石之固 - next damage taken -15% after normal/ultimate -> stat-modifier damage-reduction 0.15 (on-attack, on-skill-use, timed 1 round)
-5. 313010175 赤红攻势 - first 3 rounds -8% damage taken; +5% max HP heal at round 3 end -> stat-modifier damage-reduction 0.08 (maxTriggers 3) + heal percent-max-hp 0.05 at round end (oncePerBattle, condition: round-3)
+## 技能清单与实现方式
 
-### Passive skills (8)
-6. 120001027 突破5 - gain 150 energy when hit by normal/ultimate -> energy gain 150 (on-being-hit)
-7. 120000051 蛰伏 - +15% damage reduction when HP<50% -> stat-modifier damage-reduction 0.15 (on-hp-threshold, oncePerBattle, condition: hp-below-50)
-8. 120000054 鼓舞 - allies gain 25 energy on normal/ultimate -> energy gain 25 (on-attack)
-9. 120000055 反杀 - +30% crit when attacking higher-HP% target -> stat-modifier crit-rate 0.30 (on-attack, condition: target-hp-above-self, timed 1 round)
-10. 120000059 祝福 - +20% healing received in first 2 rounds -> stat-modifier heal-bonus 0.20 (on-round-start, maxTriggers 2, timed 2 rounds)
-11. 120001003 生命护盾 - first HP<70% grants shield 80% defense for 2 rounds -> shield percent-defense 0.80 (on-hp-threshold, oncePerBattle, condition: hp-below-70, timed 2 rounds)
-12. 120001019 防护加持 - first ultimate damage taken -20% -> stat-modifier damage-reduction 0.20 (on-ultimate-use, oncePerBattle, timed 2 rounds)
+| 技能 | 类型 | 实现 |
+| --- | --- | --- |
+| normal-profession-4 Knight Basic Attack | Normal | 项目兜底：单体物理 1.0×，canCrit |
+| 313010171 不屈 | Mastery | 战斗开始永久 damage-reduction 0.05 |
+| 313010172 健壮 | Mastery | 战斗开始永久 max-hp-percent 0.05 |
+| 313010173 泰然自若 | Mastery | 战斗开始永久 crit-resist 0.05 + crit-damage-reduction 0.10 |
+| 313010174 盘石之固 | Mastery | 普攻/绝招后自身 damage-reduction 0.15（1 回合），近似“下一次受伤降低 15%” |
+| 313010175 赤红攻势 | Mastery | 前 3 回合 damage-reduction 0.08（maxTriggers 3）+ 第 3 回合结束 heal percent-max-hp 0.05 |
+| 120001027 突破5 | Passive | 受击回复 150 能量 |
+| 120000051 蛰伏 | Passive | hp-below-50 一次，damage-reduction 0.15 |
+| 120000054 鼓舞 | Passive | 友方攻击时自身回复 25 能量（目标 self） |
+| 120000055 反杀 | Passive | target-hp-above-self 时 crit-rate 0.30 |
+| 120000059 祝福 | Passive | 前 2 回合 heal-bonus 0.20 |
+| 120001003 生命护盾 | Passive | 首次 hp-below-70 获得 percent-defense 0.80 护盾 2 回合 |
+| 120001019 防护加持 | Passive | on-ultimate-use（oncePerBattle）damage-reduction 0.20，timed 2 |
+| 6103010109 露奈尔_稀有技能 | Ultimate | on-round-end 为 all-allies 提供 shield percent-max-hp 0.05（1 回合），energyCost 100 |
+| 6910001003 终极技能 | Ultimate | 原有元数据兜底：单体物理 2.0× |
 
-### Normal / Ultimate
-13. normal-profession-4 Knight Basic Attack - project fallback (no effect def; handled by behavior engine)
-14. 6103010109 露奈尔_稀有技能 - Ultimate, rare shield skill (see below)
-15. 6910001003 Skill 6910001003 - ultimate, metadata fallback -> damage 2.0x (single)
+## 近似项与 requiresInvestigation
 
-## Rare Shield Skill Special Investigation (6103010109)
+- `313010174`（requiresInvestigation）：单次受伤减免无法按次数消耗，近似为 1 回合减伤。
+- `120001019`（requiresInvestigation）：目录为“释放首次终结技**前**”，现有触发只能在终结技使用时触发，因此近似为首次终结技时获得 2 回合 20% 减伤；前置窗口本身未表达。
+- `6103010109`（requiresInvestigation）：极夜冒险者翻倍、`{0}` 状态层未建模；保留 `polarNightDouble` 标记字段供后续引擎读取，当前仅执行 5% 最大生命护盾。
+- 稀有终结技的触发定义在 Ultimate 技能上，`registerPassiveTriggers` 只绑定 Passive/Mastery，因此该触发需由技能执行路径处理（当前引擎尚未接入）。
 
-Description: 回合结束时露奈尔为我方全体提供相当于露奈尔5%最大生命值的护盾（极夜冒险者翻倍），持续1回合，并添加1层{0}
+## 验证
 
-### Findings
-- Trigger: on-round-end (round end), not on-use. The skill is an Ultimate with energyCost 100 but its shield effect fires at round end via trigger.
-- Shield: percent-max-hp, multiplier 0.05 (5% of target's max HP), duration 1 round (timed), target all-allies.
-- Polar night doubling: description says "极夜冒险者翻倍" (polar night adventurers get double shield). Marked with polarNightDouble flag on the trigger and effect. The doubling logic for polar-night-camp heroes (camp 1 NPCs with ids 9301700/9301800/9301900) is documented but the multiplier application is deferred to runtime conditioning (requires camp/hero-id check at execution time). Assumption: polar-night heroes are NPC enemies; when an ally is a polar-night adventurer, shield multiplier becomes 0.10.
-- Placeholder {0}: The description's "{0}" (colored red) is a buff/stack name inserted by the client's string formatting. Analysis of FightTable.AbilityDes text 601600029 and language bundle did not resolve a concrete name. The client renders this as a dynamic value (likely a stack count or buff tier). Marked as UNKNOWN; implementation adds the shield only. The "+1 layer {0}" portion is documented as requiring further investigation (no effect definition added for the buff layer). It may correspond to a stack of a buff (e.g., "露奈尔护盾层数") that the client tracks separately.
-- No FightTable.Buff/E (effect) row references 6103010109; only FightTable.Ability and AbilityDes contain it. The rare skill has no Effect/Buff table join, so parameters are derived from catalog text.
+- `node scripts/verify-hero-skills.mjs --hero=1030101`：通过
+- `node --test test/hero-1030101-skill-validation.test.mjs`：10/10 通过
+- 测试覆盖：15 个技能 id、全技能可执行结构、普攻 damage、专精与特色技能数值、稀有终结技的 all-allies/5%/1 回合/100 能量、15 条被动触发注册（终结技触发单独校验），以及 EffectExecutor 实跑 damage/heal/shield/energy/stat-modifier。
 
-### Special handling
-- Added TARGET_TYPE ALL_ALLIES (already present) for round-end shield to all allies.
-- Added polarNightDouble boolean flag on trigger/effect for downstream conditional doubling.
-- ConditionKey: none (fires every round end). oncePerBattle: false, oncePerRound: false (fires each round).
+## 遗留风险
 
-## Skills Fixed
-- Previously all implementations were null (skill-database.json had no effect definitions).
-- Added effectType, effects[], and triggers[] to each of the 13 resolved skills (excluding normal-profession-4 fallback and 6910001003 which got damage effect).
-- registerPassiveTriggers now prefers stored triggers over heuristic inference.
-- Added conditionKey evaluation (hp-below-50, hp-below-70, target-hp-above-self, round-3).
-- New STAT_TYPES used: max-hp-percent, crit-resist, crit-damage-reduction (already present from 1020501 work).
-- Rare skill marked with polarNightDouble flag.
+- 极夜翻倍与 `{0}` 状态机制缺失；没有对应状态类型可用，未伪造数值。
+- 技能触发与战斗引擎回合循环尚未接线（既有系统性缺口，本轮不修）。
 
-## Remaining Issues
-- {0} placeholder in rare skill description unresolved: no concrete buff/stack name or effect found in decoded tables. The "+1 layer {0}" portion is not implemented as an effect. Requires client string-formatting investigation or runtime observation.
-- Polar-night doubling (极夜冒险者翻倍) not wired into executor: requires camp/hero-id check at execution time; documented as conditional multiplier 0.10 for polar-night allies.
-- 反杀 condition (target HP% > self HP%) approximated as always-true in trigger evaluation; precise per-target filtering not wired.
-- 赤红攻势 round-3 heal trigger condition approximate (state.round tracking not fully wired in processTriggers loop).
-- 6910001003 ultimate has no localized description (MISSING_ABILITY_DESCRIPTION); using metadata-fallback damage 2.0x.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending). Passive triggers are registered at battle start but processTriggers is not yet called in executeTurn loop (integration pending).
-
-## Test Results
-- personal-server/test/hero-1030101-skill-validation.test.mjs: 18/18 passing
-- Effect executor tests: 30 passing
-- Target selector tests: 10 passing
-- Battle engine tests: 8 passing
-EOF
-echo done

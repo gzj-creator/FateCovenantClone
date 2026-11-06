@@ -1,52 +1,34 @@
-# Hero 1030401 (黑鸦女爵) Skill Validation & Implementation
+# Hero 1030401 (黑鸦女爵) 技能实现（审计补建文档）
 
-Date: 2026-11-01
-Branch: investigate-5-3
+本文件在 2026-11-05 技能库审计时补建：该英雄此前有测试文件但没有实现文档。内容按 config/skill-database.json 当前状态生成。
 
-## Hero
-- ID: 1030401, Name: 黑鸦女爵, Role: Ranger
-- Stats: HP 1260, ATK 190, DEF 60, SPD 107
+## 技能清单（14 条）
 
-## Skills Validated (14 total)
+| id | 名称 | 类型 | 描述 | 实现 |
+| --- | --- | --- | --- | --- |
+| normal-profession-3 | Ranger Basic Attack (辅助) | Normal | Project-defined fallback basic attack. The catalog client has no HeroTable.Ability.ability value for this hero. | damage physical x1 -> single |
+| 313040171 | 不屈 | Mastery | 进入战斗后，最终伤害减免提升5% | stat damage-reduction 0.05% -> self | triggers: on-round-start |
+| 313040172 | 健壮 | Mastery | 进入战斗后，最大生命值增幅提升5% | stat max-hp-percent 0.05% -> self | triggers: on-round-start |
+| 313040173 | 超群技艺 | Mastery | 进入战斗后，异常状态命中和异常状态抗性提升10% | stat status-hit 0.1% -> self; stat status-resist 0.1% -> self | triggers: on-round-start / on-round-start |
+| 313040174 | 气定神闲 | Mastery | 普攻/绝招后，30%概率额外恢复自身100能量 | energy gain 100 -> self | triggers: on-attack / on-skill-use |
+| 313040175 | 无声恫吓 | Mastery | 释放终结技时，50%概率额外降低目标50能量 | energy loss 50 -> single | triggers: on-ultimate-use |
+| 120001028 | 突破6 | Passive | 友方普攻/绝招自身回复50点能量 | energy gain 50 -> self | triggers: on-attack / on-skill-use |
+| 120000032 | 反弹 | Passive | 受到敌方后排攻击时，反弹率提升10% | stat rebound-rate 0.1% -> self | triggers: on-being-hit |
+| 120000034 | 铁甲 | Passive | 自身生命高于50%时，抗暴提升20% | stat anti-crit 0.2% -> self | triggers: on-round-start(hp-above-50) |
+| 120000037 | 亢奋 | Passive | 敌方被击退时回复100点能量 | energy gain 100 -> self | triggers: on-kill |
+| 120000042 | 暴怒 | Passive | 释放能量技能时，暴击伤害增加30% | stat crit-damage 0.3% -> self | triggers: on-skill-use |
+| 120000044 | 奋激 | Passive | 首次释放终结技后，免伤提升20% | stat damage-reduction 0.2% -> self | triggers: on-ultimate-use |
+| 120001009 | 穿刺一击 | Passive | 首次释放终结技无视敌方30%的防御 | stat ignore-defense 0.3% -> self | triggers: on-ultimate-use |
+| 6910001006 | Skill 6910001006 | Ultimate | - | damage physical x2 -> single |
 
-### Mastery skills (5)
-1. 313040171 不屈 - final damage reduction +5% on battle start -> stat-modifier damage-reduction 0.05 (on-round-start, oncePerBattle)
-2. 313040172 健壮 - max HP +5% on battle start -> stat-modifier max-hp-percent 0.05 (on-round-start, oncePerBattle)
-3. 313040173 超群技艺 - status hit and resist +10% on battle start -> stat-modifier status-hit 0.10 + status-resist 0.10 (on-round-start, oncePerBattle)
-4. 313040174 气定神闲 - after normal/skill, 30% chance to gain 100 energy -> energy gain 100 (on-attack, on-skill-use, chance 0.3)
-5. 313040175 无声恫吓 - on ultimate use, 50% chance to reduce target energy by 50 -> energy loss 50 (on-ultimate-use, chance 0.5, single target)
+## 审计修订（2026-11-05）
 
-### Passive skills (8)
-6. 120001028 突破6 - on ally normal/skill, self gains 50 energy -> energy gain 50 (on-attack, on-skill-use)
-7. 120000032 反弹 - when hit by back-row enemy, rebound rate +10% -> stat-modifier rebound-rate 0.10 (on-being-hit)
-8. 120000034 铁甲 - when HP > 50%, anti-crit +20% -> stat-modifier anti-crit 0.20 (on-round-start)
-9. 120000037 亢奋 - when enemy knocked back/killed, self gains 100 energy -> energy gain 100 (on-kill)
-10. 120000042 暴怒 - on energy skill use, crit damage +30% -> stat-modifier crit-damage 0.30 (on-skill-use)
-11. 120000044 奋激 - after first ultimate, damage reduction +20% -> stat-modifier damage-reduction 0.20 (on-ultimate-use, oncePerBattle)
-12. 120001009 穿刺一击 - first ultimate ignores 30% of enemy defense -> stat-modifier ignore-defense 0.30 (on-ultimate-use, oncePerBattle)
+- 数据未改动（结构校验与行为断言均通过）。
 
-### Normal / Ultimate
-13. normal-profession-3 Ranger Basic Attack - project fallback (damage 1.0x single)
-14. 6910001006 Skill 6910001006 - ultimate, metadata fallback -> damage 2.0x (single, requires investigation)
+- 验证：node scripts/verify-hero-skills.mjs --hero=1030401 通过；node --test test/hero-1030401-skill-validation.test.mjs 通过。
 
-## Skills Fixed
-- Previously all implementations were null (skill-database.json had no effect definitions).
-- Added effectType, effects[], and triggers[] to all 13 resolved skills (excluding normal-profession fallback which already had damage effect).
-- No new effect types, status types, or target types required; reused existing ignore-defense stat type, energy effects, and stat-modifiers.
+## 近似与遗留
 
-## Notes on Catalog Description Discrepancy
-- Catalog lists "气定神闲" description as "普攻/绝招后，30%概率额外恢复自身100能量" (self energy gain) — implemented as self energy gain 100 with 30% chance. Matches.
-- Catalog lists "无声恫吓" description as "释放终结技时，50%概率额外降低目标50能量" (target energy loss) — implemented as target energy loss 50 with 50% chance. Matches.
-
-## Remaining Issues
-- 6910001006 ultimate has no localized description (MISSING_ABILITY_DESCRIPTION); using metadata-fallback damage 2.0x.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending). Passive triggers are registered at battle start but processTriggers is not yet called in executeTurn loop (integration pending). Consistent with prior hero implementations.
-
-## Test Results
-- personal-server/test/hero-1030401-skill-validation.test.mjs: 18/18 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
-- Battle engine tests: pre-existing passing (8/8)
-EOF
-echo done
+- requiresInvestigation：6910001006 Skill 6910001006
+- 数值来自技能描述，未与 FightTable.Effect / FightTable.Buff 对齐。
+- 技能库尚未接入战斗主循环，影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

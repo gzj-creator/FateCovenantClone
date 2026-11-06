@@ -62,3 +62,12 @@ Branch: skill-system-validation
 - Effect executor tests: pre-existing passing
 - Target selector tests: pre-existing passing
 - Battle engine tests: pre-existing passing
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 龙行 324010171、罪伞 324010173、业火 324010175 的 timed 持续时间 rounds 为 0（结构校验不通过），改为 rounds 1，表示当回合生效；"每回合前两次/无次数限制"的近似说明仍保留在 notes。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=2040101 通过；node --test test/hero-2040101-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

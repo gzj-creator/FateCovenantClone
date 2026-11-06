@@ -1,55 +1,53 @@
-# Hero 1020401 (通灵女巫) Skill Validation & Implementation
+# Hero 1020401（通灵女巫）技能实现与验证
 
-Date: 2026-11-01
-Branch: investigate-5-3
+日期：2026-11-05
+技能库：`personal-server/config/skill-database.json`
+补丁：`agent/workflow/skill-system-validation/patches/20261105/hero-1020401.json`
+写入方式：`node scripts/apply-hero-skill-patch.mjs ../agent/workflow/skill-system-validation/patches/20261105/hero-1020401.json`（cwd `personal-server`）
 
-## Hero
-- ID: 1020401, Name: 通灵女巫, Role: Knight
-- Stats: HP 660, ATK 90, DEF 60, SPD 111
+## 英雄信息
 
-## Skills Validated (14 total)
+- ID 1020401，通灵女巫，Knight，HP 660 / ATK 90 / DEF 60 / SPD 111
+- 本轮前 14 个技能中 13 个 `implementation.effects` 为空（仅元数据 + 部分 triggers），普攻缺 `effectType`/`damage`。
 
-### Mastery skills (5)
-1. 312040171 不屈 - 终极减伤 +5% on battle start -> stat-modifier damage-reduction 0.05 (on-round-start, oncePerBattle)
-2. 312040172 健壮 - 最大HP +5% on battle start -> stat-modifier max-hp-percent 0.05 (on-round-start, oncePerBattle)
-3. 312040173 泰然自若 - 抗暴+5%, 暴击伤害减免+10% -> stat-modifier crit-resist 0.05 + crit-damage-reduction 0.10 (on-round-start, oncePerBattle)
-4. 312040174 迎头痛击 - 普攻/绝招后额外驱散目标1个增益 -> dispel count 1 buff (on-attack, on-skill-use) [NEW dispel mechanic]
-5. 312040175 傀儡咒术 - 前3回合 -8% 受到伤害; 第3回合结束回复5%最大生命 -> stat-modifier damage-reduction 0.08 (maxTriggers 3) + heal percent-max-hp 0.05 (on-round-end, condition round-3, oncePerBattle)
+## 技能清单与实现方式
 
-### Passive skills (8)
-6. 120001027 突破5 - 受到普攻/绝招回复150能量 -> energy gain 150 (on-being-hit)
-7. 120000046 自保 - 自身有减益时免伤+10% -> stat-modifier damage-reduction 0.10 (on-round-start, condition has-debuff)
-8. 120000051 蛰伏 - 生命<50% 时免伤+15% -> stat-modifier damage-reduction 0.15 (on-hp-threshold, condition hp-below-50, oncePerBattle)
-9. 120000054 鼓舞 - 友方普攻/绝招时能量+25 -> energy gain 25 (on-attack, target all-allies)
-10. 120000055 反杀 - 攻击生命%更高目标时暴击+30% -> stat-modifier crit-rate 0.30 (on-attack, condition target-hp-above-self, timed 1 round)
-11. 120000059 祝福 - 前2回合被治愈+20% -> stat-modifier heal-bonus 0.20 (on-round-start, maxTriggers 2, timed 2 rounds)
-12. 120001005 战斗续航 - 生命<30% 时回复 ATK 30% 最大生命 -> heal percent-attack 0.3 (on-round-start, condition hp-below-30)
+| 技能 | 类型 | 实现 |
+| --- | --- | --- |
+| normal-profession-4 Knight Basic Attack | Normal | 项目兜底：单体物理 1.0×，canCrit |
+| 312040171 不屈 | Mastery | 战斗开始（on-round-start，oncePerBattle）永久 damage-reduction 0.05 |
+| 312040172 健壮 | Mastery | 战斗开始永久 max-hp-percent 0.05 |
+| 312040173 泰然自若 | Mastery | 战斗开始永久 crit-resist 0.05 + crit-damage-reduction 0.10（2 条触发） |
+| 312040174 迎头痛击 | Mastery | 普攻/绝招后 dispel 1 个敌方增益（on-attack / on-skill-use） |
+| 312040175 傀儡咒术 | Mastery | 前 3 回合 damage-reduction 0.08（maxTriggers 3，逐回合 1 回合时长）+ 第 3 回合结束 heal percent-max-hp 0.05 |
+| 120001027 突破5 | Passive | 受击回复 150 能量（on-being-hit） |
+| 120000046 自保 | Passive | has-debuff 时每回合开始 damage-reduction 0.10 |
+| 120000051 蛰伏 | Passive | hp-below-50 一次，damage-reduction 0.15（maxTriggers 1） |
+| 120000054 鼓舞 | Passive | 友方攻击时自身回复 25 能量，目标 self |
+| 120000055 反杀 | Passive | target-hp-above-self 时 crit-rate 0.30（1 回合） |
+| 120000059 祝福 | Passive | 战斗前 2 回合 heal-bonus 0.20（oncePerBattle，timed 2） |
+| 120001005 战斗续航 | Passive | hp-below-30 时 heal percent-attack 0.30 |
+| 6910001012 终极技能 | Ultimate | 原有元数据兜底：单体物理 2.0× |
 
-### Normal / Ultimate
-13. normal-profession-4 Knight Basic Attack - project fallback (damage 1.0x single)
-14. 6910001012 Skill 6910001012 - ultimate, metadata fallback -> damage 2.0x (single)
+共享被动（120001027 / 120000046 / 120000051 / 120000054 / 120000055 / 120000059 / 120001005）按技能 id 与库内既有实现对齐效果与触发，保留本英雄自己的 `ability`/`abilityDes` tid。本轮同时修正两处旧数据：鼓舞触发目标由 all-allies 改为 self（拥有者回能）、蛰伏补 `maxTriggers: 1`。
 
-## Skills Fixed
-- Previously all implementations were null (skill-database.json had no effect definitions).
-- Added effectType, effects[], and triggers[] to 13 resolved skills.
-- registerPassiveTriggers prefers stored triggers over heuristic inference.
-- Added dispel effect type to EffectExecutor (executeDispel) to support 迎头痛击 (312040174) debuff/dispel mechanics.
-- Dispel removes up to count dispellable buffs (or debuffs) from target; non-dispellable statuses remain.
+## 近似项
 
-## Special: Debuff/Dispel Mechanics
-- 通灵女巫's 迎头痛击 (312040174) is a dispel skill: "普攻/绝招后，额外驱散目标1个增益".
-- Implemented as `dispel` effect type with removeType 'buff', count 1.
-- Triggers on both on-attack and on-skill-use (normal + ultimate).
-- New executeDispel method added to EffectExecutor; dispellable flag honored.
+- 312040175：目录未给出减伤叠加方式，采用“每回合开始获得 1 回合 8% 减伤、最多 3 次”的表达；第 3 回合结束时回血用 `conditionKey: round-3` 近似，`requiresInvestigation: false`，因为机制可用现有字段表达。
+- 普攻为项目兜底（客户端没有 HeroTable.Ability 值），非原版精确倍率。
 
-## Remaining Issues
-- 反杀 condition (target HP% > self HP%) is approximated as always-true in trigger evaluation; precise per-target filtering not wired into trigger condition evaluation yet (requires further investigation).
-- 6910001012 ultimate has no localized description (MISSING_ABILITY_DESCRIPTION); using metadata-fallback damage 2.0x.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending). Passive triggers registered at battle start but processTriggers not yet called in executeTurn loop (integration pending).
+## requiresInvestigation
 
-## Test Results
-- personal-server/test/hero-1020401-skill-validation.test.mjs: 17/17 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
-- Dispel mechanic test included and passing
+本英雄无 `requiresInvestigation: true` 的技能。
+
+## 验证
+
+- `node scripts/verify-hero-skills.mjs --hero=1020401`：通过（1/1 heroes clean）
+- `node --test test/hero-1020401-skill-validation.test.mjs`：9/9 通过
+- 测试覆盖：14 个技能 id 完整加载、全技能可执行结构、普攻 damage、3 个专精与 2 个特色专精、7 个共享被动数值与条件、15 条触发注册，以及 EffectExecutor 实跑 damage/heal/energy/dispel 与 max-hp-percent 增益归类。
+
+## 遗留风险
+
+- 战斗引擎目前未在回合循环中调用 `applySkillEffects`/`processTriggers`（既有系统性缺口，本轮按约定记录不修），因此定义可执行但尚未在实战流程生效。
+- 精确倍率仍需 FightTable.Effect/Buff 数据；当前数值按技能描述保守取值。
+

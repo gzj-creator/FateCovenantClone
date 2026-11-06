@@ -1,0 +1,1100 @@
+{
+  "heroId": 5040601,
+  "skills": [
+    {
+      "id": "normal-profession-1",
+      "implementation": {
+        "fallback": true,
+        "source": "project-fallback",
+        "resolvedAbility": false,
+        "resolvedDescription": false,
+        "ability": null,
+        "abilityDes": null,
+        "effectType": "damage",
+        "targetType": "single",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "physical",
+              "multiplier": 1,
+              "canCrit": true
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [],
+        "requiresInvestigation": false,
+        "notes": "Project-defined fallback basic attack."
+      }
+    },
+    {
+      "id": "2504060123",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 2504060123,
+          "type": 2,
+          "dmg_type": 3,
+          "effect_type": 1,
+          "run_type": 5
+        },
+        "abilityDes": {
+          "tid": 2504060123,
+          "type_des": 3,
+          "show_name": 602501398,
+          "skill_icon": "icon_skill_nainaizi_ysqx.png",
+          "text": 601501143,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "damage",
+        "targetType": "all-enemies",
+        "energyCost": 3,
+        "effects": [
+          {
+            "target": {
+              "targetType": "all-enemies"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "magical",
+              "multiplier": 1.38,
+              "canCrit": true
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          },
+          {
+            "target": {
+              "targetType": "all-enemies"
+            },
+            "effect": {
+              "type": "status",
+              "statusType": "stun"
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 0.5
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-reduction",
+                "magnitude": 0.7,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 2
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Ultimate: 138% magic damage to all enemies; 僵直 approximated as 50% stun for 1 round; 进入战斗 damage taken -70% for 2 rounds approximated with a round-start damage-reduction trigger. Consuming 3 天极值, 倾泻/生命流失 conversion, 绯梦惊雷 free 天极技 loop and the 50%-HP counter damage boost are not modelled. Mixed effects: first effect is damage."
+      }
+    },
+    {
+      "id": "354060171",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354060171,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354060171,
+          "type_des": 9,
+          "show_name": 6505245,
+          "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
+          "text": 604400900,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "heal",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "heal",
+              "healType": "percent-max-hp",
+              "multiplier": 1,
+              "overheal": false
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-hp-threshold",
+            "condition": null,
+            "conditionKey": "hp-below-30",
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "heal",
+                "healType": "percent-max-hp",
+                "multiplier": 1,
+                "overheal": false
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "shield",
+                "shieldType": "percent-max-hp",
+                "multiplier": 1
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 3
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: summon 迪迪 that inherits 100% ATK/HP and absorbs fatal damage for 3 rounds. Approximated as a battle-start shield equal to 100% max HP for 3 rounds plus a once-per-battle full heal below 30% HP. Summon entity, 流星火雨 shared damage and 天极值 reduction are not modelled."
+      }
+    },
+    {
+      "id": "354060173",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354060173,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354060173,
+          "type_des": 9,
+          "show_name": 6505247,
+          "skill_icon": "mastery_skill_red_01.png",
+          "text": 604400902,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "heal",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "heal",
+              "healType": "percent-max-hp",
+              "multiplier": 1,
+              "overheal": false
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-hp-threshold",
+            "condition": null,
+            "conditionKey": "hp-below-30",
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "heal",
+                "healType": "percent-max-hp",
+                "multiplier": 1,
+                "overheal": false
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": false,
+            "oncePerRound": true,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-bonus",
+                "magnitude": 0.1,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: 流星火雨 converts 僵直 into 倾泻; when 迪迪 leaves, 奈奈子 returns to full HP ignoring healing debuffs. Approximated as a once-per-battle full heal below 30% HP plus a 1-round +10% damage bonus on the first ultimate of each round (conversion mechanic not modelled)."
+      }
+    },
+    {
+      "id": "354060174",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354060174,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354060174,
+          "type_des": 9,
+          "show_name": 6505248,
+          "skill_icon": "mastery_skill_red_02.png",
+          "text": 604400903,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "energy",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "energy",
+              "energyType": "gain",
+              "magnitude": 100
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 100
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 100
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-being-hit",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 6,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "defense-percent",
+                "magnitude": -0.05,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: after each normal/skill action gain 1 天极值 (approximated as +100 energy because 天极值 is not modelled); counterattacks reduce enemy DEF by 5% up to 30% per round, approximated here as a stacking self defense debuff proxy on being-hit with max 6 triggers. Exact counter model requires investigation."
+      }
+    },
+    {
+      "id": "354060175",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354060175,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354060175,
+          "type_des": 9,
+          "show_name": 6505249,
+          "skill_icon": "mastery_skill_red_03.png",
+          "text": 604400904,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "attack-percent",
+              "magnitude": 0.3,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-death",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "attack-percent",
+                "magnitude": 0.3,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: 迪迪 can be re-summoned once per battle after leaving; every time 迪迪 leaves, 奈奈子 gains +30% ATK. Summon mechanics are not modelled, so the ATK bonus is registered as a once-per-battle on-death trigger approximation."
+      }
+    },
+    {
+      "id": "120001028",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120001028,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120001028,
+          "type_des": 2,
+          "show_name": 6300006,
+          "skill_icon": "Icon_Skill_BiKong_tf.png",
+          "text": 601509006,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "energy",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "energy",
+              "energyType": "gain",
+              "magnitude": 50
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 50
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 50
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: on ally normal/skill, self gains 50 energy (self-only approximation)."
+      }
+    },
+    {
+      "id": "120000001",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000001,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000001,
+          "type_des": 2,
+          "show_name": 6300017,
+          "skill_icon": "Icon_Skill_kuangnu.png",
+          "text": 601509015,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-rate",
+              "magnitude": 0.15,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-rate",
+                "magnitude": 0.15,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: on ultimate use, crit rate +15%."
+      }
+    },
+    {
+      "id": "120000006",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000006,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000006,
+          "type_des": 2,
+          "show_name": 6300022,
+          "skill_icon": "Icon_Skill_bofa.png",
+          "text": 601509020,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-damage",
+              "magnitude": 0.2,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": "hp-above-50",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-damage",
+                "magnitude": 0.2,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: when HP > 50%, crit damage +20%."
+      }
+    },
+    {
+      "id": "120000009",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000009,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000009,
+          "type_des": 2,
+          "show_name": 6300025,
+          "skill_icon": "Icon_Skill_guwu.png",
+          "text": 601509023,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "energy",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "energy",
+              "energyType": "gain",
+              "magnitude": 25
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 25
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 25
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: on ally normal/skill, self gains 25 energy (self-only approximation)."
+      }
+    },
+    {
+      "id": "120000014",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000014,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000014,
+          "type_des": 2,
+          "show_name": 6300030,
+          "skill_icon": "Icon_Skill_gedang.png",
+          "text": 601509028,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-reduction",
+              "magnitude": 0.2,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-reduction",
+                "magnitude": 0.2,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Passive: before the 2nd ultimate, ultimate damage taken -20%. Ultimate-only scope is not modelled; approximated as a once-per-battle permanent damage-reduction."
+      }
+    },
+    {
+      "id": "120000015",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000015,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000015,
+          "type_des": 2,
+          "show_name": 6300031,
+          "skill_icon": "Icon_Skill_biaoji.png",
+          "text": 601509029,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-rate",
+              "magnitude": 0.25,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": "target-has-debuff",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-rate",
+                "magnitude": 0.25,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: when attacking a debuffed target, crit rate +25% (target-has-debuff condition)."
+      }
+    },
+    {
+      "id": "120001004",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120001004,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120001004,
+          "type_des": 2,
+          "show_name": 6300082,
+          "skill_icon": "Icon_Skill_shanbi.png",
+          "text": 601509078,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-rate",
+              "magnitude": 1,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-rate",
+                "magnitude": 1,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: first ultimate grants +100% final crit rate."
+      }
+    }
+  ]
+}

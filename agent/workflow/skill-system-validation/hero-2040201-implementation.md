@@ -1,68 +1,46 @@
-# Hero 2040201 (幽艳瑞贝卡) Skill Validation & Implementation
+# Hero 2040201 幽艳瑞贝卡 技能补全（技能组 B）
 
-Date: 2026-11-02
-Branch: skill-system-validation
+日期：2026-11-05（覆盖此前 2026-11-03 版本）
+技能数：15
 
-## Hero
-- ID: 2040201, Name: 幽艳瑞贝卡, Role: Assassin
-- Stats: HP 6600, ATK 900, DEF 300, SPD 103
-- Hero Type: Demigod (天极角色) with candy (给了糖也捣蛋) mechanics
+## 校验结论
 
-## Skills Validated (15 total)
+- `node scripts/verify-hero-skills.mjs --hero=2040201`：通过（1/1 heroes clean, 0 failing）
+- `node --test test/hero-2040201-skill-validation.test.mjs`：22/22 通过
+- 写入方式：补丁 `agent/workflow/skill-system-validation/patch-b-20261105/hero-2040201.json` 经 `apply-hero-skill-patch.mjs` 应用。
 
-### Ultimate (1)
-1. 2204020123 捣蛋到底 - 130% magical damage to all enemies; consume all candy (给了糖也捣蛋) layers, each dealing 60% magical damage to a random unit. Candy layer scaling and per-layer application require engine integration (requiresInvestigation). Tianji cost 3. effectType=damage, requiresInvestigation=true.
+修复前仅 324020173 送别礼物 1/15 技能缺 effects；其余技能此前已实现且 statType 合法，本轮未改动其效果定义。
 
-### Mastery skills (5)
-2. 324020171 糖果礼花 - on ultimate, each candy deals extra 4% target max HP magical damage (cap 80% attack, not enforced); after self normal, +400 energy. requiresInvestigation. effectType=damage.
-3. 324020172 活力全开 - first ultimate each round reduces a random enemy Tianji by 1 (approx -100 energy); after self ultimate +10% final damage (max +30%), removed end of round. requiresInvestigation. effectType=stat-modifier.
-4. 324020173 送别礼物 - after self action round ends, extra ultimate once, and before that ultimate destroy 20% shield of all enemies. Extra action + shield destroy require engine integration (requiresInvestigation). effectType=damage, requiresInvestigation=true.
-5. 324020174 闪亮登场 - every round normal/skill grants +1 Tianji (approx +100 energy); after self ultimate, target final damage reduction -15% (max -60%), 2 rounds. requiresInvestigation. effectType=energy.
-6. 324020175 完美恶作剧 - first ultimate and first Tianji each round: +60% final crit and ignore 60% defense. requiresInvestigation. effectType=stat-modifier.
+## 技能清单
 
-### Passive skills (8)
-7. 120001026 突破4 - initial energy +600. effectType=energy.
-8. 120000001 狂怒 - on ultimate, crit rate +15%. effectType=stat-modifier.
-9. 120000006 勃发 - when HP > 50%, crit damage +20%. condition hp-above-50. effectType=stat-modifier.
-10. 120000009 鼓舞 - on ally normal/skill, self +25 energy (approximated as self trigger; ally condition requires investigation). effectType=energy, requiresInvestigation=true.
-11. 120000014 格挡 - before 2nd ultimate, ultimate damage taken -20% (approximated as battle-start permanent reduction). requiresInvestigation. effectType=stat-modifier.
-12. 120000015 标记 - attacking debuffed target, crit rate +25%. condition target-has-debuff. effectType=stat-modifier.
-13. 120001004 爆裂一击 - first ultimate, crit rate +100%. oncePerBattle. effectType=stat-modifier.
+| 技能 | 名称 | 类型 | effectType / targetType | 状态 |
+|---|---|---|---|---|
+| normal-profession-2 | Assassin Basic Attack | Normal | damage / single | 1.0x 物理 |
+| 2204020123 | 捣蛋到底 | Ultimate | damage / all-enemies | 130% 全体法术 + 随机单体 60% 法术（糖果机制未接入，RI） |
+| 324020171 | 糖果礼花 | Mastery | damage / all-enemies | 终结技按糖果造成 4% 最大生命法术 + 普攻回 400 能量（RI） |
+| 324020172 | 活力全开 | Mastery | stat-modifier / self | 每回合首次终结技降敌 100 能量（天极近似）+ 10% 伤害加成（RI） |
+| 324020173 | 送别礼物 | Mastery | damage / all-enemies | **本轮补全**：回合结束额外终结技（130% 全体法术近似）+ 先驱散敌方全体 1 个增益（护盾摧毁近似） |
+| 324020174 | 闪亮登场 | Mastery | energy / self | 普攻/绝招 +100 能量（天极近似）+ 终结技后目标 -15% 减免 2 回合（RI） |
+| 324020175 | 完美恶作剧 | Mastery | stat-modifier / self | 每回合首次终结技 +60% 暴击、+60% 无视防御（RI） |
+| 120001026 | 突破4 | Passive | energy / self | 初始能量 +600 |
+| 120000001 | 狂怒 | Passive | stat-modifier / self | 终结技时暴击 +15% |
+| 120000006 | 勃发 | Passive | stat-modifier / self | 生命 >50% 暴伤 +20% |
+| 120000009 | 鼓舞 | Passive | energy / self | 普攻/技能 +25 能量（友方触发近似，RI） |
+| 120000014 | 格挡 | Passive | stat-modifier / self | 终结技受伤减免 20%（战前永久近似，RI） |
+| 120000015 | 标记 | Passive | stat-modifier / self | 攻击减益目标暴击 +25% |
+| 120001004 | 爆裂一击 | Passive | stat-modifier / self | 首次终结技暴击 +100% |
+| 6910001100 | Skill 6910001100 | Ultimate | damage / single | 缺描述，2.0x 物理兜底（RI） |
 
-### Normal / Ultimate fallback (2)
-14. normal-profession-2 Assassin Basic Attack (冲锋) - project fallback (damage 1.0x single).
-15. 6910001100 Skill 6910001100 - ultimate, metadata fallback -> damage 2.0x (single, requiresInvestigation).
+## 送别礼物（324020173）实现细节
 
-## Candy Mechanic Implementation (Special Attention)
-- 幽艳瑞贝卡 is a Demigod with candy (给了糖也捣蛋) mechanics.
-- Candy layers: other allies gain 1 layer when they use an ultimate (max 5), each layer +8% crit damage and +8% final damage bonus; removed after ultimate use.
-- Ultimate consumes all candy layers, each dealing 60% magical damage to a random unit (plus base 130% to all enemies).
-- 糖果礼花 (324020171): on ultimate, each candy deals extra 4% target max HP magical damage (cap 80% attack).
-- Candy layer gain, stacking (max 5), per-layer stat bonuses, and per-layer consumption damage require battle-engine integration (not yet wired); all candy-related skills marked requiresInvestigation=true.
-- Tianji (天极值) cost/consumption, layer tracking and per-action application require engine integration.
+描述：“自身行动回合结束后额外释放1次终结技，且本次终结技释放前额外摧毁敌方全体20%护盾”。
 
-## Skills Fixed
-- Previously all 15 skills lacked effectType/effects/triggers (only ability/abilityDes metadata).
-- Added effectType, targetType, energyCost, effects[], and triggers[] to all 15 skills using existing effect system (damage, stat-modifier, energy).
-- Reused shared passive skills (120001026, 120000001, 120000006, 120000009, 120000014, 120000015, 120001004) from existing implemented heroes.
-- No new effect types, status types, or target types required.
+- `effects`：主效果 `damage/magical/1.3x/all-enemies`（复用 2204020123 的 130% 全体法术作为“再次释放终结技”的近似），次效果 `dispel/removeType=buff/count=1/all-enemies`（销毁护盾的近似）。
+- `triggers`：两条 `on-turn-end`；驱散 priority -1 先于伤害 priority 0。
+- 引擎没有“摧毁 X% 护盾”效果，也没有“额外行动”调度，故 requiresInvestigation = true，notes 已写明近似。
 
-## Remaining Issues
-- Candy (给了糖也捣蛋) layer gain on ally ultimate, stacking (max 5), per-layer stat bonuses (+8% crit damage, +8% final damage), and consumption damage require battle-engine integration (not yet wired). All candy-related skills marked requiresInvestigation=true.
-- 送别礼物 (324020173) extra ultimate action + shield destroy require engine integration.
-- 活力全开/闪亮登场 Tianji (天极值) mapping approximated as energy; requires investigation.
-- 完美恶作剧 first-use-per-round tracking requires investigation.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending). Passive triggers are registered at battle start but processTriggers is not yet called in executeTurn loop (integration pending). Consistent with prior hero implementations.
+## 遗留风险
 
-## Battle Engine Integration
-- No changes required to battle-engine.mjs; this hero uses existing effect framework and trigger registration via registerPassiveTriggers.
-- Fixed skill-integration.mjs registerPassiveTriggers to handle empty trigger arrays (skills with triggers:[]) without skipping.
+- 糖果层数（给了糖也捣蛋）、天极值、额外行动、护盾百分比摧毁均未进入引擎；本英雄其余技能沿用此前近似，本轮未扩大范围。
+- 战斗引擎未调用技能库效果（既有缺口）。
 
-## Test Results
-- personal-server/test/hero-2040201-skill-validation.test.mjs: 21/21 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
-- Battle engine tests: pre-existing passing
-EOF
-echo written

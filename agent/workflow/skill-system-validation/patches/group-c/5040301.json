@@ -1,0 +1,1025 @@
+{
+  "heroId": 5040301,
+  "skills": [
+    {
+      "id": "normal-profession-2",
+      "implementation": {
+        "fallback": true,
+        "source": "project-fallback",
+        "resolvedAbility": false,
+        "resolvedDescription": false,
+        "ability": null,
+        "abilityDes": null,
+        "effectType": "damage",
+        "targetType": "single",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "physical",
+              "multiplier": 1,
+              "canCrit": true
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [],
+        "requiresInvestigation": false,
+        "notes": "Project-defined fallback basic attack."
+      }
+    },
+    {
+      "id": "2504030123",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 2504030123,
+          "type": 2,
+          "dmg_type": 3,
+          "effect_type": 1,
+          "run_type": 5
+        },
+        "abilityDes": {
+          "tid": 2504030123,
+          "type_des": 3,
+          "show_name": 602501327,
+          "skill_icon": "icon_skill_qqj_hjlw.png",
+          "text": 601501130,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "damage",
+        "targetType": "all-enemies",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "all-enemies"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "physical",
+              "multiplier": 1.3,
+              "ignoreDefense": 0.5,
+              "canCrit": true
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          },
+          {
+            "target": {
+              "targetType": "all-enemies"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "percent-max-hp",
+              "magnitude": 0.15,
+              "canCrit": false
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [],
+        "requiresInvestigation": true,
+        "notes": "Ultimate: 130% physical damage to all enemies ignoring 50% DEF, plus 15% max-HP true damage against 【致盲】 targets. The 致盲 conditional and the 100%-ATK cap on the extra damage are not modelled, so the extra hit is applied unconditionally as percent-max-hp damage; 天极值, 【乱针结护】 and 超凡生命 clauses from the merged description remain unmodelled. Mixed effects: first effect is damage."
+      }
+    },
+    {
+      "id": "354030172",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354030172,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354030172,
+          "type_des": 9,
+          "show_name": 6505246,
+          "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
+          "text": 604400601,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-bonus",
+              "magnitude": 0.2,
+              "isPercentage": true,
+              "maxStacks": 3
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": false,
+            "oncePerRound": true,
+            "effect": {
+              "target": {
+                "targetType": "single"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "loss",
+                "magnitude": 1
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-bonus",
+                "magnitude": 0.2,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: after the first ultimate each round a random enemy loses 1 天极值 (approximated as 1 energy loss on a single target because 天极值 is not modelled); each ultimate grants +20% final damage bonus, removable at round end, up to 3 stacks. The ally half-bonus for other 冲锋 allies and the exact stack/removal timing are not modelled."
+      }
+    },
+    {
+      "id": "354030173",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354030173,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354030173,
+          "type_des": 9,
+          "show_name": 6505247,
+          "skill_icon": "mastery_skill_gold_01.png",
+          "text": 604400602,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-rate",
+              "magnitude": 1,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": false,
+            "oncePerRound": true,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-rate",
+                "magnitude": 1,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: the first ultimate each round is guaranteed to crit, approximated as +100% crit rate for one round on the first ultimate of the round. The {0} placeholder is unresolved in the catalog text, and 【裁断】 low-HP execution plus 10% attack steal are not modelled."
+      }
+    },
+    {
+      "id": "354030174",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354030174,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354030174,
+          "type_des": 9,
+          "show_name": 6505248,
+          "skill_icon": "mastery_skill_gold_02.png",
+          "text": 604400603,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "energy",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "energy",
+              "energyType": "gain",
+              "magnitude": 100
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 100
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 100
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 4,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "single"
+              },
+              "effect": {
+                "type": "shield",
+                "shieldType": "percent-defense",
+                "multiplier": 0.2
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: after normal/skill actions gain 1 天极值 (approximated as +100 energy); before each ultimate destroy 20% of the target's shield, limited to 4 triggers per round. The effect framework cannot subtract shields directly, so the shield-destruction clause is registered as a positive shield entry on the target as a placeholder and remains an approximation. Per-round trigger reset is approximated with a battle-wide maxTriggers of 4."
+      }
+    },
+    {
+      "id": "354030175",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 354030175,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 354030175,
+          "type_des": 9,
+          "show_name": 6505249,
+          "skill_icon": "mastery_skill_gold_03.png",
+          "text": 604400604,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-bonus",
+              "magnitude": 0.5,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-bonus",
+                "magnitude": 0.5,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Mastery: 【乱针结护】 is granted to all allies for the first 2 rounds, one extra 天极技 per round, guaranteed crit on the first 天极技 of each round, and all damage bonuses raised to 50%. Approximated with a single once-per-battle +50% damage-bonus trigger; 天极技 follow-up, guaranteed crit and the all-allies 乱针结护 state are not modelled."
+      }
+    },
+    {
+      "id": "120001026",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120001026,
+          "type": 4,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120001026,
+          "type_des": 2,
+          "show_name": 6300004,
+          "skill_icon": "Icon_Skill_BiKong_tf.png",
+          "text": 601509004,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "energy",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "energy",
+              "energyType": "gain",
+              "magnitude": 600
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 600
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: starting energy +600 (granted once at battle start)."
+      }
+    },
+    {
+      "id": "120000017",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000017,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000017,
+          "type_des": 2,
+          "show_name": 6300033,
+          "skill_icon": "Icon_Skill_shouge.png",
+          "text": 601509031,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-bonus",
+              "magnitude": 0.1,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-bonus",
+                "magnitude": 0.1,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Passive: +10% damage against targets below 50% HP. Target HP condition is not enforced by the effect framework, so the bonus is approximated as a permanent self damage-bonus."
+      }
+    },
+    {
+      "id": "120000020",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000020,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000020,
+          "type_des": 2,
+          "show_name": 6300036,
+          "skill_icon": "Icon_Skill_dongcha.png",
+          "text": 601509034,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-rate",
+              "magnitude": 0.2,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-rate",
+                "magnitude": 0.2,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Passive: +20% crit rate when attacking targets above 50% HP. Target HP condition is not enforced, so the bonus is approximated as a permanent crit-rate."
+      }
+    },
+    {
+      "id": "120000023",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000023,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000023,
+          "type_des": 2,
+          "show_name": 6300039,
+          "skill_icon": "Icon_Skill_jinu.png",
+          "text": 601509037,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "energy",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "energy",
+              "energyType": "gain",
+              "magnitude": 100
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 100
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "energy",
+                "energyType": "gain",
+                "magnitude": 100
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: normal/skill use restores an extra 100 energy."
+      }
+    },
+    {
+      "id": "120000026",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000026,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000026,
+          "type_des": 2,
+          "show_name": 6300042,
+          "skill_icon": "Icon_Skill_cisha.png",
+          "text": 601509040,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-bonus",
+              "magnitude": 0.2,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-bonus",
+                "magnitude": 0.2,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Passive: +20% damage against back-row enemies. Target position is not available to the effect framework, so the bonus is approximated as a permanent damage-bonus."
+      }
+    },
+    {
+      "id": "120000028",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000028,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000028,
+          "type_des": 2,
+          "show_name": 6300044,
+          "skill_icon": "Icon_Skill_yingyan.png",
+          "text": 601509042,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "hit-rate",
+              "magnitude": 0.15,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": "hp-above-50",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "hit-rate",
+                "magnitude": 0.15,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: while HP is above 50%, hit rate +15%."
+      }
+    },
+    {
+      "id": "120001009",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120001009,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120001009,
+          "type_des": 2,
+          "show_name": 6300087,
+          "skill_icon": "Icon_Skill_shanbi.png",
+          "text": 601509083,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "ignore-defense",
+              "magnitude": 0.3,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "ignore-defense",
+                "magnitude": 0.3,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: the first ultimate ignores 30% of enemy DEF."
+      }
+    }
+  ]
+}

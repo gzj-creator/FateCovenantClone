@@ -1,0 +1,197 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
+import { EffectExecutor } from '../game/effects/effect-executor.mjs';
+
+const HERO_ID = 3030301;
+
+test('hero 3030301 skills are loaded from skill database', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
+  assert.equal(skills.length, 14, 'expected 14 skills for 厉火之咒');
+});
+
+test('passive triggers count is at least 8', () => {
+  const db = loadSkillDatabase();
+  const unit = { id: HERO_ID, team: 1, loc: 1, hp: 1800, maxHp: 1800, attack: 330, defense: 82, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  registerPassiveTriggers(unit, db, { seed: 1 });
+  assert.ok(unit.triggers.length >= 8, 'expected >=8 triggers, got ' + unit.triggers.length);
+});
+
+test('all trigger effects are non-null and have a type', () => {
+  const db = loadSkillDatabase();
+  const unit = { id: HERO_ID, team: 1, loc: 1, hp: 1800, maxHp: 1800, attack: 330, defense: 82, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  registerPassiveTriggers(unit, db, { seed: 1 });
+  for (const t of unit.triggers) {
+    assert.ok(t.effect, 'trigger ' + t.id + ' has no effect');
+    assert.ok(t.effect.effect && t.effect.effect.type, 'trigger ' + t.id + ' effect has no type');
+  }
+});
+
+test('重击 (333030171) registers on-round-start damage-bonus 0.05', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '333030171');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.triggerType, 'on-round-start');
+  assert.equal(trig.oncePerBattle, true);
+  assert.equal(trig.effect.effect.type, 'stat-modifier');
+  assert.equal(trig.effect.effect.statType, 'damage-bonus');
+  assert.equal(trig.effect.effect.magnitude, 0.05);
+});
+
+test('无畏 (333030172) registers attack-percent 0.05', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '333030172');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.effect.effect.statType, 'attack-percent');
+  assert.equal(trig.effect.effect.magnitude, 0.05);
+});
+
+test('直击要害 (333030173) registers crit-rate and crit-damage', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '333030173');
+  assert.equal(skill.implementation.triggers.length, 2);
+  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
+  assert.ok(statTypes.includes('crit-rate'));
+  assert.ok(statTypes.includes('crit-damage'));
+});
+
+test('炽星魔焰 (333030174) registers on-attack/on-skill-use burn status with 0.3 chance (Metadata only)', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '333030174');
+  assert.ok(skill.implementation.triggers.length >= 1);
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.effect.effect.type, 'status');
+  assert.equal(trig.effect.effect.statusType, 'burn');
+  assert.equal(skill.implementation.requiresInvestigation, true);
+});
+
+test('燃魔咒刃 (333030175) registers on-ultimate-use crit-rate/crit-damage', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '333030175');
+  assert.ok(skill.implementation.triggers.length >= 1);
+  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
+  assert.ok(statTypes.includes('crit-rate'));
+  assert.ok(statTypes.includes('crit-damage'));
+});
+
+test('突破9 (120001031) grants 200 energy on normal/skill', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120001031');
+  assert.ok(skill.implementation.triggers.length >= 1);
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.effect.effect.type, 'energy');
+  assert.equal(trig.effect.effect.energyType, 'gain');
+  assert.equal(trig.effect.effect.magnitude, 200);
+});
+
+test('狂怒 (120000001) registers on-ultimate-use crit-rate 0.15', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120000001');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.triggerType, 'on-ultimate-use');
+  assert.equal(trig.effect.effect.statType, 'crit-rate');
+  assert.equal(trig.effect.effect.magnitude, 0.15);
+});
+
+test('勃发 (120000006) registers hp-above-50 condition crit-damage 0.20', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120000006');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.conditionKey, 'hp-above-50');
+  assert.equal(trig.effect.effect.statType, 'crit-damage');
+  assert.equal(trig.effect.effect.magnitude, 0.20);
+});
+
+test('鼓舞 (120000009) grants 25 energy on ally attack/skill', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120000009');
+  assert.ok(skill.implementation.triggers.length >= 1);
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.effect.effect.type, 'energy');
+  assert.equal(trig.effect.effect.energyType, 'gain');
+  assert.equal(trig.effect.effect.magnitude, 25);
+});
+
+test('格挡 (120000014) registers damage-reduction 0.20 (requiresInvestigation)', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120000014');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.effect.effect.statType, 'damage-reduction');
+  assert.equal(trig.effect.effect.magnitude, 0.20);
+});
+
+test('标记 (120000015) registers on-attack crit-rate 0.25', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120000015');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.effect.effect.statType, 'crit-rate');
+  assert.equal(trig.effect.effect.magnitude, 0.25);
+});
+
+test('生命偷取 (120001002) registers on-ultimate-use heal (requiresInvestigation)', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120001002');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.triggerType, 'on-ultimate-use');
+  assert.equal(trig.effect.effect.type, 'heal');
+  assert.equal(skill.implementation.requiresInvestigation, true);
+});
+
+test('6910001030 metadata ultimate has a damage effect (requiresInvestigation)', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '6910001030');
+  assert.ok(skill.implementation.effects.length > 0);
+  assert.equal(skill.implementation.effects[0].effect.type, 'damage');
+  assert.equal(skill.implementation.requiresInvestigation, true);
+});
+
+test('normal attack has a damage effect', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === 'normal-profession-1');
+  assert.ok(skill.implementation.effects.length > 0);
+  assert.equal(skill.implementation.effects[0].effect.type, 'damage');
+});
+
+test('damage numbers are reasonable', () => {
+  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
+  const actor = { id: HERO_ID, team: 1, loc: 1, hp: 1800, maxHp: 1800, attack: 330, defense: 82, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0, critChance: 0.1 };
+  const target = { id: 2, team: 2, loc: 1, hp: 300, maxHp: 300, attack: 100, defense: 50, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  const effect = { type: 'damage', damageType: 'physical', multiplier: 1, canCrit: true };
+  const result = executor.executeDamage(effect, actor, target);
+  assert.ok(result.value > 0, 'damage should be > 0');
+  assert.ok(result.value < 100000, 'damage should not be extreme');
+});
+
+test('energy gain number is reasonable', () => {
+  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
+  const unit = { id: HERO_ID, hp: 1800, maxHp: 1800, attack: 330, defense: 82, alive: true, buffs: [], debuffs: [], triggers: [], energy: 500, shield: 0 };
+  const effect = { type: 'energy', energyType: 'gain', magnitude: 50 };
+  const result = executor.executeEnergy(effect, unit, unit);
+  assert.ok(result.newEnergy >= 0 && result.newEnergy <= 1000);
+});
+
+test('stat modifier effect is executable', () => {
+  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
+  const actor = { id: HERO_ID, team: 1, loc: 1, hp: 1800, maxHp: 1800, attack: 330, defense: 82, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  const target = { id: HERO_ID, team: 1, loc: 1, hp: 1800, maxHp: 1800, attack: 330, defense: 82, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  const effect = { type: 'stat-modifier', statType: 'damage-bonus', magnitude: 0.05, isPercentage: true, duration: { durationType: 'permanent', rounds: 0 } };
+  const result = executor.executeStatModifier(effect, actor, target);
+  assert.ok(result, 'stat-modifier should execute');
+  assert.equal(result.type, 'stat-modifier');
+});

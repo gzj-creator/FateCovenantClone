@@ -1,0 +1,451 @@
+{
+  "heroId": 2030201,
+  "skills": [
+    {
+      "id": "323020173",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 323020173,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 323020173,
+          "type_des": 9,
+          "show_name": 6503178,
+          "skill_icon": "mastery_skill_blue_01.png",
+          "text": 604400078,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "ignore-defense",
+              "magnitude": 0.05,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          },
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "hit-rate",
+              "magnitude": 0.1,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "ignore-defense",
+                "magnitude": 0.05,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          },
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "hit-rate",
+                "magnitude": 0.1,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "进入战斗后无视防御+5%、命中率+10%."
+      }
+    },
+    {
+      "id": "120000025",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000025,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000025,
+          "type_des": 2,
+          "show_name": 6300041,
+          "skill_icon": "Icon_Skill_jiebei.png",
+          "text": 601509039,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-resistance",
+              "magnitude": 0.3,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-resistance",
+                "magnitude": 0.3,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          },
+          {
+            "triggerType": "on-buff-gain",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-resistance",
+                "magnitude": 0.3,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "自身有增益状态时抗暴率+30%（statType crit-resistance）；增益存在性未由引擎判定，按回合开始与获得增益两个时机施加。"
+      }
+    },
+    {
+      "id": "120000028",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000028,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000028,
+          "type_des": 2,
+          "show_name": 6300044,
+          "skill_icon": "Icon_Skill_yingyan.png",
+          "text": 601509042,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "hit-rate",
+              "magnitude": 0.15,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": "hp-above-50",
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "hit-rate",
+                "magnitude": 0.15,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "生命高于50%时命中率+15%."
+      }
+    },
+    {
+      "id": "6203020109",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 6203020109,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 6203020109,
+          "type_des": 3,
+          "show_name": 602501263,
+          "skill_icon": "Icon_Skill_lan_n1.png",
+          "text": 601600025,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "all-allies",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "all-allies"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-reduction",
+              "magnitude": 0.05,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 1
+          },
+          {
+            "target": {
+              "targetType": "all-allies"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-damage",
+              "magnitude": 0.05,
+              "isPercentage": true,
+              "maxStacks": 3
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "all-allies"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-reduction",
+                "magnitude": 0.05,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          },
+          {
+            "triggerType": "on-kill",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "all-allies"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-reduction",
+                "magnitude": 0.05,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          },
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "all-allies"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-damage",
+                "magnitude": 0.05,
+                "isPercentage": true,
+                "maxStacks": 3
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "稀有技能：描述中的{0}为未解出的buff模板，近似为1回合5%最终伤害减免；战斗开始与敌方死亡时对我方全体施加。暴击伤害+5%（古域阵营翻倍、最多3层）以终结技使用触发近似，阵营数据与“{0}期间释放终结技”窗口判定未接入引擎。"
+      }
+    }
+  ]
+}

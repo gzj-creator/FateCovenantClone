@@ -1,0 +1,67 @@
+{
+  "heroId": 2020601,
+  "skills": [
+    {
+      "id": "6202060112",
+      "implementation": {
+        "source": "CharacterSkillCatalog",
+        "resolvedAbility": false,
+        "resolvedDescription": true,
+        "ability": null,
+        "abilityDes": null,
+        "catalogTypeMatch": null,
+        "effectType": "damage",
+        "targetType": "single",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "physical",
+              "multiplier": 0.5,
+              "canCrit": true
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "single"
+              },
+              "effect": {
+                "type": "damage",
+                "damageType": "physical",
+                "multiplier": 0.5,
+                "canCrit": true
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Approximation: unlimited ultimate follow-ups are not modelled; one extra 50% ATK physical follow-up is applied on ultimate use as a conservative stand-in. requiresInvestigation."
+      }
+    }
+  ]
+}

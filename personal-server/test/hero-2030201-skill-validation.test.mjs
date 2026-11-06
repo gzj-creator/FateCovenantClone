@@ -10,6 +10,23 @@ test('hero 2030201 skills are loaded from skill database', () => {
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
   assert.equal(skills.length, 15, 'expected 15 skills for 龙之澜');
+  assert.deepEqual(skills.map(skill => skill.id), [
+    'normal-profession-2',
+    '323020171',
+    '323020172',
+    '323020173',
+    '323020174',
+    '323020175',
+    '120001026',
+    '120000018',
+    '120000019',
+    '120000023',
+    '120000025',
+    '120000028',
+    '120001009',
+    '6203020109',
+    '6910001017',
+  ]);
 });
 
 test('passive triggers count is at least 10', () => {
@@ -50,14 +67,18 @@ test('无畏 (323020172) registers attack-percent 0.05', () => {
   assert.equal(trig.effect.effect.magnitude, 0.05);
 });
 
-test('弱点洞悉 (323020173) registers ignore-defense and hit-rate', () => {
+test('弱点洞悉 (323020173) registers ignore-defense 0.05 and hit-rate 0.10', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '323020173');
+  assert.equal(skill.implementation.effects.length, 2);
   assert.equal(skill.implementation.triggers.length, 2);
-  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
-  assert.ok(statTypes.includes('ignore-defense'));
-  assert.ok(statTypes.includes('hit-rate'));
+  const ignoreDefense = skill.implementation.effects.find(e => e.effect.statType === 'ignore-defense');
+  assert.equal(ignoreDefense.effect.type, 'stat-modifier');
+  assert.equal(ignoreDefense.effect.magnitude, 0.05);
+  const hitRate = skill.implementation.effects.find(e => e.effect.statType === 'hit-rate');
+  assert.equal(hitRate.effect.type, 'stat-modifier');
+  assert.equal(hitRate.effect.magnitude, 0.1);
 });
 
 test('鼓舞人心 (323020174) registers on-attack/on-skill-use energy gain 100 (chance 0.30)', () => {
@@ -129,16 +150,24 @@ test('激怒 (120000023) grants 100 energy on attack/skill', () => {
   }
 });
 
-test('戒备 (120000025) registers crit-resistance 0.30', () => {
+test('戒备 (120000025) registers crit-resistance 0.30 while buffed', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '120000025');
-  assert.ok(skill.implementation.triggers.length > 0);
-  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
-  assert.ok(statTypes.includes('crit-resistance'));
+  assert.equal(skill.implementation.requiresInvestigation, true);
+  assert.equal(skill.implementation.effects.length, 1);
+  assert.equal(skill.implementation.effects[0].effect.statType, 'crit-resistance');
+  assert.equal(skill.implementation.effects[0].effect.magnitude, 0.3);
+  assert.ok(skill.implementation.triggers.length >= 2);
+  const triggerTypes = skill.implementation.triggers.map(t => t.triggerType);
+  assert.ok(triggerTypes.includes('on-buff-gain'));
+  for (const trig of skill.implementation.triggers) {
+    assert.equal(trig.effect.effect.statType, 'crit-resistance');
+    assert.equal(trig.effect.effect.magnitude, 0.3);
+  }
 });
 
-test('鹰眼 (120000028) registers hp-above-50 condition', () => {
+test('鹰眼 (120000028) registers hp-above-50 hit-rate 0.15', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '120000028');
@@ -158,14 +187,30 @@ test('穿刺一击 (120001009) registers on-ultimate-use ignore-defense 0.30', (
   assert.equal(trig.effect.effect.magnitude, 0.30);
 });
 
-test('澜_稀有_总挂载 (6203020109) is metadata-only and requires investigation', () => {
+test('澜_稀有_总挂载 (6203020109) applies ally buff on battle start/enemy death and crit damage on ultimate', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '6203020109');
   assert.ok(skill, 'skill should exist');
   assert.equal(skill.implementation.requiresInvestigation, true);
-  assert.deepEqual(skill.implementation.effects, []);
-  assert.deepEqual(skill.implementation.triggers, []);
+  assert.equal(skill.implementation.effectType, 'stat-modifier');
+  assert.equal(skill.implementation.targetType, 'all-allies');
+  assert.equal(skill.implementation.effects.length, 2);
+  const allyBuff = skill.implementation.effects[0];
+  assert.equal(allyBuff.target.targetType, 'all-allies');
+  assert.equal(allyBuff.effect.type, 'stat-modifier');
+  assert.equal(allyBuff.effect.statType, 'damage-reduction');
+  assert.equal(allyBuff.effect.magnitude, 0.05);
+  assert.equal(allyBuff.duration.durationType, 'timed');
+  assert.equal(allyBuff.duration.rounds, 1);
+  const critBonus = skill.implementation.effects[1];
+  assert.equal(critBonus.effect.statType, 'crit-damage');
+  assert.equal(critBonus.effect.magnitude, 0.05);
+  assert.equal(critBonus.effect.maxStacks, 3);
+  const triggerTypes = skill.implementation.triggers.map(t => t.triggerType);
+  assert.deepEqual(triggerTypes, ['on-round-start', 'on-kill', 'on-ultimate-use']);
+  assert.equal(skill.implementation.triggers[0].oncePerBattle, true);
+  assert.equal(skill.implementation.triggers[2].effect.effect.statType, 'crit-damage');
 });
 
 test('6910001017 ultimate has a damage effect (requiresInvestigation)', () => {

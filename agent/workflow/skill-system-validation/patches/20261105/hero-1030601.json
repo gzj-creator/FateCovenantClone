@@ -1,0 +1,39 @@
+{
+  "heroId": 1030601,
+  "skills": [
+    {
+      "id": "normal-profession-4",
+      "implementation": {
+        "fallback": true,
+        "source": "project-fallback",
+        "resolvedAbility": false,
+        "resolvedDescription": false,
+        "ability": null,
+        "abilityDes": null,
+        "effectType": "damage",
+        "targetType": "single",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "physical",
+              "canCrit": true,
+              "multiplier": 1
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [],
+        "notes": "Project-defined fallback basic attack: 1.0x physical damage to a single target."
+      }
+    }
+  ]
+}

@@ -1,0 +1,206 @@
+{
+  "heroId": 4030601,
+  "skills": [
+    {
+      "id": "343060174",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 343060174,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 343060174,
+          "type_des": 9,
+          "show_name": 6503405,
+          "skill_icon": "mastery_skill_gold_02.png",
+          "text": 604400279,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-reduction",
+              "magnitude": 0.15,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-reduction",
+                "magnitude": 0.15,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-reduction",
+                "magnitude": 0.15,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Mastery: after normal/skill, next damage taken -15% (approximated as 1-round damage-reduction; single-hit consumption not modelled)."
+      }
+    },
+    {
+      "id": "343060175",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 343060175,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 343060175,
+          "type_des": 9,
+          "show_name": 6503406,
+          "skill_icon": "mastery_skill_gold_03.png",
+          "text": 604400280,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "damage-reduction",
+              "magnitude": 0.08,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 3,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "damage-reduction",
+                "magnitude": 0.08,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-round-end",
+            "condition": null,
+            "conditionKey": "round-3",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "heal",
+                "healType": "percent-max-hp",
+                "multiplier": 0.05
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Mastery: first 3 rounds final damage taken -8%; heal 5% max HP at end of round 3."
+      }
+    }
+  ]
+}

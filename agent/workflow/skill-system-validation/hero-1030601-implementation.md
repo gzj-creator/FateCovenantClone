@@ -1,45 +1,49 @@
-# Hero 1030601 (梦魅) Skill Validation & Implementation
+# Hero 1030601（梦魅）技能实现与验证
 
-Date: 2026-11-01
-Branch: investigate-5-3
+日期：2026-11-05
+技能库：`personal-server/config/skill-database.json`
+补丁：`agent/workflow/skill-system-validation/patches/20261105/hero-1030601.json`
+写入方式：`node scripts/apply-hero-skill-patch.mjs ../agent/workflow/skill-system-validation/patches/20261105/hero-1030601.json`（cwd `personal-server`）
 
-## Hero
-- ID: 1030601, Name: 梦魅, Role: Knight
-- Stats: HP 1800, ATK 330, DEF 82, SPD 112
+## 英雄信息
 
-## Skills Validated (14 total)
+- ID 1030601，梦魅，Knight
+- 本轮前 14 个技能中仅 normal-profession-4 缺少 `effectType`/`effects`（其余专精与被动已有可执行定义）。
 
-### Mastery skills (5)
-1. 313060171 不屈 - 进入战斗后，最终伤害减免提升5% -> stat-modifier damage-reduction 0.05 (on-round-start, oncePerBattle)
-2. 313060172 健壮 - 进入战斗后，最大生命值增幅提升5% -> stat-modifier max-hp-percent 0.05 (on-round-start, oncePerBattle)
-3. 313060173 一晌贪欢 - 进入战斗后，抗暴率提升5%和暴击伤害减免提升10% -> stat-modifier crit-resist 0.05 + crit-damage-reduction 0.10 (on-round-start, oncePerBattle)
-4. 313060174 如梦初醒 - 普攻/绝招后，自身下一次终结技伤害提升15% -> stat-modifier damage-bonus 0.15 (on-attack, on-skill-use, timed 1 round)
-5. 313060175 坠入深渊 - 释放终结技时，额外附加10%暴击率和15%暴击伤害 -> stat-modifier crit-rate 0.10 + crit-damage 0.15 (on-ultimate-use, timed 2 rounds)
+## 技能清单与实现方式
 
-### Passive skills (8)
-6. 120001027 突破5 - 受到普攻/绝招回复150点能量 -> energy gain 150 (on-being-hit)
-7. 120000046 自保 - 自身有减益状态时，免伤提高10% -> stat-modifier damage-reduction 0.10 (on-round-start, condition has-debuff)
-8. 120000051 蛰伏 - 生命低于50%时，免伤提升15% -> stat-modifier damage-reduction 0.15 (on-hp-threshold, condition hp-below-50, oncePerBattle)
-9. 120000054 鼓舞 - 友方普攻/绝招时能量回复25点 -> energy gain 25 (on-attack)
-10. 120000055 反杀 - 攻击生命百分比高于自己的目标时，暴击率提升30% -> stat-modifier crit-rate 0.30 (on-attack, condition target-hp-above-self, timed 1 round)
-11. 120000059 祝福 - 战斗前2回合，被治愈率提升20% -> stat-modifier heal-bonus 0.20 (on-round-start, maxTriggers 2, timed 2 rounds)
-12. 120001003 生命护盾 - 首次生命低于70%时，获得自身防御力80%的护盾，持续2回合 -> shield percent-defense 0.8 (on-hp-threshold, condition hp-below-70, oncePerBattle, timed 2 rounds)
+| 技能 | 类型 | 实现 |
+| --- | --- | --- |
+| normal-profession-4 Knight Basic Attack | Normal | 项目兜底：单体物理 1.0×（本轮补齐） |
+| 313060171 不屈 | Mastery | 战斗开始永久 damage-reduction 0.05 |
+| 313060172 健壮 | Mastery | 战斗开始永久 max-hp-percent 0.05 |
+| 313060173 一晌贪欢 | Mastery | 战斗开始永久 crit-resist 0.05 + crit-damage-reduction 0.10 |
+| 313060174 如梦初醒 | Mastery | 普攻/绝招后 damage-bonus 0.15（1 回合） |
+| 313060175 坠入深渊 | Mastery | 终结技时 crit-rate 0.10 + crit-damage 0.15（timed 2） |
+| 120001027 突破5 | Passive | 受击回复 150 能量 |
+| 120000046 自保 | Passive | has-debuff 时 damage-reduction 0.10 |
+| 120000051 蛰伏 | Passive | hp-below-50 一次 damage-reduction 0.15 |
+| 120000054 鼓舞 | Passive | 友方攻击时回复 25 能量 |
+| 120000055 反杀 | Passive | target-hp-above-self 时 crit-rate 0.30 |
+| 120000059 祝福 | Passive | 前 2 回合 heal-bonus 0.20 |
+| 120001003 生命护盾 | Passive | 首次 hp-below-70 获得 percent-defense 0.80 护盾 2 回合 |
+| 6910001008 终极技能 | Ultimate | 元数据兜底：单体物理 2.0× |
 
-### Normal / Ultimate
-13. normal-profession-4 Knight Basic Attack - project fallback (damage 1.0x single)
-14. 6910001008 Skill 6910001008 - ultimate, metadata fallback -> damage 2.0x (single)
+## 近似项与 requiresInvestigation
 
-## Skills Fixed
-- Previously all implementations lacked effectType/effects/triggers (only ability/abilityDes metadata).
-- Added effectType, effects[], and triggers[] to 12 resolved skills (5 mastery + 7 passive).
-- No new effect types, status types, or target types required; reused existing framework.
+- `requiresInvestigation: true` — 313060174 如梦初醒：现有触发框架无法限定“下一次终结技”，以普攻/绝招后 1 回合 damage-bonus 0.15 近似（不区分技能类型），补丁 `patches/20261105/hero-1030601-extra.json`。
+- 其余专精/被动均可由现有效果与触发字段表达。
+- 313060173 的“抗暴率”使用词表 `crit-resist`（与库内同 id 技能一致）；`crit-damage-reduction` 表示暴击伤害减免。
+- 普攻为项目兜底，非原版精确倍率。
 
-## Remaining Issues
-- 6910001008 ultimate has no localized description (MISSING_ABILITY_DESCRIPTION); using metadata-fallback damage 2.0x.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending).
+## 验证
 
-## Test Results
-- personal-server/test/hero-1030601-skill-validation.test.mjs: 17/17 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
+- `node scripts/verify-hero-skills.mjs --hero=1030601`：通过
+- `node --test test/hero-1030601-skill-validation.test.mjs`：8/8 通过（本轮新建测试，此前无该英雄测试文件）
+- 测试覆盖：14 个技能 id、全技能可执行结构、普攻 damage、5 个专精数值、7 个共享被动条件、15 条触发注册，以及 EffectExecutor 实跑 damage/shield/energy/stat-modifier（含暴击伤害减免归入增益）。
+
+## 遗留风险
+
+- “下一次终结技”限定无法用现有触发条件表达，可能覆盖到普通技能伤害。
+- 战斗引擎回合循环尚未调用技能效果与触发处理（既有系统性缺口，本轮不修）。
+

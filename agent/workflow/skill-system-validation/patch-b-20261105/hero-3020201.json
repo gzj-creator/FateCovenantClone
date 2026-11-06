@@ -1,0 +1,460 @@
+{
+  "heroId": 3020201,
+  "skills": [
+    {
+      "id": "332020172",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 332020172,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 332020172,
+          "type_des": 9,
+          "show_name": 6503267,
+          "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
+          "text": 604400167,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "max-hp-percent",
+              "magnitude": 0.05,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "max-hp-percent",
+                "magnitude": 0.05,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "进入战斗后最大生命值增幅+5%（statType max-hp-percent，由 effect-types.mjs 扩展枚举登记）。"
+      }
+    },
+    {
+      "id": "332020173",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 332020173,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 332020173,
+          "type_des": 9,
+          "show_name": 6503268,
+          "skill_icon": "mastery_skill_sea_01.png",
+          "text": 604400168,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "status-hit",
+              "magnitude": 0.1,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          },
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "status-resist",
+              "magnitude": 0.1,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "permanent",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "status-hit",
+                "magnitude": 0.1,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          },
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 1,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "status-resist",
+                "magnitude": 0.1,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "permanent",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "进入战斗后异常状态命中+10%、异常状态抗性+10%."
+      }
+    },
+    {
+      "id": "332020174",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 332020174,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 332020174,
+          "type_des": 9,
+          "show_name": 6503269,
+          "skill_icon": "mastery_skill_sea_02.png",
+          "text": 604400169,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "dispel",
+        "targetType": "random-ally",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "random-ally"
+            },
+            "effect": {
+              "type": "dispel",
+              "removeType": "debuff",
+              "count": 1
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "random-ally"
+              },
+              "effect": {
+                "type": "dispel",
+                "removeType": "debuff",
+                "count": 1
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "random-ally"
+              },
+              "effect": {
+                "type": "dispel",
+                "removeType": "debuff",
+                "count": 1
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "普攻/绝招后随机驱散1个友方减益；目标由引擎随机选取，敌我单位中是否含自身由战斗队列决定。"
+      }
+    },
+    {
+      "id": "120000034",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120000034,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120000034,
+          "type_des": 2,
+          "show_name": 6300050,
+          "skill_icon": "Icon_Skill_tiejia.png",
+          "text": 601509048,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "anti-crit",
+              "magnitude": 0.2,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "conditional",
+              "rounds": 0,
+              "conditionKey": "hp-above-50"
+            },
+            "chance": 1,
+            "conditionKey": "hp-above-50",
+            "unique": true,
+            "refresh": true
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-round-start",
+            "condition": null,
+            "conditionKey": "hp-above-50",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "anti-crit",
+                "magnitude": 0.2,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "conditional",
+                "rounds": 0,
+                "conditionKey": "hp-above-50"
+              },
+              "chance": 1,
+              "conditionKey": "hp-above-50",
+              "unique": true,
+              "refresh": true
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "生命高于50%时抗暴提升20%（statType anti-crit，conditional 持续）。"
+      }
+    },
+    {
+      "id": "120001015",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120001015,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120001015,
+          "type_des": 2,
+          "show_name": 6300093,
+          "skill_icon": "Icon_Skill_shanbi.png",
+          "text": 601509089,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "evasion",
+              "magnitude": 0.2,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 1
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-ultimate-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "evasion",
+                "magnitude": 0.2,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 1
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "终结技后闪避增加20%，持续1回合（statType evasion）。"
+      }
+    }
+  ]
+}

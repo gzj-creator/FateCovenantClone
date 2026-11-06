@@ -1,57 +1,35 @@
-# Hero 1030201 (银爵艾伦) Skill Validation & Implementation
+# Hero 1030201 (银爵艾伦) 技能实现（审计补建文档）
 
-Date: 2026-11-01
-Branch: investigate-5-3
+本文件在 2026-11-05 技能库审计时补建：该英雄此前有测试文件但没有实现文档。内容按 config/skill-database.json 当前状态生成。
 
-## Hero
-- ID: 1030201, Name: 银爵艾伦, Role: Ranger
-- Stats: HP 1260, ATK 190, DEF 60, SPD 107
+## 技能清单（14 条）
 
-## Skills Validated (14 total)
+| id | 名称 | 类型 | 描述 | 实现 |
+| --- | --- | --- | --- | --- |
+| normal-profession-3 | Ranger Basic Attack (辅助) | Normal | Project-defined fallback basic attack. The catalog client has no HeroTable.Ability.ability value for this hero. | damage physical x1 -> single |
+| 313020171 | 不屈 | Mastery | 进入战斗后，最终伤害减免提升5% | stat damage-reduction 0.05% -> self | triggers: on-round-start |
+| 313020172 | 健壮 | Mastery | 进入战斗后，最大生命值增幅提升5% | stat max-hp-percent 0.05% -> self | triggers: on-round-start |
+| 313020173 | 超群技艺 | Mastery | 进入战斗后，异常状态命中和异常状态抗性提升10% | stat status-hit 0.1% -> self; stat status-resist 0.1% -> self | triggers: on-round-start / on-round-start |
+| 313020174 | 慑魂奇招 | Mastery | 普攻/绝招后，给目标额外附加1层【惊惧】，持续2回合 | status frightened -> single | triggers: on-attack / on-skill-use |
+| 313020175 | 定制策略 | Mastery | 释放终结技时，给敌方前排攻击最高单位额外施加1层【惊惧】 | status frightened -> single | triggers: on-ultimate-use |
+| 120001028 | 突破6 | Passive | 友方普攻/绝招自身回复50点能量 | energy gain 50 -> self | triggers: on-attack / on-skill-use |
+| 120000032 | 反弹 | Passive | 受到敌方后排攻击时，反弹率提升10% | stat rebound-rate 0.1% -> self | triggers: on-being-hit |
+| 120000034 | 铁甲 | Passive | 自身生命高于50%时，抗暴提升20% | stat anti-crit 0.2% -> self | triggers: on-round-start(hp-above-50) |
+| 120000037 | 亢奋 | Passive | 敌方被击退时回复100点能量 | energy gain 100 -> self | triggers: on-kill |
+| 120000042 | 暴怒 | Passive | 释放能量技能时，暴击伤害增加30% | stat crit-damage 0.3% -> self | triggers: on-skill-use |
+| 120000044 | 奋激 | Passive | 首次释放终结技后，免伤提升20% | stat damage-reduction 0.2% -> self | triggers: on-ultimate-use |
+| 120001005 | 战斗续航 | Passive | 回合开始时若生命低于30%，回复自身攻击力30%的最大生命值 | heal percent-attack 0.3 -> self | triggers: on-round-start(hp-below-30) |
+| 6910001004 | Skill 6910001004 | Ultimate | - | damage physical x2 -> single |
 
-### Mastery skills (5)
-1. 313020171 不屈 - 终极减伤 +5% on battle start -> stat-modifier damage-reduction 0.05 (on-round-start, oncePerBattle)
-2. 313020172 健壮 - 最大HP +5% on battle start -> stat-modifier max-hp-percent 0.05 (on-round-start, oncePerBattle)
-3. 313020173 超群技艺 - 异常状态命中/抗性 +10% on battle start -> stat-modifier status-hit 0.10 + status-resist 0.10 (on-round-start, oncePerBattle)
-4. 313020174 慑魂奇招 - 普攻/绝招后给目标附加1层【惊惧】持续2回合 -> status frightened (on-attack, on-skill-use, timed 2 rounds)
-5. 313020175 定制策略 - 释放终结技时给敌方前排攻击最高单位附加1层【惊惧】 -> status frightened (on-ultimate-use, target front-row-highest-attack, timed 2 rounds)
+## 审计修订（2026-11-05）
 
-### Passive skills (8)
-6. 120001028 突破6 - 友方普攻/绝招自身回复50能量 -> energy gain 50 (on-attack, on-skill-use)
-7. 120000032 反弹 - 受到敌方后排攻击时反弹率+10% -> stat-modifier rebound-rate 0.10 (on-being-hit)
-8. 120000034 铁甲 - 生命>50%时抗暴+20% -> stat-modifier anti-crit 0.20 (on-round-start)
-9. 120000037 亢奋 - 敌方被击退时回复100能量 -> energy gain 100 (on-kill)
-10. 120000042 暴怒 - 释放能量技能时暴击伤害+30% -> stat-modifier crit-damage 0.30 (on-skill-use)
-11. 120000044 奋激 - 首次终结技后免伤+20% -> stat-modifier damage-reduction 0.20 (on-ultimate-use, oncePerBattle)
-12. 120001005 战斗续航 - 生命<30%时回复ATK 30%最大生命 -> heal percent-attack 0.3 (on-round-start, condition hp-below-30)
+- 定制策略 313020175 的 targetType front-row-highest-attack 不在词表内（会静默变成敌方最前排单体），改为 single 并标 requiresInvestigation。
+- 超群技艺 313020173 的 description 去掉被拼接进来的 313020174、313020175 文本。
 
-### Normal / Ultimate
-13. normal-profession-3 Ranger Basic Attack - project fallback (damage 1.0x single)
-14. 6910001004 Skill 6910001004 - ultimate, metadata fallback -> damage 2.0x (single)
+- 验证：node scripts/verify-hero-skills.mjs --hero=1030201 通过；node --test test/hero-1030201-skill-validation.test.mjs 通过。
 
-## Skills Fixed
-- Previously all implementations were null (skill-database.json had no effect definitions).
-- Added effectType, effects[], and triggers[] to 13 resolved skills.
-- Added new STATUS_TYPE FRIGHTENED ('frightened') for 惊惧 debuff.
-- Added new TARGET_TYPE FRONT_ROW_HIGHEST_ATTACK ('front-row-highest-attack') for 定制策略.
-- Added selectFrontRowHighestAttack method to TargetSelector.
+## 近似与遗留
 
-## Special: Debuff/Status Mechanics (惊惧)
-- 惊惧 (frightened) is implemented as a status effect (debuff) with duration 2 rounds.
-- 慑魂奇招 (313020174): applies frightened to target on normal/skill use.
-- 定制策略 (313020175): applies frightened to front-row enemy with highest attack on ultimate use.
-- Advanced mechanics NOT yet implemented:
-  - "每次用户移动，添加惊惧到目标" (re-application on user move) - requires move-event hook in battle engine.
-  - "当敌人移除增益时，添加60%防御真实伤害每增益" - requires gain-removal event hook and true-damage calculation per removed gain.
-- These are documented as requiring battle-engine integration beyond current trigger system.
-
-## Remaining Issues
-- Advanced 惊惧 reactive mechanics (move re-application, 60% DEF true damage on gain removal) not wired.
-- 6910001004 ultimate has no localized description (MISSING_ABILITY_DESCRIPTION); using metadata-fallback damage 2.0x.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending).
-
-## Test Results
-- personal-server/test/hero-1030201-skill-validation.test.mjs: 7/7 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
+- requiresInvestigation：313020175 定制策略、6910001004 Skill 6910001004
+- 数值来自技能描述，未与 FightTable.Effect / FightTable.Buff 对齐。
+- 技能库尚未接入战斗主循环，影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。
