@@ -42,6 +42,6 @@ None. All implementations use existing types.
 
 ## Method
 
-Followed established pattern from 1010101/3030401/4010101. Implemented via `personal-server/scripts/update-4010301.mjs`, which updates `skill-database.json` in place. Shared passive skills (120001028, 120000032, 120000034, 120000037, 120000042, 120000044, 120001005) cloned from already-validated heroes via `findById`. Mastery skills built from catalog descriptions with conservative magnitude inference. Ultimate is metadata fallback.
+Followed established pattern from 1010101/3030401/4010101. The historical implementation used a one-off script that updated `skill-database.json` in place; that script has since been removed. Future changes should use `personal-server/scripts/apply-hero-skill-patch.mjs` with a reviewed patch and then run `personal-server/scripts/verify-hero-skills.mjs`. Shared passive skills (120001028, 120000032, 120000034, 120000037, 120000042, 120000044, 120001005) cloned from already-validated heroes via `findById`. Mastery skills built from catalog descriptions with conservative magnitude inference. Ultimate is metadata fallback.
 
 Note: hero 4010301 catalog role is Ranger, but task described as Knight role; implementation follows catalog data (Ranger basic attack, Ranger stats). No role change made.
