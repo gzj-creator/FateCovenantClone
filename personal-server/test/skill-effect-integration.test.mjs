@@ -8,7 +8,14 @@ import {
   processTriggers,
   registerPassiveTriggers
 } from '../game/effects/skill-integration.mjs';
-import { EffectExecutor } from '../game/effects/effect-executor.mjs';
+import {
+  EffectExecutor,
+  effectiveDamageBonus,
+  effectiveDamageReduction,
+  effectiveEnergyBonus,
+  effectiveHealBonus,
+  effectiveShieldBonus
+} from '../game/effects/effect-executor.mjs';
 
 function unit(id, team, loc, overrides = {}) {
   return {
@@ -185,6 +192,76 @@ test('defensive and accuracy stat families are classified as buffs', () => {
     assert.equal(target.buffs.length, 1, statType + ' should be a buff');
     assert.equal(target.debuffs.length, 0, statType + ' should not be a debuff');
   }
+});
+
+test('negative effect bonuses are preserved and clamped to safe multipliers', () => {
+  const target = unit(1, 1, 1, {
+    buffs: [],
+    debuffs: [
+      { statType: 'damage-bonus', magnitude: -0.2 },
+      { statType: 'damage-reduction', magnitude: -0.2 },
+      { statType: 'heal-bonus', magnitude: -0.05 },
+      { statType: 'shield-bonus', magnitude: -0.05 },
+      { statType: 'energy-bonus', magnitude: -0.05 }
+    ]
+  });
+
+  assert.equal(effectiveDamageBonus(target), -0.2);
+  assert.equal(effectiveDamageReduction(target), -0.2);
+  assert.equal(effectiveHealBonus(target), -0.05);
+  assert.equal(effectiveShieldBonus(target), -0.05);
+  assert.equal(effectiveEnergyBonus(target), -0.05);
+
+  target.debuffs = [
+    { statType: 'damage-bonus', magnitude: -2 },
+    { statType: 'damage-reduction', magnitude: -2 },
+    { statType: 'heal-bonus', magnitude: -2 },
+    { statType: 'shield-bonus', magnitude: -2 },
+    { statType: 'energy-bonus', magnitude: -2 }
+  ];
+  assert.equal(effectiveDamageBonus(target), -0.9);
+  assert.equal(effectiveDamageReduction(target), -0.9);
+  assert.equal(effectiveHealBonus(target), -0.9);
+  assert.equal(effectiveShieldBonus(target), -0.9);
+  assert.equal(effectiveEnergyBonus(target), -0.9);
+});
+
+test('status execution preserves DoT and HoT tick effects for periodic settlement', () => {
+  const actor = unit(1, 1, 1);
+  const state = { random: () => 0.5, round: 1, nextStatusId: 0 };
+  const executor = new EffectExecutor(state);
+
+  const poisoned = unit(2, 2, 1, { hp: 1000 });
+  executor.executeStatus({
+    type: 'status',
+    statusType: 'poison',
+    duration: 2,
+    tickInterval: 1,
+    tickEffect: {
+      type: 'damage', damageType: 'percent-max-hp', magnitude: 0.2, canCrit: false, variance: 1
+    }
+  }, actor, poisoned);
+  assert.deepEqual(poisoned.debuffs[0].tickEffect, {
+    type: 'damage', damageType: 'percent-max-hp', magnitude: 0.2, canCrit: false, variance: 1
+  });
+  let events = [];
+  processBuffTicks(poisoned, { ...state, round: 2 }, events);
+  assert.equal(poisoned.hp, 800);
+  assert.equal(events.some(event => event.type === 'damage' && event.tick === true), true);
+
+  const regenerating = unit(3, 1, 2, { hp: 500 });
+  executor.executeStatus({
+    type: 'status',
+    statusType: 'regen',
+    duration: 2,
+    tickInterval: 1,
+    tickEffect: { type: 'heal', magnitude: 80 }
+  }, actor, regenerating);
+  assert.deepEqual(regenerating.debuffs[0].tickEffect, { type: 'heal', magnitude: 80 });
+  events = [];
+  processBuffTicks(regenerating, { ...state, round: 2 }, events);
+  assert.equal(regenerating.hp, 580);
+  assert.equal(events.some(event => event.type === 'heal' && event.tick === true), true);
 });
 
 test('conditional unique modifiers refresh and expire when their condition becomes false', () => {

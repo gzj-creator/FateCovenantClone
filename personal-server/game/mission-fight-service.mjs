@@ -72,7 +72,7 @@ function actionList(codec, simulation) {
   for (const event of simulation.events) {
     if (event.kind === 'round-start') {
       events.push(action(codec, ACTION_ROUND_READY, 'pb_fat_round_ready', { round: event.round }));
-    } else if (event.kind === 'action-start') {
+    } else if (event.kind === 'action-start' || event.kind === 'passive-action-start') {
       events.push(action(codec, ACTION_ACTION_BEFORE, 'pb_fat_action_before', {
         id: event.id,
         src_id: event.srcId,
@@ -124,7 +124,7 @@ function actionList(codec, simulation) {
           ignore_tip: attr.ignoreTip
         }))
       }));
-    } else if (event.kind === 'action-end') {
+    } else if (event.kind === 'action-end' || event.kind === 'passive-action-end') {
       events.push(action(codec, ACTION_ACTION_AFTER, 'pb_fat_action_after', { id: event.id }));
     } else if (event.kind === 'round-end') {
       events.push(action(codec, ACTION_ROUND_OVER, 'pb_fat_round_over', { round: event.round }));

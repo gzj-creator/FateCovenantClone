@@ -147,6 +147,60 @@ test('a skill battle is reproducible from its seed without global RNG', () => {
   }
 });
 
+test('passive action windows use unique nonzero ids in every round', () => {
+  const battle = simulateBattle({
+    attackers: [unit(101, 5040201, 2, {
+      loc: 1,
+      speed: 120,
+      attack: 1,
+      maxHp: 8000
+    })],
+    defenders: [unit(201, 9002100, 2, {
+      loc: 1,
+      speed: 1,
+      attack: 1,
+      maxHp: 100000
+    })],
+    seed: 53,
+    maxRounds: 2
+  });
+
+  const passiveStarts = battle.events.filter(event => event.kind === 'passive-action-start');
+  const passiveEnds = battle.events.filter(event => event.kind === 'passive-action-end');
+  const passiveShields = battle.events.filter(event => event.kind === 'shield'
+    && event.aimId === 101 && passiveStarts.some(start => start.id === event.id));
+  assert.equal(passiveStarts.length, 2);
+  assert.deepEqual(passiveEnds.map(event => event.id), passiveStarts.map(event => event.id));
+  assert.ok(passiveStarts.every(event => event.id > 0));
+  assert.equal(new Set(passiveStarts.map(event => event.id)).size, passiveStarts.length);
+  assert.equal(passiveShields.length, 2);
+
+  for (const shield of passiveShields) {
+    const start = battle.events.findIndex(event => event.kind === 'passive-action-start'
+      && event.id === shield.id);
+    const end = battle.events.findIndex(event => event.kind === 'passive-action-end'
+      && event.id === shield.id);
+    const shieldIndex = battle.events.indexOf(shield);
+    assert.ok(start < shieldIndex && shieldIndex < end);
+  }
+});
+
+test('every HP threshold passive is evaluated after damage instead of only at 50 percent', () => {
+  const battle = simulateBattle({
+    attackers: [unit(101, 1020101, 2, { loc: 1, speed: 120, attack: 1 })],
+    defenders: [unit(201, 18002100, 2, { loc: 1, speed: 1, maxHp: 20000, attack: 3500 })],
+    seed: 31,
+    maxRounds: 1
+  });
+
+  // The first hit leaves role 1020101 below 70% but above 50%. Its hp-below-70
+  // shield must already execute; waiting for a 50% crossing skips this passive.
+  assert.ok(battle.attackers[0].hp / battle.attackers[0].maxHp < 0.7);
+  assert.ok(battle.attackers[0].hp / battle.attackers[0].maxHp > 0.5);
+  assert.ok(battle.events.some(event => event.kind === 'shield' && event.aimId === 101),
+    'hp-below-70 must execute after the first qualifying damage event');
+});
+
 function setMission(store, missionId) {
   store.transaction(model => {
     const module = new Map(model.state.modules.value).get(8);
@@ -196,6 +250,32 @@ test('mission action_list encodes passive skill damage under the source action',
   assert.ok(hero, 'task battle must include role 2010101');
 
   const packets = actions(response.report);
+  const passiveShieldIndex = packets.findIndex(packet => Number(packet.proto) === 109);
+  assert.ok(passiveShieldIndex > 0);
+  const passiveShield = decodeAction(packets[passiveShieldIndex], 'pb_fat_shield');
+  const passiveStartIndex = packets.findIndex((packet, index) => index < passiveShieldIndex
+    && Number(packet.proto) === 101
+    && Number(decodeAction(packet, 'pb_fat_action_before').id) === Number(passiveShield.id));
+  const passiveEndIndex = packets.findIndex((packet, index) => index > passiveShieldIndex
+    && Number(packet.proto) === 102
+    && Number(decodeAction(packet, 'pb_fat_action_after').id) === Number(passiveShield.id));
+  assert.ok(passiveStartIndex >= 0 && passiveEndIndex > passiveShieldIndex,
+    'round-start passive effects must have an existing action-before/after window');
+  const replaySchemas = new Map([
+    [101, 'pb_fat_action_before'],
+    [102, 'pb_fat_action_after'],
+    [105, 'pb_fat_fighter_die'],
+    [106, 'pb_fat_harm'],
+    [109, 'pb_fat_shield'],
+    [114, 'pb_fat_fighter_relive'],
+    [116, 'pb_fat_attr_sync'],
+  ]);
+  for (const packet of packets) {
+    const schema = replaySchemas.get(Number(packet.proto));
+    if (!schema) continue;
+    assert.ok(Number(decodeAction(packet, schema).id) > 0,
+      `${schema} must not use action id 0`);
+  }
   const actionBefore = packets
     .filter(packet => Number(packet.proto) === 101)
     .map(packet => decodeAction(packet, 'pb_fat_action_before'))

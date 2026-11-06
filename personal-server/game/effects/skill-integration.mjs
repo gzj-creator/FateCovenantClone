@@ -284,6 +284,19 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
 
     if (Array.isArray(storedTriggers)) {
       for (const t of storedTriggers) {
+        const effect = t.effect ? { ...t.effect } : skillToEffect(skill, skillDatabase);
+        const permanentStatModifier = effect?.effect?.type === 'stat-modifier'
+          && effect.duration?.durationType === 'permanent';
+        // Conditional passives describe a state while their condition holds.
+        // Reapplying that state every round must refresh it rather than append
+        // another permanent copy. The same applies to on-buff-gain auras, whose
+        // own stat gain would otherwise feed back into the trigger.
+        if (permanentStatModifier
+          && (t.conditionKey || t.triggerType === 'on-buff-gain')
+          && effect.unique === undefined
+          && !(Number(effect.maxStacks) > 0)) {
+          effect.unique = true;
+        }
         triggers.push({
           id: `${skill.id}_${unit.id}_${triggers.length}`,
           triggerType: t.triggerType,
@@ -296,8 +309,9 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
           chance: t.chance ?? null,
           maxTriggers: t.maxTriggers || 0,
           oncePerBattle: !!t.oncePerBattle,
-          oncePerRound: !!t.oncePerRound,
-          effect: t.effect ? { ...t.effect } : skillToEffect(skill, skillDatabase),
+          oncePerRound: !!t.oncePerRound
+            || (permanentStatModifier && t.triggerType === 'on-buff-gain'),
+          effect,
           priority: t.priority || 0,
           triggered: false,
           triggeredThisRound: false,
@@ -424,6 +438,10 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
       if (typeof trigger.effect.condition === 'function'
         && !trigger.effect.condition(unit, null, state)) continue;
       if (!passesChance(trigger.effect.chance, executor)) continue;
+      // Lock trigger accounting before executing the effect. A triggered stat
+      // or status can synchronously wake another trigger, and once-per-round/
+      // battle limits must already be visible during that re-entrant call.
+      lockTrigger(trigger, state);
       const targets = selector.selectTargets(trigger.effect.target, unit, allUnits, state);
 
       for (const target of targets) {
@@ -445,16 +463,20 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
           });
         }
       }
+    } else {
+      lockTrigger(trigger, state);
     }
 
-    // Update trigger state
-    trigger.triggered = true;
-    trigger.triggeredThisRound = true;
-    trigger.triggersUsed = (trigger.triggersUsed || 0) + 1;
-    if (Number(trigger.cooldownMax) > 0) {
-      trigger.cooldown = Number(trigger.cooldownMax);
-      trigger.cooldownRound = Number.isSafeInteger(Number(state?.round)) ? Number(state.round) : null;
-    }
+  }
+}
+
+function lockTrigger(trigger, state) {
+  trigger.triggered = true;
+  trigger.triggeredThisRound = true;
+  trigger.triggersUsed = (trigger.triggersUsed || 0) + 1;
+  if (Number(trigger.cooldownMax) > 0) {
+    trigger.cooldown = Number(trigger.cooldownMax);
+    trigger.cooldownRound = Number.isSafeInteger(Number(state?.round)) ? Number(state.round) : null;
   }
 }
 

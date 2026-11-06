@@ -331,6 +331,50 @@ function processUnitTriggers(events, unit, triggerType, state, actionId = state.
   }
 }
 
+function appendStandaloneResults(events, unit, results, state) {
+  if (!unit || !Array.isArray(results) || !results.length) return;
+  if (state.actionOpen) {
+    appendEffectResults(events, state.currentActionId, results, unit, state);
+    return;
+  }
+
+  // A visible round-start passive needs a complete action window. Reusing the
+  // id of the action that is about to start is invalid when that passive ends
+  // the battle before any character acts.
+  const actionId = Math.max(1, state.nextActionId);
+  const startIndex = events.length;
+  appendEffectResults(events, actionId, results, unit, state);
+  const visibleKinds = new Set(['damage', 'shield', 'death', 'revive', 'anger-sync']);
+  if (!events.slice(startIndex).some(event => visibleKinds.has(event.kind))) return;
+
+  state.nextActionId = actionId + 1;
+  const targets = new Map();
+  for (const result of results) {
+    const target = state.allUnits.find(candidate => candidate.id === result.target);
+    if (target) targets.set(target.id, target);
+  }
+  for (const event of events.slice(startIndex)) {
+    const aimId = event.aimId ?? event.harms?.[0]?.aimId;
+    const target = state.allUnits.find(candidate => candidate.id === aimId);
+    if (target) targets.set(target.id, target);
+  }
+  if (!targets.size) targets.set(unit.id, unit);
+
+  const triggerSkill = results.find(result => result.trigger)?.trigger;
+  const parsedAbilityId = Number(String(triggerSkill || '').split('_')[0]);
+  events.splice(startIndex, 0, {
+    kind: 'passive-action-start',
+    id: actionId,
+    srcId: unit.id,
+    assistIds: [],
+    aimList: [...targets.values()].map(target => target.id),
+    abilityId: Number.isSafeInteger(parsedAbilityId) && parsedAbilityId > 0 ? parsedAbilityId : 1,
+    actionType: 1,
+    synthetic: true,
+  });
+  events.push({ kind: 'passive-action-end', id: actionId, synthetic: true });
+}
+
 function handleDamageTriggers(events, actionId, actor, harms, state) {
   if (state.handlingDamageTriggers) return;
   state.handlingDamageTriggers = true;
@@ -343,7 +387,10 @@ function handleDamageTriggers(events, actionId, actor, harms, state) {
       if (harm.oldHp > 0 && harm.hp === 0) {
         processUnitTriggers(events, actor, 'on-kill', state, actionId);
         processUnitTriggers(events, target, 'on-death', state, actionId);
-      } else if (harm.oldHp > target.maxHp * 0.5 && harm.hp <= target.maxHp * 0.5) {
+      } else {
+        // A single trigger family backs every data threshold. processTriggers
+        // evaluates each trigger's hp-below/above condition without consuming
+        // conditions that are still false.
         processUnitTriggers(events, target, 'on-hp-threshold', state, actionId);
       }
     }
@@ -353,7 +400,15 @@ function handleDamageTriggers(events, actionId, actor, harms, state) {
 }
 
 function runRoundTrigger(events, unit, triggerType, state) {
-  processUnitTriggers(events, unit, triggerType, state, 0);
+  if (!unit || (state.triggerDepth || 0) >= 8) return;
+  const raw = [];
+  state.triggerDepth = (state.triggerDepth || 0) + 1;
+  try {
+    processTriggers(unit, triggerType, state.allUnits, state, raw);
+    appendStandaloneResults(events, unit, raw, state);
+  } finally {
+    state.triggerDepth--;
+  }
 }
 
 function startAction(events, actor, actionId, targets, abilityId, actionType, assistIds = []) {
@@ -397,6 +452,7 @@ function executeTurn(events, actor, allUnits, state) {
   const team = allUnits.filter(unit => unit.team === actor.team);
   const catalogSkill = resolveActionSkill(actor, useSkill, state.skillDatabase);
   state.currentActionId = actionId;
+  state.actionOpen = true;
   processUnitTriggers(events, actor, 'on-turn-start', state, actionId);
 
   if (catalogSkill) {
@@ -467,6 +523,7 @@ function executeTurn(events, actor, allUnits, state) {
   emitAutoRevives(events, actionId, allUnits);
   emitAngerSync(events, actionId, beforeEnergy, allUnits);
   events.push({ kind: 'action-end', id: actionId });
+  state.actionOpen = false;
 }
 
 function validateTeams(attackers, defenders) {
@@ -493,6 +550,7 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     seed: (Number(seed) >>> 0) || 1,
     nextActionId: 1,
     currentActionId: 0,
+    actionOpen: false,
     round: 0,
     skillDatabase,
     allUnits,
@@ -535,7 +593,7 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     for (const unit of living(allUnits)) {
       const raw = [];
       processBuffTicks(unit, turnState, raw);
-      appendEffectResults(events, 0, raw, unit, turnState);
+      appendStandaloneResults(events, unit, raw, turnState);
     }
     events.push({ kind: 'round-end', round });
     overRound = round;

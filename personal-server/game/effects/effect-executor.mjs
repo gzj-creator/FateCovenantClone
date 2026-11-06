@@ -31,6 +31,8 @@ const BUFF_STAT_TYPES = new Set([
   STAT_TYPES.ENERGY_BONUS,
 ]);
 
+const MIN_EFFECT_BONUS = -0.9;
+
 const BUFF_STATUS_TYPES = new Set([
   STATUS_TYPES.PROTECTION,
   STATUS_TYPES.INVULNERABLE,
@@ -112,11 +114,11 @@ export function effectiveCritMultiplier(attacker, defender = null) {
 }
 
 export function effectiveDamageBonus(unit) {
-  return Math.max(0, statTotal(unit, STAT_TYPES.DAMAGE_BONUS));
+  return Math.max(MIN_EFFECT_BONUS, statTotal(unit, STAT_TYPES.DAMAGE_BONUS));
 }
 
 export function effectiveDamageReduction(unit) {
-  return Math.max(0, Math.min(0.9, statTotal(unit, STAT_TYPES.DAMAGE_REDUCTION)));
+  return Math.max(-0.9, Math.min(0.9, statTotal(unit, STAT_TYPES.DAMAGE_REDUCTION)));
 }
 
 export function effectiveIgnoreDefense(unit) {
@@ -124,15 +126,15 @@ export function effectiveIgnoreDefense(unit) {
 }
 
 export function effectiveHealBonus(unit) {
-  return Math.max(0, statTotal(unit, STAT_TYPES.HEAL_BONUS));
+  return Math.max(MIN_EFFECT_BONUS, statTotal(unit, STAT_TYPES.HEAL_BONUS));
 }
 
 export function effectiveShieldBonus(unit) {
-  return Math.max(0, statTotal(unit, STAT_TYPES.SHIELD_BONUS));
+  return Math.max(MIN_EFFECT_BONUS, statTotal(unit, STAT_TYPES.SHIELD_BONUS));
 }
 
 export function effectiveEnergyBonus(unit) {
-  return Math.max(0, statTotal(unit, STAT_TYPES.ENERGY_BONUS));
+  return Math.max(MIN_EFFECT_BONUS, statTotal(unit, STAT_TYPES.ENERGY_BONUS));
 }
 
 /** Return the current battle round without turning unknown state into round 0. */
@@ -500,6 +502,7 @@ export class EffectExecutor {
       conditionKey: duration.conditionKey,
       trigger: duration.trigger,
       tickInterval: effect.tickInterval || 0,
+      tickEffect: effect.tickEffect || null,
       nextTick: 0,
       dispellable: effect.dispellable !== false,
       unique: effect.unique || false,

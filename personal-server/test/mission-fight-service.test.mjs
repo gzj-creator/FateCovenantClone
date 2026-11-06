@@ -91,14 +91,21 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   assert.ok(battle.over_round >= 1);
   assert.ok(battle.action_list.length > 3);
   const actionMessages = actions(response.report);
-  // Real round-start passives can emit a visible shield before the first
-  // character action. The first action still starts immediately afterwards.
-  assert.deepEqual(actionMessages.slice(0, 5).map(value => value.proto), [107, 109, 101, 106, 116]);
+  // A visible round-start passive gets its own complete action window before
+  // the first character action.
+  assert.deepEqual(actionMessages.slice(0, 6).map(value => value.proto), [107, 101, 109, 102, 101, 106]);
   assert.equal(actionMessages.at(-1).proto, 104);
   const decodeAction = (index, schema) => codec.unpack(schema, Buffer.from(actionMessages[index].bin, 'base64'));
+  const angerSyncIds = new Set(actionMessages
+    .filter(value => value.proto === 116)
+    .map(value => Number(codec.unpack('pb_fat_attr_sync', Buffer.from(value.bin, 'base64')).id)));
   const attackers = battle.fighter_list.filter(unit => unit.team === 1 && Number(unit.role_type) === 1);
   const defenders = battle.fighter_list.filter(unit => unit.team === 2);
-  const beforeActions = actionMessages.map((value, index) => value.proto === 101 ? decodeAction(index, 'pb_fat_action_before') : null).filter(Boolean);
+  // Character actions carry anger synchronization. Round-start passive action
+  // windows do not and are excluded from assertions about character abilities.
+  const beforeActions = actionMessages
+    .map((value, index) => value.proto === 101 ? decodeAction(index, 'pb_fat_action_before') : null)
+    .filter(value => value && angerSyncIds.has(Number(value.id)));
   assert.deepEqual(
     [...new Set(beforeActions.filter(value => attackers.some(unit => Number(unit.id) === value.src_id)).map(value => value.src_id))].sort((a, b) => a - b),
     attackers.map(unit => Number(unit.id)).sort((a, b) => a - b)
