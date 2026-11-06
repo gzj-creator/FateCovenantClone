@@ -27,6 +27,7 @@ import { activityWindow, createActivityCalendar, serverDayNumber } from './activ
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
+import { createShopService } from './shop-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createPermitService } from './permit-service.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
@@ -319,6 +320,14 @@ export function createLocalGame({
     }
   });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
+  const shop = createShopService({
+    store,
+    codec,
+    tables,
+    now: clock,
+    logger,
+    fallbackShopInfo: shopId => petActivity.queryShops([shopId])[0]
+  });
   const wishTreasure = createWishTreasureService({ store, codec, tables, calendar, now: clock, logger });
   const wishTree = createWishTreeService({ store, codec, tables, now: clock, logger });
   const weekHunt = createWeekHuntService({ store, codec, tables, now: clock });
@@ -1466,6 +1475,27 @@ export function createLocalGame({
         // Return the evidenced response schema, with the requested process records.
         const responseType = root.lookupType('pb_req_save_process_back');
         send(seq, pack(responseType.name, { process_list: requestData.req_list })); return;
+      }
+      if (shop.supports(type)) {
+        try {
+          let input;
+          if (type === 1201) input = unpackRequest('pb_req_buy_shop_item', request.data);
+          else if (type === 1206) input = unpackRequest('pb_req_buy_history_item', request.data);
+          else input = await etfArgument(request.data, 'Invalid shop payload', { optional: type === 1202 });
+          const result = shop.execute(type, input, { connection: id, seq });
+          // A null result means the request belongs to another shop family (pet-activity mall or an
+          // unknown id); leave it to the legacy handlers below.
+          if (result) {
+            send(seq, result.data);
+            log({ event: 'shop_committed', type, seq, shopId: result.value?.shop?.id ?? result.value?.shop_id ?? null });
+            return;
+          }
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'shop_rejected', type, seq, code, message: error.message });
+          return;
+        }
       }
       if (type === 1202) {
         // Hall entry asks for shop ids. Auto-refresh shops require one decodable group even when
