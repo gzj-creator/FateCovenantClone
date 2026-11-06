@@ -32,7 +32,12 @@ if (-not (Test-Path -LiteralPath $protobufPackage)) {
   }
 }
 
-$runtimeDir = Join-Path $serverRoot 'analysis\experiments\private-server-20261025\p3\runtime.local-only.data'
+$runtimeDir = if ($env:FC_LOCAL_DATA) {
+  [IO.Path]::GetFullPath($env:FC_LOCAL_DATA)
+} else {
+  Join-Path $serverRoot 'personal-server\runtime.local-only.data'
+}
+$env:FC_LOCAL_DATA = $runtimeDir
 $statePath = Join-Path $runtimeDir 'server.local-only.json'
 $runningPid = $null
 if (Test-Path -LiteralPath $statePath) {
@@ -85,18 +90,14 @@ if (Test-Path -LiteralPath $adbPath) {
   $devices = @(& $adbPath devices)
   $deviceReady = $devices | Where-Object { $_ -match '^127\.0\.0\.1:16448\s+device$' }
   if ($deviceReady) {
-    $reverseOk = $true
-    foreach ($port in 18880, 18881, 18882, 19090) {
-      & $adbPath -s 127.0.0.1:16448 reverse "tcp:$port" "tcp:$port" *> $null
-      if ($LASTEXITCODE -ne 0) { $reverseOk = $false }
-    }
-    if ($reverseOk) {
-      Write-Host '[OK] ADB reverse mappings are ready.'
-    } else {
-      Write-Warning 'Server is running, but one or more ADB reverse mappings failed.'
+    $deviceTool = Join-Path $serverRoot 'tools\local-server-device.ps1'
+    $powershell = Get-Command powershell.exe -ErrorAction Stop
+    & $powershell.Source -NoProfile -ExecutionPolicy Bypass -File $deviceTool -Action Setup
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Server is running, but device port redirection setup failed.'
     }
   } else {
-    Write-Host '[INFO] MuMu ADB device is not connected; reverse setup skipped.'
+    Write-Host '[INFO] MuMu ADB device is not connected; device setup skipped.'
   }
 }
 
