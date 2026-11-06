@@ -91,7 +91,9 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   assert.ok(battle.over_round >= 1);
   assert.ok(battle.action_list.length > 3);
   const actionMessages = actions(response.report);
-  assert.deepEqual(actionMessages.slice(0, 5).map(value => value.proto), [107, 101, 106, 116, 102]);
+  // Real round-start passives can emit a visible shield before the first
+  // character action. The first action still starts immediately afterwards.
+  assert.deepEqual(actionMessages.slice(0, 5).map(value => value.proto), [107, 109, 101, 106, 116]);
   assert.equal(actionMessages.at(-1).proto, 104);
   const decodeAction = (index, schema) => codec.unpack(schema, Buffer.from(actionMessages[index].bin, 'base64'));
   const attackers = battle.fighter_list.filter(unit => unit.team === 1 && Number(unit.role_type) === 1);

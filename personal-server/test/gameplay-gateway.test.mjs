@@ -134,7 +134,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(fight.report.battle_list[0].fighter_list.length, 7);
   assert.equal(fight.report.battle_list[0].fighter_list.filter(unit => unit.role_type === 3).length, 1);
   const fightActions = fight.report.battle_list[0].action_list.map(bytes => codec.unpack('pb_generic', Buffer.from(bytes, 'base64')).proto);
-  assert.deepEqual(fightActions.slice(0, 4), [107, 101, 106, 116]);
+  assert.deepEqual(fightActions.slice(0, 5), [107, 109, 101, 106, 116]);
   assert.deepEqual(fightActions.slice(-2), [112, 104]);
   assert.ok(fightActions.every(type => [101, 102, 104, 105, 106, 107, 109, 112, 114, 116].includes(type)));
   assert.ok(fightActions.includes(109));

@@ -5,6 +5,10 @@
 import { TARGET_TYPES } from './effect-types.mjs';
 
 export class TargetSelector {
+  constructor(state = {}) {
+    this.state = state;
+  }
+
   /**
    * Select targets based on target type
    * @param {Object} targetDef - Target definition
@@ -70,8 +74,8 @@ export class TargetSelector {
         return this.selectRandomCount(actor, allUnits, targetDef.count || 1);
 
       default:
-        console.warn(`Unknown target type: ${targetType}, defaulting to single`);
-        return this.selectSingleTarget(actor, allUnits, targetDef);
+        console.warn(`Unknown target type: ${targetType}`);
+        return [];
     }
   }
 
@@ -220,7 +224,7 @@ export class TargetSelector {
     const enemies = this.getEnemies(actor, allUnits).filter(u => u.alive);
     if (!enemies.length) return [];
 
-    const index = Math.floor(Math.random() * enemies.length);
+    const index = Math.floor(this.random() * enemies.length);
     return [enemies[index]];
   }
 
@@ -231,7 +235,7 @@ export class TargetSelector {
     const allies = this.getAllies(actor, allUnits).filter(u => u.alive);
     if (!allies.length) return [];
 
-    const index = Math.floor(Math.random() * allies.length);
+    const index = Math.floor(this.random() * allies.length);
     return [allies[index]];
   }
 
@@ -242,8 +246,19 @@ export class TargetSelector {
     const enemies = this.getEnemies(actor, allUnits).filter(u => u.alive);
     if (!enemies.length) return [];
 
-    const shuffled = [...enemies].sort(() => Math.random() - 0.5);
+    const shuffled = [...enemies];
+    for (let index = shuffled.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(this.random() * (index + 1));
+      [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
     return shuffled.slice(0, Math.min(count, enemies.length));
+  }
+
+  random() {
+    if (typeof this.state.random === 'function') return this.state.random();
+    const seed = Number(this.state.seed) || 1;
+    this.state.seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return this.state.seed / 0x100000000;
   }
 
   /**

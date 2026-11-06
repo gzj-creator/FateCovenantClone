@@ -45,8 +45,40 @@ export function getSkillById(skillId, skillDatabase) {
 export function getHeroSkills(heroId, skillDatabase) {
   if (!skillDatabase) return [];
 
-  const hero = skillDatabase.heroes.find(h => h.id === heroId);
+  const key = String(heroId);
+  const hero = skillDatabase.heroes.find(h => String(h.id) === key);
   return hero ? hero.skills : [];
+}
+
+/**
+ * Resolve the catalog skill used by one battle action.
+ *
+ * The shipped HeroTable ability ids and the catalog skill ids use different
+ * numbering. An exact id match is therefore preferred, but the catalog still
+ * exposes the hero's normal and ultimate definitions. Metadata-only 2.0x
+ * ultimate fallbacks are deliberately ignored so the existing profession
+ * behavior remains the compatibility path until those rows are investigated.
+ */
+export function resolveActionSkill(unit, useSkill, skillDatabase) {
+  if (!skillDatabase || !unit) return null;
+  const skills = unit.skills?.length ? unit.skills : getHeroSkills(unit.role ?? unit.id, skillDatabase);
+  const actionId = String(useSkill ? (unit.activeAbilityId ?? unit.abilityId ?? '') : (unit.abilityId ?? ''));
+  const exact = skills.find(skill => String(skill.id) === actionId);
+  if (exact) return exact;
+  if (!useSkill) return skills.find(skill => skill.type === 'Normal') ?? null;
+  const ultimates = skills.filter(skill => skill.type === 'Ultimate');
+  return ultimates.find(skill => {
+    const implementation = skill.implementation;
+    if (!implementation) return false;
+    const metadataFallback = implementation.category === 'metadata fallback'
+      || (implementation.requiresInvestigation === true
+        && implementation.resolvedDescription === false
+        && implementation.catalogTypeMatch !== true);
+    return !metadataFallback && (implementation.category === 'description-inferred'
+      || implementation.resolvedDescription === true
+      || implementation.catalogTypeMatch === true);
+  })
+    ?? null;
 }
 
 /**
@@ -112,7 +144,6 @@ export function skillToEffect(skill, skillDatabase) {
       effect.effect = {
         damageType: 'physical',
         multiplier: 2.0, // Default multiplier, will be refined with FightTable data
-        variance: 0.92 + Math.random() * 0.16,
         canCrit: true,
       };
     } else if (effectType === 'heal') {
@@ -170,7 +201,7 @@ function executorEffect(effectDefinition, sourceSkill) {
 }
 
 export function applySkillEffects(skill, actor, allUnits, state, events) {
-  if (!skill) return;
+  if (!skill) return { targets: [], results: [] };
 
   const executor = new EffectExecutor(state);
   const selector = new TargetSelector();
@@ -179,25 +210,29 @@ export function applySkillEffects(skill, actor, allUnits, state, events) {
   const skillDatabase = state.skillDatabase || loadSkillDatabase();
   if (!skillDatabase) {
     console.warn('Skill database not available');
-    return;
+    return { targets: [], results: [] };
   }
 
   // Convert skill to every executable effect definition.
   const effectDefinitions = skillToEffects(skill, skillDatabase);
   if (!effectDefinitions.length) {
     console.warn(`No effect definition for skill ${skill.id}`);
-    return;
+    return { targets: [], results: [] };
   }
+
+  const affectedTargets = new Map();
+  const results = [];
 
   for (const effectDefinition of effectDefinitions) {
     if (!effectDefinition?.effect) continue;
     const targets = selector.selectTargets(effectDefinition.target, actor, allUnits, state);
 
     for (const target of targets) {
+      affectedTargets.set(target.id, target);
       if (typeof effectDefinition.condition === 'function'
         && !effectDefinition.condition(actor, target, state)) continue;
       if (effectDefinition.conditionKey
-        && !evaluateConditionKey(effectDefinition.conditionKey, actor, allUnits, state)) continue;
+        && !evaluateConditionKey(effectDefinition.conditionKey, actor, allUnits, state, target)) continue;
       if (!passesChance(effectDefinition.chance, executor)) continue;
 
       const result = executor.executeEffect(
@@ -205,9 +240,28 @@ export function applySkillEffects(skill, actor, allUnits, state, events) {
         actor,
         target
       );
-      if (result) events.push(result);
+      if (result) {
+        events.push(result);
+        results.push(result);
+      }
     }
   }
+  return { targets: [...affectedTargets.values()].sort((left, right) =>
+    Number(left.loc) - Number(right.loc) || Number(left.id) - Number(right.id)), results };
+}
+
+export function collectSkillTargets(skill, actor, allUnits, state) {
+  if (!skill) return [];
+  const selector = new TargetSelector(state);
+  const targets = new Map();
+  for (const effectDefinition of skillToEffects(skill, state.skillDatabase)) {
+    if (!effectDefinition?.effect) continue;
+    for (const target of selector.selectTargets(effectDefinition.target, actor, allUnits, state)) {
+      targets.set(target.id, target);
+    }
+  }
+  return [...targets.values()].sort((left, right) =>
+    Number(left.loc) - Number(right.loc) || Number(left.id) - Number(right.id));
 }
 
 /**
@@ -216,7 +270,9 @@ export function applySkillEffects(skill, actor, allUnits, state, events) {
 export function registerPassiveTriggers(unit, skillDatabase, state) {
   if (!skillDatabase) return;
 
-  const skills = getHeroSkills(unit.id, skillDatabase);
+  const skills = unit.skills?.length
+    ? unit.skills
+    : getHeroSkills(unit.role ?? unit.id, skillDatabase);
   const triggers = [];
 
   for (const skill of skills) {
@@ -235,6 +291,8 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
           condition: null,
           conditionKey: t.conditionKey || null,
           cooldown: t.cooldown || 0,
+          cooldownMax: t.cooldown || 0,
+          cooldownRound: null,
           chance: t.chance ?? null,
           maxTriggers: t.maxTriggers || 0,
           oncePerBattle: !!t.oncePerBattle,
@@ -309,15 +367,27 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
   if (!unit.triggers || !unit.triggers.length) return;
 
   const executor = new EffectExecutor(state);
-  const selector = new TargetSelector();
+  const selector = new TargetSelector(state);
 
-  for (const trigger of unit.triggers) {
+  const ordered = [...unit.triggers].sort((left, right) =>
+    Number(left.priority || 0) - Number(right.priority || 0));
+  for (const trigger of ordered) {
     if (trigger.triggerType !== triggerType) continue;
 
-    // Check cooldown
-    if (trigger.cooldown > 0) {
-      trigger.cooldown--;
-      continue;
+    // Cooldowns advance once per battle round, even if a unit sees several
+    // matching events in that round.
+    if (Number(trigger.cooldown) > 0) {
+      const round = Number(state?.round);
+      if (Number.isSafeInteger(round) && Number.isSafeInteger(trigger.cooldownRound)) {
+        const elapsed = round - trigger.cooldownRound;
+        if (elapsed > 0) {
+          trigger.cooldown = Math.max(0, Number(trigger.cooldown) - elapsed);
+          trigger.cooldownRound = round;
+        }
+      } else {
+        trigger.cooldown--;
+      }
+      if (Number(trigger.cooldown) > 0) continue;
     }
 
     // Check condition
@@ -325,7 +395,10 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
       continue;
     }
     // Evaluate conditionKey if present
-    if (trigger.conditionKey && !evaluateConditionKey(trigger.conditionKey, unit, allUnits, state)) {
+    const effectConditionKey = trigger.effect?.conditionKey;
+    if (trigger.conditionKey
+      && !isTargetCondition(trigger.conditionKey)
+      && !evaluateConditionKey(trigger.conditionKey, unit, allUnits, state)) {
       continue;
     }
 
@@ -350,12 +423,15 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
     if (trigger.effect) {
       if (typeof trigger.effect.condition === 'function'
         && !trigger.effect.condition(unit, null, state)) continue;
-      if (trigger.effect.conditionKey
-        && !evaluateConditionKey(trigger.effect.conditionKey, unit, allUnits, state)) continue;
       if (!passesChance(trigger.effect.chance, executor)) continue;
       const targets = selector.selectTargets(trigger.effect.target, unit, allUnits, state);
 
       for (const target of targets) {
+        if (trigger.conditionKey
+          && !evaluateConditionKey(trigger.conditionKey, unit, allUnits, state, target)) continue;
+        if (effectConditionKey
+          && effectConditionKey !== trigger.conditionKey
+          && !evaluateConditionKey(effectConditionKey, unit, allUnits, state, target)) continue;
         const result = executor.executeEffect(
           executorEffect(trigger.effect, trigger.sourceSkill),
           unit,
@@ -375,13 +451,25 @@ export function processTriggers(unit, triggerType, allUnits, state, events) {
     trigger.triggered = true;
     trigger.triggeredThisRound = true;
     trigger.triggersUsed = (trigger.triggersUsed || 0) + 1;
+    if (Number(trigger.cooldownMax) > 0) {
+      trigger.cooldown = Number(trigger.cooldownMax);
+      trigger.cooldownRound = Number.isSafeInteger(Number(state?.round)) ? Number(state.round) : null;
+    }
   }
+}
+
+function isTargetCondition(key) {
+  return key === 'target-has-debuff' || key === 'target-hp-above-self';
+}
+
+export function resetRoundTriggers(unit) {
+  for (const trigger of unit?.triggers || []) trigger.triggeredThisRound = false;
 }
 
 /**
  * Evaluate a condition key string against current state.
  */
-function evaluateConditionKey(key, unit, allUnits, state) {
+function evaluateConditionKey(key, unit, allUnits, state, target = null) {
   switch (key) {
     case 'hp-above-50':
       return unit.hp / unit.maxHp >= 0.5;
@@ -390,8 +478,7 @@ function evaluateConditionKey(key, unit, allUnits, state) {
     case 'hp-above-80':
       return unit.hp / unit.maxHp >= 0.8;
     case 'target-has-debuff':
-      // approximated true; precise per-target filtering requires further investigation
-      return true;
+      return Boolean(target && (target.debuffs || []).length > 0);
     case 'hp-below-30':
       return unit.hp / unit.maxHp < 0.3;
     case 'hp-below-40':
@@ -405,14 +492,13 @@ function evaluateConditionKey(key, unit, allUnits, state) {
     case 'has-shield':
       return (unit.shield || 0) > 0;
     case 'target-hp-above-self':
-      // evaluated at trigger fire; default true here, refined per-target later
-      return true;
+      return Boolean(target && target.hp / target.maxHp > unit.hp / unit.maxHp);
     case 'round-3':
-      return (state && (state.round === 3 || state.round === undefined));
+      return Boolean(state && state.round === 3);
     case 'round-1':
-      return (state && (state.round === 1 || state.round === undefined));
+      return Boolean(state && state.round === 1);
     default:
-      return true;
+      return false;
   }
 }
 export function processBuffTicks(unit, state, events) {
@@ -423,6 +509,11 @@ export function processBuffTicks(unit, state, events) {
   for (const status of allStatus) {
     const durationType = status.durationType
       || ((Number(status.remainingRounds ?? status.duration ?? 0) > 0) ? 'timed' : 'permanent');
+    // A timed status created during this round gets its full advertised lifetime.
+    // Conditional statuses still need to react to condition changes immediately.
+    if (durationType === 'timed'
+      && Number.isSafeInteger(status.appliedRound)
+      && status.appliedRound === state?.round) continue;
     let expired = false;
     if (durationType === 'timed') {
       const remaining = Math.max(0, Number(status.remainingRounds ?? status.duration ?? 0) - 1);

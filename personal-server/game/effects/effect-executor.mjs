@@ -4,6 +4,149 @@
 
 import { DAMAGE_TYPES, HEAL_TYPES, SHIELD_TYPES, STAT_TYPES, ENERGY_TYPES, STATUS_TYPES } from './effect-types.mjs';
 
+const BUFF_STAT_TYPES = new Set([
+  STAT_TYPES.ATTACK_FLAT,
+  STAT_TYPES.ATTACK_PERCENT,
+  STAT_TYPES.DEFENSE_FLAT,
+  STAT_TYPES.DEFENSE_PERCENT,
+  STAT_TYPES.SPEED_FLAT,
+  STAT_TYPES.SPEED_PERCENT,
+  STAT_TYPES.CRIT_RATE,
+  STAT_TYPES.CRIT_DAMAGE,
+  STAT_TYPES.IGNORE_DEFENSE,
+  STAT_TYPES.DAMAGE_BONUS,
+  STAT_TYPES.DAMAGE_REDUCTION,
+  STAT_TYPES.CRIT_DAMAGE_REDUCTION,
+  STAT_TYPES.CRIT_RESIST,
+  STAT_TYPES.CRIT_RESISTANCE,
+  STAT_TYPES.ANTI_CRIT,
+  STAT_TYPES.HIT_RATE,
+  STAT_TYPES.EVASION,
+  STAT_TYPES.STATUS_HIT,
+  STAT_TYPES.STATUS_RESIST,
+  STAT_TYPES.REBOUND_RATE,
+  STAT_TYPES.MAX_HP_PERCENT,
+  STAT_TYPES.HEAL_BONUS,
+  STAT_TYPES.SHIELD_BONUS,
+  STAT_TYPES.ENERGY_BONUS,
+]);
+
+const BUFF_STATUS_TYPES = new Set([
+  STATUS_TYPES.PROTECTION,
+  STATUS_TYPES.INVULNERABLE,
+  STATUS_TYPES.STRENGTHENED,
+  STATUS_TYPES.HASTED,
+  STATUS_TYPES.ENERGIZED,
+]);
+
+function finiteNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function modifierStacks(modifier) {
+  return Math.max(1, Math.floor(finiteNumber(modifier?.stacks, 1)));
+}
+
+function modifierCollections(source) {
+  if (Array.isArray(source)) return [source];
+  return [source?.buffs, source?.debuffs].filter(Array.isArray);
+}
+
+/**
+ * Sum one stat family from any unit-like object or modifier array.
+ * Additive modifiers scale linearly with stacks. Non-additive modifiers are
+ * compounded as (1 + magnitude) ** stacks - 1.
+ */
+export function statTotal(source, statType) {
+  let total = 0;
+  for (const collection of modifierCollections(source)) {
+    for (const modifier of collection) {
+      if (modifier?.statType !== statType) continue;
+      const magnitude = finiteNumber(modifier.magnitude);
+      const stacks = modifierStacks(modifier);
+      total += modifier.stacksAdditive === false
+        ? Math.pow(Math.max(0, 1 + magnitude), stacks) - 1
+        : magnitude * stacks;
+    }
+  }
+  return total;
+}
+
+export function effectiveAttack(unit) {
+  const flat = statTotal(unit, STAT_TYPES.ATTACK_FLAT);
+  const percent = Math.max(-1, statTotal(unit, STAT_TYPES.ATTACK_PERCENT));
+  return Math.max(0, (finiteNumber(unit?.attack) + flat) * (1 + percent));
+}
+
+export function effectiveDefense(unit) {
+  const flat = statTotal(unit, STAT_TYPES.DEFENSE_FLAT);
+  const percent = Math.max(-1, statTotal(unit, STAT_TYPES.DEFENSE_PERCENT));
+  return Math.max(0, (finiteNumber(unit?.defense) + flat) * (1 + percent));
+}
+
+export function effectiveSpeed(unit) {
+  const flat = statTotal(unit, STAT_TYPES.SPEED_FLAT);
+  const percent = Math.max(-1, statTotal(unit, STAT_TYPES.SPEED_PERCENT));
+  return Math.max(0, (finiteNumber(unit?.speed) + flat) * (1 + percent));
+}
+
+export function effectiveMaxHp(unit) {
+  const percent = Math.max(-1, statTotal(unit, STAT_TYPES.MAX_HP_PERCENT));
+  return Math.max(1, finiteNumber(unit?.maxHp, 1) * (1 + percent));
+}
+
+export function effectiveCritChance(attacker, defender = null) {
+  const resistance = defender
+    ? statTotal(defender, STAT_TYPES.ANTI_CRIT)
+      + statTotal(defender, STAT_TYPES.CRIT_RESIST)
+      + statTotal(defender, STAT_TYPES.CRIT_RESISTANCE)
+    : 0;
+  const chance = finiteNumber(attacker?.critChance) + statTotal(attacker, STAT_TYPES.CRIT_RATE) - resistance;
+  return Math.max(0, Math.min(1, chance));
+}
+
+export function effectiveCritMultiplier(attacker, defender = null) {
+  const reduction = defender ? statTotal(defender, STAT_TYPES.CRIT_DAMAGE_REDUCTION) : 0;
+  return Math.max(1, 1.5 + statTotal(attacker, STAT_TYPES.CRIT_DAMAGE) - reduction);
+}
+
+export function effectiveDamageBonus(unit) {
+  return Math.max(0, statTotal(unit, STAT_TYPES.DAMAGE_BONUS));
+}
+
+export function effectiveDamageReduction(unit) {
+  return Math.max(0, Math.min(0.9, statTotal(unit, STAT_TYPES.DAMAGE_REDUCTION)));
+}
+
+export function effectiveIgnoreDefense(unit) {
+  return Math.max(0, Math.min(1, statTotal(unit, STAT_TYPES.IGNORE_DEFENSE)));
+}
+
+export function effectiveHealBonus(unit) {
+  return Math.max(0, statTotal(unit, STAT_TYPES.HEAL_BONUS));
+}
+
+export function effectiveShieldBonus(unit) {
+  return Math.max(0, statTotal(unit, STAT_TYPES.SHIELD_BONUS));
+}
+
+export function effectiveEnergyBonus(unit) {
+  return Math.max(0, statTotal(unit, STAT_TYPES.ENERGY_BONUS));
+}
+
+/** Return the current battle round without turning unknown state into round 0. */
+export function currentRound(state) {
+  const round = Number(state?.round);
+  return Number.isFinite(round) && round >= 0 ? Math.floor(round) : null;
+}
+
+/** Whether a status/modifier was applied in the current round. */
+export function appliedThisRound(entry, state) {
+  const round = currentRound(state);
+  return round !== null && entry?.appliedRound === round;
+}
+
 function normalizeDuration(effect) {
   const raw = effect.duration;
   if (raw && typeof raw === 'object') {
@@ -68,11 +211,11 @@ export class EffectExecutor {
     // Calculate base damage
     let baseDamage = effect.magnitude || 0;
     if (effect.damageType === 'percent-max-hp') {
-      baseDamage = (target.maxHp || target.hp || 0) * (effect.magnitude || 0);
+      baseDamage = effectiveMaxHp(target) * (effect.magnitude || 0);
     } else if (effect.damageType === 'percent-current-hp') {
       baseDamage = (target.hp || 0) * (effect.magnitude || 0);
     } else if (effect.multiplier) {
-      baseDamage = actor.attack * effect.multiplier;
+      baseDamage = effectiveAttack(actor) * effect.multiplier;
     }
 
     // Apply conditional bonus
@@ -87,24 +230,24 @@ export class EffectExecutor {
     // Check crit
     const isTrueDamage = effect.damageType === DAMAGE_TYPES.TRUE;
     const canCrit = effect.canCrit !== false && !isTrueDamage;
-    const critChance = actor.critChance + (actor.buffs?.critRate || 0);
+    const critChance = effectiveCritChance(actor, target);
     const isCrit = canCrit && this.random() < critChance;
-    const critMultiplier = isCrit ? (effect.critMultiplier || 1.5) : 1.0;
+    const critMultiplier = isCrit ? (effect.critMultiplier || effectiveCritMultiplier(actor, target)) : 1.0;
 
     // Calculate defense reduction
-    let defense = target.defense || 0;
-    if (effect.ignoreDefense) {
-      defense *= (1 - effect.ignoreDefense);
-    }
+    let defense = effectiveDefense(target);
+    const ignoreDefense = Math.max(0, Math.min(1,
+      finiteNumber(effect.ignoreDefense) + effectiveIgnoreDefense(actor)
+    ));
+    defense *= (1 - ignoreDefense);
     const isPercentHp = effect.damageType === 'percent-max-hp' || effect.damageType === 'percent-current-hp';
     const defenseReduction = isPercentHp || isTrueDamage ? 0 : defense * 0.45;
-    let finalDamage = Math.max(1, Math.floor((baseDamage - defenseReduction) * critMultiplier));
-    const damageReduction = Math.min(0.9, (target.buffs || [])
-      .filter(modifier => modifier.statType === STAT_TYPES.DAMAGE_REDUCTION)
-      .reduce((sum, modifier) => sum + Number(modifier.magnitude || 0), 0)
-      + (isCrit ? (target.buffs || [])
-        .filter(modifier => modifier.statType === STAT_TYPES.CRIT_DAMAGE_REDUCTION)
-        .reduce((sum, modifier) => sum + Number(modifier.magnitude || 0), 0) : 0));
+    let finalDamage = Math.max(1, Math.floor(
+      (baseDamage - defenseReduction)
+      * (1 + effectiveDamageBonus(actor))
+      * critMultiplier
+    ));
+    const damageReduction = effectiveDamageReduction(target);
     finalDamage = Math.max(1, Math.floor(finalDamage * (1 - damageReduction)));
 
     // Apply to target
@@ -121,7 +264,7 @@ export class EffectExecutor {
     const consumedDurations = this.consumeTriggerCount(target, 'damage-taken');
 
     // Grant energy to target on being hit
-    target.energy = Math.min(1000, (target.energy || 0) + 80);
+    target.energy = Math.min(1000, (target.energy || 0) + 80 * (1 + effectiveEnergyBonus(target)));
 
     return {
       type: 'damage',
@@ -148,9 +291,9 @@ export class EffectExecutor {
     // Calculate base heal
     let baseHeal = effect.magnitude || 0;
     if (effect.healType === HEAL_TYPES.PERCENT_ATTACK) {
-      baseHeal = actor.attack * (effect.multiplier || 1);
+      baseHeal = effectiveAttack(actor) * (effect.multiplier || 1);
     } else if (effect.healType === HEAL_TYPES.PERCENT_MAX_HP) {
-      baseHeal = target.maxHp * (effect.multiplier || 1);
+      baseHeal = effectiveMaxHp(target) * (effect.multiplier || 1);
     } else if (effect.healType === HEAL_TYPES.PERCENT_MISSING_HP) {
       baseHeal = (target.maxHp - target.hp) * (effect.multiplier || 1);
     }
@@ -160,7 +303,7 @@ export class EffectExecutor {
       baseHeal += effect.conditionalHeal(actor, target, this.state);
     }
 
-    const healAmount = Math.floor(baseHeal);
+    const healAmount = Math.floor(baseHeal * (1 + effectiveHealBonus(actor)));
 
     // Apply to target
     const oldHp = target.hp;
@@ -190,11 +333,11 @@ export class EffectExecutor {
     // Calculate base shield
     let baseShield = effect.magnitude || 0;
     if (effect.shieldType === SHIELD_TYPES.PERCENT_DEFENSE) {
-      baseShield = actor.defense * (effect.multiplier || 1);
+      baseShield = effectiveDefense(actor) * (effect.multiplier || 1);
     } else if (effect.shieldType === SHIELD_TYPES.PERCENT_MAX_HP) {
-      baseShield = target.maxHp * (effect.multiplier || 1);
+      baseShield = effectiveMaxHp(target) * (effect.multiplier || 1);
     } else if (effect.shieldType === SHIELD_TYPES.PERCENT_ATTACK) {
-      baseShield = actor.attack * (effect.multiplier || 1);
+      baseShield = effectiveAttack(actor) * (effect.multiplier || 1);
     }
 
     // Apply conditional bonus
@@ -202,7 +345,7 @@ export class EffectExecutor {
       baseShield += effect.conditionalShield(actor, target, this.state);
     }
 
-    const shieldAmount = Math.floor(baseShield);
+    const shieldAmount = Math.floor(baseShield * (1 + effectiveShieldBonus(actor)));
 
     // Apply to target
     const oldShield = target.shield || 0;
@@ -240,6 +383,7 @@ export class EffectExecutor {
       trigger: duration.trigger,
       maxStacks: effect.maxStacks || 0,
       stacksAdditive: effect.stacksAdditive !== false,
+      appliedRound: currentRound(this.state),
       source: actor.id,
       sourceSkill: effect.sourceSkill,
       unique: effect.unique === true,
@@ -258,23 +402,20 @@ export class EffectExecutor {
       && b.source === actor.id
       && (!effect.sourceSkill || !b.sourceSkill || b.sourceSkill === effect.sourceSkill));
 
-    if (effect.unique) {
+    const requestedStacks = Math.max(1, Math.floor(finiteNumber(effect.stacks, 1)));
+    const stackLimit = Math.max(1, Math.floor(finiteNumber(effect.maxStacks, 0)) || requestedStacks);
+    const managesExisting = effect.unique === true || effect.maxStacks > 0;
+    if (managesExisting) {
       if (existing && effect.refresh !== false) {
-        Object.assign(existing, modifier, { stacks: existing.stacks || 1 });
+        const stacks = effect.maxStacks > 0
+          ? Math.min(stackLimit, modifierStacks(existing) + requestedStacks)
+          : 1;
+        Object.assign(existing, modifier, { stacks });
       } else if (!existing) {
-        collection.push({ ...modifier, stacks: 1 });
-      }
-    } else if (effect.maxStacks > 0) {
-      if (existing) {
-        if (existing.stacks < effect.maxStacks) {
-          existing.stacks++;
-          Object.assign(existing, modifier, { stacks: existing.stacks });
-        }
-      } else {
-        collection.push({ ...modifier, stacks: 1 });
+        collection.push({ ...modifier, stacks: Math.min(stackLimit, requestedStacks) });
       }
     } else {
-      collection.push({ ...modifier, stacks: 1 });
+      collection.push({ ...modifier, stacks: requestedStacks });
     }
 
     return {
@@ -287,6 +428,10 @@ export class EffectExecutor {
       duration: effect.duration,
       durationType: duration.durationType,
       unique: effect.unique === true,
+      stacks: collection.find(item => item.statType === effect.statType
+        && item.source === actor.id
+        && (!effect.sourceSkill || !item.sourceSkill || item.sourceSkill === effect.sourceSkill))?.stacks,
+      appliedRound: currentRound(this.state),
     };
   }
 
@@ -301,7 +446,8 @@ export class EffectExecutor {
 
     switch (effect.energyType) {
       case ENERGY_TYPES.GAIN:
-        newEnergy = Math.min(1000, oldEnergy + effect.magnitude);
+        newEnergy = Math.min(1000,
+          oldEnergy + Math.max(0, finiteNumber(effect.magnitude)) * (1 + effectiveEnergyBonus(target)));
         break;
       case ENERGY_TYPES.LOSS:
         newEnergy = Math.max(0, oldEnergy - effect.magnitude);
@@ -341,7 +487,7 @@ export class EffectExecutor {
 
     // Create status object
     const status = {
-      id: `${effect.statusType}_${actor.id}_${Date.now()}`,
+      id: this.nextStatusId(effect, actor),
       type: effect.statusType,
       source: actor.id,
       sourceSkill: effect.sourceSkill,
@@ -358,6 +504,8 @@ export class EffectExecutor {
       dispellable: effect.dispellable !== false,
       unique: effect.unique || false,
       refresh: effect.refresh !== false,
+      stacksAdditive: effect.stacksAdditive !== false,
+      appliedRound: currentRound(this.state),
       data: effect.data || {},
     };
 
@@ -368,17 +516,24 @@ export class EffectExecutor {
     const isBuff = this.isStatusBuff(effect.statusType);
     const collection = isBuff ? target.buffs : target.debuffs;
 
-    // Check for unique status
-    if (effect.unique) {
-      const existingIndex = collection.findIndex(s => s.type === effect.statusType);
-      if (existingIndex >= 0) {
-        // Replace existing
-        collection[existingIndex] = status;
-      } else {
-        collection.push(status);
+    const existingIndex = collection.findIndex(item => item.type === effect.statusType
+      && item.source === actor.id
+      && (!effect.sourceSkill || !item.sourceSkill || item.sourceSkill === effect.sourceSkill));
+    const requestedStacks = Math.max(1, Math.floor(finiteNumber(effect.stacks, 1)));
+    const stackLimit = Math.max(1, Math.floor(finiteNumber(effect.maxStacks, 0)) || requestedStacks);
+    const managesExisting = effect.unique || effect.maxStacks > 0;
+    if (managesExisting && existingIndex >= 0) {
+      const existing = collection[existingIndex];
+      if (effect.refresh !== false) {
+        const stacks = effect.maxStacks > 0
+          ? Math.min(stackLimit, modifierStacks(existing) + requestedStacks)
+          : 1;
+        Object.assign(existing, status, { id: existing.id, stacks });
       }
+    } else if (managesExisting) {
+      collection.push({ ...status, stacks: Math.min(stackLimit, requestedStacks) });
     } else {
-      collection.push(status);
+      collection.push({ ...status, stacks: requestedStacks });
     }
 
     return {
@@ -388,7 +543,17 @@ export class EffectExecutor {
       statusType: effect.statusType,
       duration: effect.duration,
       unique: effect.unique,
+      stacks: managesExisting && existingIndex >= 0
+        ? collection[existingIndex].stacks
+        : Math.min(stackLimit, requestedStacks),
+      appliedRound: currentRound(this.state),
     };
+  }
+
+  nextStatusId(effect, actor) {
+    if (!this.state) this.state = {};
+    this.state.nextStatusId = (Number(this.state.nextStatusId) || 0) + 1;
+    return `${effect.statusType}_${actor.id}_${this.state.nextStatusId}`;
   }
 
   consumeTriggerCount(target, trigger) {
@@ -440,36 +605,7 @@ export class EffectExecutor {
    * Helper: determine if stat modifier is a buff
    */
   isStatModifierBuff(statType, magnitude) {
-    // Positive values are generally buffs, negative are debuffs
-    // But some stats are inverse (e.g., damage reduction)
-    const buffStats = [
-      STAT_TYPES.ATTACK_FLAT,
-      STAT_TYPES.ATTACK_PERCENT,
-      STAT_TYPES.DEFENSE_FLAT,
-      STAT_TYPES.DEFENSE_PERCENT,
-      STAT_TYPES.SPEED_FLAT,
-      STAT_TYPES.SPEED_PERCENT,
-      STAT_TYPES.CRIT_RATE,
-      STAT_TYPES.CRIT_DAMAGE,
-      STAT_TYPES.IGNORE_DEFENSE,
-      STAT_TYPES.DAMAGE_BONUS,
-      STAT_TYPES.DAMAGE_REDUCTION,
-      STAT_TYPES.CRIT_DAMAGE_REDUCTION,
-      STAT_TYPES.CRIT_RESIST,
-      STAT_TYPES.CRIT_RESISTANCE,
-      STAT_TYPES.ANTI_CRIT,
-      STAT_TYPES.HIT_RATE,
-      STAT_TYPES.EVASION,
-      STAT_TYPES.STATUS_HIT,
-      STAT_TYPES.STATUS_RESIST,
-      STAT_TYPES.REBOUND_RATE,
-      STAT_TYPES.MAX_HP_PERCENT,
-      STAT_TYPES.HEAL_BONUS,
-      STAT_TYPES.SHIELD_BONUS,
-      STAT_TYPES.ENERGY_BONUS,
-    ];
-
-    if (!buffStats.includes(statType)) return false;
+    if (!BUFF_STAT_TYPES.has(statType)) return false;
     return magnitude >= 0;
   }
 
@@ -477,15 +613,7 @@ export class EffectExecutor {
    * Helper: determine if status is a buff
    */
   isStatusBuff(statusType) {
-    const buffStatuses = [
-      STATUS_TYPES.PROTECTION,
-      STATUS_TYPES.INVULNERABLE,
-      STATUS_TYPES.STRENGTHENED,
-      STATUS_TYPES.HASTED,
-      STATUS_TYPES.ENERGIZED,
-    ];
-
-    return buffStatuses.includes(statusType);
+    return BUFF_STATUS_TYPES.has(statusType);
   }
 
   /**

@@ -69,7 +69,11 @@ test('charging a full skill produces archetype-specific targets and effects', ()
     assert.ok(syncIndex > battle.events.indexOf(start));
     assert.ok(syncIndex < endIndex);
     const sync = battle.events[syncIndex];
-    assert.ok(sync.attrList.some(attr => attr.aimId === start.srcId && attr.attrType === FIGHT_ATTR.ANGER && attr.attrValue === 0));
+    // The active skill consumes the full meter first. Role 2010101's passive
+    // then grants 200 energy (with another 25-energy passive also equipped).
+    assert.ok(sync.attrList.some(attr => attr.aimId === start.srcId
+      && attr.attrType === FIGHT_ATTR.ANGER
+      && (start.srcId !== 1 || attr.attrValue === 225)));
     assert.ok(sync.attrList.every(attr => attr.attrType === FIGHT_ATTR.ANGER && attr.attrValue >= 0 && attr.attrValue <= FIGHT_ENERGY_MAX));
   }
   const guardianAction = byActor.get(1).id;
@@ -136,18 +140,19 @@ test('Calamus\' active skill stops after a non-lethal single hit', () => {
   assert.equal(battle.result, BATTLE_RESULT.DRAW);
 });
 
-test('the shipped 500 initial anger reaches a 1000 active skill through 250 gains', () => {
+test('the shipped 500 initial anger reaches 1000 after basic and passive energy gains', () => {
   const attackers = [unit(1, 2010101, 1, { speed: 120, maxHp: 10000, attack: 1, initialEnergy: FIGHT_INITIAL_ENERGY })];
   const defenders = [unit(201, 9002100, 1, { speed: 1, maxHp: 100000, attack: 1, defense: 0 })];
   const battle = simulateBattle({ attackers, defenders, seed: 11, maxRounds: 3 });
   const starts = battle.events.filter(event => event.kind === 'action-start' && event.srcId === 1);
 
-  assert.deepEqual(starts.map(event => event.actionType), [1, 1, 2]);
+  assert.deepEqual(starts.map(event => event.actionType), [1, 2, 1]);
   const angerAtEnd = battle.events
     .filter(event => event.kind === 'anger-sync' && event.id === starts[0].id)
     .flatMap(event => event.attrList)
     .filter(attr => attr.aimId === 1);
-  assert.equal(angerAtEnd[0].attrValue, FIGHT_INITIAL_ENERGY + FIGHT_ENERGY_GAIN);
+  assert.equal(angerAtEnd[0].attrValue,
+    FIGHT_INITIAL_ENERGY + FIGHT_ENERGY_GAIN + 200 + 25);
 });
 
 test('a dead defender with revive is not considered defeated until the revive is consumed', () => {
