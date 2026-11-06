@@ -73,9 +73,10 @@ test('migrates once into relational SQLite tables, backs up JSON, and preserves 
   const env = setup(t), before = env.store.state();
   assert.ok(fs.existsSync(path.join(env.directory, 'legacy.pre-sqlite-backup.local-only.json')));
   assert.equal(env.store.read().heroInfo.hero_list.length, 6);
-  assert.equal(env.store.read().resources.size, 13);
+  assert.equal(env.store.read().resources.size, 14);
+  assert.equal(env.store.read().resources.get('100012900').num, '120');
   const original = new Map(fixture().modules.value), migrated = new Map(before.modules.value);
-  for (const [key, value] of original) if (![5, 6, 9, 10].includes(key)) assert.deepEqual(migrated.get(key), value);
+  for (const [key, value] of original) if (![5, 6, 8, 9, 10].includes(key)) assert.deepEqual(migrated.get(key), value);
   const oldLineup = codec.unpack('pb_lineup_login', rawBinary(original.get(9)));
   const newLineup = codec.unpack('pb_lineup_login', rawBinary(migrated.get(9)));
   assert.deepEqual(newLineup.lineup_hero_libs, oldLineup.lineup_hero_libs);
@@ -93,7 +94,7 @@ test('migrates once into relational SQLite tables, backs up JSON, and preserves 
   env.reopen();
   assert.equal(env.store.state().guides[55], 66);
   const db = new DatabaseSync(env.databasePath, { readOnly: true });
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 11);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 15);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_rewards'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reward_claims'").get());
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
@@ -134,7 +135,7 @@ test('version-nine migration aligns recruited hero ids with tids and rewrites ev
   const migrated = codec.unpack('pb_lineup_login', rawBinary(new Map(store.state().modules.value).get(9)));
   const migratedCustom = codec.unpack('pb_custom_lineup_role', Buffer.from(migrated.custom_pre_lineup, 'base64'));
   assert.equal(migratedCustom.custom_pre_lineups[0].lineup.team_list[0].fighter_list.find(fighter => fighter.index === 1).hero_id, '2010101');
-  assert.equal(store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 11);
+  assert.equal(store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 15);
 });
 
 test('multi-level upgrade deducts summed experience, preserves hero fields, and survives reopen', t => {

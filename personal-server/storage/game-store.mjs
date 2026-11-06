@@ -2,6 +2,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { readMissionTables } from '../config/mission-tables.mjs';
+import {
+  MISSION_ENERGY_MODULE_ID,
+  MISSION_ENERGY_SLOT,
+  refreshEnergyResources
+} from '../game/energy.mjs';
+import {
+  OFFLINE_FIXTURE_PASS_COUNT,
+  OFFLINE_FIXTURE_STAMINA_TID,
+  OFFLINE_FIXTURE_STARTER_ROLE_LEVEL,
+  OFFLINE_FIXTURE_STARTER_STAMINA,
+  rollbackPrematureOfflineFixtureMissionCursor
+} from '../game/mission-progress.mjs';
 
 function modelFromState(state, codec) {
   const modules = new Map(state.modules.value);
@@ -12,9 +25,20 @@ function modelFromState(state, codec) {
     if (resources.has(tid)) throw new Error('Duplicate resource in migration: ' + tid);
     resources.set(tid, { ...value, num: String(value.num ?? 0), location });
   };
+  const energyModule = modules.get(MISSION_ENERGY_MODULE_ID);
+  if (Array.isArray(energyModule?.value)) {
+    const bytes = rawBinary(energyModule.value[MISSION_ENERGY_SLOT]);
+    const energy = bytes.length ? codec.unpack('pb_role_energy_res', bytes) : { res: [] };
+    (energy.res ?? []).forEach((value, entry) => add(value, [MISSION_ENERGY_MODULE_ID, MISSION_ENERGY_SLOT, entry]));
+  }
   for (const [moduleId, index] of [[5, null], [10, 1]]) {
     const target = index === null ? modules.get(moduleId) : modules.get(moduleId).value[index];
-    codec.unpack('pb_currency_data', rawBinary(target)).res_list.forEach((value, entry) => add(value, [moduleId, index, entry]));
+    codec.unpack('pb_currency_data', rawBinary(target)).res_list.forEach((value, entry) => {
+      // Mission stamina has its own EnergyRes container. Older local migrations
+      // inserted it into the generic currency list, which the top bar ignores.
+      if (moduleId === 5 && String(value.tid) === '100012900' && resources.has(String(value.tid))) return;
+      add(value, [moduleId, index, entry]);
+    });
   }
   modules.get(6).value.forEach((group, groupIndex) => {
     if (Array.isArray(group.value)) group.value.forEach((value, entry) => add(codec.unpack('pb_res_obj', rawBinary(value)), [6, groupIndex, entry]));
@@ -37,10 +61,21 @@ export function materializeState(model, codec) {
   state.lineups = lineupBytes.toString('base64');
   modules.set(9, serializedBinary(lineupBytes));
   modules.get(10).value[0] = serializedBinary(codec.pack('pb_hero_info', model.heroInfo));
-  const currencies = new Map();
+  const currencies = new Map(), energyGroups = new Map();
   for (const resource of model.resources.values()) {
     const { location: [moduleId, group, entry], ...value } = resource;
-    if (moduleId === 6) modules.get(6).value[group].value[entry] = serializedBinary(codec.pack('pb_res_obj', value));
+    if (moduleId === MISSION_ENERGY_MODULE_ID && group === MISSION_ENERGY_SLOT) {
+      const key = moduleId + ':' + group;
+      if (!energyGroups.has(key)) {
+        const target = modules.get(moduleId)?.value?.[group];
+        const bytes = rawBinary(target);
+        energyGroups.set(key, { moduleId, group, data: bytes.length ? codec.unpack('pb_role_energy_res', bytes) : { res: [] } });
+      }
+      const data = energyGroups.get(key).data;
+      data.res ??= [];
+      while (data.res.length <= entry) data.res.push({ tid: '', num: '0', produce_time: 0 });
+      data.res[entry] = value;
+    } else if (moduleId === 6) modules.get(6).value[group].value[entry] = serializedBinary(codec.pack('pb_res_obj', value));
     else {
       const key = moduleId + ':' + group;
       if (!currencies.has(key)) {
@@ -54,6 +89,12 @@ export function materializeState(model, codec) {
     const value = serializedBinary(codec.pack('pb_currency_data', data));
     if (group === null) modules.set(moduleId, value);
     else modules.get(moduleId).value[group] = value;
+  }
+  for (const { moduleId, group, data } of energyGroups.values()) {
+    const module = modules.get(moduleId);
+    if (!module || !Array.isArray(module.value)) throw new Error(`Energy login module ${moduleId} is unavailable`);
+    while (module.value.length <= group) module.value.push(serializedBinary(Buffer.alloc(0)));
+    module.value[group] = serializedBinary(codec.pack('pb_role_energy_res', data));
   }
   state.modules.value = [...modules];
   return state;
@@ -81,12 +122,14 @@ function remapRoleLineup(roleLineup, idMap) {
   for (const preset of [...(roleLineup?.pre_lineups ?? []), ...(roleLineup?.pre_lineups_standby ?? [])]) remapLineup(preset.lineup, idMap);
 }
 
-export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt }) {
+export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt, now = Date.now }) {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
+  const clock = typeof now === 'function' ? now : () => now;
+  const missionTables = readMissionTables();
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 11) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 15) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -356,6 +399,147 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         version = 11;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
+    if (version < 12) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const initial = db.prepare("SELECT source FROM migrations WHERE name='initial-save-v1'").get();
+        const source = initial?.source === 'offline-fixture'
+          ? 'offline-fixture; preserved-last-cleared-cursor'
+          : `${initial?.source ?? 'unknown'}; preserved`;
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('mission-cursor-next-v12', source, new Date().toISOString());
+        db.exec('PRAGMA user_version=12; COMMIT');
+        version = 12;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 13) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const initial = db.prepare("SELECT source FROM migrations WHERE name='initial-save-v1'").get();
+        const prior = db.prepare("SELECT source FROM migrations WHERE name='mission-cursor-next-v12'").get();
+        let reverted = 0;
+        if (initial?.source === 'offline-fixture' && String(prior?.source ?? '').startsWith('offline-fixture; repaired-cursors=')) {
+          const sections = readMissionTables().sections;
+          const update = db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=8');
+          const hasClearReward = db.prepare("SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type='mission_first_clear' AND claim_key=?");
+          for (const row of db.prepare('SELECT role_id,payload_json FROM login_modules WHERE module_id=8').all()) {
+            const module = JSON.parse(row.payload_json);
+            if (!Array.isArray(module.value) || !module.value[0]) continue;
+            const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+            const missionId = String(mission.mission_id ?? '');
+            const passCount = Number(mission.pass_count?.count ?? -1);
+            if (passCount !== OFFLINE_FIXTURE_PASS_COUNT || hasClearReward.get(row.role_id, missionId)) continue;
+            if (!rollbackPrematureOfflineFixtureMissionCursor(mission, sections)) continue;
+            module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+            update.run(JSON.stringify(module), row.role_id);
+            reverted++;
+          }
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run('mission-cursor-last-cleared-v13', `premature-v12-reverted=${reverted}`, new Date().toISOString());
+        db.exec('PRAGMA user_version=13; COMMIT');
+        version = 13;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 14) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const initial = db.prepare("SELECT source FROM migrations WHERE name='initial-save-v1'").get();
+        let restored = 0;
+        if (initial?.source === 'offline-fixture') {
+          const insert = db.prepare('INSERT INTO resources VALUES (?,?,?,?,?)');
+          for (const row of db.prepare('SELECT role_id,profile_json FROM roles').all()) {
+            const level = Number(JSON.parse(row.profile_json).level);
+            if (level !== OFFLINE_FIXTURE_STARTER_ROLE_LEVEL) continue;
+            if (db.prepare('SELECT 1 FROM resources WHERE role_id=? AND tid=?').get(row.role_id, OFFLINE_FIXTURE_STAMINA_TID)) continue;
+
+            const moduleRow = db.prepare('SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=5').get(row.role_id);
+            if (!moduleRow) continue;
+            const module = JSON.parse(moduleRow.payload_json);
+            const currency = codec.unpack('pb_currency_data', rawBinary(module));
+            const resList = currency.res_list ?? [];
+            let entry = resList.findIndex(value => String(value?.tid) === OFFLINE_FIXTURE_STAMINA_TID);
+            if (entry < 0) entry = resList.length;
+            const payload = { tid: OFFLINE_FIXTURE_STAMINA_TID, num: String(OFFLINE_FIXTURE_STARTER_STAMINA) };
+            insert.run(row.role_id, OFFLINE_FIXTURE_STAMINA_TID, payload.num, JSON.stringify([5, null, entry]), JSON.stringify(payload));
+            restored++;
+          }
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run(
+          'offline-fixture-starter-stamina-v14',
+          `missing-level-9-stamina-restored=${restored}; amount=${OFFLINE_FIXTURE_STARTER_STAMINA}`,
+          new Date().toISOString()
+        );
+        db.exec('PRAGMA user_version=14; COMMIT');
+        version = 14;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 15) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        let moved = 0, resetProduceTime = 0;
+        const updateModule = db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=?');
+        const updateCurrency = db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=5');
+        const selectResource = db.prepare('SELECT * FROM resources WHERE role_id=? AND tid=?');
+        const writeResource = db.prepare('INSERT OR REPLACE INTO resources VALUES (?,?,?,?,?)');
+        const nowSeconds = Math.floor(Number(clock()) / 1000);
+        for (const role of db.prepare('SELECT role_id FROM roles').all()) {
+          const roleId = role.role_id;
+          const moduleRow = db.prepare('SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=?').get(roleId, MISSION_ENERGY_MODULE_ID);
+          if (!moduleRow) continue;
+          const missionModule = JSON.parse(moduleRow.payload_json);
+          if (!Array.isArray(missionModule.value)) continue;
+          while (missionModule.value.length <= MISSION_ENERGY_SLOT) missionModule.value.push(serializedBinary(Buffer.alloc(0)));
+          const slotBytes = rawBinary(missionModule.value[MISSION_ENERGY_SLOT]);
+          const energy = slotBytes.length ? codec.unpack('pb_role_energy_res', slotBytes) : { res: [] };
+          energy.res ??= [];
+
+          const resourceRow = selectResource.get(roleId, '100012900');
+          let entry = energy.res.findIndex(value => String(value?.tid) === '100012900');
+          if (!resourceRow && entry < 0) continue;
+          if (entry < 0) {
+            entry = energy.res.length;
+            energy.res.push({ tid: '100012900', num: '0', produce_time: nowSeconds });
+          }
+          const payload = resourceRow ? JSON.parse(resourceRow.payload_json) : { ...energy.res[entry] };
+          const amount = String(resourceRow?.amount ?? energy.res[entry].num ?? 0);
+          const oldLocation = resourceRow ? JSON.parse(resourceRow.location_json) : null;
+          const oldProduceTime = Number(payload.produce_time ?? energy.res[entry].produce_time ?? 0);
+          const canonicalRecent = Array.isArray(oldLocation)
+            && oldLocation[0] === MISSION_ENERGY_MODULE_ID
+            && oldLocation[1] === MISSION_ENERGY_SLOT
+            && Number.isSafeInteger(oldProduceTime)
+            && oldProduceTime > 0
+            && oldProduceTime <= nowSeconds
+            && nowSeconds - oldProduceTime < 86400;
+          const produceTime = canonicalRecent ? oldProduceTime : nowSeconds;
+          if (!canonicalRecent) resetProduceTime++;
+          energy.res[entry] = { tid: '100012900', num: amount, produce_time: produceTime };
+          missionModule.value[MISSION_ENERGY_SLOT] = serializedBinary(codec.pack('pb_role_energy_res', energy));
+          updateModule.run(JSON.stringify(missionModule), roleId, MISSION_ENERGY_MODULE_ID);
+
+          const resourcePayload = { tid: '100012900', num: amount, produce_time: produceTime };
+          writeResource.run(roleId, '100012900', amount,
+            JSON.stringify([MISSION_ENERGY_MODULE_ID, MISSION_ENERGY_SLOT, entry]), JSON.stringify(resourcePayload));
+
+          const currencyRow = db.prepare('SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=5').get(roleId);
+          if (currencyRow) {
+            const currency = codec.unpack('pb_currency_data', rawBinary(JSON.parse(currencyRow.payload_json)));
+            const filtered = (currency.res_list ?? []).filter(value => String(value?.tid) !== '100012900');
+            if (filtered.length !== (currency.res_list ?? []).length) {
+              currency.res_list = filtered;
+              updateCurrency.run(JSON.stringify(serializedBinary(codec.pack('pb_currency_data', currency))), roleId);
+            }
+          }
+          moved++;
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run(
+          'mission-energy-login-v15',
+          `normalized=${moved}; produce-time-reset=${resetProduceTime}`,
+          new Date(clock()).toISOString()
+        );
+        db.exec('PRAGMA user_version=15; COMMIT');
+        version = 15;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
   } catch (error) { db.close(); throw error; }
   function read() {
     const row = db.prepare('SELECT * FROM roles LIMIT 1').get();
@@ -374,7 +558,11 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   return {
     databasePath, read, serverOpenedAt: Number(read().state.serverOpenedAt),
     inspect(action) { return action(db); },
-    state() { return materializeState(read(), codec); },
+    state() {
+      const model = read();
+      refreshEnergyResources(model, { missionTables, now: clock });
+      return materializeState(model, codec);
+    },
     transaction(action) {
       db.exec('BEGIN IMMEDIATE');
       try {

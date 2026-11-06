@@ -47,17 +47,6 @@ function setDestiny(store, value) {
   });
 }
 
-function setMission(store, missionId) {
-  store.transaction(model => {
-    const modules = new Map(model.state.modules.value);
-    const module = modules.get(8);
-    const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
-    mission.mission_id = String(missionId);
-    module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
-    model.state.modules.value = [...modules];
-  });
-}
-
 function storedLinearTask(store) {
   return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[0]));
 }
@@ -88,7 +77,8 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
-  setMission(game.store, 30201);
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '20205');
+  assert.equal(game.store.read().resources.get('100012900').num, '120');
   const address = await game.listen(0);
   socket = net.connect(address.port, '127.0.0.1');
   const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
@@ -108,7 +98,6 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const scheduledActivity = await loginActivities(Buffer.from(login.data, 'base64'));
   assert.equal(scheduledActivity.act_list.some(entry => Number(entry.state_data?.act_id) === 1074003), true);
   assert.equal(BigInt(game.store.read().resources.get('821202')?.num ?? 0), 25n);
-  addResource(game.store, 100012900, 10);
 
   // Heartbeat is one-way. If it receives an empty frame, the client's receive
   // stream is left at offset 4 and decodes the next frame header as protobuf.
@@ -128,7 +117,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(response.seq, 2);
   assert.equal(response.err, undefined);
   const fight = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
-  assert.equal(fight.report.finish, true);
+  assert.equal(fight.report.finish ?? false, false);
   assert.equal(fight.report.type, 1);
   assert.equal(fight.report.battle_list.length, 1);
   assert.equal(fight.report.battle_list[0].fighter_list.length, 7);
@@ -138,11 +127,23 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.deepEqual(fightActions.slice(-2), [112, 104]);
   assert.ok(fightActions.every(type => [101, 102, 104, 105, 106, 107, 109, 112, 114, 116].includes(type)));
   assert.ok(fightActions.includes(109));
-  assert.equal(codec.unpack('mission_to_client', Buffer.from(fight.stm.stm_data, 'base64')).mission.mission_id, '30202');
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30202');
+  const fightPreview = codec.unpack('mission_to_client', Buffer.from(fight.stm.stm_data, 'base64'));
+  assert.equal(fight.stm.exception ?? false, false);
+  assert.equal(fightPreview.mission.mission_id, '20205');
+  assert.deepEqual(fightPreview.res.changes, []);
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '20205');
+  assert.equal(game.store.read().resources.get('100012900').num, '120');
+  assert.equal(game.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_first_clear' AND claim_key='30201'").get().n), 0);
   response = await request(207, 3, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
-  assert.equal(codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64')).stm.result, 1);
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30202');
+  const committed = codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64'));
+  assert.equal(committed.stm.result, 1);
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(committed.stm.stm_data, 'base64')).mission.mission_id, '30201');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
+  assert.equal(game.store.read().resources.get('100012900').num, '115');
+  assert.equal(game.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_first_clear' AND claim_key='30201'").get().n), 1);
+  response = await request(207, 31, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  assert.deepEqual(codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64')).stm, committed.stm);
+  assert.equal(game.store.read().resources.get('100012900').num, '115');
 
   // Backpack box: the configured draw library replaces the previously unsupported command.
   response = await request(159, 4, codec.pack('pb_one_key_use', { use: [{ tid: 2261200, num: 1 }] }));
@@ -295,8 +296,13 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   }));
   assert.equal(response.err, undefined);
   const missionOnly = codec.unpack('pb_fight_response', Buffer.from(response.data, 'base64'));
-  assert.equal(missionOnly.report.finish, true);
-  assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30203');
+  assert.equal(missionOnly.report.finish ?? false, false);
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30201');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
+  response = await request(207, 32, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  assert.equal(codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64')).stm.result, 1);
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30202');
+  assert.equal(game.store.read().resources.get('100012900').num, '110');
 
   // 503 is the mission sweep command emitted by MissionSweepMgr. It returns
   // the final resource changes plus one award group per repeated clear.
@@ -332,12 +338,12 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(508, 12, await encodeEtf([30205]));
   assert.equal(response.err, undefined);
   const story = codec.unpack('pb_mission_rsp', Buffer.from(response.data ?? '', 'base64'));
-  assert.equal(story.mission.mission_id, '40201');
+  assert.equal(story.mission.mission_id, '30205');
   assert.equal(story.res_change.changes.length, 0);
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '40201');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30205');
   response = await request(508, 13, await encodeEtf(['not-a-section']));
   assert.equal(response.err.err, 1);
-  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '40201');
+  assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30205');
 
   // Chapter 3's final node unlocks box 1. The client sends the visible box ids
   // as an ETF list and expects pb_mission_rsp with the updated BitBlock.

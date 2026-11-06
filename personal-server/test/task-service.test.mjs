@@ -340,7 +340,7 @@ test('v5 migration clears stale linear-task progress baselines', t => {
   env.reopen();
 
   assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001 }]);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 11);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 15);
 });
 
 test('rolls back the claim marker and reward on encoding or SQLite failure', t => {

@@ -37,7 +37,8 @@ export function createGameFixture(t, codec, options = {}) {
     databasePath,
     seed,
     codec,
-    serverOpenedAt: options.serverOpenedAt
+    serverOpenedAt: options.serverOpenedAt,
+    now: options.now
   });
 
   t.after(() => {
@@ -51,7 +52,7 @@ export function createGameFixture(t, codec, options = {}) {
     get store() { return store; },
     open() {
       store.close();
-      store = createGameStore({ databasePath, seed, codec, serverOpenedAt: options.serverOpenedAt });
+      store = createGameStore({ databasePath, seed, codec, serverOpenedAt: options.serverOpenedAt, now: options.now });
       return store;
     }
   };

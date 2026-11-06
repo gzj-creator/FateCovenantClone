@@ -5,6 +5,8 @@ import { readGameTables } from '../config/game-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
+import { missionPosition } from './mission-progress.mjs';
+import { energyMaxForRole, refreshEnergyResources } from './energy.mjs';
 
 // Ordinary journey (mission) fights.
 // Evidence: FightCmd.fight_start sends pb_fight_request.req = Codec.EncodePB('mission_fight_req');
@@ -33,27 +35,6 @@ const ACTION_SHIELD = 109;
 const ACTION_ROUND_OVER = 112;
 const ACTION_FIGHTER_RELIVE = 114;
 const ACTION_FAT_ATTR_SYNC = 116;
-let missionOrderCache = null;
-
-function missionOrder(sections) {
-  if (!missionOrderCache || missionOrderCache.sections !== sections) {
-    const entries = [...sections.entries()]
-      .filter(([, section]) => !section?.is_discard)
-      .sort((left, right) => Number(left[1]?.index ?? left[0]) - Number(right[1]?.index ?? right[0]) || Number(left[0]) - Number(right[0]));
-    missionOrderCache = { sections, entries };
-  }
-  return missionOrderCache.entries;
-}
-
-function missionPosition(sections, missionId) {
-  return missionOrder(sections).findIndex(([id]) => Number(id) === Number(missionId));
-}
-
-function nextMissionId(sections, missionId) {
-  const order = missionOrder(sections), position = missionPosition(sections, missionId);
-  return position >= 0 && position + 1 < order.length ? Number(order[position + 1][0]) : Number(missionId);
-}
-
 function action(codec, proto, schema, value) {
   return codec.pack('pb_generic', { proto, bin: codec.pack(schema, value) });
 }
@@ -400,8 +381,14 @@ function combinedChanges(...groups) {
     if (current) {
       current.new_num = String(change.new_num);
       current.diff_num = (BigInt(current.diff_num) + BigInt(change.diff_num)).toString();
+      if (change.new_bin !== undefined) current.new_bin = change.new_bin;
     } else {
-      changes.set(tid, { tid, new_num: String(change.new_num), diff_num: String(change.diff_num) });
+      changes.set(tid, {
+        tid,
+        new_num: String(change.new_num),
+        diff_num: String(change.diff_num),
+        ...(change.new_bin === undefined ? {} : { new_bin: change.new_bin })
+      });
     }
   }
   return [...changes.values()];
@@ -444,29 +431,50 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     };
   }
 
+  function staminaRequirement() {
+    const stamina = missionTables.sweepConst.get(1);
+    const item = Number(stamina?.cost_item), amount = Number(stamina?.cost_num);
+    if (!Number.isSafeInteger(item) || item <= 0 || !Number.isSafeInteger(amount) || amount <= 0) {
+      throw new GameError(5, 'Mission stamina configuration is invalid');
+    }
+    return [item, amount];
+  }
+
+  function assertStaminaAvailable(model) {
+    const refreshed = structuredClone(model);
+    refreshEnergyResources(refreshed, { missionTables, now });
+    const [item, amount] = staminaRequirement();
+    if (BigInt(refreshed.resources.get(String(item))?.num ?? 0) < BigInt(amount)) {
+      throw new GameError(301, 'Insufficient resource');
+    }
+  }
+
+  function consumeStamina(model, item, amount, insufficientCode) {
+    refreshEnergyResources(model, { missionTables, now });
+    return consumeResources(model, [[item, amount]], insufficientCode, {
+      codec,
+      now,
+      energyMax: tid => energyMaxForRole(missionTables, tid, model.role?.level)
+    });
+  }
+
   function commitSettlement() {
     return store.transaction((model, db) => {
       const { module, value: current } = currentMission(model);
       const previous = Number(current.mission_id ?? 0);
-      const stamina = missionTables.sweepConst.get(1);
-      const staminaItem = Number(stamina?.cost_item), staminaCost = Number(stamina?.cost_num);
-      if (!Number.isSafeInteger(staminaItem) || staminaItem <= 0 || !Number.isSafeInteger(staminaCost) || staminaCost <= 0) {
-        throw new GameError(5, 'Mission stamina configuration is invalid');
-      }
-      const spent = consumeResources(model, [[staminaItem, staminaCost]], 301);
+      const [staminaItem, staminaCost] = staminaRequirement();
+      const spent = consumeStamina(model, staminaItem, staminaCost, 301);
       let res = { changes: spent.changes, is_overflow: false };
       if (pending.result === RESULT_WIN) {
         const completed = pending.mission.missionId;
         const sections = missionTables.sections;
         const previousPosition = missionPosition(sections, previous), completedPosition = missionPosition(sections, completed);
         if (completedPosition >= 0 && (previousPosition < 0 || completedPosition >= previousPosition)) {
-          // MissionMgr.ParseData assigns pb_mission.mission_id to sectionTid and
-          // only refreshes the journey UI when the value changes. After a win,
-          // this field must therefore be the next fight rather than the node
-          // that was just cleared.
-          current.mission_id = String(nextMissionId(sections, completed));
+          // pb_mission.mission_id is the last cleared node. The client derives
+          // the visible next fight from this value and advances it locally.
+          if (completedPosition > previousPosition) current.mission_id = String(completed);
           if (!current.pass_count) current.pass_count = { flush_time: 0, count: 0 };
-          current.pass_count.count = Number(current.pass_count.count ?? 0) + 1;
+          if (completedPosition > previousPosition) current.pass_count.count = Number(current.pass_count.count ?? 0) + 1;
           const section = missionTables.sections.get(completed);
           const reward = firstClearReward(model, db, section, gameTables, now);
           res = {
@@ -501,9 +509,14 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     const currentPosition = missionPosition(missionTables.sections, Number(current.mission_id ?? 0));
     const requestedPosition = missionPosition(missionTables.sections, mission.missionId);
     if (currentPosition < 0 || requestedPosition < 0) throw new GameError(5, 'Mission progression configuration is missing');
-    if (requestedPosition > currentPosition) {
+    // A request may replay a cleared node or fight the one immediate successor.
+    // The client adds that successor when rendering the current journey entry.
+    const isReplay = requestedPosition <= currentPosition;
+    const isUnclearedSuccessor = requestedPosition === currentPosition + 1;
+    if (!isReplay && !isUnclearedSuccessor) {
       throw new GameError(5, `Mission is not unlocked (current ${current.mission_id}@${currentPosition}, requested ${mission.missionId}@${requestedPosition})`);
     }
+    assertStaminaAvailable(store.read());
     const reportBattleResult = reportBattle(codec, store.read(), mission, request);
     const { simulation, ...battle } = reportBattleResult;
     const fightTid = Number(request.fight_tid ?? 0) || Number(missionBattleConfig(mission.missionId)?.mission.fight ?? 0);
@@ -516,23 +529,21 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
       battle_list: [battle],
       time: String(Math.floor(Date.now() / 1000)),
       final_result: simulation.result,
-      finish: true,
+      // FightMgr only requests pb_fight_settlement_request (207) when
+      // report.finish is false. The normal journey contract is 201 -> 207;
+      // advance the mission and consume stamina only in the 207 transaction.
+      finish: false,
       req: request.req,
       team_count: 101
     };
-    pending = { stm: null, report, mission, result: simulation.result, committed: false };
-    // Mission fights deliver their stm with fight_start and the client confirms
-    // the victory result without sending a follow-up 207/202. Commit the
-    // deterministic result here so the mission module advances on return.
-    const committed = commitSettlement();
-    const stm = committed.stm;
-    pending.stm = stm;
-    pending.committed = true;
+    const previewValue = missionValue(current, mission, simulation.result, { changes: [], is_overflow: false });
+    const stm = { result: simulation.result, stm_data: codec.pack('mission_to_client', previewValue), exception: false };
+    pending = { stm, report, mission, result: simulation.result, committed: false };
     lastReport = report;
-    lastSettlement = { value: { stm }, data: codec.pack('pb_fight_settlement_response', { stm }) };
+    lastSettlement = null;
     const config = missionBattleConfig(mission.missionId);
-    log({ event: 'mission_fight_started', missionId: mission.missionId, fightTid, reportType: report.type, previousMissionId: committed.previousMissionId, settleType: request.stm_type, isAssistant: mission.isAssistant, bossTid: mission.bossTid, enemyFallback: config?.fallback ?? null, attackerCount: battle.atk_brief_lineup.team_list[0].fighter_list.length, defenderCount: battle.def_brief_lineup.team_list[0].fighter_list.length, actionCount: battle.action_list.length, rounds: simulation.overRound, result: simulation.result, pendingRevives: simulation.pendingRevives, committed: true });
-    return { value: { stm, mission: codec.unpack('mission_to_client', Buffer.from(stm.stm_data, 'base64')) }, data: codec.pack('pb_fight_response', { report, rsp: {}, stm }) };
+    log({ event: 'mission_fight_started', missionId: mission.missionId, fightTid, reportType: report.type, previousMissionId: Number(current.mission_id ?? 0), settleType: request.stm_type, isAssistant: mission.isAssistant, bossTid: mission.bossTid, enemyFallback: config?.fallback ?? null, attackerCount: battle.atk_brief_lineup.team_list[0].fighter_list.length, defenderCount: battle.def_brief_lineup.team_list[0].fighter_list.length, actionCount: battle.action_list.length, rounds: simulation.overRound, result: simulation.result, pendingRevives: simulation.pendingRevives, committed: false, reportFinish: report.finish });
+    return { value: { stm, mission: previewValue }, data: codec.pack('pb_fight_response', { report, rsp: {}, stm }) };
   }
 
   function settlement() {
@@ -550,15 +561,10 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
   function exit(bytes) {
     let isForce = false;
     try { isForce = Boolean(codec.unpack('pb_fight_exit', bytes).is_force); } catch {}
-    if (pending && !pending.committed && pending.result === RESULT_WIN && !isForce) {
-      // Ordinary missions deliver stm in the fight_start response. The real
-      // client confirms the result with fight_exit (202), not settlement (207),
-      // so commit here after a completed victory before dropping pending.
-      settlement();
-      log({ event: 'mission_fight_committed_on_exit', missionId: pending.mission.missionId });
-    } else if (pending) {
-      log({ event: 'mission_fight_exited', missionId: pending.mission.missionId, isForce, result: pending.result });
-    }
+    if (pending) log({ event: 'mission_fight_exited', missionId: pending.mission.missionId, isForce, result: pending.result, committed: pending.committed });
+    // fight_exit acknowledges scene teardown. It must never bypass 207; an
+    // uncommitted exit also clears any older settlement replay value.
+    if (pending && !pending.committed) lastSettlement = null;
     pending = null;
     if (isForce) lastSettlement = null;
     return { value: {}, data: Buffer.alloc(0) };
@@ -590,9 +596,9 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
       if (chapter > currentChapter) return 0;
       const rows = [...missionTables.sections.values()].filter(section => Number(section.belong_chapter) === chapter);
       if (chapter < currentChapter) return rows.length;
-      // mission_id is the first unpassed section. The current section itself
-      // does not count until the server advances the mission cursor.
-      return rows.filter(section => Number(section.index) < Number(currentSection.index)).length;
+      // mission_id is the last cleared section, so that section already counts
+      // toward chapter progress.
+      return rows.filter(section => Number(section.index) <= Number(currentSection.index)).length;
     };
     const bits = await decodeBitBlock(Buffer.from(current.box_award ?? '', 'base64'));
     const requiredBytes = Math.floor(Math.max(...boxes.map(box => Number(box.tid))) / 8) + 1;
@@ -625,7 +631,9 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
       const awards = newlyGranted.flatMap(configuredBoxAwards);
       const reward = grantResources(model, awards, gameTables);
       const updated = new Map(model.state.modules.value);
-      updated.set(MISSION_MODULE, { ...module, value: [moduleBytes] });
+      const nextModule = { ...module, value: [...module.value] };
+      nextModule.value[0] = moduleBytes;
+      updated.set(MISSION_MODULE, nextModule);
       model.state.modules.value = [...updated];
       const res = { changes: reward.changes, is_overflow: false };
       const result = { mission: nextMission, res_change: res };
@@ -671,8 +679,8 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     return store.transaction((model, db) => {
       const { value: current } = currentMission(model);
       const currentPosition = missionPosition(sections, Number(current.mission_id));
-      if (currentPosition < 0 || sectionPosition >= currentPosition) throw new GameError(5, 'Mission sweep node is not cleared');
-      const spent = consumeResources(model, [[costItem, totalCost]]);
+      if (currentPosition < 0 || sectionPosition > currentPosition) throw new GameError(5, 'Mission sweep node is not cleared');
+      const spent = consumeStamina(model, costItem, totalCost, 301);
       const reward = grantResources(model, totalAwards, gameTables);
       const value = {
         changes: { changes: combinedChanges(spent.changes, reward.changes), is_overflow: false },
@@ -702,8 +710,8 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
       const previousIndex = missionPosition(sections, previous), requestedIndex = missionPosition(sections, id);
       if (previous > 0 && requestedIndex > previousIndex + 1) throw new GameError(5, 'Story mission is not unlocked');
       let res = { changes: [], is_overflow: false };
-      if (requestedIndex >= previousIndex) {
-        current.mission_id = String(nextMissionId(sections, id));
+      if (requestedIndex > previousIndex) {
+        current.mission_id = String(id);
         res = firstClearReward(model, db, section, gameTables, now);
       }
       module.value[0] = serializedBinary(codec.pack('pb_mission', current));

@@ -9,12 +9,13 @@ import { createGameCodec, rawBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createCmsService } from '../game/cms-service.mjs';
+import { createGuildRosterService } from '../game/guild-roster-service.mjs';
 import { createGuildNationAssistService } from '../game/guild-nation-assist-service.mjs';
 import { createLocalGame, encodeEtf } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
+import { createSeed } from './helpers/game-fixture.mjs';
 
-const backup = new URL('../../analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite', import.meta.url);
 const codec = createGameCodec();
 const tables = readGameTables();
 const SERVER_OPENED_AT = 1792789200;
@@ -22,10 +23,10 @@ const SERVER_OPENED_AT = 1792789200;
 function setup(t, initialSeconds = 1800000000) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-login-business-reads-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   let nowSeconds = initialSeconds;
-  const openStore = () => createGameStore({ databasePath, codec, serverOpenedAt: SERVER_OPENED_AT });
+  const openStore = () => createGameStore({ databasePath, seed: () => createSeed(codec), codec, serverOpenedAt: SERVER_OPENED_AT });
   let store = openStore();
+  createGuildRosterService({ codec, store }).ensureLoginState();
   const makeCms = () => createCmsService({ codec, store, tables, now: () => nowSeconds * 1000 });
   const makeAssist = () => createGuildNationAssistService({ codec, store, now: () => nowSeconds * 1000 });
   let cms = makeCms(), assist = makeAssist();
@@ -78,9 +79,9 @@ function insertAssist(store, value) {
   ));
 }
 
-test('schema v11 stores business read state and CMS returns only active matching questions', t => {
+test('schema v12 stores business read state and CMS returns only active matching questions', t => {
   const env = setup(t);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 11);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 15);
   assert.ok(env.store.inspect(db => db.prepare("SELECT name FROM migrations WHERE name='login-business-reads-v11'").get()));
   assert.ok(env.cms.supports(89501));
   assert.equal(env.cms.supports(89502), false);
@@ -141,7 +142,6 @@ test('guild nation assist reads are scoped to the current guild and active reque
 test('real gateway serves CMS and current-guild assist reads without unsupported-command errors', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-login-business-gateway-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, databasePath);
   let gameNow = (SERVER_OPENED_AT + 3600) * 1000;
   const game = createLocalGame({
     databasePath,

@@ -6,18 +6,17 @@ import { createGameFixture } from './helpers/game-fixture.mjs';
 
 const codec = createGameCodec();
 
-function setup(t) {
-  const fixture = createGameFixture(t, codec, { prefix: 'fc-fight-' });
+function setup(t, options = {}) {
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-fight-', now: options.now });
   let store = fixture.store;
-  addResource(store, 100012900, 1000);
-  let service = createMissionFightService({ store, codec, playbackEnabled: true });
+  let service = createMissionFightService({ store, codec, playbackEnabled: true, now: options.now });
   return {
     get store() { return store; },
     get service() { return service; },
-    playbackDisabled: () => createMissionFightService({ store, codec }),
+    playbackDisabled: () => createMissionFightService({ store, codec, now: options.now }),
     reopen() {
       store = fixture.open();
-      service = createMissionFightService({ store, codec, playbackEnabled: true });
+      service = createMissionFightService({ store, codec, playbackEnabled: true, now: options.now });
     }
   };
 }
@@ -51,16 +50,120 @@ const fightRequest = (mission, extra = {}) => codec.pack('pb_fight_request', {
 
 const actions = report => report.battle_list[0].action_list.map(bytes => codec.unpack('pb_generic', Buffer.from(bytes, 'base64')));
 
-test('ordinary mission fight commits at start and 207 replays without duplicate progress', async t => {
+test('v14 restores only a missing offline-fixture level-9 stamina row', t => {
+  const env = setup(t);
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
+
+  env.store.transaction(model => {
+    model.resources.get('100012900').num = '0';
+  });
+  env.reopen();
+  assert.equal(resourceAmount(env.store, 100012900), 0n, 'an existing zero must remain zero');
+
+  env.store.inspect(db => {
+    db.exec("DELETE FROM resources WHERE tid='100012900'; DELETE FROM migrations WHERE name='offline-fixture-starter-stamina-v14'; PRAGMA user_version=13;");
+  });
+  env.reopen();
+  assert.equal(resourceAmount(env.store, 100012900), 140n);
+  const migration = env.store.inspect(db => db.prepare("SELECT source FROM migrations WHERE name='offline-fixture-starter-stamina-v14'").get());
+  assert.equal(migration.source, 'missing-level-9-stamina-restored=1; amount=140');
+  env.reopen();
+  assert.equal(resourceAmount(env.store, 100012900), 140n);
+});
+
+test('v13 rolls back only the premature v12 offline-fixture cursor exactly once', t => {
+  const env = setup(t);
+  assert.equal(missionModule(env.store).mission_id, '20205');
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM migrations WHERE name='mission-cursor-next-v12'").get().n), 1);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM migrations WHERE name='mission-cursor-last-cleared-v13'").get().n), 1);
+
+  // Recreate the schema-12 state written by the erroneous migration. v13 may
+  // undo this exact 20205 -> 30201 move because a fabricated cursor has no
+  // first-clear reward claim.
+  setMission(env.store, 30201);
+  env.store.inspect(db => db.exec("BEGIN IMMEDIATE; UPDATE migrations SET source='offline-fixture; repaired-cursors=1' WHERE name='mission-cursor-next-v12'; DELETE FROM migrations WHERE name='mission-cursor-last-cleared-v13'; PRAGMA user_version=12; COMMIT;"));
+  env.reopen();
+  assert.equal(missionModule(env.store).mission_id, '20205');
+  env.reopen();
+  assert.equal(missionModule(env.store).mission_id, '20205');
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM migrations WHERE name='mission-cursor-last-cleared-v13'").get().n), 1);
+});
+
+test('v13 preserves a legitimate 30201 first clear', t => {
   const env = setup(t);
   setMission(env.store, 30201);
+  env.store.transaction(model => {
+    const module = new Map(model.state.modules.value).get(8);
+    const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    mission.pass_count = { flush_time: 0, count: 10 };
+    module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+    const modules = new Map(model.state.modules.value);
+    modules.set(8, module);
+    model.state.modules.value = [...modules];
+  });
+  env.store.inspect(db => {
+    db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(env.store.state().roleId, 'mission_first_clear', '30201', new Date(0).toISOString());
+    db.exec("BEGIN IMMEDIATE; UPDATE migrations SET source='offline-fixture; repaired-cursors=1' WHERE name='mission-cursor-next-v12'; DELETE FROM migrations WHERE name='mission-cursor-last-cleared-v13'; PRAGMA user_version=12; COMMIT;");
+  });
+  env.reopen();
+  assert.equal(missionModule(env.store).mission_id, '30201');
+});
+
+test('v15 keeps stamina in module 8 and rejects the stale full-energy projection', t => {
+  const nowSeconds = 1794000000;
+  const now = () => nowSeconds * 1000;
+  const env = setup(t, { now });
+  const stored = env.store.read().resources.get('100012900');
+  assert.deepEqual(stored.location, [8, 2, 0]);
+  assert.equal(stored.produce_time, nowSeconds);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 15);
+
+  const module = new Map(env.store.state().modules.value).get(8);
+  const loginEnergy = codec.unpack('pb_role_energy_res', rawBinary(module.value[2]));
+  assert.deepEqual(loginEnergy.res, [{ tid: '100012900', num: '120', produce_time: nowSeconds }]);
+});
+
+test('energy recovery is authoritative and 207 embeds pb_mission_energy_res', t => {
+  const nowSeconds = 1794000000;
+  const now = () => nowSeconds * 1000;
+  const env = setup(t, { now });
+  setMission(env.store, 30201);
+  env.store.transaction(model => {
+    const energy = model.resources.get('100012900');
+    energy.num = '139';
+    energy.produce_time = nowSeconds - 360;
+  });
+  const projected = new Map(env.store.state().modules.value).get(8);
+  assert.equal(codec.unpack('pb_role_energy_res', rawBinary(projected.value[2])).res[0].num, '140');
+
+  env.service.execute(201, fightRequest(30202));
+  const settled = env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  const response = codec.unpack('pb_fight_settlement_response', settled.data);
+  const mission = codec.unpack('mission_to_client', Buffer.from(response.stm.stm_data, 'base64'));
+  const energyChange = mission.res.changes.find(change => change.tid === '100012900');
+  assert.equal(energyChange.diff_num, '-5');
+  assert.equal(energyChange.new_num, '135');
+  assert.ok(energyChange.new_bin?.length);
+  assert.deepEqual(codec.unpack('pb_mission_energy_res', Buffer.from(energyChange.new_bin, 'base64')), {
+    tid: '100012900', num: '135', produce_time: nowSeconds
+  });
+  const loginEnergy = codec.unpack('pb_role_energy_res', rawBinary(
+    new Map(env.store.state().modules.value).get(8).value[2]
+  ));
+  assert.deepEqual(loginEnergy.res, [{ tid: '100012900', num: '135', produce_time: nowSeconds }]);
+});
+
+test('ordinary mission fight previews at start and commits once at 207', async t => {
+  const env = setup(t);
+  assert.equal(missionModule(env.store).mission_id, '20205');
+  assert.throws(() => env.service.execute(201, fightRequest(30202)), error => error.code === 5);
   const passCount = Number(missionModule(env.store).pass_count?.count ?? 0);
   const beforeRewards = Object.fromEntries(['122802', '201500', '101800'].map(tid => [tid, BigInt(env.store.read().resources.get(tid).num)]));
-  const next = 30201;
-  const result = env.service.execute(201, fightRequest(next));
+  const completed = 30201;
+  const result = env.service.execute(201, fightRequest(completed));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.final_result, 1);
-  assert.equal(response.report.finish, true);
+  assert.equal(response.report.finish ?? false, false);
   assert.equal(response.report.tid, '301');
   // TID_FIGHT_TYPE_MISSION = 1. Type 3 is TID_FIGHT_TYPE_PEAK_TOWER and turns on
   // the client's four-team / five-battle multi-fight layout.
@@ -146,10 +249,22 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   const roundOver = actionMessages.map((value, index) => value.proto === 112 ? decodeAction(index, 'pb_fat_round_over') : null).filter(Boolean);
   assert.deepEqual(roundOver.map(value => value.round), roundReady.map(value => value.round));
   assert.equal(response.stm.result, 1);
-  assert.notEqual(response.stm.exception, true);
-  const settlement = codec.unpack('mission_to_client', Buffer.from(response.stm.stm_data, 'base64'));
-  const advanced = 30202;
-  assert.equal(settlement.mission.mission_id, String(advanced));
+  assert.equal(response.stm.exception ?? false, false);
+  const preview = codec.unpack('mission_to_client', Buffer.from(response.stm.stm_data, 'base64'));
+  assert.equal(preview.mission.mission_id, '20205');
+  assert.deepEqual(preview.res.changes, []);
+  assert.equal(missionModule(env.store).mission_id, '20205');
+  assert.equal(Number(missionModule(env.store).pass_count?.count ?? 0), passCount);
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
+  for (const tid of ['122802', '201500', '101800']) assert.equal(resourceAmount(env.store, tid), beforeRewards[tid]);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_first_clear' AND claim_key='30201'").get().n), 0);
+
+  const settled = env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  const settlementResponse = codec.unpack('pb_fight_settlement_response', settled.data);
+  assert.equal(settlementResponse.stm.result, 1);
+  assert.equal(settlementResponse.stm.exception ?? false, false);
+  const settlement = codec.unpack('mission_to_client', Buffer.from(settlementResponse.stm.stm_data, 'base64'));
+  assert.equal(settlement.mission.mission_id, String(completed));
   assert.equal(settlement.fight_result, '1');
   assert.deepEqual(settlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
     { tid: '100012900', diff_num: '-5' },
@@ -158,31 +273,42 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
     { tid: '101800', diff_num: '100' },
     { tid: '140000', diff_num: '45' }
   ]);
+  const energyChange = settlement.res.changes.find(change => change.tid === '100012900');
+  assert.ok(energyChange.new_bin?.length);
+  assert.deepEqual(
+    (({ tid, num }) => ({ tid, num }))(codec.unpack('pb_mission_energy_res', Buffer.from(energyChange.new_bin, 'base64'))),
+    { tid: '100012900', num: '115' }
+  );
   assert.deepEqual(await decodeEtf(Buffer.from(settlement.res.changes.at(-1).extra, 'base64')), [9, 45]);
   assert.equal(BigInt(env.store.read().resources.get('122802').num), beforeRewards['122802'] + 2n);
   assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
   assert.equal(BigInt(env.store.read().resources.get('101800').num), beforeRewards['101800'] + 100n);
   assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_first_clear' AND claim_key='30201'").get().n), 1);
-  assert.equal(missionModule(env.store).mission_id, String(advanced));
+  assert.equal(missionModule(env.store).mission_id, String(completed));
   assert.equal(Number(missionModule(env.store).pass_count?.count ?? 0), passCount + 1);
   const replay = env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
-  const settlementResponse = codec.unpack('pb_fight_settlement_response', replay.data);
-  assert.equal(settlementResponse.stm.result, 1);
-  assert.deepEqual(Buffer.from(settlementResponse.stm.stm_data, 'base64'), Buffer.from(response.stm.stm_data, 'base64'));
-  assert.equal(missionModule(env.store).mission_id, String(advanced));
+  const replayResponse = codec.unpack('pb_fight_settlement_response', replay.data);
+  assert.equal(replayResponse.stm.result, 1);
+  assert.deepEqual(Buffer.from(replayResponse.stm.stm_data, 'base64'), Buffer.from(settlementResponse.stm.stm_data, 'base64'));
+  assert.equal(missionModule(env.store).mission_id, String(completed));
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
   // A repeated delivery of the same 207 must return the same settlement without incrementing twice.
   const duplicate = env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.deepEqual(duplicate.data, replay.data);
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
   env.reopen();
-  assert.equal(missionModule(env.store).mission_id, String(advanced));
+  assert.equal(missionModule(env.store).mission_id, String(completed));
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
   assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
   // Replaying the node that was already cleared must not grant its first-clear
-  // reward again. `advanced` is the next fight under the merged cursor model.
-  const repeatedAfterRestart = env.service.execute(201, fightRequest(next));
-  const restartedSettlement = codec.unpack('mission_to_client', Buffer.from(codec.unpack('pb_fight_response', repeatedAfterRestart.data).stm.stm_data, 'base64'));
+  // reward again or advance the last-cleared cursor.
+  const repeatedAfterRestart = env.service.execute(201, fightRequest(completed));
+  const restartedPreview = codec.unpack('pb_fight_response', repeatedAfterRestart.data);
+  assert.equal(restartedPreview.report.finish ?? false, false);
+  const restartedSettlement = codec.unpack('mission_to_client', Buffer.from(codec.unpack(
+    'pb_fight_settlement_response',
+    env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 })).data
+  ).stm.stm_data, 'base64'));
   assert.deepEqual(restartedSettlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
     { tid: '100012900', diff_num: '-5' },
     { tid: '140000', diff_num: '45' }
@@ -197,24 +323,46 @@ test('ordinary mission fight commits at start and 207 replays without duplicate 
   assert.equal(Number(env.store.read().role.exp), 0);
 });
 
-test('fight exit acknowledges, report read returns the settled report and progress never regresses', t => {
+test('zero stamina rejects an ordinary mission fight without advancing or granting rewards', t => {
+  const env = setup(t);
+  env.store.transaction(model => {
+    model.resources.get('100012900').num = '0';
+  });
+  const before = env.store.state();
+  assert.throws(() => env.service.execute(201, fightRequest(30201)), error => error.code === 301);
+  assert.deepEqual(env.store.state(), before);
+  assert.equal(missionModule(env.store).mission_id, '20205');
+});
+
+test('fight exit acknowledges without settling, while report read keeps the started report', t => {
   const env = setup(t);
   const before = Number(missionModule(env.store).mission_id);
   const result = env.service.execute(201, fightRequest(20201, { loc: [] }));
-  assert.equal(codec.unpack('pb_fight_response', result.data).report.finish, true);
+  assert.equal(codec.unpack('pb_fight_response', result.data).report.finish ?? false, false);
   assert.equal(Number(missionModule(env.store).mission_id), before, 'an older mission must not roll progress back');
   const reports = env.service.execute(203, codec.pack('pb_get_fight_report', { fight_id: [] }));
   assert.equal(codec.unpack('pb_fight_report_res', reports.data).report.length, 1);
-  assert.equal(env.service.execute(202, codec.pack('pb_fight_exit', { fight_type: 1, is_force: true })).data.length, 0);
+  assert.equal(env.service.execute(202, codec.pack('pb_fight_exit', { fight_type: 1, is_force: false })).data.length, 0);
+  assert.equal(Number(missionModule(env.store).mission_id), before);
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
+  assert.throws(() => env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 })), error => error.code === 1);
 });
 
-test('mission progress committed at start survives the confirmation exit', t => {
+test('mission progress requires 207 and fight_exit cannot bypass settlement', t => {
   const env = setup(t);
   setMission(env.store, 30201);
-  env.service.execute(201, fightRequest(30201));
-  assert.equal(Number(missionModule(env.store).mission_id), 30202);
+  env.service.execute(201, fightRequest(30202));
+  assert.equal(Number(missionModule(env.store).mission_id), 30201);
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
   assert.equal(env.service.execute(202, codec.pack('pb_fight_exit', { fight_type: 1, is_force: false })).data.length, 0);
+  assert.equal(Number(missionModule(env.store).mission_id), 30201);
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
+  assert.throws(() => env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 })), error => error.code === 1);
+
+  env.service.execute(201, fightRequest(30202));
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(Number(missionModule(env.store).mission_id), 30202);
+  assert.equal(resourceAmount(env.store, 100012900), 115n);
 });
 
 test('non-mission fights are refused without touching saved state', t => {
@@ -230,8 +378,8 @@ test('non-mission fights are refused without touching saved state', t => {
 
 test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)', t => {
   const env = setup(t);
-  const next = 30201;
-  setMission(env.store, next);
+  const next = 30202;
+  setMission(env.store, 30201);
   // Wire shape produced by MissionUIMgr: chapter_tid/section_idx stay at protobuf defaults.
   const wire = (extra = {}) => codec.pack('pb_fight_request', {
     fight_tid: 301, stm_type: 0,
@@ -239,32 +387,36 @@ test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)
   });
   assert.throws(() => env.service.execute(201, wire({ is_assistant: true, boss_tid: 5 })), error => error.code === 5);
   const result = env.service.execute(201, wire({ is_assistant: true }));
-  assert.equal(codec.unpack('pb_fight_response', result.data).report.finish, true);
-  assert.equal(missionModule(env.store).mission_id, '30202');
+  assert.equal(codec.unpack('pb_fight_response', result.data).report.finish ?? false, false);
+  assert.equal(missionModule(env.store).mission_id, '30201');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '30202');
 });
 
-test('30204 uses the documented local pursuer fallback and commits on start', t => {
+test('30204 uses the documented local pursuer fallback and commits at 207', t => {
   const env = setup(t);
-  setMission(env.store, 30204);
+  setMission(env.store, 30203);
   const result = env.service.execute(201, fightRequest(30204, { fight_tid: 304 }));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '304');
+  assert.equal(response.report.finish ?? false, false);
   assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9002600', '9002600']);
-  assert.equal(missionModule(env.store).mission_id, '30205');
+  assert.equal(missionModule(env.store).mission_id, '30203');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
-  assert.equal(missionModule(env.store).mission_id, '30205');
+  assert.equal(missionModule(env.store).mission_id, '30204');
 });
 
-test('40210 uses the documented local chapter-boss fallback and advances to chapter five', t => {
+test('40210 uses the documented local chapter-boss fallback and records the completed node', t => {
   const env = setup(t);
-  setMission(env.store, 40210);
+  setMission(env.store, 40209);
   const result = env.service.execute(201, fightRequest(40210, { fight_tid: 410 }));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '410');
+  assert.equal(response.report.finish ?? false, false);
   assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['1030401', '9002400']);
-  assert.equal(missionModule(env.store).mission_id, '50201');
+  assert.equal(missionModule(env.store).mission_id, '40209');
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  assert.equal(missionModule(env.store).mission_id, '40210');
 });
 
 test('mission chapter box grants configured rewards once and persists its BitBlock', async t => {
@@ -277,14 +429,12 @@ test('mission chapter box grants configured rewards once and persists its BitBlo
   assert.equal(missionModule(env.store).box_award ?? '', '');
   for (const tid of ['25002', '101500', '201500']) assert.equal(resourceAmount(env.store, tid), before[tid]);
   await assert.rejects(async () => env.service.execute(506, await encodeEtf([1, 1])), error => error.code === 1);
-  // 3-5 is still the first unpassed node. Its completion unlocks the chapter
-  // three box only after the mission cursor advances to 4-1.
-  await assert.rejects(() => claim(1), error => error.code === 5);
-  setMission(env.store, 40201);
+  // 3-5 is the last cleared node, so it already counts toward the chapter-three
+  // box requirement even though the client displays 4-1 as the next node.
 
   const result = await claim(1);
   const response = codec.unpack('pb_mission_rsp', result.data);
-  assert.equal(response.mission.mission_id, '40201');
+  assert.equal(response.mission.mission_id, '30205');
   assert.deepEqual(response.res_change.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
     { tid: '25002', diff_num: '1' },
     { tid: '101500', diff_num: '30' },
@@ -471,20 +621,20 @@ test('story mission 30205 advances the mission module through req_mission_custom
     env.service.execute(201, fightRequest(mission, { fight_tid: 300 + (mission % 100) }));
     env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   }
-  assert.equal(missionModule(env.store).mission_id, '30205');
+  assert.equal(missionModule(env.store).mission_id, '30204');
   const passCount = Number(missionModule(env.store).pass_count?.count ?? 0);
   const result = env.service.passStory(30205);
   const response = codec.unpack('pb_mission_rsp', result.data);
-  assert.equal(response.mission.mission_id, '40201');
+  assert.equal(response.mission.mission_id, '30205');
   assert.equal(Number(response.mission.pass_count.count), passCount);
   assert.equal(response.res_change.changes.length, 0);
   assert.ok(!response.res_change.is_overflow);
-  assert.equal(missionModule(env.store).mission_id, '40201');
+  assert.equal(missionModule(env.store).mission_id, '30205');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount);
 
   // Replaying the same story node must not regress or duplicate progress.
   const duplicate = env.service.passStory(30205);
-  assert.equal(codec.unpack('pb_mission_rsp', duplicate.data).mission.mission_id, '40201');
+  assert.equal(codec.unpack('pb_mission_rsp', duplicate.data).mission.mission_id, '30205');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount);
 
   // Battle sections and unknown sections are not story passes.
@@ -494,11 +644,13 @@ test('story mission 30205 advances the mission module through req_mission_custom
   // Chapter 4's first journey battle must be playable immediately after the
   // chapter-3 story node is passed.
   const nextBattle = env.service.execute(201, fightRequest(40201, { fight_tid: 401 }));
-  assert.equal(codec.unpack('pb_fight_response', nextBattle.data).report.finish, true);
-  assert.equal(missionModule(env.store).mission_id, '40202');
+  assert.equal(codec.unpack('pb_fight_response', nextBattle.data).report.finish ?? false, false);
+  assert.equal(missionModule(env.store).mission_id, '30205');
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  assert.equal(missionModule(env.store).mission_id, '40201');
 });
 
-test('ordinary victory advances the saved and returned cursor to the next journey node', t => {
+test('ordinary victory records the completed journey node and unlocks its successor', t => {
   const env = setup(t);
   env.store.transaction(model => {
     const module = new Map(model.state.modules.value).get(8);
@@ -511,24 +663,29 @@ test('ordinary victory advances the saved and returned cursor to the next journe
   });
   const passCount = Number(missionModule(env.store).pass_count?.count ?? 0);
 
-  const result = env.service.execute(201, fightRequest(40208, { fight_tid: 408 }));
+  const result = env.service.execute(201, fightRequest(40209, { fight_tid: 409 }));
   const response = codec.unpack('pb_fight_response', result.data);
-  const settlement = codec.unpack('mission_to_client', Buffer.from(response.stm.stm_data, 'base64'));
-  assert.equal(settlement.mission.mission_id, '40209');
+  assert.equal(response.report.finish ?? false, false);
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(response.stm.stm_data, 'base64')).mission.mission_id, '40208');
+  assert.equal(missionModule(env.store).mission_id, '40208');
+  assert.equal(Number(missionModule(env.store).pass_count.count), passCount);
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '40209');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
 
   // Re-entering the same battle must not count another clear.
-  const repeated = env.service.execute(201, fightRequest(40208, { fight_tid: 408 }));
+  const repeated = env.service.execute(201, fightRequest(40209, { fight_tid: 409 }));
   const repeatedResponse = codec.unpack('pb_fight_response', repeated.data);
-  const repeatedSettlement = codec.unpack('mission_to_client', Buffer.from(repeatedResponse.stm.stm_data, 'base64'));
-  assert.equal(repeatedSettlement.mission.mission_id, '40209');
+  assert.equal(repeatedResponse.report.finish ?? false, false);
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(repeatedResponse.stm.stm_data, 'base64')).mission.mission_id, '40209');
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 1);
 
-  const next = env.service.execute(201, fightRequest(40209, { fight_tid: 409 }));
+  const next = env.service.execute(201, fightRequest(40210, { fight_tid: 410 }));
   const nextResponse = codec.unpack('pb_fight_response', next.data);
-  const nextSettlement = codec.unpack('mission_to_client', Buffer.from(nextResponse.stm.stm_data, 'base64'));
-  assert.equal(nextSettlement.mission.mission_id, '40210');
+  assert.equal(nextResponse.report.finish ?? false, false);
+  assert.equal(codec.unpack('mission_to_client', Buffer.from(nextResponse.stm.stm_data, 'base64')).mission.mission_id, '40209');
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '40210');
   assert.equal(Number(missionModule(env.store).pass_count.count), passCount + 2);
 });

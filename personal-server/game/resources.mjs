@@ -1,5 +1,12 @@
 import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { setBit } from './bit-block.mjs';
+import {
+  MISSION_ENERGY_MODULE_ID,
+  MISSION_ENERGY_SLOT,
+  MISSION_ENERGY_TID,
+  isMissionEnergyResource,
+  missionEnergyBin
+} from './energy.mjs';
 import { GameError } from './hero-progression.mjs';
 
 const ITEM_GROUP_HANDLERS = new Map([
@@ -39,6 +46,9 @@ function typeOf(item, tables) {
 
 function handlerFor(itemId, tables) {
   const item = tables.Item?.get(itemId);
+  if (String(itemId) === MISSION_ENERGY_TID) {
+    return { key: 'mission-energy', kind: 'energy', moduleId: MISSION_ENERGY_MODULE_ID, index: MISSION_ENERGY_SLOT };
+  }
   if (!item) {
     return tables.Hero?.has(itemId)
       ? { key: 'hero:raw', kind: 'hero' }
@@ -200,6 +210,34 @@ function grantCurrency(model, modules, id, amount, moduleId, group, codec) {
   return resource.num;
 }
 
+function grantMissionEnergy(model, modules, id, amount, codec, options = {}) {
+  let resource = model.resources.get(String(id));
+  const now = Math.floor(Number(typeof options.now === 'function' ? options.now() : (options.now ?? Date.now())) / 1000);
+  if (!resource) {
+    const data = readSerialized(modules, MISSION_ENERGY_MODULE_ID, MISSION_ENERGY_SLOT,
+      'pb_role_energy_res', { res: [] }, codec);
+    data.res ??= [];
+    let entry = data.res.findIndex(value => String(value?.tid) === String(id));
+    if (entry < 0) {
+      entry = data.res.length;
+      data.res.push({ tid: String(id), num: '0', produce_time: now });
+    }
+    writeSerialized(modules, MISSION_ENERGY_MODULE_ID, MISSION_ENERGY_SLOT, 'pb_role_energy_res', data, codec);
+    resource = {
+      tid: String(id),
+      num: String(data.res[entry].num ?? 0),
+      produce_time: Number(data.res[entry].produce_time ?? now),
+      location: [MISSION_ENERGY_MODULE_ID, MISSION_ENERGY_SLOT, entry]
+    };
+    model.resources.set(String(id), resource);
+  }
+  const next = BigInt(resource.num) + BigInt(amount);
+  if (next > 9223372036854775807n) throw new GameError(1, 'Resource limit reached');
+  resource.num = next.toString();
+  resource.produce_time ??= now;
+  return resource.num;
+}
+
 function grantRoleExp(model, amount) {
   const next = BigInt(model.role.exp ?? 0) + BigInt(amount);
   if (next > 4294967295n) throw new GameError(1, 'Resource limit reached');
@@ -339,6 +377,10 @@ export function grantResources(model, awards, tables, options = {}) {
     switch (handler.kind) {
       case 'roleExp': newNum = grantRoleExp(model, amount); break;
       case 'currency': newNum = grantCurrency(model, modules, id, amount, 5, null, codec); break;
+      case 'energy':
+        newNum = grantMissionEnergy(model, modules, id, amount, codec, options);
+        changeExtra = { new_bin: missionEnergyBin(codec, model.resources.get(String(id))) };
+        break;
       case 'artifactCurrency': newNum = grantCurrency(model, modules, id, amount, 10, 1, codec); break;
       case 'item':
         newNum = grantItem(model, modules, id, amount, handler);
@@ -379,7 +421,7 @@ export function grantResources(model, awards, tables, options = {}) {
   return { changes };
 }
 
-export function consumeResources(model, costs, insufficientCode = 301) {
+export function consumeResources(model, costs, insufficientCode = 301, options = {}) {
   const totals = new Map();
   for (const [id, amount] of costs) {
     if (!Number.isSafeInteger(id) || !Number.isSafeInteger(amount) || amount < 0) throw new GameError(5, 'Invalid resource cost');
@@ -389,11 +431,25 @@ export function consumeResources(model, costs, insufficientCode = 301) {
     if (BigInt(model.resources.get(id)?.num ?? 0) < amount) throw new GameError(insufficientCode, 'Insufficient resource');
   }
   const changes = [];
+  const codec = codecFor(options);
+  const now = Math.floor(Number(typeof options.now === 'function' ? options.now() : (options.now ?? Date.now())) / 1000);
   for (const [id, amount] of totals) {
     if (amount === 0n) continue;
     const item = model.resources.get(id);
+    const before = BigInt(item.num);
     item.num = (BigInt(item.num) - amount).toString();
-    changes.push({ tid: id, new_num: item.num, diff_num: (-amount).toString() });
+    const change = { tid: id, new_num: item.num, diff_num: (-amount).toString() };
+    if (isMissionEnergyResource(item)) {
+      const max = Number(options.energyMax?.(Number(id)) ?? NaN);
+      const produceTime = Number(item.produce_time ?? 0);
+      // A resource at its natural cap has no active refill timer. Start one
+      // at the transaction time when it first drops below that cap.
+      if (!Number.isSafeInteger(produceTime) || produceTime <= 0 || produceTime > now || (Number.isSafeInteger(max) && max > 0 && before >= max)) {
+        item.produce_time = now;
+      }
+      change.new_bin = missionEnergyBin(codec, item);
+    }
+    changes.push(change);
   }
   return { changes };
 }
