@@ -46,3 +46,14 @@ None.
 ## Test Results
 20/20 passing (personal-server/test/hero-4030601-skill-validation.test.mjs)
 "
+## 2026-11-05 补全记录（回归修复）
+
+- 复查发现 343060174 涅槃流转、343060175 焚金羽翼 只有 `triggers`、`effects` 为空数组，`verify-hero-skills.mjs` 因此报 “missing effects[]”，即技能数量为 2/14 可执行。
+- 本轮通过 `patches/group-c/4030601.json` 补齐：
+  - 343060174：`effects[]` 增加 `stat-modifier`（`damage-reduction` 0.15、`timed` 1 回合、自身），与原 on-attack / on-skill-use 触发一致。
+  - 343060175：`effects[]` 增加 `stat-modifier`（`damage-reduction` 0.08、`timed` 1 回合、自身），与原 on-round-start（最多 3 次）/ 第 3 回合结束治疗 5% 最大生命两条触发一致。
+- 原有 `ability`/`abilityDes` 元数据保持不变。
+- 文档中早前“max-hp-percent / status-hit / status-resist 不在 STAT_TYPES”的说明已过期：2026-11-05 `game/effects/effect-types.mjs` 已补入这些 statType。
+- 测试新增 4 条断言：技能 ID 完整顺序、每个技能 `effectType` 与首个效果一致、涅槃流转 15% 减伤、焚金羽翼 8% 减伤。
+- 验证结果：`node scripts/verify-hero-skills.mjs --hero=4030601` 通过（1/1 heroes clean）；`node --test test/hero-4030601-skill-validation.test.mjs` 24/24 通过。
+

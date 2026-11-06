@@ -10,6 +10,22 @@ test('hero 3020401 skills are loaded from skill database', () => {
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
   assert.equal(skills.length, 14, 'expected 14 skills for 秘典魔女');
+  assert.deepEqual(skills.map(skill => skill.id), [
+    'normal-profession-4',
+    '332040171',
+    '332040172',
+    '332040173',
+    '332040174',
+    '332040175',
+    '120001027',
+    '120000046',
+    '120000051',
+    '120000054',
+    '120000055',
+    '120000059',
+    '120001005',
+    '6910001038',
+  ]);
 });
 
 test('passive triggers count is at least 10', () => {
@@ -41,23 +57,40 @@ test('不屈 (332040171) registers on-round-start damage-reduction 0.05', () => 
   assert.equal(trig.effect.effect.magnitude, 0.05);
 });
 
-test('健壮 (332040172) registers max-hp-percent 0.05', () => {
+test('健壮 (332040172) registers battle-start max-hp-percent 0.05', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '332040172');
+  assert.equal(skill.implementation.effectType, 'stat-modifier');
+  assert.equal(skill.implementation.effects.length, 1);
+  const effect = skill.implementation.effects[0];
+  assert.equal(effect.effect.type, 'stat-modifier');
+  assert.equal(effect.effect.statType, 'max-hp-percent');
+  assert.equal(effect.effect.magnitude, 0.05);
+  assert.equal(effect.duration.durationType, 'permanent');
   const trig = skill.implementation.triggers[0];
-  assert.equal(trig.effect.effect.statType, 'max-hp-percent');
-  assert.equal(trig.effect.effect.magnitude, 0.05);
+  assert.equal(trig.triggerType, 'on-round-start');
+  assert.equal(trig.oncePerBattle, true);
+  assert.deepEqual(trig.effect.effect, effect.effect);
 });
 
-test('泰然自若 (332040173) registers crit-resist and crit-damage-reduction', () => {
+test('泰然自若 (332040173) registers crit-resist 0.05 and crit-damage-reduction 0.10', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '332040173');
+  assert.equal(skill.implementation.effects.length, 2);
   assert.equal(skill.implementation.triggers.length, 2);
-  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
-  assert.ok(statTypes.includes('crit-resist'));
-  assert.ok(statTypes.includes('crit-damage-reduction'));
+  const byStat = new Map(skill.implementation.effects.map(entry => [entry.effect.statType, entry.effect]));
+  assert.equal(byStat.get('crit-resist').magnitude, 0.05);
+  assert.equal(byStat.get('crit-damage-reduction').magnitude, 0.1);
+  for (const entry of skill.implementation.effects) {
+    assert.equal(entry.effect.type, 'stat-modifier');
+    assert.equal(entry.effect.isPercentage, true);
+  }
+  for (const trig of skill.implementation.triggers) {
+    assert.equal(trig.triggerType, 'on-round-start');
+    assert.equal(trig.oncePerBattle, true);
+  }
 });
 
 test('盘石之固 (332040174) registers on-attack/on-skill-use damage-reduction 0.15', () => {
@@ -144,12 +177,15 @@ test('反杀 (120000055) registers target-hp-above-self condition crit-rate 0.30
   assert.equal(trig.effect.effect.magnitude, 0.30);
 });
 
-test('祝福 (120000059) registers heal-bonus 0.20 for 2 rounds (maxTriggers 2)', () => {
+test('祝福 (120000059) applies heal-bonus 0.20 for 2 rounds once per battle', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '120000059');
   const trig = skill.implementation.triggers[0];
-  assert.equal(trig.maxTriggers, 2);
+  assert.equal(trig.maxTriggers, 1);
+  assert.equal(trig.oncePerBattle, true);
+  assert.equal(trig.effect.duration.durationType, 'timed');
+  assert.equal(trig.effect.duration.rounds, 2);
   assert.equal(trig.effect.effect.statType, 'heal-bonus');
   assert.equal(trig.effect.effect.magnitude, 0.20);
 });

@@ -29,6 +29,18 @@ test('all trigger effects are non-null and have a type', () => {
   }
 });
 
+test('鹰眼 (120000028) registers hp-above-50 condition hit-rate 0.15', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  const skill = skills.find(s => s.id === '120000028');
+  const trig = skill.implementation.triggers[0];
+  assert.equal(trig.triggerType, 'on-round-start');
+  assert.equal(trig.conditionKey, 'hp-above-50', '鹰眼 only applies above 50% HP');
+  assert.equal(trig.effect.effect.type, 'stat-modifier');
+  assert.equal(trig.effect.effect.statType, 'hit-rate');
+  assert.equal(trig.effect.effect.magnitude, 0.15);
+});
+
 test('重击 (311020171) registers battle-start damage-bonus 0.05', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);

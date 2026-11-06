@@ -43,6 +43,18 @@ export const STAT_TYPES = Object.freeze({
   HEAL_BONUS: 'heal-bonus',       // Percentage (0-1)
   SHIELD_BONUS: 'shield-bonus',   // Percentage (0-1)
   ENERGY_BONUS: 'energy-bonus',   // Percentage (0-1)
+
+  // Stat types already used by skill-database.json entries (catalog-derived)
+  MAX_HP_PERCENT: 'max-hp-percent',         // Max HP percentage bonus
+  HIT_RATE: 'hit-rate',                     // Hit chance bonus
+  EVASION: 'evasion',                       // Dodge chance bonus
+  CRIT_RESISTANCE: 'crit-resistance',       // Anti-crit rate (catalog wording)
+  CRIT_RESIST: 'crit-resist',               // Anti-crit rate (legacy alias in catalog)
+  CRIT_DAMAGE_REDUCTION: 'crit-damage-reduction', // Reduces incoming crit damage
+  ANTI_CRIT: 'anti-crit',                   // Anti-crit rate (legacy alias in catalog)
+  REBOUND_RATE: 'rebound-rate',             // Damage reflection rate
+  STATUS_HIT: 'status-hit',                 // Debuff application chance
+  STATUS_RESIST: 'status-resist',           // Debuff resistance
 });
 
 // Energy types
@@ -72,6 +84,11 @@ export const STATUS_TYPES = Object.freeze({
   WEAKENED: 'weakened',              // Decreased damage
   SLOWED: 'slowed',                  // Decreased speed
   EXHAUSTED: 'exhausted',            // Decreased energy gain
+
+  // Catalog-specific statuses already present in skill-database.json
+  CHAIN: 'chain',                    // 锁链 (chain layers)
+  FRIGHTENED: 'frightened',          // 恐惧
+  PURSUIT: 'pursuit',                // 追击
 });
 
 // Target selection types

@@ -130,6 +130,7 @@ test('鼓舞 (120000054) grants 25 energy on attack', () => {
   assert.equal(trig.effect.effect.type, 'energy');
   assert.equal(trig.effect.effect.energyType, 'gain');
   assert.equal(trig.effect.effect.magnitude, 25);
+  assert.ok(skill.implementation.triggers.some(t => t.triggerType === 'on-skill-use'), '鼓舞 must cover 普攻 and 绝招');
 });
 
 test('反杀 (120000055) registers target-hp-above-self condition crit-rate 0.30', () => {

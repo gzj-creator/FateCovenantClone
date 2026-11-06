@@ -1,0 +1,176 @@
+{
+  "heroId": 4030101,
+  "skills": [
+    {
+      "id": "343010174",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 343010174,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 343010174,
+          "type_des": 9,
+          "show_name": 6503269,
+          "skill_icon": "mastery_skill_sea_02.png",
+          "text": 604400169,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "dispel",
+        "targetType": "random-ally",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "random-ally"
+            },
+            "effect": {
+              "type": "dispel",
+              "count": 1,
+              "removeType": "debuff"
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "random-ally"
+              },
+              "effect": {
+                "type": "dispel",
+                "count": 1,
+                "removeType": "debuff"
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "random-ally"
+              },
+              "effect": {
+                "type": "dispel",
+                "count": 1,
+                "removeType": "debuff"
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Mastery: after normal/skill, dispel 1 debuff from a random ally (targeting approximated as random-ally)."
+      }
+    },
+    {
+      "id": "120001003",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 120001003,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 120001003,
+          "type_des": 2,
+          "show_name": 6300081,
+          "skill_icon": "Icon_Skill_huyou.png",
+          "text": 601509077,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "shield",
+        "targetType": "self",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "self"
+            },
+            "effect": {
+              "type": "shield",
+              "shieldType": "percent-defense",
+              "multiplier": 0.8
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 2
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-hp-threshold",
+            "condition": null,
+            "conditionKey": "hp-below-70",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": true,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "self"
+              },
+              "effect": {
+                "type": "shield",
+                "shieldType": "percent-defense",
+                "multiplier": 0.8
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 2
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": false,
+        "notes": "Passive: first time HP below 70%, gain shield equal to 80% DEF for 2 rounds."
+      }
+    }
+  ]
+}

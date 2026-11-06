@@ -113,6 +113,7 @@ test('鼓舞 (120000054) grants 25 energy on attack', () => {
   assert.equal(trig.effect.effect.type, 'energy');
   assert.equal(trig.effect.effect.energyType, 'gain');
   assert.equal(trig.effect.effect.magnitude, 25);
+  assert.ok(skill.implementation.triggers.some(t => t.triggerType === 'on-skill-use'), '鼓舞 must cover 普攻 and 绝招');
 });
 
 test('反杀 (120000055) registers target-hp-above-self condition crit-rate 0.30', () => {
@@ -125,14 +126,18 @@ test('反杀 (120000055) registers target-hp-above-self condition crit-rate 0.30
   assert.equal(trig.effect.effect.magnitude, 0.30);
 });
 
-test('祝福 (120000059) registers heal-bonus 0.20 for 2 rounds (maxTriggers 2)', () => {
+test('祝福 (120000059) registers heal-bonus 0.20 for 2 rounds, once per battle', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '120000059');
   const trig = skill.implementation.triggers[0];
-  assert.equal(trig.maxTriggers, 2);
+  assert.equal(trig.maxTriggers, 1);
+  assert.equal(trig.oncePerBattle, true);
+  assert.equal(trig.triggerType, 'on-round-start');
   assert.equal(trig.effect.effect.statType, 'heal-bonus');
   assert.equal(trig.effect.effect.magnitude, 0.20);
+  assert.equal(trig.effect.duration.durationType, 'timed');
+  assert.equal(trig.effect.duration.rounds, 2);
 });
 
 test('战斗续航 (120001005) heals 0.3 ATK when HP below 30% at round start', () => {
@@ -207,5 +212,3 @@ test('heal effect is executable', () => {
   const result = executor.executeHeal(effect, actor, target);
   assert.ok(result, 'heal should execute');
 });
-EOF
-echo done

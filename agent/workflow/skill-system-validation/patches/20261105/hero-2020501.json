@@ -1,0 +1,122 @@
+{
+  "heroId": 2020501,
+  "skills": [
+    {
+      "id": "322050175",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 322050175,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 322050175,
+          "type_des": 9,
+          "show_name": 6503220,
+          "skill_icon": "mastery_skill_gold_03.png",
+          "text": 604400120,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "stat-modifier",
+        "targetType": "single",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "crit-rate",
+              "magnitude": -0.05,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 2
+            },
+            "chance": 1
+          },
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "stat-modifier",
+              "statType": "evasion",
+              "magnitude": -0.05,
+              "isPercentage": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 2
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": "target-has-debuff",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "single"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "crit-rate",
+                "magnitude": -0.05,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 2
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": "target-has-debuff",
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "single"
+              },
+              "effect": {
+                "type": "stat-modifier",
+                "statType": "evasion",
+                "magnitude": -0.05,
+                "isPercentage": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 2
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "Approximation: chain is not modelled as a stacked status with per-layer stats, so the enhancement is expressed as -5% crit rate and -5% evasion on the attacked target for 2 rounds, gated on the target already carrying a debuff. requiresInvestigation."
+      }
+    }
+  ]
+}

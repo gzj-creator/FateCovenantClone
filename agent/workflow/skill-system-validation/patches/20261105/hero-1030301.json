@@ -1,0 +1,103 @@
+{
+  "heroId": 1030301,
+  "skills": [
+    {
+      "id": "313030174",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 313030174,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 313030174,
+          "type_des": 9,
+          "show_name": 6503119,
+          "skill_icon": "mastery_skill_purple_02.png",
+          "text": 604400019,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "dispel",
+        "targetType": "single",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "dispel",
+              "count": 1,
+              "removeType": "buff"
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-attack",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "single"
+              },
+              "effect": {
+                "type": "dispel",
+                "count": 1,
+                "removeType": "buff"
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          },
+          {
+            "triggerType": "on-skill-use",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "single"
+              },
+              "effect": {
+                "type": "dispel",
+                "count": 1,
+                "removeType": "buff"
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0
+          }
+        ],
+        "notes": "Mastery: after normal/skill hit, dispel 1 buff from the target.",
+        "requiresInvestigation": false
+      }
+    }
+  ]
+}

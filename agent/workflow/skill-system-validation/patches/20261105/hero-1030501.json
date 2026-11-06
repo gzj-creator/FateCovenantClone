@@ -1,0 +1,118 @@
+{
+  "heroId": 1030501,
+  "skills": [
+    {
+      "id": "normal-profession-4",
+      "implementation": {
+        "fallback": true,
+        "source": "project-fallback",
+        "resolvedAbility": false,
+        "resolvedDescription": false,
+        "ability": null,
+        "abilityDes": null,
+        "effectType": "damage",
+        "targetType": "single",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "single"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "physical",
+              "canCrit": true,
+              "multiplier": 1
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [],
+        "notes": "Project-defined fallback basic attack: 1.0x physical damage to a single target."
+      }
+    },
+    {
+      "id": "6103030103",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 6103030103,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 6103030103,
+          "type_des": 3,
+          "show_name": 602501301,
+          "skill_icon": "Icon_Skill_HaiSe_n1.png",
+          "text": 601600034,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "shield",
+        "targetType": "all-allies",
+        "energyCost": 100,
+        "effects": [
+          {
+            "target": {
+              "targetType": "all-allies"
+            },
+            "effect": {
+              "type": "shield",
+              "shieldType": "percent-max-hp",
+              "multiplier": 0.1,
+              "round3Double": true
+            },
+            "duration": {
+              "durationType": "timed",
+              "rounds": 2
+            },
+            "chance": 1,
+            "round3Double": true
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-being-hit",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "all-allies"
+              },
+              "effect": {
+                "type": "shield",
+                "shieldType": "percent-max-hp",
+                "multiplier": 0.1,
+                "round3Double": true
+              },
+              "duration": {
+                "durationType": "timed",
+                "rounds": 2
+              },
+              "chance": 1,
+              "round3Double": true
+            },
+            "priority": 0,
+            "round3Double": true,
+            "maxTriggersPerRound": 3
+          }
+        ],
+        "notes": "Rare ultimate: when hit, shield the lowest-HP allies for 10% of Hesser max HP for 2 rounds (doubled from round 3, max 3 per round). Same-row energy resistance/speed buffs and shield-conditional control/energy/status resistance are not modelled (target types unavailable). requiresInvestigation.",
+        "requiresInvestigation": true
+      }
+    }
+  ]
+}

@@ -77,3 +77,12 @@
 3. 怒势/撕裂/共熠 叠层追踪需要引擎层支持
 4. 6910001060 - metadata fallback ultimate，通用 2.0x 物理伤害，requiresInvestigation
 EOF
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 鹰眼 120000028 补 conditionKey hp-above-50（原实现无条件，始终生效），测试原本就在断言这一点，修复后转绿。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=3040101 通过；node --test test/hero-3040101-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

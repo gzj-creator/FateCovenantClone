@@ -53,3 +53,12 @@ None.
 - personal-server/test/hero-4020101-skill-validation.test.mjs: 21/21 passing
 EOF
 echo done
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 生命护盾 120001003 补 effectType shield（结构校验原为红灯）。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=4020101 通过；node --test test/hero-4020101-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

@@ -120,6 +120,7 @@ test('鼓舞 (120000054) grants 25 energy on attack', () => {
   assert.equal(trig.effect.effect.type, 'energy');
   assert.equal(trig.effect.effect.energyType, 'gain');
   assert.equal(trig.effect.effect.magnitude, 25);
+  assert.ok(skill.implementation.triggers.some(t => t.triggerType === 'on-skill-use'), '鼓舞 must cover 普攻 and 绝招');
 });
 
 test('反杀 (120000055) registers target-hp-above-self condition crit-rate 0.30', () => {
@@ -166,13 +167,15 @@ test('强击抵抗 (120001013) registers damage-reduction 0.20 for 1 round', () 
   assert.equal(trig.effect.duration.rounds, 1);
 });
 
-test('升格防御 (6102060102) registers front-row-allies shield percent-max-hp 0.05', () => {
+test('升格防御 (6102060102) registers ally shield percent-max-hp 0.05 for 2 rounds', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '6102060102');
   const trig = skill.implementation.triggers[0];
   assert.equal(trig.oncePerBattle, true);
-  assert.equal(trig.effect.target.targetType, 'front-row-allies');
+  // 描述是"我方前排队友"，TargetSelector 没有前排友军类型，暂以 all-allies 近似
+  assert.equal(trig.effect.target.targetType, 'all-allies');
+  assert.equal(skill.implementation.requiresInvestigation, true);
   assert.equal(trig.effect.effect.type, 'shield');
   assert.equal(trig.effect.effect.shieldType, 'percent-max-hp');
   assert.equal(trig.effect.effect.multiplier, 0.05);

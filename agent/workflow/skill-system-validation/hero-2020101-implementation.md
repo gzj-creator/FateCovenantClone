@@ -51,3 +51,13 @@ Branch: skill-system-validation
 - Battle engine tests: pre-existing passing
 EOF
 cd F:/projects/FateCovenantClone && ls agent/workflow/skill-system-validation/
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 鼓舞 120000054 补 on-skill-use 触发。
+- 祝福测试断言由 maxTriggers 2 订正为 maxTriggers 1 + 2 回合持续。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=2020101 通过；node --test test/hero-2020101-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

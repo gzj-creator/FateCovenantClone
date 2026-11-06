@@ -44,3 +44,15 @@ None.
 
 ## Test Results
 23/23 passing (personal-server/test/hero-4030101-skill-validation.test.mjs)
+
+## 2026-11-05 补全记录（回归修复）
+
+- 复查发现 343010174 扶危定乱、120001003 生命护盾 只有 `triggers`、`effects` 为空数组，`verify-hero-skills.mjs` 因此报 “missing effects[]”，即技能数量为 2/14 可执行。
+- 本轮通过 `patches/group-c/4030101.json` 补齐：
+  - 343010174：`effects[]` 增加 `dispel`（`targetType: random-ally`、`count: 1`、`removeType: debuff`），与原 on-attack / on-skill-use 两条触发一致。
+  - 120001003：`effects[]` 增加 `shield`（`percent-defense` 0.8、`timed` 2 回合、`targetType: self`），与原 on-hp-threshold 触发一致。
+- 原有 `ability`/`abilityDes` 元数据保持不变。
+- 文档中早前“max-hp-percent / status-hit / status-resist / crit-damage-reduction / rebound-rate / anti-crit 不在 STAT_TYPES”的说明已过期：2026-11-05 `game/effects/effect-types.mjs` 已由其它任务补入这些 statType，现状可正常校验。
+- 测试新增 4 条断言：技能 ID 完整顺序、每个技能 `effectType` 与首个效果一致、扶危定乱的 dispel 条目、生命护盾的盾量/持续。
+- 验证结果：`node scripts/verify-hero-skills.mjs --hero=4030101` 通过（1/1 heroes clean）；`node --test test/hero-4030101-skill-validation.test.mjs` 27/27 通过。
+

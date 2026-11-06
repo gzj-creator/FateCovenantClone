@@ -51,3 +51,14 @@ Branch: skill-system-validation
 ## No new effect types/target types/trigger types needed.
 EOF
 echo done
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 生命护盾 120001003 补 effectType 与 conditionKey hp-below-70。
+- 潜能蕴养 354050172 的护盾 timed/rounds 0 改为 permanent。
+- 鼓舞 120000054 补 on-skill-use 触发。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=5040501 通过；node --test test/hero-5040501-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

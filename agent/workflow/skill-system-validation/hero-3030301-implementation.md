@@ -51,4 +51,15 @@ Branch: skill-system-validation
 - No changes required to battle-engine.mjs; this hero uses existing effect framework and trigger registration via registerPassiveTriggers.
 
 ## Test Results
-- personal-server/test/hero-3030301-skill-validation.test.mjs: 20/20 passing
+- personal-server/test/hero-3030301-skill-validation.test.mjs: 20/20 passing（2026-11-05 复核更正：此声明在提交时为虚报，当时缺 333030174 导致 2 条红灯；已恢复该技能后重新验证）
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 恢复缺失的整条技能 333030174 炽星魔焰（status/burn、chance 0.3、2 回合、on-attack 与 on-skill-use 两个触发、requiresInvestigation），技能数回到 14。
+- 直击要害 333030173 的 description 去掉被拼接进来的 333030174 文本。
+- 补丁工具只支持追加，333030174 目前排在技能列表末尾，顺序与天赋编号不连续，但不影响按 id 查找。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=3030301 通过；node --test test/hero-3030301-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

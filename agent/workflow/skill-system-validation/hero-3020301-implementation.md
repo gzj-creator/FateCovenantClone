@@ -1,58 +1,49 @@
-# Hero 3020301 (闪耀甜心) Skill Validation & Implementation
+# Hero 3020301 闪耀甜心 技能补全（技能组 B）
 
-Date: 2026-11-03
-Branch: skill-system-validation
+日期：2026-11-05（覆盖此前 2026-11-03 版本）
+技能数：14
 
-## Hero
-- ID: 3020301, Name: 闪耀甜心, Role: Knight
-- Stats: HP 660, ATK 90, DEF 60, SPD 111
+## 校验结论
 
-## Skills Validated (14 total)
+- `node scripts/verify-hero-skills.mjs --hero=3020301`：通过（1/1 heroes clean, 0 failing）
+- `node --test test/hero-3020301-skill-validation.test.mjs`：22/22 通过
+- 写入方式：补丁文件 `agent/workflow/skill-system-validation/patch-b-20261105/hero-3020301.json` 经 `node scripts/apply-hero-skill-patch.mjs` 应用；未手工编辑技能库，未改战斗引擎。
 
-### Mastery skills (5)
-1. 332030171 不屈 - on battle start final damage reduction +5%. effectType=stat-modifier (damage-reduction), trigger on-round-start, once per battle.
-2. 332030172 健壮 - on battle start max HP +5%. effectType=stat-modifier (max-hp-percent), trigger on-round-start, once per battle.
-3. 332030173 泰然自若 - on battle start crit resistance +5% and crit damage reduction +10%. effectType=stat-modifier (crit-resist, crit-damage-reduction), 2 triggers on-round-start, once per battle.
-4. 332030174 盘石之固 - on normal/skill, damage reduction +15% for 1 round. effectType=stat-modifier (damage-reduction), triggers on-attack and on-skill-use (2 triggers).
-5. 332030175 偶像特权 - first 3 rounds, damage reduction +8% for 1 round each round; at end of round 3, heal self 5% max HP. effectType=stat-modifier + heal, triggers on-round-start (maxTriggers 3) and on-round-end (round-3 condition, once per battle).
+本轮修复前 12/14 个技能 `effects` 为空。现全部技能具备 `effectType` / `targetType` / `effects[]`，普攻含 damage。
 
-### Passive skills (8)
-6. 120001027 突破5 - when hit, gain 150 energy. effectType=energy (gain), trigger on-being-hit.
-7. 120000046 自保 - when has debuff, damage reduction +10%. effectType=stat-modifier (damage-reduction), trigger on-round-start with has-debuff condition.
-8. 120000051 蛰伏 - when HP below 50%, damage reduction +15%. effectType=stat-modifier (damage-reduction), trigger on-hp-threshold with hp-below-50 condition, once per battle.
-9. 120000054 鼓舞 - on attack, ally gains 25 energy (approximated as self). effectType=energy (gain), trigger on-attack.
-10. 120000055 反杀 - on attack vs target with higher HP%, crit rate +30% for 1 round. effectType=stat-modifier (crit-rate), trigger on-attack with target-hp-above-self condition.
-11. 120000059 祝福 - first 2 rounds, heal bonus +20% for 2 rounds. effectType=stat-modifier (heal-bonus), trigger on-round-start, maxTriggers 2.
-12. 120001003 生命护盾 - first time HP below 70%, shield = 80% DEF for 2 rounds. effectType=shield (percent-defense), trigger on-hp-threshold with hp-below-70 condition, once per battle.
+## 技能清单与实现
 
-### Normal (1)
-13. normal-profession-4 Knight Basic Attack (防御) - project fallback (damage 1.0x single).
+| 技能 | 名称 | 类型 | effectType / targetType | 实现要点 |
+|---|---|---|---|---|
+| normal-profession-4 | Knight Basic Attack | Normal | damage / single | 项目兜底普攻，1.0x 物理 |
+| 332030171 | 不屈 | Mastery | stat-modifier / self | 战斗开始最终伤害减免 +5%（permanent, oncePerBattle） |
+| 332030172 | 健壮 | Mastery | stat-modifier / self | 战斗开始 max-hp-percent +5%（permanent, oncePerBattle） |
+| 332030173 | 泰然自若 | Mastery | stat-modifier / self | 战斗开始 crit-resist +5%、crit-damage-reduction +10% |
+| 332030174 | 盘石之固 | Mastery | stat-modifier / self | 普攻/绝招后 1 回合 15% 减免（on-attack + on-skill-use） |
+| 332030175 | 偶像特权 | Mastery | stat-modifier / self | on-round-start 最多 3 次各给 8% 减免（timed 1）；on-round-end `round-3` 回复 5% 最大生命（heal percent-max-hp） |
+| 120001027 | 突破5 | Passive | energy / self | 受击回复 150 能量 |
+| 120000046 | 自保 | Passive | stat-modifier / self | 有减益时减免 +10%（`has-debuff`） |
+| 120000051 | 蛰伏 | Passive | stat-modifier / self | 生命 <50% 首次减免 +15% |
+| 120000054 | 鼓舞 | Passive | energy / self | 普攻回复 25 能量（友方触发近似） |
+| 120000055 | 反杀 | Passive | stat-modifier / self | 目标生命百分比更高时暴击 +30%（timed 1） |
+| 120000059 | 祝福 | Passive | stat-modifier / self | heal-bonus +20%，timed 2，oncePerBattle，maxTriggers 1 |
+| 120001003 | 生命护盾 | Passive | shield / self | 生命 <70% 首次获得 80% 防御护盾，timed 2 |
+| 6910001037 | Skill 6910001037 | Ultimate | damage / single | 元数据缺描述，2.0x 物理单击兜底，requiresInvestigation |
 
-### Ultimate (1)
-14. 6910001037 Skill 6910001037 - metadata fallback -> 2.0x physical damage single (requiresInvestigation).
+共享被动按 id 克隆其它英雄已实现效果，`ability` / `abilityDes` 保留闪耀甜心自身 tid。
 
-## Skills Fixed
-- Previously all 14 skills had no effectType/effects/triggers (only ability/abilityDes metadata).
-- Added effectType, targetType, energyCost, effects[], and triggers[] to all 14 skills using existing effect system (stat-modifier, energy, shield, damage).
-- Cloned implemented template from 热力厨娘 (3020101) for mastery skills 332030171/332030172/332030173/332030174 and shared passive skills (120001027, 120000046, 120000051, 120000054, 120000055, 120000059, 120001003), adapted to 闪耀甜心 skill IDs.
-- 偶像特权 (332030175) cloned from 通灵女巫's 傀儡咒术 (312040175) and adapted: 3-round damage-reduction 8% + round-3 heal 5% max HP.
-- ability/abilityDes tid fields corrected to match hero's own skill IDs.
-- No new effect types, status types, or target types required; reused existing framework.
+## 近似项与 requiresInvestigation
 
-## Remaining Issues
-- 偶像特权 (332030175) catalog says "前3回合，受到最终伤害降低8%，第3回合结束时回复自身5%的最大生命值"; implementation uses maxTriggers=3 on-round-start damage-reduction (1 round each) and a once-per-battle on-round-end heal gated by round-3 condition. round-3 condition returns true when state.round === 3 or undefined; engine round tracking may need verification (requiresInvestigation).
-- 鼓舞 (120000054) catalog says "友方普攻/绝招时能量回复25点" (ally normal/skill), but implementation triggers on self attack only (approximation; ally condition requires engine integration). requiresInvestigation.
-- Ultimate 6910001037 is metadata fallback (missing description). requiresInvestigation.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending). Passive triggers are registered at battle start but processTriggers is not yet called in executeTurn loop (integration pending). Consistent with prior hero implementations.
+| 技能 | requiresInvestigation | 原因与近似 |
+|---|---|---|
+| 332030174 盘石之固 | true | “下一次受伤”无单次消耗机制，近似 1 回合减免 |
+| 120000054 鼓舞 | true | 友方事件未接入，按自身普攻触发 |
+| 6910001037 | true | 缺描述，通用 2.0x 物理 |
 
-## Battle Engine Integration
-- No changes required to battle-engine.mjs; this hero uses existing effect framework and trigger registration via registerPassiveTriggers.
+偶像特权按描述可实现，未标 requiresInvestigation；第 3 回合结束回血依赖 `round-3` conditionKey（引擎在 state.round 缺失时放行）。
 
-## Test Results
-- personal-server/test/hero-3020301-skill-validation.test.mjs: 21/21 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
-- Battle engine tests: pre-existing passing
-EOF
-echo done
+## 遗留风险
+
+- 战斗引擎尚未把技能库 effects/triggers 接入 executeTurn（既有缺口，本轮不改）。
+- 本组使用的 `max-hp-percent` / `crit-resist` / `crit-damage-reduction` 等 statType 依赖 `game/effects/effect-types.mjs` 的扩展枚举（由并行分支加入）；若该扩展被回退，verify 会重新报无效 statType。
+

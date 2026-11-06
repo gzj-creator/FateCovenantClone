@@ -68,3 +68,12 @@ catalog 描述："前3回合，受到最终伤害降低8%，第3回合结束时�
 
 无新增 effect types / target types / trigger types。
 EOF
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 鼓舞 120000054 补 on-skill-use 触发（描述为"友方普攻/绝招时"）。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=4010201 通过；node --test test/hero-4010201-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

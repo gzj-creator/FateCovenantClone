@@ -1,196 +1,141 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
-import { EffectExecutor } from '../game/effects/effect-executor.mjs';
+import { createExecutor, skillFinder, makeUnit, assertAllSkillsExecutable, effectOf } from './skill-validation-helpers.mjs';
 
 const HERO_ID = 1030301;
+const EXPECTED_IDS = [
+  'normal-profession-1', '313030171', '313030172', '313030173', '313030174', '313030175',
+  '120001031', '120000001', '120000006', '120000009', '120000014', '120000015', '120001002', '6910001005',
+].sort();
 
-test('hero 1030301 skills are loaded from skill database', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 观星者');
+const db = loadSkillDatabase();
+const skills = getHeroSkills(HERO_ID, db);
+const skill = skillFinder(skills);
+const hero = (over = {}) => makeUnit({ id: HERO_ID, hp: 880, maxHp: 880, attack: 220, defense: 55, ...over });
+const enemy = (over = {}) => makeUnit({ id: 900, team: 2, hp: 1000, maxHp: 1000, attack: 100, defense: 50, ...over });
+
+test('1030301 观星者 加载全部 14 个技能', () => {
+  assert.equal(skills.length, 14);
+  assert.deepEqual(skills.map((s) => s.id).sort(), EXPECTED_IDS);
+  assertAllSkillsExecutable(skills);
 });
 
-test('passive triggers count is at least 10', () => {
-  const db = loadSkillDatabase();
-  const unit = { id: HERO_ID, team: 1, loc: 1, hp: 1200, maxHp: 1200, attack: 220, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [] };
+test('普攻 normal-profession-1 是单体物理伤害', () => {
+  assert.equal(skill('normal-profession-1').implementation.effectType, 'damage');
+  assert.equal(effectOf(skill('normal-profession-1')).type, 'damage');
+  assert.equal(effectOf(skill('normal-profession-1')).damageType, 'physical');
+});
+
+test('重击 / 无畏 / 直击要害 提供战斗开始的永久属性', () => {
+  assert.equal(effectOf(skill('313030171')).statType, 'damage-bonus');
+  assert.equal(effectOf(skill('313030171')).magnitude, 0.05);
+  assert.equal(skill('313030171').implementation.triggers[0].oncePerBattle, true);
+
+  assert.equal(effectOf(skill('313030172')).statType, 'attack-percent');
+  assert.equal(effectOf(skill('313030172')).magnitude, 0.05);
+
+  const crit = skill('313030173').implementation;
+  assert.deepEqual(crit.effects.map((e) => e.effect.statType), ['crit-rate', 'crit-damage']);
+  assert.deepEqual(crit.effects.map((e) => e.effect.magnitude), [0.05, 0.1]);
+  assert.equal(crit.triggers.length, 2);
+});
+
+test('迎头痛击 313030174 在普攻/绝招后驱散 1 个增益', () => {
+  const impl = skill('313030174').implementation;
+  assert.equal(impl.effectType, 'dispel');
+  assert.equal(impl.targetType, 'single');
+  assert.equal(effectOf(skill('313030174')).type, 'dispel');
+  assert.equal(effectOf(skill('313030174')).count, 1);
+  assert.equal(effectOf(skill('313030174')).removeType, 'buff');
+  assert.deepEqual(impl.triggers.map((t) => t.triggerType).sort(), ['on-attack', 'on-skill-use']);
+  for (const trigger of impl.triggers) {
+    assert.equal(trigger.effect.effect.type, 'dispel');
+    assert.equal(trigger.effect.effect.removeType, 'buff');
+  }
+});
+
+test('星爆陨灭 313030175 在终结技时附加暴击率与暴击伤害', () => {
+  const impl = skill('313030175').implementation;
+  assert.deepEqual(impl.effects.map((e) => e.effect.statType), ['crit-rate', 'crit-damage']);
+  assert.deepEqual(impl.effects.map((e) => e.effect.magnitude), [0.1, 0.15]);
+  assert.equal(impl.triggers.length, 2);
+  for (const trigger of impl.triggers) {
+    assert.equal(trigger.triggerType, 'on-ultimate-use');
+  }
+});
+
+test('突破9 / 狂怒 / 勃发 / 鼓舞 的数值与条件', () => {
+  const breakthrough = skill('120001031').implementation;
+  assert.equal(breakthrough.triggers.length, 2);
+  for (const trigger of breakthrough.triggers) {
+    assert.equal(trigger.effect.effect.type, 'energy');
+    assert.equal(trigger.effect.effect.magnitude, 200);
+  }
+
+  assert.equal(effectOf(skill('120000001')).statType, 'crit-rate');
+  assert.equal(effectOf(skill('120000001')).magnitude, 0.15);
+  assert.equal(skill('120000001').implementation.triggers[0].triggerType, 'on-ultimate-use');
+
+  assert.equal(effectOf(skill('120000006')).statType, 'crit-damage');
+  assert.equal(effectOf(skill('120000006')).magnitude, 0.2);
+  assert.equal(skill('120000006').implementation.triggers[0].conditionKey, 'hp-above-50');
+
+  assert.equal(effectOf(skill('120000009')).type, 'energy');
+  assert.equal(effectOf(skill('120000009')).magnitude, 25);
+});
+
+test('格挡 / 标记 / 生命偷取的触发与数值', () => {
+  const block = skill('120000014').implementation;
+  assert.equal(block.triggers[0].oncePerBattle, true);
+  assert.equal(effectOf(skill('120000014')).statType, 'damage-reduction');
+  assert.equal(effectOf(skill('120000014')).magnitude, 0.2);
+
+  assert.equal(skill('120000015').implementation.triggers[0].conditionKey, 'target-has-debuff');
+  assert.equal(effectOf(skill('120000015')).statType, 'crit-rate');
+  assert.equal(effectOf(skill('120000015')).magnitude, 0.25);
+
+  const lifesteal = skill('120001002').implementation;
+  assert.equal(lifesteal.triggers[0].triggerType, 'on-ultimate-use');
+  assert.equal(effectOf(skill('120001002')).type, 'heal');
+  assert.equal(effectOf(skill('120001002')).healType, 'percent-attack');
+  assert.equal(effectOf(skill('120001002')).multiplier, 0.2);
+});
+
+test('战斗开始时注册全部 17 条被动/专精触发', () => {
+  const unit = hero();
   registerPassiveTriggers(unit, db, { seed: 1 });
-  assert.ok(unit.triggers.length >= 10, 'expected >=10 triggers, got ' + unit.triggers.length);
-});
-
-test('all trigger effects are non-null and have a type', () => {
-  const db = loadSkillDatabase();
-  const unit = { id: HERO_ID, team: 1, loc: 1, hp: 1200, maxHp: 1200, attack: 220, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [] };
-  registerPassiveTriggers(unit, db, { seed: 1 });
-  for (const t of unit.triggers) {
-    assert.ok(t.effect, 'trigger ' + t.id + ' has no effect');
-    assert.ok(t.effect.effect && t.effect.effect.type, 'trigger ' + t.id + ' effect has no type');
+  assert.equal(unit.triggers.length, 17);
+  const kinds = new Set(unit.triggers.map((t) => t.triggerType));
+  for (const expected of ['on-round-start', 'on-attack', 'on-skill-use', 'on-ultimate-use']) {
+    assert.ok(kinds.has(expected), `missing trigger kind ${expected}`);
   }
 });
 
-test('重击 (313030171) registers on-round-start damage-bonus 0.05', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '313030171');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.triggerType, 'on-round-start');
-  assert.equal(trig.oncePerBattle, true);
-  assert.equal(trig.effect.effect.type, 'stat-modifier');
-  assert.equal(trig.effect.effect.statType, 'damage-bonus');
-  assert.equal(trig.effect.effect.magnitude, 0.05);
+test('EffectExecutor 实际执行伤害、治疗、能量、驱散与属性增益', () => {
+  const exec = createExecutor();
+  const unit = hero();
+  const foe = enemy();
+
+  const damage = exec.executeEffect(effectOf(skill('normal-profession-1')), unit, foe);
+  assert.equal(damage.type, 'damage');
+  assert.ok(damage.value >= 1 && damage.value < 200);
+
+  const heal = exec.executeEffect(effectOf(skill('120001002')), unit, unit);
+  assert.equal(heal.type, 'heal');
+  assert.equal(heal.value, Math.floor(220 * 0.2));
+
+  const energy = exec.executeEffect(effectOf(skill('120001031')), unit, unit);
+  assert.equal(energy.newEnergy, 200);
+
+  const buffed = enemy({ buffs: [{ type: 'strengthened', dispellable: true }] });
+  const dispel = exec.executeEffect(effectOf(skill('313030174')), unit, buffed);
+  assert.equal(dispel.count, 1);
+  assert.equal(buffed.buffs.length, 0);
+
+  const buffTarget = hero();
+  exec.executeEffect(effectOf(skill('313030172')), unit, buffTarget);
+  assert.equal(buffTarget.buffs[0].statType, 'attack-percent');
+  assert.equal(buffTarget.buffs[0].magnitude, 0.05);
 });
 
-test('无畏 (313030172) registers attack-percent 0.05', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '313030172');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.effect.effect.statType, 'attack-percent');
-  assert.equal(trig.effect.effect.magnitude, 0.05);
-});
-
-test('直击要害 (313030173) registers crit-rate and crit-damage', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '313030173');
-  assert.equal(skill.implementation.triggers.length, 2);
-  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
-  assert.ok(statTypes.includes('crit-rate'));
-  assert.ok(statTypes.includes('crit-damage'));
-});
-
-test('迎头痛击 (313030174) registers on-attack/on-skill-use dispel', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '313030174');
-  assert.equal(skill.implementation.triggers.length, 2);
-  const types = skill.implementation.triggers.map(t => t.triggerType).sort();
-  assert.deepEqual(types, ['on-attack', 'on-skill-use']);
-  for (const t of skill.implementation.triggers) {
-    assert.equal(t.effect.effect.type, 'dispel');
-    assert.equal(t.effect.effect.removeType, 'buff');
-  }
-});
-
-test('星爆陨灭 (313030175) registers on-ultimate-use crit-rate and crit-damage', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '313030175');
-  assert.equal(skill.implementation.triggers.length, 2);
-  for (const t of skill.implementation.triggers) {
-    assert.equal(t.triggerType, 'on-ultimate-use');
-    assert.equal(t.effect.effect.type, 'stat-modifier');
-  }
-  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
-  assert.ok(statTypes.includes('crit-rate'));
-  assert.ok(statTypes.includes('crit-damage'));
-});
-
-test('突破9 (120001031) grants 200 energy', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '120001031');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.effect.effect.type, 'energy');
-  assert.equal(trig.effect.effect.energyType, 'gain');
-  assert.equal(trig.effect.effect.magnitude, 200);
-});
-
-test('狂怒 (120000001) registers on-ultimate-use crit-rate 0.15', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '120000001');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.triggerType, 'on-ultimate-use');
-  assert.equal(trig.effect.effect.statType, 'crit-rate');
-  assert.equal(trig.effect.effect.magnitude, 0.15);
-});
-
-test('勃发 (120000006) registers hp-above-50 condition', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '120000006');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.conditionKey, 'hp-above-50');
-  assert.equal(trig.effect.effect.statType, 'crit-damage');
-  assert.equal(trig.effect.effect.magnitude, 0.20);
-});
-
-test('鼓舞 (120000009) grants 25 energy', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '120000009');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.effect.effect.type, 'energy');
-  assert.equal(trig.effect.effect.energyType, 'gain');
-  assert.equal(trig.effect.effect.magnitude, 25);
-});
-
-test('格挡 (120000014) registers damage-reduction 0.20 (once per battle)', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '120000014');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.oncePerBattle, true);
-  assert.equal(trig.effect.effect.statType, 'damage-reduction');
-  assert.equal(trig.effect.effect.magnitude, 0.20);
-});
-
-test('标记 (120000015) registers target-has-debuff condition', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '120000015');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.conditionKey, 'target-has-debuff');
-  assert.equal(trig.effect.effect.statType, 'crit-rate');
-  assert.equal(trig.effect.effect.magnitude, 0.25);
-});
-
-test('生命偷取 (120001002) registers on-ultimate-use heal', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '120001002');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.triggerType, 'on-ultimate-use');
-  assert.equal(trig.effect.effect.type, 'heal');
-  assert.equal(trig.effect.effect.healType, 'percent-attack');
-  assert.equal(trig.effect.effect.multiplier, 0.2);
-});
-
-test('6910001005 ultimate has a damage effect', () => {
-  const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '6910001005');
-  assert.ok(skill.implementation.effects.length > 0);
-  assert.equal(skill.implementation.effects[0].effect.type, 'damage');
-  assert.equal(skill.implementation.requiresInvestigation, true);
-});
-
-test('dispel value is reasonable', () => {
-  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
-  const actor = { id: HERO_ID, team: 1, loc: 1, hp: 1200, maxHp: 1200, attack: 220, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
-  const target = { id: 2, team: 2, loc: 1, hp: 600, maxHp: 600, attack: 100, defense: 50, alive: true, buffs: [{ type: 'strengthened', dispellable: true }], debuffs: [], triggers: [], shield: 0 };
-  const effect = { type: 'dispel', count: 1, removeType: 'buff' };
-  const result = executor.executeDispel(effect, actor, target);
-  assert.equal(result.type, 'dispel');
-  assert.equal(result.count, 1);
-});
-
-test('energy gain number is reasonable', () => {
-  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
-  const unit = { id: HERO_ID, hp: 1200, maxHp: 1200, attack: 220, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [], energy: 500 };
-  const effect = { type: 'energy', energyType: 'gain', magnitude: 200 };
-  const result = executor.executeEnergy(effect, unit, unit);
-  assert.ok(result.newEnergy >= 0 && result.newEnergy <= 1000);
-  assert.equal(result.newEnergy, 700);
-});
-
-test('heal value is reasonable', () => {
-  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
-  const unit = { id: HERO_ID, hp: 1200, maxHp: 1200, attack: 220, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [], energy: 0 };
-  const effect = { type: 'heal', healType: 'percent-attack', multiplier: 0.2 };
-  const result = executor.executeHeal(effect, unit, unit);
-  assert.ok(result.value > 0, 'heal value should be > 0');
-  assert.ok(result.value < 10000, 'heal value should not be extreme');
-});

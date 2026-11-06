@@ -193,4 +193,3 @@ test('heal value is reasonable', () => {
   assert.ok(result.value > 0, 'heal value should be > 0');
   assert.ok(result.value < 10000, 'heal value should not be extreme');
 });
-"

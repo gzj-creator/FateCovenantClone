@@ -10,6 +10,23 @@ test('hero 2040201 skills are loaded from skill database', () => {
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
   assert.equal(skills.length, 15, 'expected 15 skills for 幽艳瑞贝卡');
+  assert.deepEqual(skills.map(skill => skill.id), [
+    'normal-profession-2',
+    '2204020123',
+    '324020171',
+    '324020172',
+    '324020173',
+    '324020174',
+    '324020175',
+    '120001026',
+    '120000001',
+    '120000006',
+    '120000009',
+    '120000014',
+    '120000015',
+    '120001004',
+    '6910001100',
+  ]);
 });
 
 test('passive triggers count is at least 10', () => {
@@ -72,12 +89,33 @@ test('活力全开 (324020172) registers ultimate-use triggers with energy loss 
   assert.equal(dmgTrig.effect.effect.magnitude, 0.10);
 });
 
-test('送别礼物 (324020173) requires investigation (extra ultimate + shield destroy)', () => {
+test('送别礼物 (324020173) executes extra ultimate damage and shield dispel at turn end', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '324020173');
   assert.ok(skill);
   assert.equal(skill.implementation.requiresInvestigation, true);
+  assert.equal(skill.implementation.effectType, 'damage');
+  assert.equal(skill.implementation.targetType, 'all-enemies');
+  assert.equal(skill.implementation.effects.length, 2);
+  const damage = skill.implementation.effects[0];
+  assert.equal(damage.effect.type, 'damage');
+  assert.equal(damage.effect.damageType, 'magical');
+  assert.equal(damage.effect.multiplier, 1.3);
+  assert.equal(damage.target.targetType, 'all-enemies');
+  const shieldBreak = skill.implementation.effects[1];
+  assert.equal(shieldBreak.effect.type, 'dispel');
+  assert.equal(shieldBreak.effect.removeType, 'buff');
+  assert.equal(shieldBreak.effect.count, 1);
+  const triggers = skill.implementation.triggers;
+  assert.equal(triggers.length, 2);
+  for (const trig of triggers) {
+    assert.equal(trig.triggerType, 'on-turn-end');
+  }
+  const dispelTrig = triggers.find(t => t.effect.effect.type === 'dispel');
+  const damageTrig = triggers.find(t => t.effect.effect.type === 'damage');
+  assert.ok(dispelTrig && damageTrig);
+  assert.ok(dispelTrig.priority < damageTrig.priority, 'shield destroy should resolve before the extra ultimate');
 });
 
 test('闪亮登场 (324020174) registers energy gain on attack/skill and damage-reduction on ultimate', () => {
@@ -238,4 +276,20 @@ test('stat modifier effect is executable', () => {
   const result = executor.executeStatModifier(effect, actor, target);
   assert.ok(result, 'stat-modifier should execute');
   assert.equal(result.type, 'stat-modifier');
+});
+
+test('shield destroy of 送别礼物 removes one dispellable enemy buff', () => {
+  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
+  const actor = { id: HERO_ID, team: 1, loc: 1, hp: 6600, maxHp: 6600, attack: 900, defense: 300, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  const target = {
+    id: 2, team: 2, loc: 1, hp: 5000, maxHp: 5000, alive: true, shield: 500,
+    buffs: [{ type: 'strengthened', dispellable: true }, { type: 'hasted', dispellable: false }],
+    debuffs: [], triggers: [],
+  };
+  const effect = { type: 'dispel', removeType: 'buff', count: 1 };
+  const result = executor.executeDispel(effect, actor, target);
+  assert.equal(result.removeType, 'buff');
+  assert.equal(result.count, 1);
+  assert.equal(target.buffs.length, 1);
+  assert.equal(target.buffs[0].type, 'hasted');
 });

@@ -195,6 +195,50 @@ test('stat modifier effect is executable', () => {
   assert.ok(result, 'stat-modifier should execute');
   assert.equal(result.type, 'stat-modifier');
 });
+const EXPECTED_SKILL_IDS = [
+  'normal-profession-2', '2504070123', '354070171', '354070172', '354070173', '354070174', '354070175',
+  '120001028', '120000001', '120000006', '120000009', '120000014', '120000015', '120001004'
+];
+
+test('complete skill id list loads in catalog order', () => {
+  const db = loadSkillDatabase();
+  assert.deepEqual(getHeroSkills(HERO_ID, db).map(skill => skill.id), EXPECTED_SKILL_IDS);
+});
+
+test('every skill declares effectType matching its first declared effect', () => {
+  const db = loadSkillDatabase();
+  for (const skill of getHeroSkills(HERO_ID, db)) {
+    const impl = skill.implementation;
+    assert.ok(impl.effectType, skill.id + ' missing effectType');
+    assert.ok(Array.isArray(impl.effects) && impl.effects.length > 0, skill.id + ' missing effects');
+    assert.equal(impl.effectType, impl.effects[0].effect.type, skill.id + ' effectType mismatch');
+  }
+});
+
+test('the five mastery rows restored from the task brief are present as Mastery skills', () => {
+  const db = loadSkillDatabase();
+  const skills = getHeroSkills(HERO_ID, db);
+  for (const id of ['354070171', '354070172', '354070173', '354070174', '354070175']) {
+    const skill = skills.find(s => s.id === id);
+    assert.ok(skill, id + ' missing');
+    assert.equal(skill.type, 'Mastery');
+    assert.ok(skill.description && skill.description.length > 0, id + ' needs a description');
+    assert.equal(skill.implementation.requiresInvestigation, true);
+  }
+});
+
+test('坠羽星落 deals 138% magic to all enemies plus 20% max-HP extra hit', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '2504070123');
+  const [main, extra] = skill.implementation.effects;
+  assert.equal(skill.implementation.targetType, 'all-enemies');
+  assert.equal(main.target.targetType, 'all-enemies');
+  assert.equal(main.effect.damageType, 'magical');
+  assert.equal(main.effect.multiplier, 1.38);
+  assert.equal(extra.effect.damageType, 'percent-max-hp');
+  assert.equal(extra.effect.magnitude, 0.2);
+});
+
 
 test('shield effect is executable', () => {
   const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });

@@ -1,62 +1,46 @@
-# Hero 3020201 (啵啵水母) Skill Validation & Implementation
+# Hero 3020201 啵啵水母 技能补全（技能组 B）
 
-Date: 2026-11-03
-Branch: skill-system-validation
+日期：2026-11-05（覆盖此前 2026-11-03 版本）
+技能数：14
 
-## Hero
-- ID: 3020201, Name: 啵啵水母, Role: Ranger
-- Stats: HP 630, ATK 95, DEF 60, SPD 106
+## 校验结论
 
-## Skills Validated (14 total)
+- `node scripts/verify-hero-skills.mjs --hero=3020201`：通过（1/1 heroes clean, 0 failing）
+- `node --test test/hero-3020201-skill-validation.test.mjs`：22/22 通过
+- 写入方式：补丁 `agent/workflow/skill-system-validation/patch-b-20261105/hero-3020201.json` 经 `apply-hero-skill-patch.mjs` 应用。
 
-### Mastery skills (5)
-1. 332020171 不屈 - on battle start final damage reduction +5%. effectType=stat-modifier (damage-reduction), trigger on-round-start, once per battle.
-2. 332020172 健壮 - on battle start max HP +5%. effectType=stat-modifier (max-hp-percent), trigger on-round-start, once per battle.
-3. 332020173 超群技艺 - on battle start status hit and resist +10%. effectType=stat-modifier (status-hit, status-resist), 2 triggers on-round-start, once per battle.
-4. 332020174 扶危定乱 - after normal/skill, dispel 1 debuff from a random ally. effectType=dispel (removeType=debuff), triggers on-attack and on-skill-use.
-5. 332020175 护体波涛 - first time HP < 40%, gain shield = 15% max HP. effectType=shield (percent-max-hp), trigger on-hp-threshold with hp-below-40 condition, once per battle.
+修复前 332020174 扶危定乱缺 effects，另有 `max-hp-percent`、`status-hit`、`status-resist`、`anti-crit`、`evasion` 等非枚举 statType，verify 报 11 条问题。
 
-### Passive skills (8)
-6. 120001028 突破6 - on ally normal/skill, self gains 50 energy. effectType=energy (gain), triggers on-attack and on-skill-use.
-7. 120000034 铁甲 - when HP > 50%, anti-crit +20%. effectType=stat-modifier (anti-crit), trigger on-round-start.
-8. 120000037 亢奋 - when enemy killed, self gains 100 energy. effectType=energy (gain), trigger on-kill.
-9. 120000042 暴怒 - on skill use, crit damage +30%. effectType=stat-modifier (crit-damage), trigger on-skill-use.
-10. 120000044 奋激 - after first ultimate, damage reduction +20%. effectType=stat-modifier (damage-reduction), trigger on-ultimate-use, once per battle.
-11. 120001005 战斗续航 - at round start if HP < 30%, heal self for 30% ATK. effectType=heal (percent-attack), trigger on-round-start with hp-below-30 condition.
-12. 120001015 均衡卸力 - after ultimate, evasion +20% for 1 round. effectType=stat-modifier (evasion), trigger on-ultimate-use. requiresInvestigation (evasion stat not in STAT_TYPES; approximated).
+## 技能清单与实现
 
-### Normal (1)
-13. normal-profession-3 Ranger Basic Attack (辅助) - project fallback (damage 1.0x single).
+| 技能 | 名称 | 类型 | effectType / targetType | 实现要点 |
+|---|---|---|---|---|
+| normal-profession-3 | Ranger Basic Attack | Normal | damage / single | 1.0x 物理 |
+| 332020171 | 不屈 | Mastery | stat-modifier / self | 战斗开始 5% 最终伤害减免 |
+| 332020172 | 健壮 | Mastery | stat-modifier / self | 战斗开始 max-hp-percent +5%（本轮调整） |
+| 332020173 | 超群技艺 | Mastery | stat-modifier / self | 战斗开始 status-hit +10%、status-resist +10%（本轮调整） |
+| 332020174 | 扶危定乱 | Mastery | dispel / random-ally | **本轮补全**：普攻/绝招后驱散 1 个友方减益（`removeType: debuff`, count 1） |
+| 332020175 | 护体波涛 | Mastery | shield / self | 生命首次 <40% 获得 15% 最大生命护盾 |
+| 120001028 | 突破6 | Passive | energy / self | 普攻/技能 +50 能量（友方触发按自身近似） |
+| 120000034 | 铁甲 | Passive | stat-modifier / self | 生命 >50% 时 anti-crit +20%（本轮调整） |
+| 120000037 | 亢奋 | Passive | energy / self | 敌方被击退→on-kill +100 能量 |
+| 120000042 | 暴怒 | Passive | stat-modifier / self | 释放技能暴伤 +30% |
+| 120000044 | 奋激 | Passive | stat-modifier / self | 首次终结技后减免 +20% |
+| 120001005 | 战斗续航 | Passive | heal / self | 生命 <30% 回 30% 攻击力 |
+| 120001015 | 均衡卸力 | Passive | stat-modifier / self | 终结技后 evasion +20%（timed 1，本轮调整） |
+| 6910001036 | Skill 6910001036 | Ultimate | damage / single | 缺描述，2.0x 物理兜底 |
 
-### Ultimate (1)
-14. 6910001036 Skill 6910001036 - metadata fallback -> 2.0x physical damage single (requiresInvestigation).
+## 近似项与 requiresInvestigation
 
-## Skills Fixed
-- Previously all 14 skills had no effectType/effects/triggers (only ability/abilityDes metadata).
-- Added effectType, targetType, energyCost, effects[], and triggers[] to all 14 skills using existing effect system (stat-modifier, energy, shield, heal, dispel, damage).
-- Cloned implemented templates from 吟游诗人 (1010101) for mastery skills 332020171/332020172/332020173 and shared passive skills (120001028, 120000034, 120000037, 120000042, 120000044, 120001005), adapted to 啵啵水母 skill IDs.
-- 扶危定乱 (332020174) implemented as dispel (removeType=debuff) on random-ally, triggers on-attack and on-skill-use.
-- 护体波涛 (332020175) implemented as on-hp-threshold shield 15% max HP at HP < 40%, once per battle.
-- 均衡卸力 (120001015) implemented as stat-modifier evasion +20% for 1 round on ultimate (requiresInvestigation).
-- normal-profession-3 cloned from 糖果侦探 (3010201) damage fallback.
-- ability/abilityDes tid fields preserved from original hero's metadata.
-- No new effect types, status types, or target types required; reused existing framework. Added 'hp-below-40' condition key to skill-integration.mjs.
+| 技能 | requiresInvestigation | 原因与近似 |
+|---|---|---|
+| 332020174 扶危定乱 | true | “随机 1 个友方”目标由引擎随机选取，自身是否在候选内取决于战斗队列 |
+| 6910001036 | true | 缺描述，通用 2.0x 物理 |
 
-## Remaining Issues
-- 均衡卸力 (120001015) catalog says "终结技后，闪避增加20%，持续1回合"; evasion stat is not in STAT_TYPES, so 'evasion' is used as statType (requiresInvestigation). Engine does not currently process evasion; consistent with prior heroes.
-- 扶危定乱 (332020174) catalog says "随机驱散1个友方的减益状态"; implemented as dispel on random-ally (targetType=random-ally). Engine target selection for random-ally is supported.
-- Ultimate 6910001036 is metadata fallback (missing description). requiresInvestigation.
-- Exact multipliers from FightTable.Effect/Buff not yet joined; values derived from catalog text (conservative).
-- Battle engine still uses prototype behavior profiles; skill effect application via applySkillEffects is not yet invoked in executeTurn (integration pending). Passive triggers are registered at battle start but processTriggers is not yet called in executeTurn loop (integration pending). Consistent with prior hero implementations.
+120001028 突破6 的 notes 仍标注友方事件按自身近似；如需与其它英雄统一，可后续改为 requiresInvestigation。
 
-## Battle Engine Integration
-- No changes required to battle-engine.mjs; this hero uses existing effect framework and trigger registration via registerPassiveTriggers.
-- Added 'hp-below-40' condition key to evaluateConditionKey in skill-integration.mjs.
+## 遗留风险
 
-## Test Results
-- personal-server/test/hero-3020201-skill-validation.test.mjs: 22/22 passing
-- Effect executor tests: pre-existing passing
-- Target selector tests: pre-existing passing
-- Battle engine tests: pre-existing passing
-EOF
-echo done
+- 战斗引擎未调用技能库效果（既有缺口）。
+- 本组使用的 `max-hp-percent` / `crit-resist` / `crit-damage-reduction` 等 statType 依赖 `game/effects/effect-types.mjs` 的扩展枚举（由并行分支加入）；若该扩展被回退，verify 会重新报无效 statType。
+

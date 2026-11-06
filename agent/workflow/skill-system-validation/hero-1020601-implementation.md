@@ -74,3 +74,13 @@ catalog 描述："格蕾丝开场时为我方前排队友施加5%最大生命值
 无新增 effect types / target types / trigger types。
 EOF
 echo done
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 升格防御 6102060102 的 targetType front-row-allies 不在 TARGET_TYPES 词表内，TargetSelector 会静默按敌方最前排单体选人（护盾会加给敌人），改为 all-allies 并标 requiresInvestigation，notes 记录前排范围暂无法区分。
+- 鼓舞 120000054 补 on-skill-use 触发（描述为"友方普攻/绝招时"，原实现只有 on-attack）。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=1020601 通过；node --test test/hero-1020601-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

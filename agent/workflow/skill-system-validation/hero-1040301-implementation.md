@@ -58,3 +58,12 @@ Branch: skill-system-validation
 - Effect executor tests: pre-existing passing
 - Target selector tests: pre-existing passing
 - Battle engine tests: pre-existing passing
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 梦萦魂绕 314030174 的 description 去掉末尾被拼接进来的 314030175 安魂长眠文本，自身关于减伤与终结技增伤的描述保留。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=1040301 通过；node --test test/hero-1040301-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

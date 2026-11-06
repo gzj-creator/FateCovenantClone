@@ -1,0 +1,122 @@
+{
+  "heroId": 2040201,
+  "skills": [
+    {
+      "id": "324020173",
+      "implementation": {
+        "source": "FightTable.Ability + FightTable.AbilityDes",
+        "resolvedAbility": true,
+        "resolvedDescription": true,
+        "ability": {
+          "tid": 324020173,
+          "type": 3,
+          "dmg_type": 9,
+          "effect_type": 0,
+          "run_type": 1
+        },
+        "abilityDes": {
+          "tid": 324020173,
+          "type_des": 9,
+          "show_name": 6505157,
+          "skill_icon": "mastery_skill_gold_01.png",
+          "text": 699999113,
+          "detail_text": 0
+        },
+        "catalogTypeMatch": true,
+        "effectType": "damage",
+        "targetType": "all-enemies",
+        "energyCost": 0,
+        "effects": [
+          {
+            "target": {
+              "targetType": "all-enemies"
+            },
+            "effect": {
+              "type": "damage",
+              "damageType": "magical",
+              "multiplier": 1.3,
+              "canCrit": true
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          },
+          {
+            "target": {
+              "targetType": "all-enemies"
+            },
+            "effect": {
+              "type": "dispel",
+              "removeType": "buff",
+              "count": 1
+            },
+            "duration": {
+              "durationType": "instant",
+              "rounds": 0
+            },
+            "chance": 1
+          }
+        ],
+        "triggers": [
+          {
+            "triggerType": "on-turn-end",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "all-enemies"
+              },
+              "effect": {
+                "type": "dispel",
+                "removeType": "buff",
+                "count": 1
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": -1,
+            "chance": 1
+          },
+          {
+            "triggerType": "on-turn-end",
+            "condition": null,
+            "conditionKey": null,
+            "cooldown": 0,
+            "maxTriggers": 0,
+            "oncePerBattle": false,
+            "oncePerRound": false,
+            "effect": {
+              "target": {
+                "targetType": "all-enemies"
+              },
+              "effect": {
+                "type": "damage",
+                "damageType": "magical",
+                "multiplier": 1.3,
+                "canCrit": true
+              },
+              "duration": {
+                "durationType": "instant",
+                "rounds": 0
+              },
+              "chance": 1
+            },
+            "priority": 0,
+            "chance": 1
+          }
+        ],
+        "requiresInvestigation": true,
+        "notes": "混合效果（主效果为伤害）：自身行动回合结束后再释放1次终结技，以“捣蛋到底”的130%全体法术伤害复刻一次作为近似；释放前摧毁敌方全体20%护盾无对应效果，近似为先驱散敌方全体1个可驱散增益（触发 priority -1 先于伤害）。每回合触发次数由引擎回合事件控制。"
+      }
+    }
+  ]
+}

@@ -58,3 +58,12 @@ Branch: skill-system-validation
 - Effect executor tests: pre-existing passing
 - Target selector tests: pre-existing passing
 - Battle engine tests: pre-existing passing
+
+## 审计修订（2026-11-05）
+
+本轮为技能库审计的修订，判定依据是技能 description 与 ability/abilityDes 元数据，测试断言与实现冲突时以描述为准。
+
+- 4 条 Mastery（323030171-174）的 ability.tid 与 abilityDes.tid 原为 31102xxxx（克隆模板未替换），改为自身技能 id；文本类子字段待原始表对齐。
+
+- 验证：node scripts/verify-hero-skills.mjs --hero=2030301 通过；node --test test/hero-2030301-skill-validation.test.mjs 通过。
+- 完整分类与影响评估见 agent/workflow/skill-system-validation/audit-20261105.md。

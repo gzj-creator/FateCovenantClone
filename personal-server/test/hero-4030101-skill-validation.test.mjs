@@ -206,6 +206,50 @@ test('stat modifier effect is executable', () => {
   assert.ok(result, 'stat-modifier should execute');
   assert.equal(result.type, 'stat-modifier');
 });
+const EXPECTED_SKILL_IDS = [
+  'normal-profession-3', '343010171', '343010172', '343010173', '343010174', '343010175',
+  '120001028', '120000032', '120000034', '120000037', '120000042', '120000044', '120001003', '6910001043'
+];
+
+test('complete skill id list loads in catalog order', () => {
+  const db = loadSkillDatabase();
+  assert.deepEqual(getHeroSkills(HERO_ID, db).map(skill => skill.id), EXPECTED_SKILL_IDS);
+});
+
+test('every skill declares effectType matching its first declared effect', () => {
+  const db = loadSkillDatabase();
+  for (const skill of getHeroSkills(HERO_ID, db)) {
+    const impl = skill.implementation;
+    assert.ok(impl.effectType, skill.id + ' missing effectType');
+    assert.ok(Array.isArray(impl.effects) && impl.effects.length > 0, skill.id + ' missing effects');
+    assert.equal(impl.effectType, impl.effects[0].effect.type, skill.id + ' effectType mismatch');
+  }
+});
+
+test('扶危定乱 declares a random-ally debuff dispel in effects[]', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '343010174');
+  const entry = skill.implementation.effects[0];
+  assert.equal(skill.implementation.effectType, 'dispel');
+  assert.equal(entry.target.targetType, 'random-ally');
+  assert.equal(entry.effect.type, 'dispel');
+  assert.equal(entry.effect.removeType, 'debuff');
+  assert.equal(entry.effect.count, 1);
+});
+
+test('生命护盾 declares the 80% defense shield for 2 rounds in effects[]', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '120001003');
+  const entry = skill.implementation.effects[0];
+  assert.equal(skill.implementation.effectType, 'shield');
+  assert.equal(entry.target.targetType, 'self');
+  assert.equal(entry.effect.type, 'shield');
+  assert.equal(entry.effect.shieldType, 'percent-defense');
+  assert.equal(entry.effect.multiplier, 0.8);
+  assert.equal(entry.duration.durationType, 'timed');
+  assert.equal(entry.duration.rounds, 2);
+});
+
 
 test('shield effect is executable', () => {
   const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });

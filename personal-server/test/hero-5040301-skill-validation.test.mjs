@@ -200,6 +200,50 @@ test('stat modifier effect is executable', () => {
   assert.ok(result, 'stat-modifier should execute');
   assert.equal(result.type, 'stat-modifier');
 });
+const EXPECTED_SKILL_IDS = [
+  'normal-profession-2', '2504030123', '354030172', '354030173', '354030174', '354030175',
+  '120001026', '120000017', '120000020', '120000023', '120000026', '120000028', '120001009'
+];
+
+test('complete skill id list loads in catalog order', () => {
+  const db = loadSkillDatabase();
+  assert.deepEqual(getHeroSkills(HERO_ID, db).map(skill => skill.id), EXPECTED_SKILL_IDS);
+});
+
+test('every skill declares effectType matching its first declared effect', () => {
+  const db = loadSkillDatabase();
+  for (const skill of getHeroSkills(HERO_ID, db)) {
+    const impl = skill.implementation;
+    assert.ok(impl.effectType, skill.id + ' missing effectType');
+    assert.ok(Array.isArray(impl.effects) && impl.effects.length > 0, skill.id + ' missing effects');
+    assert.equal(impl.effectType, impl.effects[0].effect.type, skill.id + ' effectType mismatch');
+  }
+});
+
+test('绛丝乱舞 deals 130% physical ignore-defense plus 15% max-HP hit to all enemies', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '2504030123');
+  const [main, extra] = skill.implementation.effects;
+  assert.equal(skill.implementation.targetType, 'all-enemies');
+  assert.equal(main.target.targetType, 'all-enemies');
+  assert.equal(main.effect.damageType, 'physical');
+  assert.equal(main.effect.multiplier, 1.3);
+  assert.equal(main.effect.ignoreDefense, 0.5);
+  assert.equal(extra.effect.damageType, 'percent-max-hp');
+  assert.equal(extra.effect.magnitude, 0.15);
+});
+
+test('shield and heal effects execute with reasonable values', () => {
+  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
+  const shielded = { id: 1, hp: 8000, maxHp: 8000, attack: 1080, defense: 360, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  const shieldResult = executor.executeShield({ type: 'shield', shieldType: 'percent-defense', multiplier: 0.8 }, shielded, shielded);
+  assert.equal(shieldResult.value, 288);
+  const wounded = { id: 2, hp: 1000, maxHp: 8000, attack: 1080, defense: 360, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
+  const healResult = executor.executeHeal({ type: 'heal', healType: 'percent-max-hp', multiplier: 0.5, overheal: false }, wounded, wounded);
+  assert.equal(healResult.value, 4000);
+  assert.equal(wounded.hp, 5000);
+});
+
 
 test('heal/shield numbers are reasonable', () => {
   const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
