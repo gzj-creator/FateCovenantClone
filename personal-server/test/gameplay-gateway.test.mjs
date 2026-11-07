@@ -246,6 +246,64 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const collectedFish = codec.unpack('pb_fishing_act_get_rsp', Buffer.from(response.data ?? '', 'base64'));
   assert.equal(collectedFish.data.get_num, '1');
   assert.deepEqual(collectedFish.data.wait_fish, {});
+  // Fishing records and the per-fish top three are built from the catch that
+  // just went through 110302; both reads take the activity id as an ETF argument.
+  assert.equal(game.store.inspect(db => db.prepare('SELECT COUNT(*) AS n FROM fishing_act_catches WHERE act_id=?').get(1074003).n), 1);
+  response = await request(110303, 70, await encodeEtf([1074003]));
+  assert.equal(response.err, undefined);
+  const fishTop = codec.unpack('pb_fishing_act_get_top_rsp', Buffer.from(response.data ?? '', 'base64')).high_score_list;
+  assert.deepEqual(fishTop.map(fish => fish.fish_id), [collectedFish.fish_id]);
+  assert.equal(fishTop[0].data_list.length, 1);
+  assert.equal(fishTop[0].data_list[0].role_id, String(game.store.read().state.roleId));
+  response = await request(110308, 71, await encodeEtf([1074003]));
+  assert.equal(response.err, undefined);
+  const fishRecords = codec.unpack('pb_fishing_act_get_record_rsp', Buffer.from(response.data ?? '', 'base64')).record_list;
+  assert.equal(fishRecords.length, 1);
+  assert.equal(fishRecords[0].fish_id, collectedFish.fish_id);
+  assert.equal(fishRecords[0].map_id, '201');
+  assert.equal(fishRecords[0].name, 'Local Adventurer');
+  // Codex award is the first-catch award of the recorded fish and cannot repeat.
+  response = await request(110304, 72, codec.pack('pb_fishing_act_common_list_req', { act_id: 1074003, value: [Number(collectedFish.fish_id)] }));
+  assert.equal(response.err, undefined);
+  const codexAward = codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64'));
+  assert.deepEqual(codexAward.res.changes.map(change => [change.tid, change.diff_num]), [['101500', '10']]);
+  assert.ok(Buffer.from(codexAward.data.book_state, 'base64').length > 0);
+  response = await request(110304, 73, codec.pack('pb_fishing_act_common_list_req', { act_id: 1074003, value: [Number(collectedFish.fish_id)] }));
+  assert.equal(response.err.err, 310);
+  // Rod switch needs the rod item; 100034500 unlocks rod 3.
+  response = await request(110306, 74, codec.pack('pb_fishing_act_common_req', { act_id: 1074003, value: 3 }));
+  assert.equal(response.err.err, 311);
+  addResource(game.store, 100034500, 1, 0);
+  response = await request(110306, 75, codec.pack('pb_fishing_act_common_req', { act_id: 1074003, value: 3 }));
+  assert.equal(response.err, undefined);
+  const rodRow = game.store.inspect(db => db.prepare('SELECT rod,have_rod_list_json FROM fishing_activity_state WHERE act_id=?').get(1074003));
+  assert.equal(rodRow.rod, '3');
+  assert.deepEqual(JSON.parse(rodRow.have_rod_list_json), [1, 3]);
+  // Level, codex progress and up-rank awards each pay once and keep their bits.
+  game.store.inspect(db => db.prepare('UPDATE fishing_activity_state SET score=1000 WHERE act_id=?').run(1074003));
+  response = await request(110307, 76, codec.pack('pb_fishing_act_common_req', { act_id: 1074003, value: 201 }));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64')).res.changes.map(change => change.tid), ['830902', '101500']);
+  response = await request(110307, 77, codec.pack('pb_fishing_act_common_req', { act_id: 1074003, value: 201 }));
+  assert.equal(response.err.err, 310);
+  // Fish 101-105 are ordinary codex fish, which makes the five-unlock tier real.
+  const fiveFish = [101, 102, 103, 104, 105].map(tid => ({ fish_id: String(tid), size: '100', score: '200' }));
+  game.store.inspect(db => db.prepare('UPDATE fishing_activity_state SET high_size_list_json=? WHERE act_id=?').run(JSON.stringify(fiveFish), 1074003));
+  response = await request(110310, 78, codec.pack('pb_fishing_act_common_list_req', { act_id: 1074003, value: [301] }));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64')).res.changes.map(change => [change.tid, change.diff_num]), [['101500', '1000']]);
+  response = await request(110310, 79, codec.pack('pb_fishing_act_common_list_req', { act_id: 1074003, value: [301] }));
+  assert.equal(response.err.err, 310);
+  response = await request(110309, 80, await encodeEtf([1074003]));
+  assert.equal(response.err.err, 311);
+  game.store.inspect(db => db.prepare('UPDATE fishing_activity_state SET high_size=80000 WHERE act_id=?').run(1074003));
+  response = await request(110309, 81, await encodeEtf([1074003]));
+  assert.equal(response.err, undefined);
+  const rankAward = codec.unpack('pb_fishing_act_data_res', Buffer.from(response.data ?? '', 'base64'));
+  assert.equal(rankAward.data.go_rank_reward, true);
+  assert.deepEqual(rankAward.res.changes.map(change => change.tid), ['101500', '392002', '391002']);
+  response = await request(110309, 82, await encodeEtf([1074003]));
+  assert.equal(response.err.err, 310);
   response = await request(116004, 7, codec.pack('pb_help_up_get_times_req', { act_id: 92144 }));
   assert.equal(Number(codec.unpack('pb_help_up_get_times_rsp', Buffer.from(response.data ?? '', 'base64')).times ?? 0), 0);
   response = await request(116001, 8, codec.pack('pb_help_up_task_reward_req', { act_id: 92144, task_id_list: [1] }));

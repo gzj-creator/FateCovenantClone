@@ -52,12 +52,19 @@ function resource(store, tid) {
   return BigInt(store.read().resources.get(String(tid))?.num ?? 0);
 }
 
-test('unverified fishing and help-up mutations remain refused', t => {
+test('unverified help-up mutations remain refused and fishing awards validate payloads', t => {
   const env = setup(t);
-  for (const type of [110304, 110306, 110307, 110309, 110310, 116001, 116002, 116003]) {
+  for (const type of [116001, 116002, 116003]) {
     assert.equal(env.service.supports(type), true);
     assert.throws(() => env.service.execute(type, Buffer.alloc(0)), error => error.code === 5);
   }
+  // Fishing codex/level/progress/rank awards and the rod switch are implemented;
+  // an empty body is now an invalid request instead of an unimplemented feature.
+  for (const type of [110304, 110306, 110307, 110310]) {
+    assert.equal(env.service.supports(type), true);
+    assert.throws(() => env.service.execute(type, Buffer.alloc(0)), error => error.code === 1);
+  }
+  assert.throws(() => env.service.execute(110309, Buffer.alloc(0), { etfValue: 89001 }), error => error.code === 1);
   assert.equal(env.service.supports(110301), true);
   assert.equal(env.service.supports(110302), true);
   assert.equal(env.service.supports(110311), true);
