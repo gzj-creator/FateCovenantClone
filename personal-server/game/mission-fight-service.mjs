@@ -203,8 +203,12 @@ function captainFighter(attackers, selected) {
   };
 }
 
-function reportBattle(codec, model, mission, request, attributeTables) {
-  const config = missionBattleConfig(mission.missionId);
+// Exported so other fight entry points (elite missions) can reuse the same
+// fighter assembly and action-stream generation. 'encounter' replaces the
+// journey section lookup with an authoritative fight config:
+// { mission: { fight }, enemies: [npc tids], tables: hero tables }.
+export function reportBattle(codec, model, mission, request, attributeTables, encounter = null) {
+  const config = encounter ?? missionBattleConfig(mission.missionId);
   if (!config) throw new GameError(5, 'Mission enemy configuration missing');
   const selected = requestedMembers(model, request);
   if (!selected.members.length || selected.members.length > 6) throw new GameError(5, 'Journey lineup size is invalid');
@@ -430,7 +434,7 @@ function combinedChanges(...groups) {
   return [...changes.values()];
 }
 
-export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {}, playbackEnabled = false }) {
+export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {}, playbackEnabled = false, eliteBattle = null }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, lastSettlement = null, fightIds = 0;
 
@@ -539,6 +543,16 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     // then plays report.battle_list[].action_list (pb_generic -> pb_fat_*). Without a real action
     // stream the scene stalls on a nil FightStepScheduler, so refuse until report playback exists.
     if (!playbackEnabled) throw new GameError(5, 'Mission fight playback is not implemented yet');
+    // Elite stages and elite bosses share the 201/207 fight entry point. Their
+    // own module owns progress, stamina and rewards, so hand the request over
+    // before the journey payload is decoded.
+    if (eliteBattle && eliteBattle.matches(request)) {
+      const elite = eliteBattle.start(request);
+      pending = null;
+      lastSettlement = null;
+      lastReport = elite.report ?? null;
+      return { value: elite.value, data: elite.data };
+    }
     const mission = missionRequest(request.req);
     if (!mission) throw new GameError(5, 'Only ordinary mission fights are implemented');
     const current = currentMission(store.read()).value;
@@ -583,6 +597,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
   }
 
   function settlement() {
+    if (eliteBattle && eliteBattle.hasPending()) return eliteBattle.settlement();
     if (!pending && lastSettlement) return lastSettlement;
     if (!pending) throw new GameError(1, 'No pending fight settlement');
     if (pending.committed) return lastSettlement;
@@ -597,6 +612,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
   function exit(bytes) {
     let isForce = false;
     try { isForce = Boolean(codec.unpack('pb_fight_exit', bytes).is_force); } catch {}
+    if (eliteBattle) eliteBattle.exit();
     if (pending) log({ event: 'mission_fight_exited', missionId: pending.mission.missionId, isForce, result: pending.result, committed: pending.committed });
     // fight_exit acknowledges scene teardown. It must never bypass 207; an
     // uncommitted exit also clears any older settlement replay value.

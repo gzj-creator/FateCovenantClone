@@ -54,6 +54,7 @@ import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createTeamGenreService } from './team-genre-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { createEliteMissionService } from './elite-mission-service.mjs';
+import { createEliteMissionBattle } from './elite-mission-battle.mjs';
 import { createPeakTowerService } from './peak-tower-service.mjs';
 import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
@@ -106,6 +107,7 @@ export function createLocalGame({
   sprintPreview = false,
   localWallet = false,
   missionFightPlayback = false,
+  eliteEnemies = null,
   guideAwards = readGuideAwards(),
   now = Date.now,
   random = Math.random,
@@ -692,7 +694,16 @@ export function createLocalGame({
     let phase = 'verify', challenge, chain = Promise.resolve(), onlineGiftSessionAttempted = false;
     const push=(type,data)=>{if(!socket.destroyed)socket.write(encodeGameFrame(pack('pb_s2c',{type,data})));};
     const log = event => logger({ connection: id, ...event });
-    const fight = createMissionFightService({ store, codec, logger: log, playbackEnabled: missionFightPlayback });
+    // The elite stage/boss requests reuse FightCmd 201/207; the elite battle
+    // module owns their progress, stamina and rewards. Enemy line-ups are not
+    // part of the shipped client data, so the deployment injects them.
+    const fight = createMissionFightService({
+      store,
+      codec,
+      logger: log,
+      playbackEnabled: missionFightPlayback,
+      eliteBattle: createEliteMissionBattle({ store, codec, logger: log, now: clock, enemyProvider: eliteEnemies })
+    });
     socket.setNoDelay(true); socket.setTimeout(180000);
     socket.on('timeout', () => socket.destroy());
     socket.on('error', error => log({ event: 'socket_error', code: error.code }));
