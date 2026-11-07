@@ -168,3 +168,12 @@ npm test --prefix .\personal-server
 - 回归验证：招募、半神共享抽取与圣器网关定向测试 `45/45`；钱包和冲榜领取定向测试 `18/18`；`git diff --check` 通过。全量测试此前存在与本轮无关的既有数据库基线失败，不能用全量失败否定上述定向结果。
 - 部署前使用 `VACUUM INTO` 备份数据库到 `analysis/experiments/private-server-20261025/p3/recruit-fixes-20261101/game-before.local-only.sqlite`；大小 376,832 字节，SHA256 `2938D351ADABC9D10C32E4CDA12F7CC8424C382472705FDE1866672B9BD7D742`，源库与备份的 `PRAGMA integrity_check` 均为 `ok`。
 - 问题 3 版本曾从本 worktree 以 PID `24048` 启动，五个端口均由该 PID 在 `127.0.0.1` 监听，隔离客户端自动完成握手和登录，stderr 为空。随后公共五端口被另一工作树的服务接管；最终问题 2 的代码已通过测试和提交，真实客户端视觉验收仍以实际接管的最终服务版本为准。
+
+## 2026-11-07 心愿单 `-11` 次显示修复
+
+- 工作目录为 `.worktree/wishlist-negative-20261107`，分支 `fix/wishlist-negative-20261107`。用户看到“仍需招募 -11 次”，功能性真值是普通招募 `draw_count=111`，而心愿单解锁条件是 `>100`；数据库中的模块 21 普通招募统计也已经持久化为 `111`，功能 1228 的开启位仍为 `0`。
+- 客户端逻辑按原设计保留：`HeroDrawUILogic.GetNormalDrawCount()` 通过 `CountStatisticsMgr:GetTotalCount(TID_COUNT_DRAW, {TID_NORMAL_DRAW_LIB})` 取得统计缓存；功能是否开启仍由 `type=7000` 确认。负数只是新版 `601` 响应中的 `draw_count=111` 与未更新的统计缓存共同造成的显示结果。
+- 根因在私服 type `2000 rev_count_statistics_change` 的编码。客户端 `Cmd.s2c` 没有该消息的 protobuf schema，因此按原服抓包走 ETF fallback；`CountStatisticsMgr.RevCountStatisticsChange` 的第一个参数再执行 `Codec.DecodePB("pb_count_statics_send_list", data)`。原服证据见 `agent/workflow/interface-catalog/interfaces.json` 中的 `tcp:s2c:2000:rev_count_statistics_change`：外层为 ETF，两字段分别为 binary 和 number。私服此前直接发送裸 protobuf，客户端 ETF 解码报 `invalid version`，统计缓存未更新，也没有触发后续功能检查。
+- `personal-server/protocol/game-codec.mjs` 新增同步 `encodeEtfBinaryAndSmallIntegerTuple`；招募统计和成就统计的 type 2000 推送现在都编码为 ETF `{PB binary, 0}`，内层 protobuf 仍为 `pb_count_statics_send_list`。这也保持招募事务的同步执行和失败回滚语义。
+- 回归已覆盖黄金 ETF 字节、服务层两类统计推送和真实 TCP 网关：`game-codec` 5/5、`recruit-service` 27/27、`gameplay-gateway` 7/7；全量 `npm test` 为 2240 项中 2238 通过、0 失败、2 项按既有前置条件跳过，`git diff --check` 通过。
+- 本轮未修改 Lua 或 APK，也未启动、停止个人服务或操作模拟器。代码部署后需要客户端重新连接/登录或再完成一次招募以触发新的 type 2000；随后统计缓存应为 111，功能检查可提交 type 7000 并打开心愿单。真实客户端视觉验收仍待部署后完成。

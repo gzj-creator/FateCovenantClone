@@ -33,6 +33,15 @@ export function encodeEtfIntegerTuple(values) {
   header[0] = 131; header[1] = 104; header[2] = values.length;
   return Buffer.concat([header, ...values.map(value => encodeEtfInteger(value).subarray(1))]);
 }
+export function encodeEtfBinaryAndSmallIntegerTuple(value, integer = 0) {
+  const bytes = Buffer.from(value);
+  if (bytes.length > 0xffffffff) throw new RangeError('ETF binary item is too large');
+  if (!Number.isInteger(integer) || integer < 0 || integer > 255) throw new RangeError('ETF small integer must be between 0 and 255');
+  const header = Buffer.from([131, 104, 2]);
+  const binaryHeader = Buffer.alloc(5);
+  binaryHeader[0] = 109; binaryHeader.writeUInt32BE(bytes.length, 1);
+  return Buffer.concat([header, binaryHeader, bytes, Buffer.from([97, integer])]);
+}
 export function encodeEtfBinaryList(values) {
   if (!Array.isArray(values) || values.length > 0xffffffff) throw new RangeError('ETF binary list must be an array');
   const items = values.map(value => {

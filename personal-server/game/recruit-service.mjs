@@ -1,4 +1,4 @@
-import { encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { encodeEtfBinaryAndSmallIntegerTuple, encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import {
   RECRUIT_RULE_VERSION,
@@ -352,7 +352,7 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
         stat_tid: TID_COUNT_DRAW
       }]
     };
-    return { type: 2000, data: codec.pack('pb_count_statics_send_list', value) };
+    return { type: 2000, data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', value)) };
   }
 
   function drawAchievementData(state, seconds) {
@@ -371,9 +371,9 @@ export function createRecruitService({ store, codec, tables, heroTables, fantasy
   function drawAchievementPush(data) {
     return {
       type: 2000,
-      data: codec.pack('pb_count_statics_send_list', {
+      data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', {
         data_list: [{ data, expand_id_list: [0], stat_tid: TID_COUNT_DRAW_ACHIEVE }]
-      })
+      }))
     };
   }
 
