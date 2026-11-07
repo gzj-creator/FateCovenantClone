@@ -202,4 +202,8 @@ node personal-server/scripts/generate-new-hero-exclusive-heroes.mjs --table <New
 - 根因在私服 type `2000 rev_count_statistics_change` 的编码。客户端 `Cmd.s2c` 没有该消息的 protobuf schema，因此按原服抓包走 ETF fallback；`CountStatisticsMgr.RevCountStatisticsChange` 的第一个参数再执行 `Codec.DecodePB("pb_count_statics_send_list", data)`。原服证据见 `agent/workflow/interface-catalog/interfaces.json` 中的 `tcp:s2c:2000:rev_count_statistics_change`：外层为 ETF，两字段分别为 binary 和 number。私服此前直接发送裸 protobuf，客户端 ETF 解码报 `invalid version`，统计缓存未更新，也没有触发后续功能检查。
 - `personal-server/protocol/game-codec.mjs` 新增同步 `encodeEtfBinaryAndSmallIntegerTuple`；招募统计和成就统计的 type 2000 推送现在都编码为 ETF `{PB binary, 0}`，内层 protobuf 仍为 `pb_count_statics_send_list`。这也保持招募事务的同步执行和失败回滚语义。
 - 回归已覆盖黄金 ETF 字节、服务层两类统计推送和真实 TCP 网关：`game-codec` 5/5、`recruit-service` 27/27、`gameplay-gateway` 7/7；全量 `npm test` 为 2240 项中 2238 通过、0 失败、2 项按既有前置条件跳过，`git diff --check` 通过。
-- 本轮未修改 Lua 或 APK，也未启动、停止个人服务或操作模拟器。代码部署后需要客户端重新连接/登录或再完成一次招募以触发新的 type 2000；随后统计缓存应为 111，功能检查可提交 type 7000 并打开心愿单。真实客户端视觉验收仍待部署后完成。
+- 修复验证阶段未修改 Lua 或 APK，也未操作模拟器；合并与部署步骤见下。部署后需要客户端重新连接/登录或再完成一次招募以触发新的 type 2000；随后统计缓存应为 111，功能检查可提交 type 7000 并打开心愿单。真实客户端视觉验收仍待部署后完成。
+- 2026-11-07 已将该修复以合并提交 `cb67348` 合入 `main`。合并时 `recruit-service.mjs` 只发生 import 冲突，保留 main 的 `readRecruitHeroExclusionGroups` 并同时引入 ETF tuple 编码器；合并后的协议、招募和真实 TCP 网关定向测试 `39/39` 通过。
+- 合并后的 `main` 全量回归为 2329 项中 2327 通过、0 失败、2 项因未设置已接受的真实 Lua bundle 按既有条件跳过。
+- 旧服务 PID `2676` 已于 2026-11-07T15:58:59Z 后停止；从 `main` 启动新 PID `9800`，`startedAt=2026-11-07T15:58:59.664Z`。`18880/18881/18882/18883/19090` 均由 PID `9800` 仅监听 `127.0.0.1`，stderr 为空，隔离客户端已自动重连并重新登录。运行日志为 `personal-server/runtime.local-only.data/server-20261107-235857.local-only.out.log` 与同名 `.err.log`。
+- 服务器重启没有修改或重装 APK。心愿单的最终视觉验收仍应观察下一次招募触发的 type 2000 后，统计缓存更新为 111、功能开启请求与 UI 解锁结果。
