@@ -9,6 +9,7 @@ import { consumeResources, grantResources } from './resources.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 import { missionPosition } from './mission-progress.mjs';
 import { energyMaxForRole, refreshEnergyResources } from './energy.mjs';
+import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
 
 // Ordinary journey (mission) fights.
 // Evidence: FightCmd.fight_start sends pb_fight_request.req = Codec.EncodePB('mission_fight_req');
@@ -229,7 +230,10 @@ function reportBattle(codec, model, mission, request, attributeTables) {
       speed: assembled.stats.speed,
       initialEnergy: FIGHT_INITIAL_ENERGY
     };
-    const abilities = cfg.abilities.slice(0, 8).map(Number);
+    const skillLoadout = buildHeroSkillLoadout({ hero, heroTables: config.tables.heroes });
+    const abilities = skillLoadout.abilityIds.length
+      ? skillLoadout.abilityIds
+      : cfg.abilities.slice(0, 8).map(Number);
     return {
       id: 101 + index, tid: role, role_type: FIGHTER_ROLE_HERO, uid: String(hero.uid), role,
       team: 1, team_index: selected.teamIndex, loc: entry.loc,
@@ -238,7 +242,8 @@ function reportBattle(codec, model, mission, request, attributeTables) {
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
       speed: combat.speed, initialEnergy: combat.initialEnergy, abilityId: abilities[0] ?? 1,
-      activeAbilityId: activeAbilityId(abilities)
+      activeAbilityId: activeAbilityId(abilities),
+      skills: skillLoadout.skills
     };
   });
   const attackerLevel = Math.max(...attackers.map(unit => unit.level));
@@ -293,7 +298,8 @@ function reportBattle(codec, model, mission, request, attributeTables) {
     attack: unit.attack,
     defense: unit.defense,
     speed: unit.speed,
-    initialEnergy: unit.initialEnergy
+    initialEnergy: unit.initialEnergy,
+    skills: unit.skills
   });
   const simulation = simulateBattle({ attackers: attackers.map(combatUnit), defenders: defenders.map(combatUnit), seed });
   const finalHp = new Map([...simulation.attackers, ...simulation.defenders].map(unit => [unit.id, unit.hp]));

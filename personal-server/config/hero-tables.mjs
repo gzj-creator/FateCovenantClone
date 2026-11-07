@@ -11,7 +11,7 @@ let defaultLeaderEquipCache;
 export function readHeroTables(file = defaultPath) {
   const names = [
     'Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star',
-    'DevelopConst', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
+    'DevelopConst', 'AbilityLevel', 'UpStageTalent', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
     'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
     'TeamSuggest', 'TeamSuggestAward', 'TeamSuggestType', 'TeamSuggestTeamType',
