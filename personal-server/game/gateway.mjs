@@ -1145,7 +1145,9 @@ export function createLocalGame({
       }
       if (lineups.supports(type)) {
         try {
-          const input = type === 218 ? await decodeEtf(request.data) : unpack(type === 208 ? 'pb_edit_lineup_req' : 'pb_edit_pre_lineup_req', request.data);
+          const input = lineups.isEtfRequest(type)
+            ? (request.data?.length ? await decodeEtf(request.data) : undefined)
+            : unpack(lineups.requestSchema(type), request.data);
           const result = lineups.execute(type, input);
           send(seq, result.data); log({ event: 'lineup_committed', type, seq });
         } catch (error) {
