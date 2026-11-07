@@ -218,4 +218,3 @@ test('gateway routes 659 and 660 over a temporary TCP connection', async t => {
   assert.equal(rejectedReply.err?.err, 3001);
   assert.equal(hero(game.store).mastery_level, 1);
 });
-

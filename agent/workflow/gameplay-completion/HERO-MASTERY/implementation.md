@@ -102,4 +102,3 @@ npm test                                         # tests 2089 / pass 2086 / fail
 - `MasteryMat.max_lv/max_break` 与 `MasteryLevel.cost_res` 交替使用 474002/475002/476002 的关系只按数据原样执行，没有解释为开放等级规则。
 - 精通属性（MasteryBreak.attr）未进入战斗属性计算，见上文 CORE-ATTR/CORE-SKILL-GATES 剩余接线。
 - APK 实测：隔离客户端里实际点击精通升级/突破、界面数值与属性变化未验收（本轮禁止操作模拟器与实时服务）。
-

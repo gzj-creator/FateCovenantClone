@@ -157,4 +157,3 @@ SQLite 触发器失败整体回滚、编码失败整体回滚（奖励与 claim 
 - **通用**：作战层敌人来自 `FightTable`（`fight` tid → `def_team` → `Team` → 怪物），该表尚未
   纳入 `personal-server/assets/tables`，因此通用战斗管线无法在本地起塔战斗；`challenge`
   结算缝已就绪，接上 `FightTable` 数据与战斗管线派发后即可闭环。
-

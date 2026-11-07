@@ -407,4 +407,3 @@ export function createLineupService({ store, codec, lineupTables = readLineupTab
     }
   };
 }
-

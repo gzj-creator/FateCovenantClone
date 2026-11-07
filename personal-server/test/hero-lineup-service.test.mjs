@@ -227,4 +227,3 @@ test('temporary TCP gateway routes 210, 214, 215, 216 and 217 with the existing 
     Buffer.from(game.store.state().lineups, 'base64')).custom_pre_lineup, 'base64'));
   assert.deepEqual(reopened.custom_pre_lineups.map(entry => String(entry.index)), ['-1']);
 });
-

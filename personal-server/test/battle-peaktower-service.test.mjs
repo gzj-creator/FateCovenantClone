@@ -291,6 +291,3 @@ test('gateway routes the peak tower commands with real state on a temporary port
   const malformed = await request(1103, 5, Buffer.from([0xff, 0xff, 0xff]));
   assert.equal(malformed.err.err, 2);
 });
-
-
-

@@ -119,4 +119,3 @@ npm test
 4. `pb_lineup.custom_lineup_index` 的 0 与 proto 默认值“未使用”重叠：0 号自定义预设的绑定只记录在 `lineup_type_list`，未被写入可区分的玩法阵容字段，需客户端实测确认表现。
 5. `LineupTable.PreUnlock` 中 4/5 号预设槽位的 `unlock_condition`（582540600004/582540600005）未在本任务内解析与发放；当前只保证 210 只能切到 `pre_lineups` 已存在的槽位。
 6. `pb_custom_lineup_role.cur_index` 的语义没有实测证据（捕获数据缺该字段），实现保持缺省、不写入。
-

@@ -184,4 +184,3 @@ export function createHeroMasteryService({ store, codec, heroTables }) {
     }
   };
 }
-

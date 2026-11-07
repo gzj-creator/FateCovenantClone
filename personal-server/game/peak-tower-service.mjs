@@ -449,4 +449,3 @@ export function createPeakTowerService({
 
   return { supports, execute, sweeps, everyAward, buyGoods, receiveAchievement, revTowerAward, avgLayer, challenge, state };
 }
-
