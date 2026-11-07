@@ -15,7 +15,7 @@ function integer(value, min, max, message) {
   return number;
 }
 
-function configuredAwards(row, label) {
+export function configuredAwards(row, label) {
   const awards = Array.isArray(row?.award) ? row.award : [];
   return awards.map(pair => {
     if (!Array.isArray(pair) || pair.length !== 2) throw new GameError(5, `${label} reward configuration is invalid`);
@@ -27,7 +27,9 @@ function configuredAwards(row, label) {
   });
 }
 
-function ensureTables(db) {
+// The battle settlement path (elite-mission-battle.mjs) shares the same claim
+// table and the same login-module encoding, so keep one implementation.
+export function ensureTables(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS reward_claims (
     role_id INTEGER NOT NULL,
     claim_type TEXT NOT NULL,
@@ -37,7 +39,7 @@ function ensureTables(db) {
   )`);
 }
 
-function readModule(model, codec) {
+export function readModule(model, codec) {
   const modules = new Map(model.state.modules.value);
   const module = modules.get(ELITE_MISSION_MODULE);
   if (!module) fail(5, 'Elite mission login module is missing');
@@ -51,7 +53,7 @@ function readModule(model, codec) {
   return { modules, module, info, bytes };
 }
 
-function writeModule(model, codec, info) {
+export function writeModule(model, codec, info) {
   const modules = new Map(model.state.modules.value);
   const bytes = serializedBinary(codec.pack('pb_elite_mission', {
     mission_id: String(info.mission_id ?? '0'),
