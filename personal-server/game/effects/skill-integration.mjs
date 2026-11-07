@@ -9,6 +9,7 @@ import { EffectExecutor } from './effect-executor.mjs';
 import { TargetSelector } from './target-selector.mjs';
 import { TARGET_TYPES, DURATION_TYPES, TRIGGER_TYPES } from './effect-types.mjs';
 import { commonSkillEffect, commonSkillEffects, commonSkillTriggerType } from './common-skill-rules.mjs';
+import { proprietarySkillEffects, proprietaryTriggerAllowed } from './proprietary-rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -176,12 +177,12 @@ export function skillToEffects(skill, skillDatabase) {
 
   // Stored explicit effects
   if (skill.implementation && Array.isArray(skill.implementation.effects) && skill.implementation.effects.length) {
-    return commonSkillEffects(skill, skill.implementation.effects.map(e => ({ ...e })));
+    return proprietarySkillEffects(skill, commonSkillEffects(skill, skill.implementation.effects.map(e => ({ ...e }))));
   }
 
   // Fallback to single heuristic
   const single = skillToEffect(skill, skillDatabase);
-  return single ? [single] : [];
+  return single ? proprietarySkillEffects(skill, [single]) : [];
 }
 
 function passesChance(chance, executor) {
@@ -286,7 +287,11 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
 
     if (Array.isArray(storedTriggers)) {
       for (const t of storedTriggers) {
-        const effect = t.effect ? commonSkillEffect(skill, { ...t.effect }) : skillToEffect(skill, skillDatabase);
+        // CORE-BATTLE-B: drop catalog approximations a proprietary rule replaces.
+        if (!proprietaryTriggerAllowed(skill, t)) continue;
+        const rawEffect = t.effect ? commonSkillEffect(skill, { ...t.effect }) : skillToEffect(skill, skillDatabase);
+        // CORE-BATTLE-B: per-skill damage ceilings apply to triggered effects too.
+        const effect = rawEffect ? (proprietarySkillEffects(skill, [rawEffect])[0] ?? rawEffect) : rawEffect;
         const triggerType = commonSkillTriggerType(skill, t.triggerType);
         const permanentStatModifier = effect?.effect?.type === 'stat-modifier'
           && effect.duration?.durationType === 'permanent';

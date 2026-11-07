@@ -11,6 +11,15 @@ function catalogSkill(id) {
   return skill;
 }
 
+// 2504050123 is a 天极技 row whose text omits the 天极值 price, so the engine
+// refuses to cast it. The fixture states the price the sibling rows use so the
+// described damage-to-shield conversion can be exercised.
+function castableDeity(id, price = 3) {
+  const skill = structuredClone(catalogSkill(id));
+  skill.description = `消耗${price}点天极值，${skill.description}`;
+  return skill;
+}
+
 function fighter(id, overrides = {}) {
   return {
     id, role: 2010201, profession: 2, loc: 1, maxHp: 1000000,
@@ -126,8 +135,8 @@ test('ultimate life-steal excludes damage produced by a separate triggered passi
 
 test('2504050123 converts only its actual HP damage to a shield and remains seeded', () => {
   const input = {
-    attackers: [fighter(101, { role: 5040501, attack: 1000, initialEnergy: 1000,
-      activeAbilityId: 2504050123, skills: [catalogSkill('2504050123')] })],
+    attackers: [fighter(101, { role: 5040501, attack: 1000, initialTianji: 3,
+      activeAbilityId: 2504050123, skills: [castableDeity('2504050123')] })],
     defenders: [1, 2].map(loc => fighter(200 + loc, {
       loc, maxHp: 100, speed: 50, skills: [openingShield(50)]
     })),

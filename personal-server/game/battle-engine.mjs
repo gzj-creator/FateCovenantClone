@@ -24,6 +24,17 @@ import {
   recordActionDamage,
   actionScopedType,
 } from './effects/effect-executor.mjs';
+import {
+  PROPRIETARY_HOOKS,
+  absorbDamage,
+  advanceDomains,
+  createProprietaryState,
+  resetProprietaryRound,
+  runHooks,
+  spendTianji,
+  tianjiValue,
+} from './effects/proprietary-state.mjs';
+import { initProprietaryBattle, isDeitySkill, tianjiCostFor } from './effects/proprietary-rules.mjs';
 
 export const BATTLE_RESULT = Object.freeze({ DRAW: 0, WIN: 1, LOSS: 2 });
 
@@ -126,6 +137,7 @@ function normalizeUnit(unit, skillDatabase) {
     damageDealt: 0,
     healsReceived: 0,
     kills: 0,
+    proprietary: createProprietaryState(unit),
   };
 }
 
@@ -199,16 +211,16 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
     raw * variance * (1 + effectiveDamageBonus(actor, actionType)) * critMultiplier
   ));
   damage = Math.max(1, Math.floor(damage * (1 - effectiveDamageReduction(target))));
-  const oldHp = target.hp;
   const oldShield = target.shield;
-  const absorbed = Math.min(oldShield, damage);
-  target.shield = oldShield - absorbed;
-  target.hp = Math.max(0, oldHp - (damage - absorbed));
+  // Shield, 超凡生命 and HP are resolved in one shared helper so the effect
+  // executor and this fallback path cannot disagree about what a hit does.
+  const applied = absorbDamage(target, damage, { sourceId: actor.id, events: state?.events });
+  const absorbed = applied.absorbed + applied.superAbsorbed + applied.summonAbsorbed;
+  const oldHp = applied.oldHp;
   target.energy = Math.min(
     FIGHT_ENERGY_MAX,
     target.energy + FIGHT_ENERGY_ON_HIT * (1 + effectiveEnergyBonus(target))
   );
-  if (target.hp === 0) target.alive = false;
   const hpDamage = recordActionDamage(actor, target, oldHp, target.hp, absorbed, state);
   consumeTriggerCount(target, 'damage-taken');
   return {
@@ -397,9 +409,16 @@ function handleDamageTriggers(events, actionId, actor, harms, state) {
       const target = units.get(harm.aimId);
       if (!target) continue;
       processUnitTriggers(events, target, 'on-being-hit', state, actionId);
+      const actionType = state.actionContext?.actionType ?? null;
+      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_TAKEN, { target, actor, actionId, harm, actionType }, events,
+        unit => unit.id === target.id);
+      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_DEALT, { target, actor, actionId, harm, actionType }, events,
+        unit => unit.id === actor.id);
       if (harm.oldHp > 0 && harm.hp === 0) {
         processUnitTriggers(events, actor, 'on-kill', state, actionId);
         processUnitTriggers(events, target, 'on-death', state, actionId);
+        // "敌方冒险者阵亡时，立刻释放一次追击" style reactions.
+        runProprietary(state, PROPRIETARY_HOOKS.UNIT_DEATH, { unit: target, killer: actor, actionId }, events);
       } else {
         // A single trigger family backs every data threshold. processTriggers
         // evaluates each trigger's hp-below/above condition without consuming
@@ -410,6 +429,105 @@ function handleDamageTriggers(events, actionId, actor, harms, state) {
   } finally {
     state.handlingDamageTriggers = false;
   }
+}
+
+/** Queue one extra action produced by a proprietary reaction or mastery. */
+function enqueueProprietaryAction(state, request) {
+  if (!state.proprietaryQueue) state.proprietaryQueue = [];
+  if (state.proprietaryQueue.length >= 4) return;
+  state.proprietaryQueue.push(request);
+}
+
+/**
+ * Run proprietary hooks and turn "extra-action" results into queued actions.
+ * Hooks that do not request an action simply mutate state/events.
+ */
+function runProprietary(state, hookName, payload, events = null, filter = null) {
+  const results = runHooks(state, hookName, payload, events, filter);
+  for (const result of results) {
+    if (!result || result.kind !== 'extra-action') continue;
+    enqueueProprietaryAction(state, {
+      actorId: result.actorId ?? payload.actor?.id,
+      kind: result.action ?? 'attack',
+      skill: result.skill ?? null,
+      before: result.before ?? null,
+      reason: result.reason ?? null,
+    });
+  }
+  return results;
+}
+
+function drainProprietaryActions(events, state) {
+  if (!state.proprietaryQueue?.length) return;
+  if ((state.proprietaryActionDepth || 0) >= 3) {
+    state.proprietaryQueue.length = 0;
+    return;
+  }
+  state.proprietaryActionDepth = (state.proprietaryActionDepth || 0) + 1;
+  try {
+    while (state.proprietaryQueue.length) {
+      const request = state.proprietaryQueue.shift();
+      const actor = state.allUnits.find(unit => unit.id === request.actorId);
+      if (!actor?.alive) continue;
+      executeExtraAction(events, actor, state.allUnits, state, request);
+    }
+  } finally {
+    state.proprietaryActionDepth--;
+  }
+}
+
+// A free action granted by a mastery or reaction. It pays no energy and no
+// 天极值 ("不消耗能量", "无消耗"), so only the effect pipeline and the ordinary
+// after-action triggers run.
+function executeExtraAction(events, actor, allUnits, state, request) {
+  const actionId = state.nextActionId++;
+  const behavior = behaviorFor(actor);
+  const useSkill = request.kind === 'ultimate' || request.kind === 'tianji';
+  const catalogSkill = request.skill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
+  const abilityId = (useSkill ? actor.activeAbilityId : actor.abilityId) || 1;
+  const actionType = useSkill ? 2 : 1;
+  const beforeEnergy = new Map(allUnits.map(unit => [unit.id, unit.energy]));
+  const assistIds = combinationAssistIds(actor, allUnits, useSkill);
+  state.currentActionId = actionId;
+  state.actionOpen = true;
+  state.actionContext = {
+    actorId: actor.id,
+    actionType: useSkill ? 'ultimate' : 'attack',
+    phase: 'action',
+    damage: new Map(),
+    extra: true
+  };
+  if (typeof request.before === 'function') request.before(actor, state, events);
+  runProprietary(state, PROPRIETARY_HOOKS.BEFORE_ACTION, {
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType, extra: true,
+    resolveTargets: () => {
+      const skill = catalogSkill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
+      return skill ? collectSkillTargets(skill, actor, allUnits, state) : chooseTargets(actor, allUnits, 'front');
+    }
+  }, events);
+  if (catalogSkill) {
+    const targets = collectSkillTargets(catalogSkill, actor, allUnits, state);
+    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    const raw = [];
+    const outcome = applySkillEffects(catalogSkill, actor, allUnits, state, raw);
+    appendEffectResults(events, actionId, outcome.results, actor, state);
+  } else {
+    const targets = chooseTargets(actor, allUnits, 'front');
+    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    executeAttack(events, actionId, actor, targets,
+      useSkill ? behavior.skillMultiplier : behavior.basicMultiplier, state);
+  }
+  state.actionContext.phase = 'after';
+  processUnitTriggers(events, actor, useSkill ? 'on-skill-use' : 'on-attack', state, actionId);
+  if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
+  runProprietary(state, PROPRIETARY_HOOKS.ACTION_END, {
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType, extra: true
+  }, events);
+  emitAutoRevives(events, actionId, allUnits);
+  emitAngerSync(events, actionId, beforeEnergy, allUnits);
+  events.push({ kind: 'action-end', id: actionId });
+  state.actionOpen = false;
+  state.actionContext = null;
 }
 
 function runRoundTrigger(events, unit, triggerType, state) {
@@ -457,7 +575,17 @@ function executeTurn(events, actor, allUnits, state) {
   let actionId = state.nextActionId++;
   const behavior = behaviorFor(actor);
   const silenced = unitHasStatus(actor, 'silence');
-  const useSkill = actor.energy >= FIGHT_ENERGY_MAX && !silenced;
+  // 天极技 (FightTable ability type 2 / run_type 5) is paid with 天极值, never
+  // with energy. A deity skill that the description gives no price for cannot
+  // be cast, so the unit falls back to its normal action instead of treating
+  // energy as the currency of a 天极技.
+  const activeSkill = resolveActionSkill(actor, true, state.skillDatabase);
+  const deitySkill = activeSkill && isDeitySkill(activeSkill) ? activeSkill : null;
+  const deityCost = deitySkill ? tianjiCostFor(deitySkill) : null;
+  const deityReady = Boolean(deitySkill) && deityCost !== null && !silenced
+    && tianjiValue(actor) >= deityCost;
+  const useSkill = deityReady || (!deitySkill && actor.energy >= FIGHT_ENERGY_MAX && !silenced);
+  const actionKind = deityReady ? 'tianji' : useSkill ? 'ultimate' : 'attack';
   const abilityId = (useSkill ? actor.activeAbilityId : actor.abilityId) || 1;
   const actionType = useSkill ? 2 : 1;
   const assistIds = combinationAssistIds(actor, allUnits, useSkill);
@@ -466,12 +594,24 @@ function executeTurn(events, actor, allUnits, state) {
   const catalogSkill = resolveActionSkill(actor, useSkill, state.skillDatabase);
   state.currentActionId = actionId;
   state.actionOpen = true;
-  state.actionContext = { actorId: actor.id, actionType: useSkill ? 'ultimate' : 'attack', phase: 'before', damage: new Map() };
+  state.actionContext = { actorId: actor.id, actionType: actionKind, phase: 'before', damage: new Map() };
+  runProprietary(state, PROPRIETARY_HOOKS.ACTION_START, {
+    actor, actionId, useSkill, actionType: state.actionContext.actionType
+  }, events);
   processUnitTriggers(events, actor, 'on-turn-start', state, actionId);
-  if (useSkill) processUnitTriggers(events, actor, 'before-ultimate-use', state, actionId);
+  if (useSkill && !deityReady) processUnitTriggers(events, actor, 'before-ultimate-use', state, actionId);
   const actionModifiers = new Map([...(actor.buffs || []), ...(actor.debuffs || [])]
     .map(entry => [entry, entry.applicationId]));
   state.actionContext.phase = 'action';
+  // "释放终结技前，额外摧毁敌方全体15%的护盾" style clauses run here, after
+  // the turn-start and before-ultimate triggers and before any damage.
+  runProprietary(state, PROPRIETARY_HOOKS.BEFORE_ACTION, {
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType,
+    resolveTargets: () => {
+      const skill = catalogSkill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
+      return skill ? collectSkillTargets(skill, actor, allUnits, state) : chooseTargets(actor, allUnits, 'front');
+    }
+  }, events);
 
   if (catalogSkill) {
     const targets = collectSkillTargets(catalogSkill, actor, allUnits, state);
@@ -534,17 +674,27 @@ function executeTurn(events, actor, allUnits, state) {
     executeAttack(events, actionId, actor, targets, behavior.basicMultiplier, state);
   }
 
-  actor.energy = useSkill ? 0 : Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN);
+  if (deityReady) {
+    spendTianji(actor, deityCost, { events, reason: 'deity-skill' });
+  } else {
+    actor.energy = useSkill ? 0 : Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN);
+  }
   state.actionContext.phase = 'after';
-  consumeTriggerCount(actor, useSkill ? 'ultimate' : 'attack', actionModifiers);
+  // "下一次终结技" modifiers are not consumed by a 天极技.
+  if (!deityReady) consumeTriggerCount(actor, useSkill ? 'ultimate' : 'attack', actionModifiers);
   processUnitTriggers(events, actor, useSkill ? 'on-skill-use' : 'on-attack', state, actionId);
-  if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
+  if (deityReady) processUnitTriggers(events, actor, 'on-tianji-use', state, actionId);
+  else if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
   processUnitTriggers(events, actor, 'on-turn-end', state, actionId);
+  runProprietary(state, PROPRIETARY_HOOKS.ACTION_END, {
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType
+  }, events);
   emitAutoRevives(events, actionId, allUnits);
   emitAngerSync(events, actionId, beforeEnergy, allUnits);
   events.push({ kind: 'action-end', id: actionId });
   state.actionOpen = false;
   state.actionContext = null;
+  drainProprietaryActions(events, state);
 }
 
 function validateTeams(attackers, defenders) {
@@ -580,10 +730,19 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     handlingDamageTriggers: false,
   };
   turnState.random = () => nextRandom(turnState);
+  // Proprietary helpers emit their own events; give them the stream the rest of
+  // the engine writes to so a shield destruction or a summon absorb is visible
+  // in the same report order.
+  turnState.events = events;
   // register passive triggers
   for (const u of allUnits) {
     registerPassiveTriggers(u, skillDatabase, turnState);
   }
+  // CORE-BATTLE-B: description-backed proprietary declarations (天极值, 超凡生命,
+  // summons, layers, domains) and their hooks. Declarations that cannot be
+  // matched against the shipped description stay inactive.
+  turnState.proprietaryQueue = [];
+  for (const unit of allUnits) initProprietaryBattle(unit, turnState, events);
   let result = BATTLE_RESULT.DRAW;
   let overRound = 0;
 
@@ -591,6 +750,8 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     turnState.round = round;
     events.push({ kind: 'round-start', round });
     for (const unit of allUnits) resetRoundTriggers(unit);
+    for (const unit of allUnits) resetProprietaryRound(unit);
+    runProprietary(turnState, PROPRIETARY_HOOKS.ROUND_START, { round }, events);
     for (const unit of living(allUnits)) runRoundTrigger(events, unit, 'on-round-start', turnState);
     if (!living(attackerTeam).length || !living(defenderTeam).length) {
       events.push({ kind: 'round-end', round });
@@ -616,6 +777,9 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
       processBuffTicks(unit, turnState, raw);
       appendStandaloneResults(events, unit, raw, turnState);
     }
+    runProprietary(turnState, PROPRIETARY_HOOKS.ROUND_END, { round }, events);
+    advanceDomains(turnState);
+    drainProprietaryActions(events, turnState);
     events.push({ kind: 'round-end', round });
     overRound = round;
     if (!living(defenderTeam).length) {

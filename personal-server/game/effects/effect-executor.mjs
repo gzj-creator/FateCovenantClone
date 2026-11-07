@@ -3,6 +3,14 @@
  */
 
 import { DAMAGE_TYPES, HEAL_TYPES, SHIELD_TYPES, STAT_TYPES, ENERGY_TYPES, STATUS_TYPES } from './effect-types.mjs';
+import {
+  absorbDamage,
+  capDamage,
+  destroyShield,
+  drainTianji,
+  layerModifiers,
+  tianjiValue,
+} from './proprietary-state.mjs';
 
 const BUFF_STAT_TYPES = new Set([
   STAT_TYPES.ATTACK_FLAT,
@@ -52,7 +60,13 @@ function modifierStacks(modifier) {
 
 function modifierCollections(source) {
   if (Array.isArray(source)) return [source];
-  return [source?.buffs, source?.debuffs].filter(Array.isArray);
+  const collections = [source?.buffs, source?.debuffs].filter(Array.isArray);
+  // CORE-BATTLE-B: named layer stacks (【魔能】 etc.) contribute stats exactly
+  // like buffs, but stay in their own container so caps and consumption are
+  // explicit. The helper returns an empty list for units without layers.
+  const layers = layerModifiers(source);
+  if (layers.length) collections.push(layers);
+  return collections;
 }
 
 /**
@@ -241,6 +255,10 @@ export class EffectExecutor {
         return this.executeStatus(effect, actor, target);
       case 'dispel':
         return this.executeDispel(effect, actor, target);
+      case 'destroy-shield':
+        return this.executeDestroyShield(effect, actor, target);
+      case 'clear-resource':
+        return this.executeClearResource(effect, actor, target);
       default:
         throw new Error(`Unknown effect type: ${effect.type}`);
     }
@@ -294,17 +312,19 @@ export class EffectExecutor {
     ));
     const damageReduction = effectiveDamageReduction(target);
     finalDamage = Math.max(1, Math.floor(finalDamage * (1 - damageReduction)));
+    // "单个目标的伤害不超过…" clauses are per-effect ceilings, not a global cap.
+    if (effect.damageCap) {
+      finalDamage = capDamage(finalDamage, effect.damageCap, {
+        attack: effectiveAttack(actor),
+        maxHp: effectiveMaxHp(actor),
+      });
+    }
 
     // Apply to target
     const oldHp = target.hp;
-    const absorbed = Math.min(target.shield || 0, finalDamage);
-    target.shield = (target.shield || 0) - absorbed;
-    target.hp = Math.max(0, target.hp - (finalDamage - absorbed));
-
-    // Check for death
-    if (target.hp === 0) {
-      target.alive = false;
-    }
+    const oldShield = Math.max(0, Number(target.shield) || 0);
+    const applied = absorbDamage(target, finalDamage, { sourceId: actor.id, events: this.state?.events });
+    const absorbed = applied.absorbed + applied.superAbsorbed + applied.summonAbsorbed;
 
     const hpDamage = recordActionDamage(actor, target, oldHp, target.hp, absorbed, this.state);
     const consumedDurations = this.consumeTriggerCount(target, 'damage-taken');
@@ -322,10 +342,44 @@ export class EffectExecutor {
       crit: isCrit,
       oldHp,
       newHp: target.hp,
-      oldShield: target.shield + absorbed,
+      oldShield,
       newShield: target.shield,
       damageReduction,
       consumedDurations,
+    };
+  }
+
+  /** "摧毁敌方全体50%当前护盾" — proportional shield removal. */
+  executeDestroyShield(effect, actor, target) {
+    if (!target?.alive) return null;
+    const ratio = Number(effect.ratio ?? effect.multiplier ?? 0);
+    const removed = destroyShield(target, ratio, { sourceId: actor?.id ?? null, events: this.state?.events });
+    return {
+      type: 'destroy-shield',
+      actor: actor?.id ?? 0,
+      target: target.id,
+      ratio,
+      removed,
+      shield: target.shield,
+    };
+  }
+
+  /** "清空目标的能量和天极值" — both resources at once, each independently. */
+  executeClearResource(effect, actor, target) {
+    if (!target?.alive) return null;
+    const resources = Array.isArray(effect.resources) ? effect.resources : ['energy'];
+    const before = { energy: Number(target.energy ?? 0), tianji: tianjiValue(target) };
+    let drainedTianji = 0;
+    if (resources.includes('energy')) target.energy = 0;
+    if (resources.includes('tianji')) drainedTianji = drainTianji(target, before.tianji, { reason: 'clear' });
+    return {
+      type: 'clear-resource',
+      actor: actor?.id ?? 0,
+      target: target.id,
+      resources,
+      before,
+      after: { energy: Number(target.energy ?? 0), tianji: tianjiValue(target) },
+      drainedTianji,
     };
   }
 
