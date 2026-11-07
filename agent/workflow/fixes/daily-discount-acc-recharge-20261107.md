@@ -44,7 +44,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-recharge-fix-apk
 - 全量通过后细化客户端修复以保留原自选弹窗，最新两项字节码回归重新通过，包含自选奖励列表完整传递。
 - bundle 全部 `10928` 个 TextAsset 核对通过，只替换两个目标；候选 APK 的 `11906` 个 ZIP 成员内容校验通过，仅替换 Lua bundle 并移除旧签名。
 
-## 本地产物与验收边界
+## 替换授权前的本地产物与验收边界
+
+本节为用户授权替换前的状态；最新结果见下方安装记录。
 
 证据目录 `analysis/experiments/recharge-fix-20261107/`，不提交二进制：
 
@@ -61,3 +63,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-recharge-fix-apk
 读取共享 `RechargeMgr` 和模块 19 的累充活动都会采用修复后的金额，包括当前配置的 `ActFrameType=106`、首充和百元累充。免费/资源价商品仍不计入现金累充，活动仍受自己的日期和领奖条件限制。
 
 返利、许愿树和周猎的独立计数没有被重置；不能把共享金额修复当作所有活动独立状态均已验收。
+
+## 2026-11-07 安装及归档
+
+用户授权替换 APK，最终要求 APK 只放在 `apk/`，不进入 Git 历史，并在每次修改前保留上一版备份。以设备实际安装包为基底保留 `OpenServerSprintTable.data.lua` 修正，全部 10928 个 TextAsset 和 11906 个非签名 ZIP 成员校验通过，实际字节码两项回归重新通过。
+
+原证书私钥缺失，完整备份后使用新证书重装隔离包。数据归档 216 个条目，23725568 字节，SHA256 `e08ff4668ce3d324342b4f8da65f9baed5fb9a9e4a5c12b9bd01e2984b9f7238`，设备与本地一致；服务器 SQLite 一致备份完整性 `ok`。恢复数据、owner、缓存 group、SELinux 标签后，146 个文件校验全部相同，保留 `SubDownloadFinish=1`，新 UID `10046`。
+
+新包 v1/v2/v3、zipalign 验证通过，安装后 base.apk 哈希与 `apk/README.md` 所记快照一致。实际登录本地服大厅且看板娘正常；本轮未执行消费充值，不将字节码测试视为逐项真机支付验收。仅操作 `127.0.0.1:16448` 的 `com.jzyx.ps`，未重启实时服务。
+
+本地连接脚本修复 UID 变化时预期失败命令的 PowerShell stderr 处理，保留所需四端口之外的既有管理端口 `18883` reverse；实际 Setup 和 Launch 通过。新旧 APK 仅保存在 `apk/`，未暂存或提交 Git；已撤去本轮新增 LFS 规则和 APK 忽略例外。用户要求结束后不再操作设备。
+
+本地证据见 `analysis/experiments/recharge-fix-20261107/device-backup.local-only.data/restore-verification.local-only.json`、同目录 `installed-after-sha256.local-only.txt`；构建/签名记录在 `apk-installed-base/`、`signed-installed-base/`。大厅截图 `device-validation.local-only.data/login/screen.png`，SHA256 `8f4e35689953517797063673215067e8e091b01646c59b906ff60142e20f3420`，REA Evidence `ev_bde2753ec91b40c81680aa6226f5daf7e37d8763db6b239c71c31841b4ef6a4c`。

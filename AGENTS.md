@@ -10,9 +10,13 @@
 
 ## APK 快照规则（持久）
 
+2026-11-07 用户最终规则：APK 只保存在项目 `apk/` 目录，不进入 Git 历史，也不使用 Git LFS 提交。每次修改或替换 APK 前，先将当前可用版本复制为 `apk/` 中带版本或时间后缀的独立备份，并核对大小和 SHA256；保留至少上一版，不覆盖唯一备份，不自动删除旧备份。修改验收通过后再保存新版本，更新 `apk/README.md` 的当前包和备份记录。只有说明文档和代码可以提交 Git。此规则覆盖此前关于将 APK 加入 Git 的临时要求。
+
 每次涉及 APK 的修改，验收通过后必须把当前可用 APK 同步一份到项目 `apk/` 目录，并在 `apk/README.md` 记录文件名、大小、SHA256、包名/版本、来源、验收证据和已知前置条件（例如 PlayerPrefs）。APK 文件不提交 Git；只提交文档。未验收或仅组件测试通过的构建不得标为“可用快照”。
 
 ## 当前目标
+
+2026-11-07 已替换隔离包为 `apk/com.jzyx.ps.v10-recharge-fix.apk`，SHA256 `d7beb6464ed305336704c5e1150093e66eed8a66ff41fdee45b5256d1ad0ecae`。替换前实际安装包保存在 `apk/com.jzyx.ps.v9-before-recharge-fix.apk`，SHA256 `70d0f7d6e01e95e62d4616cf51882c1373a299cffed7917e65b3722fa8667620`。保留既有冲榜修正；146 个数据文件完整恢复并校验，`SubDownloadFinish=1` 保留，新 UID 10046。因原签名私钥缺失，备份后使用新证书重装；新签名材料位于 `personal-server/secrets/apk-signing.local-only.data/`，不提交。已实测登录大厅和看板娘，本轮未消费充值验证。APK 未暂存或提交 Git，用户要求结束后不再操作设备。
 
 2026-11-03 用户最新范围：只维护个人服务器（`personal-server/`）和隔离客户端 APK（`apk/`）；Unity 复刻路线已取消，`unity/` 目录按用户要求删除。下方 Unity 开发、构建与验收步骤均为历史，不再执行。私服全部模块审查与修复在分支 `fix/full-review-20261104`、worktree `.worktree/review-fixes-20261104` 完成；不启停实时服务或操作模拟器。审查报告见 `agent/workflow/project-review/2026-11-03.md`，修复与验证记录见 `agent/workflow/project-review/2026-11-04-fixes.md`。
 

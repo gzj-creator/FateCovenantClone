@@ -1,40 +1,37 @@
-# 本地测试 APK 快照
+# 个人服务器 APK 快照
 
-本目录保存本机个人服务器联调用的 APK 快照，**不纳入 Git 提交**。完整说明和修复过程见 ../agent/workflow/client-resource/implementation.md。
+2026-11-07 用户最终规则：**APK 只放在本目录，不进入 Git 历史，也不通过 Git LFS 提交**。每次修改前先保留上一版的独立备份并校验大小、SHA256，验收后再保存新版本。保留至少上一版，不覆盖唯一备份，不自动删除旧备份。只提交说明文档和代码；签名材料、密码和设备数据备份仍仅本地保存。
 
-## 当前可用快照
+## 当前快照
 
 | 项目 | 值 |
 | --- | --- |
-| 文件 | apk/com.jzyx.ps.v9-working.apk |
-| 保存日期 | 2026-10-31 |
-| 大小 | 4,185,758,901 字节 |
-| SHA256 | 1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473 |
-| 包名 | com.jzyx.ps |
-| 版本 | 1.55.090365（versionCode 362155） |
-| 签名 | v1/v2/v3 验证通过；证书 CN=FateCovenant Local Test |
-| 证书 SHA256 | 976534938a9295ed80f4b6ea5ae88e7c8e6b4242cec776ee0f38882a2c76644c |
-| 来源 | analysis/experiments/private-server-20261025/p3/isolated-voucher-1yuan-onkey-recharge-forward10-debug-preserved-20261031/com.jzyx.ps.signed.apk |
-| 安装校验 | 设备 base.apk SHA256 与源构建及本快照一致 |
-| 验收证据 | 真实 46003 订单 16004→1900→16003 成功；192/192 测试；批量限购修复与重连证据见 analysis/experiments/private-server-20261025/p3/daily-discount-batch-20261031/ |
+| 文件 | `com.jzyx.ps.v10-recharge-fix.apk` |
+| 大小 | 4,185,758,937 字节 |
+| SHA256 | `d7beb6464ed305336704c5e1150093e66eed8a66ff41fdee45b5256d1ad0ecae` |
+| 包名 / 版本 | `com.jzyx.ps` / `1.55.090365`，versionCode `362155` |
+| 签名 | v1/v2/v3、16 KB zipalign 验证通过 |
+| 证书 SHA256 | `994c7d946fc38c8d7fff2cb77be9847a73eb248920d57185f355ce7059729fc7` |
+| 来源 | `analysis/experiments/recharge-fix-20261107/signed-installed-base/com.jzyx.ps.signed.apk` |
+| 内容 | 修复每日礼包及共享累充，保留设备已有冲榜配置修正 |
+| 安装校验 | 已安装 base.apk 哈希与本快照相同，新 UID `10046` |
+| 验收 | 已登录本地服大厅，看板娘正常；146 个恢复文件校验一致；本轮未执行消费充值 |
 
 ## 使用条件
 
-- 仅用于本机个人服务器联调，禁止分发或上传；该包基于原客户端修改，包含原游戏资源，不是最终发行包。
-- 客户端通过 ADB reverse 连接 127.0.0.1 上的个人服务器；服务端口和实时 PID 以 analysis/experiments/private-server-20261025/p3/runtime.local-only.data/server.local-only.json 为准。
-- 主界面看板娘依赖应用私有 SharedPreferences 中的 SubDownloadFinish=1：
+- 只操作隔离包 `com.jzyx.ps`，设备 `127.0.0.1:16448`；原版 `com.jzyx.my` 不操作。
+- 使用 `tools/local-server-device.ps1` 配置端口和启动；服务状态以 `personal-server/runtime.local-only.data/server.local-only.json` 为准。
+- 看板娘仍依赖 `/data/user/0/com.jzyx.ps/shared_prefs/com.jzyx.ps.v2.playerprefs.xml` 中的 `SubDownloadFinish=1`，未烘焙进 APK。
+- 数据恢复需按实际 UID 修复 owner、缓存 group、SELinux 标签，不要硬编码旧 UID。
+- 原证书私钥缺失，本次完整备份后重装并恢复数据。新旧证书不同，不能直接相互 `install -r`。
+- 新签名材料位于 `personal-server/secrets/apk-signing.local-only.data/`，后续更新需保留该目录，不提交私钥或密码。
+- Git 不保存 APK，本目录需要随项目另外备份。
+- APK 基于原客户端修改、包含原资源，仅供本地个人服务器联调，不作最终发行包。
 
-      /data/data/com.jzyx.ps/shared_prefs/com.jzyx.ps.v2.playerprefs.xml
+## 本地回退
 
-  该值**没有烘焙进 APK**。重装、清除应用数据或换设备后，需要重新写入；否则 UniCore.RemoteLoadMgr 会把 sub_first 资源误判为远程下载，看板娘会因 hero_sl_GuangZhiXin_new_talk.prefab ... bundle load timeOut / [MissAsset] 消失。
-- 写入 prefs 后需保持 owner 10042:10042、mode 660，并执行 restorecon。
-- 安装前确认设备和 ADB：
+替换前从设备拉取的实际安装包保存在 `apk/com.jzyx.ps.v9-before-recharge-fix.apk`，SHA256 `70d0f7d6e01e95e62d4616cf51882c1373a299cffed7917e65b3722fa8667620`，大小 4,185,758,901 字节。它与旧 `com.jzyx.ps.v9-working.apk` 不同，额外包含冲榜配置修正。两者均不提交。备份来源为 `analysis/experiments/recharge-fix-20261107/device-backup.local-only.data/com.jzyx.ps.installed-before.local-only.apk`。
 
-      $adb = 'E:/Mumu/MuMuPlayer/nx_main/adb.exe'
-      & $adb -s 127.0.0.1:16448 install -r apk/com.jzyx.ps.v9-working.apk
+完整数据备份及逐文件恢复校验在上述来源目录，保留 `SubDownloadFinish=1`。回退前再次备份当前数据，避免覆盖之后的进度。
 
-## 边界
-
-- 原版 com.jzyx.my 未操作；不要用本快照替换或停启原版客户端。
-- LocalFileCache.txt 是设备侧资源缓存，不要为了让快照“看起来可用”而覆盖或清理。
-- 重装后若看板娘仍缺失，先检查 prefs 中的 SubDownloadFinish 和对应 bundle 是否存在，再检查服务/更新地址，不要先怀疑美术资源缺失。
+验证证据位于 `analysis/experiments/recharge-fix-20261107/`：构建记录 `apk-installed-base/recharge-fix-apk.json`、签名记录 `signed-installed-base/`、恢复记录 `device-backup.local-only.data/restore-verification.local-only.json`，大厅截图 `device-validation.local-only.data/login/screen.png`。组件修复和 2239 项服务测试见 [修复记录](../agent/workflow/fixes/daily-discount-acc-recharge-20261107.md)。
