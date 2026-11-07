@@ -1,6 +1,6 @@
 # SOC-MSG 实施记录
 
-日期：2026-11-07。分支：`task/SOC-MSG-20261107`。worktree：`.worktree/gameplay-20261106/soc-msg`。基线：main `e55a039`。
+日期：2026-11-07。分支：`task/SOC-MSG-20261107`。worktree：`.worktree/gameplay-20261106/soc-msg`。基线：main `49a17ae`。
 
 **状态：服务端完成（10501–10511 全部有明确处理路径），核心频道 10501/10502/10503/10506/10507/10508 有真实 SQLite 状态与回包，待 APK 验收；消息推送、内容长度/频率限制、跨服与 10511 语义为证据缺口。**
 
@@ -99,7 +99,7 @@
 - 表：`message_channels`、`message_members`、`message_history`、`message_logs`，均由服务幂等建立，未改 `game-store` 迁移。
 - 历史消息 `idx` 每频道单调递增，`time` 为秒级；`content` 原样保存与回放（服务端不解释聊天内容）。
 - 10501/10510 同一个 protobuf 请求；10510 只写 `message_logs`，不进入频道历史（`req_log_send_msg` 名称证据，响应契约未见，按无专用 schema 返回空）。
-- 10508 `loginPayload()` 只回放本角色已加入的频道与最近消息；登录模块槽位未恢复，未接入登录容器。
+- 10508 `loginPayload()` 只回放本角色已加入的频道与最近消息；s2c 推送类型 1402 已由 `Port.lua` 目标恢复，但登录容器模块槽位未恢复，未接入登录容器。
 
 ## 逐命令状态
 
@@ -112,14 +112,14 @@
 | 10505 | 已实现 | 批量角色资料，去重保序 |
 | 10506 | 已实现 | 按 `[startIdx,endIdx]` 升序取历史 |
 | 10507 | 已实现 | 分配频道 ID 并加入 |
-| 10508 | payload 就绪 | `pb_res_msg_login`，槽位待总控接入 |
+| 10508 | payload 就绪 | `pb_res_msg_login`；s2c 推送类型为 1402（`MsgMgr.RevLogin`），登录容器模块槽位未恢复 |
 | 10509 | 明确拒绝 | 跨服语义未恢复，code 5 |
 | 10510 | 已实现（推断） | 写日志表，空回包 |
 | 10511 | 明确拒绝 | 未找到调用方与语义，code 5 |
 
 ## 证据缺口
 
-1. **新消息推送**：`pb_res_new_msg`、`pb_res_inc_msg_count` 在 proto 中存在，`Cmd` 中对应 s2c type 未恢复，未实现推送；当前发送者靠下一次 10502/10506 拉取看到消息。
+1. **新消息推送**：s2c 类型已从 `Port.lua` 目标恢复为 1400 `res_new_msg`(`MsgMgr.RevNewMsg`, `pb_res_new_msg`)、1401 `res_inc_msg_count`(`pb_res_inc_msg_count`)、1402 `res_msg_login`(`pb_res_msg_login`)、1403 `rev_delete_channel_msg`。`pb_res_new_msg.sender_bin`/`extra_bin` 的序列化内容尚未反解，为避免发出错误结构导致客户端异常，本轮未接推送；当前发送者在下一次 10502/10506 拉取时看到消息。
 2. **内容长度/频率限制**：`ChatMgr.MAX_MSG_COUNT = ChatTable.Param.max_msg_count`（ChatMgr prototype 92，pc 26–27），`ChatMgr.SEND_TIME_INTERVAL`、`ChatChannel.count_limit_in_cd` 同源 Param；`ChatTable.Param` 行未能从 LazyInit 字节码恢复，无运行时观测值，服务端只做空内容校验与单次回包上限 200 条（本地传输保护，不是客户端限制）。
 3. **跨服**：`is_cross=true` 的 4/15/16 一律 code 5。
 4. **10511**：`MsgMgr.json`/`ChatMgr.json` 中均无 `ReqTipsLookPlayer` 调用点，语义与回包未知。
