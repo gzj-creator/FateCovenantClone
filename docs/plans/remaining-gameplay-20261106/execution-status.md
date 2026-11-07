@@ -71,3 +71,7 @@
 - PAY-GROUPBUYACT rebase 时在 `gateway.mjs` 登录活动区手工解决冲突，同时保留 `activityRead.synchronizeHelpUpLogin` 与 `groupBuyAct.synchronizeLogin`，再以 `--no-ff` 合入 main；合并后团购/welfare/购买流/wallet/gateway/精英闭环/help-up 72/72 通过。日志：`analysis/test-runs/gameplay-20261106/main-after-groupbuy-focused.log`。
 - 最终主线全量：在 personal-server 执行 `npm test`，tests 2311 / pass 2309 / fail 0 / cancelled 0 / skipped 2 / todo 0，duration_ms 232871.9675，退出 0。完整日志：`analysis/test-runs/gameplay-20261106/main-after-batch2-full.log`。
 - gateway 合并后仍保留 onlineGift/rankAchieve/heroExtra/firstWeekGoal/growthRoad/helpUp/groupBuy 登录同步、1316 属性、207 结算/体力、邮件推送、活动期限、20001–20013 好友派发、钓鱼 ETF 参数、精英 201/207 分流与团购 100601/100602；本批未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，未生成 APK。
+
+2026-11-07 第二批后换 session：续接提示词已保存为[剩余玩法计划下一 session](../../../promot/2026-11-07-remaining-gameplay-next-session.md)。main=b5a44f0；
+下一批工作树 `hero-hero2`（HERO-HERO-B）、`soc-msg`（SOC-MSG）、`draw-hundred`（DRAW-HUNDREDDRAWACT）已创建且无提交，可直接复用；
+上一轮中止未产生额外业务改动，不等待旧 agent。
