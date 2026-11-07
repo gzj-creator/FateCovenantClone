@@ -238,3 +238,133 @@ test('relic recast and break-up roll back on encoding and SQLite failures', t =>
   assert.equal(resource(failed.store, RELIC_CHIP_ITEM_TID), 1000n);
   assert.equal(depotRows(failed.store)[0].star, 0);
 });
+
+test('relic stage consumes configured materials and reset returns them', t => {
+  const f = fixture(t);
+  seedResources(f.store, 1000);
+  f.service.addRelics([{ tid: 5001109 }, { tid: 5001209 }, { tid: 5001309 }, { tid: 2001109 }]);
+  const before = resource(f.store, 667002);
+
+  assert.throws(() => f.service.execute(89708, { relic_uid: 1, relic_uid_list: [] }), codeIs(1));
+  assert.throws(() => f.service.execute(89708, { relic_uid: 1, relic_uid_list: [1] }), codeIs(1));
+  assert.throws(() => f.service.execute(89708, { relic_uid: 1, relic_uid_list: [2, 2] }), codeIs(1));
+  assert.throws(() => f.service.execute(89708, { relic_uid: 1, relic_uid_list: [99] }), codeIs(5));
+  assert.throws(() => f.service.execute(89708, { relic_uid: 4, relic_uid_list: [2] }), codeIs(5));
+
+  f.service.execute(89709, { wear_list: [{ hero_tid: HERO, relics: [3] }] });
+  assert.throws(() => f.service.execute(89708, { relic_uid: 1, relic_uid_list: [3] }), codeIs(1));
+  f.service.execute(89709, { wear_list: [{ hero_tid: HERO, relics: [] }] });
+
+  const staged = f.service.execute(89708, { relic_uid: 1, relic_uid_list: [2, 3] });
+  const relic = codec.unpack('pb_res_op_relic', staged.data).relic;
+  assert.equal(relic.stage, 1);
+  assert.deepEqual(relic.stage_cost_relics.map(row => [Number(row.tid), Number(row.num)]), [[5001209, 1], [5001309, 1]]);
+  assert.equal(resource(f.store, 667002), before - 10n);
+  assert.deepEqual(depotRows(f.store).map(row => row.uid), ['1', '4']);
+
+  const reset = f.service.execute(89707, 1);
+  assert.equal(reset.schema, 'pb_rsp_reset_relic');
+  const resetValue = codec.unpack('pb_rsp_reset_relic', reset.data);
+  assert.equal(resetValue.back_relic_l.length, 2);
+  assert.equal(Number(resetValue.relic.stage ?? 0), 0);
+  assert.deepEqual(depotRows(f.store).map(row => row.uid), ['1', '4', '5', '6']);
+  assert.deepEqual(depotRows(f.store).filter(row => ['5', '6'].includes(row.uid)).map(row => row.tid).sort(), [5001209, 5001309]);
+  assert.throws(() => f.service.execute(89707, 1), codeIs(1));
+  assert.throws(() => f.service.execute(89707, 99), codeIs(5));
+
+  f.store.inspect(db => db.prepare('UPDATE relic_depot SET stage=5 WHERE uid=?').run('1'));
+  assert.throws(() => f.service.execute(89708, { relic_uid: 1, relic_uid_list: [5] }), codeIs(305));
+
+  const service = f.reopen();
+  assert.equal(depotRows(f.store).length, 4);
+  assert.equal(depotRows(f.store).find(row => row.uid === '1').stage, 5);
+  assert.equal(service.execute(89707, 1).schema, 'pb_rsp_reset_relic');
+});
+
+test('relic variation is limited to qualities that declare it', t => {
+  const f = fixture(t);
+  seedResources(f.store, 1000);
+  f.service.addRelics([{ tid: 5001109 }, { tid: 2001109 }]);
+  const before = resource(f.store, 668002);
+
+  assert.throws(() => f.service.execute(89711, 2), codeIs(305));
+  assert.throws(() => f.service.execute(89711, 99), codeIs(5));
+
+  const varied = f.service.execute(89711, 1);
+  assert.equal(varied.schema, 'pb_variation_back');
+  assert.equal(codec.unpack('pb_variation_back', varied.data).relic.is_variation, true);
+  assert.equal(resource(f.store, 668002), before - 10n);
+  assert.throws(() => f.service.execute(89711, 1), codeIs(305));
+  assert.equal(depotRows(f.store).find(row => row.uid === '1').is_variation, 1);
+
+  const service = f.reopen();
+  assert.equal(depotRows(f.store).find(row => row.uid === '1').is_variation, 1);
+  assert.throws(() => service.execute(89711, 1), codeIs(305));
+});
+
+function tablesWithSpHero(heroTid, item) {
+  const tables = { ...relicTables, SpHero: new Map(relicTables.SpHero) };
+  tables.SpHero.set(heroTid, { tid: heroTid, refine_attr: 66, item, relic_name: 1 });
+  return tables;
+}
+
+function setHero(store, tid, patch) {
+  store.transaction(model => {
+    const hero = model.heroInfo.hero_list.find(entry => Number(entry.tid) === tid);
+    assert.ok(hero, 'hero fixture ' + tid);
+    Object.assign(hero, patch);
+  });
+}
+
+test('relic SP level-up spends the hero SP item and honours gated levels', t => {
+  const f = fixture(t, { tables: tablesWithSpHero(HERO, 497002) });
+  seedResources(f.store, 1000, [497002]);
+  const before = resource(f.store, 497002);
+
+  const result = f.service.execute(89710, HERO);
+  assert.equal(result.schema, 'pb_relic_sp_up_rsp');
+  const value = codec.unpack('pb_relic_sp_up_rsp', result.data);
+  assert.equal(Number(value.hero.sp_relic_level), 1);
+  assert.equal(resource(f.store, 497002), before - 1n);
+
+  assert.throws(() => f.service.execute(89710, OTHER_HERO), codeIs(5));
+  assert.throws(() => f.service.execute(89710, 9999999), codeIs(5));
+
+  setHero(f.store, HERO, { sp_relic_level: '3', sp_relic_refine_value: '0' });
+  assert.throws(() => f.service.execute(89710, HERO), codeIs(305));
+  setHero(f.store, HERO, { sp_relic_refine_value: '1000' });
+  const gated = f.service.execute(89710, HERO);
+  assert.equal(Number(codec.unpack('pb_relic_sp_up_rsp', gated.data).hero.sp_relic_level), 4);
+
+  setHero(f.store, HERO, { sp_relic_level: '10' });
+  assert.throws(() => f.service.execute(89710, HERO), codeIs(305));
+
+  const service = f.reopen();
+  assert.equal(Number(heroOf(f.store, HERO).sp_relic_level), 10);
+  assert.throws(() => service.execute(89710, HERO), codeIs(305));
+});
+
+test('relic refine adds the tier-bounded value and persists', t => {
+  const f = fixture(t, { tables: tablesWithSpHero(HERO, 497002) });
+  seedResources(f.store, 1000, [497002]);
+  const before = resource(f.store, 497002);
+
+  const result = f.service.execute(89712, HERO);
+  assert.equal(result.schema, 'pb_relic_refine_back');
+  const value = codec.unpack('pb_relic_refine_back', result.data);
+  assert.equal(Number(value.tid), HERO);
+  assert.equal(Number(value.refine_value), 6);
+  assert.equal(Number(value.add_refine_value), 6);
+  assert.equal(resource(f.store, 497002), before - 1n);
+  assert.equal(Number(heroOf(f.store, HERO).sp_relic_refine_value), 6);
+
+  assert.throws(() => f.service.execute(89712, OTHER_HERO), codeIs(5));
+  setHero(f.store, HERO, { sp_relic_refine_value: '999999' });
+  assert.throws(() => f.service.execute(89712, HERO), codeIs(305));
+
+  const service = f.reopen();
+  setHero(f.store, HERO, { sp_relic_refine_value: '1200' });
+  const tier2 = service.execute(89712, HERO);
+  const tier2Value = codec.unpack('pb_relic_refine_back', tier2.data);
+  assert.equal(Number(tier2Value.refine_value), 1206);
+});

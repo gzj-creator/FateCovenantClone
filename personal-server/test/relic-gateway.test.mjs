@@ -46,11 +46,13 @@ test('gateway routes 89709 and 89705 through the relic service', { timeout: 1500
   const seedService = createRelicService({
     store: game.store, codec, tables: readRelicTables(), resourceTables: readGameTables(), now: () => NOW
   });
-  const created = seedService.addRelics([{ tid: 2001109 }, { tid: 2001209 }, { tid: 2001309 }, { tid: 3001109 }]);
-  assert.equal(created.length, 4);
+  const created = seedService.addRelics([
+    { tid: 2001109 }, { tid: 2001209 }, { tid: 2001309 }, { tid: 3001109 }, { tid: 5001109 }, { tid: 5001209 }
+  ]);
+  assert.equal(created.length, 6);
   game.store.transaction(model => {
     let index = 0;
-    for (const tid of [813002, 379002]) {
+    for (const tid of [813002, 379002, 667002, 668002, 497002]) {
       const key = String(tid);
       const existing = model.resources.get(key);
       if (existing) existing.num = String(BigInt(existing.num) + 1000n);
@@ -120,8 +122,28 @@ test('gateway routes 89709 and 89705 through the relic service', { timeout: 1500
   response = await request(89706, 7, codec.pack('pb_req_recast_relic', { relic_uid: 4, index: 0 }));
   assert.ok(response.err, 'cancelling a saved recast has no pending result');
 
-  const unsupported = new Set([89701, 89702, 89704, 89705, 89706, 89709]);
+  response = await request(89708, 8, codec.pack('pb_req_stage_relic', { relic_uid: 5, relic_uid_list: [6] }));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_res_op_relic', Buffer.from(response.data, 'base64')).relic.stage, 1);
+
+  response = await request(89707, 9, await encodeEtf(5));
+  assert.equal(response.err, undefined);
+  const reset = codec.unpack('pb_rsp_reset_relic', Buffer.from(response.data, 'base64'));
+  assert.equal(reset.back_relic_l.length, 1);
+  assert.equal(Number(reset.relic.stage ?? 0), 0);
+
+  response = await request(89711, 10, await encodeEtf(5));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_variation_back', Buffer.from(response.data, 'base64')).relic.is_variation, true);
+
+  response = await request(89710, 11, await encodeEtf(HERO));
+  assert.deepEqual(response.err, { err: 5 }, 'the seeded heroes have no relic SP configuration');
+  response = await request(89712, 12, await encodeEtf(HERO));
+  assert.deepEqual(response.err, { err: 5 });
+
+  const unsupported = new Set([89701, 89702, 89704, 89705, 89706, 89707, 89708, 89709, 89710, 89711, 89712]);
   assert.equal(events.some(event => event.event === 'unsupported_command' && unsupported.has(event.type)), false);
-  assert.deepEqual(events.filter(event => event.event === 'relic_committed').map(event => event.type), [89709, 89705, 89701, 89702, 89704]);
-  assert.deepEqual(events.filter(event => event.event === 'relic_rejected').map(event => event.type), [89706]);
+  assert.deepEqual(events.filter(event => event.event === 'relic_committed').map(event => event.type),
+    [89709, 89705, 89701, 89702, 89704, 89708, 89707, 89711]);
+  assert.deepEqual(events.filter(event => event.event === 'relic_rejected').map(event => event.type), [89706, 89710, 89712]);
 });

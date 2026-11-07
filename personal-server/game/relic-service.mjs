@@ -261,7 +261,8 @@ export function createRelicService({
       if (seenHeroes.has(heroTid)) fail(1, 'Relic wear hero is duplicated');
       seenHeroes.add(heroTid);
       const hero = heroByTid(model, heroTid);
-      if (!Array.isArray(request?.relics) || !request.relics.length) fail(1, 'Relic wear uid list is empty');
+      // An empty list clears every slot of the hero.
+      if (!Array.isArray(request?.relics)) fail(1, 'Invalid relic wear uid list');
       const uids = [], types = new Set();
       for (const raw of request.relics) {
         const uid = uidText(raw, 'Invalid relic uid');
@@ -457,6 +458,185 @@ export function createRelicService({
     };
   }
 
+  // Quality.stage_cost holds the item amount per stage and Quality.stage_cost_item
+  // names the item; only quality 50 declares both, so the other qualities stop
+  // with the business code instead of consuming an invented material.
+  function executeStage(model, db, input) {
+    const uid = uidText(input?.relic_uid, 'Invalid relic uid');
+    const materialUids = Array.isArray(input?.relic_uid_list) ? input.relic_uid_list : [];
+    if (!materialUids.length) fail(1, 'Relic stage material list is empty');
+    const depot = readDepot(db, model.state.roleId);
+    const relic = findRelic(depot, uid);
+    const quality = configuredQuality(relic.tid);
+    const maxStage = Number(param.max_stage ?? 0);
+    const stage = Number(relic.stage ?? 0);
+    if (!Number.isSafeInteger(maxStage) || maxStage <= 0) fail(5, 'Relic stage configuration is missing');
+    if (stage >= maxStage) fail(305, 'Relic stage limit reached');
+    const itemTid = Number(quality.stage_cost_item ?? 0);
+    const costs = Array.isArray(quality.stage_cost) ? Number(quality.stage_cost[stage] ?? 0) : 0;
+    if (!Number.isSafeInteger(itemTid) || itemTid <= 0 || !Number.isSafeInteger(costs) || costs <= 0) {
+      fail(5, 'Relic stage cost configuration is missing');
+    }
+
+    const materials = [], seen = new Set();
+    for (const raw of materialUids) {
+      const materialUid = uidText(raw, 'Invalid relic uid');
+      if (materialUid === relic.uid) fail(1, 'A relic cannot consume itself');
+      if (seen.has(materialUid)) fail(1, 'Relic stage material uid is duplicated');
+      seen.add(materialUid);
+      const row = depot.find(entry => entry.uid === materialUid);
+      if (!row) fail(5, 'Relic does not exist');
+      if (wornOwner(model, materialUid)) fail(1, 'A worn relic cannot be used as stage material');
+      materials.push(row);
+    }
+
+    const res = response(consume(model, [[itemTid, costs]]));
+    const aggregate = new Map(relic.stage_cost_relics.map(row => [row.tid, row.num]));
+    for (const row of materials) aggregate.set(row.tid, (aggregate.get(row.tid) ?? 0) + 1);
+    relic.stage_cost_relics = [...aggregate].map(([tid, num]) => ({ tid, num }));
+    relic.stage = stage + 1;
+    writeDepot(db, model.state.roleId, depot.filter(row => !seen.has(row.uid) || row.uid === relic.uid));
+    const value = { res, relic: relicValue(relic) };
+    return {
+      schema: 'pb_res_op_relic',
+      value,
+      data: codec.pack('pb_res_op_relic', value),
+      valueForLog: { relicUid: relic.uid, stage: relic.stage, materials: materials.length, itemTid, costs }
+    };
+  }
+
+  // Reset returns the stage materials recorded by previous stage-ups. The
+  // client response carries them in back_relic_l, so the depot mints fresh uids
+  // for the returned templates instead of resurrecting removed instances.
+  function executeReset(model, db, input) {
+    const uid = uidText(scalarId(input, 'Invalid relic reset payload'), 'Invalid relic uid');
+    const depot = readDepot(db, model.state.roleId);
+    const relic = findRelic(depot, uid);
+    if (Number(relic.stage ?? 0) <= 0) fail(1, 'Relic stage is already zero');
+    const counters = readCounters(db, model.state.roleId);
+    const back = [];
+    for (const row of relic.stage_cost_relics) {
+      configuredRelic(row.tid);
+      for (let index = 0; index < row.num; index++) {
+        const restored = {
+          uid: nextUid(counters), tid: row.tid, star: 0, stage: 0, is_variation: false,
+          cur_skills: [], recast_skills: [], recast_datas: [], stage_cost_relics: []
+        };
+        depot.push(restored);
+        back.push(restored);
+      }
+    }
+    relic.stage = 0;
+    relic.stage_cost_relics = [];
+    writeDepot(db, model.state.roleId, depot);
+    writeCounters(db, model.state.roleId, counters);
+    const value = { res: response([]), relic: relicValue(relic), back_relic_l: back.map(relicValue) };
+    return {
+      schema: 'pb_rsp_reset_relic',
+      value,
+      data: codec.pack('pb_rsp_reset_relic', value),
+      valueForLog: { relicUid: relic.uid, returned: back.length }
+    };
+  }
+
+  function executeVariation(model, db, input) {
+    const uid = uidText(scalarId(input, 'Invalid relic variation payload'), 'Invalid relic uid');
+    const depot = readDepot(db, model.state.roleId);
+    const relic = findRelic(depot, uid);
+    const quality = configuredQuality(relic.tid);
+    if (quality.is_variation !== true) fail(305, 'Relic quality cannot vary');
+    if (relic.is_variation) fail(305, 'Relic is already varied');
+    const costs = costPairs(quality.variation_consume, 'Relic variation cost configuration is invalid');
+    if (!costs.length) fail(5, 'Relic variation cost configuration is missing');
+    const res = response(consume(model, costs));
+    relic.is_variation = true;
+    writeDepot(db, model.state.roleId, depot);
+    const value = { relic: relicValue(relic), res };
+    return {
+      schema: 'pb_variation_back',
+      value,
+      data: codec.pack('pb_variation_back', value),
+      valueForLog: { relicUid: relic.uid, varied: true }
+    };
+  }
+
+  // Sp is the hero relic-rune level ladder (cost, star gate, refine-value gate)
+  // and SpHero names the per-hero upgrade item. Both are required before any
+  // resource is spent.
+  function spConfig(heroTid) {
+    const row = tables.SpHero?.get(Number(heroTid));
+    if (!row) fail(5, 'Relic SP configuration is missing');
+    const item = Number(row.item ?? 0);
+    if (!Number.isSafeInteger(item) || item <= 0) fail(5, 'Relic SP item configuration is missing');
+    return { row, item };
+  }
+
+  function executeUpSp(model, db, input) {
+    const heroTid = scalarId(input, 'Invalid relic SP payload');
+    const hero = heroByTid(model, heroTid);
+    const current = Number(hero.sp_relic_level ?? 0);
+    const next = current + 1;
+    const level = tables.Sp?.get(next);
+    if (!level) fail(305, 'Relic SP level limit reached');
+    const needStar = Number(level.need_star ?? 0);
+    if (Number(hero.star ?? 0) < needStar) fail(305, 'Hero star is too low for relic SP');
+    const needRefine = Number(level.refine_value ?? 0);
+    if (Number(hero.sp_relic_refine_value ?? 0) < needRefine) fail(305, 'Relic SP refine value is too low');
+    const { item } = spConfig(heroTid);
+    const count = Number(level.cost ?? 0);
+    if (!Number.isSafeInteger(count) || count <= 0) fail(5, 'Relic SP cost configuration is missing');
+    const res = response(consume(model, [[item, count]]));
+    hero.sp_relic_level = String(next);
+    const value = { hero: structuredClone(hero), res };
+    return {
+      schema: 'pb_relic_sp_up_rsp',
+      value,
+      data: codec.pack('pb_relic_sp_up_rsp', value),
+      valueForLog: { heroTid, level: next, item, count }
+    };
+  }
+
+  // SpRefine tiers are keyed by the attr_scope range that contains the current
+  // refine value; random_limit bounds the value granted by one refine.
+  function refineTier(value) {
+    const tiers = [...(tables.SpRefine?.values() ?? [])]
+      .map(row => ({ row, scope: (row.attr_scope ?? []).map(Number) }))
+      .filter(entry => entry.scope.length === 2 && entry.scope.every(Number.isSafeInteger))
+      .sort((left, right) => left.scope[0] - right.scope[0]);
+    const tier = tiers.find(entry => value >= entry.scope[0] && value < entry.scope[1]);
+    if (!tier) fail(305, 'Relic SP refine limit reached');
+    return tier.row;
+  }
+
+  function executeRefine(model, db, input) {
+    const heroTid = scalarId(input, 'Invalid relic refine payload');
+    const hero = heroByTid(model, heroTid);
+    const { item } = spConfig(heroTid);
+    const value = Number(hero.sp_relic_refine_value ?? 0);
+    if (!Number.isSafeInteger(value) || value < 0) fail(5, 'Hero refine value is invalid');
+    const tier = refineTier(value);
+    const count = Number(tier.cost ?? 0);
+    const limit = Number(tier.random_limit ?? 0);
+    if (!Number.isSafeInteger(count) || count <= 0 || !Number.isSafeInteger(limit) || limit <= 0) {
+      fail(5, 'Relic SP refine configuration is missing');
+    }
+    const add = 1 + Math.floor(random() * limit);
+    const res = response(consume(model, [[item, count]]));
+    hero.sp_relic_refine_value = String(value + add);
+    const responseValue = {
+      tid: String(heroTid),
+      refine_value: String(value + add),
+      add_refine_value: String(add),
+      res
+    };
+    return {
+      schema: 'pb_relic_refine_back',
+      value: responseValue,
+      data: codec.pack('pb_relic_refine_back', responseValue),
+      valueForLog: { heroTid, refineValue: value + add, add }
+    };
+  }
+
   return {
     // Acquisition seam. Relic forging and the relic draw belong to the draw
     // module, which is outside this task; other systems hand finished relic
@@ -495,6 +675,11 @@ export function createRelicService({
         if (type === RELIC_COMMANDS.RECAST) return executeRecast(model, db, input);
         if (type === RELIC_COMMANDS.SAVE_RECAST) return executeSaveRecast(model, db, input);
         if (type === RELIC_COMMANDS.CANCEL_RECAST) return executeCancelRecast(model, db, input);
+        if (type === RELIC_COMMANDS.STAGE) return executeStage(model, db, input);
+        if (type === RELIC_COMMANDS.RESET) return executeReset(model, db, input);
+        if (type === RELIC_COMMANDS.VARIATION) return executeVariation(model, db, input);
+        if (type === RELIC_COMMANDS.UP_SP) return executeUpSp(model, db, input);
+        if (type === RELIC_COMMANDS.REFINE) return executeRefine(model, db, input);
         fail(1, 'Unsupported relic command');
       });
     }
