@@ -21,6 +21,7 @@ import { createTaskService } from './task-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
+import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
@@ -392,6 +393,10 @@ export function createLocalGame({
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
   const cms=createCmsService({codec,store,tables,now:clock});
   const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
+  // Mission commands around the journey fight path (meal, stamina exchange and
+  // purchase, one-key rewards, chapter pass, boss awards). Dispatch stays in the
+  // mission block below and is guarded by supports().
+  const missionExtra = createMissionExtraService({ store, codec, now: clock, logger });
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
@@ -835,6 +840,18 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'story_mission_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+        }
+        return;
+      }
+      if (missionExtra.supports(type)) {
+        try {
+          const result = await missionExtra.execute(type, request.data);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'mission_extra_committed', type, seq, bytes: result.data?.length ?? 0 });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'mission_extra_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
         }
         return;
       }

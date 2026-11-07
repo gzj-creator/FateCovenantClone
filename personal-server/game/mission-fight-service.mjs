@@ -570,11 +570,13 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     return { value: {}, data: Buffer.alloc(0) };
   }
 
-  async function claimBoxAwards(bytes) {
-    const decoded = await decodeEtf(bytes);
-    const value = decoded?.value ?? decoded;
-    if (!Array.isArray(value) || value.length === 0 || value.length > 2048) throw new GameError(1, 'Invalid mission box request');
-    const boxTids = value.map(Number);
+  // Box claims are split in two stages so the same logic can be reused inside a
+  // larger transaction (509 one-key chapter rewards). prepare() does every read
+  // and the async BitBlock encoding outside the transaction; apply() mutates the
+  // model and reward_claims rows synchronously and never grants twice.
+  async function prepareBoxClaim(rawTids) {
+    if (!Array.isArray(rawTids) || rawTids.length === 0 || rawTids.length > 2048) throw new GameError(1, 'Invalid mission box request');
+    const boxTids = rawTids.map(Number);
     if (boxTids.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(boxTids).size !== boxTids.length) {
       throw new GameError(1, 'Invalid mission box id');
     }
@@ -608,36 +610,50 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     const nextMission = { ...current, box_award: (await encodeBitBlock(nextBits)).toString('base64') };
     const moduleBytes = serializedBinary(codec.pack('pb_mission', nextMission));
     const expectedModule = JSON.stringify(module);
+    return { boxes, chapterPasses, bits, nextMission, moduleBytes, expectedModule };
+  }
 
-    return store.transaction((model, db) => {
-      const fresh = new Map(model.state.modules.value);
-      if (JSON.stringify(fresh.get(MISSION_MODULE)) !== expectedModule) throw new GameError(1, 'Mission data changed; retry box claim');
-      const newlyGranted = [];
-      for (const box of boxes) {
-        const id = Number(box.tid);
-        const moduleClaimed = hasBit(bits, id);
-        const recordedClaim = db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'mission_box', String(id));
-        // A retry may name boxes that were already claimed under older chapter
-        // boundary logic. Keep that retry idempotent; only a box that would
-        // actually grant now must satisfy the current unlock threshold.
-        if (!moduleClaimed && !recordedClaim && chapterPasses(Number(box.belong_chapter)) < Number(box.need_pass)) {
-          throw new GameError(5, 'Mission box is not unlocked');
-        }
-        if (!moduleClaimed && !recordedClaim) newlyGranted.push(box);
-        // A one-key claim can overlap a previous partial claim. Reconcile both
-        // stores without granting again, and let an all-claimed retry succeed.
-        if (!recordedClaim) db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'mission_box', String(id), new Date(now()).toISOString());
+  function applyBoxClaim(model, db, prepared) {
+    const { boxes, chapterPasses, bits, nextMission, moduleBytes, expectedModule } = prepared;
+    const fresh = new Map(model.state.modules.value);
+    if (JSON.stringify(fresh.get(MISSION_MODULE)) !== expectedModule) throw new GameError(1, 'Mission data changed; retry box claim');
+    const module = fresh.get(MISSION_MODULE);
+    const newlyGranted = [];
+    for (const box of boxes) {
+      const id = Number(box.tid);
+      const moduleClaimed = hasBit(bits, id);
+      const recordedClaim = db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'mission_box', String(id));
+      // A retry may name boxes that were already claimed under older chapter
+      // boundary logic. Keep that retry idempotent; only a box that would
+      // actually grant now must satisfy the current unlock threshold.
+      if (!moduleClaimed && !recordedClaim && chapterPasses(Number(box.belong_chapter)) < Number(box.need_pass)) {
+        throw new GameError(5, 'Mission box is not unlocked');
       }
-      const awards = newlyGranted.flatMap(configuredBoxAwards);
-      const reward = grantResources(model, awards, gameTables);
-      const updated = new Map(model.state.modules.value);
-      const nextModule = { ...module, value: [...module.value] };
-      nextModule.value[0] = moduleBytes;
-      updated.set(MISSION_MODULE, nextModule);
-      model.state.modules.value = [...updated];
-      const res = { changes: reward.changes, is_overflow: false };
-      const result = { mission: nextMission, res_change: res };
-      return { value: result, data: codec.pack('pb_mission_rsp', result) };
+      if (!moduleClaimed && !recordedClaim) newlyGranted.push(box);
+      // A one-key claim can overlap a previous partial claim. Reconcile both
+      // stores without granting again, and let an all-claimed retry succeed.
+      if (!recordedClaim) db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'mission_box', String(id), new Date(now()).toISOString());
+    }
+    const awards = newlyGranted.flatMap(configuredBoxAwards);
+    const reward = grantResources(model, awards, gameTables);
+    const updated = new Map(model.state.modules.value);
+    // Preserve the remaining module-8 slots (stamina/energy) that the 207
+    // settlement path and mission-extra sync maintain alongside pb_mission.
+    const nextModule = { ...module, value: [...module.value] };
+    nextModule.value[0] = moduleBytes;
+    updated.set(MISSION_MODULE, nextModule);
+    model.state.modules.value = [...updated];
+    return { mission: nextMission, res_change: { changes: reward.changes, is_overflow: false }, newlyGranted: newlyGranted.map(box => Number(box.tid)) };
+  }
+
+  async function claimBoxAwards(bytes) {
+    const decoded = await decodeEtf(bytes);
+    const value = decoded?.value ?? decoded;
+    const prepared = await prepareBoxClaim(Array.isArray(value) ? value : null);
+    return store.transaction((model, db) => {
+      const claimed = applyBoxClaim(model, db, prepared);
+      const result = { mission: claimed.mission, res_change: claimed.res_change };
+      return { value: { ...result, newlyGranted: claimed.newlyGranted }, data: codec.pack('pb_mission_rsp', result) };
     });
   }
 
@@ -737,6 +753,8 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
   return {
     supports: type => [201, 202, 203, 204, 207, 213, 503, 506].includes(type),
     passStory,
+    prepareBoxClaim,
+    applyBoxClaim,
     execute(type, bytes) {
       if (type === 506) return claimBoxAwards(bytes);
       if (type === 503) return sweepPassed(bytes);
