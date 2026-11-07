@@ -1,4 +1,4 @@
-﻿import { readJsonAsset, tableAsset } from '../assets.mjs';
+import { readJsonAsset, tableAsset } from '../assets.mjs';
 import { readGeneratedDump } from './hero-tables.mjs';
 
 // RelicTable ships as LuaJIT bytecode. tools/extract-relic-table.mjs stores the
@@ -40,4 +40,3 @@ export function relicQualityOf(tid) {
 export function readRelicParam(tables = readRelicTables()) {
   return tables.Param?.get(1) ?? null;
 }
-
