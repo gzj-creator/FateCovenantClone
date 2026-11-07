@@ -28,6 +28,7 @@ import { createGrowthRoadService } from './growth-road-service.mjs';
 import { createFriendService } from './friend-service.mjs';
 import { createMessageService } from './message-service.mjs';
 import { createArtifactService } from './artifact-service.mjs';
+import { createChatService } from './chat-service.mjs';
 import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -422,6 +423,7 @@ export function createLocalGame({
   const message = createMessageService({
     store, codec, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
   });
+  const chat = createChatService({ store, codec, now: clock, logger });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
     store,
@@ -879,6 +881,19 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'message_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (chat.supports(type)) {
+        try {
+          const result = await chat.execute(type, request.data ?? Buffer.alloc(0));
+          send(seq, result.data);
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          log({ event: 'chat_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'chat_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
