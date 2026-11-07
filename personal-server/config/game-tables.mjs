@@ -155,10 +155,18 @@ export function readGameTables() {
     ...pick(readGeneratedTables(table('CountStatisticsTable.data.lua.json'), ['CountStatistics']), {
       CountStatistics: 'CountStatistics'
     }),
-    ...pick(readGeneratedTables(table('TaskTable.data.lua.json'), ['Type', 'LinearTask', 'CommonTaskGlobal']), {
+    ...pick(readGeneratedTables(table('TaskTable.data.lua.json'), [
+      'Type', 'LinearTask', 'CommonTaskGlobal', 'DailyTask', 'WeeklyTask',
+      'MainTask', 'DailyTaskVitality', 'DailyTaskOffsetGroup'
+    ]), {
       Type: 'TaskType',
       LinearTask: 'LinearTask',
-      CommonTaskGlobal: 'CommonTaskGlobal'
+      CommonTaskGlobal: 'CommonTaskGlobal',
+      DailyTask: 'DailyTask',
+      WeeklyTask: 'WeeklyTask',
+      MainTask: 'MainTask',
+      DailyTaskVitality: 'DailyTaskVitality',
+      DailyTaskOffsetGroup: 'DailyTaskOffsetGroup'
     }),
     // Elite missions use generated row constructors for stage, box and chapter
     // progression. Load the authoritative table family instead of accepting
