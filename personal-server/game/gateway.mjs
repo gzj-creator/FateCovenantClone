@@ -16,6 +16,8 @@ import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
+import { createRelicService } from './relic-service.mjs';
+import { readRelicTables } from '../config/relic-tables.mjs';
 import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
 import { createHouseAssistantService, HOUSE_ASSISTANT_MODULE_ID } from './house-assistant-service.mjs';
 import { readHouseAssistantTables } from '../config/house-assistant-tables.mjs';
@@ -391,6 +393,7 @@ export function createLocalGame({
   // ArtifactCmd 37060-37075. The artifact login payload is module 50 slot 0, so
   // ensureLoginState only normalises rows that grantArtifact() stored as {tid,num}.
   const artifact = createArtifactService({ store, codec, logger });
+  const relic = createRelicService({ store, codec, tables: readRelicTables(), resourceTables: tables, random, now });
   const cabin = createCabinService({ store, codec, heroTables });
   const houseAssistant = createHouseAssistantService({
     store,
@@ -1703,6 +1706,24 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'leader_equip_wear_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (relic.supports(type)) {
+        try {
+          let input;
+          if ([89702, 89704, 89706].includes(type)) input = request.data?.length ? unpack('pb_req_recast_relic', request.data) : {};
+          else if (type === 89705) input = request.data?.length ? unpack('pb_req_resolve_relic', request.data) : {};
+          else if (type === 89708) input = request.data?.length ? unpack('pb_req_stage_relic', request.data) : {};
+          else if (type === 89709) input = request.data?.length ? unpack('pb_relic_wear_req', request.data) : {};
+          else input = await etfArgument(request.data, 'Invalid relic payload');
+          const result = relic.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'relic_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'relic_rejected', type, seq, code, message: error.message });
         }
         return;
       }
