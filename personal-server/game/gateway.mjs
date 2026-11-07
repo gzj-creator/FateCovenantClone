@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { E, encodeEtf, decodeEtf, binary, revive, rawBinary, createGameCodec } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
+import { createHeroMasteryService } from './hero-mastery-service.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
@@ -20,6 +21,7 @@ import { createTaskService } from './task-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
+import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
@@ -27,6 +29,7 @@ import { activityWindow, createActivityCalendar, serverDayNumber } from './activ
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
+import { createShopService } from './shop-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createPermitService } from './permit-service.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
@@ -40,6 +43,8 @@ import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createTeamGenreService } from './team-genre-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { createEliteMissionService } from './elite-mission-service.mjs';
+import { createPeakTowerService } from './peak-tower-service.mjs';
+import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -66,6 +71,8 @@ import { createLineFirstRechargeService } from './line-first-recharge-service.mj
 import { createRechargeRebateResetService } from './recharge-rebate-reset-service.mjs';
 import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
 import { createTimeTempleService } from './time-temple-service.mjs';
+import { createGuideService } from './guide-service.mjs';
+import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
@@ -86,6 +93,7 @@ export function createLocalGame({
   sprintPreview = false,
   localWallet = false,
   missionFightPlayback = false,
+  guideAwards = readGuideAwards(),
   now = Date.now,
   random = Math.random,
   logger = () => {}
@@ -319,6 +327,14 @@ export function createLocalGame({
     }
   });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
+  const shop = createShopService({
+    store,
+    codec,
+    tables,
+    now: clock,
+    logger,
+    fallbackShopInfo: shopId => petActivity.queryShops([shopId])[0]
+  });
   const wishTreasure = createWishTreasureService({ store, codec, tables, calendar, now: clock, logger });
   const wishTree = createWishTreeService({ store, codec, tables, now: clock, logger });
   const weekHunt = createWeekHuntService({ store, codec, tables, now: clock });
@@ -328,6 +344,7 @@ export function createLocalGame({
   const rechargeRebateReset = createRechargeRebateResetService({ store, codec, tables, calendar, now: clock, logger });
   const rechargeExtraAward = createRechargeExtraAwardService({ codec, tables, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
+  const heroMastery = createHeroMasteryService({ store, codec, heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
@@ -353,6 +370,7 @@ export function createLocalGame({
   const teamGenre = createTeamGenreService({ store, codec, tables, heroTables, calendar, now: clock });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
+  const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -370,10 +388,15 @@ export function createLocalGame({
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
-  const itemBox=createItemBoxService({store,codec,tables,logger});
+  const itemBox=createItemBoxService({store,codec,tables,heroTables,logger});
+  const guide=createGuideService({store,codec,tables,awards:guideAwards,now:clock,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
   const cms=createCmsService({codec,store,tables,now:clock});
   const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
+  // Mission commands around the journey fight path (meal, stamina exchange and
+  // purchase, one-key rewards, chapter pass, boss awards). Dispatch stays in the
+  // mission block below and is guarded by supports().
+  const missionExtra = createMissionExtraService({ store, codec, now: clock, logger });
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
@@ -773,23 +796,33 @@ export function createLocalGame({
       }
       if (itemBox.supports(type)) {
         try {
+          const context = { connection: id, seq, type };
           let result;
           if (type === 152) {
-            result = itemBox.openSelected(unpack('selected_use', request.data));
+            result = itemBox.openSelected(unpack('selected_use', request.data), context);
           } else if (type === 155) {
             // use_selected_suit_box encodes (tid, awardIndex) as two ETF positionals.
-            result = itemBox.openSuitBox(await etfArgument(request.data, 'Invalid suit box payload'));
+            result = itemBox.openSuitBox(await etfArgument(request.data, 'Invalid suit box payload'), context);
+          } else if (type === 153) {
+            // use_repeat_box carries one ETF positional (tcp:c2s:153:use_repeat_box).
+            result = itemBox.openRepeat(await etfArgument(request.data, 'Invalid repeat box payload'));
+          } else if (type === 154) {
+            // manual_convert_item carries one ETF positional (tcp:c2s:154:manual_convert_item).
+            result = itemBox.manualConvert(await etfArgument(request.data, 'Invalid convert item payload'), context);
+          } else if (type === 156) {
+            result = itemBox.composeChip(unpack('simple_use', request.data), context);
+          } else if (type === 158) {
+            result = itemBox.composeChips(unpack('pb_one_key_compose', request.data).one_key_compose ?? [], context);
+          } else if (type === 157) {
+            const batch = unpack('pb_batch_use_box_req', request.data);
+            const lottery = batch.lottery_list ?? [];
+            result = lottery.length ? itemBox.openLottery(lottery) : itemBox.open(batch.box_list ?? [], context);
+          } else if (type === 159) {
+            result = itemBox.open(unpack('pb_one_key_use', request.data).use ?? [], context);
           } else {
-            let entries;
-            if (type === 159) entries = unpack('pb_one_key_use', request.data).use;
-            else if (type === 157) {
-              const batch = unpack('pb_batch_use_box_req', request.data);
-              if ((batch.lottery_list ?? []).length) throw new GameError(5, 'Lottery box list is not implemented');
-              entries = batch.box_list;
-            } else entries = [unpack('simple_use', request.data)];
-            result = itemBox.open(entries);
+            result = itemBox.open([unpack('simple_use', request.data)], context);
           }
-          send(seq, result.data); log({ event: 'item_box_committed', type, seq, changes: result.value.changes.length });
+          send(seq, result.data); log({ event: 'item_box_committed', type, seq, changes: result.value.changes.length, duplicate: result.duplicate === true });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
@@ -810,6 +843,18 @@ export function createLocalGame({
         }
         return;
       }
+      if (missionExtra.supports(type)) {
+        try {
+          const result = await missionExtra.execute(type, request.data);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'mission_extra_committed', type, seq, bytes: result.data?.length ?? 0 });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'mission_extra_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+        }
+        return;
+      }
       if (fight.supports(type)) {
         try {
           const result = await fight.execute(type, request.data);
@@ -823,16 +868,20 @@ export function createLocalGame({
         return;
       }
       if (tasks.supports(type)) {
-        let taskId;
+        let taskInput;
         try {
-          taskId = await singleIdArgument(request.data, 'Invalid linear task payload');
-          const result = tasks.execute(type, taskId);
+          // CommonTaskCmd.req_finish_common_task encodes the task id or an id list as ETF,
+          // while linear tasks always carry one id.
+          taskInput = type === 9005
+            ? await etfArgument(request.data, 'Invalid common task payload')
+            : await singleIdArgument(request.data, 'Invalid linear task payload');
+          const result = tasks.execute(type, taskInput);
           send(seq, result.data);
-          log({ event: 'linear_task_committed', type, seq, taskId, changes: result.value.res_change.changes.length });
+          log({ event: type === 9005 ? 'common_task_committed' : 'linear_task_committed', type, seq, taskInput, changes: result.value.res_change.changes.length });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'linear_task_rejected', type, seq, taskId, code, message: error.message });
+          log({ event: type === 9005 ? 'common_task_rejected' : 'linear_task_rejected', type, seq, taskInput, code, message: error.message });
         }
         return;
       }
@@ -1118,6 +1167,19 @@ export function createLocalGame({
         }
         return;
       }
+      if (peakTower.supports(type)) {
+        try {
+          const input = type === 1103 ? unpack('peak_tower_sweeps_req', request.data) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await peakTower.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'peak_tower_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'peak_tower_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (ranks.supports(type)) {
         try {
           const result = ranks.execute(type, await decodeEtf(request.data));
@@ -1145,7 +1207,9 @@ export function createLocalGame({
       }
       if (lineups.supports(type)) {
         try {
-          const input = type === 218 ? await decodeEtf(request.data) : unpack(type === 208 ? 'pb_edit_lineup_req' : 'pb_edit_pre_lineup_req', request.data);
+          const input = lineups.isEtfRequest(type)
+            ? (request.data?.length ? await decodeEtf(request.data) : undefined)
+            : unpack(lineups.requestSchema(type), request.data);
           const result = lineups.execute(type, input);
           send(seq, result.data); log({ event: 'lineup_committed', type, seq });
         } catch (error) {
@@ -1387,6 +1451,26 @@ export function createLocalGame({
         }
         return;
       }
+      if (heroMastery.supports(type)) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const input = decoded?.value ?? decoded;
+          const result = heroMastery.execute(type, input);
+          send(seq, result.data);
+          log({
+            event: 'hero_mastery_committed', type, seq,
+            heroTid: String(result.value.hero.tid),
+            masteryLevel: result.value.hero.mastery_level ?? 0,
+            masteryBreak: result.value.hero.mastery_break ?? 0,
+            changes: result.value.res.changes.length
+          });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hero_mastery_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (magicCircle.supports(type)) {
         try {
           const input = type === 90402
@@ -1471,6 +1555,42 @@ export function createLocalGame({
         // Return the evidenced response schema, with the requested process records.
         const responseType = root.lookupType('pb_req_save_process_back');
         send(seq, pack(responseType.name, { process_list: requestData.req_list })); return;
+      }
+      if (shop.supports(type)) {
+        try {
+          let input;
+          if (type === 1201) input = unpackRequest('pb_req_buy_shop_item', request.data);
+          else if (type === 1206) input = unpackRequest('pb_req_buy_history_item', request.data);
+          else input = await etfArgument(request.data, 'Invalid shop payload', { optional: type === 1202 });
+          const result = shop.execute(type, input, { connection: id, seq });
+          // A null result means the request belongs to another shop family (pet-activity mall or an
+          // unknown id); leave it to the legacy handlers below.
+          if (result) {
+            send(seq, result.data);
+            log({ event: 'shop_committed', type, seq, shopId: result.value?.shop?.id ?? result.value?.shop_id ?? null });
+            return;
+          }
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'shop_rejected', type, seq, code, message: error.message });
+          return;
+        }
+      }
+      if (guide.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = await guide.execute(type, decoded?.value ?? decoded);
+          // 8002 req_check_guide_net has no response schema and no c2s_back
+          // registration, so a successful probe writes no frame back.
+          if (result) send(seq, result.data);
+          log({ event: 'guide_command_committed', type, seq, ...(result?.value ? { awardTid: result.value.awardTid, claimKey: result.value.claimKey, changes: result.value.res?.changes?.length } : {}) });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guide_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
       }
       if (type === 1202) {
         // Hall entry asks for shop ids. Auto-refresh shops require one decodable group even when

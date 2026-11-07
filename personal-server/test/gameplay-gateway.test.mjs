@@ -28,13 +28,13 @@ async function loginActivities(payload) {
   return codec.unpack('pb_act_login', Buffer.from(entry.value));
 }
 
-function loginModuleBytes(login, moduleId) {
+function loginModuleBytes(login, moduleId, slot = 0) {
   const entry = login[2].value.find(value => Number(value[0]) === moduleId);
   assert.ok(entry, `login module ${moduleId} is present`);
   const value = entry[1].value;
   if (Array.isArray(value)) {
-    assert.ok(value[0], `login module ${moduleId} has its first slot`);
-    return Buffer.from(value[0].value);
+    assert.ok(value[slot], `login module ${moduleId} has slot ${slot}`);
+    return Buffer.from(value[slot].value);
   }
   return Buffer.from(value);
 }
@@ -47,8 +47,20 @@ function setDestiny(store, value) {
   });
 }
 
+function setMission(store, missionId) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(8);
+    const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    mission.mission_id = String(missionId);
+    module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+    model.state.modules.value = [...modules];
+  });
+}
+
 function storedLinearTask(store) {
-  return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[0]));
+  // Module 90 holds the four common-task groups first; the linear group follows them.
+  return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[4]));
 }
 
 function addResource(store, tid, num, group = 1) {
@@ -185,6 +197,31 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.deepEqual(game.store.read().resources.get('381002').location.slice(0, 2), [6, 0]);
   assert.deepEqual(game.store.read().resources.get('389002').location.slice(0, 2), [6, 0]);
 
+  // ITEM-ITEM: chip composition (156/158), manual conversion (154) and the guarded
+  // repeat/lottery branches answer on their own numeric ItemCmd types.
+  addResource(game.store, 21300104, 120, 2);
+  response = await request(156, 60, codec.pack('simple_use', { tid: 21300104, num: 1 }));
+  assert.equal(response.err, undefined);
+  const composed = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(composed.find(change => change.tid === '21300104').diff_num, '-60');
+  assert.equal(composed.find(change => change.tid === '1030101').diff_num, '1');
+  response = await request(158, 61, codec.pack('pb_one_key_compose', { one_key_compose: [{ tid: 21300104, num: 1 }] }));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes
+    .find(change => change.tid === '21300104').diff_num, '-60');
+  assert.equal(game.store.read().resources.get('21300104').num, '0');
+  addResource(game.store, 157002, 1, 0);
+  response = await request(154, 62, await encodeEtf([157002]));
+  assert.equal(response.err, undefined);
+  const converted = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(converted.find(change => change.tid === '157002').diff_num, '-1');
+  assert.equal(converted.find(change => change.tid === '201500').diff_num, '2');
+  // 153 has no BoxRepeat rows in this build and lottery rewards are undefined.
+  response = await request(153, 63, await encodeEtf([2261200]));
+  assert.equal(response.err.err, 5);
+  response = await request(157, 64, codec.pack('pb_batch_use_box_req', { lottery_list: [{ tid: 100013400, num: 1 }] }));
+  assert.equal(response.err.err, 5);
+
   // Activity reads answer, activity mutations stay refused.
   response = await request(110308, 6, Buffer.alloc(0));
   assert.equal(response.err, undefined);
@@ -219,7 +256,10 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(response.err, undefined);
   const shops = codec.unpack('pb_query_shops_back', Buffer.from(response.data ?? '', 'base64')).shops;
   assert.deepEqual(shops.map(shop => shop.id), [207, 206, 402]);
-  assert.deepEqual(shops.map(shop => shop.items_groups.length), [1, 1, 0]);
+  // 207/206 keep their auto-refresh group, and 402 is now served from the ordinary mall catalogue
+  // instead of the former empty placeholder.
+  assert.deepEqual(shops.map(shop => shop.items_groups.length), [1, 1, 1]);
+  assert.equal(shops[2].items_groups[0].item_list.length, 28);
   const autoRefresh = codec.unpack('pb_shop_auto_refresh', Buffer.from(shops[0].items_groups[0].group_data_bin, 'base64'));
   assert.ok(Number(autoRefresh.next_refresh_time) > Math.floor(GAME_NOW / 1000));
   assert.equal(Number(autoRefresh.limit_bought_count ?? 0), 0);
@@ -370,7 +410,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.deepEqual(taskClaim.task, { type: 1, receive_tid: 10001 });
   assert.equal(taskClaim.res_change.changes.find(change => change.tid === '101500').diff_num, '50');
   assert.equal(BigInt(game.store.read().resources.get('101500').num), taskDiamonds + 50n);
-  const taskModule = codec.unpack('pb_linear_task_data', rawBinary(new Map(game.store.state().modules.value).get(90).value[0]));
+  const taskModule = codec.unpack('pb_linear_task_data', rawBinary(new Map(game.store.state().modules.value).get(90).value[4]));
   assert.equal(taskModule.task_list.find(task => task.type === 1).receive_tid, 10001);
   response = await request(9010, 17, await encodeEtf([10001]));
   assert.equal(response.err.err, 310);
@@ -393,6 +433,80 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(currentIds.includes(83028), false);
   assert.equal(currentActivity.act_custom_list.some(entry => Number(entry.act_id) === 83028), false);
 });
+
+test('gateway serves meal, stamina exchange and chapter pass on a temporary port', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-mission-extra-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  // 13:00 server time opens the 12-16 MealAward window.
+  let gameNow = new Date(2026, 9, 24, 13, 0, 0, 0).getTime();
+  const game = createLocalGame({
+    databasePath,
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => gameNow,
+    random: () => 0.5
+  });
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  addResource(game.store, 122702, 0);
+  addResource(game.store, 100012900, 100);
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  // 504 free meal: one parcel per window, then an explicit duplicate-claim error.
+  let response = await request(504, 2, await encodeEtf([1]));
+  assert.equal(response.err, undefined);
+  const meal = codec.unpack('pb_mission_meal_rsp', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(meal.res_change.changes.map(change => [change.tid, change.diff_num]), [['122702', '3']]);
+  assert.equal(new Date(Number(meal.meal.last_refresh_stamp) * 1000).getHours(), 0);
+  assert.equal(Buffer.from((await decodeEtf(Buffer.from(meal.meal.got_award, 'base64'))).value)[0], 0x40);
+  response = await request(504, 3, await encodeEtf([1]));
+  assert.equal(response.err.err, 310);
+
+  // 505 stamina exchange spends one meal item and grants fifty stamina.
+  response = await request(505, 4, await encodeEtf([100012900]));
+  assert.equal(response.err, undefined);
+  const exchanged = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(exchanged.changes.map(change => [change.tid, change.diff_num]), [['122702', '-1'], ['100012900', '50']]);
+  assert.equal(game.store.read().resources.get('100012900').num, '150');
+
+  // 511 chapter pass refuses an unfinished chapter and records it once.
+  response = await request(511, 5, await encodeEtf([3]));
+  assert.equal(response.err.err, 5);
+  setMission(game.store, 40201);
+  response = await request(511, 6, await encodeEtf([3]));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(await decodeEtf(Buffer.from(response.data, 'base64')), [3, 0]);
+  response = await request(511, 7, await encodeEtf([3]));
+  assert.deepEqual(await decodeEtf(Buffer.from(response.data, 'base64')), [3, 1]);
+
+  // 509 one-key box rewards answer with the shared bitmap shape.
+  setMission(game.store, 50201);
+  response = await request(509, 8, codec.pack('pb_mission_one_key_reward_req', { box_tids: [1], common_task_tids: [] }));
+  assert.equal(response.err, undefined);
+  const oneKey = codec.unpack('pb_mission_one_key_reward_rsp', Buffer.from(response.data, 'base64'));
+  assert.ok(oneKey.res_change.changes.length > 0);
+  response = await request(509, 9, codec.pack('pb_mission_one_key_reward_req', { box_tids: [1], common_task_tids: [3] }));
+  assert.equal(response.err.err, 5);
+});
+
 
 test('gateway claims a destiny-stage linear task through 9010 and persists it across restart', { timeout: 10000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-destiny-linear-task-'));
@@ -441,14 +555,14 @@ test('gateway claims a destiny-stage linear task through 9010 and persists it ac
 
   let delivered = await decodeEtf(await game.loginPayload());
   assert.deepEqual(storedLinearTask(game.store).task_list, [{ type: 1, receive_tid: 10004 }]);
-  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90, 4)).task_list.find(task => task.type === 1).receive_tid, 10004);
   assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
 
   socket.destroy(); socket = null;
   await game.close(); game = null;
   game = createLocalGame(options);
   delivered = await decodeEtf(await game.loginPayload());
-  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90, 4)).task_list.find(task => task.type === 1).receive_tid, 10004);
   assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
   assert.equal(BigInt(game.store.read().resources.get('201500').num), diamondsBefore + 2000n);
 });

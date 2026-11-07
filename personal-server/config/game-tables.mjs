@@ -11,7 +11,9 @@ export function readGameTables() {
     // ItemCmd.use_selected_suit_box (155): the box row lists the selectable
     // suits, each suit row owns the fixed award_list that gets granted.
     ...readGeneratedTables(table('ItemTable.data.lua.json'), [
-      'Item', 'Type', 'Chip', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box',
+      // Convert drives ItemCmd.manual_convert_item (154): each row maps a bag item
+      // to the fixed reward list it turns into.
+      'Item', 'Type', 'Chip', 'Convert', 'Random_Box', 'Designated_Box', 'OptionalBox', 'BoxRepeat', 'Pay_Box',
       'OptionalSuitBox', 'OptionalSuitRes', 'OptionalSuitType'
     ]),
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
