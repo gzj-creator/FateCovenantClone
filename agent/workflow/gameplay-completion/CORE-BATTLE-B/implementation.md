@@ -135,4 +135,3 @@ node --test --test-concurrency=1 test/*.test.mjs
 
 - `actionList` 目前只投影伤害/护盾/死亡/复活/能量；天极值、破盾、召唤、层数、领域事件只存在于引擎事件流，客户端看不到。属 CORE-BATTLE-C（BUFF tid 与 103 回放）。
 - APK 未验收：以上全部为 worktree 内临时库与临时端口测试，未在隔离 APK 上实测。
-
