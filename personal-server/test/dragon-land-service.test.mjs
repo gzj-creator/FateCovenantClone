@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGameCodec, rawBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readDragonLandTables, dragonLandConfigForVersion } from '../config/dragon-land-tables.mjs';
 import { activityWindow } from '../game/activity-calendar.mjs';
@@ -64,6 +64,26 @@ function claimDaily(service, actId = ACT_ID) {
   const data = codec.pack('pb_dragon_land_daily_award_req', { activity_id: String(actId) });
   const result = service.execute(107701, data);
   return { result, value: codec.unpack('pb_dragon_land_daily_award_rsp', result.data) };
+}
+
+// Guild membership is module 24 (pb_res_guild_login); the local server keeps
+// one guild, so the dragon land guild answers read the same block.
+function seedGuild(store, guildId = '900001') {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const block = { guildId, guild: { guild_id: guildId, name: 'Local Guild', level: '1', member_list: [{ role_id: String(model.state.roleId) }] } };
+    modules.set(24, serializedBinary(codec.pack('pb_res_guild_login', block)));
+    model.state.modules.value = [...modules];
+  });
+}
+
+function claimTrial(service, ids, actId = ACT_ID) {
+  const data = codec.pack('pb_dragon_land_trial_award_req', {
+    activity_id: String(actId),
+    id_list: ids.map(String)
+  });
+  const result = service.execute(107702, data);
+  return { result, value: codec.unpack('pb_dragon_land_trial_award_rsp', result.data) };
 }
 
 test('DragonLandActCmd 107701 grants the configured daily award once per activity day', t => {
@@ -143,4 +163,76 @@ test('DragonLandActCmd 107701 persists resources and the day marker in one trans
     const delta = (after.get(tid) ?? 0) - (before.get(tid) ?? 0);
     assert.equal(delta, Number(change.diff_num), `resource ${tid} was not committed`);
   }
+});
+
+test('DragonLandActCmd 107702 pays only the hp_per tiers the boss has reached', t => {
+  const harness = setup(t);
+  seedGuild(harness.store);
+  const service = harness.service;
+  assert.equal(service.guildId(), '900001');
+
+  // Boss 1 has 3000 hp; no fight has been recorded yet, so nothing is claimable.
+  assert.throws(() => claimTrial(service, [10101]), error => error instanceof GameError && error.code === 311);
+
+  harness.setTime(DAY_ONE + 60);
+  service.recordBossDamage({ actId: ACT_ID, guildId: '900001', damage: 900, wayTid: 1, piece: 6 });
+  assert.throws(() => claimTrial(service, [10102]), error => error instanceof GameError && error.code === 311);
+  const tier = claimTrial(service, [10101]);
+  assert.deepEqual(
+    tier.value.res.changes.map(change => [Number(change.tid), Number(change.diff_num)]),
+    [[101500, 10]]
+  );
+  assert.deepEqual(tier.value.act_info.boss_award_list, ['10101']);
+
+  // Already claimed tiers are acknowledged without a second grant, even when a
+  // batch mixes a fresh tier into the same request.
+  const duplicate = claimTrial(service, [10101]);
+  assert.equal(duplicate.value.res.changes.length, 0);
+  harness.setTime(DAY_ONE + 120);
+  harness.service.recordBossDamage({ actId: ACT_ID, guildId: '900001', damage: 1500, wayTid: 1, piece: 4 });
+  const batch = claimTrial(harness.service, [10101, 10102, 10103]);
+  assert.deepEqual(
+    batch.value.res.changes.map(change => [Number(change.tid), Number(change.diff_num)]),
+    [[101500, 70]]
+  );
+  assert.deepEqual(batch.value.act_info.boss_award_list, ['10101', '10102', '10103']);
+
+  // Defeating the boss opens the hp_per 0 tier and advances the guild level.
+  harness.setTime(DAY_ONE + 180);
+  const progress = harness.service.recordBossDamage({ actId: ACT_ID, guildId: '900001', damage: 3000, wayTid: 1, piece: 2 });
+  assert.equal(progress.level, 2);
+  assert.equal(progress.lostHp, 0);
+  const cleared = claimTrial(harness.service, [10104]);
+  assert.deepEqual(
+    cleared.value.res.changes.map(change => [Number(change.tid), Number(change.diff_num)]),
+    [[101500, 100], [201500, 5000]]
+  );
+  // The next boss starts undamaged, so its tiers stay locked.
+  assert.throws(() => claimTrial(harness.service, [10201]), error => error instanceof GameError && error.code === 311);
+
+  assert.equal(entryPayload(harness.store, ACT_ID).boss_award_list.length, 4);
+});
+
+test('DragonLandActCmd 107702 validates ids, guild and the persisted claim list', t => {
+  const harness = setup(t);
+  seedGuild(harness.store);
+  // 20101 is a BossAward row of version 2, so version 1 must not accept it.
+  assert.throws(() => claimTrial(harness.service, [20101]), error => error instanceof GameError && error.code === 5);
+  assert.throws(() => claimTrial(harness.service, [999999]), error => error instanceof GameError && error.code === 5);
+  assert.throws(() => claimTrial(harness.service, []), error => error instanceof GameError && error.code === 1);
+  assert.throws(() => claimTrial(harness.service, [0]), error => error instanceof GameError && error.code === 1);
+  assert.throws(
+    () => harness.service.execute(107702, Buffer.from([0xff, 0xff, 0xff])),
+    error => error instanceof GameError && error.code === 1
+  );
+
+  harness.service.recordBossDamage({ actId: ACT_ID, guildId: '900001', damage: 3000, wayTid: 1, piece: 1 });
+  assert.equal(claimTrial(harness.service, [10104]).value.res.changes.length, 2);
+  harness.reopen();
+  const reopened = harness.service;
+  assert.equal(claimTrial(reopened, [10104]).value.res.changes.length, 0);
+
+  // Without guild membership the boss progress is not authoritative locally.
+  const lonely = setup(t);
+  assert.throws(() => claimTrial(lonely.service, [10101]), error => error instanceof GameError && error.code === 311);
 });
