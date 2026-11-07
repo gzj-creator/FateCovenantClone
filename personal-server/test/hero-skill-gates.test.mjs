@@ -8,6 +8,7 @@ import {
 } from '../game/hero-skill-loadout.mjs';
 import { simulateBattle } from '../game/battle-engine.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
+import { loadSkillDatabase, registerPassiveTriggers, resolveActionSkill } from '../game/effects/skill-integration.mjs';
 
 const heroTables = readHeroTables();
 
@@ -126,4 +127,36 @@ test('missing authoritative skill configuration is a business error', () => {
   assert.throws(() => buildHeroSkillLoadout({
     hero: hero(2010101, { quality: 99 }), heroTables
   }), error => error instanceof GameError && error.code === 5);
+});
+
+test('an empty authoritative skill list disables catalog actions and passive registration', () => {
+  const skillDatabase = loadSkillDatabase();
+  for (const role of [2010101, 1040301]) {
+    const unit = { id: 101, role, skills: [] };
+    registerPassiveTriggers(unit, skillDatabase, {});
+    assert.deepEqual(unit.triggers, []);
+    assert.equal(resolveActionSkill(unit, false, skillDatabase), null);
+    assert.equal(resolveActionSkill(unit, true, skillDatabase), null);
+
+    const legacy = { id: 101, role };
+    registerPassiveTriggers(legacy, skillDatabase, {});
+    assert.ok(legacy.triggers.length > 0);
+    assert.ok(resolveActionSkill(legacy, false, skillDatabase));
+  }
+});
+
+test('an empty authoritative skill list never reactivates mastery in the battle simulation', () => {
+  const result = simulateBattle({
+    attackers: [{
+      id: 101, role: 2010101, profession: 1, loc: 1, maxHp: 8000,
+      attack: 100, defense: 0, speed: 120, initialEnergy: 0, skills: []
+    }],
+    defenders: [{
+      id: 201, role: 9002100, profession: 2, loc: 1, maxHp: 100000,
+      attack: 1, defense: 0, speed: 1, initialEnergy: 0
+    }],
+    seed: 77,
+    maxRounds: 1
+  });
+  assert.ok(!result.events.some(event => event.trigger));
 });

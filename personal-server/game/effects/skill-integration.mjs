@@ -61,7 +61,7 @@ export function getHeroSkills(heroId, skillDatabase) {
  */
 export function resolveActionSkill(unit, useSkill, skillDatabase) {
   if (!skillDatabase || !unit) return null;
-  const skills = unit.skills?.length ? unit.skills : getHeroSkills(unit.role ?? unit.id, skillDatabase);
+  const skills = Array.isArray(unit.skills) ? unit.skills : getHeroSkills(unit.role ?? unit.id, skillDatabase);
   const actionId = String(useSkill ? (unit.activeAbilityId ?? unit.abilityId ?? '') : (unit.abilityId ?? ''));
   const exact = skills.find(skill => String(skill.id) === actionId);
   if (exact) return exact;
@@ -270,7 +270,7 @@ export function collectSkillTargets(skill, actor, allUnits, state) {
 export function registerPassiveTriggers(unit, skillDatabase, state) {
   if (!skillDatabase) return;
 
-  const skills = unit.skills?.length
+  const skills = Array.isArray(unit.skills)
     ? unit.skills
     : getHeroSkills(unit.role ?? unit.id, skillDatabase);
   const triggers = [];
