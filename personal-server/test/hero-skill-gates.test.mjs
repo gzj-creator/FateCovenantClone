@@ -92,6 +92,26 @@ test('rare soul ability replaces the ordinary active definition without duplicat
   assert.equal(rare.abilityIds[1], 2104030123);
 });
 
+test('ordinary 1040201 never substitutes a metadata fallback for its locked soul skill', () => {
+  const skillDatabase = loadSkillDatabase();
+  const ordinary = buildHeroSkillLoadout({
+    hero: hero(1040201, { star: 5 }), heroTables, skillDatabase
+  });
+  const rare = buildHeroSkillLoadout({
+    hero: hero(1040201, { star: 5, rare: true }), heroTables, skillDatabase
+  });
+  assert.ok(!ordinary.catalogSkillIds.includes('6910001063'));
+  assert.ok(!ordinary.catalogSkillIds.includes('2104020123'));
+  assert.equal(resolveActionSkill({ role: 1040201, skills: ordinary.skills }, true, skillDatabase), null);
+  assert.equal(resolveActionSkill({ role: 1040201, skills: rare.skills }, true, skillDatabase)?.id, '2104020123');
+
+  const fallback = skillDatabase.heroes.find(row => String(row.id) === '1040201')
+    .skills.find(skill => skill.id === '6910001063');
+  assert.equal(fallback.category, 'metadata fallback');
+  assert.equal(fallback.implementation.catalogTypeMatch, true);
+  assert.equal(resolveActionSkill({ role: 1040201, skills: [fallback] }, true, skillDatabase), null);
+});
+
 test('battle simulation honors a caller-supplied filtered skill list', () => {
   const full = buildHeroSkillLoadout({ hero: hero(2010101), heroTables });
   const withoutDoubleAttack = {

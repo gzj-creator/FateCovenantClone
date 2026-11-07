@@ -70,7 +70,8 @@ export function resolveActionSkill(unit, useSkill, skillDatabase) {
   return ultimates.find(skill => {
     const implementation = skill.implementation;
     if (!implementation) return false;
-    const metadataFallback = implementation.category === 'metadata fallback'
+    const metadataFallback = skill.category === 'metadata fallback'
+      || implementation.category === 'metadata fallback'
       || (implementation.requiresInvestigation === true
         && implementation.resolvedDescription === false
         && implementation.catalogTypeMatch !== true);
