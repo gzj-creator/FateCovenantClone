@@ -103,6 +103,36 @@
       "3651244919936714000-TimeTempleCmd.lua.bin",
       "assets__Android__script__lua__64_lua_project.bundle/member-0-strings.json"
     ],
-    "conclusion": "No numeric c2s or c2s_index mapping is available in the downloaded candidate package for these encoder names."
+    "conclusion": "No numeric c2s or c2s_index mapping is available in the downloaded candidate package for these encoder names.",
+    "supersededBy": "cmdRegistry (2026-11-08): the whole Cmd registry was decoded, so this is now a confirmed six-slot null lookup rather than a bounded text search."
+  },
+  "cmdRegistry": {
+    "observedAt": "2026-11-08",
+    "evidenceFile": "cmd-registry-20261108.json",
+    "extractor": "tools/extract-cmd-registry.mjs",
+    "source": {
+      "bundlePath": "assets/Android/script/lua/64_lua_core.bundle",
+      "bundleBytes": 393040,
+      "bundleSha256": "054c3a1d5de29f66b5f41f413ac56a473ee7b95ccf1226b343068b79cdd3be56",
+      "textAsset": "14598954643145832000-Cmd.lua",
+      "textAssetBytes": 165335,
+      "textAssetSha256": "36ebc52059977de944da4f57ab15ce0238acb360e07fc976dd68f4f73d4453c8"
+    },
+    "slots": {
+      "c2s_index": 1407,
+      "c2s_back": 1189,
+      "c2s_switch": 1407,
+      "s2c_index": 307,
+      "s2c": 262
+    },
+    "positiveControls": {
+      "req_guild_info": { "c2s_index": 21005, "c2s_back": "pb_guild" },
+      "req_chat_msg_like": { "c2s_index": 11014, "c2s_back": "pb_msg_like_rsp" },
+      "chat11000to11014": "all ten chat request names present in c2s_index"
+    },
+    "timeTempleLookups": "all eight req_time_temple_* names null in c2s_index, c2s_back and c2s_switch",
+    "numericCensus": { "uniqueTypes": 1407, "min": 10, "max": 909103, "range7700to7900": 0, "range900to910": 0 },
+    "clientSendPath": "Connection.lua prototype 3 pc 41-45: type = Cmd.c2s_index[cmd]; nil calls error('send msg type error') and returns before encoding pb_c2s. Connection.lua prototype 21 pc 10-15 decodes replies with Cmd.c2s_back[cmd].",
+    "conclusion": "The eight time temple request encoders are unregistered in this client build, so no numeric C2S type exists to route and the client cannot emit these requests."
   }
 }

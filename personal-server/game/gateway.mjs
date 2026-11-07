@@ -757,6 +757,15 @@ export function createLocalGame({
     let phase = 'verify', challenge, chain = Promise.resolve(), onlineGiftSessionAttempted = false;
     const push=(type,data)=>{if(!socket.destroyed)socket.write(encodeGameFrame(pack('pb_s2c',{type,data})));};
     const log = event => logger({ connection: id, ...event });
+    // protobufjs decodes an empty `bytes` field into a plain array, so rejection
+    // and fallback logs must not assume the request payload is a Buffer.
+    const payloadBytes = (data, limit) => {
+      const bytes = Buffer.isBuffer(data) ? data
+        : data instanceof Uint8Array ? Buffer.from(data)
+        : Array.isArray(data) ? Buffer.from(data)
+        : data ? Buffer.from(String(data)) : Buffer.alloc(0);
+      return bytes.subarray(0, limit).toString('base64');
+    };
     // The elite stage/boss requests reuse FightCmd 201/207; the elite battle
     // module owns their progress, stamina and rewards. Enemy line-ups are not
     // part of the shipped client data, so the deployment injects them.
@@ -1082,7 +1091,7 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'story_mission_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+          log({ event: 'story_mission_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
@@ -1094,7 +1103,7 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'mission_extra_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+          log({ event: 'mission_extra_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
@@ -1106,7 +1115,7 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'fight_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+          log({ event: 'fight_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
@@ -1225,7 +1234,7 @@ export function createLocalGame({
         }catch(error){
           const code=error instanceof GameError?error.code:2;
           send(seq,Buffer.alloc(0),{err:code});
-          log({event:'acc_recharge_rejected',type,seq,code,message:error.message,payloadHead:(request.data??Buffer.alloc(0)).subarray(0,64).toString('base64')});
+          log({event:'acc_recharge_rejected',type,seq,code,message:error.message,payloadHead:payloadBytes(request.data,64)});
         }
         return;
       }
@@ -1242,7 +1251,7 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'group_buy_rejected', type, seq, code, message: error.message,
-            payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64')
+            payloadHead: payloadBytes(request.data, 64)
           });
         }
         return;
@@ -1257,7 +1266,7 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'hundred_acc_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+          log({ event: 'hundred_acc_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
@@ -1428,7 +1437,7 @@ export function createLocalGame({
           // Keep the wallet's internal 307 for QuickSDK, whose protocol uses 80001.
           const code = error instanceof GameError ? (error.code === 307 ? 16016 : error.code) : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 160).toString('base64') });
+          log({ event: 'voucher_recharge_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 160) });
         }
         return;
       }
@@ -2137,7 +2146,7 @@ export function createLocalGame({
         if (type === 108) log({ event: 'operate_display_removed', type, seq });
         return;
       }
-      log({ event: 'unsupported_command', type, seq, payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64') });
+      log({ event: 'unsupported_command', type, seq, payloadHead: payloadBytes(request.data, 64) });
       send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'LOCAL_NOT_IMPLEMENTED:' + type });
     }
     socket.on('data', chunk => {
