@@ -2,6 +2,8 @@
 
 状态：读取命令已实现；**入口映射与活动数据未确认，视觉验收未完成**。
 
+> 2026-11-07 更新：Play-HELPUPACT 已补齐 116001–116004 的服务端闭环（ActFrame act 1096001 + `HelpUpActTable` 配置、助力/任务/阶段/登录块），详见 `agent/workflow/gameplay-completion/PLAY-HELPUPACT/implementation.md`。本文保留的历史缺口仅剩"客户端真实请求与界面验收未取证"。
+
 ## 证据
 
 - `ModuleTable`：92144 = `活动_助力升超凡`（`e_dir=project/activity/help_up_act`，`parent=92`）。
