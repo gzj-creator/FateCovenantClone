@@ -28,13 +28,13 @@ async function loginActivities(payload) {
   return codec.unpack('pb_act_login', Buffer.from(entry.value));
 }
 
-function loginModuleBytes(login, moduleId) {
+function loginModuleBytes(login, moduleId, slot = 0) {
   const entry = login[2].value.find(value => Number(value[0]) === moduleId);
   assert.ok(entry, `login module ${moduleId} is present`);
   const value = entry[1].value;
   if (Array.isArray(value)) {
-    assert.ok(value[0], `login module ${moduleId} has its first slot`);
-    return Buffer.from(value[0].value);
+    assert.ok(value[slot], `login module ${moduleId} has slot ${slot}`);
+    return Buffer.from(value[slot].value);
   }
   return Buffer.from(value);
 }
@@ -48,7 +48,8 @@ function setDestiny(store, value) {
 }
 
 function storedLinearTask(store) {
-  return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[0]));
+  // Module 90 holds the four common-task groups first; the linear group follows them.
+  return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[4]));
 }
 
 function addResource(store, tid, num, group = 1) {
@@ -398,7 +399,7 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.deepEqual(taskClaim.task, { type: 1, receive_tid: 10001 });
   assert.equal(taskClaim.res_change.changes.find(change => change.tid === '101500').diff_num, '50');
   assert.equal(BigInt(game.store.read().resources.get('101500').num), taskDiamonds + 50n);
-  const taskModule = codec.unpack('pb_linear_task_data', rawBinary(new Map(game.store.state().modules.value).get(90).value[0]));
+  const taskModule = codec.unpack('pb_linear_task_data', rawBinary(new Map(game.store.state().modules.value).get(90).value[4]));
   assert.equal(taskModule.task_list.find(task => task.type === 1).receive_tid, 10001);
   response = await request(9010, 17, await encodeEtf([10001]));
   assert.equal(response.err.err, 310);
@@ -543,14 +544,14 @@ test('gateway claims a destiny-stage linear task through 9010 and persists it ac
 
   let delivered = await decodeEtf(await game.loginPayload());
   assert.deepEqual(storedLinearTask(game.store).task_list, [{ type: 1, receive_tid: 10004 }]);
-  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90, 4)).task_list.find(task => task.type === 1).receive_tid, 10004);
   assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
 
   socket.destroy(); socket = null;
   await game.close(); game = null;
   game = createLocalGame(options);
   delivered = await decodeEtf(await game.loginPayload());
-  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90)).task_list.find(task => task.type === 1).receive_tid, 10004);
+  assert.equal(codec.unpack('pb_linear_task_data', loginModuleBytes(delivered, 90, 4)).task_list.find(task => task.type === 1).receive_tid, 10004);
   assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
   assert.equal(BigInt(game.store.read().resources.get('201500').num), diamondsBefore + 2000n);
 });
