@@ -325,6 +325,138 @@ export function createRelicService({
     };
   }
 
+  // Param.recast_index_unlock_star maps each recast slot to the relic star that
+  // unlocks it; the shipped table lists three slots. Recast counters live per
+  // slot in pb_relic.recast_datas.
+  function recastSlot(relic, indexValue) {
+    const index = safeInteger(indexValue, 'Invalid relic recast index', { min: 0 });
+    const unlocks = Array.isArray(param.recast_index_unlock_star) ? param.recast_index_unlock_star : [];
+    if (index >= unlocks.length) fail(1, 'Invalid relic recast index');
+    const needStar = Number(unlocks[index]);
+    if (!Number.isSafeInteger(needStar) || needStar < 0) fail(5, 'Relic recast slot configuration is missing');
+    if (Number(relic.star ?? 0) < needStar) fail(305, 'Relic recast slot is locked');
+    while (relic.recast_datas.length <= index) relic.recast_datas.push({ recast_times: 0, recast_normal_times: 0, guarantee_times: 0 });
+    return { index, data: relic.recast_datas[index] };
+  }
+
+  function rollSkills(relic, quality) {
+    const candidates = [];
+    for (const row of tables.RecastSkill.values()) {
+      const qualities = Array.isArray(row.quality) ? row.quality.map(Number) : [];
+      const skills = Array.isArray(row.skill_id) ? row.skill_id.map(Number) : [];
+      const position = qualities.indexOf(Number(quality));
+      if (position < 0 || position >= skills.length) continue;
+      const skill = skills[position];
+      const weight = Number(tables.RecastSkillProb.get(skill)?.probability ?? 0);
+      if (!Number.isSafeInteger(skill) || skill <= 0 || weight <= 0) continue;
+      candidates.push({ skill, weight });
+    }
+    if (!candidates.length) fail(5, 'Relic recast skill configuration is missing');
+    const count = Number(param.skill_count ?? 0);
+    if (!Number.isSafeInteger(count) || count <= 0) fail(5, 'Relic recast skill count is missing');
+    const pool = [...candidates], rolled = [];
+    while (rolled.length < count && pool.length) {
+      const total = pool.reduce((sum, entry) => sum + entry.weight, 0);
+      let roll = random() * total;
+      let chosen = pool.length - 1;
+      for (let index = 0; index < pool.length; index++) {
+        roll -= pool[index].weight;
+        if (roll < 0) { chosen = index; break; }
+      }
+      rolled.push(pool[chosen].skill);
+      pool.splice(chosen, 1);
+    }
+    return rolled;
+  }
+
+  function executeBreakUp(model, db, input) {
+    const uid = uidText(scalarId(input, 'Invalid relic break-up payload'), 'Invalid relic uid');
+    const depot = readDepot(db, model.state.roleId);
+    const relic = findRelic(depot, uid);
+    const quality = configuredQuality(relic.tid);
+    const maxStar = Number(quality.max_star ?? 0);
+    if (!Number.isSafeInteger(maxStar) || maxStar <= 0) fail(305, 'Relic cannot be upgraded');
+    const star = Number(relic.star ?? 0);
+    if (star >= maxStar) fail(305, 'Relic star limit reached');
+    const chips = Array.isArray(quality.cost_chip) ? Number(quality.cost_chip[star] ?? 0) : 0;
+    if (!Number.isSafeInteger(chips) || chips <= 0) fail(5, 'Relic star cost configuration is missing');
+    const res = response(consume(model, [[RELIC_CHIP_ITEM_TID, chips]]));
+    relic.star = star + 1;
+    writeDepot(db, model.state.roleId, depot);
+    const value = { res, relic: relicValue(relic) };
+    return {
+      schema: 'pb_res_op_relic',
+      value,
+      data: codec.pack('pb_res_op_relic', value),
+      valueForLog: { relicUid: relic.uid, star: relic.star, chips }
+    };
+  }
+
+  function executeRecast(model, db, input) {
+    const uid = uidText(input?.relic_uid, 'Invalid relic uid');
+    const depot = readDepot(db, model.state.roleId);
+    const relic = findRelic(depot, uid);
+    const slot = recastSlot(relic, input?.index ?? 0);
+    const cost = costPairs([param.recast_cost], 'Relic recast cost configuration is invalid');
+    if (!cost.length) fail(5, 'Relic recast cost configuration is missing');
+    const quality = configuredQuality(relic.tid);
+    const rolled = rollSkills(relic, relicQualityOf(relic.tid));
+    const res = response(consume(model, cost));
+    slot.data.recast_times += 1;
+    slot.data.recast_normal_times += 1;
+    slot.data.guarantee_times += 1;
+    relic.recast_skills = rolled;
+    writeDepot(db, model.state.roleId, depot);
+    const value = { res, relic: relicValue(relic) };
+    return {
+      schema: 'pb_res_op_relic',
+      value,
+      data: codec.pack('pb_res_op_relic', value),
+      valueForLog: { relicUid: relic.uid, index: slot.index, skills: rolled, quality: Number(quality.tid) }
+    };
+  }
+
+  function executeSaveRecast(model, db, input) {
+    const uid = uidText(input?.relic_uid, 'Invalid relic uid');
+    const depot = readDepot(db, model.state.roleId);
+    const relic = findRelic(depot, uid);
+    const slot = recastSlot(relic, input?.index ?? 0);
+    if (!relic.recast_skills.length) fail(1, 'Relic has no pending recast result');
+    relic.cur_skills = [...relic.recast_skills];
+    relic.recast_skills = [];
+    slot.data.recast_times = 0;
+    slot.data.recast_normal_times = 0;
+    slot.data.guarantee_times = 0;
+    writeDepot(db, model.state.roleId, depot);
+    const value = { res: response([]), relic: relicValue(relic) };
+    return {
+      schema: 'pb_res_op_relic',
+      value,
+      data: codec.pack('pb_res_op_relic', value),
+      valueForLog: { relicUid: relic.uid, index: slot.index, saved: relic.cur_skills.length }
+    };
+  }
+
+  function executeCancelRecast(model, db, input) {
+    const uid = uidText(input?.relic_uid, 'Invalid relic uid');
+    const depot = readDepot(db, model.state.roleId);
+    const relic = findRelic(depot, uid);
+    const slot = recastSlot(relic, input?.index ?? 0);
+    if (!relic.recast_skills.length) fail(1, 'Relic has no pending recast result');
+    relic.recast_skills = [];
+    slot.data.recast_times = 0;
+    slot.data.recast_normal_times = 0;
+    slot.data.guarantee_times = 0;
+    writeDepot(db, model.state.roleId, depot);
+    const value = { res: response([]), relic: relicValue(relic) };
+    return {
+      schema: 'pb_res_op_relic',
+      value,
+      data: codec.pack('pb_res_op_relic', value),
+      valueForLog: { relicUid: relic.uid, index: slot.index }
+    };
+  }
+
   return {
     // Acquisition seam. Relic forging and the relic draw belong to the draw
     // module, which is outside this task; other systems hand finished relic
@@ -359,6 +491,10 @@ export function createRelicService({
       return store.transaction((model, db) => {
         if (type === RELIC_COMMANDS.WEAR) return executeWear(model, db, input);
         if (type === RELIC_COMMANDS.RESOLVE) return executeResolve(model, db, input);
+        if (type === RELIC_COMMANDS.BREAK_UP) return executeBreakUp(model, db, input);
+        if (type === RELIC_COMMANDS.RECAST) return executeRecast(model, db, input);
+        if (type === RELIC_COMMANDS.SAVE_RECAST) return executeSaveRecast(model, db, input);
+        if (type === RELIC_COMMANDS.CANCEL_RECAST) return executeCancelRecast(model, db, input);
         fail(1, 'Unsupported relic command');
       });
     }

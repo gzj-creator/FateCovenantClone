@@ -140,3 +140,101 @@ test('encoding and SQLite failures roll back relic depot and hero slots', t => {
   assert.deepEqual(heroOf(failed.store, HERO).relic.map(Number), []);
   assert.equal(depotRows(failed.store).length, 1);
 });
+
+test('relic break-up spends the quality chip cost up to the star cap', t => {
+  const f = fixture(t);
+  seedResources(f.store, 1000);
+  f.service.addRelics([{ tid: 3001109 }, { tid: 2001109 }, { tid: 3001209 }]);
+  const before = resource(f.store, RELIC_CHIP_ITEM_TID);
+
+  const first = f.service.execute(89701, 1);
+  assert.equal(first.schema, 'pb_res_op_relic');
+  assert.equal(codec.unpack('pb_res_op_relic', first.data).relic.star, 1);
+  assert.equal(resource(f.store, RELIC_CHIP_ITEM_TID), before - 60n);
+
+  f.service.execute(89701, { uid: 1 });
+  f.service.execute(89701, [1]);
+  let row = depotRows(f.store).find(entry => entry.uid === '1');
+  assert.equal(row.star, 3);
+  assert.equal(resource(f.store, RELIC_CHIP_ITEM_TID), before - 360n);
+  assert.throws(() => f.service.execute(89701, 1), codeIs(305));
+
+  assert.throws(() => f.service.execute(89701, 2), codeIs(305));
+  assert.throws(() => f.service.execute(89701, 999), codeIs(5));
+  assert.throws(() => f.service.execute(89701, 0), codeIs(1));
+
+  f.store.transaction(model => { model.resources.get(String(RELIC_CHIP_ITEM_TID)).num = '0'; });
+  assert.throws(() => f.service.execute(89701, 3), codeIs(301));
+
+  const service = f.reopen();
+  row = depotRows(f.store).find(entry => entry.uid === '1');
+  assert.equal(row.star, 3);
+  assert.throws(() => service.execute(89701, 1), codeIs(305));
+});
+
+test('relic recast rolls the configured skills, save and cancel clear pending results', t => {
+  const f = fixture(t);
+  seedResources(f.store, 1000);
+  f.service.addRelics([{ tid: 3001109 }]);
+  const before = resource(f.store, 379002);
+
+  assert.throws(() => f.service.execute(89702, { relic_uid: 1, index: 1 }), codeIs(305));
+  assert.throws(() => f.service.execute(89702, { relic_uid: 5, index: 0 }), codeIs(5));
+  assert.throws(() => f.service.execute(89702, { relic_uid: 1, index: 7 }), codeIs(1));
+
+  const result = f.service.execute(89702, { relic_uid: 1, index: 0 });
+  const rolled = codec.unpack('pb_res_op_relic', result.data).relic;
+  assert.equal(rolled.recast_skills.length, 3);
+  assert.equal(rolled.cur_skills.length, 0);
+  assert.equal(Number(rolled.recast_datas[0].recast_times), 1);
+  assert.equal(resource(f.store, 379002), before - 80n);
+
+  const saved = f.service.execute(89704, { relic_uid: 1, index: 0 });
+  const savedRelic = codec.unpack('pb_res_op_relic', saved.data).relic;
+  assert.deepEqual(savedRelic.cur_skills.map(Number), rolled.recast_skills.map(Number));
+  assert.equal(savedRelic.recast_skills.length, 0);
+  assert.equal(Number(savedRelic.recast_datas[0].recast_times ?? 0), 0);
+  assert.throws(() => f.service.execute(89704, { relic_uid: 1, index: 0 }), codeIs(1));
+
+  f.service.execute(89702, { relic_uid: 1, index: 0 });
+  const cancelled = f.service.execute(89706, { relic_uid: 1, index: 0 });
+  assert.equal(codec.unpack('pb_res_op_relic', cancelled.data).relic.recast_skills.length, 0);
+  assert.throws(() => f.service.execute(89706, { relic_uid: 1, index: 0 }), codeIs(1));
+
+  const service = f.reopen();
+  const row = depotRows(f.store).find(entry => entry.uid === '1');
+  assert.equal(JSON.parse(row.cur_skills_json).length, 3);
+  assert.equal(JSON.parse(row.recast_skills_json).length, 0);
+  assert.throws(() => service.execute(89706, { relic_uid: 1, index: 0 }), codeIs(1));
+});
+
+test('relic recast and break-up roll back on encoding and SQLite failures', t => {
+  const brokenCodec = {
+    unpack: codec.unpack.bind(codec),
+    pack(name, value) {
+      if (name === 'pb_res_op_relic') throw new Error('injected relic operation failure');
+      return codec.pack(name, value);
+    }
+  };
+  const encoded = fixture(t, { codec: brokenCodec });
+  seedResources(encoded.store, 1000);
+  encoded.service.addRelics([{ tid: 3001109 }]);
+  assert.throws(() => encoded.service.execute(89701, 1), /injected relic operation failure/);
+  assert.throws(() => encoded.service.execute(89702, { relic_uid: 1, index: 0 }), /injected relic operation failure/);
+  assert.equal(resource(encoded.store, RELIC_CHIP_ITEM_TID), 1000n);
+  assert.equal(resource(encoded.store, 379002), 1000n);
+  assert.equal(depotRows(encoded.store)[0].star, 0);
+  assert.equal(depotRows(encoded.store)[0].recast_skills_json, '[]');
+
+  const failed = fixture(t);
+  seedResources(failed.store, 1000);
+  failed.service.addRelics([{ tid: 3001109 }]);
+  failed.store.inspect(db => db.exec("CREATE TRIGGER fail_relic_update BEFORE INSERT ON relic_depot BEGIN SELECT RAISE(ABORT,'injected relic update failure'); END"));
+  try {
+    assert.throws(() => failed.service.execute(89701, 1), /injected relic update failure/);
+  } finally {
+    failed.store.inspect(db => db.exec('DROP TRIGGER fail_relic_update'));
+  }
+  assert.equal(resource(failed.store, RELIC_CHIP_ITEM_TID), 1000n);
+  assert.equal(depotRows(failed.store)[0].star, 0);
+});

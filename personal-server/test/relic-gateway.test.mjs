@@ -5,7 +5,7 @@ import path from 'node:path';
 import net from 'node:net';
 import test from 'node:test';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf } from '../protocol/game-codec.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -46,8 +46,17 @@ test('gateway routes 89709 and 89705 through the relic service', { timeout: 1500
   const seedService = createRelicService({
     store: game.store, codec, tables: readRelicTables(), resourceTables: readGameTables(), now: () => NOW
   });
-  const created = seedService.addRelics([{ tid: 2001109 }, { tid: 2001209 }, { tid: 2001309 }]);
-  assert.equal(created.length, 3);
+  const created = seedService.addRelics([{ tid: 2001109 }, { tid: 2001209 }, { tid: 2001309 }, { tid: 3001109 }]);
+  assert.equal(created.length, 4);
+  game.store.transaction(model => {
+    let index = 0;
+    for (const tid of [813002, 379002]) {
+      const key = String(tid);
+      const existing = model.resources.get(key);
+      if (existing) existing.num = String(BigInt(existing.num) + 1000n);
+      else model.resources.set(key, { tid: key, num: '1000', location: [5, null, index++] });
+    }
+  });
 
   const address = await game.listen(0);
   socket = net.connect(address.port, '127.0.0.1');
@@ -96,6 +105,23 @@ test('gateway routes 89709 and 89705 through the relic service', { timeout: 1500
   const heroInfo = codec.unpack('pb_hero_info', moduleBytes(modules, 10));
   assert.deepEqual(heroInfo.hero_list.find(hero => Number(hero.tid) === HERO).relic.map(Number), [1, 2]);
 
-  assert.equal(events.some(event => event.event === 'unsupported_command' && [89709, 89705].includes(event.type)), false);
-  assert.deepEqual(events.filter(event => event.event === 'relic_committed').map(event => event.type), [89709, 89705]);
+  response = await request(89701, 4, await encodeEtf(4));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_res_op_relic', Buffer.from(response.data, 'base64')).relic.star, 1);
+
+  response = await request(89702, 5, codec.pack('pb_req_recast_relic', { relic_uid: 4, index: 0 }));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_res_op_relic', Buffer.from(response.data, 'base64')).relic.recast_skills.length, 3);
+
+  response = await request(89704, 6, codec.pack('pb_req_recast_relic', { relic_uid: 4, index: 0 }));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_res_op_relic', Buffer.from(response.data, 'base64')).relic.cur_skills.length, 3);
+
+  response = await request(89706, 7, codec.pack('pb_req_recast_relic', { relic_uid: 4, index: 0 }));
+  assert.ok(response.err, 'cancelling a saved recast has no pending result');
+
+  const unsupported = new Set([89701, 89702, 89704, 89705, 89706, 89709]);
+  assert.equal(events.some(event => event.event === 'unsupported_command' && unsupported.has(event.type)), false);
+  assert.deepEqual(events.filter(event => event.event === 'relic_committed').map(event => event.type), [89709, 89705, 89701, 89702, 89704]);
+  assert.deepEqual(events.filter(event => event.event === 'relic_rejected').map(event => event.type), [89706]);
 });
