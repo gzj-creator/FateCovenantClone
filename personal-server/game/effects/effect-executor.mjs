@@ -184,6 +184,19 @@ export function recordActionDamage(actor, target, oldHp, newHp, absorbed, state)
   return hpDamage;
 }
 
+/**
+ * Modifiers may carry the action they describe ("next ultimate", "first
+ * ultimate"). Passives and masteries run their effects while the enclosing
+ * action window is still open, so the buff has to be scoped by phase: an
+ * action's own effects see it, a separately triggered ability does not.
+ * Both damage paths read the scope from here so they cannot drift apart.
+ */
+export function actionScopedType(state) {
+  const context = state?.actionContext;
+  if (!context || context.phase === 'trigger') return null;
+  return context.actionType ?? null;
+}
+
 export function consumeTriggerCount(target, trigger, snapshot = null) {
   const consumed = [];
   for (const collection of [target.buffs || [], target.debuffs || []]) {
@@ -261,7 +274,8 @@ export class EffectExecutor {
     // Check crit
     const isTrueDamage = effect.damageType === DAMAGE_TYPES.TRUE;
     const canCrit = effect.canCrit !== false && !isTrueDamage;
-    const critChance = effectiveCritChance(actor, target, this.state.actionContext?.actionType);
+    const actionType = actionScopedType(this.state);
+    const critChance = effectiveCritChance(actor, target, actionType);
     const isCrit = canCrit && this.random() < critChance;
     const critMultiplier = isCrit ? (effect.critMultiplier || effectiveCritMultiplier(actor, target)) : 1.0;
 
@@ -275,7 +289,7 @@ export class EffectExecutor {
     const defenseReduction = isPercentHp || isTrueDamage ? 0 : defense * 0.45;
     let finalDamage = Math.max(1, Math.floor(
       (baseDamage - defenseReduction)
-      * (1 + effectiveDamageBonus(actor, this.state.actionContext?.actionType))
+      * (1 + effectiveDamageBonus(actor, actionType))
       * critMultiplier
     ));
     const damageReduction = effectiveDamageReduction(target);

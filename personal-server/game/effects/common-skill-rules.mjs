@@ -45,8 +45,22 @@ export function commonSkillEffect(skill, definition) {
   return definition;
 }
 
+// "本次造成的伤害转化为…" reads the damage the same skill already produced, so
+// these definitions must run after that skill's damage regardless of the order
+// the catalog stored them in.
+function isDamageConversion(definition) {
+  const effect = definition?.effect;
+  if (!effect) return false;
+  return (effect.type === 'heal' && effect.healType === 'percent-damage-dealt')
+    || (effect.type === 'shield' && effect.shieldType === 'percent-damage-dealt');
+}
+
 export function commonSkillEffects(skill, definitions) {
-  const effects = definitions.map(definition => commonSkillEffect(skill, definition));
+  const mapped = definitions.map(definition => commonSkillEffect(skill, definition));
+  const effects = [
+    ...mapped.filter(definition => !isDamageConversion(definition)),
+    ...mapped.filter(definition => isDamageConversion(definition))
+  ];
   if (String(skill.id) === '2504050123' && !effects.some(definition => definition.effect?.type === 'shield')) {
     effects.push({
       target: { targetType: 'self' },

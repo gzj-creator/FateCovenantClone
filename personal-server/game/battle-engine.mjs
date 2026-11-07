@@ -22,6 +22,7 @@ import {
   effectiveSpeed,
   consumeTriggerCount,
   recordActionDamage,
+  actionScopedType,
 } from './effects/effect-executor.mjs';
 
 export const BATTLE_RESULT = Object.freeze({ DRAW: 0, WIN: 1, LOSS: 2 });
@@ -182,10 +183,11 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
   if (!target.alive) return null;
   const behavior = behaviorFor(actor);
   const variance = 0.92 + nextRandom(state) * 0.16;
+  const actionType = actionScopedType(state);
   const critChance = effectiveCritChance({
     ...actor,
     critChance: Math.max(actor.critChance, behavior.critChance),
-  }, target, state.actionContext?.actionType);
+  }, target, actionType);
   const critical = nextRandom(state) < critChance;
   const ignoreDefense = effectiveIgnoreDefense(actor);
   const raw = Math.max(1,
@@ -194,7 +196,7 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
     + bonus);
   const critMultiplier = critical ? effectiveCritMultiplier(actor, target) : 1;
   let damage = Math.max(1, Math.floor(
-    raw * variance * (1 + effectiveDamageBonus(actor, state.actionContext?.actionType)) * critMultiplier
+    raw * variance * (1 + effectiveDamageBonus(actor, actionType)) * critMultiplier
   ));
   damage = Math.max(1, Math.floor(damage * (1 - effectiveDamageReduction(target))));
   const oldHp = target.hp;
