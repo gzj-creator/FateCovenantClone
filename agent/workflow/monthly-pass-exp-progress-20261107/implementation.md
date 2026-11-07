@@ -48,11 +48,19 @@ npm test
 
 结果：2314 项，pass 2312、fail 0、skipped 2。日志：`analysis/test-runs/monthly-pass-exp-progress-20261107/full-after-fix.log`。
 
+schema 16 分支合并后再次运行全量测试：2315 项，pass 2313、fail 0、skipped 2。日志：`analysis/test-runs/monthly-pass-exp-progress-20261107/full-after-schema16-merge.log`。
+
 ## 部署验收
 
-合并并重启实时服务后需要确认：
+首次重启失败，因为实时库已是 schema 16，而月度战令修复所在 `main` 的存储代码最高只支持 schema 15。已把允许 schema 16 并同步登录模块 10 与权威英雄/格子表的 `fix/recruit-first-hero-20261107` 合并到 `main`，保留数据库版本，合并提交为 `53062539c9d74605d9d0860652a1342f2adb7135`。合并后定向运行英雄进度、月战令服务和真实 TCP 月战令测试，29 项全部通过。
 
-1. 启动日志出现 `month_permit_task_exp_repaired`，旧任务 `4003` 补发 50 经验；
-2. SQLite 的 `10004200` 资源为 50，`buy_exp_num` 修正为 0；
-3. 用户再次领取新任务时，`pb_month_permit_task_back.res.changes` 含 `10004200`，页面进度随之增加；
-4. 尚未完成上述真实 APK 视觉与再次领取验收前，只能记为服务端和临时 TCP 通过。
+实时服务于 `2026-11-07T14:51:10Z` 重启成功，PID `2676`。18880/18881/18882/18883/19090 五个端口均监听，启动日志为 `personal-server/runtime.local-only.data/server-20261107-225109.local-only.out.log`，其中包含 `local_server_ready` 和 `month_permit_task_exp_repaired`。补偿事件记录活动 `1004012` 的任务经验为 50、`buy_exp_num` 从 50 修正为 0、经验资源从 0 增加到 50。
+
+只读核对实时 SQLite 的结果：
+
+- `PRAGMA integrity_check` 为 `ok`，`user_version=16`；
+- 角色 `100001` 的资源 `10004200` 为 50；
+- 迁移 `month-permit-task-exp-v1` 已记录，来源为 `repaired-activities=1;granted-exp=50`；
+- 模块 `183` 的活动 `1004012` 仍保留 `task_get=[4003@1794060951]`，`buy_exp_num=0`。
+
+重启前的一致备份为 `analysis/experiments/monthly-pass-exp-progress-20261107/game.before-restart.local-only.sqlite`。接下来的真实 APK 验收仍是再次领取一个新任务，确认 `pb_month_permit_task_back.res.changes` 含 `10004200` 且页面进度增加；在完成该视觉验收前，本次只记为服务端、数据库迁移和临时 TCP 通过。
