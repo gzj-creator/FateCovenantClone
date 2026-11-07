@@ -1,6 +1,6 @@
 # PAY-DIAMONDBANKACT：钻石银行（每日任务、领取、开启）
 
-分支 `task/PAY-DIAMONDBANKACT-20261108`，已 rebase 到最新 `main` @ `72c8d4d`（起始基线 `8d24290`；rebase 无冲突，只有网关 import/构造/登录/派发四处与主线增量共处）。提交：`8e48db3` 表提取与读取器、`22536ad` 服务与网关路由、`c5ebdd3` 按任务记录一次 pending、`fc9d662` 清理 `diff --check` 尾随空行。范围只包含 `DiamondBankActCmd` 的 110201、110202、110203。服务端实现、临时 TCP 与 SQLite 验证已完成；真实隔离客户端（APK）尚未验收。
+分支 `task/PAY-DIAMONDBANKACT-20261108`，最终业务 HEAD `e6ef47d`，已 rebase 到 `main` @ `72c8d4d`（起始基线 `8d24290`；rebase 无冲突，只有网关 import/构造/登录/派发四处与主线增量共处），随后合入 main `c0ba81a`。提交：`23dd8d9` 表提取与读取器、`986ac1a` 服务与网关路由、`8b46bdf` 按任务记录一次 pending、`cb4dbc1` 清理 `diff --check` 尾随空行、`e6ef47d` 实施记录。范围只包含 `DiamondBankActCmd` 的 110201、110202、110203。服务端实现、临时 TCP 与 SQLite 验证已完成；真实隔离客户端（APK）尚未验收。
 
 ## 逐 type 状态
 
@@ -98,9 +98,9 @@ node --test --test-concurrency=1 test/*.test.mjs   # 全量
 
 - 专项服务（`test/diamond-bank-act-service.test.mjs`，14 项）：表提取行数与常量；登录同步把 `pb_diamond_bank_act_role_data` 写进模块 92；110203 按 `open_use_item` 扣费并置 `is_buy`、缺配置回 5；未开启时 110201 回 311；101 领取发放 `[[820902,50]]` 并记录领取位、重复领取为空包；未达标任务与未知任务分别 311/5；103–114 与 105/106 等无证据进度任务回 5；两个无 handler 奖励的任务只生成一条按任务区分的 pending 行并合并为一次 150 的发放；110202 按比例发放并把存款清零、重复为空包、未开启或无存款 311；PB 编码失败与 SQLite 写入失败各自整笔回滚；活动窗口外回 309。
 - 临时 TCP（`test/diamond-bank-gateway.test.mjs`，2 项）：真实 `verify` 握手与 909103 登录后模块 92 出现该活动条目，110203/110201/110202 分别按 ETF 单值与 PB 请求走通，关闭并重开 SQLite 后状态保持；未配置活动 id 回 err 1。
-- rebase 到 `main` @ `72c8d4d` 后的定向回归 61/61 通过（diamond-bank 服务与网关、gameplay-gateway、m5-command-matrix、dragon-land 服务与网关、group-buy、login-business-reads、purchase-flow-regression）。
+- rebase 到 `main` @ `72c8d4d` 后的定向回归 61/61、加入购物/钱包相关文件后的 89/89 通过（diamond-bank 服务与网关、gameplay-gateway、m5-command-matrix、dragon-land 服务与网关、group-buy、login-business-reads、purchase-flow-regression）。
 
-- 全量（`node --test --test-concurrency=1 test/*.test.mjs`）：2494 项、pass 2490、fail 2、skipped 2，日志 `analysis/test-runs/gameplay-20261106/pay-diamondbank-full-rebased.log`。两项失败都在 `test/recommend-gift-count.test.mjs`（native 16004 批量礼包与代金券抵扣）；把 `personal-server/game/gateway.mjs` 换回 `main` @ `72c8d4d` 的原样文件后重跑该文件仍是 5 项里 2 失败，确认与本模块无关。
+- 许愿树返利周期修复合入后，分支最终全量为 2497 项、pass 2495、fail 0、skipped 2，日志 `analysis/test-runs/gameplay-20261106/pay-diamondbank-full-final.log`。此前在 `72c8d4d` 的 2494/2490/2/2 中两项失败均由独立的 `recommend-gift-count` 许愿树周期问题造成，修复后已消失。
 - 分支守卫：`main` 是分支祖先（merge-base `72c8d4d`）、`git diff --check main HEAD` 无输出、`git diff --diff-filter=D --name-only main HEAD` 为空；网关改动只 4 处，其余活动服务的构造、登录同步与派发块未被触碰。
 
 ## 未验收与缺口
@@ -111,4 +111,4 @@ node --test --test-concurrency=1 test/*.test.mjs   # 全量
 - `daily_discount_list` 只写 `recharge_tid` 与 `buy_times`，`buy_additionally` 与 `refresh_time` 留 0：前者在本地没有“追加购买”的产生途径，后者的刷新时刻口径未取得证据。
 - `max_limit` 只用作 110202 的发放上限（超出部分仍留在存款里），`show_duo_value`、`recharge_rage` 未进入服务端结算。
 - 银行礼包购买（138001–138005）不在本次范围，商品是否已在商品表落地未核对；`batch_update` 折扣包只做了配置读取，没有对应的购买链路。
-- 全量套件中 `test/recommend-gift-count.test.mjs` 的 2 项失败与本模块无关：换回 `main` @ `72c8d4d` 的 `gateway.mjs` 后重跑同样失败，属既有问题。
+- 早期全量中 `test/recommend-gift-count.test.mjs` 的 2 项失败与本模块无关，已由独立 WishTree rebate cycle 修复消除；修复后的全量无失败。
