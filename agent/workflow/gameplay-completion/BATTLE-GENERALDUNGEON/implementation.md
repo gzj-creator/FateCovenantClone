@@ -4,7 +4,7 @@
 
 分支：`task/BATTLE-GENERALDUNGEON-20261106`
 
-基线：`main@b765657`，收尾时 rebase 到最新 `main@BATTLE-RANK` 合并提交
+基线：`main@b765657`，收尾时 rebase 到最新 `main@7713406`（BATTLE-RANK 合并提交）
 状态：服务端实现完成；事件规则证据部分阻塞，待 APK 验收
 
 ## 范围与配置依据
@@ -74,9 +74,9 @@ cd personal-server
 npm test
 ```
 
-结果：2179 tests / 2179 pass / 0 fail，耗时 194039 ms。
+结果（rebase 到 `main@7713406` 后）：2178 tests / 2178 pass / 0 fail，耗时 195331 ms。
 
-与主线的冲突审查：分支从 `b765657` 直接创建，开始和结束时 `HEAD == main == b765657`。因此 `gateway.mjs` 只增加独立 import、服务实例和派发块；没有改写 `store schema/migrator`、任务/活动状态、邮件、207 体力或既有 `gateway` 分支，主线第一轮冲突修复全部保留。
+与主线的冲突审查：分支从 `b765657` 直接创建，收尾时主线前进到 `7713406` 并合入 BATTLE-RANK，本分支已 rebase 到该提交。`gateway.mjs` 的自动合并同时保留 BATTLE-RANK 与 GeneralDungeon 的 import、服务实例和派发块；没有改写 `store schema/migrator`、任务/活动状态、邮件、207 体力或主线第一轮的既有 `gateway` 分支。
 
 ## 证据阻塞与验收边界
 
