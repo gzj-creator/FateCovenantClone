@@ -212,7 +212,7 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
   const oldShield = target.shield;
   // Shield, 超凡生命 and HP are resolved in one shared helper so the effect
   // executor and this fallback path cannot disagree about what a hit does.
-  const applied = absorbDamage(target, damage, { sourceId: actor.id });
+  const applied = absorbDamage(target, damage, { sourceId: actor.id, events: state?.events });
   const absorbed = applied.absorbed + applied.superAbsorbed + applied.summonAbsorbed;
   const oldHp = applied.oldHp;
   target.energy = Math.min(
@@ -496,7 +496,11 @@ function executeExtraAction(events, actor, allUnits, state, request) {
   };
   if (typeof request.before === 'function') request.before(actor, state, events);
   runProprietary(state, PROPRIETARY_HOOKS.BEFORE_ACTION, {
-    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType, extra: true
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType, extra: true,
+    resolveTargets: () => {
+      const skill = catalogSkill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
+      return skill ? collectSkillTargets(skill, actor, allUnits, state) : chooseTargets(actor, allUnits, 'front');
+    }
   }, events);
   if (catalogSkill) {
     const targets = collectSkillTargets(catalogSkill, actor, allUnits, state);
@@ -589,7 +593,11 @@ function executeTurn(events, actor, allUnits, state) {
   // "释放终结技前，额外摧毁敌方全体15%的护盾" style clauses run here, after
   // the turn-start and before-ultimate triggers and before any damage.
   runProprietary(state, PROPRIETARY_HOOKS.BEFORE_ACTION, {
-    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType,
+    resolveTargets: () => {
+      const skill = catalogSkill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
+      return skill ? collectSkillTargets(skill, actor, allUnits, state) : chooseTargets(actor, allUnits, 'front');
+    }
   }, events);
 
   if (catalogSkill) {
@@ -703,6 +711,10 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     handlingDamageTriggers: false,
   };
   turnState.random = () => nextRandom(turnState);
+  // Proprietary helpers emit their own events; give them the stream the rest of
+  // the engine writes to so a shield destruction or a summon absorb is visible
+  // in the same report order.
+  turnState.events = events;
   // register passive triggers
   for (const u of allUnits) {
     registerPassiveTriggers(u, skillDatabase, turnState);

@@ -323,7 +323,7 @@ export class EffectExecutor {
     // Apply to target
     const oldHp = target.hp;
     const oldShield = Math.max(0, Number(target.shield) || 0);
-    const applied = absorbDamage(target, finalDamage, { sourceId: actor.id });
+    const applied = absorbDamage(target, finalDamage, { sourceId: actor.id, events: this.state?.events });
     const absorbed = applied.absorbed + applied.superAbsorbed + applied.summonAbsorbed;
 
     const hpDamage = recordActionDamage(actor, target, oldHp, target.hp, absorbed, this.state);
@@ -353,7 +353,7 @@ export class EffectExecutor {
   executeDestroyShield(effect, actor, target) {
     if (!target?.alive) return null;
     const ratio = Number(effect.ratio ?? effect.multiplier ?? 0);
-    const removed = destroyShield(target, ratio, { sourceId: actor?.id ?? null });
+    const removed = destroyShield(target, ratio, { sourceId: actor?.id ?? null, events: this.state?.events });
     return {
       type: 'destroy-shield',
       actor: actor?.id ?? 0,
