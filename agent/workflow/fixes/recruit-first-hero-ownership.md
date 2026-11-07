@@ -1,10 +1,10 @@
 # 首次招募误判已拥有与队伍英雄缺失
 
-状态：服务端根因已修复并通过组件测试与实时库一致副本迁移验证；实时服务部署和隔离客户端视觉验收待完成。本次只改服务端，不改 APK。
+状态：服务端根因已修复，已部署并从 v15 迁移实时库到 v16；客户端已自动重连并完成登录，英雄列表与队伍视觉验收待用户确认。本次只改服务端，不改 APK。
 
 - 工作树：`F:\projects\FateCovenantClone\.worktree\recruit-first-hero-20261107`
 - 分支：`fix/recruit-first-hero-20261107`
-- 基线：`main@e90ef1e`
+- 基线：`main@e90ef1e`；提交后已合入最新 `main@9593baa`
 
 ## 现象与结论
 
@@ -38,7 +38,7 @@
 ## 验证
 
 - 定向测试：`47/47` 通过。
-- 全量测试：`npm test --prefix .\personal-server`，`2235/2235` 通过。
+- 合并最新 `main` 后全量测试：`npm test --prefix .\personal-server`，共 2240 项，2238 通过、0 失败、2 跳过；日志在 `analysis/test-runs/recruit-hero-snapshot-20261107/after-main-merge-full.log`。
 - `git diff --check` 通过。
 - 使用 `VACUUM INTO` 从实时库生成一致副本，仅对副本执行迁移。
 - 修复前副本：schema v15、`integrity_check=ok`、角色表 25、模块 10 为 6，SHA256 `c8f9c27985bfa6cc42f97dc4891293f78362ee2ac08ebe3d5588dcb2b5840848`。
@@ -51,3 +51,11 @@
 该修复恢复当前账号已经真实获得的角色，不会把中局账号伪装成全新号。当前存档本身预置六名角色，普通招募抽到这些已有角色时仍按重复角色转换为碎片，这是正常语义。若目标是验证“全新账号首次招募”，需要另行明确重置服务器角色；本次没有删除 19 个有招募事件来源的角色，也没有写入虚构英雄。
 
 组件测试和数据库副本迁移通过不等于客户端闭环。实时服务部署后仍需在隔离客户端重登，确认英雄列表、队伍可用角色与后续招募结果；完成视觉验收前不标记客户端问题已完全解决。
+
+## 实时部署
+
+- 部署前使用 `VACUUM INTO` 生成一致备份：`analysis/experiments/private-server-20261025/p3/recruit-hero-snapshot-20261107/game.before-v16-deploy-20261107T104819.local-only.sqlite`。文件 466944 字节，SHA256 `4baa61926903201e93b59cb5ae9a6e349aab3d4c3407ea0698df855d7bebcf94`，schema v15，`integrity_check=ok`，角色表 25、模块 10 为 6。
+- 从本工作树启动 v16 后，实时服务 PID 为 `2668`，`startedAt=2026-11-07T10:54:59.306Z`；五个端口 `18880/18881/18882/18883/19090` 均由该 PID 仅监听 `127.0.0.1`，stderr 为空。
+- 实时库现为 schema v16、`integrity_check=ok`、角色表 25、模块 10 为 25，英雄 ID 集合完全一致；六条现有队伍引用均能在英雄表中解析。迁移记录为 `synchronized-roles=1; authoritative=heroes,hero_cells`。
+- 隔离客户端在服务恢复后自动连接并于 `2026-11-07T10:55:01.535Z` 完成 `login_sent`，登录包含 145 个模块；本次没有由 agent 点击客户端。
+- 部署后机器证据：`analysis/experiments/private-server-20261025/p3/recruit-hero-snapshot-20261107/after-v16-deploy.local-only.json`。
