@@ -350,7 +350,7 @@ export function createLocalGame({
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
   const cabin = createCabinService({ store, codec, heroTables });
-  const ranks = createRankService({ codec, store });
+  const ranks = createRankService({ codec, store, now: clock, logger });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
     store,
@@ -1199,7 +1199,10 @@ export function createLocalGame({
       }
       if (ranks.supports(type)) {
         try {
-          const result = ranks.execute(type, await decodeEtf(request.data));
+          // RankCmd.batch_get_player_hero_rank (2004) is the only rank command
+          // encoded with protobuf pb_batch_seq_rank; the other requests are ETF.
+          const input = type === 2004 ? unpack('pb_batch_seq_rank', request.data) : await decodeEtf(request.data);
+          const result = ranks.execute(type, input);
           send(seq, result.data); log({ event: 'rank_sent', type, seq, boardCount: result.value.client_list?.length ?? 1 });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;

@@ -15,6 +15,7 @@ import { createFeatureService } from '../game/feature-service.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createLocalGame } from '../local-game.mjs';
+import { RANK_IDS } from '../config/rank-tables.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
@@ -420,13 +421,24 @@ test('gateway authenticates locally and handles PB upgrades, ETF stars, business
   response = await request(7000, 7000, await encodeEtf([1537]));
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('res_fun_open', Buffer.from(response.data, 'base64')).target_list.length, 2);
-  for (const [type, input, schema] of [[2011, [1001, 2002], 'rank_to_client_list'], [2000, [1001], 'rank_to_client'], [2008, 2002, 'rank_to_client']]) {
+  for (const [type, input, schema] of [[2011, [RANK_IDS.SWAP_ARENA, 54], 'rank_to_client_list'], [2000, [RANK_IDS.SWAP_ARENA], 'rank_to_client'], [2008, 54, 'rank_to_client']]) {
     response = await request(type, type, await encodeEtf(input));
     assert.equal(response.seq, type); assert.equal(response.err, undefined);
     const board = codec.unpack(schema, Buffer.from(response.data, 'base64'));
-    if (type === 2011) assert.deepEqual(board.client_list.map(value => value.rank_id), ['1001', '2002']);
-    else assert.equal(board.rank_id, String(type === 2000 ? 1001 : 2002));
+    if (type === 2011) assert.deepEqual(board.client_list.map(value => value.rank_id), [String(RANK_IDS.SWAP_ARENA), '54']);
+    else assert.equal(board.rank_id, String(type === 2000 ? RANK_IDS.SWAP_ARENA : 54));
+    assert.equal(events.some(event => event.event === 'rank_sent' && event.type === type), true);
   }
+  response = await request(2003, 2003, await encodeEtf([100001, [RANK_IDS.SWAP_ARENA, 54]]));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(codec.unpack('pb_rev_rank', Buffer.from(response.data, 'base64')).infos.map(info => info.rank_id), ['53', '54']);
+  assert.equal(events.some(event => event.event === 'rank_sent' && event.type === 2003), true);
+  response = await request(2004, 2004, codec.pack('pb_batch_seq_rank', {
+    seq_ranks: [{ id: '100001', rank_id_list: ['53', '54'] }]
+  }));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(codec.unpack('pb_batch_rev_rank', Buffer.from(response.data, 'base64')).rev_ranks[0].infos.map(info => info.rank_id), ['53', '54']);
+  assert.equal(events.some(event => event.event === 'rank_sent' && event.type === 2004), true);
   response = await request(2001, 2001, Buffer.from('g2wAAAACYTViAAGGoWo=', 'base64'));
   assert.equal(response.seq, 2001);
   assert.equal(response.err, undefined);
