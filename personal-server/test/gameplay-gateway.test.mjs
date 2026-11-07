@@ -185,6 +185,31 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.deepEqual(game.store.read().resources.get('381002').location.slice(0, 2), [6, 0]);
   assert.deepEqual(game.store.read().resources.get('389002').location.slice(0, 2), [6, 0]);
 
+  // ITEM-ITEM: chip composition (156/158), manual conversion (154) and the guarded
+  // repeat/lottery branches answer on their own numeric ItemCmd types.
+  addResource(game.store, 21300104, 120, 2);
+  response = await request(156, 60, codec.pack('simple_use', { tid: 21300104, num: 1 }));
+  assert.equal(response.err, undefined);
+  const composed = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(composed.find(change => change.tid === '21300104').diff_num, '-60');
+  assert.equal(composed.find(change => change.tid === '1030101').diff_num, '1');
+  response = await request(158, 61, codec.pack('pb_one_key_compose', { one_key_compose: [{ tid: 21300104, num: 1 }] }));
+  assert.equal(response.err, undefined);
+  assert.equal(codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes
+    .find(change => change.tid === '21300104').diff_num, '-60');
+  assert.equal(game.store.read().resources.get('21300104').num, '0');
+  addResource(game.store, 157002, 1, 0);
+  response = await request(154, 62, await encodeEtf([157002]));
+  assert.equal(response.err, undefined);
+  const converted = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes;
+  assert.equal(converted.find(change => change.tid === '157002').diff_num, '-1');
+  assert.equal(converted.find(change => change.tid === '201500').diff_num, '2');
+  // 153 has no BoxRepeat rows in this build and lottery rewards are undefined.
+  response = await request(153, 63, await encodeEtf([2261200]));
+  assert.equal(response.err.err, 5);
+  response = await request(157, 64, codec.pack('pb_batch_use_box_req', { lottery_list: [{ tid: 100013400, num: 1 }] }));
+  assert.equal(response.err.err, 5);
+
   // Activity reads answer, activity mutations stay refused.
   response = await request(110308, 6, Buffer.alloc(0));
   assert.equal(response.err, undefined);

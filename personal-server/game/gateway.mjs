@@ -379,7 +379,7 @@ export function createLocalGame({
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
-  const itemBox=createItemBoxService({store,codec,tables,logger});
+  const itemBox=createItemBoxService({store,codec,tables,heroTables,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
   const cms=createCmsService({codec,store,tables,now:clock});
   const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
@@ -782,23 +782,33 @@ export function createLocalGame({
       }
       if (itemBox.supports(type)) {
         try {
+          const context = { connection: id, seq, type };
           let result;
           if (type === 152) {
-            result = itemBox.openSelected(unpack('selected_use', request.data));
+            result = itemBox.openSelected(unpack('selected_use', request.data), context);
           } else if (type === 155) {
             // use_selected_suit_box encodes (tid, awardIndex) as two ETF positionals.
-            result = itemBox.openSuitBox(await etfArgument(request.data, 'Invalid suit box payload'));
+            result = itemBox.openSuitBox(await etfArgument(request.data, 'Invalid suit box payload'), context);
+          } else if (type === 153) {
+            // use_repeat_box carries one ETF positional (tcp:c2s:153:use_repeat_box).
+            result = itemBox.openRepeat(await etfArgument(request.data, 'Invalid repeat box payload'));
+          } else if (type === 154) {
+            // manual_convert_item carries one ETF positional (tcp:c2s:154:manual_convert_item).
+            result = itemBox.manualConvert(await etfArgument(request.data, 'Invalid convert item payload'), context);
+          } else if (type === 156) {
+            result = itemBox.composeChip(unpack('simple_use', request.data), context);
+          } else if (type === 158) {
+            result = itemBox.composeChips(unpack('pb_one_key_compose', request.data).one_key_compose ?? [], context);
+          } else if (type === 157) {
+            const batch = unpack('pb_batch_use_box_req', request.data);
+            const lottery = batch.lottery_list ?? [];
+            result = lottery.length ? itemBox.openLottery(lottery) : itemBox.open(batch.box_list ?? [], context);
+          } else if (type === 159) {
+            result = itemBox.open(unpack('pb_one_key_use', request.data).use ?? [], context);
           } else {
-            let entries;
-            if (type === 159) entries = unpack('pb_one_key_use', request.data).use;
-            else if (type === 157) {
-              const batch = unpack('pb_batch_use_box_req', request.data);
-              if ((batch.lottery_list ?? []).length) throw new GameError(5, 'Lottery box list is not implemented');
-              entries = batch.box_list;
-            } else entries = [unpack('simple_use', request.data)];
-            result = itemBox.open(entries);
+            result = itemBox.open([unpack('simple_use', request.data)], context);
           }
-          send(seq, result.data); log({ event: 'item_box_committed', type, seq, changes: result.value.changes.length });
+          send(seq, result.data); log({ event: 'item_box_committed', type, seq, changes: result.value.changes.length, duplicate: result.duplicate === true });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
