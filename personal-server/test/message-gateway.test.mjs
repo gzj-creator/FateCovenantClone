@@ -130,4 +130,3 @@ test('MsgCmd 10501-10511 are dispatched over the temporary handshake with real E
   assert.deepEqual(stored.members, [WORLD, 10310047]);
   assert.equal(Number(game.store.inspect(db => db.prepare('SELECT COUNT(*) AS count FROM message_history WHERE channel_id=?').get(10310047).count)), 0);
 });
-
