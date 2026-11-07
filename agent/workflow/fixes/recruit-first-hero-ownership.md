@@ -58,4 +58,5 @@
 - 从本工作树启动 v16 后，实时服务 PID 为 `2668`，`startedAt=2026-11-07T10:54:59.306Z`；五个端口 `18880/18881/18882/18883/19090` 均由该 PID 仅监听 `127.0.0.1`，stderr 为空。
 - 实时库现为 schema v16、`integrity_check=ok`、角色表 25、模块 10 为 25，英雄 ID 集合完全一致；六条现有队伍引用均能在英雄表中解析。迁移记录为 `synchronized-roles=1; authoritative=heroes,hero_cells`。
 - 隔离客户端在服务恢复后自动连接并于 `2026-11-07T10:55:01.535Z` 完成 `login_sent`，登录包含 145 个模块；本次没有由 agent 点击客户端。
+- 用户随后在真实客户端继续执行多次 `type=601/count=10`。截至 `2026-11-07T11:00:10Z` 只读核对，角色表已从 25 增至 37，持久化模块 10 同样为 37，ID 集合仍完全一致，缺失与多余均为空；说明修复不只迁移了历史数据，后续真实招募事务也会持续写入一致快照。
 - 部署后机器证据：`analysis/experiments/private-server-20261025/p3/recruit-hero-snapshot-20261107/after-v16-deploy.local-only.json`。
