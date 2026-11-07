@@ -15,6 +15,8 @@ import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { readEquipTables } from '../config/equip-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
+import { readOnlineGiftTables } from '../config/online-gift-tables.mjs';
+import { createOnlineGiftService } from './online-gift-service.mjs';
 import { createWalletService } from './wallet-service.mjs';
 import { createWelfareService } from './welfare-service.mjs';
 import { createTaskService } from './task-service.mjs';
@@ -118,6 +120,7 @@ export function createLocalGame({
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
   const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
   const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
+  const onlineGiftTables = readOnlineGiftTables();
   const fantasyActTables = loadFantasyActTables();
   const relicTables = { ...tables, ...fantasyActTables };
   const calendar = createActivityCalendar({
@@ -342,6 +345,10 @@ export function createLocalGame({
   const wishTree = createWishTreeService({ store, codec, tables, now: clock, logger });
   const weekHunt = createWeekHuntService({ store, codec, tables, now: clock });
   const firstRecharge = createFirstRechargeService({ store, codec, tables, now: clock, logger });
+  const onlineGift = createOnlineGiftService({
+    store, codec, tables: onlineGiftTables, gameTables: tables,
+    serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
   const rechargeBonus = createRechargeBonusService({ store, codec, tables, calendar, now: clock, logger });
   const lineFirstRecharge = createLineFirstRechargeService({ store, codec, tables, now: clock, logger });
   const rechargeRebateReset = createRechargeRebateResetService({ store, codec, tables, calendar, now: clock, logger });
@@ -435,6 +442,7 @@ export function createLocalGame({
     lineFirstRecharge.ensureLoginState();
     cabin.ensureLoginState();
     rechargeBonus.synchronize();
+    onlineGift.beginSession();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
@@ -639,14 +647,20 @@ export function createLocalGame({
     sockets.add(socket);
     const id = crypto.randomUUID();
     const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 });
-    let phase = 'verify', challenge, chain = Promise.resolve();
+    let phase = 'verify', challenge, chain = Promise.resolve(), onlineGiftSessionAttempted = false;
     const push=(type,data)=>{if(!socket.destroyed)socket.write(encodeGameFrame(pack('pb_s2c',{type,data})));};
     const log = event => logger({ connection: id, ...event });
     const fight = createMissionFightService({ store, codec, logger: log, playbackEnabled: missionFightPlayback });
     socket.setNoDelay(true); socket.setTimeout(180000);
     socket.on('timeout', () => socket.destroy());
     socket.on('error', error => log({ event: 'socket_error', code: error.code }));
-    socket.on('close', () => { subscribers.delete(push); sockets.delete(socket); log({ event: 'game_closed' }); });
+    socket.on('close', () => {
+      subscribers.delete(push); sockets.delete(socket);
+      if (onlineGiftSessionAttempted) {
+        try { onlineGift.endSession(); } catch (error) { log({ event: 'online_gift_session_close_failed', message: error.message }); }
+      }
+      log({ event: 'game_closed' });
+    });
     const send = (seq, data = Buffer.alloc(0), err) => {
       const payload = pack('pb_s2c', { seq, ...(data.length ? { data } : {}), ...(err ? { err } : {}) });
       const frame = encodeGameFrame(payload);
@@ -684,6 +698,19 @@ export function createLocalGame({
       // Heartbeat is one-way. A zero-length S2C frame leaves the client's
       // TcpConnectionWorker receive stream at offset 4 and corrupts the next frame.
       if (type === -1) return;
+      if (onlineGift.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = onlineGift.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'online_gift_claim_committed', type, seq, ...result.value.online_gift });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'online_gift_claim_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (type === 909103) {
         const state = store.state();
         const login = root.lookupType('login').decode(request.data);
@@ -691,7 +718,9 @@ export function createLocalGame({
           log({ event: 'login_rejected', serverMatches: login.server_id === state.serverId, credentialFields: { uidLength: login.channel_uid.length, codeLength: login.verify_code.length, extraLength: login.channel_extra.length } });
           send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Local SDK session required' }); return;
         }
-        send(seq, await loginPayload()); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
+        onlineGiftSessionAttempted = true;
+        const payload = await loginPayload();
+        send(seq, payload); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
       if (type === 17001) {
@@ -1738,7 +1767,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
+    root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin,
     cms, guildNationAssist,
