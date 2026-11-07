@@ -182,4 +182,3 @@ test('627 rolls the listing back when the response cannot be encoded', async t =
   assert.throws(() => service.execute(627, { rent_tid: RENT_TID, hero_uid_list: [RENT_HERO], hero_index_list: [1] }), /encode failed/);
   assert.equal(rentOutRows(env).length, 0);
 });
-

@@ -143,4 +143,3 @@ test('hero bond commands answer through the real gateway with login-module persi
   }));
   assert.equal(response.err.err, 3001);
 });
-

@@ -51,4 +51,3 @@ export function createHero<Cluster>Service({ store, codec, tables, heroTables, n
 - 客户端 Lua（LuaJIT 字节码，可用 `tools/luajit-bytecode-parse.mjs` 解析；`HeroDevelopMgr.lua` 等需要先打补丁，参考 `agent/workflow/gameplay-completion/SOC-FRIEND/inspect-evidence.mjs`）：`F:/projects/FateCovenantClone/.worktree/recruit-20261101/.scratch/out/luaproject/`。
 - proto：`personal-server/assets/protobuf/*.proto.bin`（文本 proto，可直接读）。
 - 表：`personal-server/assets/tables/HeroTable.data.lua.json.gz`（LuaJIT dump，用 `readGeneratedDump` 读）。
-

@@ -317,4 +317,3 @@ test('ensureLoginState opens the ungated cells and repairs hero levels', t => {
   assert.deepEqual(again.opened, []);
   assert.equal(again.heroes, 0);
 });
-

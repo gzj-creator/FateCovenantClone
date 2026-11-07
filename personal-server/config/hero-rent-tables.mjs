@@ -11,4 +11,3 @@ export function readHeroRentTables() {
   cache = readGeneratedDump(readJsonAsset(tableAsset('HeroTable.data.lua.json')), names);
   return cache;
 }
-

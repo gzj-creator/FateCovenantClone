@@ -104,4 +104,3 @@ test('hero rent commands answer through the real gateway with the numeric types'
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_req_rent_back', Buffer.from(response.data, 'base64')).rent_data.rent_hero_list, []);
 });
-

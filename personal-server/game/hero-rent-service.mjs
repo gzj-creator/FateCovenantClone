@@ -363,4 +363,3 @@ export function createHeroRentService({ store, codec, tables, heroTables, now = 
     }
   };
 }
-

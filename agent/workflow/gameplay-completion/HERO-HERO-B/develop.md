@@ -155,4 +155,3 @@ node --test --test-concurrency=1 test/hero-develop-*.test.mjs
 4. 666 的石头自动选择与“跳过试炼”边界是推断；客户端 UI 是否允许一键跨过 5 星需要实测。
 5. 试炼附带的属性加成（`HighStarAddAttr` / `Quality` 属性重算）属 CORE-ATTR 范围，本簇只改品质与星级字段，不写属性。
 6. 四条命令均未 APK 实测：未启停实时服务、未读写 `runtime.local-only.data`、未操作模拟器与 APK。可玩验收待总控合并后在隔离客户端按 `docs/plans/remaining-gameplay-20261106/11-dispatch-and-acceptance.md` 执行。
-

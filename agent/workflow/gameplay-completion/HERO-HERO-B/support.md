@@ -72,4 +72,3 @@ node "$env:TEMP/fc_tbl.mjs" DrawExchangeLineup NormalDrawExchangeLineup DrawProg
 ## APK 边界
 
 本簇只做服务端与临时 TCP 验证，未做隔离客户端 com.jzyx.ps 实机操作。因为客户端本版本不发这四条命令，“可玩验收”本身不适用；635 在配置为空时只回业务码，不构成 APK 验收。
-

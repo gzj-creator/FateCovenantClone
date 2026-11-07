@@ -73,4 +73,3 @@ node --test --test-concurrency=1 test/hero-rent-service.test.mjs test/hero-rent-
 ## APK 边界
 
 全部分簇只做服务端与临时 TCP 验证，没有隔离客户端 com.jzyx.ps 实机操作，也没有真实设备验收。状态一律记“服务端完成带证据缺口”，不构成 APK 验收。
-

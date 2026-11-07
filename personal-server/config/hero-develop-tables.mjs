@@ -28,4 +28,3 @@ export function readHeroDevelopTables(file = defaultPath) {
 }
 
 export const heroDevelopTableNames = Object.freeze([...DEVELOP_TABLES]);
-

@@ -80,4 +80,3 @@ node "$env:TEMP\fc_tbl.mjs" Rent RentRule Cell DevelopInfoShare Develop
 ## APK 边界
 
 本簇只做服务端与临时 TCP 验证，未做隔离客户端 `com.jzyx.ps` 实机操作；租借 UI 是否能真正打开还取决于上面的登录槽位与跨角色数据缺口。不构成 APK 验收。
-

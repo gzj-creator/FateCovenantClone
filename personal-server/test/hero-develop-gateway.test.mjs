@@ -126,4 +126,3 @@ test('hero develop commands answer through the real gateway with saved state', a
   assert.equal(Number(single.failed_hero_list[0].hero_tid), CHIP_HERO);
   assert.equal(Number(single.failed_hero_list[0].before_star), 6);
 });
-
