@@ -4,7 +4,7 @@
 
 ## 当前基线
 
-- 当前 main：`c4d4c12`（该提交只更新执行看板）；最新业务合并是 `354e1ca`。
+- 当前 main 以包含本提示词的 docs tip 为准（写作时执行看板提交为 `c4d4c12`）；最新业务合并是 `354e1ca`。开始工作时先读取实际 `git log -1 main`。
 - 已合入本轮第二批剩余任务：`SOC-MSG`（10501–10511，main `b4880a9` 起，后续 ETF 推送修复已合入）、`HERO-HERO-B`（HERO-HERO 卡剩余 18 条命令，main `eb1b1e1`）、`DRAW-HUNDREDDRAWACT`（117001–117005，main `354e1ca`）。
 - 执行看板已更新为 26/355（约 7.3%，只表示已有实现交付，不代表完整规则闭合或 APK 验收）：23 个模块任务 + 3 个共享任务。当前仍无任务完成 APK 验收。
 - 最后的主线全量是批次二 `2311 tests / 2309 pass / 0 fail / 2 skipped`，日志 `analysis/test-runs/gameplay-20261106/main-after-batch2-full.log`，已不覆盖第三批。
