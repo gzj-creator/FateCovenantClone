@@ -236,3 +236,70 @@ test('DragonLandActCmd 107702 validates ids, guild and the persisted claim list'
   const lonely = setup(t);
   assert.throws(() => claimTrial(lonely.service, [10101]), error => error instanceof GameError && error.code === 311);
 });
+
+function readGuildData(service, actId = ACT_ID) {
+  const data = codec.pack('pb_dragon_land_guild_data_req', { activity_id: String(actId) });
+  const result = service.execute(107703, data);
+  return { result, value: codec.unpack('pb_dragon_land_guild_data_rsp', result.data) };
+}
+
+test('DragonLandActCmd 107703 answers with the local guild boss and contribution rows', t => {
+  const harness = setup(t);
+  seedGuild(harness.store);
+  const service = harness.service;
+
+  const empty = readGuildData(service).value.guild_info;
+  assert.equal(empty.version, String(VERSION));
+  assert.equal(empty.level, '1');
+  assert.equal(empty.boss_id, '1');
+  // proto3 leaves zero valued int64 fields out of the wire form.
+  assert.equal(Number(empty.lost_hp ?? 0), 0);
+  assert.equal(Number(empty.piece ?? 0), 0);
+  assert.deepEqual(empty.piece_list, []);
+  assert.deepEqual(empty.display_list, []);
+
+  harness.setTime(DAY_ONE + 60);
+  service.recordBossDamage({ actId: ACT_ID, guildId: '900001', damage: 900, wayTid: 1, piece: 6 });
+  harness.setTime(DAY_ONE + 120);
+  harness.service.recordBossDamage({ actId: ACT_ID, guildId: '900001', damage: 150, wayTid: 3, piece: 4 });
+
+  const info = readGuildData(harness.service).value.guild_info;
+  assert.equal(info.lost_hp, '1050');
+  assert.equal(info.piece, '10');
+  assert.equal(info.piece_list.length, 1);
+  const member = info.piece_list[0];
+  assert.equal(member.rid, String(harness.store.state().roleId));
+  assert.equal(member.damage, '1050');
+  assert.deepEqual(
+    member.display_list.map(item => [Number(item.tid), Number(item.piece), Number(item.day_index)]),
+    [[1, 6, 1], [3, 4, 1]]
+  );
+  assert.deepEqual(
+    info.display_list.map(item => [Number(item.tid), Number(item.piece), Number(item.day_index)]),
+    [[1, 6, 1], [3, 4, 1]]
+  );
+
+  // The next day keeps yesterday's rows on the member record but clears the
+  // today-only display list, matching the day_index field of pb_dragon_land_display.
+  harness.setTime(DAY_TWO);
+  const nextDay = readGuildData(harness.service).value.guild_info;
+  assert.equal(nextDay.piece_list[0].display_list.length, 2);
+  assert.deepEqual(nextDay.display_list, []);
+
+  // Survivors of a reopen read the same rows.
+  harness.reopen();
+  assert.equal(readGuildData(harness.service).value.guild_info.piece, '10');
+});
+
+test('DragonLandActCmd 107703 rejects requests without guild authority', t => {
+  const harness = setup(t);
+  assert.throws(() => readGuildData(harness.service), error => error instanceof GameError && error.code === 5);
+  assert.throws(() => readGuildData(harness.service, 62001), error => error instanceof GameError && error.code === 1);
+  assert.throws(
+    () => harness.service.execute(107703, Buffer.from([0xff, 0xff, 0xff])),
+    error => error instanceof GameError && error.code === 1
+  );
+  const stopped = setup(t, { mode: 'schedule', running: () => false });
+  seedGuild(stopped.store);
+  assert.throws(() => readGuildData(stopped.service), error => error instanceof GameError && error.code === 309);
+});
