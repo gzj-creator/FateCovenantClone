@@ -8,14 +8,14 @@
 | --- | --- | --- | --- | --- | --- |
 | PAY-ONLINEGIFT | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` @ 4078f6e | 4 专项 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改；合并后全量 2190/2190 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；当前按服务器 05:00 日号映射配置周期；APK 验收待安排 |
 | CORE-BATTLE | 待领取 | — | — | 未安排 | 可按 A/B/C 拆分，统一共享执行器负责人 |
-| CORE-ATTR | 服务端完成（属性查询/战力/普通副本战斗同源；装备等养成来源待扩展） | `task/CORE-ATTR-20261106` @ 1797c98 | 4 专项 + 真实 TCP 1316 + SQLite 重开；mission-fight 23/23；gameplay-gateway 7/7；rank/lineup/equip 等 36/36 | 未安排 | 逐级成长分母、战力权重、1316 attr_list play_type、1314 回包、NpcAttr 外部数据、速度表均未取证；装备/团长装备/图鉴/好感/法阵/符文/圣器尚未汇入 |
+| CORE-ATTR | 服务端完成（属性查询/战力/普通副本战斗同源；装备等养成来源待扩展） | `task/CORE-ATTR-20261106` @ ec41751 | 4 专项 + 真实 TCP 1316 + SQLite 重开；mission/rank/lineup/equip 等联合回归 66/66；合并后全量 2219/2219 | 未安排 | 逐级成长分母、战力权重、1316 attr_list play_type、1314 回包、NpcAttr 外部数据、速度表均未取证；装备/团长装备/图鉴/好感/法阵/符文/圣器尚未汇入 |
 | CORE-SKILL-GATES | 待领取 | — | — | 未安排 | 实际养成状态到可用技能的映射 |
 | CORE-EVENTS | 待领取 | — | — | 未安排 | 活动阶段、任务统计与结算 |
 | CORE-DRAW-POOLS | 待领取 | — | — | 未安排 | 常驻幻武 2 组、神灵 56 组；幻武任务生产配置 |
 | CORE-TIME-TEMPLE | 待领取 | — | — | 未安排 | 八个 C2S 编码器的数字命令映射 |
 | CORE-CABIN | 待领取 | — | — | 未安排 | 房间/任务/交互/奖励/加速的可达性与协议 |
 | HERO-LINEUP | 服务端完成 | `task/HERO-LINEUP-20261106` @ cd3b3ea | 5 专项测试 + 真实 TCP 214→215→216→209→210→217 + 重开 DB；集成分支 30/30 | 未安排 | 217 回包 schema 未恢复（当前 ETF 回显索引）；名称长度上限属推断；214 请求形态待实测 |
-| HERO-HERO | 服务端部分完成（本小批 614/647/663/664/665） | `task/HERO-HERO-20261106` @ 2865667（rebase main 63b9f85） | 8 专项服务测试 + 真实 TCP 五命令 + SQLite 重开 + 编码回滚；相关回归 44/44（含 gameplay-gateway） | 未安排 | 剩余 602/627–631/634/635/637/641/651/652/654/656/661/666/672/673；Visit 品质映射、锁价比例、custom_tid 与 HeroErr 线上码待证据；重铸属性未进战斗 |
+| HERO-HERO | 服务端部分完成（本小批 614/647/663/664/665） | `task/HERO-HERO-20261106` @ ead0359 | 专项与 gateway 回归 16/16 + 真实 TCP 五命令 + 模块 10 槽位 5 + SQLite 重开 + 编码回滚；合并后全量 2206/2206 | 未安排 | 剩余 602/627–631/634/635/637/641/651/652/654/656/661/666/672/673；Visit 品质映射、锁价比例、custom_tid 与 HeroErr 线上码待证据；重铸属性归 CORE-ATTR/CORE-SKILL-GATES |
 | HERO-MASTERY | 服务端完成（战斗接线归 CORE-ATTR/CORE-SKILL-GATES） | `task/HERO-MASTERY-20261106` @ 1afea74 | 5 专项测试 + 真实 TCP 660→659 + 故障回滚 + 重开 DB；合并后全量 2164/2164 | 未安排 | 659/660 请求仅确认含 tid；未突破时等级上限与技能解锁规则待实测；精通属性与技能尚未进入战斗 |
 | ITEM-SHOP | 服务端完成 | `task/ITEM-SHOP-20261106` @ 3ac6f3c | 15 专项测试 + 真实 TCP 1202→1203→1202 + 重开 DB；集成分支 26/26 | 未安排 | 1202–1205/1207/1208 ETF 请求形态待录制；1205 wipe 语义未取证；结算 data 布局未知；无刷新价格表 |
 | ITEM-ITEM | 服务端完成（153/157 证据阻塞） | `task/ITEM-ITEM-20261106` @ c3e2df7 | 9 专项测试 + 真实 TCP 156/158/154 成功、153/157 返回 code 5；集成分支 47/47 | 未安排 | 153 本版本不可达（BoxRepeat 0 行、无 type=85 物品、module 54 空）；157.lottery_list 无奖池表；保底登录槽位未定位；MatchHeroChip 无奖励 handler |
@@ -27,7 +27,7 @@
 | ITEM-COMMONTASK | 服务端完成（奖励/爬塔进度证据阻塞） | `task/ITEM-COMMONTASK-20261106` @ 321655f | 7 专项测试 + 同组列表事务 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | 四张组表 2774 行奖励列为空；progress_fun 12 无爬塔状态来源；module 90 线性槽位从 0 修正为 4，需 APK 联合验收 |
 | ITEM-GUIDE | 服务端完成（奖励配置证据阻塞） | `task/ITEM-GUIDE-20261106` @ 042be27 | 9 专项测试 + 真实 TCP 8000→8001→8002 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | GuideTable 无 JSON 导出，生产 8001 对所有 awardTid 返回 code 5；8001 参数位置与 8002 不回帧均待 APK 实测 |
 | ITEM-RANKACHIEVE | 服务端完成（多数成就事件源证据阻塞） | `task/ITEM-RANKACHIEVE-20261106` @ 9c1a880 | 7 专项测试 + 真实 TCP 43101→rsp/8601 + 模块 170 登录 + 重开 DB + 编码/SQLite 回滚；合并后全量 2190/2190 | 未安排 | 当前仅闭合巅峰塔 500/1000 层与可解析指定英雄拥有共 13 行；其余 71 行缺权威完成值来源并返回 code 5；`finish_award` 发放语义与跨服/公会完成信息待证据 |
-| ITEM-GROWTHROAD | 服务端完成（1111–1113 任务进度证据阻塞） | `task/ITEM-GROWTHROAD-20261106` @ 69e3f03 | 9 专项测试 + 真实 TCP 909103→69002→69001 + 模块 53696 登录 + 重开 DB + 编码回滚；与首周目标/HERO-HERO/gateway 回归 32/32 | 未安排 | `progress_fun=203/82`（1111–1113）无权威事件来源；ETF 单 tid 形状来自客户端反汇编、未取得实包；`award_new` 选择与过期 `rev_overdue/overdue_award` 语义待原服对照 |
+| ITEM-GROWTHROAD | 服务端完成（1111–1113 任务进度证据阻塞） | `task/ITEM-GROWTHROAD-20261106` @ 8003e39 | 专项与 gateway 回归 16/16 + 真实 TCP 69001/69002 + 模块 53696 登录 + SQLite 重开 + 编码回滚；合并后全量 2215/2215 | 未安排 | `progress_fun=203/82`（1111–1113）无权威事件来源；ETF 单 tid 形状来自客户端反汇编、未取得实包；`award_new` 选择与过期 `rev_overdue/overdue_award` 语义待原服对照 |
 | ITEM-FIRSTWEEKGOAL | 服务端完成（部分进度事件证据阻塞） | `task/ITEM-FIRSTWEEKGOAL-20261106` @ 6155312 | 6 项 service + 真实临时 TCP 67004/67005 + 登录模块 59015 + SQLite 重开 + 编码/SQLite 回滚；网关 14/14；合并后全量 2197/2197 | 未安排 | TaskType.progress_fun=1/3 尚无统一生产事件来源；当前统计源任务可领取，其余明确 code 5，不按固定进度放行 |
 
 ## 集成与验收记录（2026-11-07 第一轮）
@@ -38,3 +38,4 @@
 - ITEM-EVERYTASK 已 rebase 到含首批任务的 main；保留 `createItemBoxService({ ..., heroTables })`、207 体力、邮件推送、活动期限及 module 90 槽位语义，冲突相关 35/35 通过，再以 `--no-ff` 合入 main `77c5b5f`。BATTLE-RANK 已基于该主线完成并把原空榜替换为 SQLite 权威排序，以 `--no-ff` 合入 main `7713406`；独立复核 41/41，通过后 main 全量 2171/2171。BATTLE-GENERALDUNGEON rebase 时只与总控状态表冲突，保留总控版本，代码与 BATTLE-RANK 网关派发共存；独立复核 37/37，以 `--no-ff` 合入 main `e406136`，合并后全量 2178/2178。PAY-ONLINEGIFT 以 `--no-ff` 合入 main `5ea053c`；ITEM-RANKACHIEVE 再次 rebase 时手工保留 `onlineGift.beginSession()` 与 `rankAchieve.ensureLoginState()` 两条登录路径，独立复核 26/26，以 `--no-ff` 合入 main `13f99a7`。最终 main 全量 `node --test --test-concurrency=1 test/*.test.mjs`：tests 2190 / pass 2190 / fail 0。日志：`analysis/test-runs/gameplay-20261106/main-after-rankachieve-onlinegift-full.log`。
 - 当前没有启停实时服务、操作模拟器、读写 `runtime.local-only.data` 或生成 APK；上表“服务端完成”均只表示业务、临时 TCP、SQLite 与回归层通过，APK 验收仍单列。
 - ITEM-FIRSTWEEKGOAL 以 `--no-ff` 合入 main `bf5d95b`；独立专项 14/14，合并后 main 全量 2197/2197。网关保留 `onlineGift.beginSession()`、`rankAchieve.ensureLoginState()` 与首周目标模块 59015 三条登录路径，并保留既有数字 type 派发；207 结算/体力、邮件推送与活动期限定向回归 60/60 再次通过。全量日志：`analysis/test-runs/gameplay-20261106/main-after-firstweekgoal-full.log`。
+- HERO-HERO、ITEM-GROWTHROAD、CORE-ATTR 依次以 --no-ff 合入 main d375bf6、8979fe5、427f9e5。每次合并前均确认 main 为分支祖先、git diff --check 通过，并逐项检查网关同时保留 onlineGift、rankAchieve、heroExtra、firstWeekGoal、growthRoad 与 1316 属性路由；git diff 未覆盖 207 结算/体力、邮件推送、活动期限或 module8/90 多槽。三次合并后的全量回归依次为 2206/2206、2215/2215、2219/2219。最终日志：analysis/test-runs/gameplay-20261106/main-after-core-attr-full.log。
