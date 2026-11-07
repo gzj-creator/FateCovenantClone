@@ -106,4 +106,3 @@ test('hero extra commands answer through the real gateway with login-module pers
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_hero_reforge', Buffer.from(response.data, 'base64')).attr_list, saved.attr_list);
 });
-

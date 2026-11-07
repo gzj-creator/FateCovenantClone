@@ -216,4 +216,3 @@ test('663 refuses heroes below the configured reforge quality', t => {
   grant(env, [[710002, 10]]);
   assert.throws(() => env.service().execute(663, { hero_tid: 2010101, lock_idx_list: [] }), error => error.code === 305);
 });
-
