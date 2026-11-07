@@ -1,6 +1,9 @@
 import { GameError } from './hero-progression.mjs';
 import { rawBinary } from '../protocol/game-codec.mjs';
 import { readRankTables, RANK_IDS } from '../config/rank-tables.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
+import { readAttributeTables } from '../config/attribute-tables.mjs';
+import { assembleLineup } from './attribute-service.mjs';
 
 const SUPPORTED_TYPES = new Set([2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011]);
 const MAX_RANK_IDS = 100;
@@ -138,27 +141,22 @@ function heroStarCount(model) {
   return model.heroInfo.hero_list.reduce((sum, hero) => sum + Math.max(0, Number(hero.star ?? 0)), 0);
 }
 
-// CORE-ATTR is not complete yet. This is the same local-server combat-power
-// approximation already used by mission battle reports: the sum of the primary
-// lineup's authoritative max-HP values, derived only from persisted state.
-function localCombatPower(model) {
+// The rank screen, the 1316 attribute query and mission battle reports all read
+// the same assembled lineup power (attribute-service compatibility formula).
+// A hero whose configuration is missing is skipped by the assembler so ranking
+// keeps working on partially seeded saves.
+function localCombatPower(model, heroTables, attributeTables) {
   const lineup = primaryLineup(model);
   if (!lineup) return 0;
-  const heroes = new Map(model.heroInfo.hero_list.map(hero => [String(hero.uid), hero]));
-  let power = 0;
-  for (const team of lineup.team_list ?? []) {
-    for (const fighter of team.fighter_list ?? []) {
-      const hero = heroes.get(String(fighter.hero_id));
-      if (!hero) continue;
-      const level = Math.max(1, Number(hero.level ?? 1));
-      const quality = Math.max(0, Number(hero.quality ?? 1));
-      power += 1000 + level * 100 + quality * 10;
-    }
+  try {
+    return assembleLineup({ model, lineup, heroTables, attributeTables }).totalPower;
+  } catch {
+    return 0;
   }
-  return power;
 }
 
-export function createRankService({ codec, store, tables = readRankTables(), now = Date.now, logger = () => {} }) {
+export const rankPower = (model, { heroTables = readHeroTables(), attributeTables = readAttributeTables() } = {}) => localCombatPower(model, heroTables, attributeTables);
+export function createRankService({ codec, store, tables = readRankTables(), heroTables = readHeroTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
   if (store?.inspect) store.inspect(ensureTables);
 
@@ -190,7 +188,7 @@ export function createRankService({ codec, store, tables = readRankTables(), now
     if (Number.isSafeInteger(cleared) && cleared > 0) scores.set(RANK_IDS.MISSION, BigInt(cleared));
     const stars = heroStarCount(model);
     if (Number.isSafeInteger(stars) && stars > 0) scores.set(RANK_IDS.HERO_STAR_COUNT, BigInt(stars));
-    const power = localCombatPower(model);
+    const power = localCombatPower(model, heroTables, attributeTables);
     if (Number.isSafeInteger(power) && power > 0) scores.set(RANK_IDS.POWER, BigInt(power));
     const tower = peakTowerMaxLayer(db, model.state.roleId);
     if (Number.isSafeInteger(tower) && tower > 0) scores.set(RANK_IDS.PEAK_TOWER, BigInt(tower));

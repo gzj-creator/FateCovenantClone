@@ -8,7 +8,7 @@
 | --- | --- | --- | --- | --- | --- |
 | PAY-ONLINEGIFT | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` @ 4078f6e | 4 专项 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改；合并后全量 2190/2190 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；当前按服务器 05:00 日号映射配置周期；APK 验收待安排 |
 | CORE-BATTLE | 待领取 | — | — | 未安排 | 可按 A/B/C 拆分，统一共享执行器负责人 |
-| CORE-ATTR | 待领取 | — | — | 未安排 | 属性公式与所有养成来源 |
+| CORE-ATTR | 服务端完成（属性查询/战力/普通副本战斗同源；装备等养成来源待扩展） | `task/CORE-ATTR-20261106` @ 20ce847 | 4 专项 + 真实 TCP 1316 + SQLite 重开；mission-fight 23/23；gameplay-gateway 7/7；rank/lineup/equip 等 36/36 | 未安排 | 逐级成长分母、战力权重、1316 attr_list play_type、1314 回包、NpcAttr 外部数据、速度表均未取证；装备/团长装备/图鉴/好感/法阵/符文/圣器尚未汇入 |
 | CORE-SKILL-GATES | 待领取 | — | — | 未安排 | 实际养成状态到可用技能的映射 |
 | CORE-EVENTS | 待领取 | — | — | 未安排 | 活动阶段、任务统计与结算 |
 | CORE-DRAW-POOLS | 待领取 | — | — | 未安排 | 常驻幻武 2 组、神灵 56 组；幻武任务生产配置 |

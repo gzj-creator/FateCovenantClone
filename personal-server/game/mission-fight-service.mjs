@@ -3,6 +3,8 @@ import { GameError } from './hero-progression.mjs';
 import { missionBattleConfig, readMissionTables } from '../config/mission-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
+import { applyNpcScaling, assembleHeroAttributes, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
+import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 import { missionPosition } from './mission-progress.mjs';
@@ -143,18 +145,11 @@ function requestedMembers(model, request) {
   };
 }
 
-function combatAttributes(hero, level, maxHp, enemy = false) {
-  const profession = Number(hero.profession ?? 0);
-  const speedBase = profession === 3 ? 112 : profession === 4 ? 104 : profession === 2 ? 98 : profession === 5 ? 92 : 88;
-  const attackRatio = profession === 3 ? 0.125 : profession === 2 ? 0.115 : profession === 4 ? 0.11 : profession === 5 ? 0.075 : 0.085;
-  const defenseRatio = profession === 1 ? 0.032 : profession === 2 ? 0.026 : 0.018;
-  return {
-    profession,
-    attack: Math.max(1, Math.round(maxHp * attackRatio + level * 3) * (enemy ? 0.9 : 1)),
-    defense: Math.max(0, Math.round(maxHp * defenseRatio + level * 2)),
-    speed: speedBase + (Number(hero.index ?? 0) % 7),
-    initialEnergy: FIGHT_INITIAL_ENERGY
-  };
+// The battle engine resolves one physical damage channel. Physical and magic
+// defense are both assembled from configuration; their mean is the documented
+// compatibility collapse until the engine splits damage types (CORE-BATTLE).
+function defenseChannel(stats) {
+  return Math.max(0, Math.round((Number(stats.physicalDefense ?? 0) + Number(stats.magicDefense ?? 0)) / 2));
 }
 
 function initialFightAttributes(initialEnergy) {
@@ -207,7 +202,7 @@ function captainFighter(attackers, selected) {
   };
 }
 
-function reportBattle(codec, model, mission, request) {
+function reportBattle(codec, model, mission, request, attributeTables) {
   const config = missionBattleConfig(mission.missionId);
   if (!config) throw new GameError(5, 'Mission enemy configuration missing');
   const selected = requestedMembers(model, request);
@@ -225,14 +220,20 @@ function reportBattle(codec, model, mission, request) {
     const hero = model.heroInfo.hero_list.find(value => String(value.uid) === entry.heroId);
     if (!hero) throw new GameError(5, 'Journey lineup hero is missing');
     const role = Number(hero.tid), cfg = unitConfig(config.tables, role, 1);
-    const level = Number(hero.level ?? 1), quality = Number(hero.quality ?? cfg.hero.quality ?? 1);
-    const maxHp = 1000 + level * 100 + quality * 10;
-    const combat = combatAttributes(cfg.hero, level, maxHp);
+    const assembled = assembleHeroAttributes({ hero, heroTables: config.tables.heroes, attributeTables });
+    const level = assembled.level, quality = assembled.quality, maxHp = assembled.stats.hp;
+    const combat = {
+      profession: assembled.profession,
+      attack: assembled.stats.attack,
+      defense: defenseChannel(assembled.stats),
+      speed: assembled.stats.speed,
+      initialEnergy: FIGHT_INITIAL_ENERGY
+    };
     const abilities = cfg.abilities.slice(0, 8).map(Number);
     return {
       id: 101 + index, tid: role, role_type: FIGHTER_ROLE_HERO, uid: String(hero.uid), role,
       team: 1, team_index: selected.teamIndex, loc: entry.loc,
-      star: Number(hero.star ?? 0), level, quality, hp: maxHp, max_hp: maxHp,
+      star: assembled.star, level, quality, hp: maxHp, max_hp: maxHp,
       enable: true, final_hp: maxHp, style: Number(cfg.hero.style ?? role),
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
@@ -241,16 +242,37 @@ function reportBattle(codec, model, mission, request) {
     };
   });
   const attackerLevel = Math.max(...attackers.map(unit => unit.level));
+  // NpcAttr growth rows are not shipped. Until they are recovered, combat NPCs
+  // reuse the strongest player fighter as the reference baseline (the same 0.88
+  // relationship the previous local estimate used) and then apply the shipped
+  // NpcAttrRatio / NpcFightCustom.elite_scale values.
+  const reference = attackers.reduce((best, unit) => (unit.max_hp > best.max_hp ? unit : best), attackers[0]);
   const defenders = config.enemies.map((role, index) => {
     const cfg = unitConfig(config.tables, role, 2);
     const level = Math.max(1, attackerLevel), quality = Number(cfg.hero.quality ?? 1);
-    const maxHp = Math.round((1000 + level * 100 + quality * 10) * 0.88);
-    const combat = combatAttributes(cfg.hero, level, maxHp, true);
+    const fallback = {
+      hp: Math.max(1, Math.round(reference.max_hp * 0.88)),
+      attack: Math.max(1, Math.round(reference.attack * 0.88)),
+      physicalDefense: Math.max(0, Math.round(reference.defense * 0.88)),
+      magicDefense: Math.max(0, Math.round(reference.defense * 0.88)),
+      critRate: 0,
+      critHarm: 0,
+      speed: reference.speed
+    };
+    const stats = applyNpcScaling(fallback, npcAttributeScale(attributeTables, role, { elite: Boolean(cfg.hero.is_elite || cfg.npc?.is_elite) }));
+    const combat = {
+      profession: Number(cfg.hero.profession ?? 0),
+      attack: stats.attack,
+      defense: defenseChannel(stats),
+      speed: stats.speed,
+      initialEnergy: FIGHT_INITIAL_ENERGY
+    };
+    const maxHpFinal = stats.hp;
     const abilities = cfg.abilities.slice(0, 8).map(Number);
     return {
       id: 201 + index, tid: role, role_type: cfg.npc ? FIGHTER_ROLE_NPC : FIGHTER_ROLE_HERO, uid: '0', role,
       team: 2, team_index: 1, loc: index + 1,
-      star: Number(cfg.hero.star ?? 0), level, quality, hp: maxHp, max_hp: maxHp,
+      star: Number(cfg.hero.star ?? 0), level, quality, hp: maxHpFinal, max_hp: maxHpFinal,
       enable: true, final_hp: 0, style: Number(cfg.hero.style ?? role),
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
@@ -295,8 +317,16 @@ function reportBattle(codec, model, mission, request) {
     over_round: simulation.overRound,
     result: simulation.result,
     is_add_battle: false,
-    atk_power: String(attackers.reduce((sum, unit) => sum + unit.max_hp, 0)),
-    def_power: String(defenders.reduce((sum, unit) => sum + unit.max_hp, 0)),
+    // Power is the shared attribute-service compatibility rule; the same value
+    // is returned by the 1316 attribute query and the rank screen.
+    atk_power: String(attackers.reduce((sum, unit) => sum + powerFromStats({
+      hp: unit.max_hp, attack: unit.attack,
+      physicalDefense: unit.defense, magicDefense: unit.defense
+    }), 0)),
+    def_power: String(defenders.reduce((sum, unit) => sum + powerFromStats({
+      hp: unit.max_hp, attack: unit.attack,
+      physicalDefense: unit.defense, magicDefense: unit.defense
+    }), 0)),
     atk_brief_lineup: brief(selected.teamIndex, attackers),
     def_brief_lineup: brief(1, defenders)
   };
@@ -394,7 +424,7 @@ function combinedChanges(...groups) {
   return [...changes.values()];
 }
 
-export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), now = Date.now, logger = () => {}, playbackEnabled = false }) {
+export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {}, playbackEnabled = false }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, lastSettlement = null, fightIds = 0;
 
@@ -517,7 +547,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
       throw new GameError(5, `Mission is not unlocked (current ${current.mission_id}@${currentPosition}, requested ${mission.missionId}@${requestedPosition})`);
     }
     assertStaminaAvailable(store.read());
-    const reportBattleResult = reportBattle(codec, store.read(), mission, request);
+    const reportBattleResult = reportBattle(codec, store.read(), mission, request, attributeTables);
     const { simulation, ...battle } = reportBattleResult;
     const fightTid = Number(request.fight_tid ?? 0) || Number(missionBattleConfig(mission.missionId)?.mission.fight ?? 0);
     const report = {

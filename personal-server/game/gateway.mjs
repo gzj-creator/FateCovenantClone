@@ -7,6 +7,8 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
 import { createHeroExtraService } from './hero-extra-service.mjs';
 import { createHeroMasteryService } from './hero-mastery-service.mjs';
+import { buildLineupAttrInfo } from './attribute-service.mjs';
+import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
@@ -124,6 +126,7 @@ export function createLocalGame({
   }
   const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
   const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
+  const attributeTables = readAttributeTables();
   const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
   const onlineGiftTables = readOnlineGiftTables();
   const fantasyActTables = loadFantasyActTables();
@@ -776,6 +779,28 @@ export function createLocalGame({
         send(seq, payload); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
+      // req_role_attr_info (1316) returns pb_attr_lineup_all_info. The request is
+      // an optional ETF lineup type; all attribute numbers and lineup_power come
+      // from the shared attribute service used by missions and the rank screen.
+      if (type === 1316) {
+        try {
+          let lineupType = 1;
+          if (request.data?.length) {
+            try {
+              const argument = Number(await etfArgument(request.data, 'Invalid attribute request'));
+              if (Number.isSafeInteger(argument) && argument > 0) lineupType = argument;
+            } catch {}
+          }
+          const value = buildLineupAttrInfo({ model: store.read(), lineupType, heroTables, attributeTables });
+          send(seq, pack('pb_attr_lineup_all_info', value));
+          log({ event: 'role_attr_info_sent', type, seq, lineupType, lineupPower: value.lineup_attr.lineup_power, entities: value.lineup_attr.attr_list.length });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'role_attr_info_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (type === 17001) {
         try {
           const requestData = unpackRequest('req_get_monthly_card_reward', request.data);
