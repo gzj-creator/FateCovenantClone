@@ -6,7 +6,7 @@
 
 | 任务 ID | 状态 | 负责人 / 分支 | 服务 / TCP / SQLite 证据 | APK 验收 | 下一依赖或证据缺口 |
 | --- | --- | --- | --- | --- | --- |
-| `PAY-ONLINEGIFT` | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` | 专项 service 4/4 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；其余等待隔离 APK 验收 |
+| PAY-ONLINEGIFT | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` @ 4078f6e | 4 专项 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改；合并后全量 2190/2190 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；当前按服务器 05:00 日号映射配置周期；APK 验收待安排 |
 | CORE-BATTLE | 待领取 | — | — | 未安排 | 可按 A/B/C 拆分，统一共享执行器负责人 |
 | CORE-ATTR | 待领取 | — | — | 未安排 | 属性公式与所有养成来源 |
 | CORE-SKILL-GATES | 待领取 | — | — | 未安排 | 实际养成状态到可用技能的映射 |
@@ -25,12 +25,12 @@
 | BATTLE-GENERALDUNGEON | 服务端完成（事件规则部分证据阻塞） | `task/BATTLE-GENERALDUNGEON-20261106` @ a9e5718 | 7 专项测试 + 真实 TCP 78101–78107 + 重开 DB + 编码/claim 故障回滚；独立复核 37/37；合并后全量 2178/2178 | 未安排 | 宝箱与道具事件已闭合；战斗、抽取、Buff、对话、条件/跨层事件和额外数据仍待证据，当前逐类型明确拒绝 |
 | ITEM-COMMONTASK | 服务端完成（奖励/爬塔进度证据阻塞） | `task/ITEM-COMMONTASK-20261106` @ 321655f | 7 专项测试 + 同组列表事务 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | 四张组表 2774 行奖励列为空；progress_fun 12 无爬塔状态来源；module 90 线性槽位从 0 修正为 4，需 APK 联合验收 |
 | ITEM-GUIDE | 服务端完成（奖励配置证据阻塞） | `task/ITEM-GUIDE-20261106` @ 042be27 | 9 专项测试 + 真实 TCP 8000→8001→8002 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | GuideTable 无 JSON 导出，生产 8001 对所有 awardTid 返回 code 5；8001 参数位置与 8002 不回帧均待 APK 实测 |
-| ITEM-RANKACHIEVE | 服务端完成（多数成就事件源证据阻塞） | `task/ITEM-RANKACHIEVE-20261106` @ 21d40c8 | 7 专项测试 + 真实 TCP 43101→rsp/8601 + 模块 170 登录 + 重开 DB + 编码/SQLite 回滚；全量 2185/2185 | 未安排 | 当前仅闭合巅峰塔 500/1000 层与可解析指定英雄拥有共 13 行；其余 71 行缺权威完成值来源并返回 code 5；`finish_award` 发放语义与跨服/公会完成信息待证据 |
+| ITEM-RANKACHIEVE | 服务端完成（多数成就事件源证据阻塞） | `task/ITEM-RANKACHIEVE-20261106` @ 9c1a880 | 7 专项测试 + 真实 TCP 43101→rsp/8601 + 模块 170 登录 + 重开 DB + 编码/SQLite 回滚；合并后全量 2190/2190 | 未安排 | 当前仅闭合巅峰塔 500/1000 层与可解析指定英雄拥有共 13 行；其余 71 行缺权威完成值来源并返回 code 5；`finish_award` 发放语义与跨服/公会完成信息待证据 |
 
 ## 集成与验收记录（2026-11-07 第一轮）
 
 - 集成分支：`gameplay/integration-20261107b`（基于含 207 体力、邮件推送和活动登录期限修复的 main `7b5af58`），已以 `--no-ff` 合入 main `7750864`。
-- 已合并：HERO-LINEUP、ITEM-SHOP、ITEM-ITEM、ITEM-GUIDE、BATTLE-PEAKTOWER、BATTLE-RANK、BATTLE-GENERALDUNGEON、HERO-MASTERY、ITEM-MISSION、ITEM-COMMONTASK、ITEM-EVERYTASK。手工冲突重点处理了 `gateway.mjs` 双派发、ITEM-MISSION 对 module 8 体力槽的保留，以及 ITEM-COMMONTASK 的 module 90 通用组 0–3 / 线性组 4 槽位。
+- 已合并：HERO-LINEUP、ITEM-SHOP、ITEM-ITEM、ITEM-GUIDE、BATTLE-PEAKTOWER、BATTLE-RANK、BATTLE-GENERALDUNGEON、HERO-MASTERY、ITEM-MISSION、ITEM-COMMONTASK、ITEM-EVERYTASK、PAY-ONLINEGIFT、ITEM-RANKACHIEVE。手工冲突重点处理了 `gateway.mjs` 多派发共存、在线礼包登录会话与成就登录同步共存、ITEM-MISSION 对 module 8 体力槽的保留，以及 ITEM-COMMONTASK 的 module 90 通用组 0–3 / 线性组 4 槽位。
 - 主线保持审计：`main` 是集成分支的严格祖先，`HEAD..main` 为空；`energy.mjs`、`mission-progress.mjs`、`resources.mjs`、`game-store.mjs`、`mail-service.mjs`、`activity-calendar.mjs`、`relic-divine-login.mjs` 与 main 原实现一致。207 结算/体力、新邮件推送、ActFrame/fishing 登录期限的定向回归 74/74 通过。
-- ITEM-EVERYTASK 已 rebase 到含首批任务的 main；保留 `createItemBoxService({ ..., heroTables })`、207 体力、邮件推送、活动期限及 module 90 槽位语义，冲突相关 35/35 通过，再以 `--no-ff` 合入 main `77c5b5f`。BATTLE-RANK 已基于该主线完成并把原空榜替换为 SQLite 权威排序，以 `--no-ff` 合入 main `7713406`；独立复核 41/41，通过后 main 全量 2171/2171。BATTLE-GENERALDUNGEON rebase 时只与总控状态表冲突，保留总控版本，代码与 BATTLE-RANK 网关派发共存；独立复核 37/37，以 `--no-ff` 合入 main `e406136`，合并后全量 `node --test --test-concurrency=1 test/*.test.mjs`：tests 2178 / pass 2178 / fail 0。日志：`analysis/test-runs/gameplay-20261106/main-after-general-dungeon-full.log`。
+- ITEM-EVERYTASK 已 rebase 到含首批任务的 main；保留 `createItemBoxService({ ..., heroTables })`、207 体力、邮件推送、活动期限及 module 90 槽位语义，冲突相关 35/35 通过，再以 `--no-ff` 合入 main `77c5b5f`。BATTLE-RANK 已基于该主线完成并把原空榜替换为 SQLite 权威排序，以 `--no-ff` 合入 main `7713406`；独立复核 41/41，通过后 main 全量 2171/2171。BATTLE-GENERALDUNGEON rebase 时只与总控状态表冲突，保留总控版本，代码与 BATTLE-RANK 网关派发共存；独立复核 37/37，以 `--no-ff` 合入 main `e406136`，合并后全量 2178/2178。PAY-ONLINEGIFT 以 `--no-ff` 合入 main `5ea053c`；ITEM-RANKACHIEVE 再次 rebase 时手工保留 `onlineGift.beginSession()` 与 `rankAchieve.ensureLoginState()` 两条登录路径，独立复核 26/26，以 `--no-ff` 合入 main `13f99a7`。最终 main 全量 `node --test --test-concurrency=1 test/*.test.mjs`：tests 2190 / pass 2190 / fail 0。日志：`analysis/test-runs/gameplay-20261106/main-after-rankachieve-onlinegift-full.log`。
 - 当前没有启停实时服务、操作模拟器、读写 `runtime.local-only.data` 或生成 APK；上表“服务端完成”均只表示业务、临时 TCP、SQLite 与回归层通过，APK 验收仍单列。
