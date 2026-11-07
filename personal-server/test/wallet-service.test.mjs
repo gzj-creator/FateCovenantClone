@@ -8,6 +8,8 @@ import {createGameCodec,rawBinary,serializedBinary,decodeEtf} from '../protocol/
 import {createGameStore} from '../storage/game-store.mjs';
 import {readGameTables} from '../config/game-tables.mjs';
 import {createWalletService} from '../game/wallet-service.mjs';
+import {GameError} from '../game/hero-progression.mjs';
+import {grantResources} from '../game/resources.mjs';
 import {createSprintService} from '../game/sprint-service.mjs';
 import {createAdminService} from '../admin/server.mjs';
 import {createSdkService} from '../sdk-service.mjs';
@@ -343,4 +345,45 @@ test('sprint reads progress from the statistics slot configured by TaskType.data
   const result=await service.execute({act_id:13016,task_tid_list:[55011]});
   assert.equal(result.value.res.changes.find(change=>change.tid==='101500').diff_num,'20');
   assert.equal(e.store.inspect(db=>db.prepare('SELECT count(*) n FROM activity_claims').get().n),1);
+});
+
+test('wallet purchase completes when the WishTree rebate cycle is closed, skipping only the rebate entry',t=>{
+  const e=setup(t),events=[],pushes=[];
+  const wishTree={recordPurchase:()=>{throw new GameError(310,'Wish-tree rebate cycle is closed');},supportsProduct:id=>Number(id)===40009};
+  const wallet=createWalletService({store:e.store,codec,tables,wishTree,logger:event=>events.push(event),publish:(type,data)=>pushes.push({type,data})});
+  wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'closed-cycle-fund'});
+  // 40009 is the daily-discount wish-tree gift that fails the 16004 flow after 03:00.
+  const bought=wallet.buy({product_id:40009,request_id:'closed-cycle-buy',day_index:20000});
+  assert.equal(bought.balance_cents,9400);
+  const orders=wallet.snapshot().orders;assert.equal(orders.length,1);assert.equal(orders[0].product_id,40009);
+  const resources=e.store.read().resources;
+  for(const tid of [122702,3002,101500])assert.ok(Number(resources.get(String(tid))?.num)>0,'reward '+tid+' not granted');
+  const push=codec.unpack('res_recharge_success',pushes[0].data);
+  assert.equal(push.recharge_id,40009);assert.equal(push.extra_ret_list.some(entry=>entry.flag===40),true);
+  const skipped=events.filter(event=>event.event==='wish_tree_rebate_skipped');
+  assert.deepEqual(skipped.map(event=>[event.product_id,event.code,event.reason]),[[40009,310,'Wish-tree rebate cycle is closed']]);
+});
+
+test('wallet gift purchase skips a closed WishTree cycle on the non-cash gift path too',t=>{
+  const e=setup(t),events=[];
+  const wishTree={recordPurchase:()=>{throw new GameError(310,'Wish-tree rebate cycle is closed');},supportsProduct:()=>true};
+  const wallet=createWalletService({store:e.store,codec,tables,wishTree,logger:event=>events.push(event)});
+  e.store.transaction(model=>grantResources(model,[[401500,5000]],tables));
+  // 110001 is a pay_type 1 gift, so purchaseGift keeps its own WishTree call site.
+  const gift=wallet.purchaseGift({product_id:110001,request_id:'closed-cycle-gift'});
+  assert.equal(gift.product_id,110001);assert.ok(gift.order_id);
+  const orders=wallet.snapshot().orders;assert.equal(orders.length,1);assert.equal(orders[0].product_id,110001);
+  assert.ok(Number(e.store.read().resources.get('401500').num)<5000);
+  assert.deepEqual(events.filter(event=>event.event==='wish_tree_rebate_skipped').map(event=>event.product_id),[110001]);
+});
+
+test('wallet purchase still fails when the WishTree ledger reports an error other than a closed cycle',t=>{
+  const e=setup(t),pushes=[];
+  const wishTree={recordPurchase:()=>{throw new GameError(311,'Wish-tree draw has not opened');},supportsProduct:()=>true};
+  const wallet=createWalletService({store:e.store,codec,tables,wishTree,publish:(type,data)=>pushes.push({type,data})});
+  wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'propagate-fund'});
+  const initial=e.store.state();
+  assert.throws(()=>wallet.buy({product_id:40009,request_id:'propagate-buy',day_index:20000}),error=>error.code===311);
+  assert.deepEqual(e.store.state(),initial);
+  assert.equal(wallet.snapshot().orders.length,0);assert.equal(wallet.snapshot().accounts[0].balance_cents,10000);assert.equal(pushes.length,0);
 });
