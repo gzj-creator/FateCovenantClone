@@ -249,4 +249,3 @@ test('the gateway serves the same rule-driven battle over a temporary TCP port',
     await session.close();
   }
 });
-
