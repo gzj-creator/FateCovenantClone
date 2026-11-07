@@ -167,10 +167,24 @@ test('order reconstruction preserves the original cycle and task progress, inclu
   assert.equal(e.week().discount_buy_list.find(row => row.day_index === startDay + 9).one_buy_id, 46003);
 });
 
-test('retained activity closes after fourteen 05:00 days without creating a replacement cycle', t => {
+test('retained activity closes after fourteen 05:00 days while current daily offers remain independent', async t => {
   const e = setup(t), original = e.week();
   e.advance(startDay + 14);
   assert.throws(() => e.wallet.buy({ product_id: 40008, request_id: 'expired', period: 1 }), error => error.code === 309);
   e.weekHunt.ensureLoginState();
   assert.deepEqual(e.week(), original);
+
+  // Normal daily purchases do not carry the expired Week Hunt period.
+  e.advance(startDay + 19);
+  for (const product_id of [46003, 40010, 40008]) {
+    const result = e.wallet.buy({ product_id, request_id: 'current-daily-' + product_id, period: 0 });
+    assert.deepEqual((await purchaseParams(e, result)).tuple, [false, 0, startDay + 19]);
+  }
+  const daily = codec.unpack('pb_daily_discount_all', rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.deepEqual([1,2,3,4,5,6].map(tid => daily.daily_discount_list.find(row => row.recharge_tid === tid)?.buy_times), [1,1,1,1,1,1]);
+  e.reopen();
+  assert.deepEqual(e.week(), original);
+  for (const product_id of [40009, 46002, 40010, 40008]) {
+    assert.throws(() => e.wallet.buy({ product_id, request_id: 'repeat-current-' + product_id }), error => error.code === 307);
+  }
 });

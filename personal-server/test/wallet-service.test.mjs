@@ -176,6 +176,30 @@ test('daily discount batch purchase consumes every included offer and survives r
   assert.equal(e.wallet.snapshot().orders.length,1);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,9100);
 });
 
+test('daily discount repairs stale row refresh times without resetting current-day sold-out offers',t=>{
+  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'stale-daily-fund'});
+  e.wallet.buy({product_id:46003,request_id:'stale-daily-batch'});
+  let info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  const currentRefresh=Number(info.refresh_time);
+  e.store.transaction(model=>{
+    const modules=new Map(model.state.modules.value);
+    const daily=codec.unpack('pb_daily_discount_all',rawBinary(modules.get(108)));
+    for(const row of daily.daily_discount_list)row.refresh_time=1782533479;
+    modules.set(108,serializedBinary(codec.pack('pb_daily_discount_all',daily)));
+    model.state.modules.value=[...modules];
+  });
+
+  e.reopen();
+  info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
+  assert.equal(Number(info.refresh_time),currentRefresh);
+  assert.ok(info.daily_discount_list.every(row=>Number(row.refresh_time)===currentRefresh));
+  assert.deepEqual([6,2,3,4,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,0,0,1,1]);
+
+  assert.equal(e.wallet.buy({product_id:40010,request_id:'stale-daily-12'}).balance_paid_cents,1200);
+  assert.equal(e.wallet.buy({product_id:40008,request_id:'stale-daily-30'}).balance_paid_cents,3000);
+  assert.throws(()=>e.wallet.buy({product_id:40009,request_id:'stale-daily-6'}),error=>error.code===307);
+});
+
 test('daily discount batch offer is unavailable after one included component is sold',t=>{
   const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'daily-component-fund'});
   e.wallet.buy({product_id:40009,request_id:'daily-component-first'});
@@ -245,6 +269,39 @@ test('daily discount purchase counts are rebuilt from orders on restart',t=>{
   const info=codec.unpack('pb_daily_discount_all',rawBinary(new Map(e.store.state().modules.value).get(108)));
   assert.equal(info.daily_discount_list.find(row=>row.recharge_tid===4).buy_times,1);
   assert.deepEqual([6,2,5,1].map(tid=>info.daily_discount_list.find(row=>row.recharge_tid===tid)?.buy_times??0),[1,1,1,1]);
+});
+
+test('recharge records remain newest first without losing amounts or days that predate local orders',t=>{
+  const e=setup(t);
+  e.store.transaction(model=>{
+    const modules=new Map(model.state.modules.value);
+    const login=codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
+    login.total_amount=50000;
+    login.recharge_record={recent_record:[
+      {day_index:20760,recharge_ids:[11],amount:5000},
+      {day_index:20762,recharge_ids:[5],amount:45000}
+    ],total_day:12};
+    login.max_record=structuredClone(login.recharge_record.recent_record[1]);
+    modules.set(19,serializedBinary(codec.pack('res_recharge_login',login)));
+    model.state.modules.value=[...modules];
+  });
+  e.reopen();
+  const at=20764*86400-10800+3600;
+  const wallet=createWalletService({store:e.store,codec,tables,now:()=>at});
+  wallet.credit({account_id:'local-1',amount_cents:10000,request_id:'ledger-fund'});
+  const buy={product_id:11,request_id:'ledger-cash-16004'};
+  wallet.buy(buy);
+  wallet.buy(buy);
+  wallet.purchaseGift({product_id:40010,request_id:'ledger-cash-16005'});
+  wallet.purchaseGift({product_id:40006,request_id:'ledger-free'});
+  e.reopen();
+  const login=codec.unpack('res_recharge_login',rawBinary(new Map(e.store.state().modules.value).get(19)));
+  assert.equal(login.total_amount,51800);
+  assert.equal(login.recharge_record.total_day,13);
+  assert.deepEqual(login.recharge_record.recent_record.map(row=>row.day_index),[20764,20762,20760]);
+  assert.deepEqual(login.recharge_record.recent_record.map(row=>row.recharge_ids),[[11,40010],[5],[11]]);
+  assert.deepEqual(login.recharge_record.recent_record.map(row=>row.amount),[1800,45000,5000]);
+  assert.equal(login.max_record.amount,45000);
 });
 
 test('wallet logging failures cannot reject committed credits or purchases',t=>{

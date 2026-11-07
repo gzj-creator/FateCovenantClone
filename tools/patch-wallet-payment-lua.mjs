@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { parseLuaJit } from '../personal-server/protocol/lua-jit-dump.mjs';
 
 const EXPECTED_SOURCE_SHA256 = '721e98f2880b4ab6079e876f54707400db5508511ec354001743188d28a6ace3';
 const PRICE_PROTOTYPE = 11;
@@ -118,7 +119,8 @@ function patchPrototype(source, prototype, targetInstructions, replacementConsta
   if (instructionsEnd - instructionsStart !== targetInstructions.length * 4) throw new Error('Unexpected target instruction span.');
 
   const originalConstantsBytes = encodeConstants(prototype.constants);
-  const sourceConstants = source.subarray(instructionsEnd, instructionsEnd + originalConstantsBytes.length);
+  const constantsStart = instructionsEnd + (prototype.upvalueCount ?? 0) * 2;
+  const sourceConstants = source.subarray(constantsStart, constantsStart + originalConstantsBytes.length);
   if (!sourceConstants.equals(originalConstantsBytes)) throw new Error('Original constant bytes did not round-trip at the target offset.');
   const replacementInstructions = encodeInstructions({ instructions: targetInstructions });
   const replacementConstantsBytes = encodeConstants(replacementConstants);
@@ -129,7 +131,7 @@ function patchPrototype(source, prototype, targetInstructions, replacementConsta
 
   const output = Buffer.from(source);
   replacementInstructions.copy(output, instructionsStart);
-  replacementConstantsBytes.copy(output, instructionsEnd);
+  replacementConstantsBytes.copy(output, constantsStart);
   return { output, replacementInstructions, replacementConstantsBytes, debugBytes: prototype.length - targetInstructions.length * 4 - originalConstantsBytes.length };
 }
 
@@ -311,7 +313,95 @@ export function patchWalletPaymentLua(sourcePath, outputPath) {
   };
 }
 
+function instructionFactory(parsed) {
+  const opcodes = new Map(parsed.prototypes.flatMap(prototype => prototype.instructions.map(item => [item.name, item.op ?? (item.raw & 255)])));
+  return (name, a = 0, d = 0, b = 0, c = 0) => {
+    if (!opcodes.has(name)) throw new Error(`Missing LuaJIT opcode ${name}`);
+    return { name, op: opcodes.get(name), a, b: ABC_INSTRUCTIONS.has(name) ? b : d >>> 8,
+      c: ABC_INSTRUCTIONS.has(name) ? c : d & 255 };
+  };
+}
+
+// These are the exact TextAssets shipped in the accepted v9 snapshot. Keep
+// instruction spans, upvalues, debug metadata and every other prototype intact.
+export function patchDailyDiscountLua(source) {
+  if (sha256(source) !== '55be2127ed10cbc12666dbed091d938b6ac44e7ebd27fcd485d2ed94007280de') {
+    throw new Error('Unexpected v9 RechargeSuperGiftBannerNode identity');
+  }
+  const parsed = parseLuaJit(source), ins = instructionFactory(parsed);
+  const abc = (name, a, b, c) => ins(name, a, 0, b, c);
+  const staticNode = parsed.prototypes[0], giftNode = parsed.prototypes[9], payment = parsed.prototypes[10];
+  const constants = values => values.map(value => ({ type: 'string', value }));
+  const staticConstants = makeReplacementConstants(constants([
+    'DailyDiscountMgr', 'IsSelloutToday', 'DailyDiscountTable', 'Recharge', 'ipairs', 'batch_update', 'recharge_id'
+  ]), staticNode.constants.length, encodeConstants(staticNode.constants).length);
+  const staticInstructions = [
+    ins('GGET', 1, 2), abc('TGETS', 1, 1, 3), ins('MOV', 3, 0), abc('CALL', 1, 2, 2),
+    ins('GGET', 2, 0), abc('TGETS', 2, 2, 1), abc('TGETS', 4, 1, 6), abc('CALL', 2, 2, 2),
+    ins('ISF', 0, 2), ins('JMP', 3, 32770), ins('KPRI', 3, 2), ins('RET', 2, 3),
+    ins('GGET', 2, 4), abc('TGETS', 4, 1, 5), abc('CALL', 2, 4, 2), ins('JMP', 5, 32781),
+    ins('GGET', 7, 2), abc('TGETS', 7, 7, 3), ins('MOV', 9, 6), abc('CALL', 7, 2, 2),
+    ins('GGET', 8, 0), abc('TGETS', 8, 8, 1), abc('TGETS', 10, 7, 6), abc('CALL', 8, 2, 2),
+    ins('ISF', 0, 8), ins('JMP', 8, 32771), ins('KPRI', 8, 1), ins('KPRI', 9, 1), ins('RET', 8, 3),
+    abc('ITERC', 5, 3, 3), ins('ITERL', 5, 32753), ins('KPRI', 2, 2), ins('KPRI', 3, 1), ins('RET', 2, 3)
+  ];
+  let output = patchPrototype(source, staticNode, staticInstructions, staticConstants).output;
+
+  const giftConstants = structuredClone(giftNode.constants);
+  giftConstants[3].value = 'IsSelloutToday';
+  // The old manager string becomes unreachable padding; its bytes balance the
+  // shorter function name without moving the debug table or child closures.
+  giftConstants[2].value = 'Pad'.padEnd(giftNode.constants[2].value.length
+    + giftNode.constants[3].value.length - giftConstants[3].value.length, 'X');
+  const giftInstructions = giftNode.instructions.map(item => ({ ...item, op: item.raw & 255 }));
+  giftInstructions[3] = ins('GGET', 5, 23); // Existing DailyDiscountMgr constant.
+  giftInstructions[7] = ins('IST', 0, 5);
+  output = patchPrototype(output, giftNode, giftInstructions, giftConstants).output;
+
+  const paymentConstants = makeReplacementConstants([
+    ...constants(['RechargeMgr', 'RechargeOrBuyGift', 'DailyDiscountMgr', 'IS_EXTRA_BUY']),
+    { type: 'table', array: [null, null, 0, 0], hash: [] }
+  ], payment.constants.length, encodeConstants(payment.constants).length);
+  const paymentInstructions = [
+    ins('GGET', 0, 0), abc('TGETS', 0, 0, 1), ins('UGET', 2, 1), ins('TDUP', 3, 4),
+    ins('GGET', 4, 2), abc('TGETS', 4, 4, 3), ins('NOT', 4, 4), abc('TSETB', 4, 3, 1),
+    abc('CALL', 0, 1, 3), ins('RET0', 0, 1)
+  ];
+  while (paymentInstructions.length < payment.instructions.length) paymentInstructions.push(ins('MOV'));
+  output = patchPrototype(output, payment, paymentInstructions, paymentConstants).output;
+  // Preserve the purchase popup and its custom award lists. Only correct the
+  // bad index key before the callback above routes the confirmed payment.
+  const popup = parsed.prototypes[11], popupConstants = structuredClone(popup.constants);
+  popupConstants[2].value = 'recharge_id';
+  output = patchPrototype(output, popup, popup.instructions.map(item => ({ ...item, op: item.raw & 255 })), popupConstants).output;
+  parseLuaJit(output);
+  return output;
+}
+
+export function patchCouponRechargeLua(source) {
+  if (sha256(source) !== '82fb6360ca429bd16f05ca61d22ada780930143daae2b85819b5168d7d6a09f6') {
+    throw new Error('Unexpected v9 RechargeMgr identity');
+  }
+  const parsed = parseLuaJit(source), prototype = parsed.prototypes[54], ins = instructionFactory(parsed);
+  const output = Buffer.from(source);
+  // Successful voucher purchases count at full product price, matching the
+  // server ledger. get_token compensation still follows the original branch.
+  encodeInstructions({ instructions: [ins('KPRI', 8, 2), ins('JMP', 9, 32780)] })
+    .copy(output, prototype.instructions[27].offset);
+  parseLuaJit(output);
+  return output;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  if (process.argv[2] === '--daily-discount' || process.argv[2] === '--coupon-recharge') {
+    const [mode, sourcePath, outputPath] = process.argv.slice(2);
+    if (!sourcePath || !outputPath || fs.existsSync(outputPath)) throw new Error('Expected source and a new output path');
+    const output = (mode === '--daily-discount' ? patchDailyDiscountLua : patchCouponRechargeLua)(fs.readFileSync(sourcePath));
+    fs.mkdirSync(path.dirname(path.resolve(outputPath)), { recursive: true });
+    fs.writeFileSync(outputPath, output);
+    console.log(JSON.stringify({ sourcePath, outputPath, bytes: output.length, sha256: sha256(output) }));
+    process.exit(0);
+  }
   const [sourcePath, outputPath] = process.argv.slice(2);
   if (!sourcePath || !outputPath) throw new Error('Usage: node patch-wallet-payment-lua.mjs <source.lua.bin> <output.lua.bin>');
   console.log(JSON.stringify(patchWalletPaymentLua(sourcePath, outputPath), null, 2));
