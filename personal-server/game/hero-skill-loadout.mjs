@@ -19,7 +19,8 @@ function evidenceBackedUltimate(skills, excludedId = 0) {
     if (String(skill.id) === String(excludedId)) return false;
     const implementation = skill.implementation;
     if (!implementation) return false;
-    const metadataFallback = implementation.category === 'metadata fallback'
+    const metadataFallback = skill.category === 'metadata fallback'
+      || implementation.category === 'metadata fallback'
       || (implementation.requiresInvestigation === true
         && implementation.resolvedDescription === false
         && implementation.catalogTypeMatch !== true);
