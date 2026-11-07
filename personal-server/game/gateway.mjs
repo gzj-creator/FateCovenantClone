@@ -818,16 +818,20 @@ export function createLocalGame({
         return;
       }
       if (tasks.supports(type)) {
-        let taskId;
+        let taskInput;
         try {
-          taskId = await singleIdArgument(request.data, 'Invalid linear task payload');
-          const result = tasks.execute(type, taskId);
+          // CommonTaskCmd.req_finish_common_task encodes the task id or an id list as ETF,
+          // while linear tasks always carry one id.
+          taskInput = type === 9005
+            ? await etfArgument(request.data, 'Invalid common task payload')
+            : await singleIdArgument(request.data, 'Invalid linear task payload');
+          const result = tasks.execute(type, taskInput);
           send(seq, result.data);
-          log({ event: 'linear_task_committed', type, seq, taskId, changes: result.value.res_change.changes.length });
+          log({ event: type === 9005 ? 'common_task_committed' : 'linear_task_committed', type, seq, taskInput, changes: result.value.res_change.changes.length });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'linear_task_rejected', type, seq, taskId, code, message: error.message });
+          log({ event: type === 9005 ? 'common_task_rejected' : 'linear_task_rejected', type, seq, taskInput, code, message: error.message });
         }
         return;
       }

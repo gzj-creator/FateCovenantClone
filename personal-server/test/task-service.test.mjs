@@ -7,6 +7,8 @@ import { createGameFixture } from './helpers/game-fixture.mjs';
 
 const codec = createGameCodec(), tables = readGameTables();
 const fixedNow = 1793300000000;
+// Module 90 carries the four common-task groups first; the linear group follows them.
+const LINEAR_SLOT = 4;
 
 function setMission(store, missionId) {
   store.transaction(model => {
@@ -35,16 +37,16 @@ function setup(t) {
 }
 
 function taskModule(store) {
-  const raw = new Map(store.state().modules.value).get(90).value[0];
+  const raw = new Map(store.state().modules.value).get(90).value[LINEAR_SLOT];
   return codec.unpack('pb_linear_task_data', rawBinary(raw));
 }
 
 function setLinearTask(store, task) {
   store.transaction(model => {
     const module = new Map(model.state.modules.value).get(90);
-    const value = codec.unpack('pb_linear_task_data', rawBinary(module.value[0]));
+    const value = codec.unpack('pb_linear_task_data', rawBinary(module.value[LINEAR_SLOT]));
     value.task_list = [task];
-    module.value[0] = serializedBinary(codec.pack('pb_linear_task_data', value));
+    module.value[LINEAR_SLOT] = serializedBinary(codec.pack('pb_linear_task_data', value));
     const modules = new Map(model.state.modules.value);
     modules.set(90, module);
     model.state.modules.value = [...modules];
