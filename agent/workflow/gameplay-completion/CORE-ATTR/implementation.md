@@ -1,6 +1,6 @@
 # CORE-ATTR：养成属性、战力与战斗输入统一接入
 
-- 分支：`task/CORE-ATTR-20261106`（基于 main `63b9f85`）
+- 分支：`task/CORE-ATTR-20261106`（基于 main `63b9f85`，实现提交 `1797c98`）
 - worktree：`.worktree/gameplay-20261106/core-attr`
 - 日期：2026-11-07
 - 状态：服务端完成（属性查询/战力/普通副本战斗同源）；APK 实机验收未安排
