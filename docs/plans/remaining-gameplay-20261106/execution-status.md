@@ -4,19 +4,21 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
+交付与整卡销项分开计数：当前 16 个模块任务、2 个共享任务已有代码交付合入 main，共 18 项，其中包括部分交付和证据待补项。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；18/355 约 5.1% 仅表示已有交付的任务占比，不表示工作量或完整玩法完成率。尚无任务进入仅待 APK 验收队列。
+
 | 任务 ID | 状态 | 负责人 / 分支 | 服务 / TCP / SQLite 证据 | APK 验收 | 下一依赖或证据缺口 |
 | --- | --- | --- | --- | --- | --- |
 | PAY-ONLINEGIFT | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` @ 4078f6e | 4 专项 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改；合并后全量 2190/2190 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；当前按服务器 05:00 日号映射配置周期；APK 验收待安排 |
 | CORE-BATTLE | 待领取 | — | — | 未安排 | 可按 A/B/C 拆分，统一共享执行器负责人 |
 | CORE-ATTR | 服务端完成（属性查询/战力/普通副本战斗同源；装备等养成来源待扩展） | `task/CORE-ATTR-20261106` @ ec41751 | 4 专项 + 真实 TCP 1316 + SQLite 重开；mission/rank/lineup/equip 等联合回归 66/66；合并后全量 2219/2219 | 未安排 | 逐级成长分母、战力权重、1316 attr_list play_type、1314 回包、NpcAttr 外部数据、速度表均未取证；装备/团长装备/图鉴/好感/法阵/符文/圣器尚未汇入 |
-| CORE-SKILL-GATES | 服务端完成（AbilityLevel/mastery/soul 已接；通用 Passive 突破映射待补） | `task/CORE-SKILL-GATES-20261106` @ 本次提交 | 新增 7 专项 + battle/skill/mission/attribute/mastery/gateway 57/57 + 全量 2226/2226；mission 与 1316 共用 loadout；未改 gateway/game-store | 未安排 | AbilityLevel 索引语义待可读反编译确认；UpStageTalent 到 catalog Passive 的槽位映射未恢复；每级倍率表、mastery 选择/突破换技能证据未取得 |
-| CORE-EVENTS | 待领取 | — | — | 未安排 | 活动阶段、任务统计与结算 |
-| CORE-DRAW-POOLS | 待领取 | — | — | 未安排 | 常驻幻武 2 组、神灵 56 组；幻武任务生产配置 |
+| CORE-SKILL-GATES | 证据待补（已合入 AbilityLevel/mastery/soul 部分实现） | `task/CORE-SKILL-GATES-20261106` @ b87b99d；合入 b6e1766 | 新增 7 专项 + battle/skill/mission/attribute/mastery/gateway 57/57；总控合并后 npm test 2226/2226；mission 与 1316 共用 loadout；未改 gateway/game-store | 未安排 | AbilityLevel 索引语义待可读反编译确认；通用 Passive 仍未按突破筛选；每级倍率、mastery 选择/突破换技能证据未取得，不能认定整卡完成 |
+| CORE-EVENTS | 实施中（推进协议证据待补） | `task/CORE-EVENTS-20261106`；agent core_events_impl2 | 尚未提交或验收；已核对 53001 三次实包的请求形状与空回包；53002 请求语义未恢复 | 未安排 | 不能从已观测空成功推断所有阶段都不推进；未知推进需明确拒绝，生命周期、53006 和业务事件接线仍待完成 |
+| CORE-DRAW-POOLS | 实施中（空生产奖池证据待补） | `task/CORE-DRAW-POOLS-20261106`；agent core_draw_pools_impl2 | 尚未提交或验收；agent 报告常驻幻武 2 组、神灵 56 组均为空，正在补生产加载器/TCP 验证 | 未安排 | 缺少上述奖池奖励范围；Fantasy Task/FantasyEquipActTask 为 0 行；不能用假 resolver 或空配置认定本版本不可达 |
 | CORE-TIME-TEMPLE | 待领取 | — | — | 未安排 | 八个 C2S 编码器的数字命令映射 |
 | CORE-CABIN | 待领取 | — | — | 未安排 | 房间/任务/交互/奖励/加速的可达性与协议 |
 | HERO-LINEUP | 服务端完成 | `task/HERO-LINEUP-20261106` @ cd3b3ea | 5 专项测试 + 真实 TCP 214→215→216→209→210→217 + 重开 DB；集成分支 30/30 | 未安排 | 217 回包 schema 未恢复（当前 ETF 回显索引）；名称长度上限属推断；214 请求形态待实测 |
 | HERO-HERO | 服务端部分完成（本小批 614/647/663/664/665） | `task/HERO-HERO-20261106` @ ead0359 | 专项与 gateway 回归 16/16 + 真实 TCP 五命令 + 模块 10 槽位 5 + SQLite 重开 + 编码回滚；合并后全量 2206/2206 | 未安排 | 剩余 602/627–631/634/635/637/641/651/652/654/656/661/666/672/673；Visit 品质映射、锁价比例、custom_tid 与 HeroErr 线上码待证据；重铸属性归 CORE-ATTR/CORE-SKILL-GATES |
-| HERO-MASTERY | 服务端完成（战斗接线归 CORE-ATTR/CORE-SKILL-GATES） | `task/HERO-MASTERY-20261106` @ 1afea74 | 5 专项测试 + 真实 TCP 660→659 + 故障回滚 + 重开 DB；合并后全量 2164/2164 | 未安排 | 659/660 请求仅确认含 tid；未突破时等级上限与技能解锁规则待实测；精通属性与技能尚未进入战斗 |
+| HERO-MASTERY | 服务端完成（技能已由 CORE-SKILL-GATES 接线；属性与完整规则待补） | `task/HERO-MASTERY-20261106` @ 1afea74 | 5 专项测试 + 真实 TCP 660→659 + 故障回滚 + 重开 DB；合并后全量 2164/2164；b6e1766 接入星级/等级门槛与唯一 mastery 技能 | 未安排 | 659/660 请求仅确认含 tid；未突破时等级上限与完整解锁规则待实测；精通属性、每级技能倍率和突破换技能仍未闭合 |
 | ITEM-SHOP | 服务端完成 | `task/ITEM-SHOP-20261106` @ 3ac6f3c | 15 专项测试 + 真实 TCP 1202→1203→1202 + 重开 DB；集成分支 26/26 | 未安排 | 1202–1205/1207/1208 ETF 请求形态待录制；1205 wipe 语义未取证；结算 data 布局未知；无刷新价格表 |
 | ITEM-ITEM | 服务端完成（153/157 证据阻塞） | `task/ITEM-ITEM-20261106` @ c3e2df7 | 9 专项测试 + 真实 TCP 156/158/154 成功、153/157 返回 code 5；集成分支 47/47 | 未安排 | 153 本版本不可达（BoxRepeat 0 行、无 type=85 物品、module 54 空）；157.lottery_list 无奖池表；保底登录槽位未定位；MatchHeroChip 无奖励 handler |
 | ITEM-EVERYTASK | 服务端完成（部分进度/奖励证据阻塞） | `task/ITEM-EVERYTASK-20261106` @ 9139333 | 8 专项测试 + 真实 TCP 9000 + 重登 module 91 + 跨期重置 + 故障回滚；冲突相关 35/35；合并后全量 2172/2172 | 未安排 | 日/主/周任务仅覆盖统计 progress_type=2、主线 cursor=1201、命途 5901/155；活跃档 200/400/600/800 为缺表推断；dynamic_award、周末加成与任务事件源未实现 |
@@ -39,3 +41,4 @@
 - 当前没有启停实时服务、操作模拟器、读写 `runtime.local-only.data` 或生成 APK；上表“服务端完成”均只表示业务、临时 TCP、SQLite 与回归层通过，APK 验收仍单列。
 - ITEM-FIRSTWEEKGOAL 以 `--no-ff` 合入 main `bf5d95b`；独立专项 14/14，合并后 main 全量 2197/2197。网关保留 `onlineGift.beginSession()`、`rankAchieve.ensureLoginState()` 与首周目标模块 59015 三条登录路径，并保留既有数字 type 派发；207 结算/体力、邮件推送与活动期限定向回归 60/60 再次通过。全量日志：`analysis/test-runs/gameplay-20261106/main-after-firstweekgoal-full.log`。
 - HERO-HERO、ITEM-GROWTHROAD、CORE-ATTR 依次以 --no-ff 合入 main d375bf6、8979fe5、427f9e5。每次合并前均确认 main 为分支祖先、git diff --check 通过，并逐项检查网关同时保留 onlineGift、rankAchieve、heroExtra、firstWeekGoal、growthRoad 与 1316 属性路由；git diff 未覆盖 207 结算/体力、邮件推送、活动期限或 module8/90 多槽。三次合并后的全量回归依次为 2206/2206、2215/2215、2219/2219。最终日志：analysis/test-runs/gameplay-20261106/main-after-core-attr-full.log。
+- CORE-SKILL-GATES 提交 b87b99d 以 --no-ff 合入 main b6e1766。合并前工作区干净、main 为分支祖先、git diff --check 通过；gateway.mjs/game-store.mjs 未变，207 路径仅增加技能 loadout 输入。合并后 npm test 为 2226/2226，fail 0。运行摘要见 analysis/test-runs/gameplay-20261106/main-after-core-skill-gates-summary.md。通用 Passive 的突破筛选和等级倍率仍未实现，整卡状态为证据待补；全量通过不能替代这些业务验收。

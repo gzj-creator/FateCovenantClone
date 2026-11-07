@@ -4,7 +4,7 @@
 - worktree：`.worktree/gameplay-20261106/core-skill-gates`
 - 基线：main `1a15105`
 - 日期：2026-11-07
-- 状态：服务端完成（通用被动槽位联动仍有证据缺口）；APK 验收未安排
+- 状态：证据待补；AbilityLevel/mastery/soul 部分实现已合入 main，通用被动突破筛选和每级倍率未完成；APK 验收未安排
 
 ## 1. 已证事实与实现口径
 
@@ -64,3 +64,10 @@ npm test
 3. `AbilityLevel` 只提供技能等级整数，未随包提供“每级倍率/成长值”行。战斗技能已携带 level 元数据，但倍率随等级变化仍需 FightTable 或 AbilityLevel 对应数值证据，不能人为线性放大。
 4. 五个 mastery 候选的选择命令/存储尚未恢复；当前按 `Ability.mastery_ability` 作为唯一选中项，掌握突破是否切换技能 id 仍待证据。
 5. 1316 `play_type` 分层、APK 中实际技能升级/替换表现与战斗回放仍未做客户端验收。
+
+## 6. 总控集成验收
+
+- 实现提交 `b87b99d`，以 `--no-ff` 合入 main `b6e1766`；合并前确认最新 main 是分支祖先，工作区干净，`git diff --check main..HEAD` 通过。
+- 合并后在 main 执行 `npm test`：tests 2226 / pass 2226 / fail 0；运行摘要为 `analysis/test-runs/gameplay-20261106/main-after-core-skill-gates-summary.md`。
+- 保留 gateway、SQLite schema、邮件推送、活动日历、module 8/90 和普通主线 207 结算路径。未进行 APK、实时服务或运行数据库验收。
+- 本提交是部分交付。尤其是通用 Passive 仍从目录全部加载，不能凭本次测试通过宣称所有未解锁技能均不会触发；等级只是技能元数据，尚未驱动缺表的倍率计算。
