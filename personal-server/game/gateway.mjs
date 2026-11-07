@@ -1273,7 +1273,7 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'dragon_land_rejected', type, seq, code, message: error.message,
-            payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64')
+            payloadHead: payloadBytes(request.data, 64)
           });
         }
         return;

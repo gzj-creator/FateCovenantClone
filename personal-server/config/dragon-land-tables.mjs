@@ -121,4 +121,3 @@ export function dragonLandAwardsForLevel(tables, version, level) {
   return dragonLandAwardsForVersion(tables, version)
     .filter(row => Number(row.level) === Number(level));
 }
-
