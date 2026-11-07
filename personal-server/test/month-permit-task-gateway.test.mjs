@@ -19,6 +19,7 @@ const tables = readGameTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const ACT_ID = 1004012;
+const EXP_ITEM = 10004200;
 
 function fixture() {
   return {
@@ -108,14 +109,19 @@ async function gatewaySetup(t) {
 test('gateway routes 105804 over real TCP and returns a decodable task claim response', async t => {
   const e = await gatewaySetup(t);
 
-  const response = await e.request(105804, 3, codec.pack('pb_month_permit_task_req', { activity_id: ACT_ID, task_id_list: [101] }));
+  const response = await e.request(105804, 3, codec.pack('pb_month_permit_task_req', { activity_id: ACT_ID, task_id_list: [4003] }));
   assert.equal(response.err, undefined);
   assert.ok(response.data);
 
   const value = codec.unpack('pb_month_permit_task_back', Buffer.from(response.data, 'base64'));
   assert.equal(value.month_permit_info.id, String(ACT_ID));
   assert.ok(value.month_permit_info.task_get.length > 0);
-  assert.ok(value.res.changes.length >= 0);
+  assert.deepEqual(value.res.changes.map(change => ({
+    tid: change.tid,
+    new_num: change.new_num,
+    diff_num: change.diff_num
+  })), [{ tid: String(EXP_ITEM), new_num: '50', diff_num: '50' }]);
+  assert.equal(e.game.store.read().resources.get(String(EXP_ITEM)).num, '50');
 
   assert.ok(e.events.some(event => event.event === 'month_permit_task_reward_committed' && event.seq === 3));
 });

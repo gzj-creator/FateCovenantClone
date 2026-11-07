@@ -1,5 +1,7 @@
 # Personal-server workflow
 
+2026-11-07：[月度战令任务经验领取后进度仍为 0](monthly-pass-exp-progress-20261107/implementation.md)。`105804` 旧路径只增加 `buy_exp_num`，没有发放 `10004200` 经验资源；现已改为同事务发放经验并返回资源变化，增加旧 `task_get` 的一次性幂等补偿。定向月战令/真实 TCP 16/16、全量 2314 项（pass 2312、skipped 2）通过。
+
 2026-11-01：[商店、装备与套装箱的配置表证据](interface-catalog/config-table-evidence.md)。三张此前无法落地的配置表已从客户端产物取全：装备表从字节码转成服务可读 dump（80 件装备、2000 行按类型分键的等级消耗、6 个格子上限），接入 `config/equip-tables.mjs` 并有 4 项断言；`OptionalSuitBox`/`OptionalSuitRes` 加入物品表读取，155 `use_selected_suit_box` 已按“range 的 1 基位置选套装并整包发奖”实现并有 5 项测试，非选择式开箱遇到套装箱改为明确拒绝。接口目录里 153 与 155 的类型号错位一并纠正。商店 1201/1203 的价格分档算法已从 `ShopBase` 解出，但 `buy_count` 重置、`shop.version` 递增和 1204/1206 字段仍缺运行时证据，购买接口继续返回明确未实现。真实套装箱奖励是 Relic 圣器，本机还没有 `9:Relic` 奖励处理器，发奖仍显式失败。
 
 2026-11-01：[幻武旧护佑引用导致重启后登录超时](relic-divine-activities/implementation.md#2026-11-01-登录幻武护佑引用自愈)。模块 518 的旧库存含自引用、缺失 UID 和重复所有者，导致 `909103` 登录初始化异常后无回包；现已在登录态初始化中做幂等清理，只移除非法护佑引用并保留 10 件装备、等级和水位线。全量 519/519 通过，实时服务已部署，客户端重登成功。

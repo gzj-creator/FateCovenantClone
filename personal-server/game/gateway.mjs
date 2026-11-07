@@ -419,6 +419,8 @@ export function createLocalGame({
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const standardPermit=createPermitService({codec,tables,now:secondsClock});
   const monthPermit=createMonthPermitService({codec,tables});
+  const monthPermitRepair=store.transaction((model,db)=>monthPermit.repairLegacyTaskExperience({model,db}));
+  if(monthPermitRepair.changed) logger({event:'month_permit_task_exp_repaired',repairs:monthPermitRepair.repairs.map(({changes,...repair})=>repair)});
   const monthlyCard=createMonthlyCardService({codec,tables,now:secondsClock});
   const wallet=localWallet?createWalletService({
     store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,

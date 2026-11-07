@@ -5,6 +5,7 @@ import { consumeResources, grantResources } from './resources.mjs';
 
 const MONTH_PERMIT_RECHARGE = 130;
 const MODULE_ACT_LOGIN = 183;
+const LEGACY_TASK_EXP_REPAIR = 'month-permit-task-exp-v1';
 
 function positiveSafeInteger(value, field) {
   const number = Number(value);
@@ -45,7 +46,7 @@ export function createMonthPermitService({ codec, tables }) {
     return bytes.subarray(6, 6 + length);
   }
 
-  function activeInfo(model, actId) {
+  function forEachInfo(model, visitor) {
     const modules = new Map(model.state.modules.value);
     const moduleValue = modules.get(MODULE_ACT_LOGIN);
     if (!moduleValue || !Array.isArray(moduleValue.value)) throw new GameError(5, 'Month permit login data is unavailable');
@@ -59,10 +60,17 @@ export function createMonthPermitService({ codec, tables }) {
         if (!innerBytes) continue;
         let message;
         try { message = codec.unpack('pb_month_permit_login_back', innerBytes); } catch { continue; }
-        const info = (message.month_permit_data?.month_permit_list ?? []).find(row => actId == null || Number(row.id) === actId);
-        if (info) return { modules, moduleValue, elementIndex, login, entry, message, info };
+        for (const info of message.month_permit_data?.month_permit_list ?? []) {
+          const result = visitor({ modules, moduleValue, elementIndex, login, entry, message, info });
+          if (result !== undefined) return result;
+        }
       }
     }
+  }
+
+  function activeInfo(model, actId) {
+    const found = forEachInfo(model, row => actId == null || Number(row.info.id) === actId ? row : undefined);
+    if (found) return found;
     throw new GameError(5, 'Month permit activity is not active');
   }
 
@@ -211,17 +219,11 @@ export function createMonthPermitService({ codec, tables }) {
     const row = activeInfo(model, actId);
     const taskInfoList = row.info.task_get ?? [];
 
-    const taskIdSet = new Set(taskIds.map(String));
     const claimedTids = new Set(taskInfoList.map(task => String(task.tid)));
 
     // Check if any tasks are already claimed
     const alreadyClaimed = taskIds.filter(tid => claimedTids.has(String(tid)));
     if (alreadyClaimed.length > 0) throw new GameError(310, 'Task already claimed');
-
-    const taskRows = [...(tables.MonthPermitTask?.values?.() ?? [])]
-      .filter(entry => taskIds.includes(String(entry.tid)));
-
-    if (taskRows.length !== taskIds.length) throw new GameError(5, 'Invalid task ID');
 
     // Get activity configuration for exp item and level rewards
     const act = tables.ActFrameAct?.get(actId);
@@ -229,15 +231,20 @@ export function createMonthPermitService({ codec, tables }) {
     const cycle = tables.MonthPermitCycle?.get(Number(act.version));
     if (!cycle) throw new GameError(5, 'Month permit cycle configuration is unavailable');
     const expItem = positiveSafeInteger(cycle.exp_item, 'experience item');
+    const taskRows = taskIds.map(tid => tables.MonthPermitTask?.get(Number(tid)));
+    if (taskRows.some(task => !task || Number(task.version) !== Number(act.version))) {
+      throw new GameError(5, 'Invalid task ID');
+    }
 
     // Calculate total exp from all tasks
-    const totalExpGain = taskRows.reduce((sum, row) => sum + (Number(row.add_exp) || 0), 0);
+    const totalExpGain = taskRows.reduce((sum, task) => sum + (Number(task.add_exp) || 0), 0);
     if (totalExpGain <= 0) throw new GameError(5, 'Task has no exp reward');
 
-    // Add exp to the permit
-    const currentExp = BigInt(row.info.buy_exp_num ?? 0);
+    // The configured experience item is the progress authority. buy_exp_num
+    // tracks bought experience only and must not be incremented here.
+    const currentExp = BigInt(model.resources.get(String(expItem))?.num ?? 0);
     const newExp = currentExp + BigInt(totalExpGain);
-    row.info.buy_exp_num = newExp.toString();
+    const grantedExperience = grantResources(model, [[expItem, totalExpGain]], tables, { codec });
 
     // Check for level rewards
     const upLvRows = [...(tables.MonthPermitUpLv?.values?.() ?? [])]
@@ -264,7 +271,7 @@ export function createMonthPermitService({ codec, tables }) {
     persistInfo(model, row);
 
     // Grant rewards if any
-    const resourceChanges = [];
+    const resourceChanges = [...grantedExperience.changes];
     if (grantedRewards.length > 0) {
       const granted = grantResources(model, grantedRewards, tables, { codec });
       resourceChanges.push(...granted.changes);
@@ -274,13 +281,60 @@ export function createMonthPermitService({ codec, tables }) {
       actId: String(actId),
       claimedTasks: taskIds.map(String),
       expGain: totalExpGain,
-      newExp: row.info.buy_exp_num,
+      newExp: newExp.toString(),
       rewards: grantedRewards,
       response: {
         month_permit_info: row.info,
         res: { changes: resourceChanges, is_overflow: false }
       }
     };
+  }
+
+  // Version 1 of the task claim path wrote task experience into buy_exp_num but
+  // never granted the configured experience item. Existing task_get rows are
+  // therefore all attributable to that broken path. Repair the aggregate once,
+  // then leave future correct claims alone.
+  function repairLegacyTaskExperience({ model, db }) {
+    if (!db) throw new GameError(5, 'Month permit repair database is unavailable');
+    if (db.prepare('SELECT 1 FROM migrations WHERE name=?').get(LEGACY_TASK_EXP_REPAIR)) {
+      return { skipped: true, changed: false, repairs: [] };
+    }
+
+    const repairs = [];
+    forEachInfo(model, row => {
+      const act = tables.ActFrameAct?.get(Number(row.info.id));
+      const cycle = act ? tables.MonthPermitCycle?.get(Number(act.version)) : null;
+      if (!cycle || !Array.isArray(row.info.task_get) || row.info.task_get.length === 0) return;
+
+      let taskExp = 0;
+      for (const taskInfo of row.info.task_get) {
+        const task = tables.MonthPermitTask?.get(Number(taskInfo?.tid));
+        if (task && Number(task.version) === Number(act.version)) taskExp += Number(task.add_exp) || 0;
+      }
+      if (taskExp <= 0) return;
+
+      const expItem = positiveSafeInteger(cycle.exp_item, 'experience item');
+      const granted = grantResources(model, [[expItem, taskExp]], tables, { codec });
+      const buyExpBefore = BigInt(row.info.buy_exp_num ?? 0);
+      const buyExpAfter = buyExpBefore > BigInt(taskExp) ? buyExpBefore - BigInt(taskExp) : 0n;
+      row.info.buy_exp_num = buyExpAfter.toString();
+      persistInfo(model, row);
+      repairs.push({
+        actId: String(row.info.id),
+        taskExp,
+        buyExpBefore: buyExpBefore.toString(),
+        buyExpAfter: buyExpAfter.toString(),
+        newExp: String(model.resources.get(String(expItem))?.num ?? 0),
+        changes: granted.changes
+      });
+    });
+
+    db.prepare('INSERT INTO migrations VALUES (?,?,?)').run(
+      LEGACY_TASK_EXP_REPAIR,
+      `repaired-activities=${repairs.length};granted-exp=${repairs.reduce((sum, repair) => sum + repair.taskExp, 0)}`,
+      new Date().toISOString()
+    );
+    return { skipped: false, changed: repairs.length > 0, repairs };
   }
 
   function claimReward({ model, actId, gearLvTid, oneKey = false }) {
@@ -359,6 +413,7 @@ export function createMonthPermitService({ codec, tables }) {
     purchase,
     buyLevel,
     claimTask,
+    repairLegacyTaskExperience,
     claimReward,
     claimAll: ({ model, actId }) => claimReward({ model, actId, oneKey: true }),
     gearByRecharge
