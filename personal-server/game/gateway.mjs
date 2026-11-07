@@ -17,6 +17,7 @@ import { createRankService } from './rank-service.mjs';
 import { createRankAchieveService } from './rank-achieve-service.mjs';
 import { createFirstWeekGoalService } from './first-week-goal-service.mjs';
 import { createGrowthRoadService } from './growth-road-service.mjs';
+import { createFriendService } from './friend-service.mjs';
 import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -377,6 +378,11 @@ export function createLocalGame({
   });
   const growthRoad = createGrowthRoadService({
     store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
+  // FriendCmd 20001-20013. The login module slot for res_friend_login is not
+  // recovered, so it stays out of the login container until the owner wires it.
+  const friend = createFriendService({
+    store, codec, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
   });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
@@ -764,6 +770,19 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'growth_road_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (friend.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = friend.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'friend_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'friend_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
