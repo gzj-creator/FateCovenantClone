@@ -208,6 +208,16 @@ test('all-open cumulative recharge uses account-wide records for a future-schedu
   assert.equal(e.store.inspect(db => db.prepare("SELECT count(*) n FROM activity_claims WHERE act_id=106037 AND task_id=37001105 AND period='v37'").get().n), 1);
 });
 
+test('missing recharge history returns insufficient amount for scheduled and all-open activities', t => {
+  for (const mode of ['schedule', 'all-open']) {
+    const e = setup(t, tables, mode);
+    e.store.transaction(model => { model.state.modules.value = model.state.modules.value.filter(([id]) => Number(id) !== 19); });
+    const before = e.store.state();
+    assert.throws(() => claim(e.service, 36001101), error => error.code === 311);
+    assert.deepEqual(e.store.state(), before);
+  }
+});
+
 test('all-open login exposes a populated date range for cumulative recharge progress', async t => {
   const e = setup(t, tables, 'all-open');
   setAwardState(e.store, 106036, Buffer.alloc(100));

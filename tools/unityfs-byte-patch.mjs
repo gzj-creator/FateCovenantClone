@@ -364,7 +364,7 @@ function replace(bundlePath, outputPath, offsetText, replacementPath) {
   };
 }
 
-function replaceTextAsset(bundlePath, outputPath, targetName, replacementPath) {
+export function replaceTextAsset(bundlePath, outputPath, targetName, replacementPath) {
   const input = fs.readFileSync(bundlePath);
   const parsed = parseBundle(input);
   const matches = [];

@@ -85,6 +85,13 @@ export function createWalletService({
       changed = true;
     }
     if (!Array.isArray(info.daily_discount_list)) { info.daily_discount_list = []; changed = true; }
+    // Keep row and module timestamps in the same daily reset cycle.
+    for (const row of info.daily_discount_list) {
+      if (Number(row.refresh_time ?? 0) !== Number(info.refresh_time)) {
+        row.refresh_time = info.refresh_time;
+        changed = true;
+      }
+    }
     if (!Array.isArray(info.select_list)) { info.select_list = []; changed = true; }
     info.buy_additionally ??= 0;
     info.data_version ??= 0;
@@ -158,6 +165,27 @@ export function createWalletService({
   const setBuyGiftRecords = (login, records) => {
     login.buy_gift_record = records.length ? codec.pack('pb_buy_gift_record_list', { record_list: records }) : Buffer.alloc(0);
   };
+  const recordRecharge = (login, productId, amountCents, purchasedAt) => {
+    if (!Number.isSafeInteger(amountCents) || amountCents <= 0) return false;
+    const day = dailyDay(purchasedAt);
+    const total = (login.total_amount ?? 0) + amountCents;
+    if (total > 2147483647) throw new GameError(1, 'Recharge total limit reached');
+    login.total_amount = total;
+    login.recharge_record ??= { recent_record: [], total_day: 0 };
+    login.recharge_record.recent_record ??= [];
+    let daily = login.recharge_record.recent_record.find(row => Number(row.day_index) === day);
+    if (!daily) {
+      daily = { day_index: day, recharge_ids: [], amount: 0 };
+      login.recharge_record.recent_record.push(daily);
+      login.recharge_record.total_day = (login.recharge_record.total_day ?? 0) + 1;
+    }
+    daily.recharge_ids ??= [];
+    daily.recharge_ids.push(productId);
+    daily.amount = (daily.amount ?? 0) + amountCents;
+    login.recharge_record.recent_record.sort((left, right) => Number(right.day_index) - Number(left.day_index));
+    if (!login.max_record || daily.amount >= (login.max_record.amount ?? 0)) login.max_record = structuredClone(daily);
+    return true;
+  };
   const addBuyGiftRecord = (login, rechargeTid, buyTime) => {
     const records = buyGiftRecords(login);
     records.push({ recharge_tid: rechargeTid, buy_time: buyTime });
@@ -167,17 +195,22 @@ export function createWalletService({
     db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(accountId, model.state.roleId);
     // Rebuild the client's gift purchase history from orders so purchase limits
     // remain visible after a server restart or a fresh client login.
-    const rows = db.prepare('SELECT product_id,created_at,payload_json FROM recharge_orders ORDER BY rowid').all();
+    const rows = db.prepare('SELECT product_id,created_at,payload_json FROM recharge_orders WHERE account_id=? ORDER BY rowid').all(accountId);
     const modules = new Map(model.state.modules.value);
     let changed = false;
     if (diamondFunds.restoreFromOrders({ modules, rows, at: now() })) changed = true;
     if (permanentCards.restoreFromOrders({ modules, rows })) changed = true;
     const loginRaw = modules.get(19);
-    if (rows.length && loginRaw) {
+    if (loginRaw) {
       const login = codec.unpack('res_recharge_login', rawBinary(loginRaw));
+      const recent = login.recharge_record?.recent_record ?? [];
+      const oldDays = recent.map(row => row.day_index);
+      // RechargeMgr scans newest days first. Preserve amounts and historical
+      // records that predate the local order ledger.
+      recent.sort((left, right) => Number(right.day_index) - Number(left.day_index));
+      let loginChanged = recent.some((row, index) => row.day_index !== oldDays[index]);
       const records = buyGiftRecords(login);
       const seen = new Set(records.map(record => String(record.recharge_tid) + ':' + String(record.buy_time)));
-      let loginChanged = false;
       for (const row of rows) {
         const product = tables.Recharge.get(row.product_id);
         if (!product || !(product.can_buy_times > 0)) continue;
@@ -505,14 +538,7 @@ export function createWalletService({
       // login state on top.
       let modules = new Map(model.state.modules.value);
       const login = codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
-      const total = (login.total_amount ?? 0) + product.price;
-      if (total > 2147483647) throw new GameError(1, 'Recharge total limit reached');
-      login.total_amount = total;
-      login.recharge_record ??= { recent_record: [], total_day: 0 };
-      let daily = login.recharge_record.recent_record.find(row => row.day_index === day);
-      if (!daily) { daily = { day_index: day, recharge_ids: [], amount: 0 }; login.recharge_record.recent_record.push(daily); login.recharge_record.total_day = (login.recharge_record.total_day ?? 0) + 1; }
-      daily.recharge_ids.push(product_id); daily.amount = (daily.amount ?? 0) + product.price;
-      if (!login.max_record || daily.amount >= (login.max_record.amount ?? 0)) login.max_record = structuredClone(daily);
+      if (Number(product.pay_type) === 0) recordRecharge(login, product_id, product.price, purchasedAt);
       const giftRecord = product.can_buy_times > 0 ? codec.pack('pb_buy_gift_record', { recharge_tid: product_id, buy_time: purchasedAt }) : null;
       if (giftRecord) addBuyGiftRecord(login, product_id, purchasedAt);
       const extraRetList = [...(diamondFundPurchase?.extraRetList ?? []), ...(monthlyCardPurchase?.extraRetList ?? []), ...(permit?.extraRetList ?? [])];

@@ -31,7 +31,11 @@ function rechargeRangeTotal(modules, codec, activity, serverOpenedAt, activityMo
   const scheduledStartDay = rechargeDayIndex(window.start);
   const scheduledEndDay = rechargeDayIndex(window.end);
   const module = modules.get(19);
-  if (!module) return { totalCents: 0, startDay, endDay };
+  if (!module) return {
+    totalCents: 0,
+    startDay: activityMode === 'all-open' ? null : scheduledStartDay,
+    endDay: activityMode === 'all-open' ? null : scheduledEndDay
+  };
   const login = codec.unpack('res_recharge_login', rawBinary(module));
   const records = login.recharge_record?.recent_record ?? [];
   if (!Array.isArray(records)) throw new GameError(5, 'Cumulative-recharge records are invalid');
