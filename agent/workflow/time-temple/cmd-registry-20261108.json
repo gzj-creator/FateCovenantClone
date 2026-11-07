@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-08",
+  "scope": "shipped client bundle assets/Android/script/lua/64_lua_core.bundle, Cmd.lua LuaJIT bytecode only",
+  "client": {
+    "appVersion": "1.55.090365",
+    "bundlePath": "assets/Android/script/lua/64_lua_core.bundle",
+    "note": "All extracted copies of this bundle compared on 2026-11-08 share SHA256 054c3a1d5de29f66b5f41f413ac56a473ee7b95ccf1226b343068b79cdd3be56 (recruit-20261101 scratch, wishlist-negative v10 apk-compare, helpupact-20261107 scratch, mail-push-20261107 scratch)."
+  },
+  "reproducer": {
+    "extractor": "tools/extract-cmd-registry.mjs",
+    "command": "node tools/extract-cmd-registry.mjs --bundle <64_lua_core.bundle> --lookup <name,...> --range <from-to> [--out <json>] [--full]",
+    "usageNote": "The bundle is a local APK artifact and is not committed; pass any extracted copy. --cmd accepts an already extracted Cmd.lua.bin TextAsset instead of the bundle."
+  },
+  "source": {
+    "kind": "bundle",
+    "bundlePath": "assets/Android/script/lua/64_lua_core.bundle",
+    "bundleBytes": 393040,
+    "bundleSha256": "054c3a1d5de29f66b5f41f413ac56a473ee7b95ccf1226b343068b79cdd3be56",
+    "textAsset": "14598954643145832000-Cmd.lua",
+    "textAssetBytes": 165335,
+    "textAssetSha256": "36ebc52059977de944da4f57ab15ce0238acb360e07fc976dd68f4f73d4453c8",
+    "extractedCopy": "F:\\projects\\FateCovenantClone\\analysis\\scratchpad\\helpupact-20261107\\64_lua_core.bundle"
+  },
+  "prototype": {
+    "index": 0,
+    "firstLine": 0,
+    "instructions": 19
+  },
+  "slots": {
+    "s2c_index": {
+      "constantIndex": 3,
+      "entries": 307
+    },
+    "c2s_index": {
+      "constantIndex": 6,
+      "entries": 1407
+    },
+    "s2c": {
+      "constantIndex": 8,
+      "entries": 262
+    },
+    "c2s_back": {
+      "constantIndex": 10,
+      "entries": 1189
+    },
+    "c2s_switch": {
+      "constantIndex": 12,
+      "entries": 1407
+    }
+  },
+  "positiveControls": {
+    "note": "Names that are known to be live in this build prove the parsed table is the real registry and not a partial read.",
+    "req_guild_info": {
+      "s2c_index": null,
+      "c2s_index": 21005,
+      "s2c": null,
+      "c2s_back": "pb_guild",
+      "c2s_switch": 24
+    },
+    "req_chat_msg_like": {
+      "s2c_index": null,
+      "c2s_index": 11014,
+      "s2c": null,
+      "c2s_back": "pb_msg_like_rsp",
+      "c2s_switch": 39012
+    },
+    "chatRange11000to11014": "req_send_chat_msg_to_world 11000, req_send_chat_msg_to_guild 11001, req_send_chat_msg_to_role 11002, req_send_multi_server_msg 11003, req_cancel_ban 11006, req_banned_self 11008, req_change_chat_setting 11010, req_remove_private_target 11012, req_chat_report 11013, req_chat_msg_like 11014 (all present in c2s_index)"
+  },
+  "timeTempleLookups": {
+    "req_time_temple_embryo_up": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    },
+    "req_time_temple_bond_up": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    },
+    "req_time_temple_runes_collect": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    },
+    "req_time_temple_runes_up": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    },
+    "req_time_temple_runes_skill_select": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    },
+    "req_time_temple_god_up": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    },
+    "req_time_temple_season_shop": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    },
+    "req_time_temple_draw_award": {
+      "s2c_index": null,
+      "c2s_index": null,
+      "s2c": null,
+      "c2s_back": null,
+      "c2s_switch": null
+    }
+  },
+  "ranges": [
+    {
+      "from": 7700,
+      "to": 7900,
+      "count": 0,
+      "sample": []
+    },
+    {
+      "from": 900,
+      "to": 910,
+      "count": 0,
+      "sample": []
+    },
+    {
+      "from": 90500,
+      "to": 90520,
+      "count": 7,
+      "sample": [
+        {
+          "name": "req_pet_rev_daily_vitality_rewards",
+          "type": 90506
+        },
+        {
+          "name": "req_pet_act_claim_fight_rewards",
+          "type": 90502
+        },
+        {
+          "name": "req_pet_act_select_pet",
+          "type": 90501
+        },
+        {
+          "name": "req_pet_act_finish_cure",
+          "type": 90505
+        },
+        {
+          "name": "req_pet_act_exchange",
+          "type": 90507
+        },
+        {
+          "name": "req_pet_act_cure",
+          "type": 90504
+        },
+        {
+          "name": "req_pet_act_claim_likability_rewards",
+          "type": 90503
+        }
+      ]
+    },
+    {
+      "from": 91000,
+      "to": 91020,
+      "count": 1,
+      "sample": [
+        {
+          "name": "req_energy_burst_award",
+          "type": 91001
+        }
+      ]
+    },
+    {
+      "from": 7801,
+      "to": 7801,
+      "count": 0,
+      "sample": []
+    }
+  ],
+  "numericCensus": {
+    "entries": 1407,
+    "uniqueTypes": 1407,
+    "min": 10,
+    "max": 909103
+  },
+  "requestCallSites": {
+    "req_time_temple_embryo_up": {
+      "module": "TimeTempleMgr",
+      "prototype": 7,
+      "firstLine": 164,
+      "evidence": "pc 7-16: Seq.New():Send(TimeTempleCmd.req_time_temple_embryo_up, {bond}, closure)"
+    },
+    "req_time_temple_bond_up": {
+      "module": "TimeTempleMgr",
+      "prototype": 9,
+      "firstLine": 189,
+      "evidence": "pc 26-32: Seq.New():Send(TimeTempleCmd.req_time_temple_bond_up, bond, closure)"
+    },
+    "req_time_temple_runes_collect": {
+      "module": "TimeTempleMgr",
+      "prototype": 12,
+      "firstLine": 227,
+      "evidence": "pc 24-32: Seq.New():Send(TimeTempleCmd.req_time_temple_runes_collect, {embryoId, runeId}, closure)"
+    },
+    "req_time_temple_runes_up": {
+      "module": "TimeTempleMgr",
+      "prototype": 14,
+      "firstLine": 257,
+      "evidence": "pc 33-38: Seq.New():Send(TimeTempleCmd.req_time_temple_runes_up, runeId, closure)"
+    },
+    "req_time_temple_runes_skill_select": {
+      "module": "TimeTempleMgr",
+      "prototype": 17,
+      "firstLine": 289,
+      "evidence": "pc 13-20: Seq.New():Send(TimeTempleCmd.req_time_temple_runes_skill_select, closure)"
+    },
+    "req_time_temple_god_up": {
+      "module": "TimeTempleMgr",
+      "prototype": 21,
+      "firstLine": 325,
+      "evidence": "pc 16-20: Seq.New():Send(TimeTempleCmd.req_time_temple_god_up, closure)"
+    },
+    "req_time_temple_season_shop": {
+      "module": null,
+      "prototype": null,
+      "firstLine": null,
+      "evidence": "no call site: the name only exists in TimeTempleCmd.lua prototype 6"
+    },
+    "req_time_temple_draw_award": {
+      "module": "TimeTempleMgr",
+      "prototype": 19,
+      "firstLine": 313,
+      "evidence": "pc 5-9: Seq.New():Send(TimeTempleCmd.req_time_temple_draw_award, closure)"
+    }
+  },
+  "clientSendPath": [
+    {
+      "file": "TimeTempleCmd.lua",
+      "sha256": "e66f7daae1a4e048afb3442aef158c1454a047d911fc84cee8aa2e09e69576bf",
+      "bytes": 1440,
+      "evidence": "prototype 8 builds TimeTempleCmd as name -> encoder closure; prototypes 0-7 call Codec.EncodeErl (7 names) and Codec.EncodePB(pb_time_temple_select_runes_skills) for skill select. No numeric type appears anywhere in the module."
+    },
+    {
+      "file": "Seq.lua",
+      "sha256": "89af0c811186613f32bec96baca6872fa56a4332c6983fdb2310070e86b65373",
+      "bytes": 3535,
+      "evidence": "prototype 5 (Seq:Send) pc 0-5: NetMgr.GetSession(NetMgr.GAME_LOGIC_SESSION):SendMsg(cmd, callback, args...); cmd stays the string name."
+    },
+    {
+      "file": "Session.lua",
+      "sha256": "eeb97fdcb21264c1f98eeec84eff76f30337a0f38dad4d14184f9b31558d37f7",
+      "bytes": 8572,
+      "evidence": "prototype 8 (Session:SendMsg) gates on state and forwards to self._con:Send(cmd, ...)."
+    },
+    {
+      "file": "Connection.lua",
+      "sha256": "4f3613b71b0db3ead8e22f4cd5b38db5a379fc3163709d18b03274823efe9ee7",
+      "bytes": 9753,
+      "evidence": "prototype 3 (Connection:Send) pc 41-45: type = Cmd.c2s_index[cmd]; IST on the result, and when it is nil the function calls error(\"send msg type error\") and returns before encoding pb_c2s. This is the only place a request name becomes a wire type."
+    },
+    {
+      "file": "Connection.lua",
+      "sha256": "4f3613b71b0db3ead8e22f4cd5b38db5a379fc3163709d18b03274823efe9ee7",
+      "bytes": 9753,
+      "evidence": "prototype 21 (Connection:_HandReqCallback) pc 10-15: the reply is decoded with Cmd.c2s_back[cmd], so a request without a c2s_back entry could not be decoded even if a server answered it."
+    },
+    {
+      "file": "ConnectionDev.lua",
+      "sha256": "6a340619b9ab0958a1beca225b9ff71ef687d3bff1a109b4ca2e40d22d024111",
+      "bytes": 1471,
+      "evidence": "prototype 5 formats the same-frame duplicate warning as \"cmd:%s\", confirming the value passed to Send is the string name."
+    },
+    {
+      "file": "CoreAssets.lua",
+      "sha256": "4a9d19fae019c8f0cce4db1117696a2b1060126e5841aa9ac8d93d934a06442c",
+      "bytes": 7740,
+      "evidence": "txt_Cmd_lua -> \"Cmd.lua.txt\" is the only command table asset; there is no second downloaded registry."
+    }
+  ],
+  "conclusion": "The client cannot emit these eight requests in this build. Cmd.lua exposes exactly one request registry (c2s_index, 1407 names) and none of the eight req_time_temple_* names is present in c2s_index, c2s_back or c2s_switch. Connection:Send resolves the wire type from c2s_index and aborts on a miss, so no numeric C2S type exists to recover and the time temple UI path cannot reach the server. The numeric type was therefore not recovered as \"hard to find\"; it is absent from the shipped client command table.",
+  "limitations": [
+    "This is a negative result for client build 1.55.090365 only. A later client release (or a hot-updated command table) could register these names with types that cannot be derived from this artifact.",
+    "The module still ships its UI, config and protobuf schemas, and the server side (module 159 login, S2C 7801 push) is unchanged, so a future client may need these handlers.",
+    "Static bytecode only: no client Lua was executed and no game traffic was produced for this evidence."
+  ]
+}
