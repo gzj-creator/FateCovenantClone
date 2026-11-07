@@ -46,6 +46,8 @@ import { createDestinyService } from './destiny-service.mjs';
 import { createEliteMissionService } from './elite-mission-service.mjs';
 import { createPeakTowerService } from './peak-tower-service.mjs';
 import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
+import { createGeneralDungeonService } from './general-dungeon-service.mjs';
+import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -372,6 +374,7 @@ export function createLocalGame({
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
+  const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -1194,6 +1197,31 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'peak_tower_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (generalDungeon.supports(type)) {
+        try {
+          let input;
+          if (type === 78102 || type === 78104 || type === 78107) {
+            const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+            input = decoded?.value ?? decoded;
+          } else {
+            const schemas = {
+              78101: 'pb_dungeon_event_exe',
+              78103: 'pb_enter_dungeon_level',
+              78105: 'pb_dungeon_event_active',
+              78106: 'pb_dungeon_sync_map'
+            };
+            input = unpack(schemas[type], request.data);
+          }
+          const result = await generalDungeon.execute(type, input);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'general_dungeon_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'general_dungeon_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
