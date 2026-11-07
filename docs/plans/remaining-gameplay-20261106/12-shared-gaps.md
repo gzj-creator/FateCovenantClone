@@ -96,16 +96,18 @@
 
 优先级 P2，先做证据解除阻塞。已有 module 159 登录空态恢复、`7801 pb_time_temple_draw` 推送格式与发送通道；这些不等于抽取业务已完成。
 
+2026-11-08 结论更新：八个请求编码器在本版客户端 **不存在数字 C2S type**，不是“难找”。`Cmd.lua` prototype 0 完整反解后 `c2s_index`（1407 条）、`c2s_back`（1189 条）、`c2s_switch`（1407 条）里没有这些名字，且 `Connection:Send` 用 `Cmd.c2s_index[cmd]` 查表、查不到就中止，客户端发不出这些请求。证据与复现工具见 `agent/workflow/time-temple/cmd-registry-20261108.json` 与 `tools/extract-cmd-registry.mjs`，实施记录见 `agent/workflow/gameplay-completion/CORE-TIME-TEMPLE/implementation.md`。服务端已把八条命令登记为未注册并保持 fail-closed。
+
 | 已找到的请求编码器 | 编码 | 当前阻塞 |
 | --- | --- | --- |
-| req_time_temple_embryo_up | ETF | 数字 C2S type 未恢复 |
-| req_time_temple_bond_up | ETF | 数字 C2S type 未恢复 |
-| req_time_temple_runes_collect | ETF | 数字 C2S type 未恢复 |
-| req_time_temple_runes_up | ETF | 数字 C2S type 未恢复 |
-| req_time_temple_runes_skill_select | PB：pb_time_temple_select_runes_skills | 数字 C2S type 未恢复 |
-| req_time_temple_god_up | ETF | 数字 C2S type 未恢复 |
-| req_time_temple_season_shop | ETF | 数字 C2S type 未恢复 |
-| req_time_temple_draw_award | ETF | 数字 C2S type 未恢复 |
+| req_time_temple_embryo_up | ETF | 未注册（客户端无法发出） |
+| req_time_temple_bond_up | ETF | 未注册；且无 `_back` 回包 schema |
+| req_time_temple_runes_collect | ETF | 未注册 |
+| req_time_temple_runes_up | ETF | 未注册；且无 `_back` 回包 schema |
+| req_time_temple_runes_skill_select | PB：pb_time_temple_select_runes_skills | 未注册 |
+| req_time_temple_god_up | ETF | 未注册；且无 `_back` 回包 schema |
+| req_time_temple_season_shop | ETF | 未注册；本版无调用点；且无 `_back` 回包 schema |
+| req_time_temple_draw_award | ETF | 未注册 |
 
 取证入口：[时空神殿记录](../../../agent/workflow/time-temple/implementation.md)、该目录 static-evidence.json、`game/time-temple-service.mjs`、仓库已有协议和配置资产。不得猜 905xx/910xx，也不能把 S2C 7801 当 C2S 命令。
 
