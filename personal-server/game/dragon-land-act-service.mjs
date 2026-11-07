@@ -453,7 +453,8 @@ export function createDragonLandActService({
       if (!granted.length) {
         const res = { changes: [] };
         log({ event: 'dragon_land_trial_award_duplicate_acknowledged', actId, ids });
-        return { value: { act_info: rolePayload(state, act, at), res } };
+        const value = { act_info: rolePayload(state, act, at), res };
+        return { value, data: codec.pack('pb_dragon_land_trial_award_rsp', value) };
       }
       const awards = granted.flatMap(row => row.award);
       const partitioned = partitionGrantableResources(awards, tables);
@@ -480,9 +481,10 @@ export function createDragonLandActService({
         level: Number(progress.level), percent, changes: res.changes.length,
         pending: partitioned.pending.map(reward => reward.tid)
       });
-      return { value: { act_info: rolePayload(state, act, at), res } };
+      const value = { act_info: rolePayload(state, act, at), res };
+      return { value, data: codec.pack('pb_dragon_land_trial_award_rsp', value) };
     });
-    return { value: result.value, data: codec.pack('pb_dragon_land_trial_award_rsp', result.value), actId };
+    return { value: result.value, data: result.data, actId };
   }
 
   function guildData(data) {
@@ -564,7 +566,8 @@ export function createDragonLandActService({
       if (Number(state.daily_award_day) === day) {
         const res = { changes: [] };
         log({ event: 'dragon_land_daily_award_duplicate_acknowledged', actId, day });
-        return { value: { act_info: rolePayload(state, act, at), res }, data: null };
+        const value = { act_info: rolePayload(state, act, at), res };
+        return { value, data: codec.pack('pb_dragon_land_daily_award_rsp', value) };
       }
       const partitioned = partitionGrantableResources(awards, tables);
       const res = grantResources(model, partitioned.grantable, tables);
@@ -586,10 +589,12 @@ export function createDragonLandActService({
         event: 'dragon_land_daily_award_committed', actId, day,
         changes: res.changes.length, pending: partitioned.pending.map(reward => reward.tid)
       });
-      return { value: { act_info: rolePayload(state, act, at), res }, data: null };
+      const value = { act_info: rolePayload(state, act, at), res };
+      // Encoding stays inside the transaction so a serialisation failure rolls
+      // the grant and the day marker back together.
+      return { value, data: codec.pack('pb_dragon_land_daily_award_rsp', value) };
     });
-    const value = result.value;
-    return { value, data: codec.pack('pb_dragon_land_daily_award_rsp', value), actId, day };
+    return { value: result.value, data: result.data, actId, day };
   }
 
   return {
