@@ -6,6 +6,10 @@ import { E, encodeEtf, decodeEtf, binary, revive, rawBinary, createGameCodec } f
 import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
 import { createHeroExtraService } from './hero-extra-service.mjs';
+import { createHeroDevelopService } from './hero-develop-service.mjs';
+import { createHeroBondService } from './hero-bond-service.mjs';
+import { createHeroSupportService } from './hero-support-service.mjs';
+import { createHeroRentService } from './hero-rent-service.mjs';
 import { createHeroMasteryService } from './hero-mastery-service.mjs';
 import { buildLineupAttrInfo } from './attribute-service.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
@@ -369,6 +373,13 @@ export function createLocalGame({
   const rechargeExtraAward = createRechargeExtraAwardService({ codec, tables, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
   const heroExtra = createHeroExtraService({ store, codec, tables, heroTables, now: clock, random, logger });
+  // HERO-HERO residual commands are split by subsystem; each module owns the
+  // decoding of its own type list so the dispatch stays one branch.
+  const heroDevelop = createHeroDevelopService({ store, codec, tables, heroTables, now: clock, logger });
+  const heroBond = createHeroBondService({ store, codec, tables, heroTables, now: clock, logger });
+  const heroSupport = createHeroSupportService({ store, codec, tables, heroTables, now: clock, logger });
+  const heroRent = createHeroRentService({ store, codec, tables, heroTables, now: clock, logger });
+  const heroCommandServices = [heroDevelop, heroBond, heroSupport, heroRent];
   const heroMastery = createHeroMasteryService({ store, codec, heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
@@ -470,6 +481,7 @@ export function createLocalGame({
     handbook.ensureLoginState();
     heroFavor.ensureLoginState();
     heroExtra.ensureLoginState();
+    for (const service of heroCommandServices) service.ensureLoginState?.();
     teamSuggest.ensureLoginState();
     teamGenre.ensureLoginState();
     wishTreasure.ensureLoginState();
@@ -1712,6 +1724,34 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'hero_extra_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      const heroCommand = heroCommandServices.find(service => service.supports(type));
+      if (heroCommand) {
+        let input;
+        try {
+          input = heroCommand.decode
+            ? await heroCommand.decode(type, request.data, {
+              unpack: unpackRequest,
+              etf: async data => { const decoded = await decodeEtf(data); return decoded?.value ?? decoded; },
+              singleId: singleIdArgument
+            })
+            : undefined;
+          const result = heroCommand.execute(type, input);
+          send(seq, result.data);
+          for (const pushed of result.pushes ?? []) {
+            if (!Number.isSafeInteger(Number(pushed?.type)) || !Buffer.isBuffer(pushed?.data)) {
+              logger({ event: 'realtime_push_skipped', sourceType: type, pushType: pushed?.type ?? null });
+              continue;
+            }
+            publish(Number(pushed.type), pushed.data);
+          }
+          log({ event: 'hero_command_committed', type, seq, responseBytes: result.data.length, pushCount: result.pushes?.length ?? 0, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hero_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
