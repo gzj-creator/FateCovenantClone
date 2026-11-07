@@ -23,4 +23,3 @@ export function readBonusDrawTables(file = defaultPath) {
   if (file === defaultPath) return defaultCache ??= readGeneratedDump(readJsonAsset(file), TABLES);
   return readGeneratedDump(readJsonAsset(file), TABLES);
 }
-

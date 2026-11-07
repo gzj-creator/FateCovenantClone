@@ -72,4 +72,3 @@ Open items:
 - The 101902 ETF map key and decoder shape are unverified against a real client.
 - No login slot was recovered for `BonusDrawMgr` (no slot id in the login module evidence, and the seed fixtures carry empty buffers), so login synchronization is not wired. `loginPayload()` builds a correct `pb_bonus_draw_all` from the same state and is covered by a test, ready to attach once the slot is known. Until then a relogin returns no bonus-draw list to the client.
 - `BonusDrawBaseNode`, `BonusDrawAwardBaseNode` and `HeroDownBonusDrawNode` were only read for field usage; their UI-side clamping and node refresh timing were not traced.
-

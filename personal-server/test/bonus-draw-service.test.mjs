@@ -196,4 +196,3 @@ test('loginPayload reports one record per configured draw with the recorded pool
   assert.equal(entry.pool_list[0].award_list.length, 1);
   assert.equal(entry.pool_list[1].award_list.length, 0);
 });
-

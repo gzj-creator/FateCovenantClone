@@ -117,4 +117,3 @@ test('BonusDrawCmd 101901/101902/101904 run over the real handshake and survive 
   assert.equal(reopenedBody.bonus_draw.pool_list[4].award_list.length, 1);
   assert.equal(reopenedBody.bonus_draw.pool_list[0].award_list.length, 2);
 });
-

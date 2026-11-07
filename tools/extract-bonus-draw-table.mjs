@@ -42,4 +42,3 @@ console.log(JSON.stringify({
   outputSha256: sha256(bytes),
   prototypes: parsed.prototypes.length
 }, null, 2));
-

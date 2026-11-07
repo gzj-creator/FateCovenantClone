@@ -356,4 +356,3 @@ export function createBonusDrawService({
     commands: BONUS_DRAW_COMMANDS
   };
 }
-
