@@ -41,6 +41,7 @@ import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
 import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
+import { createHundredDrawService } from './hundred-draw-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
@@ -461,6 +462,7 @@ export function createLocalGame({
   const itemBox=createItemBoxService({store,codec,tables,heroTables,logger});
   const guide=createGuideService({store,codec,tables,awards:guideAwards,now:clock,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
+  const hundredDraw=createHundredDrawService({store,codec,tables,calendar,now:clock,random,logger});
   // Fishing reads whose request body is an ETF integer argument (activity id).
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
@@ -571,6 +573,10 @@ export function createLocalGame({
     const helpUpLoginIds = activityRead.synchronizeHelpUpLogin(activity, loginSeconds);
     if (helpUpLoginIds.length) logger({ event: 'help_up_act_login_synced', actIds: helpUpLoginIds });
     const groupBuyActLogin = groupBuyAct.synchronizeLogin(activity, loginSeconds);
+    // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
+    // entry's module_login_data (ActFrameTable type 1102).
+    const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
+    if (hundredDrawLoginIds.length) logger({ event: 'hundred_draw_login_synced', actIds: hundredDrawLoginIds });
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -1110,6 +1116,19 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'every_task_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (hundredDraw.supports(type)) {
+        try {
+          const input = hundredDraw.decode(type, request.data ?? Buffer.alloc(0));
+          const result = hundredDraw.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'hundred_draw_command_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hundred_draw_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
@@ -2076,7 +2095,7 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
-    cms, guildNationAssist, groupBuyAct, message,
+    cms, guildNationAssist, groupBuyAct, message, hundredDraw,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

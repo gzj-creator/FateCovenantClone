@@ -54,6 +54,8 @@ node --test --test-concurrency=1 test/house-assistant.test.mjs test/house-assist
 
 结果：服务单元测试 6 项、真实 TCP 网关测试 1 项，共 7 项全部通过。网关测试覆盖登录模块 148、`88202`、`88201`、`88203`、`88204`，并断言四个类型均未进入 `LOCAL_NOT_IMPLEMENTED`。
 
+合入最新 `main` 后执行 `npm test`：共 2385 项，pass 2383、fail 0、skipped 2。全量测试同时覆盖本功能与 `main` 上新增的百抽活动，合并后的路由注册未产生回归。
+
 ## 验收边界
 
 本轮完成服务端与 TCP 协议验证。未重启当前实时服务，未修改或安装 APK，也未操作模拟器；因此真实客户端弹出错误是否消失仍需在部署新服务后由用户登录确认。

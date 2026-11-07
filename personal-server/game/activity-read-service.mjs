@@ -6,9 +6,8 @@ import { readHelpUpActTables } from '../config/help-up-act-tables.mjs';
 import { currentTaskProgress } from './task-service.mjs';
 import { dayZero } from './activity-calendar.mjs';
 
-const reads = new Map([
-  [117005, ['pb_hundred_draw_act_marquee_rsp', { data: {} }]]
-]);
+// HundredDrawActCmd 117001-117005 are owned by hundred-draw-service.mjs.
+const reads = new Map();
 
 const refused = new Map();
 
