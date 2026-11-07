@@ -107,7 +107,7 @@ npm test --prefix personal-server
 - 原生 16004 的 `request_id` 由 `native:<连接UUID>:<seq>` 生成；断线重连后客户端若重发同一笔购买，服务端无法识别为同一请求，可能生成新订单。真实客户端是否会自动重发尚未验证；后续可在 `16004` 前增加按账户/商品/短时间窗的去重，或读取订单号回执。
 - 当前只有一个 SKU（`701500`，单张 1 分）。若后续要发行不同面值道具，需要扩展 `voucher_skus` 与客户端配置；不能假设客户端认识新 tid。
 - 管理端是单账户本地管理页（`local-1`），不是多账户后台；发券记录最多显示最近 100 条。
-- 邮件过期只做“不可领取/可删除”，没有实现配置表的过期转化奖励；`900` 推送只带空 changes，客户端可能需要重新拉取邮件模块或下次登录刷新。
+- 邮件过期只做“不可领取/可删除”，没有实现配置表的过期转化奖励。
 - 管理端 `POST /api/purchase` 的代金券抵扣依赖背包已有券；正常流程必须先让玩家在游戏内领取邮件。
 
 ## 变更文件
@@ -186,3 +186,49 @@ npm test --prefix personal-server
 - 新增钱包与真实 TCP 回归测试，完整 npm test --prefix personal-server 为 192/192 通过。运行库启动回填后行 6、2、5 均为 buy_times=1，schema v7、integrity_check=ok。
 - 当前 APK 已固化为 apk/com.jzyx.ps.v9-working.apk，大小 4,185,758,901 字节，SHA256 1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473；v1/v2/v3 签名和安装副本哈希均已验证。
 - 服务最新 PID 以 runtime.local-only.data/server.local-only.json 为准；本轮部署为 PID 8100。客户端自动重连并完成 145 模块登录，商店卡片视觉状态留待用户下次打开确认。
+
+## 2026-11-07 900 新邮件推送刷新修复
+
+工作树：`F:\projects\FateCovenantClone\.worktree\mail-push-refresh-20261107`，分支 `fix/mail-push-refresh-20261107`。
+
+### 问题
+
+客户端已登录时，管理端发券虽然创建了邮件并发送 `900 rev_new_mail`，但推送的 `pb_rev_new_mail_info.res` 只有空的 `changes`。客户端没有收到新邮件对象，邮件页和红点都不会刷新；重新登录后 module 93 重新生成，邮件才出现。
+
+### 客户端协议证据
+
+- `MailMgr.RevNewMail` 调用 `ResMgr:Parse(data.res)`；`ResMgr.Parse` 遍历 `res.changes`，按 `change.tid` 通过 `ResKit.TypeCfgByTid` 找到资源模块。
+- `ResTable.Type[1400]` 的 `lua_module` 为 `MailRes`。`MailRes.ResChange` 将 `new_bin` 解码为 `pb_mail`：`new_num == 0` 按邮件 ID 删除，非零则创建并插入邮件列表，随后触发 `MailMgr.REV_MAIL`。
+- `MailRes.ResChangesEnd` 触发 `MailRefreshEvt`，邮件列表和红点由该事件刷新。因此 900 必须携带一条真正的 `pb_res_change`，不能只发空 `changes`。
+
+这次静态证据来自 APK 内 Lua bundle 的反编译结果，提取物在 `analysis/scratchpad/mail-push-20261107/`；`ResTable.data.json` 中的邮件资源行为 `tid=1400`、`res_tid=102000011`、`lua_module=MailRes`。
+
+### 修复
+
+`personal-server/game/mail-service.mjs` 的 `publishNewMail(mailId)` 现在按 `mail_id` 读取已提交的 `game_mails` 行，使用与邮件详情相同的 `fullMail()` 编码为完整 `pb_mail`，再发送：
+
+```js
+{
+  res: {
+    changes: [{
+      tid: '1400',
+      new_num: '1',
+      diff_num: '0',
+      new_bin: '<base64(pb_mail)>'
+    }],
+    is_overflow: false
+  }
+}
+```
+
+`issue()` 仅在事务提交且请求不是幂等重放时调用该推送。推送失败仍只记录 `mail_notification_pending`，不回滚已提交邮件。
+
+### 验证
+
+- `node --test personal-server/test/mail-voucher.test.mjs`：`9/9` 通过。新增断言覆盖 900 的 `tid/new_num/new_bin`、`pb_mail.id/tid/title/content/send_name/award`，并确认重复发放不重复推送、普通邮件也能被解码。
+- 真实 TCP 网关用例在登录 module 93 后由管理端发放第二封邮件，客户端连接立即收到 type `900`，`new_bin` 解出的邮件 ID 与新邮件一致，不需要重新登录或重新拉取 module 93。
+- `npm test --prefix personal-server`：`2090/2090` 通过。
+
+### 待验收与边界
+
+本轮没有启动、停止或重启实时服务，也没有操作模拟器或真实客户端。需要在已部署该修复后，由用户保持客户端登录，在管理端发放一封代金券邮件，确认邮件页和红点无需重新登录即可刷新；这项真机验收尚未完成。

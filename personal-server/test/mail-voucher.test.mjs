@@ -73,9 +73,25 @@ test('voucher mail issue is idempotent and appears in login module 93', t => {
   assert.equal(issued.quantity, 6);
   assert.equal(issued.amount_cents, 600);
   assert.equal(issued.duplicate, false);
+  const push = e.pushes.find(item => item.type === 900);
+  assert.ok(push);
+  const notification = codec.unpack('pb_rev_new_mail_info', push.data);
+  assert.equal(notification.res.changes.length, 1);
+  const change = notification.res.changes[0];
+  assert.equal(change.tid, '1400');
+  assert.equal(change.new_num, '1');
+  assert.equal(Number(change.diff_num ?? 0), 0);
+  const pushedMail = codec.unpack('pb_mail', Buffer.from(change.new_bin, 'base64'));
+  assert.equal(Number(pushedMail.id), issued.mail_id);
+  assert.equal(Number(pushedMail.tid), 11400);
+  assert.equal(pushedMail.title, request.title);
+  assert.equal(pushedMail.content, request.content);
+  assert.equal(pushedMail.send_name, '系统');
+  assert.deepEqual(pushedMail.award.map(row => [Number(row.tid), Number(row.num)]), [[701500, 6]]);
   const duplicate = e.mail.issueVoucher(request);
   assert.equal(duplicate.mail_id, issued.mail_id);
   assert.equal(duplicate.duplicate, true);
+  assert.equal(e.pushes.filter(item => item.type === 900).length, 1);
   assert.throws(() => e.mail.issueVoucher({ ...request, amount_cents: 700 }), x => x.code === 1);
 
   const login = codec.unpack('pb_rev_login_mail_info', e.mail.loginPayload());
@@ -93,6 +109,12 @@ test('voucher mail issue is idempotent and appears in login module 93', t => {
   const normal = e.mail.issue({ account_id: 'local-1', request_id: 'normal-mail-1', title: '普通邮件', content: '附件', awards: [{ tid: 101500, count: 10 }] });
   assert.ok(normal.mail_id > issued.mail_id);
   assert.equal(codec.unpack('pb_rev_login_mail_info', e.mail.loginPayload()).mail_list.length, 2);
+  const mailPushes = e.pushes.filter(item => item.type === 900);
+  assert.equal(mailPushes.length, 2);
+  const normalNotification = codec.unpack('pb_rev_new_mail_info', mailPushes[1].data);
+  const normalMail = codec.unpack('pb_mail', Buffer.from(normalNotification.res.changes[0].new_bin, 'base64'));
+  assert.equal(Number(normalMail.id), normal.mail_id);
+  assert.deepEqual(normalMail.award.map(row => [Number(row.tid), Number(row.num)]), [[101500, 10]]);
 });
 
 test('claiming a voucher mail grants item 701500 exactly once and syncs grant state', t => {
@@ -370,6 +392,15 @@ test('gateway login module 93, mail claim, native 16004 voucher payment and 1600
   assert.equal(mailModule.mail_list.length, 1);
   assert.equal(Number(mailModule.mail_list[0].id), issued.mail_id);
   assert.deepEqual(mailModule.mail_list[0].award.map(row => [row.id, row.count]), [[701500, 6]]);
+
+  const liveMail = game.mail.issueVoucher(voucherRequest({ request_id: 'gateway-live-push', amount_cents: 600, expire_at: Math.floor(Date.now() / 1000) + 3600 }));
+  const pushFrame = codec.unpack('pb_s2c', await next());
+  assert.equal(pushFrame.type, 900);
+  const livePush = codec.unpack('pb_rev_new_mail_info', Buffer.from(pushFrame.data, 'base64'));
+  assert.equal(livePush.res.changes.length, 1);
+  assert.equal(livePush.res.changes[0].tid, '1400');
+  const pushedMail = codec.unpack('pb_mail', Buffer.from(livePush.res.changes[0].new_bin, 'base64'));
+  assert.equal(Number(pushedMail.id), liveMail.mail_id);
 
   response = await request(3002, 2, await encodeEtf([issued.mail_id]));
   assert.equal(response.err, undefined);

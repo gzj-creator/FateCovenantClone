@@ -6,6 +6,10 @@ const MAIL_COMMANDS = new Set([3000, 3001, 3002, 3003, 3004, 3005, 3006]);
 // not a valid config and makes the native client throw at Mail.lua:173, which
 // drops the whole module 93 mail list (observed 2026-10-28).
 const MAIL_CONFIG_TID = 11400;
+// ResTable.Type[1400] is MailRes. A 900 push reaches MailMgr.RevNewMail ->
+// ResMgr.Parse, which dispatches each pb_res_change by tid to MailRes.ResChange.
+// new_bin is a packed pb_mail; new_num=0 means delete, any nonzero value adds.
+const MAIL_RESOURCE_TID = 1400;
 const fail = (code, message) => { throw new GameError(code, message); };
 const integer = (value, min, max, message) => {
   if (!Number.isSafeInteger(value) || value < min || value > max) fail(1, message);
@@ -71,9 +75,20 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
       params: Buffer.alloc(0), common_ref: 0
     };
   }
-  function publishNewMail() {
-    try { publish(900, codec.pack('pb_rev_new_mail_info', { res: { changes: [], is_overflow: false } })); }
-    catch { try { logger({ event: 'mail_notification_pending' }); } catch {} }
+  function publishNewMail(mailId) {
+    try {
+      const row = store.inspect(db => db.prepare('SELECT * FROM game_mails WHERE mail_id=? AND deleted=0').get(mailId));
+      if (!row) return;
+      const newBin = codec.pack('pb_mail', fullMail(row)).toString('base64');
+      publish(900, codec.pack('pb_rev_new_mail_info', {
+        res: {
+          changes: [{ tid: String(MAIL_RESOURCE_TID), new_num: '1', diff_num: '0', new_bin: newBin }],
+          is_overflow: false
+        }
+      }));
+    } catch (error) {
+      try { logger({ event: 'mail_notification_pending', mailId, message: error.message }); } catch {}
+    }
   }
 
   function issue({ account_id, request_id, title = '代金券到账', content = '', awards: rawAwards, expire_at = 0, send_name = '系统', voucherGrant = null }) {
@@ -107,7 +122,7 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
     });
     if (!result.duplicate) {
       try { logger({ event: 'mail_issued', mailId: result.mail_id, accountId: account_id }); } catch {}
-      publishNewMail();
+      publishNewMail(result.mail_id);
     }
     return result;
   }
