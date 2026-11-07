@@ -2,17 +2,26 @@ import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { rawBinary } from '../protocol/game-codec.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
+import { readHelpUpActTables } from '../config/help-up-act-tables.mjs';
+import { currentTaskProgress } from './task-service.mjs';
+import { dayZero } from './activity-calendar.mjs';
 
 const reads = new Map([
-  [116004, ['pb_help_up_get_times_rsp', { times: 0 }]],
   [117005, ['pb_hundred_draw_act_marquee_rsp', { data: {} }]]
 ]);
 
-const refused = new Map([
-  [116001, 'Help-up task rewards are not implemented'],
-  [116002, 'Help-up stage awards are not implemented'],
-  [116003, 'Help-up requests are not implemented']
-]);
+const refused = new Map();
+
+// HelpUpActCmd is owned by ActFrameTable.Act 1096001 (type 1096, version 1,
+// "助力升超凡活动"). Every request carries act_id, and HelpUpActMgr guards the
+// forms with IsRunning, so the commands only answer while the window is open.
+const HELP_UP_ACT_TYPE = 1096;
+const HELP_UP_TYPES = new Set([116001, 116002, 116003, 116004]);
+// HelpUpActData splits the returned tid maps by HelpUpActTable.Task.cycle_type
+// against Constants.CYCLE_DAILY; the shipped rows only use cycle_type 1.
+const HELP_UP_DAILY_CYCLE = 1;
+// Calendar.ACT_STATE_RUNNING: the activity entry the login block publishes.
+const RUNNING_STATE_ID = 50;
 
 const DEFAULT_STATE_BLOCK = Buffer.from([0]).toString('base64');
 const FISHING_ACT_FIRST = 1074001;
@@ -751,9 +760,345 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
     return result;
   }
 
+  // --- HelpUpActCmd 116001-116004 ----------------------------------------
+  // Configuration: ActFrameTable.Act 1096001 (type 1096) resolves
+  // HelpUpActTable.Version 1: cost_item 834102 (助力手卷), cost_item_max 10
+  // per request, help_times 1 per item, task_library 1, stage_library 1 and
+  // award_group 1. Task rows gate on TaskTable.Type statistics and pay
+  // [[834102,5]]; Stage rows gate on the running help total (stage_num) and pay
+  // their envelope award. HelpUpActData keeps the received tid maps (they are
+  // claim records), so pb_help_up_act_data must echo the stored lists.
+  function helpUpTables() {
+    return readHelpUpActTables();
+  }
+
+  function helpUpActId(request) {
+    const actId = Number(request?.act_id ?? 0);
+    if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, 'Invalid help-up activity payload');
+    return actId;
+  }
+
+  function helpUpConfiguration(actId) {
+    const act = tables?.ActFrameAct?.get(actId);
+    if (!act || Number(act.type) !== HELP_UP_ACT_TYPE) throw new GameError(1, 'Unknown help-up activity');
+    const version = helpUpTables().Version?.get(Number(act.version));
+    if (!version) throw new GameError(5, 'Help-up activity version is not configured');
+    return { act, version };
+  }
+
+  function unpackHelpUp(data, schema, message) {
+    try { return codec.unpack(schema, data ?? Buffer.alloc(0)); }
+    catch { throw new GameError(1, message); }
+  }
+
+  function helpUpTaskRows(version) {
+    const library = Number(version.task_library);
+    return [...(helpUpTables().Task?.values() ?? [])]
+      .filter(row => Number(row.belonging_version) === library)
+      .sort((left, right) => Number(left.sort) - Number(right.sort) || Number(left.tid) - Number(right.tid));
+  }
+
+  function helpUpStageRows(version) {
+    const library = Number(version.stage_library);
+    return [...(helpUpTables().Stage?.values() ?? [])]
+      .filter(row => Number(row.belonging_version) === library)
+      .sort((left, right) => Number(left.stage) - Number(right.stage) || Number(left.tid) - Number(right.tid));
+  }
+
+  // Version.award_group selects the envelope pool a single help draws from.
+  function helpUpAwardRows(version) {
+    const group = Number(version.award_group);
+    return [...(helpUpTables().Award?.values() ?? [])]
+      .filter(row => Number(row.group) === group && Number(row.weight) > 0)
+      .sort((left, right) => Number(left.tid) - Number(right.tid));
+  }
+
+  function ensureHelpUpTable(db) {
+    db.exec(`CREATE TABLE IF NOT EXISTS help_up_act_state (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id),
+      act_id INTEGER NOT NULL,
+      overall_help_times TEXT NOT NULL DEFAULT '0',
+      last_update_time INTEGER NOT NULL DEFAULT 0,
+      last_rec_time INTEGER NOT NULL DEFAULT 0,
+      stage_tid_list_json TEXT NOT NULL DEFAULT '[]',
+      daily_task_tid_list_json TEXT NOT NULL DEFAULT '[]',
+      weekly_task_tid_list_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (role_id, act_id)
+    )`);
+  }
+
+  if (store?.inspect) store.inspect(ensureHelpUpTable);
+
+  // HelpUpActData compares last_update_time with TimeKit.IsSameDay/IsSameWeek to
+  // decide the daily and weekly claim windows. The weekly boundary reuses the
+  // 08:00 reset day and starts on Monday.
+  function helpUpWeekStart(at) {
+    const day = dayZero(at);
+    const weekday = new Date((day + 8 * 3600) * 1000).getUTCDay();
+    return day - ((weekday + 6) % 7) * 86400;
+  }
+
+  function normalizeHelpUpCycles(state, at) {
+    const last = Number(state.last_update_time) || 0;
+    const dayChanged = last === 0 || dayZero(last) !== dayZero(at);
+    const weekChanged = last === 0 || helpUpWeekStart(last) !== helpUpWeekStart(at);
+    if (dayChanged) state.daily_task_tid_list_json = '[]';
+    if (weekChanged) state.weekly_task_tid_list_json = '[]';
+    state.last_update_time = at;
+    return dayChanged || weekChanged;
+  }
+
+  function helpUpStateRow(db, roleId, actId, at) {
+    const row = db.prepare('SELECT * FROM help_up_act_state WHERE role_id=? AND act_id=?').get(roleId, actId);
+    if (!row) return null;
+    const state = { ...row };
+    normalizeHelpUpCycles(state, at);
+    return state;
+  }
+
+  function helpUpWritableState(db, roleId, actId, at) {
+    const stored = helpUpStateRow(db, roleId, actId, at);
+    if (stored) return stored;
+    const timestamp = nowIso();
+    return {
+      role_id: Number(roleId), act_id: Number(actId), overall_help_times: '0',
+      last_update_time: at, last_rec_time: 0,
+      stage_tid_list_json: '[]', daily_task_tid_list_json: '[]', weekly_task_tid_list_json: '[]',
+      created_at: timestamp, updated_at: timestamp
+    };
+  }
+
+  function saveHelpUpState(db, state) {
+    db.prepare(`INSERT INTO help_up_act_state (
+      role_id, act_id, overall_help_times, last_update_time, last_rec_time,
+      stage_tid_list_json, daily_task_tid_list_json, weekly_task_tid_list_json,
+      created_at, updated_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(role_id,act_id) DO UPDATE SET
+      overall_help_times=excluded.overall_help_times,
+      last_update_time=excluded.last_update_time,
+      last_rec_time=excluded.last_rec_time,
+      stage_tid_list_json=excluded.stage_tid_list_json,
+      daily_task_tid_list_json=excluded.daily_task_tid_list_json,
+      weekly_task_tid_list_json=excluded.weekly_task_tid_list_json,
+      updated_at=excluded.updated_at`).run(
+      Number(state.role_id), Number(state.act_id), String(state.overall_help_times),
+      Number(state.last_update_time), Number(state.last_rec_time),
+      state.stage_tid_list_json, state.daily_task_tid_list_json, state.weekly_task_tid_list_json,
+      state.created_at, nowIso()
+    );
+  }
+
+  function helpUpActData(state) {
+    return {
+      act_id: String(state.act_id),
+      daily_task_tid_list: parseJsonList(state.daily_task_tid_list_json).map(String),
+      weekly_task_tid_list: parseJsonList(state.weekly_task_tid_list_json).map(String),
+      last_update_time: String(state.last_update_time),
+      stage_tid_list: parseJsonList(state.stage_tid_list_json).map(String),
+      last_rec_time: String(state.last_rec_time ?? 0)
+    };
+  }
+
+  function helpUpClaimedTids(state, dailyCycle) {
+    const field = dailyCycle ? 'daily_task_tid_list_json' : 'weekly_task_tid_list_json';
+    return new Set(parseJsonList(state[field]).map(Number));
+  }
+
+  // HelpUpActMgr.ReqOverallHelpTimes feeds pb_help_up_get_times_rsp.times into
+  // HelpUpActData:RefreshOverallHelpTimes, so "times" is the running help total
+  // (全服). A single-role deployment stores that total on the only stored role.
+  function helpUpTimes(data) {
+    const request = unpackHelpUp(data, 'pb_help_up_get_times_req', 'Invalid help-up times request');
+    const actId = helpUpActId(request);
+    helpUpConfiguration(actId);
+    assertRunning(actId);
+    const roleId = store.state().roleId;
+    const at = currentSeconds();
+    const state = store.inspect(db => helpUpWritableState(db, roleId, actId, at));
+    const value = { times: String(state.overall_help_times) };
+    return { value, data: codec.pack('pb_help_up_get_times_rsp', value), actId, times: value.times };
+  }
+
+  // ReqHelp: each help spends one Version.cost_item (助力手卷) and adds
+  // Version.help_times to the running total; the reply carries pb_res_to_client
+  // with the drawn envelope awards and the new total in help_times.
+  function helpUpHelp(data) {
+    const request = unpackHelpUp(data, 'pb_help_up_help_req', 'Invalid help-up request');
+    const actId = helpUpActId(request);
+    const times = Number(request.times ?? 0);
+    const { version } = helpUpConfiguration(actId);
+    assertRunning(actId);
+    const limit = Number(version.cost_item_max) || 0;
+    if (!Number.isSafeInteger(times) || times < 1 || times > limit) throw new GameError(1, 'Invalid help-up request');
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const at = currentSeconds();
+      const state = helpUpWritableState(db, roleId, actId, at);
+      const spent = consumeResources(model, [[Number(version.cost_item), times]], 301);
+      const pool = helpUpAwardRows(version);
+      if (!pool.length) throw new GameError(5, 'Help-up award configuration is missing');
+      const awards = [];
+      for (let index = 0; index < times; index++) {
+        const row = weightedPick(pool, entry => entry.weight, sample);
+        awards.push(...(row.award ?? []));
+      }
+      const gained = grantResources(model, awards, tables);
+      const gain = BigInt(times) * BigInt(Number(version.help_times) || 1);
+      state.overall_help_times = (BigInt(state.overall_help_times) + gain).toString();
+      saveHelpUpState(db, state);
+      const changes = [...spent.changes, ...gained.changes];
+      const value = { res: { changes, is_overflow: false }, help_times: state.overall_help_times };
+      return {
+        value, data: codec.pack('pb_help_up_help_rsp', value),
+        helpTimes: state.overall_help_times, changes: changes.length, times
+      };
+    });
+    result.valueForLog = { actId, times: result.times, helpTimes: result.helpTimes, changes: result.changes };
+    return result;
+  }
+
+  // ReqTaskAward: HelpUpActMgr.IsTaskFinishCommon compares the task statistics
+  // (TaskTable.Type) against Task.target_count; the claimed tid is stored in
+  // the daily or weekly list, which the client reads back as the receive maps.
+  function helpUpTaskReward(data) {
+    const request = unpackHelpUp(data, 'pb_help_up_task_reward_req', 'Invalid help-up task reward request');
+    const actId = helpUpActId(request);
+    const tids = [...new Set((request.task_id_list ?? []).map(Number))];
+    if (!tids.length || tids.some(tid => !Number.isSafeInteger(tid) || tid <= 0)) {
+      throw new GameError(1, 'Invalid help-up task reward request');
+    }
+    const { version } = helpUpConfiguration(actId);
+    assertRunning(actId);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const at = currentSeconds();
+      const state = helpUpWritableState(db, roleId, actId, at);
+      const configured = new Map(helpUpTaskRows(version).map(row => [Number(row.tid), row]));
+      const daily = helpUpClaimedTids(state, true);
+      const weekly = helpUpClaimedTids(state, false);
+      const awards = [];
+      for (const tid of tids) {
+        const row = configured.get(tid);
+        if (!row) throw new GameError(1, 'Task is not configured for this help-up activity');
+        const dailyCycle = Number(row.cycle_type) === HELP_UP_DAILY_CYCLE;
+        const claimed = dailyCycle ? daily : weekly;
+        if (claimed.has(tid)) throw new GameError(310, 'Help-up task reward is already claimed');
+        const progress = currentTaskProgress(model, { task_type: Number(row.task_type) }, codec, tables);
+        if (progress < Number(row.target_count)) throw new GameError(311, 'Help-up task is not complete');
+        awards.push(...(row.award ?? []));
+        claimed.add(tid);
+      }
+      const res = grantResources(model, awards, tables);
+      state.daily_task_tid_list_json = JSON.stringify([...daily].sort((left, right) => left - right));
+      state.weekly_task_tid_list_json = JSON.stringify([...weekly].sort((left, right) => left - right));
+      state.last_rec_time = at;
+      saveHelpUpState(db, state);
+      const value = { act_data: helpUpActData(state), res: { changes: res.changes, is_overflow: false } };
+      return {
+        value, data: codec.pack('pb_help_up_task_reward_rsp', value),
+        tids, changes: res.changes.length
+      };
+    });
+    result.valueForLog = { actId, tids: result.tids, changes: result.changes };
+    return result;
+  }
+
+  // ReqStageAward: Stage.stage_num is the running help total a stage needs; the
+  // claimed tid is stored in stage_tid_list (HelpUpActData._stageReceivedTidMap).
+  function helpUpStageAward(data) {
+    const request = unpackHelpUp(data, 'pb_help_up_stage_award_req', 'Invalid help-up stage award request');
+    const actId = helpUpActId(request);
+    const tids = [...new Set((request.stage_tid_list ?? []).map(Number))];
+    if (!tids.length || tids.some(tid => !Number.isSafeInteger(tid) || tid <= 0)) {
+      throw new GameError(1, 'Invalid help-up stage award request');
+    }
+    const { version } = helpUpConfiguration(actId);
+    assertRunning(actId);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const at = currentSeconds();
+      const state = helpUpWritableState(db, roleId, actId, at);
+      const configured = new Map(helpUpStageRows(version).map(row => [Number(row.tid), row]));
+      const claimed = new Set(parseJsonList(state.stage_tid_list_json).map(Number));
+      const overall = BigInt(state.overall_help_times);
+      const awards = [];
+      for (const tid of tids) {
+        const row = configured.get(tid);
+        if (!row) throw new GameError(1, 'Stage award is not configured for this help-up activity');
+        if (claimed.has(tid)) throw new GameError(310, 'Help-up stage award is already claimed');
+        if (overall < BigInt(Number(row.stage_num))) throw new GameError(311, 'Help-up stage is not reached');
+        awards.push(...(row.award ?? []));
+        claimed.add(tid);
+      }
+      const res = grantResources(model, awards, tables);
+      state.stage_tid_list_json = JSON.stringify([...claimed].sort((left, right) => left - right));
+      state.last_rec_time = at;
+      saveHelpUpState(db, state);
+      const value = { act_data: helpUpActData(state), res: { changes: res.changes, is_overflow: false } };
+      return {
+        value, data: codec.pack('pb_help_up_stage_award_rsp', value),
+        tids, changes: res.changes.length, helpTimes: state.overall_help_times
+      };
+    });
+    result.valueForLog = { actId, tids: result.tids, helpTimes: result.helpTimes, changes: result.changes };
+    return result;
+  }
+
+  function runningHelpUpIds(activity, at) {
+    const ids = [];
+    for (const [actId, act] of tables?.ActFrameAct ?? []) {
+      if (Number(act.type) !== HELP_UP_ACT_TYPE) continue;
+      if (calendar?.isActivityRunning && !calendar.isActivityRunning(actId, null, activity, at)) continue;
+      ids.push(Number(actId));
+    }
+    return ids.sort((left, right) => left - right);
+  }
+
+  // HelpUpActData._ParseDataImpl decodes pb_help_up_act_login_data from the
+  // activity entry's module_login_data, so the block rides inside module 92
+  // instead of a separate numeric login slot (none has been captured).
+  function helpUpLoginPayload(actId, at = currentSeconds()) {
+    const block = store.transaction((model, db) => {
+      const state = helpUpWritableState(db, model.state.roleId, actId, at);
+      saveHelpUpState(db, state);
+      return { value: { actData: helpUpActData(state), helpTimes: String(state.overall_help_times) } };
+    }).value;
+    return codec.pack('pb_help_up_act_login_data', { act_data: block.actData, help_times: block.helpTimes });
+  }
+
+  function synchronizeHelpUpLogin(activity, at = currentSeconds()) {
+    if (!activity || typeof activity !== 'object') throw new GameError(5, 'Activity login data is invalid');
+    activity.act_list ??= [];
+    const synced = [];
+    for (const actId of runningHelpUpIds(activity, at)) {
+      helpUpConfiguration(actId);
+      let entry = activity.act_list.find(candidate => Number(candidate?.state_data?.act_id) === actId);
+      if (!entry) {
+        entry = { state_data: { act_id: actId }, module_login_data: Buffer.alloc(0) };
+        activity.act_list.push(entry);
+      }
+      entry.state_data ??= {};
+      entry.state_data.act_id = actId;
+      entry.state_data.cur_state_id = RUNNING_STATE_ID;
+      entry.state_data.history_time ??= [];
+      if (!Array.isArray(entry.state_data.history_time)) entry.state_data.history_time = [];
+      if (!entry.state_data.history_time.some(item => Number(item?.state_id) === RUNNING_STATE_ID)) {
+        entry.state_data.history_time.push({ state_id: RUNNING_STATE_ID, enter_time: String(at) });
+      }
+      entry.module_login_data = helpUpLoginPayload(actId, at);
+      synced.push(actId);
+    }
+    return synced;
+  }
+
   return {
-    supports: type => reads.has(type) || refused.has(type) || FISHING_MUTATIONS.includes(type),
+    supports: type => reads.has(type) || refused.has(type) || FISHING_MUTATIONS.includes(type) || HELP_UP_TYPES.has(type),
     ensureActiveFishingBenefits,
+    synchronizeHelpUpLogin,
+    helpUpLoginPayload,
     execute(type, data, options = {}) {
       log({
         event: 'activity_read_execute_entry', type, dataLength: data?.length,
@@ -770,6 +1115,10 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
       if (type === 110309) return upRankAward(options);
       if (type === 110310) return progressAward(data);
       if (type === 110311) return batchFish(data);
+      if (type === 116001) return helpUpTaskReward(data);
+      if (type === 116002) return helpUpStageAward(data);
+      if (type === 116003) return helpUpHelp(data);
+      if (type === 116004) return helpUpTimes(data);
       if (refused.has(type)) throw new GameError(5, refused.get(type));
       const [schema, value] = reads.get(type);
       log({ event: 'activity_read_sent', type, schema, value });

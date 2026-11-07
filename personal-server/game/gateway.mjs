@@ -520,6 +520,10 @@ export function createLocalGame({
     }
     const rebateLogin = rechargeRebateReset.synchronizeLogin(activity, loginSeconds);
     const accRechargeLogin = accRecharge.synchronizeLogin(activity, loginSeconds);
+    // HelpUpActData parses pb_help_up_act_login_data from the activity entry's
+    // module_login_data, so the help-up block rides inside module 92.
+    const helpUpLoginIds = activityRead.synchronizeHelpUpLogin(activity, loginSeconds);
+    if (helpUpLoginIds.length) logger({ event: 'help_up_act_login_synced', actIds: helpUpLoginIds });
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))

@@ -305,9 +305,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   response = await request(110309, 82, await encodeEtf([1074003]));
   assert.equal(response.err.err, 310);
   response = await request(116004, 7, codec.pack('pb_help_up_get_times_req', { act_id: 92144 }));
-  assert.equal(Number(codec.unpack('pb_help_up_get_times_rsp', Buffer.from(response.data ?? '', 'base64')).times ?? 0), 0);
+  // 92144 is the module-92 entry id; the command needs the act tid
+  // (ActFrameTable.Act 1096001) and rejects unknown ids instead of answering 0.
+  assert.equal(response.err.err, 1);
   response = await request(116001, 8, codec.pack('pb_help_up_task_reward_req', { act_id: 92144, task_id_list: [1] }));
-  assert.equal(response.err.err, 5);
+  assert.equal(response.err.err, 1);
 
   // Auto-refresh shops need a decodable group even while their inventory is empty.
   response = await request(1202, 9, await encodeEtf([207, 206, 402]));

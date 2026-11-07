@@ -52,11 +52,13 @@ function resource(store, tid) {
   return BigInt(store.read().resources.get(String(tid))?.num ?? 0);
 }
 
-test('unverified help-up mutations remain refused and fishing awards validate payloads', t => {
+test('help-up commands validate payloads and fishing awards validate payloads', t => {
   const env = setup(t);
   for (const type of [116001, 116002, 116003]) {
     assert.equal(env.service.supports(type), true);
-    assert.throws(() => env.service.execute(type, Buffer.alloc(0)), error => error.code === 5);
+    // Help-up was refused until the commands were implemented; an empty body is
+    // now an invalid request instead of an unimplemented feature.
+    assert.throws(() => env.service.execute(type, Buffer.alloc(0)), error => error.code === 1);
   }
   // Fishing codex/level/progress/rank awards and the rod switch are implemented;
   // an empty body is now an invalid request instead of an unimplemented feature.
@@ -78,8 +80,12 @@ test('activity read endpoints answer with empty evidenced lists', t => {
   assert.deepEqual(codec.unpack('pb_fishing_act_get_record_rsp', record.data), { record_list: [] });
   const top = env.service.execute(110303, Buffer.alloc(0));
   assert.deepEqual(codec.unpack('pb_fishing_act_get_top_rsp', top.data), { high_score_list: [] });
-  const times = env.service.execute(116004, codec.pack('pb_help_up_get_times_req', { act_id: 92144 }));
-  assert.equal(Number(codec.unpack('pb_help_up_get_times_rsp', times.data).times ?? 0), 0);
+  // 92144 is the module-92 entry id, not the act tid: the help-up activity is
+  // ActFrameTable.Act 1096001 and any other id is rejected instead of answered 0.
+  assert.throws(
+    () => env.service.execute(116004, codec.pack('pb_help_up_get_times_req', { act_id: 92144 })),
+    error => error.code === 1
+  );
 });
 
 test('grants version bait once, unlocks the correct first island and persists', t => {
