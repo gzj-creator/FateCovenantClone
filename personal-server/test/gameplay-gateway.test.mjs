@@ -47,6 +47,17 @@ function setDestiny(store, value) {
   });
 }
 
+function setMission(store, missionId) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(8);
+    const mission = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    mission.mission_id = String(missionId);
+    module.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+    model.state.modules.value = [...modules];
+  });
+}
+
 function storedLinearTask(store) {
   // Module 90 holds the four common-task groups first; the linear group follows them.
   return codec.unpack('pb_linear_task_data', rawBinary(new Map(store.state().modules.value).get(90).value[4]));
