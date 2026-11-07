@@ -26,7 +26,11 @@ export function readHeroTables(file = defaultPath) {
     // player's accumulated favour while these tables own gift values, level
     // thresholds, rewards, break caps and playground eligibility.
     'AllFavourLevel', 'FavourConst', 'FavourGift', 'FavourBreak',
-    'FavourLevel', 'PlaygroundUnlock', 'PlaygroundAward'
+    'FavourLevel', 'PlaygroundUnlock', 'PlaygroundAward',
+    // Hero mastery ("专精"): Mastery maps a hero tid to its mastery group,
+    // MasteryGroup indexes the level/break rows, MasteryLevel/MasteryBreak own
+    // the costs and attribute grants, and MasteryConst holds the unlock star.
+    'Mastery', 'MasteryGroup', 'MasteryLevel', 'MasteryBreak', 'MasteryConst', 'MasteryMat'
   ];
   if (file === defaultPath) return defaultCache ??= readGeneratedTables(file, names);
   return readGeneratedTables(file, names);

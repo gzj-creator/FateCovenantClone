@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { E, encodeEtf, decodeEtf, binary, revive, rawBinary, createGameCodec } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
+import { createHeroMasteryService } from './hero-mastery-service.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
@@ -342,6 +343,7 @@ export function createLocalGame({
   const rechargeRebateReset = createRechargeRebateResetService({ store, codec, tables, calendar, now: clock, logger });
   const rechargeExtraAward = createRechargeExtraAwardService({ codec, tables, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
+  const heroMastery = createHeroMasteryService({ store, codec, heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
@@ -1425,6 +1427,26 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'hero_progression_rejected', type, seq, code, errorName: error.name });
+        }
+        return;
+      }
+      if (heroMastery.supports(type)) {
+        try {
+          const decoded = await decodeEtf(request.data);
+          const input = decoded?.value ?? decoded;
+          const result = heroMastery.execute(type, input);
+          send(seq, result.data);
+          log({
+            event: 'hero_mastery_committed', type, seq,
+            heroTid: String(result.value.hero.tid),
+            masteryLevel: result.value.hero.mastery_level ?? 0,
+            masteryBreak: result.value.hero.mastery_break ?? 0,
+            changes: result.value.res.changes.length
+          });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hero_mastery_rejected', type, seq, code, message: error.message });
         }
         return;
       }
