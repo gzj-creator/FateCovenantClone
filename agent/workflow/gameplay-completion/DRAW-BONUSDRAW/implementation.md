@@ -1,4 +1,4 @@
-# DRAW-BONUSDRAW implementation
+﻿# DRAW-BONUSDRAW implementation
 
 Date: 2026-11-08. Branch: `task/DRAW-BONUSDRAW-20261108`. Worktree: `.worktree/gameplay-20261106/draw-bonus`. Base: main `8d24290` (no rebase needed). Scope: `BonusDrawCmd` 101901-101904, previously un-routed.
 
@@ -58,6 +58,12 @@ Logs: `analysis/test-runs/gameplay-20261106/draw-bonus-service.log`, `draw-bonus
 The gateway test drives 101901, 101902 and 101904 over a real temporary loopback TCP handshake with numeric types and checks the ETF reply of 101902. The service tests cover cost charging, award granting, the `stop` break with a partial charge, pool exhaustion and short-pool rejection, persistence across a database reopen, pool switching with wrap, per-pool draw history, pool selection and repeat rejection, and rollback when protobuf encoding or the SQLite write fails. All use temporary loopback sockets and temporary SQLite files.
 
 Full suite in `personal-server`: `npm test` reported 2449 tests, 2445 pass, 2 fail, 2 skipped (`analysis/test-runs/gameplay-20261106/draw-bonus-full.log`). Both failures are in `test/recommend-gift-count.test.mjs` (`native 16004 batch offer ...` returns err 310, `native 16004 uses available vouchers ...` times out) and reproduce on the base commit 8d24290 without any of these changes: that file alone reports 5 tests, 3 pass, 2 fail at `8d24290` (`analysis/test-runs/gameplay-20261106/draw-bonus-baseline-recommend-gift.log`). They belong to the voucher payment path, not to bonus draw.
+
+The 310 is the wish-tree rebate check: `wallet-service.mjs` calls `wishTree.recordPurchase` while booking a purchase, and `wish-tree-service.mjs` rejects a purchase day outside the rebate cycle with `310 Wish-tree rebate cycle is closed`. On the seeded state both wish-tree rows carry `accrue_day=20751` and `WishTreeGlobal.max_accrue_day=14`, so the cycle ends at day 20764, and a purchase made on 2026-11-07 (day index 20765) falls one day past it. The rejection depends on the calendar rather than on this branch, and it reproduces on main `6dcc805` (`analysis/test-runs/gameplay-20261106/main-6dcc805-recommend-baseline.log`, 5 tests, 3 pass, 2 fail) with the same two test names as on this branch (`draw-bonus-recommend-after-rebase.log`).
+
+## Rebase note
+
+Rebased onto main `6dcc805`; main had not touched `game/gateway.mjs` in that span, so the replay applied without conflicts. Dispatch order after the rebase keeps the hundred-draw block before the generic activity reader with the bonus-draw block between them, and leaves `recruit` ahead of the `heroCommandServices` lookup. Focused rerun after the rebase (bonus-draw service and gateway, command matrix, hundred-draw service and gateway, activity-read and gameplay gateway): 41 tests, 41 pass, 0 fail. `git diff --check main..HEAD` is clean.
 
 ## Acceptance boundary
 
