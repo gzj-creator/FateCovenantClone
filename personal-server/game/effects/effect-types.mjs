@@ -17,6 +17,7 @@ export const HEAL_TYPES = Object.freeze({
   PERCENT_ATTACK: 'percent-attack', // Percentage of actor's attack
   PERCENT_MAX_HP: 'percent-max-hp', // Percentage of target's max HP
   PERCENT_MISSING_HP: 'percent-missing-hp', // Percentage of missing HP
+  PERCENT_DAMAGE_DEALT: 'percent-damage-dealt', // Actual HP damage in the current action
 });
 
 // Shield types
@@ -25,6 +26,7 @@ export const SHIELD_TYPES = Object.freeze({
   PERCENT_DEFENSE: 'percent-defense', // Percentage of actor's defense
   PERCENT_MAX_HP: 'percent-max-hp', // Percentage of target's max HP
   PERCENT_ATTACK: 'percent-attack', // Percentage of actor's attack
+  PERCENT_DAMAGE_DEALT: 'percent-damage-dealt', // Actual HP damage in the current action
 });
 
 // Stat modifier types

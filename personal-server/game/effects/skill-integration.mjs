@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { EffectExecutor } from './effect-executor.mjs';
 import { TargetSelector } from './target-selector.mjs';
 import { TARGET_TYPES, DURATION_TYPES, TRIGGER_TYPES } from './effect-types.mjs';
+import { commonSkillEffect, commonSkillEffects, commonSkillTriggerType } from './common-skill-rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -90,11 +91,11 @@ export function skillToEffect(skill, skillDatabase) {
   if (!skill) return null;
   // Prefer stored explicit single effect
   if (skill.implementation && Array.isArray(skill.implementation.effects) && skill.implementation.effects.length === 1) {
-    return { ...skill.implementation.effects[0] };
+    return commonSkillEffect(skill, { ...skill.implementation.effects[0] });
   }
   if (skill.implementation && Array.isArray(skill.implementation.effects) && skill.implementation.effects.length > 1) {
     // Return first as representative; callers needing all should use skillToEffects
-    return { ...skill.implementation.effects[0] };
+    return commonSkillEffect(skill, { ...skill.implementation.effects[0] });
   }
   if (!skill.implementation) {
     return null;
@@ -175,7 +176,7 @@ export function skillToEffects(skill, skillDatabase) {
 
   // Stored explicit effects
   if (skill.implementation && Array.isArray(skill.implementation.effects) && skill.implementation.effects.length) {
-    return skill.implementation.effects.map(e => ({ ...e }));
+    return commonSkillEffects(skill, skill.implementation.effects.map(e => ({ ...e })));
   }
 
   // Fallback to single heuristic
@@ -285,7 +286,8 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
 
     if (Array.isArray(storedTriggers)) {
       for (const t of storedTriggers) {
-        const effect = t.effect ? { ...t.effect } : skillToEffect(skill, skillDatabase);
+        const effect = t.effect ? commonSkillEffect(skill, { ...t.effect }) : skillToEffect(skill, skillDatabase);
+        const triggerType = commonSkillTriggerType(skill, t.triggerType);
         const permanentStatModifier = effect?.effect?.type === 'stat-modifier'
           && effect.duration?.durationType === 'permanent';
         // Conditional passives describe a state while their condition holds.
@@ -300,7 +302,7 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
         }
         triggers.push({
           id: `${skill.id}_${unit.id}_${triggers.length}`,
-          triggerType: t.triggerType,
+          triggerType,
           sourceSkill: skill.id,
           condition: null,
           conditionKey: t.conditionKey || null,

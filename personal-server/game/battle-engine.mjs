@@ -20,6 +20,8 @@ import {
   effectiveIgnoreDefense,
   effectiveShieldBonus,
   effectiveSpeed,
+  consumeTriggerCount,
+  recordActionDamage,
 } from './effects/effect-executor.mjs';
 
 export const BATTLE_RESULT = Object.freeze({ DRAW: 0, WIN: 1, LOSS: 2 });
@@ -183,7 +185,7 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
   const critChance = effectiveCritChance({
     ...actor,
     critChance: Math.max(actor.critChance, behavior.critChance),
-  }, target);
+  }, target, state.actionContext?.actionType);
   const critical = nextRandom(state) < critChance;
   const ignoreDefense = effectiveIgnoreDefense(actor);
   const raw = Math.max(1,
@@ -192,7 +194,7 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
     + bonus);
   const critMultiplier = critical ? effectiveCritMultiplier(actor, target) : 1;
   let damage = Math.max(1, Math.floor(
-    raw * variance * (1 + effectiveDamageBonus(actor)) * critMultiplier
+    raw * variance * (1 + effectiveDamageBonus(actor, state.actionContext?.actionType)) * critMultiplier
   ));
   damage = Math.max(1, Math.floor(damage * (1 - effectiveDamageReduction(target))));
   const oldHp = target.hp;
@@ -205,10 +207,14 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
     target.energy + FIGHT_ENERGY_ON_HIT * (1 + effectiveEnergyBonus(target))
   );
   if (target.hp === 0) target.alive = false;
+  const hpDamage = recordActionDamage(actor, target, oldHp, target.hp, absorbed, state);
+  consumeTriggerCount(target, 'damage-taken');
   return {
     aimId: target.id,
     srcId: actor.id,
     value: damage,
+    hpDamage,
+    absorbed,
     critical,
     oldHp,
     hp: target.hp,
@@ -294,10 +300,8 @@ function appendEffectResults(events, actionId, results, actor, state) {
     if (result.type === 'damage') {
       const harm = rawDamageEvent(actionId, result).harms[0];
       events.push(rawDamageEvent(actionId, result));
-      actor.damageDealt = (actor.damageDealt || 0) + Number(result.value || 0);
       const target = units.get(result.target);
       if (target) {
-        target.damageTaken = (target.damageTaken || 0) + Number(result.value || 0);
         if (harm.hp === 0 && harm.oldHp > 0) {
           actor.kills = (actor.kills || 0) + 1;
           events.push({ kind: 'death', id: actionId, srcId: actor.id, aimId: target.id, count: 1 });
@@ -325,11 +329,15 @@ function appendEffectResults(events, actionId, results, actor, state) {
 function processUnitTriggers(events, unit, triggerType, state, actionId = state.currentActionId || 0) {
   if (!unit || (state.triggerDepth || 0) >= 8) return;
   const raw = [];
+  const actionContext = state.actionContext;
+  const previousPhase = actionContext?.phase;
+  if (actionContext) actionContext.phase = 'trigger';
   state.triggerDepth = (state.triggerDepth || 0) + 1;
   try {
     processTriggers(unit, triggerType, state.allUnits, state, raw);
     appendEffectResults(events, actionId, raw, unit, state);
   } finally {
+    if (actionContext) actionContext.phase = previousPhase;
     state.triggerDepth--;
   }
 }
@@ -456,7 +464,12 @@ function executeTurn(events, actor, allUnits, state) {
   const catalogSkill = resolveActionSkill(actor, useSkill, state.skillDatabase);
   state.currentActionId = actionId;
   state.actionOpen = true;
+  state.actionContext = { actorId: actor.id, actionType: useSkill ? 'ultimate' : 'attack', phase: 'before', damage: new Map() };
   processUnitTriggers(events, actor, 'on-turn-start', state, actionId);
+  if (useSkill) processUnitTriggers(events, actor, 'before-ultimate-use', state, actionId);
+  const actionModifiers = new Map([...(actor.buffs || []), ...(actor.debuffs || [])]
+    .map(entry => [entry, entry.applicationId]));
+  state.actionContext.phase = 'action';
 
   if (catalogSkill) {
     const targets = collectSkillTargets(catalogSkill, actor, allUnits, state);
@@ -520,6 +533,8 @@ function executeTurn(events, actor, allUnits, state) {
   }
 
   actor.energy = useSkill ? 0 : Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN);
+  state.actionContext.phase = 'after';
+  consumeTriggerCount(actor, useSkill ? 'ultimate' : 'attack', actionModifiers);
   processUnitTriggers(events, actor, useSkill ? 'on-skill-use' : 'on-attack', state, actionId);
   if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
   processUnitTriggers(events, actor, 'on-turn-end', state, actionId);
@@ -527,6 +542,7 @@ function executeTurn(events, actor, allUnits, state) {
   emitAngerSync(events, actionId, beforeEnergy, allUnits);
   events.push({ kind: 'action-end', id: actionId });
   state.actionOpen = false;
+  state.actionContext = null;
 }
 
 function validateTeams(attackers, defenders) {
