@@ -218,6 +218,19 @@ test('artifact state survives a SQLite reopen and login normalisation is idempot
   assert.equal(artifactRow(env.store, 200110).star, 1);
 });
 
+test('ensureLoginState normalises grantArtifact rows into authoritative artifact rows', t => {
+  const env = setup(t);
+  addArtifact(env.store, { tid: '200110', num: 1 });
+  const result = env.service.ensureLoginState();
+  assert.equal(result.changed, true);
+  const row = artifactRow(env.store, 200110);
+  assert.equal(Number(row.num), 1);
+  assert.equal(Number(row.quality), 40);
+  assert.equal(Number(row.star ?? 0), 0);
+  assert.deepEqual(row.forge_list ?? [0, 0, 0], [0, 0, 0]);
+  assert.equal(env.service.ensureLoginState().changed, false);
+});
+
 test('PB encoding failure rolls back star-up state and resources', t => {
   const failing = {
     ...codec,
