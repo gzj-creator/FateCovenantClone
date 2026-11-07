@@ -1,87 +1,187 @@
-# SOC-FRIEND 实施记录
+﻿# SOC-FRIEND 实施记录
 
-日期：2026-11-07。分支：`task/SOC-FRIEND-20261107`。worktree：`.worktree/gameplay-20261106/soc-friend`。当前基线：`e90ef1e`。
+日期：2026-11-07。分支：`task/SOC-FRIEND-20261107`。worktree：`.worktree/gameplay-20261106/soc-friend`。基线：main `9593baa`（分支已 rebase，checkpoint `bb339ae`）。
 
-**状态：未完成，仅证据与设计 checkpoint。** 总控要求在换 session 前停止扩展。尚无好友服务代码、运行配置、网关接入补丁或测试交付；不得据此把 SOC-FRIEND 记为服务端完成。以下设计尚未实现，解析所得规则与未知行为分开记录。
+**状态：服务端完成（20001–20013 已派发并有真实 TCP/SQLite 覆盖），待 APK 验收；20012 类型分类、20013 语义与 friendship 资源结算为证据待补。**
 
-## 权威状态与边界
+| 层级 | 结果 |
+| --- | --- |
+| 业务服务 | 13 个 type 全部有处理路径，无空应答、无固定结果 |
+| 网关派发 | `gateway.mjs` 在 growth-road 派发块后按数字 type 派发，ETF 解码 + PB 编码 |
+| 临时 TCP | 通过，见 `test/friend-gateway.test.mjs` |
+| SQLite 重开 | 通过，关系/申请/黑名单/每日账本/防重重开后仍生效 |
+| 异常回滚 | PB 编码失败、SQLite 写入拒绝均整体回滚 |
+| APK/UI | 未做（本轮禁止操作模拟器/APK/实时服务） |
+| 登录槽/推送 | payload 与编码函数已就绪，接入由总控完成 |
 
-当前 `game-store.read()` 选取存档中的首个角色，网关使用同一权威角色；本任务不扩展认证，不接受客户端提供 actor id。推荐与查询只使用 `roles` 中存在的真实本地角色，不用离线登录 fixture 中的旧好友或公会占位成员伪造玩家。生产存档只有一个角色时，推荐结果为空有实际数据依据。
+## 交付文件
 
-好友关系采用无向规范化角色对；申请与黑名单采用有向角色对；赠送及领取以发送者、接收者、服务器日作用域的账本防重。关系、资格与领取位从这些表计算，登录模块与请求响应共用同一投影。业务修改与响应编码在现有同步 SQLite 事务内完成；失败整体回滚。角色不存在、自加、黑名单、好友或申请上限、重复/过期领取分别校验。
+| 文件 | 说明 |
+| --- | --- |
+| `personal-server/config/friend-tables.mjs` | FriendTable 读取与校验，默认资产 `tableAsset('FriendTable.data.lua.json.gz')` |
+| `personal-server/assets/tables/FriendTable.data.lua.json.gz` | Limit/Param/Recommend 三表，468 字节，由 `analysis/scratchpad/SOC-FRIEND/pack-friend-table.mjs` 从 checkpoint JSON 生成 |
+| `personal-server/game/friend-service.mjs` | 独立好友服务（状态表、事务、13 条命令、登录 payload、推送编码） |
+| `personal-server/game/gateway.mjs` | 仅新增 import、服务实例与一个派发块 |
+| `personal-server/test/friend-service.test.mjs` | 15 项服务级测试 |
+| `personal-server/test/friend-gateway.test.mjs` | 1 项真实临时 TCP 测试 |
 
-实现仅新增独立服务、模块自有幂等表初始化、必要运行配置及测试。`gateway.mjs`、登录容器、`game-store.mjs` 全局迁移、公共资源与配置读取器由总控维护，接入补丁单独提供。
+未修改 `storage/game-store.mjs`、`battle-engine.mjs`、`game/effects/*` 或其他 agent 的服务。
 
-## 证据入口
+## 协议与规则依据
 
-- `inventory.json` / `static-interfaces.json` 的 `tcp:c2s:20001:req_apply_friends` 至 `tcp:c2s:20013:req_friend_save_report` 为命令映射，不能由 `input-register` 推断参数形状。
-- 可部署 `personal-server/assets/protobuf/friend.net.proto.bin` 与 `friend.db.proto.bin` 已含好友、申请、黑名单、好感和按日友情数据结构。
-- 原 `analysis/reports/private-client-16448/...` 路径已不存在。已定位只读旧解包树 `.worktree/recruit-20261101/.scratch/out/luaproject/` 中的 `FriendCmd.lua`、`FriendMgr.lua`、`FriendTable.data.lua`、`FriendTable.lua` 和 `FriendErr.lua`；这些是 LuaJIT v2 字节码，使用现有解析器恢复，不执行客户端 Lua。
-- 旧解包树与当前 v9 APK 的逐文件对应关系尚未独立确认；资产进入生产前必须保留这个来源缺口，不能把历史静态恢复冒充当前客户端实测。
-- 按 `reverse-engineer-anything` skill 只读核对隔离 APK：`apk/com.jzyx.ps.v9-working.apk` SHA256 `1fd5fe0a2e18e9add821efb6c404d9464b5e3609be0e8af605d47bada441b473`。REA inspection `ev_bcc2a0e1c45f3b7b16a84e897856d0e3479b838bb754d432ef501f704c48af76`；中央目录共有 11910 个文件条目，无完整性矛盾。`64_lua_project.bundle` 条目为 102832516 字节，SHA256 `90595989c0d3dc93b0fa6e741a334b1b4ec7432153addd9ca451593e23782012`。UnityPy 直读没有 TextAsset，不能据此判断缺少好友模块；后续改用已解包树。未改 APK。
+### 已恢复的配置（配置事实）
 
-## 尚在恢复
+`FriendTable.data.lua` SHA256 `96d8b595b96ef9248905d0c6010fdff21118c2d6b01a138db3d10beb800eeee0`；解释结果 `analysis/scratchpad/SOC-FRIEND/FriendTable.data.json` SHA256 `0686b8a3ce51c538197070c18b7bf188c1b2bd904534c3c66f5c483e4e037497`。
 
-13 条命令的参数、FriendMgr 登录模块/槽与推送映射、友情奖励触发和好感变化、服务器日定义与失败码尚未全部恢复。FriendTable 的 `present_rewards/rev_rewards=[]` 与等级表 `daily_present_rewards` 必须按 Manager 调用区分，不能把每日奖励误当每次赠送奖励。
+| 等级区间 | max_friend_count | max_receive_friendship_count | daily_present_rewards |
+| --- | ---: | ---: | --- |
+| 1–49 | 60 | 30 | `[[401900,300]]` |
+| 50–59 | 80 | 40 | `[[401900,400]]` |
+| 60–69 | 90 | 50 | `[[401900,500]]` |
+| 70–999 | 100 | 60 | `[[401900,600]]` |
 
-### 已恢复配置
+Param[1]：`max_apply_count=30`、`max_present_friendship_count=20`、`max_black_list_count=100`、`max_show_apply_count=99`、`recommend_count=5`、`recommend_lv_limit=10`、`max_search_count=5`、`recommend_reset_time=5`、`max_private_count=10`、`accuss_count=300`、`recommend_fight_life=604800`、`recommend_max_rank=10`、`friendship_exchange_ratio=100`、`present_exchange_ratio=10`；`present_rewards=[]`、`rev_rewards=[]`。
 
-`FriendTable.data.lua` 的 SHA256 为 `96d8b595b96ef9248905d0c6010fdff21118c2d6b01a138db3d10beb800eeee0`。离线提取结果保存在本 worktree 的 `analysis/scratchpad/SOC-FRIEND/FriendTable.data.json`，SHA256 为 `0686b8a3ce51c538197070c18b7bf188c1b2bd904534c3c66f5c483e4e037497`。此文件是本地证据，尚未收纳为生产配置。
+Recommend 常量：GENRE=1、GUILD=2、FIGHT=3、RANK=4（name 文本 ID 19999/19996/19997/19998）。
 
-| 等级区间 | 好友上限 | 每日领取上限 | daily_present_rewards 原值 |
-| --- | --- | --- | --- |
-| 1-49 | 60 | 30 | `[[401900,300]]` |
-| 50-59 | 80 | 40 | `[[401900,400]]` |
-| 60-69 | 90 | 50 | `[[401900,500]]` |
-| 70-999 | 100 | 60 | `[[401900,600]]` |
+### 本轮新增的静态恢复（FriendMgr 原型）
 
-`Param[1]` 中已恢复：`max_apply_count=30`、`max_present_friendship_count=20`、`recommend_count=5`、`recommend_lv_limit=10`、`max_search_count=5`、`max_black_list_count=100`、`recommend_reset_time=5`、`max_private_count=10`、`accuss_count=300`、`recommend_fight_life=604800`、`recommend_max_rank=10`、`friendship_exchange_ratio=100`、`present_exchange_ratio=10`、`max_show_apply_count=99`；`present_rewards=[]`、`rev_rewards=[]`。数值是配置事实，具体结算触发与 `recommend_reset_time` 单位尚未确认。
+原 checkpoint 已恢复 20001–20013 的参数形状；本轮继续核对回包如何使用，供编码对齐：
 
-### 已恢复 Manager 行为
+| 原型 / 源码行 | 事实 |
+| --- | --- |
+| 18 / 272（20001 回调） | 遍历 `res.friend_list` 逐个 `AddNewFriendById`；因此 `friend_list` 是“本次新建立的好友”，不是申请 id 回显 |
+| 18 / 272 | 失败时调用 `UIKit.ShowError(err_list[1])`；`err_list` 元素是错误码，不是角色 id |
+| 22 / 360（20003 回调） | 请求 id 先从 applyList 移除，`success_list` 逐个加为好友，`err_list[1]` 显示错误码 |
+| 27 / 394（20005 调用方） | 已在黑名单 → `PLAYER_ALREADY_IN_YOUR_BLACKLIST`；黑名单长度 > `MAX_BLACKLIST_COUNT` → `BLACKLIST_COUNT_MAX` |
+| 30 / 470（20007 回调） | 用 `res.friendship` 覆盖 friendshipInfo，`AwardKit.Parse(res.res)`，再逐个 `UpdateFriend(res.friend_list[i])`；并在 changes 中找 `tid == ItemTable.TID_FRIENDSHIP` 显示赠花提示 |
+| 44 / 688 + 43 / 695（20009） | 参数可为字符串（先 `tonumber`）；回包只带角色 id，随后 `PlayerDataMgr.ReqDataListByType(TID_FRIEND_DATA_TYPE)` 取玩家资料（属 SOC-MSG 10504/10505） |
+| 48 / 712 + 47 / 720（20010） | 推荐冷却由 `RECOMMEND_RESET_TIME` 控制；回包经 `GetRoleIdL` 收集角色 id |
+| 46 / 734 | `GetRoleType...` 走 Recommend 表标签，说明 `recommend_types` 是玩家标签列表 |
+| 87 / 1154 | `GetRoleIdL` 用硬编码 `CONST_MAX_RECOMMEND_COUNT=10` 截断，超过 10 个角色 id 丢弃 |
+| 88 / 1165 | `GetRecommendTypeL` 无截断地收集每个玩家的 `recommend_types` |
+| 50 / 758、51 / 770 | 20012 传调用方参数；20013 传两个参数（R0、R1） |
+| 84 / 1125、85 / 1137 | 日切换只清 `present_today`、`to_receive_today`、`received_count_today` 并写 `day`，不清 `received_today`/`flower` |
 
-证据助手 `/root/soc_friend_evidence` 完成 `FriendMgr.lua` 离线解析：92 个 prototype，root 91，完整 EOF 校验；prototype 48 的常量边界歧义通过实际指令常量类型约束消除，不以首选候选兜底。结果：`analysis/scratchpad/SOC-FRIEND/FriendMgr.parsed.json`，SHA256 `1a21641d47f4c5748b44a3812bef57022a1b490b235b1f33ce7cd7af3c26ff3a`。这里的行号为客户端原源码行信息，不是 JSON 文件行号。
+### 临时脚本核对结论（脚本已删除，不进入交付）
 
-- `LoginParse`（源码第 64 行）按 `res_friend_login` 解 PB；登录模块数字 ID 与容器槽位仍未定位。
-- `ResetFriendship`（第 1137 行）清空 `present_today`、`to_receive_today`，设 `received_count_today=0`、`day=NowDay`；没有清空 `received_today` 或 `flower`。`NowDay` 的时间来源、时区与刷新边界仍未知，不能直接套用充值 05:00 日切或活动午夜日切。
-- `20007`（第 450 行）先对原参数 `R0` 进行 `ipairs`，随后原样编码，已证为角色 ID 列表。
-- `20008` 将 `R0` 原样编码；尚无调用者证据确认它是单 ID、列表或其他形状。
-- `20011`（第 527 行）构造 Lua 数组 `{presentIds, receiveIds}`，对应 ETF proper list `[presentIds, receiveIds]`，不是 tuple。第 607 行发送 `[ids,[]]`；第 646 行发送 `[[],ids]`。
+- `.tmp-proto-check.mjs`：用 `createGameCodec()` 直接 pack/unpack `res_friend_login`（12 字节）、`res_friendship_change`（14 字节）、`res_friend_reduce`（4 字节）、`res_query_friend_player`（10 字节）、`res_apply_friends`（`err_list:[5]` → 3 字节）。结论：`friend.net.proto.bin` 与 `friend.db.proto.bin` 在当前 codec 中可直接解析（跨文件 import 不需额外解析步骤）；proto3 会省略零值，所以全空消息长度为 0，网关侧不能把“空 data”当成失败。
+- `.tmp-item-check.mjs`：`ItemTable` 中 401900 的 `name=800376`、`icon=Icon_Equip_youqingdian.png`、`type=13`，即“友情点”，说明 `daily_present_rewards=[[401900,N]]` 是友情点数额而非普通道具；其发放触发点仍未取证，因此本轮不结算。
 
-### 协议与状态
+## 实现设计
 
-原始 `staticRecordId` 沿用 `docs/plans/remaining-gameplay-20261106/inventory.json`，不复制静态大报告。当前已核对命令与 PB 回包：
+### 权威状态与 actor
 
-| type | 操作 | 已知响应 |
+- actor 固定为 `store.read().state.roleId` 与 `model.role.level`，不接受客户端传入的 actor。
+- 目标角色只允许 `roles` 表中真实存在的 `role_id`；缺失即业务失败（code 5）。当前生产存档只有一个角色，所以推荐列表为空、加好友目标必然不存在，这是数据事实而不是占位。
+- 多角色测试通过向 `roles` 插入完整角色行提供第二个玩家；这不代表生产认证已支持多角色登录。
+
+### 表（服务内 ensure，不改 game-store 迁移）
+
+| 表 | 作用 | 关键约束 |
 | --- | --- | --- |
-| 20001 | req_apply_friends | res_apply_friends |
-| 20002 | req_remove_friend | 尚未恢复 |
-| 20003 | req_agree_friend_applies | res_agree_applies |
-| 20004 | req_refuse_friend_applies | 尚未恢复 |
-| 20005 | req_add_to_blacklist | 尚未恢复 |
-| 20006 | req_remove_from_blacklist | 尚未恢复 |
-| 20007 | req_present_friendship | res_friendship_change |
-| 20008 | req_receive_friendship | res_friendship_change |
-| 20009 | req_query_friend | res_query_friend_player |
-| 20010 | req_recommend_friend_list | res_query_friend_player |
-| 20011 | req_one_key_present_and_rev | res_friendship_change |
-| 20012 | req_friend_recommend_types | res_query_friend_player |
-| 20013 | req_friend_save_report | 尚未恢复 |
+| `friend_links` | 双向好友关系、favors | PK(role_id,friend_role_id)，CHECK 非自反 |
+| `friend_applies` | 待处理申请（有向） | PK(role_id,applicant_role_id)，重复申请天然防重 |
+| `friend_blacklist` | 黑名单（有向） | PK(role_id,blocked_role_id) |
+| `friend_friendship` | day / flower 快照 | 每角色一行 |
+| `friend_gifts` | 每日赠送/领取账本 | PK(day,giver_role_id,receiver_role_id)，`received_at` 区分待收与已收 |
+| `friend_reports` | 20013 报告留痕 | UNIQUE(role_id,day,arguments_json) |
 
-`res_friend_login` 包含 `pb_friend` 和 `pb_friendship`。`pb_friend` 含旧 `friends`、申请、黑名单及带 `favors` 的 `friend_list`。`pb_friendship` 含 `day/present_today/to_receive_today/received_count_today/received_today/flower`。`res_friendship_change` 含友情数据、`pb_res_to_client` 资源差量及改变的好友数据。未知回包不能据 schema 缺失改为空成功。
+`present_today` / `to_receive_today` / `received_today` / `received_count_today` 全是 `friend_gifts` 的投影，按服务器日过滤，因此跨日自动清空，不需要额外重置写入。
 
-静态目录已证推送 `2200=res_friend_append`、`2201=res_friend_reduce`、`2202=res_friend_apply_append`、`2203=res_friendship_change`。其中 `2203` 的 Manager prototype 55（源码第 820 行）读取 ETF 数组第一个元素为 PB `pb_friendship`，第二个元素为 PB `pb_friend_data`；外层编码与同名命令响应不同，不能直接复用 `res_friendship_change` PB。其余推送形状及线上接受仍未验证。完整 payload 证据、原文件 SHA256 和恢复命令见同目录 [evidence.md](evidence.md)；可复现脚本 [inspect-evidence.mjs](inspect-evidence.mjs) 已进入 checkpoint。
+### 日界
 
-## 下一步交接
+`FlushTime.NowDay` 未取证。本轮采用仓库既有 `serverDayNumber(serverOpenedAt, at)`（登录 `day_count`、first-week-goal 同源），即“开服时间为起点的第 N 天”，**这是推断，不是客户端事实**；未套用充值 05:00 日切，也未套用 `dayZero` 的 +08:00 自然日。
 
-1. 先读本记录及证据助手补充文件，复用上述 JSON 和已解包 LuaJIT；不要重复对 APK 尝试 UnityPy 直读。旧 Lua 树位于主项目 `.worktree/recruit-20261101/.scratch/out/luaproject/`，不在本 worktree 的同名目录。
-2. 对最新 main 做只读差异检查并更新基线，保留 main 已有修复；本次只有文档 checkpoint，不需把好友文档合并当业务交付。
-3. 从已恢复 Manager/UI 调用继续核对剩余 ETF 参数、登录模块、推送、FriendErr、NowDay 和奖励/好感实际触发。缺少的行为逐条列为证据待补，不能编奖励或猜命令。
-4. 将可证 FriendTable 收纳进 `personal-server/assets`，新增独立配置读取和好友服务；角色验证只认真实 `roles`。复用 `grantResources` 和 `store.transaction((model, db) => ...)`，编码也在事务内。
-5. 新增临时 SQLite 业务、资源不足、上限、黑名单、双向关系、跨日、防重、重开数据库、编码/真实 SQLite 写失败整体回滚验证。多角色测试使用完整 actor 专属 fixture/adapter，并记录它不代表当前生产认证支持多角色登录。
-6. 向总控提交 gateway/登录/推送接入补丁，由总控维护共用文件；用现有 challenge/login 的临时端口与真实数字 type 做 TCP 验收，随后登记实际通过范围。普通 helper 测试不能认定网关接通。
+### 命令语义（type → 行为 → 回包）
 
-## 验收
+| type | 命令 | 行为 | 回包 | 失败码 |
+| ---: | --- | --- | --- | --- |
+| 20001 | req_apply_friends | 对真实角色建立有向申请；若对方已申请我则直接成为双向好友 | `res_apply_friends{friend_list=新好友, err_list=错误码}` | 1/5/310 |
+| 20002 | req_remove_friend | 删除双向关系与未领取赠礼 | 空 | 5（非好友） |
+| 20003 | req_agree_friend_applies | 同意收到的申请，双向写入并删除正反申请 | `res_agree_applies{success_list,err_list}` | 5/310 |
+| 20004 | req_refuse_friend_applies | 删除收到的申请 | 空 | 5 |
+| 20005 | req_add_to_blacklist | 写黑名单，上限 100 | 空 | 5/310 |
+| 20006 | req_remove_from_blacklist | 删黑名单 | 空 | 310（不在名单） |
+| 20007 | req_present_friendship | 校验好友、当日未赠、当日 ≤20 人，写账本 | `res_friendship_change`（res.changes 为空） | 5/310 |
+| 20008 | req_receive_friendship | 校验待收、按等级领取上限（30/40/50/60） | `res_friendship_change` | 5/310 |
+| 20009 | req_query_friend | 按 role_id 或昵称精确查真实角色，最多 `max_search_count=5`，排除自己 | `res_query_friend_player` | 1 |
+| 20010 | req_recommend_friend_list | 真实角色中排除自己/好友/黑名单/待处理申请，上限 10（`CONST_MAX_RECOMMEND_COUNT`） | `res_query_friend_player` | 1 |
+| 20011 | req_one_key_present_and_rev | `[presentIds, receiveIds]` 同一事务内赠+领；任一步失败整体回滚 | `res_friendship_change` | 1/5/310 |
+| 20012 | req_friend_recommend_types | 按请求类型过滤推荐列表；类型分类未取证 → 当前恒为空 | `res_query_friend_player` | 1 |
+| 20013 | req_friend_save_report | `[role_id, content]`：目标须真实、内容非空且 ≤ `accuss_count=300`，幂等留痕 | 空 | 1/5 |
 
-尚未运行新模块 service、临时 TCP、SQLite 重开或故障回滚验收。`npm ci` 仅为独立 worktree 准备依赖；基线主线已有的 2234/2234 回归由总控验证，不是 SOC-FRIEND 测试成绩。本次 checkpoint 的脚本 `node --check`、FriendTable 数据恢复及 FriendMgr prototype 84/85 指令复现均通过；提交前运行 `git diff --check`，不再跑新全量测试。
+共同约定：`applyCommand` 的 `err_list` 写错误码（由 prototype 18 的 `ShowError(err_list[1])` 反证）；`friend_list` 只放本次新建好友。错误码沿用仓库既有约定：1 = 非法参数/未知命令，5 = 业务不可用（不存在、非好友、上限、证据缺口），310 = 重复操作。
 
-真实 APK/UI 由用户后续安排；本轮未启停实时服务、未访问运行数据库、未操作模拟器或原游戏服务器、未修改 APK。REA 只读会话已关闭，无待收尾运行进程。
+### 明确未结算的未知分支
+
+- `daily_present_rewards`（友情点 300/400/500/600）发放触发点未取证 → 赠/领回包 **不** 下发 `res.changes`，不产生友情点增减。
+- favors（好感度）增量、`friendship_exchange_ratio=100`、`present_exchange_ratio=10` 的换算关系未取证 → favors 恒为库内值（默认 0），不做推断换算。
+- `flower` 的累积与消耗策略未取证 → 登录/回包读出库内值，默认为 0。
+- `recommend_lv_limit`、`recommend_fight_life`、`recommend_max_rank` 的筛选语义未取证 → 不做等级/战力/排名过滤。
+- `recommend_count=5` 与硬编码 `CONST_MAX_RECOMMEND_COUNT=10` 的区别：客户端截断确认是 10；服务端上限按 10 实现，5 只作为配置登记。
+- `max_private_count=10` 属于聊天私聊名额（11012 等，SOC-CHAT），不在本模块使用。
+- 20012 的推荐类型分类未取证 → 返回空列表并记录 `friend_recommend_types` 日志（gap 字段）。
+- 20013 两个参数的含义是按 `[role_id, content]` 推断（`accuss_count=300` 作为长度上限）；原服失败码与是否允许重复举报未知。
+
+## 复现命令
+
+在工作树 `personal-server` 下：
+
+```powershell
+node --test --test-concurrency=1 test/friend-service.test.mjs
+node --test --test-concurrency=1 test/friend-gateway.test.mjs
+node --test --test-concurrency=1 test/gameplay-gateway.test.mjs test/m5-command-matrix.test.mjs test/login-business-reads.test.mjs test/item-growthroad-gateway.test.mjs test/general-dungeon-gateway.test.mjs
+```
+
+资产重新生成（仅在证据 JSON 变化时）：
+
+```powershell
+node ..\analysis\scratchpad\SOC-FRIEND\pack-friend-table.mjs
+```
+
+## 验证结果
+
+| 测试 | 用例数 | 结果 |
+| --- | ---: | --- |
+| `friend-service.test.mjs` | 15 | 15 通过 |
+| `friend-gateway.test.mjs`（真实握手 + 登录 + 数字 type） | 1 | 通过 |
+| `gameplay-gateway.test.mjs` | 7 | 7 通过 |
+| `m5-command-matrix.test.mjs` | 8 | 8 通过 |
+| `login-business-reads.test.mjs` | 3 | 3 通过 |
+| `item-growthroad-gateway.test.mjs` | 1 | 通过 |
+| `general-dungeon-gateway.test.mjs` | 1 | 通过 |
+
+覆盖要点：
+
+- 双向关系（agree 后两条 `friend_links` 行；remove 后清零）。
+- 申请上限、好友上限、黑名单 100、每日赠送 20、按等级每日领取 30/40/50/60。
+- 跨日：推进一天后 `present_today`/`received_today` 归零且可再次赠送；`friendship.day` 递增。
+- 防重：重复申请/赠送/领取/黑名单/移除返回 310 且状态不变。
+- 事务：PB 编码抛错时申请、友谊、friendship 行全部回滚；对 `friend_gifts` 建 ABORT 触发器后 one-key 命令抛错且无任何账本行。
+- SQLite 重开：关系、friendship、防重在 `fixture.open()` 后仍生效。
+- 单角色存档：推荐为空，跨界目标申请返回 code 5，不生成任何第二玩家。
+
+临时 TCP 测试通过 `createLocalGame({ verifySession })` 临时 loopback 端口走 verify/挑战/答复/909103 登录，再用真实 `pb_c2s{type,seq,data}` 发送 20001/20003/20007/20009/20010/20005/20006/20013/20004/20011/20002/20012 并解 PB 回包，同时直查 SQLite 断言落库。
+
+## 总控接入清单
+
+1. **登录容器**：`friend.loginPayload(clock())` 返回 `res_friend_login` 的 PB 字节；登录前可调 `friend.ensureLoginState(clock())` 生成 friendship 行。`FriendMgr.LoginParse` 的数字模块槽位未恢复，**禁止猜槽号**；请由总控选定槽位后执行 `modules.set(<slot>, binary(friend.loginPayload(clock())))`。
+2. **指令派发**：本分支已在 `gateway.mjs` 的 growthRoad 之后加入 `friend.supports(type)` 派发块（import + `createFriendService` + 一个 ETF 解码/PB 发送块）。类型：20001–20013。合并时若总控改写了该区域，只需保留同样的 13 个 type 与 `decodeEtf(request.data)` 传参。
+3. **推送**：
+   - 2201 `res_friend_reduce`：`friend.pushPayload.reduce(roleId)`（PB）。
+   - 2203 `res_friendship_change`：`await friend.pushPayload.friendshipChange(pbFriendship, pbFriendData)`，当前证据是 ETF `[binary(pb_friendship), binary(pb_friend_data)]`，与命令同名回包不同，不能复用。
+   - 2200 `res_friend_append`、2202 `res_friend_apply_append`：静态目录只有名字，payload 未恢复；`pushPayload.append/applyAppend` 明确抛 code 5。
+   - 每条命令返回的 `value.pushes` 列出 `{pushType, roleId}` 的目标角色；网关尚未向其他角色 socket 扇出（当前存档只有一个角色、也只有一个 socket）。接入推送时需要按 roleId 注册在线 socket 并调用上面对应编码函数。
+4. **APK 验收**：好友 UI 需要登录模块 + 推送，且需要第二个真实角色；本轮未做设备验收。
+
+## 证据缺口
+
+1. `FriendMgr.LoginParse` 的数字登录模块槽位与实际线上接受。
+2. `FlushTime.NowDay` 定义（本轮用 `serverDayNumber` 推断）。
+3. `daily_present_rewards` 的发放触发点、友情点(401900) 增量的归属与频次。
+4. favors 好感增量、`friendship_exchange_ratio`/`present_exchange_ratio` 的换算、`flower` 累积与消耗。
+5. 推荐分类（GENRE/GUILD/FIGHT/RANK）的判定规则与 `recommend_lv_limit`/`recommend_fight_life`/`recommend_max_rank` 的筛选方式。
+6. 20012 的类型过滤语义、20013 参数含义与是否允许重复举报。
+7. 原服失败码映射（本轮沿用仓库 1/5/310 约定）。
+8. 历史解包树与当前 v9 APK 的逐文件对应关系；真实 APK/UI 验收。
