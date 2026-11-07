@@ -321,4 +321,3 @@ export function buildLineupAttrInfo({ model, lineupType = 1, heroTables, attribu
     }
   };
 }
-

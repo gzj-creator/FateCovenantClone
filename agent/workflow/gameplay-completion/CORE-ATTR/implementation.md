@@ -93,4 +93,3 @@ node --test --test-concurrency=1 test/rank-service.test.mjs test/item-mission-se
 3. 装备（role 级 6 槽 team 属性）、团长装备、图鉴、好感、法阵、符文、圣器、幻武、训练、星魂卷轴等通过同一入口扩展：`assembleHeroAttributes` 增加 play 来源即可，禁止各模块自行计算战斗数值。
 4. CORE-SKILL-GATES：`AbilityLevel`（星级→技能等级）已在本轮确认存在但未接入技能选择。
 5. APK 实机验收：需在隔离客户端查看 1316 属性页、排行榜战力与一场普通副本，确认数值与战斗一致。
-

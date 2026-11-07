@@ -157,4 +157,3 @@ test('1316 attribute query over real gateway framing matches stored lineup power
   assert.equal(Number(first.fight_attr_list.find(attr => Number(attr.key) === FIGHT_ATTR.HP).value), expectedFirst.stats.hp);
   assert.equal(Number(info.lineup_attr.team_power_list[0].power), expected.entries.reduce((sum, entry) => sum + entry.power, 0));
 });
-

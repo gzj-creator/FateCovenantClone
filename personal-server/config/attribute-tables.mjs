@@ -24,4 +24,3 @@ export function readAttributeTables(file = defaultPath) {
   if (file === defaultPath) defaultCache = tables;
   return tables;
 }
-
