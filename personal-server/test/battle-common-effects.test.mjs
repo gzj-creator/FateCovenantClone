@@ -224,3 +224,145 @@ test('refreshing a next-action effect during that action preserves the new use',
   assert.equal(unit.buffs.length, 1);
   assert.equal(unit.buffs[0].remainingTriggers, 1);
 });
+
+// A separate ability that reacts to the killing blow of the same action. Its
+// damage is calculated while the acting hero's action-scoped status is already
+// live, which is exactly where a leaked "next ultimate" bonus would show up.
+function onKillDamage(magnitude = 200) {
+  return {
+    id: 'fixture-on-kill-damage-' + magnitude, type: 'Passive', implementation: {
+      triggers: [{
+        triggerType: 'on-kill', effect: {
+          target: { targetType: 'single' },
+          effect: { type: 'damage', damageType: 'physical', magnitude, variance: 1 },
+          duration: { durationType: 'instant' }, chance: 1
+        }
+      }]
+    }
+  };
+}
+
+function splitUltimateHarms(battle, actorId = 101) {
+  const own = [];
+  const triggered = [];
+  for (const event of battle.events) {
+    if (event.kind !== 'damage') continue;
+    for (const harm of event.harms) {
+      if (harm.srcId !== actorId) continue;
+      (event.trigger ? triggered : own).push(harm);
+    }
+  }
+  return { own, triggered };
+}
+
+test('the next-ultimate damage bonus never leaks into a separately triggered hit', () => {
+  const battle = enabled => simulateBattle({
+    attackers: [fighter(101, {
+      initialEnergy: 1000,
+      skills: [...(enabled ? [catalogSkill('120001007')] : []), onKillDamage()]
+    })],
+    defenders: [fighter(201, { maxHp: 1, speed: 200 }), fighter(202, { loc: 2, speed: 200 })],
+    seed: 23, maxRounds: 1
+  });
+  const baseline = splitUltimateHarms(battle(false));
+  const boosted = splitUltimateHarms(battle(true));
+  assert.equal(baseline.triggered.length, 1);
+  assert.equal(boosted.triggered.length, 1);
+  // The kill bonus is granted by this action, so the action's own hit is unchanged ...
+  assert.equal(boosted.own[0].value, baseline.own[0].value);
+  // ... and the extra damage its own passive produces never receives it.
+  assert.equal(baseline.triggered[0].value, 200);
+  assert.equal(boosted.triggered[0].value, 200);
+});
+
+test('the first-ultimate critical boost never leaks into a separately triggered hit', () => {
+  const battle = enabled => simulateBattle({
+    attackers: [fighter(101, {
+      initialEnergy: 1000, critChance: 0,
+      skills: [...(enabled ? [catalogSkill('120001004')] : []), onKillDamage()]
+    })],
+    defenders: [fighter(201, { maxHp: 1, speed: 200 }), fighter(202, { loc: 2, speed: 200 })],
+    seed: 23, maxRounds: 1
+  });
+  const baseline = splitUltimateHarms(battle(false));
+  const boosted = splitUltimateHarms(battle(true));
+  assert.equal(baseline.own[0].critical, false);
+  assert.equal(boosted.own[0].critical, true);
+  assert.equal(boosted.own[0].value, Math.floor(baseline.own[0].value * 1.5));
+  assert.equal(baseline.triggered[0].value, 200);
+  assert.equal(boosted.triggered[0].value, 200);
+  assert.equal(boosted.triggered[0].critical, false);
+});
+
+test('damage-conversion effects run after the skill damage they convert', () => {
+  const skill = {
+    id: 999990001, type: 'Ultimate', category: 'description-inferred',
+    implementation: { effects: [
+      // Stored first on purpose: the conversion still has to read the damage below.
+      {
+        target: { targetType: 'self' },
+        effect: { type: 'heal', healType: 'percent-damage-dealt', multiplier: 0.5 },
+        duration: { durationType: 'instant' }, chance: 1
+      },
+      {
+        target: { targetType: 'single' },
+        effect: { type: 'damage', damageType: 'true', magnitude: 400, variance: 1 },
+        duration: { durationType: 'instant' }, chance: 1
+      }
+    ] }
+  };
+  const battle = simulateBattle({
+    attackers: [fighter(101, { initialEnergy: 1000, activeAbilityId: 999990001, skills: [skill] })],
+    defenders: [fighter(201, { maxHp: 1000000, speed: 1 })],
+    seed: 5, maxRounds: 1
+  });
+  const damageIndex = battle.events.findIndex(event => event.kind === 'damage'
+    && event.harms.some(harm => harm.srcId === 101));
+  const healIndex = battle.events.findIndex(event => event.type === 'heal' && event.actor === 101);
+  assert.ok(damageIndex >= 0 && healIndex > damageIndex, 'damage must be applied before its conversion');
+  assert.equal(battle.events[healIndex].value, 200);
+});
+
+test('the fallback damage channel keeps absorbed shield out of the HP change it reports', () => {
+  const battle = simulateBattle({
+    attackers: [fighter(101, { attack: 1000 })],
+    defenders: [fighter(201, { maxHp: 1000000, skills: [openingShield(50)] })],
+    seed: 5, maxRounds: 1
+  });
+  const harm = battle.events.filter(event => event.kind === 'damage')
+    .flatMap(event => event.harms).find(entry => entry.srcId === 101);
+  assert.ok(harm, 'the attacker must land a hit');
+  assert.equal(harm.oldShield, 50);
+  assert.equal(harm.shield, 0);
+  assert.equal(harm.value, (harm.oldHp - harm.hp) + (harm.oldShield - harm.shield));
+});
+
+test('damage dealt before the ultimate is not counted as ultimate damage', () => {
+  const preUltimate = {
+    id: 'fixture-pre-ultimate-damage', type: 'Passive', implementation: {
+      triggers: [{
+        triggerType: 'before-ultimate-use', effect: {
+          target: { targetType: 'single' },
+          effect: { type: 'damage', damageType: 'true', magnitude: 500, variance: 1 },
+          duration: { durationType: 'instant' }, chance: 1
+        }
+      }]
+    }
+  };
+  const battle = simulateBattle({
+    attackers: [fighter(101, {
+      initialEnergy: 1000, attack: 1000, maxHp: 5000,
+      skills: [preUltimate, catalogSkill('120001002')]
+    })],
+    defenders: [fighter(201, { maxHp: 1000000, speed: 1 })],
+    seed: 13, maxRounds: 1
+  });
+  const { own, triggered } = splitUltimateHarms(battle);
+  assert.equal(triggered.length, 1);
+  assert.equal(triggered[0].value, 500);
+  const ultimateDamage = own.reduce((sum, harm) => sum + (harm.oldHp - harm.hp), 0);
+  const heal = battle.events.find(event => event.type === 'heal' && event.actor === 101);
+  assert.ok(heal);
+  assert.equal(heal.value, Math.floor(ultimateDamage * 0.1));
+  assert.equal(heal.value, Math.floor(own[0].value * 0.1));
+});
