@@ -4,7 +4,7 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 18 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 21 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；21/355 约 5.9% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
+交付与整卡销项分开计数：当前 21 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 24 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；24/355 约 6.8% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
 
 2026-11-07 第二轮：CORE-BATTLE-A 与 SOC-FRIEND 两个 checkpoint 已续接完成并合入 main，另完成 PLAY-FISHINGACT；三者均通过合并后的定向回归与一次主线全量，业务层为“服务端完成”，各自的证据缺口与 APK 验收边界见下表。
 
@@ -20,6 +20,9 @@
 | CORE-CABIN | 待领取 | — | — | 未安排 | 房间/任务/交互/奖励/加速的可达性与协议 |
 | SOC-FRIEND | 服务端完成（20012/20013 语义与友情点结算证据待补） | `task/SOC-FRIEND-20261107`，合入 main | 20001–20013 全部网关派发；服务专项 15/15 + 真实临时 TCP 13 个 type + SQLite 重开 + PB 编码失败与 `friend_gifts` ABORT 触发器整体回滚；合并后好友/网关回归 35/35 | 未安排 | 数字登录槽未取证（`loginPayload` 已就绪，待总控选定槽位）；`FlushTime.NowDay` 日界为推断（用 serverDayNumber）；`daily_present_rewards` 发放触发点、favors 增量与友情币换算、20012 过滤语义、20013 举报参数与重复规则未知；2200/2202 推送载荷未取证 |
 | PLAY-FISHINGACT | 服务端完成（记录筛选与活动结束结算证据待补） | `task/PLAY-FISHINGACT-20261107`，合入 main | 110303/110304/110306/110307/110308/110309/110310 补齐，110301/110302/110305/110311 保留；新增 `fishing_act_catches` 真实收鱼记录驱动榜/记录；服务+TCP 14/14、网关 7/7（真实 seq 70–82）、合并后钓鱼/活动/网关 28/28；SQLite 重开与编码回滚通过 | 未安排 | 110308 筛选与上限未取证（当前按该活动全部渔获 id 倒序）；活动结束名次结算（HighScoreRank/ScoreRank）未实现；充值 FishBuy 139001/139002 直发鱼竿未接；天气/鱼竿加成与尺寸公式、错误文案映射未对齐 |
+| BATTLE-ELITEMISSION | 服务端完成（敌方阵容映射与难度证据待补） | `task/BATTLE-ELITEMISSION-20261107`，合入 main | 87001/87002/87003 保留；201/202/207 分流精英关卡（report.type=6）与 BOSS（114），战报来自真实 `simulateBattle`；真实临时 TCP 87001→201→207 两关 + 越级拒绝 err 5，临时 SQLite 重开后 mission_id/领取位/boss_bin 保持，触发器和结算编码失败整体回滚；合并后定向 55/55 | 未安排 | 敌方阵容需部署注入 `eliteEnemies`（FightTable def_team 全库为空，EliteMission 无 enemy 字段，缺省明确拒绝）；201 预扣与 207 扣体力时点、`Boss.open_server_day`/`need_open_days`、精英难度与 award 可重复性未取证 |
+| PLAY-HELPUPACT | 服务端完成（全服聚合与部分周期语义证据待补） | `task/PLAY-HELPUPACT-20261107`，合入 main | 116001 任务奖、116002 阶段奖、116003 发起助力、116004 真实累计次数；`HelpUpActTable` 资产落地，登录数据经模块 92 活动条目下发；专项 8/8（含真实 TCP）、合并后 help-up/活动/网关/m5 37/37；SQLite 重开与整笔回滚通过 | 未安排 | 每次 1 道具/1 次助力、信封抽奖、`cycle_type=1` 日环与周边界为推断；跨角色/跨服“全服”聚合无证据；活动窗口已过期需排期；APK 未验收 |
+| PAY-GROUPBUYACT | 服务端完成（全服口径与客户端回包对照待补） | `task/PAY-GROUPBUYACT-20261107`，合入 main | 100601 按已支付订单聚合真实人数并叠加 `HeadCompensate` 补偿人数，100602 同事务校验→发奖→领取位→刷新 module 92；16005 回执追加 flag=93；专项 7/7、合并后 72/72（含真实 TCP 购买→统计→领奖）；SQLite 回滚/重开通过 | 未安排 | `last_refresh_sec` 语义未取原服样本；全服人数口径未与原服回包对照；20 人档在本配置不可达；无到期结算/退款撤销与 `pay_type=0` 现金团购分支 |
 | HERO-LINEUP | 服务端完成 | `task/HERO-LINEUP-20261106` @ cd3b3ea | 5 专项测试 + 真实 TCP 214→215→216→209→210→217 + 重开 DB；集成分支 30/30 | 未安排 | 217 回包 schema 未恢复（当前 ETF 回显索引）；名称长度上限属推断；214 请求形态待实测 |
 | HERO-HERO | 服务端部分完成（本小批 614/647/663/664/665） | `task/HERO-HERO-20261106` @ ead0359 | 专项与 gateway 回归 16/16 + 真实 TCP 五命令 + 模块 10 槽位 5 + SQLite 重开 + 编码回滚；合并后全量 2206/2206 | 未安排 | 剩余 602/627–631/634/635/637/641/651/652/654/656/661/666/672/673；Visit 品质映射、锁价比例、custom_tid 与 HeroErr 线上码待证据；重铸属性归 CORE-ATTR/CORE-SKILL-GATES |
 | HERO-MASTERY | 服务端完成（技能已由 CORE-SKILL-GATES 接线；属性与完整规则待补） | `task/HERO-MASTERY-20261106` @ 1afea74 | 5 专项测试 + 真实 TCP 660→659 + 故障回滚 + 重开 DB；合并后全量 2164/2164；b6e1766 接入星级/等级门槛与唯一 mastery 技能 | 未安排 | 659/660 请求仅确认含 tid；未突破时等级上限与完整解锁规则待实测；精通属性、每级技能倍率和突破换技能仍未闭合 |
@@ -59,3 +62,12 @@
 - PLAY-FISHINGACT：rebase 后以 `--no-ff` 合入 main 3b2d8fa；合并后钓鱼/活动/网关 28/28 通过，真实 TCP seq 70–82、跨活动隔离、重复领奖 310、编码失败回滚。日志：`analysis/test-runs/gameplay-20261106/main-after-fishing-focused.log`。
 - 主线全量：在 personal-server 执行 `npm test`，tests 2281 / pass 2279 / fail 0 / cancelled 0 / skipped 2 / todo 0，duration_ms 229348.9777，退出 0。完整日志：`analysis/test-runs/gameplay-20261106/main-after-battle-friend-fishing-full.log`。
 - 本轮未启停实时服务、未读写 `runtime.local-only.data`、未操作模拟器/ADB/APK，也未连接原游戏服务器；三项均未进入 APK 验收，纯服务端改动未生成 APK。
+
+## 集成与验收记录（2026-11-07 第二批）
+
+- 会话期间主线再次被外部推进到 `28a1a53`（合入“普通招募池排除限定英雄”修正）。本批三项均 rebase 到该提交后合并，未覆盖该业务修复。
+- PLAY-HELPUPACT 以 `--no-ff` 合入 main `1e6dfe9`；合并后 help-up/activity-read/activity-calendar/gameplay-gateway/m5-command-matrix 37/37 通过。日志：`analysis/test-runs/gameplay-20261106/main-after-play-helpupact-focused.log`。
+- BATTLE-ELITEMISSION 先补 `diff --check` 的尾随空行（`ec9ebd7`）再以 `--no-ff` 合入 main `9c554fa`；合并后精英闭环/既有 elite service/主线 201-207/通用效果生产路径/gateway/招募池 55/55 通过。日志：`analysis/test-runs/gameplay-20261106/main-after-elitemission-focused.log`。
+- PAY-GROUPBUYACT rebase 时在 `gateway.mjs` 登录活动区手工解决冲突，同时保留 `activityRead.synchronizeHelpUpLogin` 与 `groupBuyAct.synchronizeLogin`，再以 `--no-ff` 合入 main；合并后团购/welfare/购买流/wallet/gateway/精英闭环/help-up 72/72 通过。日志：`analysis/test-runs/gameplay-20261106/main-after-groupbuy-focused.log`。
+- 最终主线全量：在 personal-server 执行 `npm test`，tests 2311 / pass 2309 / fail 0 / cancelled 0 / skipped 2 / todo 0，duration_ms 232871.9675，退出 0。完整日志：`analysis/test-runs/gameplay-20261106/main-after-batch2-full.log`。
+- gateway 合并后仍保留 onlineGift/rankAchieve/heroExtra/firstWeekGoal/growthRoad/helpUp/groupBuy 登录同步、1316 属性、207 结算/体力、邮件推送、活动期限、20001–20013 好友派发、钓鱼 ETF 参数、精英 201/207 分流与团购 100601/100602；本批未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，未生成 APK。
