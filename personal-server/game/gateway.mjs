@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { E, encodeEtf, decodeEtf, binary, revive, rawBinary, createGameCodec } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { createHeroProgression, GameError } from './hero-progression.mjs';
+import { createHeroExtraService } from './hero-extra-service.mjs';
 import { createHeroMasteryService } from './hero-mastery-service.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
@@ -357,6 +358,7 @@ export function createLocalGame({
   const rechargeRebateReset = createRechargeRebateResetService({ store, codec, tables, calendar, now: clock, logger });
   const rechargeExtraAward = createRechargeExtraAwardService({ codec, tables, logger });
   const progression = createHeroProgression({ store, codec, tables: heroTables });
+  const heroExtra = createHeroExtraService({ store, codec, tables, heroTables, now: clock, random, logger });
   const heroMastery = createHeroMasteryService({ store, codec, heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
@@ -437,6 +439,7 @@ export function createLocalGame({
     const fishingBenefits = activityRead.ensureActiveFishingBenefits();
     handbook.ensureLoginState();
     heroFavor.ensureLoginState();
+    heroExtra.ensureLoginState();
     teamSuggest.ensureLoginState();
     teamGenre.ensureLoginState();
     wishTreasure.ensureLoginState();
@@ -1548,6 +1551,22 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'hero_handbook_rejected', type, seq, heroId, code, message: error.message });
+        }
+        return;
+      }
+      if (heroExtra.supports(type)) {
+        try {
+          let input;
+          if (type === 614) input = unpackRequest('hero_chip_use', request.data);
+          else if (type === 663) input = unpackRequest('pb_hero_reforge_req', request.data);
+          else input = await singleIdArgument(request.data, 'Invalid hero command hero id');
+          const result = heroExtra.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'hero_extra_committed', type, seq, responseBytes: result.data.length, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hero_extra_rejected', type, seq, code, message: error.message });
         }
         return;
       }

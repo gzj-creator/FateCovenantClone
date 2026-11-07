@@ -27,6 +27,13 @@ export function readHeroTables(file = defaultPath) {
     // thresholds, rewards, break caps and playground eligibility.
     'AllFavourLevel', 'FavourConst', 'FavourGift', 'FavourBreak',
     'FavourLevel', 'PlaygroundUnlock', 'PlaygroundAward',
+    // Hero visit (HeroFavorMgr roleVisitData / HeroCmd 647): VisitConst owns
+    // the daily count, VisitUnlock gates heroes and Visit owns the chip reward.
+    'VisitConst', 'Visit', 'VisitUnlock',
+    // Hero reforge (HeroCmd 663/664/665): Reforge owns per-hero availability and
+    // skill milestones, ReforgeAttr the weighted attribute pool and
+    // ReforgeConst the base cost/lock ratios/attribute count.
+    'Reforge', 'ReforgeAttr', 'ReforgeConst',
     // Hero mastery ("专精"): Mastery maps a hero tid to its mastery group,
     // MasteryGroup indexes the level/break rows, MasteryLevel/MasteryBreak own
     // the costs and attribute grants, and MasteryConst holds the unlock star.
