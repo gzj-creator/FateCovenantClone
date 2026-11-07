@@ -26,6 +26,7 @@
 | ITEM-COMMONTASK | 服务端完成（奖励/爬塔进度证据阻塞） | `task/ITEM-COMMONTASK-20261106` @ 321655f | 7 专项测试 + 同组列表事务 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | 四张组表 2774 行奖励列为空；progress_fun 12 无爬塔状态来源；module 90 线性槽位从 0 修正为 4，需 APK 联合验收 |
 | ITEM-GUIDE | 服务端完成（奖励配置证据阻塞） | `task/ITEM-GUIDE-20261106` @ 042be27 | 9 专项测试 + 真实 TCP 8000→8001→8002 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | GuideTable 无 JSON 导出，生产 8001 对所有 awardTid 返回 code 5；8001 参数位置与 8002 不回帧均待 APK 实测 |
 | ITEM-RANKACHIEVE | 服务端完成（多数成就事件源证据阻塞） | `task/ITEM-RANKACHIEVE-20261106` @ 9c1a880 | 7 专项测试 + 真实 TCP 43101→rsp/8601 + 模块 170 登录 + 重开 DB + 编码/SQLite 回滚；合并后全量 2190/2190 | 未安排 | 当前仅闭合巅峰塔 500/1000 层与可解析指定英雄拥有共 13 行；其余 71 行缺权威完成值来源并返回 code 5；`finish_award` 发放语义与跨服/公会完成信息待证据 |
+| ITEM-FIRSTWEEKGOAL | 服务端完成（部分进度事件证据阻塞） | `task/ITEM-FIRSTWEEKGOAL-20261106` @ 6155312 | 6 项 service + 真实临时 TCP 67004/67005 + 登录模块 59015 + SQLite 重开 + 编码/SQLite 回滚；网关 14/14；合并后全量 2197/2197 | 未安排 | TaskType.progress_fun=1/3 尚无统一生产事件来源；当前统计源任务可领取，其余明确 code 5，不按固定进度放行 |
 
 ## 集成与验收记录（2026-11-07 第一轮）
 
@@ -34,3 +35,4 @@
 - 主线保持审计：`main` 是集成分支的严格祖先，`HEAD..main` 为空；`energy.mjs`、`mission-progress.mjs`、`resources.mjs`、`game-store.mjs`、`mail-service.mjs`、`activity-calendar.mjs`、`relic-divine-login.mjs` 与 main 原实现一致。207 结算/体力、新邮件推送、ActFrame/fishing 登录期限的定向回归 74/74 通过。
 - ITEM-EVERYTASK 已 rebase 到含首批任务的 main；保留 `createItemBoxService({ ..., heroTables })`、207 体力、邮件推送、活动期限及 module 90 槽位语义，冲突相关 35/35 通过，再以 `--no-ff` 合入 main `77c5b5f`。BATTLE-RANK 已基于该主线完成并把原空榜替换为 SQLite 权威排序，以 `--no-ff` 合入 main `7713406`；独立复核 41/41，通过后 main 全量 2171/2171。BATTLE-GENERALDUNGEON rebase 时只与总控状态表冲突，保留总控版本，代码与 BATTLE-RANK 网关派发共存；独立复核 37/37，以 `--no-ff` 合入 main `e406136`，合并后全量 2178/2178。PAY-ONLINEGIFT 以 `--no-ff` 合入 main `5ea053c`；ITEM-RANKACHIEVE 再次 rebase 时手工保留 `onlineGift.beginSession()` 与 `rankAchieve.ensureLoginState()` 两条登录路径，独立复核 26/26，以 `--no-ff` 合入 main `13f99a7`。最终 main 全量 `node --test --test-concurrency=1 test/*.test.mjs`：tests 2190 / pass 2190 / fail 0。日志：`analysis/test-runs/gameplay-20261106/main-after-rankachieve-onlinegift-full.log`。
 - 当前没有启停实时服务、操作模拟器、读写 `runtime.local-only.data` 或生成 APK；上表“服务端完成”均只表示业务、临时 TCP、SQLite 与回归层通过，APK 验收仍单列。
+- ITEM-FIRSTWEEKGOAL 以 `--no-ff` 合入 main `bf5d95b`；独立专项 14/14，合并后 main 全量 2197/2197。网关保留 `onlineGift.beginSession()`、`rankAchieve.ensureLoginState()` 与首周目标模块 59015 三条登录路径，并保留既有数字 type 派发；207 结算/体力、邮件推送与活动期限定向回归 60/60 再次通过。全量日志：`analysis/test-runs/gameplay-20261106/main-after-firstweekgoal-full.log`。
