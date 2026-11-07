@@ -1,4 +1,5 @@
 import { encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mjs';
 import { GameError } from './hero-progression.mjs';
 import {
   RECRUIT_RULE_VERSION,
@@ -175,8 +176,20 @@ function module10(model) {
   return { modules, module };
 }
 
-export function createRecruitService({ store, codec, tables, heroTables, fantasyEquipTables, leaderEquipTables, random = Math.random, now = () => Math.floor(Date.now() / 1000), onDraw = null }) {
-  const pools = buildRecruitPoolCatalog(heroTables);
+export function createRecruitService({
+  store,
+  codec,
+  tables,
+  heroTables,
+  fantasyEquipTables,
+  leaderEquipTables,
+  recruitHeroExclusionGroups = null,
+  random = Math.random,
+  now = () => Math.floor(Date.now() / 1000),
+  onDraw = null
+}) {
+  const heroExclusionGroups = recruitHeroExclusionGroups ?? readRecruitHeroExclusionGroups().groups;
+  const pools = buildRecruitPoolCatalog(heroTables, { excludedHeroGroups: heroExclusionGroups });
   const drawConfigs = new Map();
   for (const [lib, pool] of pools) {
     const drawConfig = heroTables.Draw.get(lib);

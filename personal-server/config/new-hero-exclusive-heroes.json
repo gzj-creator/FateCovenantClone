@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "table": "NewHeroExclusiveTable.WishDrawHero",
+    "sourceSha256": "9609b94138a797877123bdf1d4eb450db5df295058a47a558084db4367bb1723"
+  },
+  "groups": {
+    "newHeroExclusive": [
+      {
+        "tid": 1030601,
+        "quality": 50,
+        "getWay": 32
+      },
+      {
+        "tid": 1030701,
+        "quality": 50,
+        "getWay": 32
+      },
+      {
+        "tid": 1040101,
+        "quality": 60,
+        "getWay": 32
+      },
+      {
+        "tid": 1040201,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 1040301,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 2030601,
+        "quality": 50,
+        "getWay": 100
+      },
+      {
+        "tid": 2030701,
+        "quality": 50,
+        "getWay": 100
+      },
+      {
+        "tid": 2040101,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 2040201,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 3030701,
+        "quality": 50,
+        "getWay": 100
+      },
+      {
+        "tid": 3040101,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 3040201,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 4030601,
+        "quality": 50,
+        "getWay": 100
+      },
+      {
+        "tid": 4040101,
+        "quality": 60,
+        "getWay": 32
+      },
+      {
+        "tid": 4040201,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 4040301,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 4040401,
+        "quality": 60,
+        "getWay": 100
+      },
+      {
+        "tid": 5040101,
+        "quality": 70,
+        "getWay": 100
+      },
+      {
+        "tid": 5040301,
+        "quality": 70,
+        "getWay": 100
+      },
+      {
+        "tid": 5040401,
+        "quality": 70,
+        "getWay": 100
+      },
+      {
+        "tid": 5040501,
+        "quality": 70,
+        "getWay": 100
+      }
+    ]
+  }
+}
