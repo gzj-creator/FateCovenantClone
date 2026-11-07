@@ -228,4 +228,3 @@ test('DiamondBankActCmd rejects an unconfigured activity id over the wire', asyn
   }));
   assert.equal(Number(unknownTask.err?.err ?? unknownTask.err), 1);
 });
-

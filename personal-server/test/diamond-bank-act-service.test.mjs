@@ -394,4 +394,3 @@ test('the configured activity window gates every command', t => {
   const data = codec.pack('pb_diamond_bank_act_base_req', { act_id: String(ACT_ID), value: ['101'] });
   assert.throws(() => service.execute(TASK_TYPE, data), error => error.code === 309);
 });
-
