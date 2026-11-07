@@ -4,7 +4,7 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 26 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 29 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；29/355 约 8.2% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
+交付与整卡销项分开计数：当前 26 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 29 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；29/355 约 8.2% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。另有 1 个共享任务（CORE-TIME-TEMPLE）已用注册表全表证据闭合为“本版本不可达”，不计入上面的实现交付数，也不构成 APK 验收。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
 
 2026-11-07 第二轮：CORE-BATTLE-A 与 SOC-FRIEND 两个 checkpoint 已续接完成并合入 main，另完成 PLAY-FISHINGACT；三者均通过合并后的定向回归与一次主线全量，业务层为“服务端完成”，各自的证据缺口与 APK 验收边界见下表。
 
@@ -16,7 +16,7 @@
 | CORE-SKILL-GATES | 证据待补（已合入 AbilityLevel/mastery/soul 部分实现） | b87b99d；复核修复 e05533d/60b7ab7 | 专项累计 10/10；复核聚焦 37/37；总控技能/奖池/TCP 17/17；最终主线全量 2234/2234；mission 与 1316 共用 loadout；未改 gateway/game-store | 未安排 | 通用 Passive 突破筛选和每级倍率未完成；可达英雄 4040101 缺技能目录；AbilityLevel 索引与 mastery 完整选择/替换待证，不能认定整卡完成 |
 | CORE-EVENTS | 证据待补/部分交付（53001/53002 未知推进拒绝） | `task/CORE-EVENTS-20261106` @ db2daa7；合入13231a4 | 真实临时 TCP 验证已证 ETF shape、坏编码/未知规则错误码及 module92/183 不变；相关回归 100/100；无迁移 | 未安排 | 三次 53001 空成功不能证明转换规则；53002 请求字段、53006 参数、状态枚举、任务函数/周期统计及结束结算仍待恢复；[交付记录](../../../agent/workflow/gameplay-completion/CORE-EVENTS/implementation.md) |
 | CORE-DRAW-POOLS | 证据待补；已有圣器生产路径复核通过 | `task/CORE-DRAW-POOLS-20261106` @ be514bb；合入7599ef8 | 无奖励 resolver 注入：14 圣器版本正常/保底与 SQLite 重开；38 神灵版本和226无变更拒绝；真 TCP 601→7001、88932；相关回归102/102；最终主线全量2234/2234；静态配置报告与7资产SHA256见 implementation.md | 未安排 | 226的60101/60102及神灵56组lib_range为空；多心愿/替换阶段与神灵心愿/重置规则待证据；Fantasy Task 0行，不能推断当前版本无入口 |
-| CORE-TIME-TEMPLE | 待领取 | — | — | 未安排 | 八个 C2S 编码器的数字命令映射 |
+| CORE-TIME-TEMPLE | 证据闭合：本版本不可达（八个编码器未注册） | `task/CORE-TIME-TEMPLE-20261108` @ ea91c18，合入 main `73afd43` | 反解 `Cmd.lua` 的 `c2s_index`/`c2s_back`/`c2s_switch` 全表（1407/1189/1407 槽），八个 `req_time_temple_*` 全部为 null；正控 `req_guild_info→21005`、`req_chat_msg_like→11014` 命中，证明注册表完整；`Connection:Send` 用 `Cmd.c2s_index[cmd]` 取值，nil 直接报错不外发；7700–7900/900–910 数值普查 0 条，90501–90507 属宠物活动、91001 属能量爆发、7801 是 S2C；冻结常量 `TIME_TEMPLE_UNREGISTERED_COMMANDS` + 5 项专项，真实 loopback 下 7801/7701/7702/7709 返回 `LOCAL_NOT_IMPLEMENTED` 且 module 159 载荷不变；顺带修复网关对空 `bytes` 载荷记录时抛错的既有缺陷（`payloadBytes()`） | 未安排（本版本无入口） | 结论只覆盖 1.55.090365，后续版本可能重新注册；`season_shop` 本版无调用点；`FunOpen 1199` 与 `MagicalJourneyMgr` 赛季开启条件未解码；四条命令连 `_back` schema 都没有；7801 真实触发时机与奖池/保底/价格规则未实现 |
 | CORE-CABIN | 待领取 | — | — | 未安排 | 房间/任务/交互/奖励/加速的可达性与协议 |
 | SOC-FRIEND | 服务端完成（20012/20013 语义与友情点结算证据待补） | `task/SOC-FRIEND-20261107`，合入 main | 20001–20013 全部网关派发；服务专项 15/15 + 真实临时 TCP 13 个 type + SQLite 重开 + PB 编码失败与 `friend_gifts` ABORT 触发器整体回滚；合并后好友/网关回归 35/35 | 未安排 | 数字登录槽未取证（`loginPayload` 已就绪，待总控选定槽位）；`FlushTime.NowDay` 日界为推断（用 serverDayNumber）；`daily_present_rewards` 发放触发点、favors 增量与友情币换算、20012 过滤语义、20013 举报参数与重复规则未知；2200/2202 推送载荷未取证 |
 | SOC-MSG | 服务端完成（10508 登录槽与部分二进制载荷待补） | `task/SOC-MSG-20261107` @ a124472；合入 main b4880a9 | 10501–10511 全部有处理路径；新增 `message-service`、消息配置和 `MsgTable.ChannelType` 资产；恢复 1400–1403 推送类型；服务 + 真实临时 TCP 专项 13/13，合并后网关/登录/M5 回归通过 | 未安排 | 10508 payload 已就绪但登录模块数字槽位未取证；1400–1403 的 `sender_bin/extra_bin` 内容未反解；原服消息频控、历史分页与跨服聚合语义待补 |
@@ -99,3 +99,8 @@
 - 合并后 gateway 逐项核对：`onlineGift.beginSession`、`rankAchieve.ensureLoginState`、`heroExtra.ensureLoginState`、`firstWeekGoal.loginPayload`、`growthRoad.ensureLoginState`、`activityRead.synchronizeHelpUpLogin`、`groupBuyAct.synchronizeLogin`、`hundredDraw.synchronizeLogin`、`artifact.ensureLoginState` 全部保留；1316、67004/67005、69001/69002、20001–20013、钓鱼 ETF、精英 201/207、团购 100601/100602、207 结算/体力、邮件推送、活动期限、module 8/90 多槽、10501–10511、11000–11014、117001–117005、37060–37075、89701–89712、house-assistant 派发共存；recruit 仍在 heroCommandServices 之前，百抽仍在通用 activityRead 之前。
 - 本轮主线工作树存在另一个 session 的未提交改动（`activity-calendar.mjs`、`welfare-service.mjs` 及三个测试、hundred-schools 文档）与未跟踪 `assets/`。总控未清理、未覆盖、未提交这些改动；三次合并均未触碰这些路径。
 - 三项都没有进入 APK 验收，未启停实时服务、未读写 `runtime.local-only.data` 或运行数据库、未操作模拟器/ADB/APK、未连接原游戏服务器。
+
+## 集成与验收记录（2026-11-08 第五批）
+
+- CORE-TIME-TEMPLE（`677c164`，rebase 后 `ea91c18`：空白修正）以 `--no-ff` 合入 main `73afd43`。结论是“证否”而非实现：`Cmd.lua` 注册表全表反解显示八个 `req_time_temple_*` 编码器在本版客户端没有数字 C2S type，`Connection:Send` 遇 nil 直接放弃发送。附带修复网关对空 `bytes` 请求载荷记录时抛错的既有缺陷（`payloadBytes()` 替换 8 处 `.subarray` 写法，响应字节不变）。总控复核 30/30（time-temple + gameplay-gateway + m5 + gateway-probe + message + hundred-draw + group-buy），`git diff --check` 空白问题已由 `ea91c18` 修正。rebase 时与总控状态表自动合并，保留本文件第四批内容与该任务的取证结论。
+- 本批未进入 APK 验收：CORE-TIME-TEMPLE 在本版本没有可操作入口，未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
