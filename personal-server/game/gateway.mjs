@@ -422,6 +422,8 @@ export function createLocalGame({
   const monthPermitRepair=store.transaction((model,db)=>monthPermit.repairLegacyTaskExperience({model,db}));
   if(monthPermitRepair.changed) logger({event:'month_permit_task_exp_repaired',repairs:monthPermitRepair.repairs.map(({changes,...repair})=>repair)});
   const monthlyCard=createMonthlyCardService({codec,tables,now:secondsClock});
+  const monthlyCardRepair=store.transaction(model=>monthlyCard.repairLegacyClaimBits({model}));
+  if(monthlyCardRepair.changed) logger({event:'monthly_card_claim_bits_repaired',cards:monthlyCardRepair.repaired});
   const wallet=localWallet?createWalletService({
     store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, rawBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createMonthlyCardService } from '../game/monthly-card-service.mjs';
@@ -86,7 +86,7 @@ test('monthly card reward claim grants configured rewards, records the bit, reje
   assert.deepEqual(result.claims, [{ cardId: CARD_ID, day: 1 }]);
   assert.deepEqual(result.response.card.map(row => [Number(row.id), Number(row.got_count)]), [[CARD_ID, 1]]);
   assert.equal(result.response.res.changes.length, 3);
-  assert.equal(rewardBits(cardRow(env.store))[0], 0x80);
+  assert.equal(rewardBits(cardRow(env.store))[0], 0x40);
   const expectedDiffs = new Map([
     ['122702', 1n],
     ['8501900', 2n],
@@ -105,8 +105,76 @@ test('monthly card reward claim grants configured rewards, records the bit, reje
   );
 
   env.reopen();
-  assert.equal(rewardBits(cardRow(env.store))[0], 0x80);
+  assert.equal(rewardBits(cardRow(env.store))[0], 0x40);
   assert.equal(Number(cardRow(env.store).got_count), 1);
+});
+
+test('legacy monthly card claim bits migrate to the client day indexes exactly once', t => {
+  const env = setup(t, 'fc-monthly-card-legacy-bits-');
+  env.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const info = codec.unpack('pb_monthly_card_info', rawBinary(modules.get(20)));
+    const row = info.card_list.find(card => Number(card.id) === CARD_ID);
+    row.got_reward = Buffer.from([0x80, 0x00]);
+    row.got_count = 1;
+    modules.set(20, serializedBinary(codec.pack('pb_monthly_card_info', info)));
+    model.state.modules.value = [...modules];
+  });
+
+  let repair = env.store.transaction(model => env.cards.repairLegacyClaimBits({ model }));
+  assert.deepEqual(repair.repaired, [{ cardId: CARD_ID, gotCount: 1 }]);
+  const migrated = rewardBits(cardRow(env.store));
+  assert.equal(migrated[0], 0x40);
+  assert.equal(Number(cardRow(env.store).got_count), 1);
+
+  repair = env.store.transaction(model => env.cards.repairLegacyClaimBits({ model }));
+  assert.equal(repair.changed, false);
+  assert.equal(rewardBits(cardRow(env.store))[0], 0x40);
+});
+
+test('game startup repairs legacy monthly card claim bits before login', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-monthly-card-startup-repair-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  const events = [];
+  let game;
+  t.after(async () => {
+    await game?.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+  const options = {
+    databasePath,
+    statePath: path.join(directory, 'absent.json'),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
+    activityMode: 'all-open',
+    now: () => NOW * 1000,
+    logger: event => events.push(event)
+  };
+
+  game = createLocalGame(options);
+  game.store.transaction(model => game.monthlyCard.purchase({
+    model,
+    product: tables.Recharge.get(PRODUCT_ID),
+    at: NOW
+  }));
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const info = codec.unpack('pb_monthly_card_info', rawBinary(modules.get(20)));
+    const row = info.card_list.find(card => Number(card.id) === CARD_ID);
+    row.got_reward = Buffer.from([0x80, 0x00]);
+    row.got_count = 1;
+    modules.set(20, serializedBinary(codec.pack('pb_monthly_card_info', info)));
+    model.state.modules.value = [...modules];
+  });
+  await game.close();
+  game = undefined;
+
+  game = createLocalGame(options);
+  assert.equal(rewardBits(cardRow(game.store))[0], 0x40);
+  assert.equal(Number(cardRow(game.store).got_count), 1);
+  assert.deepEqual(
+    events.filter(event => event.event === 'monthly_card_claim_bits_repaired'),
+    [{ event: 'monthly_card_claim_bits_repaired', cards: [{ cardId: CARD_ID, gotCount: 1 }] }]
+  );
 });
 
 test('monthly card reward claim rejects invalid, future, duplicate and inactive requests', t => {
@@ -218,7 +286,7 @@ test('gateway routes 17001 over real TCP and returns res_get_monthly_card_reward
   assert.equal(response.err, undefined, JSON.stringify(events.filter(event => event.seq === 2)));
   const value = codec.unpack('res_get_monthly_card_reward', Buffer.from(response.data, 'base64'));
   assert.equal(Number(value.card[0].id), CARD_ID);
-  assert.equal(rewardBits(value.card[0])[0], 0x80);
+  assert.equal(rewardBits(value.card[0])[0], 0x40);
   assert.deepEqual(value.res.changes.map(change => change.diff_num).sort(), ['1', '2', '300'].sort());
   assert.ok(events.some(event => event.event === 'monthly_card_reward_committed' && event.type === 17001));
   assert.equal(events.some(event => event.event === 'unsupported_command' && event.type === 17001), false);
