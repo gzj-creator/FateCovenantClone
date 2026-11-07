@@ -61,7 +61,7 @@ test('module 183 merges are additive, uniquely indexed, and reject corrupt wrapp
   const { module183 } = fixture();
   const entry = serializedEntry(module183);
   const originalPlayer = codec.unpack('pb_act_role_login', rawStored(entry.value[0]));
-  const originalServer = codec.unpack('pb_artifact_draw_server_list', rawStored(entry.value[1]));
+  const originalServer = codec.unpack('pb_act_server_data', rawStored(entry.value[1]));
   entry.value.push(serializedBinary(Buffer.from('preserve-extra-module-value')));
   const block = codec.pack('pb_artifact_draw_player_list', {
     act_data_list: [{ act_tid: 159001, daily_time: 0 }]
@@ -69,16 +69,18 @@ test('module 183 merges are additive, uniquely indexed, and reject corrupt wrapp
   const merged = mergeRelicLoginContainer({
     codec,
     entry,
-    activities: [{ actTid: 159001, startTime: 1792789200, endTime: 1793394000, blocks: [block] }],
-    serverRows: [{ act_tid: 159001, cur_turn: 1, settle_turn: [1792789200] }]
+    activities: [{ actTid: 159001, startTime: 1792789200, endTime: 1793394000, blocks: [block] }]
   });
 
   const player = codec.unpack('pb_act_role_login', Buffer.from(merged.values[0].value.data));
-  const server = codec.unpack('pb_artifact_draw_server_list', Buffer.from(merged.values[1].value.data));
+  const server = codec.unpack('pb_act_server_data', Buffer.from(merged.values[1].value.data));
   assert.equal(player.data_list.length, originalPlayer.data_list.length + 1);
-  assert.equal(server.act_data_list.length, originalServer.act_data_list.length + 1);
+  assert.equal(server.act_stage_list.length, originalServer.act_stage_list.length + 1);
   for (const original of originalPlayer.data_list) {
     assert.ok(player.data_list.some(row => Number(row.act_stage.act_id) === Number(original.act_stage.act_id)));
+  }
+  for (const original of originalServer.act_stage_list) {
+    assert.ok(server.act_stage_list.some(row => Number(row.act_id) === Number(original.act_id)));
   }
   assert.equal(merged.values.length, 3);
   assert.deepEqual(Buffer.from(merged.values[2].value.data), Buffer.from('preserve-extra-module-value'));
@@ -87,6 +89,15 @@ test('module 183 merges are additive, uniquely indexed, and reject corrupt wrapp
   assert.equal(added.act_stage.end_time, '1793394000');
   assert.equal(added.act_stage.cur_stage_id, 50);
   assert.deepEqual(decodeModuleLoginBlocks(added.module_login_data), [block]);
+  const addedServer = server.act_stage_list.find(row => Number(row.act_id) === 159001);
+  assert.equal(addedServer.start_time, '1792789200');
+  assert.equal(addedServer.end_time, '1793394000');
+  assert.equal(addedServer.cur_stage_id, 50);
+  assert.deepEqual(addedServer.stage_time_list, [{
+    stage_id: 50,
+    start_time: '1792789200',
+    end_time: '1793394000'
+  }]);
 
   const replaced = mergeRelicLoginContainer({
     codec,
@@ -241,7 +252,7 @@ test('gateway preserves login blocks, routes every relic command, and pushes aft
 
   const before = fixture().module183;
   const originalPlayer = codec.unpack('pb_act_role_login', Buffer.from(before.value[0].value));
-  const originalServer = codec.unpack('pb_artifact_draw_server_list', Buffer.from(before.value[1].value));
+  const originalServer = codec.unpack('pb_act_server_data', Buffer.from(before.value[1].value));
   seedFantasyModule(game.store);
   setResources(game.store, [149002, 808002, 811002, 670002, 671002, 672002, 673002, 674002, 675002, 676002, 677002, 713002, 715002]);
   const sealedFantasy = new Map(game.store.state().modules.value).get(518).value.map(rawStored);
@@ -267,13 +278,22 @@ test('gateway preserves login blocks, routes every relic command, and pushes aft
   assert.ok([159009, 102018, 74001].every(id => activityIds.has(id)));
 
   const mergedPlayer = codec.unpack('pb_act_role_login', Buffer.from(loginModules.get(183).value[0].value));
-  const mergedServer = codec.unpack('pb_artifact_draw_server_list', Buffer.from(loginModules.get(183).value[1].value));
+  const mergedServer = codec.unpack('pb_act_server_data', Buffer.from(loginModules.get(183).value[1].value));
   for (const row of originalPlayer.data_list) {
     assert.ok(mergedPlayer.data_list.some(value => Number(value.act_stage.act_id) === Number(row.act_stage.act_id)));
   }
-  for (const row of originalServer.act_data_list) {
-    assert.ok(mergedServer.act_data_list.some(value => Number(value.act_tid) === Number(row.act_tid)));
+  for (const row of originalServer.act_stage_list) {
+    assert.ok(mergedServer.act_stage_list.some(value => Number(value.act_id) === Number(row.act_id)));
   }
+  const fishingPlayer = mergedPlayer.data_list.find(row => Number(row.act_stage.act_id) === 1074011);
+  const fishingServer = mergedServer.act_stage_list.find(row => Number(row.act_id) === 1074011);
+  for (const row of [fishingPlayer.act_stage, fishingServer]) {
+    assert.equal(row.cur_stage_id, 50);
+    assert.ok(Number(row.start_time) <= GAME_NOW / 1000);
+    assert.ok(Number(row.end_time) > GAME_NOW / 1000);
+  }
+  assert.equal(fishingServer.stage_time_list[0].stage_id, 50);
+  assert.ok(Number(fishingServer.stage_time_list[0].end_time) > GAME_NOW / 1000);
   const demigodRow = mergedPlayer.data_list.find(row => Number(row.act_stage.act_id) === 102018);
   const fantasyRow = mergedPlayer.data_list.find(row => Number(row.act_stage.act_id) === 74001);
   const demigodBlocks = decodeModuleLoginBlocks(demigodRow.module_login_data);

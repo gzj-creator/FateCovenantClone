@@ -2,6 +2,7 @@ const DAY_SECONDS = 86400;
 const RESET_OFFSET_SECONDS = 8 * 3600;
 const FISHING_ACT_FIRST = 1074001;
 const FISHING_ACT_LAST = 1074011;
+const ALL_OPEN_LOGIN_WINDOW_SECONDS = 365 * DAY_SECONDS;
 
 function seconds(value) {
   const number = Number(value);
@@ -144,10 +145,16 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     activity.act_custom_list ??= [];
     if (mode === 'all-open') {
       for (const entry of activity.act_list) {
-        if (entry.state_data) entry.state_data.cur_state_id = 50;
+        if (entry.state_data) {
+          entry.state_data.cur_state_id = 50;
+          entry.state_data.history_time = [{ state_id: 50, enter_time: String(openedAt) }];
+        }
       }
       for (const group of activity.act_parallel_list) {
-        for (const state of group.states_data ?? []) state.cur_state_id = 50;
+        for (const state of group.states_data ?? []) {
+          state.cur_state_id = 50;
+          state.history_time = [{ state_id: 50, enter_time: String(openedAt) }];
+        }
       }
       for (const custom of activity.act_custom_list) {
         custom.start_time = 0;
@@ -226,6 +233,51 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     };
   }
 
+  function normalizeActFrameLogin(player, server, at = currentSeconds()) {
+    const current = seconds(at);
+    const result = { mode, adjusted: 0, activityIds: [] };
+    if (mode !== 'all-open' || !player || !server || !Number.isSafeInteger(current) || current <= 0) return result;
+    player.data_list ??= [];
+    server.act_stage_list ??= [];
+    const playerByTid = new Map(player.data_list
+      .map(row => [Number(row?.act_stage?.act_id), row])
+      .filter(([id]) => Number.isSafeInteger(id) && id > 0));
+    const serverByTid = new Map(server.act_stage_list
+      .map(row => [Number(row?.act_id), row])
+      .filter(([id]) => Number.isSafeInteger(id) && id > 0));
+
+    for (const [id, serverRow] of serverByTid) {
+      const playerRow = playerByTid.get(id);
+      const existingStart = Math.min(
+        seconds(serverRow.start_time) || Number.MAX_SAFE_INTEGER,
+        seconds(playerRow?.act_stage?.start_time) || Number.MAX_SAFE_INTEGER
+      );
+      const start = Math.min(existingStart === Number.MAX_SAFE_INTEGER ? openedAt : existingStart, current);
+      const existingEnd = Math.max(seconds(serverRow.end_time), seconds(playerRow?.act_stage?.end_time));
+      const end = Math.max(current + ALL_OPEN_LOGIN_WINDOW_SECONDS, existingEnd, current + 1);
+      const stage = { stage_id: 50, start_time: String(start), end_time: String(end) };
+      serverRow.act_id = id;
+      serverRow.start_time = String(start);
+      serverRow.end_time = String(end);
+      serverRow.cur_stage_id = 50;
+      serverRow.is_pause = false;
+      serverRow.loop_count = 0;
+      serverRow.stage_time_list = [stage];
+      if (playerRow) {
+        playerRow.act_stage ??= {};
+        playerRow.act_stage.act_id = id;
+        playerRow.act_stage.start_time = String(start);
+        playerRow.act_stage.end_time = String(end);
+        playerRow.act_stage.cur_stage_id = 50;
+        playerRow.act_stage.loop_count = 0;
+        playerRow.act_stage.history_time = [{ stage_id: 50, enter_time: String(start) }];
+      }
+      result.activityIds.push(id);
+    }
+    result.adjusted = result.activityIds.length;
+    return result;
+  }
+
   return {
     serverOpenedAt: openedAt,
     mode,
@@ -234,6 +286,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     isActivityRunning,
     filterLoginActivity,
     applyLoginSchedule,
+    normalizeActFrameLogin,
     activeFishingActivities,
     activeFishingActivityIds(at = currentSeconds(), activity = null) {
       return activeFishingActivities(at, activity).map(entry => entry.actId);

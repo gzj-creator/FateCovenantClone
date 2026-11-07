@@ -483,13 +483,17 @@ export function createLocalGame({
       const window = relicActivityWindow(actTid);
       loginActivities.push({ actTid, startTime: window.start, endTime: window.end, blocks: payload.blocks });
     }
-    if (loginActivities.length) {
+    let actFrameNormalization = null;
+    if (loginActivities.length || calendar.mode === 'all-open') {
       const merged = mergeRelicLoginContainer({
         codec,
         entry: storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null,
         activities: loginActivities,
-        serverRows: artifactLogin?.serverList.value.act_data_list ?? []
+        normalize: calendar.mode === 'all-open'
+          ? ({ player, server }) => calendar.normalizeActFrameLogin(player, server, loginSeconds)
+          : null
       });
+      actFrameNormalization = merged.normalization;
       modules.set(RELIC_ACTIVITY_LOGIN_MODULE_ID, revive({ value: merged.values, improper: false }));
     }
     logger({
@@ -506,6 +510,7 @@ export function createLocalGame({
       demigodActivityId: currentDemigodId,
       fantasyActivityId: currentFantasyId,
       relicLoginActivityIds: loginActivities.map(value => value.actTid),
+      actFrameAdjustedActivityIds: actFrameNormalization?.activityIds ?? [],
       heroDrawCount: heroDrawLogin?.drawData?.role_data?.draw_count ?? null,
       heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
       rechargeRebateResetId: rebateLogin?.actId ?? null,

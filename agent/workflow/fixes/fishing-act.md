@@ -4,6 +4,35 @@
 
 状态：**活动排期、免费鱼饵、甩杆、收获、批量收获和岛屿解锁均已实现；组件、临时 TCP、运行迁移与真实登录响应通过。下一轮 APK 操作和用户视觉未验收。**
 
+## 2026-11-07：活动页面无法退出
+
+复现证据保存在 `analysis/experiments/private-server-20261025/p3/fishing-exit-20261107/`。用户点击页面返回箭头后，导航组仍停在 `FishingActIslandMainForm`；客户端日志为：
+
+```text
+Do not close form before 'OnOpen' finished!! => FishingActIslandMainForm
+[FishingActEnterForm] Visible:True FullScreen:True
+导航组:[FishingActIslandMainForm] 当前状态:Open
+[FishingActIslandMainForm] Visible:False
+```
+
+反汇编确认海钓使用 ActFrame 活动体系，`FishingActIslandMainForm:_RefreshCountTime` 调用 `FishingActData:GetLeftTimeInfo`。`Activity:GetStageTime` 优先读取模块 183 的 `pb_act_server_data.act_stage_list[].stage_time_list`。
+
+根因在模块 183 登录合并器：客户端 `ActLogin` 把第一个块解析为 `pb_act_role_login`，其余块解析为 `pb_act_server_data`；旧服务却把第二个块按 wire-format 相似但字段含义不同的 `pb_artifact_draw_server_list` 解码并重新编码。线上库原始第二块为 1399 字节，1074011 的阶段时间为 `50: 1790784000..1795467600`；旧合并后只剩 571 字节，1074011 的 `start_time/end_time/stage_time_list` 被删除。玩家块仍在，服务器时间块缺失，因此客户端得到 0 剩余时间和不完整活动实体。
+
+修复内容：
+
+- `relic-divine-login.mjs` 改用客户端真实协议 `pb_act_server_data` 处理模块 183 第二个块，新增活动时同时补玩家阶段和服务器阶段，其他额外模块块原样保留。
+- `activity-calendar.mjs` 在 `all-open` 登录时规范模块 183 的全部服务器/玩家活动行：`cur_stage_id=50`、暂停清除、当前阶段写入 365 天滚动窗口；模块 92 的 `history_time` 也统一为运行阶段。
+- SQLite 原始快照不被覆写；规范化只作用于登录响应。
+
+验证：
+
+- 线上库只读复算显示修复后第二块重新编码仍为 1399 字节，1074011 的字段与阶段时间完整保留。
+- `node --test test/activity-calendar.test.mjs test/relic-divine-gateway.test.mjs`：9/9 通过。
+- 活动、登录网关、宠物、圣器、累计充值、百派和钓鱼相关专项：59/59 通过。
+- `npm test`：2091/2091 通过，日志保存在 `analysis/experiments/private-server-20261025/p3/fishing-exit-20261107/full-test-20261107.log`。
+- 重启客户端只能临时清掉当前导航栈；旧服务下一次登录仍会生成损坏的模块 183。服务重启本身也不会修复，必须先使用本修复并重新登录。
+
 ## 本次失败证据
 
 - 2026-10-30 12:22:46 客户端打开 `FishingActEnterForm`，12:22:48 进入 `FishingActIslandMainForm`。

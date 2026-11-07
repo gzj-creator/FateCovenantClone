@@ -170,9 +170,77 @@ test('all-open mode retains every stored activity, clears pauses and selects the
   assert.deepEqual(result.fishingActivityIds, [1074011]);
   assert.deepEqual(activity.act_list.map(entry => Number(entry.state_data.act_id)), [1074003, 1074011]);
   assert.ok(activity.act_list.every(entry => Number(entry.state_data.cur_state_id) === 50));
-  assert.deepEqual(activity.act_parallel_list[0].states_data, [{ act_id: 83028, cur_state_id: 50 }]);
+  assert.equal(activity.act_list[0].state_data.history_time[0].enter_time, String(SERVER_OPENED_AT));
+  assert.deepEqual(activity.act_parallel_list[0].states_data, [{
+    act_id: 83028,
+    cur_state_id: 50,
+    history_time: [{ state_id: 50, enter_time: String(SERVER_OPENED_AT) }]
+  }]);
   assert.deepEqual(activity.act_custom_list, [{ act_id: 83028, start_time: 0, end_time: 0 }]);
   assert.deepEqual(activity.act_pause_list, []);
   assert.equal(calendar.isActivityRunning(83028, null, activity, at), true);
   assert.equal(calendar.activeFishingActivityId(at, activity), 1074011);
+});
+
+test('all-open mode makes every ActFrame server row active for the current login', () => {
+  const at = SERVER_OPENED_AT + 14 * DAY;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    mode: 'all-open',
+    currentFishingActivityId: 1074011,
+    now: () => at * 1000
+  });
+  const player = {
+    data_list: [
+      { act_stage: {
+        act_id: 1074011,
+        start_time: String(at - 40 * DAY),
+        end_time: String(at - DAY),
+        cur_stage_id: 90,
+        loop_count: 2,
+        history_time: [{ stage_id: 90, enter_time: '1' }]
+      }, module_login_data: Buffer.alloc(0) },
+      { act_stage: {
+        act_id: 83028,
+        start_time: '0',
+        end_time: '0',
+        cur_stage_id: 99,
+        history_time: []
+      }, module_login_data: Buffer.alloc(0) }
+    ]
+  };
+  const server = {
+    act_stage_list: [
+      { act_id: 1074011, type: 1074, start_time: String(at - 40 * DAY), end_time: String(at - DAY), cur_stage_id: 90 },
+      { act_id: 83028, type: 83, start_time: '0', end_time: '0', cur_stage_id: 99 }
+    ]
+  };
+
+  const result = calendar.normalizeActFrameLogin(player, server, at);
+  assert.deepEqual(result.activityIds, [1074011, 83028]);
+  for (const row of server.act_stage_list) {
+    assert.equal(row.cur_stage_id, 50);
+    assert.equal(row.is_pause, false);
+    assert.equal(row.loop_count, 0);
+    assert.ok(Number(row.start_time) <= at);
+    assert.ok(Number(row.end_time) > at);
+    assert.deepEqual(row.stage_time_list, [{
+      stage_id: 50,
+      start_time: row.start_time,
+      end_time: row.end_time
+    }]);
+  }
+  for (const row of player.data_list) {
+    assert.equal(row.act_stage.cur_stage_id, 50);
+    assert.equal(row.act_stage.loop_count, 0);
+    assert.ok(Number(row.act_stage.start_time) <= at);
+    assert.ok(Number(row.act_stage.end_time) > at);
+    assert.equal(row.act_stage.history_time[0].stage_id, 50);
+  }
+
+  const scheduled = calendarAt(at);
+  const untouched = structuredClone(server);
+  assert.equal(scheduled.normalizeActFrameLogin(player, server, at).adjusted, 0);
+  assert.deepEqual(server, untouched);
 });
