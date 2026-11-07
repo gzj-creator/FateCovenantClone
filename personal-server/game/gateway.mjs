@@ -38,6 +38,8 @@ import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
+import { createGroupBuyActService } from './group-buy-act-service.mjs';
+import { readGroupBuyActTables } from '../config/group-buy-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createShopService } from './shop-service.mjs';
@@ -438,6 +440,7 @@ export function createLocalGame({
   // mission block below and is guarded by supports().
   const missionExtra = createMissionExtraService({ store, codec, now: clock, logger });
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
+  const groupBuyAct=createGroupBuyActService({store,codec,tables,groupBuyTables:readGroupBuyActTables(),calendar,now:clock,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     const repairedLineups = lineups.ensureLoginState();
@@ -526,6 +529,7 @@ export function createLocalGame({
     // module_login_data, so the help-up block rides inside module 92.
     const helpUpLoginIds = activityRead.synchronizeHelpUpLogin(activity, loginSeconds);
     if (helpUpLoginIds.length) logger({ event: 'help_up_act_login_synced', actIds: helpUpLoginIds });
+    const groupBuyActLogin = groupBuyAct.synchronizeLogin(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -596,6 +600,8 @@ export function createLocalGame({
       heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
       rechargeRebateResetId: rebateLogin?.actId ?? null,
       accRechargeActivityIds: accRechargeLogin.activityIds,
+      groupBuyActActivityId: groupBuyActLogin.actId,
+      groupBuyActGiftIds: groupBuyActLogin.giftIds,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -1122,6 +1128,24 @@ export function createLocalGame({
         }
         return;
       }
+      if (groupBuyAct.supports(type)) {
+        try {
+          const result = groupBuyAct.execute(type, request.data);
+          send(seq, result.data);
+          log({
+            event: type === 100601 ? 'group_buy_server_data_sent' : 'group_buy_award_committed',
+            type, seq, actId: result.value?.act_id ?? result.value?.actId
+          });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'group_buy_rejected', type, seq, code, message: error.message,
+            payloadHead: (request.data ?? Buffer.alloc(0)).subarray(0, 64).toString('base64')
+          });
+        }
+        return;
+      }
       if (hundredAcc.supports(type)) {
         try {
           const decoded = await decodeEtf(request.data);
@@ -1211,8 +1235,11 @@ export function createLocalGame({
       if (welfare.supports(type)) {
         try {
           const result = await welfare.execute(type, request.data, { connection: id, seq });
-          send(seq, result.data);
-          log({ event: 'welfare_committed', type, seq });
+          const data = type === 16005
+            ? groupBuyAct.augmentPurchaseResponse(result.data, result.value?.recharge_id)
+            : result.data;
+          send(seq, data);
+          log({ event: 'welfare_committed', type, seq, groupBuyActSync: type === 16005 && data !== result.data });
         } catch (error) {
           // RechargeMgr has a dedicated localized message for 16016. The
           // wallet's 307 is an internal QuickSDK code with no ErrorTable text.
@@ -1944,7 +1971,7 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, rankAchieve,
-    cms, guildNationAssist,
+    cms, guildNationAssist, groupBuyAct,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
