@@ -674,6 +674,8 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   assert.equal(syncedHero.tid, '1010101');
   assert.equal(syncedHero.uid, '1010101');
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
+  const persistedHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.read().state.modules.value).get(10).value[0]));
+  assert.equal(persistedHeroes.hero_list.find(hero => Number(hero.tid) === 1010101)?.uid, '1010101');
   const loginHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.state().modules.value).get(10).value[0]));
   const recruited = loginHeroes.hero_list.find(hero => Number(hero.tid) === 1010101);
   assert.ok(recruited);
@@ -691,6 +693,8 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   assert.ok(lineupResponse.role_lineup.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === recruited.uid));
   env.reopen();
   assert.equal(env.store.read().heroInfo.hero_list.find(hero => hero.tid === recruited.tid)?.uid, recruited.uid);
+  const reopenedHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.read().state.modules.value).get(10).value[0]));
+  assert.equal(reopenedHeroes.hero_list.find(hero => Number(hero.tid) === 1010101)?.uid, '1010101');
   assert.ok(env.store.read().lineups.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === recruited.uid));
   const second = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
   const duplicate = second.res.changes.find(change => change.tid === '21100104');
