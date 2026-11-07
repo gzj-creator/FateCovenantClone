@@ -108,4 +108,3 @@ npm test（personal-server 全量）
 ```
 
 日志（主仓库 `analysis/test-runs/gameplay-20261106/`）：`core-time-temple-service.log`、`core-time-temple-regression.log`、`core-time-temple-full.log`。未做 APK 实机验收，未启停实时服务，未读写 `runtime.local-only.data`，未操作模拟器/ADB。
-
