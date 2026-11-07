@@ -13,7 +13,7 @@
 | CORE-ATTR | 服务端完成（属性查询/战力/普通副本战斗同源；装备等养成来源待扩展） | `task/CORE-ATTR-20261106` @ ec41751 | 4 专项 + 真实 TCP 1316 + SQLite 重开；mission/rank/lineup/equip 等联合回归 66/66；合并后全量 2219/2219 | 未安排 | 逐级成长分母、战力权重、1316 attr_list play_type、1314 回包、NpcAttr 外部数据、速度表均未取证；装备/团长装备/图鉴/好感/法阵/符文/圣器尚未汇入 |
 | CORE-SKILL-GATES | 证据待补（已合入 AbilityLevel/mastery/soul 部分实现） | `task/CORE-SKILL-GATES-20261106` @ b87b99d；合入 b6e1766 | 新增 7 专项 + battle/skill/mission/attribute/mastery/gateway 57/57；总控合并后 npm test 2226/2226；mission 与 1316 共用 loadout；未改 gateway/game-store | 未安排 | AbilityLevel 索引语义待可读反编译确认；通用 Passive 仍未按突破筛选；每级倍率、mastery 选择/突破换技能证据未取得，不能认定整卡完成 |
 | CORE-EVENTS | 实施中（推进协议证据待补） | `task/CORE-EVENTS-20261106`；agent core_events_impl2 | 尚未提交或验收；已核对 53001 三次实包的请求形状与空回包；53002 请求语义未恢复 | 未安排 | 不能从已观测空成功推断所有阶段都不推进；未知推进需明确拒绝，生命周期、53006 和业务事件接线仍待完成 |
-| CORE-DRAW-POOLS | 实施中（空生产奖池证据待补） | `task/CORE-DRAW-POOLS-20261106`；agent core_draw_pools_impl2 | 尚未提交或验收；agent 报告常驻幻武 2 组、神灵 56 组均为空，正在补生产加载器/TCP 验证 | 未安排 | 缺少上述奖池奖励范围；Fantasy Task/FantasyEquipActTask 为 0 行；不能用假 resolver 或空配置认定本版本不可达 |
+| CORE-DRAW-POOLS | 证据待补；已有圣器生产路径复核通过 | `task/CORE-DRAW-POOLS-20261106` @ 本次提交 | 无奖励 resolver 注入：14 圣器版本正常/保底与 SQLite 重开；38 神灵版本和226无变更拒绝；真 TCP 601→7001、88932；相关回归102/102；静态配置报告与7资产SHA256见 implementation.md | 未安排 | 226的60101/60102及神灵56组lib_range为空；多心愿/替换阶段与神灵心愿/重置规则待证据；Fantasy Task 0行，不能推断当前版本无入口 |
 | CORE-TIME-TEMPLE | 待领取 | — | — | 未安排 | 八个 C2S 编码器的数字命令映射 |
 | CORE-CABIN | 待领取 | — | — | 未安排 | 房间/任务/交互/奖励/加速的可达性与协议 |
 | HERO-LINEUP | 服务端完成 | `task/HERO-LINEUP-20261106` @ cd3b3ea | 5 专项测试 + 真实 TCP 214→215→216→209→210→217 + 重开 DB；集成分支 30/30 | 未安排 | 217 回包 schema 未恢复（当前 ETF 回显索引）；名称长度上限属推断；214 请求形态待实测 |
