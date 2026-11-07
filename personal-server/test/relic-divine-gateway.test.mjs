@@ -7,6 +7,7 @@ import net from 'node:net';
 import { once } from 'node:events';
 import { createGameCodec, decodeEtf, encodeEtf, serializedBinary } from '../protocol/game-codec.mjs';
 import { createLocalGame } from '../local-game.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 import {
@@ -461,4 +462,89 @@ test('gateway preserves login blocks, routes every relic command, and pushes aft
   const reopenedFantasy = codec.unpack('pb_fantasy_draw', rawStored(new Map(game.store.state().modules.value).get(518).value[2]));
   assert.equal(reopenedDemigod, '1');
   assert.equal(reopenedFantasy.total_draw_times, '10');
+});
+
+test('production 601 uses artifact rewards and rejects empty pools without a custom resolver', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-production-draw-gateway-'));
+  const logs = [];
+  const options = {
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityMode: 'all-open',
+    currentFishingActivityId: 1074011,
+    currentArtifactActivityId: 159001,
+    currentDemigodActivityId: 102018,
+    currentFantasyActivityId: 74001,
+    now: () => GAME_NOW,
+    random: () => 0.99,
+    logger: event => logs.push(event)
+  };
+  let game = createLocalGame(options);
+  let client;
+  t.after(async () => {
+    client?.socket.destroy();
+    await game.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+  setResources(game.store, [670002, 677002, 149002, 808002]);
+  client = await connectClient(game, t);
+  const login = await client.request(909103, 1, codec.pack('login', {
+    server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: ''
+  }));
+  assert.equal(login.err, undefined);
+  const heroTables = readHeroTables();
+  const drawConfig = heroTables.Draw.get(181);
+  const threshold = Number(heroTables.Guaranteed.get(Number(drawConfig.guaranteed)).guaranteed_num);
+  const beforeTickets = BigInt(game.store.read().resources.get('670002').num);
+
+  const normal = await client.request(601, 2, codec.pack('pb_draw_hero', { draw_lib: 181, point_draw_num: threshold - 1 }));
+  assert.equal(normal.err, undefined);
+  const normalDraw = codec.unpack('hero_draw_back', Buffer.from(normal.data, 'base64'));
+  assert.equal(normalDraw.recruit_info.draw_count, threshold - 1);
+  const normalPush = codec.unpack('pb_fantasy_equip_act_draw', Buffer.from((await client.waitPush(7001)).data, 'base64'));
+  assert.equal(normalPush.guarantee_progress, threshold - 1);
+
+  const guaranteed = await client.request(601, 3, codec.pack('pb_draw_hero', { draw_lib: 181 }));
+  assert.equal(guaranteed.err, undefined);
+  const guaranteedDraw = codec.unpack('hero_draw_back', Buffer.from(guaranteed.data, 'base64'));
+  assert.equal(guaranteedDraw.recruit_info.draw_count, threshold);
+  assert.equal(guaranteedDraw.recruit_info.guaranteed_count ?? 0, 0);
+  assert.ok(guaranteedDraw.res.changes.some(change => change.tid === '300610' && change.diff_num === '1'));
+  const guaranteedPush = codec.unpack('pb_fantasy_equip_act_draw', Buffer.from((await client.waitPush(7001)).data, 'base64'));
+  assert.equal(guaranteedPush.guarantee_progress ?? 0, 0);
+  assert.equal(guaranteedPush.all_guarantee_times, threshold);
+  assert.equal(beforeTickets - BigInt(game.store.read().resources.get('670002').num), BigInt(threshold));
+
+  const unchanged = () => {
+    const model = game.store.read();
+    return { state: structuredClone(model.state), resources: structuredClone([...model.resources]) };
+  };
+  const beforeRejected = unchanged();
+  const rejected = [
+    [601, 'pb_draw_hero', { draw_lib: 226 }, 5],
+    [601, 'pb_draw_hero', { draw_lib: 94 }, 5],
+    [601, 'pb_draw_hero', { draw_lib: 181, point_draw_num: 1001 }, 1],
+    [88932, 'pb_fantasy_act_task_reward_req', { act_tid: 74001, task_id: 1 }, 306]
+  ];
+  let sequence = 4;
+  for (const [type, schema, value, errorCode] of rejected) {
+    const response = await client.request(type, sequence++, codec.pack(schema, value));
+    assert.equal(response.err?.err, errorCode);
+    assert.deepEqual(unchanged(), beforeRejected);
+  }
+  assert.deepEqual(client.pendingPushTypes(), []);
+  assert.equal(logs.filter(event => event.event === 'fantasy_shared_draw_committed').length, 2);
+  assert.ok(logs.some(event => event.event === 'fantasy_shared_draw_rejected' && /60101/.test(event.message)));
+  assert.ok(logs.some(event => event.event === 'fantasy_shared_draw_rejected' && /10076/.test(event.message)));
+
+  const poolBefore = structuredClone(game.store.read().state.fantasyDrawPools);
+  const resourceBefore = BigInt(game.store.read().resources.get('670002').num);
+  client.socket.destroy();
+  await game.close();
+  game = createLocalGame(options);
+  assert.deepEqual(game.store.read().state.fantasyDrawPools, poolBefore);
+  assert.equal(BigInt(game.store.read().resources.get('670002').num), resourceBefore);
 });

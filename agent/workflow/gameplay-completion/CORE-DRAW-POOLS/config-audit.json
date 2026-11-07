@@ -1,0 +1,944 @@
+{
+  "schemaVersion": 1,
+  "artifact": {
+    "kind": "artifact",
+    "ready": true,
+    "versions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "versionLibraries": [
+      {
+        "version": 1,
+        "drawLib": 181
+      },
+      {
+        "version": 2,
+        "drawLib": 183
+      },
+      {
+        "version": 3,
+        "drawLib": 184
+      },
+      {
+        "version": 4,
+        "drawLib": 185
+      },
+      {
+        "version": 5,
+        "drawLib": 186
+      },
+      {
+        "version": 6,
+        "drawLib": 187
+      },
+      {
+        "version": 7,
+        "drawLib": 188
+      },
+      {
+        "version": 8,
+        "drawLib": 189
+      },
+      {
+        "version": 9,
+        "drawLib": 192
+      },
+      {
+        "version": 10,
+        "drawLib": 193
+      },
+      {
+        "version": 11,
+        "drawLib": 194
+      },
+      {
+        "version": 12,
+        "drawLib": 196
+      },
+      {
+        "version": 13,
+        "drawLib": 198
+      },
+      {
+        "version": 14,
+        "drawLib": 199
+      }
+    ],
+    "drawLibs": [
+      181,
+      183,
+      184,
+      185,
+      186,
+      187,
+      188,
+      189,
+      192,
+      193,
+      194,
+      196,
+      198,
+      199
+    ],
+    "groupIds": [
+      901,
+      902,
+      903,
+      904,
+      905,
+      906,
+      907,
+      911,
+      912,
+      913,
+      914,
+      915,
+      916,
+      917,
+      918,
+      921,
+      922,
+      923,
+      924,
+      925,
+      926,
+      927,
+      928,
+      929,
+      930
+    ],
+    "missingGroupIds": [],
+    "emptyGroupIds": [],
+    "unavailableVersions": []
+  },
+  "demigod": {
+    "kind": "demigod",
+    "ready": false,
+    "versions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    "versionLibraries": [
+      {
+        "version": 1,
+        "drawLib": 80
+      },
+      {
+        "version": 2,
+        "drawLib": 81
+      },
+      {
+        "version": 3,
+        "drawLib": 82
+      },
+      {
+        "version": 4,
+        "drawLib": 81
+      },
+      {
+        "version": 5,
+        "drawLib": 82
+      },
+      {
+        "version": 6,
+        "drawLib": 83
+      },
+      {
+        "version": 7,
+        "drawLib": 84
+      },
+      {
+        "version": 8,
+        "drawLib": 85
+      },
+      {
+        "version": 9,
+        "drawLib": 86
+      },
+      {
+        "version": 10,
+        "drawLib": 82
+      },
+      {
+        "version": 11,
+        "drawLib": 87
+      },
+      {
+        "version": 12,
+        "drawLib": 88
+      },
+      {
+        "version": 13,
+        "drawLib": 89
+      },
+      {
+        "version": 14,
+        "drawLib": 90
+      },
+      {
+        "version": 15,
+        "drawLib": 91
+      },
+      {
+        "version": 16,
+        "drawLib": 89
+      },
+      {
+        "version": 17,
+        "drawLib": 89
+      },
+      {
+        "version": 18,
+        "drawLib": 94
+      },
+      {
+        "version": 19,
+        "drawLib": 87
+      },
+      {
+        "version": 20,
+        "drawLib": 88
+      },
+      {
+        "version": 21,
+        "drawLib": 89
+      },
+      {
+        "version": 22,
+        "drawLib": 95
+      },
+      {
+        "version": 23,
+        "drawLib": 96
+      },
+      {
+        "version": 24,
+        "drawLib": 97
+      },
+      {
+        "version": 25,
+        "drawLib": 98
+      },
+      {
+        "version": 26,
+        "drawLib": 99
+      },
+      {
+        "version": 27,
+        "drawLib": 230
+      },
+      {
+        "version": 28,
+        "drawLib": 195
+      },
+      {
+        "version": 29,
+        "drawLib": 230
+      },
+      {
+        "version": 30,
+        "drawLib": 235
+      },
+      {
+        "version": 31,
+        "drawLib": 237
+      },
+      {
+        "version": 32,
+        "drawLib": 235
+      },
+      {
+        "version": 33,
+        "drawLib": 243
+      },
+      {
+        "version": 34,
+        "drawLib": 38700019
+      },
+      {
+        "version": 35,
+        "drawLib": 38700020
+      },
+      {
+        "version": 36,
+        "drawLib": 38700021
+      },
+      {
+        "version": 37,
+        "drawLib": 230
+      },
+      {
+        "version": 38,
+        "drawLib": 237
+      }
+    ],
+    "drawLibs": [
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      195,
+      230,
+      235,
+      237,
+      243,
+      38700019,
+      38700020,
+      38700021
+    ],
+    "groupIds": [
+      10043,
+      10044,
+      10045,
+      10051,
+      10052,
+      10053,
+      10054,
+      10055,
+      10056,
+      10057,
+      10058,
+      10059,
+      10060,
+      10061,
+      10062,
+      10063,
+      10064,
+      10071,
+      10072,
+      10073,
+      10074,
+      10075,
+      10076,
+      10077,
+      10078,
+      10079,
+      10081,
+      10082,
+      10083,
+      10084,
+      10085,
+      10086,
+      10087,
+      10088,
+      10089,
+      10090,
+      10091,
+      10092,
+      10093,
+      10094,
+      10095,
+      60401,
+      60402,
+      60403,
+      60701,
+      60702,
+      60703,
+      60704,
+      60705,
+      60706,
+      60707,
+      61106,
+      61107,
+      61108,
+      61109,
+      61110
+    ],
+    "missingGroupIds": [],
+    "emptyGroupIds": [
+      10043,
+      10044,
+      10045,
+      10051,
+      10052,
+      10053,
+      10054,
+      10055,
+      10056,
+      10057,
+      10058,
+      10059,
+      10060,
+      10061,
+      10062,
+      10063,
+      10064,
+      10071,
+      10072,
+      10073,
+      10074,
+      10075,
+      10076,
+      10077,
+      10078,
+      10079,
+      10081,
+      10082,
+      10083,
+      10084,
+      10085,
+      10086,
+      10087,
+      10088,
+      10089,
+      10090,
+      10091,
+      10092,
+      10093,
+      10094,
+      10095,
+      60401,
+      60402,
+      60403,
+      60701,
+      60702,
+      60703,
+      60704,
+      60705,
+      60706,
+      60707,
+      61106,
+      61107,
+      61108,
+      61109,
+      61110
+    ],
+    "unavailableVersions": [
+      {
+        "version": 1,
+        "drawLib": 80,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10051",
+          "empty-group:10052"
+        ]
+      },
+      {
+        "version": 2,
+        "drawLib": 81,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10053",
+          "empty-group:10054"
+        ]
+      },
+      {
+        "version": 3,
+        "drawLib": 82,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10055",
+          "empty-group:10056"
+        ]
+      },
+      {
+        "version": 4,
+        "drawLib": 81,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10053",
+          "empty-group:10054"
+        ]
+      },
+      {
+        "version": 5,
+        "drawLib": 82,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10055",
+          "empty-group:10056"
+        ]
+      },
+      {
+        "version": 6,
+        "drawLib": 83,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10057",
+          "empty-group:10058"
+        ]
+      },
+      {
+        "version": 7,
+        "drawLib": 84,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10059",
+          "empty-group:10060"
+        ]
+      },
+      {
+        "version": 8,
+        "drawLib": 85,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10061",
+          "empty-group:10062"
+        ]
+      },
+      {
+        "version": 9,
+        "drawLib": 86,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10063",
+          "empty-group:10064"
+        ]
+      },
+      {
+        "version": 10,
+        "drawLib": 82,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10055",
+          "empty-group:10056"
+        ]
+      },
+      {
+        "version": 11,
+        "drawLib": 87,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10071",
+          "empty-group:10081"
+        ]
+      },
+      {
+        "version": 12,
+        "drawLib": 88,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10072",
+          "empty-group:10082"
+        ]
+      },
+      {
+        "version": 13,
+        "drawLib": 89,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10073",
+          "empty-group:10083"
+        ]
+      },
+      {
+        "version": 14,
+        "drawLib": 90,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10074",
+          "empty-group:10084"
+        ]
+      },
+      {
+        "version": 15,
+        "drawLib": 91,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10075",
+          "empty-group:10085"
+        ]
+      },
+      {
+        "version": 16,
+        "drawLib": 89,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10073",
+          "empty-group:10083"
+        ]
+      },
+      {
+        "version": 17,
+        "drawLib": 89,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10073",
+          "empty-group:10083"
+        ]
+      },
+      {
+        "version": 18,
+        "drawLib": 94,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10076",
+          "empty-group:10086"
+        ]
+      },
+      {
+        "version": 19,
+        "drawLib": 87,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10071",
+          "empty-group:10081"
+        ]
+      },
+      {
+        "version": 20,
+        "drawLib": 88,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10072",
+          "empty-group:10082"
+        ]
+      },
+      {
+        "version": 21,
+        "drawLib": 89,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10073",
+          "empty-group:10083"
+        ]
+      },
+      {
+        "version": 22,
+        "drawLib": 95,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10077",
+          "empty-group:10087"
+        ]
+      },
+      {
+        "version": 23,
+        "drawLib": 96,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10078",
+          "empty-group:10088"
+        ]
+      },
+      {
+        "version": 24,
+        "drawLib": 97,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10045",
+          "empty-group:10079",
+          "empty-group:10089"
+        ]
+      },
+      {
+        "version": 25,
+        "drawLib": 98,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10090",
+          "empty-group:10091"
+        ]
+      },
+      {
+        "version": 26,
+        "drawLib": 99,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10092",
+          "empty-group:10093"
+        ]
+      },
+      {
+        "version": 27,
+        "drawLib": 230,
+        "reasons": [
+          "empty-group:60401",
+          "empty-group:60402",
+          "empty-group:60403"
+        ]
+      },
+      {
+        "version": 28,
+        "drawLib": 195,
+        "reasons": [
+          "empty-group:10043",
+          "empty-group:10044",
+          "empty-group:10045",
+          "empty-group:10094",
+          "empty-group:10095"
+        ]
+      },
+      {
+        "version": 29,
+        "drawLib": 230,
+        "reasons": [
+          "empty-group:60401",
+          "empty-group:60402",
+          "empty-group:60403"
+        ]
+      },
+      {
+        "version": 30,
+        "drawLib": 235,
+        "reasons": [
+          "empty-group:60701",
+          "empty-group:60702",
+          "empty-group:60703"
+        ]
+      },
+      {
+        "version": 31,
+        "drawLib": 237,
+        "reasons": [
+          "empty-group:60704",
+          "empty-group:60705",
+          "empty-group:60706"
+        ]
+      },
+      {
+        "version": 32,
+        "drawLib": 235,
+        "reasons": [
+          "empty-group:60701",
+          "empty-group:60702",
+          "empty-group:60703"
+        ]
+      },
+      {
+        "version": 33,
+        "drawLib": 243,
+        "reasons": [
+          "empty-group:60705",
+          "empty-group:60706",
+          "empty-group:60707"
+        ]
+      },
+      {
+        "version": 34,
+        "drawLib": 38700019,
+        "reasons": [
+          "empty-group:60705",
+          "empty-group:60706",
+          "empty-group:61106"
+        ]
+      },
+      {
+        "version": 35,
+        "drawLib": 38700020,
+        "reasons": [
+          "empty-group:61107",
+          "empty-group:61108",
+          "empty-group:61109"
+        ]
+      },
+      {
+        "version": 36,
+        "drawLib": 38700021,
+        "reasons": [
+          "empty-group:61108",
+          "empty-group:61109",
+          "empty-group:61110"
+        ]
+      },
+      {
+        "version": 37,
+        "drawLib": 230,
+        "reasons": [
+          "empty-group:60401",
+          "empty-group:60402",
+          "empty-group:60403"
+        ]
+      },
+      {
+        "version": 38,
+        "drawLib": 237,
+        "reasons": [
+          "empty-group:60704",
+          "empty-group:60705",
+          "empty-group:60706"
+        ]
+      }
+    ]
+  },
+  "resident": {
+    "kind": "resident_fantasy",
+    "ready": false,
+    "drawLib": 226,
+    "groupIds": [
+      60101,
+      60102
+    ],
+    "missingGroupIds": [],
+    "emptyGroupIds": [
+      60101,
+      60102
+    ],
+    "reasons": [
+      "empty-group:60101",
+      "empty-group:60102"
+    ],
+    "wishSlotRows": 4,
+    "unlockRows": 23
+  },
+  "tasks": {
+    "fantasyEquipActTaskRows": 0,
+    "demigodActTaskRows": null
+  },
+  "summary": {
+    "ready": {
+      "artifact": true,
+      "demigod": false,
+      "resident": false
+    },
+    "versions": {
+      "artifact": 14,
+      "demigod": 38
+    },
+    "drawLibs": {
+      "artifact": 14,
+      "demigod": 26
+    },
+    "rewardGroups": {
+      "artifact": 25,
+      "demigod": 56,
+      "resident": 2
+    },
+    "emptyRewardGroups": {
+      "artifact": 0,
+      "demigod": 56,
+      "resident": 2
+    },
+    "tasks": {
+      "fantasyEquipActTaskRows": 0,
+      "demigodActTaskRows": null
+    }
+  },
+  "evidence": [
+    {
+      "name": "DrawTable.data.lua.json",
+      "uncompressedBytes": 3824661,
+      "sha256": "7355757bc89cb91fd5bf042e073609d6cd49739bd042002058a4b18cbe058a72"
+    },
+    {
+      "name": "HeroTable.data.lua.json",
+      "uncompressedBytes": 19046464,
+      "sha256": "1ed657bfe6fd5ccff02741f5bbb2fe638461d187b7af3feeb1c8ec72835a9d4e"
+    },
+    {
+      "name": "ArtifactDrawActTable.data.json",
+      "uncompressedBytes": 1168063,
+      "sha256": "1f3e4952abb496909fc4dd2cfa68d64bc29fb16dade27329933d945e4cb50fdb"
+    },
+    {
+      "name": "DemigodActTable.data.json",
+      "uncompressedBytes": 1876653,
+      "sha256": "3de6d0f4477e0ac9b6f82d7b9534e2146d49290cc9c4c96feec1e275f2b58aa7"
+    },
+    {
+      "name": "FantasyEquipTable.data.json",
+      "uncompressedBytes": 4074119,
+      "sha256": "7a78500570e0da06c5441501fbf4386299a75f30d42ac0ed25259374104199d3"
+    },
+    {
+      "name": "FantasyEquipActTable.data.json",
+      "uncompressedBytes": 629967,
+      "sha256": "c5f39de1984317f3fbb86ad586815cbd759ea9aaa2827932ce4149b57bc9f921"
+    },
+    {
+      "name": "ActivityTable.data.lua.json",
+      "uncompressedBytes": 2151208,
+      "sha256": "b985bcabdd83cea0d4fdc9874765073b40bfd446b086d25ed97ef8eb32bd7ddc"
+    }
+  ]
+}
