@@ -17,6 +17,8 @@ import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
 import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
+import { createHouseAssistantService, HOUSE_ASSISTANT_MODULE_ID } from './house-assistant-service.mjs';
+import { readHouseAssistantTables } from '../config/house-assistant-tables.mjs';
 import { createRankService } from './rank-service.mjs';
 import { createRankAchieveService } from './rank-achieve-service.mjs';
 import { createFirstWeekGoalService } from './first-week-goal-service.mjs';
@@ -385,6 +387,13 @@ export function createLocalGame({
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
   const cabin = createCabinService({ store, codec, heroTables });
+  const houseAssistant = createHouseAssistantService({
+    store,
+    codec,
+    gameTables: tables,
+    tables: readHouseAssistantTables(),
+    now: clock
+  });
   const ranks = createRankService({ codec, store, now: clock, logger });
   const rankAchieve = createRankAchieveService({
     store, codec, tables: readRankAchieveTables(), resourceTables: tables, now: clock, logger
@@ -495,6 +504,15 @@ export function createLocalGame({
     timeTemple.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
     cabin.ensureLoginState();
+    const houseAssistantRepair = houseAssistant.ensureLoginState();
+    if (houseAssistantRepair.defaults.length || houseAssistantRepair.expired.length) {
+      logger({
+        event: 'house_assistant_login_repaired',
+        defaults: houseAssistantRepair.defaults,
+        expired: houseAssistantRepair.expired,
+        restored: houseAssistantRepair.restored
+      });
+    }
     rechargeBonus.synchronize();
     onlineGift.beginSession();
     rankAchieve.ensureLoginState();
@@ -522,6 +540,7 @@ export function createLocalGame({
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
     modules.set(CAMPSITE_MODULE_ID, binary(cabin.loginPayload()));
+    modules.set(HOUSE_ASSISTANT_MODULE_ID, [binary(houseAssistant.loginPayload())]);
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
     let activity;
     try {
@@ -1661,6 +1680,24 @@ export function createLocalGame({
         }
         return;
       }
+      if (houseAssistant.supports(type)) {
+        try {
+          const schema = type === 88203
+            ? 'pb_house_assistant_trial_req'
+            : type === 88204
+              ? 'pb_house_assistant_trial_cancel_req'
+              : 'pb_house_assistant_use_req_list';
+          const input = request.data?.length ? unpack(schema, request.data) : {};
+          const result = houseAssistant.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'house_assistant_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'house_assistant_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (recruit.supports(type)) {
         try {
           let input;
@@ -2038,7 +2075,7 @@ export function createLocalGame({
   return {
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
-    guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, rankAchieve,
+    guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
     cms, guildNationAssist, groupBuyAct, message,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
