@@ -388,6 +388,80 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(currentActivity.act_custom_list.some(entry => Number(entry.act_id) === 83028), false);
 });
 
+test('gateway serves meal, stamina exchange and chapter pass on a temporary port', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-mission-extra-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  // 13:00 server time opens the 12-16 MealAward window.
+  let gameNow = new Date(2026, 9, 24, 13, 0, 0, 0).getTime();
+  const game = createLocalGame({
+    databasePath,
+    statePath: path.join(directory, 'absent.json'),
+    capturePath,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => gameNow,
+    random: () => 0.5
+  });
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  addResource(game.store, 122702, 0);
+  addResource(game.store, 100012900, 100);
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+
+  const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
+  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  // 504 free meal: one parcel per window, then an explicit duplicate-claim error.
+  let response = await request(504, 2, await encodeEtf([1]));
+  assert.equal(response.err, undefined);
+  const meal = codec.unpack('pb_mission_meal_rsp', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(meal.res_change.changes.map(change => [change.tid, change.diff_num]), [['122702', '3']]);
+  assert.equal(new Date(Number(meal.meal.last_refresh_stamp) * 1000).getHours(), 0);
+  assert.equal(Buffer.from((await decodeEtf(Buffer.from(meal.meal.got_award, 'base64'))).value)[0], 0x40);
+  response = await request(504, 3, await encodeEtf([1]));
+  assert.equal(response.err.err, 310);
+
+  // 505 stamina exchange spends one meal item and grants fifty stamina.
+  response = await request(505, 4, await encodeEtf([100012900]));
+  assert.equal(response.err, undefined);
+  const exchanged = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(exchanged.changes.map(change => [change.tid, change.diff_num]), [['122702', '-1'], ['100012900', '50']]);
+  assert.equal(game.store.read().resources.get('100012900').num, '150');
+
+  // 511 chapter pass refuses an unfinished chapter and records it once.
+  response = await request(511, 5, await encodeEtf([3]));
+  assert.equal(response.err.err, 5);
+  setMission(game.store, 40201);
+  response = await request(511, 6, await encodeEtf([3]));
+  assert.equal(response.err, undefined);
+  assert.deepEqual(await decodeEtf(Buffer.from(response.data, 'base64')), [3, 0]);
+  response = await request(511, 7, await encodeEtf([3]));
+  assert.deepEqual(await decodeEtf(Buffer.from(response.data, 'base64')), [3, 1]);
+
+  // 509 one-key box rewards answer with the shared bitmap shape.
+  setMission(game.store, 50201);
+  response = await request(509, 8, codec.pack('pb_mission_one_key_reward_req', { box_tids: [1], common_task_tids: [] }));
+  assert.equal(response.err, undefined);
+  const oneKey = codec.unpack('pb_mission_one_key_reward_rsp', Buffer.from(response.data, 'base64'));
+  assert.ok(oneKey.res_change.changes.length > 0);
+  response = await request(509, 9, codec.pack('pb_mission_one_key_reward_req', { box_tids: [1], common_task_tids: [3] }));
+  assert.equal(response.err.err, 5);
+});
+
+
 test('gateway claims a destiny-stage linear task through 9010 and persists it across restart', { timeout: 10000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-destiny-linear-task-'));
   const options = {
