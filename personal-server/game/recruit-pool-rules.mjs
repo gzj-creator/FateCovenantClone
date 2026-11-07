@@ -1,4 +1,5 @@
-export const RECRUIT_RULE_VERSION = 1;
+export const RECRUIT_RULE_VERSION = 2;
+export const NEW_HERO_EXCLUSIVE_GROUP = 'newHeroExclusive';
 
 // Client DrawTable.LibWeight rows retain their top-level weights, but every
 // referenced DrawTable.Group row is empty in the shipped data. Keep the local
@@ -10,6 +11,7 @@ export const RECRUIT_POOL_RULES = Object.freeze({
     name: 'adventure',
     qualityWeights: Object.freeze([[30, 5000], [40, 3000], [50, 1500], [60, 500]]),
     eligibleGetWays: Object.freeze([32, 33, 34]),
+    excludedHeroGroups: Object.freeze([NEW_HERO_EXCLUSIVE_GROUP]),
     guaranteeSpecial: 1,
     guaranteeQualities: Object.freeze([50, 60]),
     qualityAvailability: Object.freeze({ 60: Object.freeze({ scope: 'total', minCompletedDraws: 100 }) }),
@@ -21,6 +23,7 @@ export const RECRUIT_POOL_RULES = Object.freeze({
     name: 'elite',
     qualityWeights: Object.freeze([[30, 3500], [40, 4500], [50, 1850], [60, 150]]),
     eligibleGetWays: Object.freeze([32, 33, 34]),
+    excludedHeroGroups: Object.freeze([NEW_HERO_EXCLUSIVE_GROUP]),
     guaranteeSpecial: 2,
     guaranteeQualities: Object.freeze([50, 60]),
     qualityAvailability: Object.freeze({ 60: Object.freeze({ scope: 'total', minCompletedDraws: 100 }) }),
@@ -37,6 +40,7 @@ export const RECRUIT_POOL_RULES = Object.freeze({
     name: 'friendship',
     qualityWeights: Object.freeze([[30, 6200], [40, 2900], [50, 900]]),
     eligibleGetWays: Object.freeze([32, 33, 34]),
+    excludedHeroGroups: Object.freeze([NEW_HERO_EXCLUSIVE_GROUP]),
     guaranteeSpecial: 0,
     guaranteeQualities: Object.freeze([50]),
     qualityAvailability: Object.freeze({}),
@@ -45,9 +49,10 @@ export const RECRUIT_POOL_RULES = Object.freeze({
   }),
   10: Object.freeze({
     lib: 10,
-    name: 'wish-related',
+    name: 'new-hero-limit',
     qualityWeights: Object.freeze([[30, 3800], [40, 3400], [50, 2500], [60, 300]]),
     eligibleGetWays: Object.freeze([32, 33, 34, 77, 91, 100, 502]),
+    excludedHeroGroups: Object.freeze([]),
     guaranteeSpecial: 0,
     guaranteeQualities: Object.freeze([50, 60]),
     qualityAvailability: Object.freeze({ 60: Object.freeze({ scope: 'total', minCompletedDraws: 100 }) }),
@@ -123,7 +128,10 @@ export function pickQuality(rule, progress, guaranteed, random) {
   return pickWeighted(entries, random)[0];
 }
 
-export function buildRecruitPoolCatalog(heroTables, rules = RECRUIT_POOL_RULES) {
+export function buildRecruitPoolCatalog(heroTables, {
+  rules = RECRUIT_POOL_RULES,
+  excludedHeroGroups = new Map()
+} = {}) {
   const catalog = new Map();
   for (const [rawLib, rule] of Object.entries(rules)) {
     const lib = Number(rawLib);
@@ -141,22 +149,38 @@ export function buildRecruitPoolCatalog(heroTables, rules = RECRUIT_POOL_RULES) 
     }
 
     const acceptedGetWays = new Set(rule.eligibleGetWays ?? []);
+    const excludedHeroes = new Set();
+    for (const groupName of rule.excludedHeroGroups ?? []) {
+      const group = excludedHeroGroups.get(groupName);
+      if (!(group instanceof Set) || group.size === 0) {
+        throw new Error(`Recruitment exclusion group is missing or empty: ${groupName}`);
+      }
+      for (const rawTid of group) excludedHeroes.add(Number(rawTid));
+    }
     const byQuality = new Map(rule.qualityWeights.map(([quality]) => [quality, []]));
     for (const [rawTid, hero] of [...heroTables.Hero.entries()].sort(([a], [b]) => Number(a) - Number(b))) {
+      const tid = Number(rawTid);
       const quality = Number(hero.quality);
       if (!byQuality.has(quality) || !(Number(hero.chip) > 0)) continue;
       if (acceptedGetWays.size && !acceptedGetWays.has(Number(hero.get_way))) continue;
-      byQuality.get(quality).push({ tid: Number(rawTid), chip: Number(hero.chip), quality });
+      if (excludedHeroes.has(tid)) continue;
+      byQuality.get(quality).push({ tid, chip: Number(hero.chip), quality });
     }
-    for (const [quality, heroes] of byQuality) {
-      if (!heroes.length) throw new Error(`Recruitment pool ${lib} has no quality-${quality} heroes`);
+    const qualityWeights = rule.qualityWeights.filter(([quality]) => byQuality.get(quality).length > 0);
+    if (!qualityWeights.some(([quality]) => quality === 50)) {
+      throw new Error(`Recruitment pool ${lib} has no quality-50 heroes`);
     }
+    const effectiveRule = Object.freeze({
+      ...rule,
+      qualityWeights: Object.freeze(qualityWeights)
+    });
     const heroes = [...byQuality.values()].flat();
     catalog.set(lib, {
-      rule,
+      rule: effectiveRule,
       byQuality,
       heroes,
-      byTid: new Map(heroes.map(hero => [hero.tid, hero]))
+      byTid: new Map(heroes.map(hero => [hero.tid, hero])),
+      excludedHeroTids: Object.freeze([...excludedHeroes])
     });
   }
   return catalog;

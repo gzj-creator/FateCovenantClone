@@ -88,6 +88,32 @@ npm test --prefix .\personal-server
 - 只读核对当前运行数据库：`lib1.draw_count=4`、`lib2.draw_count=50`，合计54，因此品质60仍锁定；`lib2` 已有抽卡进度继续可进入。该库中已有的两名品质50心愿只保留展示，累计100抽前不会参与抽取替换。
 - 服务 PID 12980 当前仍有客户端约31秒一次的连接保活；本轮没有停止、重启或部署到运行进程。代码与测试已完成，需在客户端退出或维护窗口重启本机服务后生效。
 
+## 2026-11-07 新英雄限定角色不得进入普通招募池
+
+设计口径修正：`HeroTable.Hero.get_way` 只是获取渠道标记，不能证明角色属于冒险/精英/友情池。梦魅等新英雄限定角色由客户端 `NewHeroExclusiveTable.WishDrawHero` 和独立 `draw_lib` 管理；此前标准池按 `get_way=32/33/34` 猜测成员，会把梦魅 `1030601`、罪欲夜影 `1030701` 以及品质60限定角色 `1040101`、`4040101` 混入普通池。
+
+修复采用数据驱动的角色分组：
+
+- `personal-server/config/new-hero-exclusive-heroes.json` 是从 `NewHeroExclusiveTable.WishDrawHero` 生成的紧凑清单，共 21 名去重角色。当前源 dump SHA256 为 `9609b94138a797877123bdf1d4eb450db5df295058a47a558084db4367bb1723`。
+- `recruit-hero-groups.mjs` 校验并加载排除分组；清单缺失、损坏、重复或组为空时启动失败，避免静默放行。
+- 冒险 `lib=1`、精英 `lib=2`、友情 `lib=3` 声明排除 `newHeroExclusive`；限定库 `lib=10` 保留该组，因为客户端 `Draw.draw_type=1011` 对应 `NEW_HERO_LIMIT_DRAW`。
+- 构建有效池时按规则和排除组过滤，再移除没有候选的品质。当前普通池没有合法的品质60角色，因此品质60权重自动收缩；以后 HeroTable 加入非限定品质60角色时，99/100 抽门槛和原权重会自动恢复，无需再改抽取代码。
+- `RECRUIT_RULE_VERSION` 从 1 升到 2，审计日志可区分旧错误抽取。
+
+生成与校验命令（需要客户端 LuaJIT dump 和 HeroTable）：
+
+```powershell
+node personal-server/scripts/generate-new-hero-exclusive-heroes.mjs --table <NewHeroExclusiveTable.data.json> --hero-table <HeroTable.data.lua.json[.gz]>
+node personal-server/scripts/generate-new-hero-exclusive-heroes.mjs --table <NewHeroExclusiveTable.data.json> --hero-table <HeroTable.data.lua.json[.gz]> --check
+```
+
+验证结果：
+
+- `node --test test/recruit-pool-restrictions.test.mjs`：4/4 通过，覆盖清单加载、普通池排除、限定库保留、未来普通品质60自动恢复和缺失分组 fail-closed。
+- `node --test test/recruit-service.test.mjs`：27/27 通过，含真实 store/codec 下的100抽边界、品质70隔离、心愿和保底回归。
+- 全量 `npm test` 在本 worktree 因未跟踪的分析资产/旧 handoff SQLite 缺失而产生无关失败，包括 `FantasyEquipActTable.data.json` 和 `handoff-game.local-only.sqlite`；不能记为全量通过。
+- 本轮未部署、未重启实时服务、未操作设备。
+
 ## 2026-10-31 首次角色、招募统计与半神招募修复
 
 工作分支：`fix/recruitment-bugfix-20261031`。基线为 `main@30143e1`；修复位于隔离 worktree，测试通过后部署。

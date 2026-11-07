@@ -6,11 +6,13 @@ import test from 'node:test';
 import { createGameCodec, decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
+import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createRecruitService } from '../game/recruit-service.mjs';
 import { createLineupService } from '../game/lineup-service.mjs';
 import {
+  NEW_HERO_EXCLUSIVE_GROUP,
   RECRUIT_POOL_RULES,
   availableQualityWeights,
   buildRecruitPoolCatalog,
@@ -22,6 +24,7 @@ const tables = readGameTables();
 const heroTables = readHeroTables();
 const fantasyEquipTables = readFantasyEquipTables();
 const leaderEquipTables = readLeaderEquipTables();
+const recruitHeroExclusionGroups = readRecruitHeroExclusionGroups().groups;
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const now = () => Date.UTC(2026, 9, 29, 12, 0, 0) / 1000;
 
@@ -521,8 +524,8 @@ test('single draws merge into the legacy default-key draw counter', t => {
   assert.equal(rows.find(row => Number(row.key ?? 0) === 0)?.value, '2');
 });
 
-test('pool rules use different weights, lock quality 60 before 100 draws and never expose quality 70', () => {
-  const catalog = buildRecruitPoolCatalog(heroTables);
+test('pool rules use different weights, gate the limited quality-60 pool and never expose quality 70', () => {
+  const catalog = buildRecruitPoolCatalog(heroTables, { excludedHeroGroups: recruitHeroExclusionGroups });
   const signatures = new Set();
   for (const lib of [1, 2, 3, 10]) {
     const pool = catalog.get(lib);
@@ -538,13 +541,22 @@ test('pool rules use different weights, lock quality 60 before 100 draws and nev
   const at100 = completedDrawCounts(new Map([[1, { draw_count: 50 }], [2, { draw_count: 50 }], [3, { draw_count: 0 }], [10, { draw_count: 0 }]]));
   assert.equal(at99.total, 99);
   assert.equal(at100.total, 100);
-  for (const lib of [1, 2, 10]) {
+  for (const lib of [1, 2]) {
+    assert.equal(availableQualityWeights(catalog.get(lib).rule, at99).some(([quality]) => quality === 60), false);
+    assert.equal(availableQualityWeights(catalog.get(lib).rule, at100).some(([quality]) => quality === 60), false);
+  }
+  for (const lib of [10]) {
     assert.equal(availableQualityWeights(catalog.get(lib).rule, at99).some(([quality]) => quality === 60), false);
     assert.equal(availableQualityWeights(catalog.get(lib).rule, at100).some(([quality]) => quality === 60), true);
   }
+  for (const lib of [1, 2, 3]) {
+    for (const tid of recruitHeroExclusionGroups.get(NEW_HERO_EXCLUSIVE_GROUP)) {
+      assert.equal(catalog.get(lib).byTid.has(tid), false);
+    }
+  }
 });
 
-test('elite draw excludes quality 70 and opens quality 60 only after 100 completed draws', t => {
+test('elite draw excludes quality 70 and cannot substitute limited heroes for quality 60', t => {
   const env = setup(t, () => 0.999999999999);
   setDrawCounts(env, { 1: 60, 2: 39, 3: 0, 10: 0 });
   setPity(env, 2, 0);
@@ -559,7 +571,8 @@ test('elite draw excludes quality 70 and opens quality 60 only after 100 complet
   setDrawCounts(env, { 1: 60, 2: 40 });
   setPity(env, 2, 0);
   result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
-  assert.equal(result.valueForLog.results[0].quality, 60);
+  assert.equal(result.valueForLog.results[0].quality, 50);
+  assert.equal([1040101, 4040101].includes(result.valueForLog.results[0].tid), false);
   assert.equal(result.valueForLog.results.some(draw => draw.quality === 70), false);
 });
 
@@ -578,42 +591,27 @@ test('elite unlock is enforced for new state and preserves existing progressed p
   assert.doesNotThrow(() => legacy.service.execute(601, { draw_lib: 2, point_draw_num: 1 }));
 });
 
-test('elite wish selections persist per library and replace matching SSR and UR draws', t => {
+test('elite wish selections persist per library and replace matching SSR draws', t => {
   const env = setup(t, () => 0.9);
   setDrawCounts(env, { 1: 50, 2: 50 });
   setPity(env, 2, 0);
-  env.service.execute(642, {
+  rejected(() => env.service.execute(642, {
     draw_lib: 2,
-    choose_item_list: [
-      { index: 0, hero_tid: 1030101 },
-      { index: 2, hero_tid: 1040101 }
-    ]
-  });
+    choose_item_list: [{ index: 2, hero_tid: 1040101 }]
+  }), 5);
+  env.service.execute(642, { draw_lib: 2, choose_item_list: [{ index: 0, hero_tid: 1030101 }] });
   env.seed(3002, 10);
-  let result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
+  const result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
   assert.deepEqual(result.valueForLog.results[0], {
     tid: 1030101,
     quality: 50,
     guaranteed: false,
     wishHero: true
   });
-
-  const urEnv = setup(t, () => 0.999999999999);
-  setDrawCounts(urEnv, { 1: 50, 2: 50 });
-  setPity(urEnv, 2, 0);
-  urEnv.service.execute(642, {
-    draw_lib: 2,
-    choose_item_list: [{ index: 2, hero_tid: 1040101 }]
-  });
-  urEnv.seed(3002, 10);
-  result = urEnv.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
-  assert.equal(result.valueForLog.results[0].tid, 1040101);
-  assert.equal(result.valueForLog.results[0].quality, 60);
-  assert.equal(result.valueForLog.results[0].wishHero, true);
 });
 
 test('elite pity resets only when the selected target adventurer is drawn', t => {
-  let roll = 0.95;
+  let roll = 0.05;
   const env = setup(t, () => roll);
   setDrawCounts(env, { 1: 50, 2: 50, 10: 0 });
   updateRecruitInfo(env, 2, info => {
@@ -622,20 +620,22 @@ test('elite pity resets only when the selected target adventurer is drawn', t =>
   });
   env.service.execute(642, {
     draw_lib: 2,
-    choose_item_list: [{ index: 2, hero_tid: 1040101 }]
+    choose_item_list: [{ index: 0, hero_tid: 1030101 }]
   });
   env.seed(3002, 10);
 
   let result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
-  assert.equal(result.valueForLog.results[0].quality, 50);
+  assert.equal(result.valueForLog.results[0].quality, 30);
   assert.equal(result.valueForLog.results[0].wishHero, false);
   assert.equal(Number(result.value.recruit_info.guaranteed_count), 5);
-  assert.equal(Number(result.value.recruit_info.daily_ssr_draw_num), 1);
+  assert.equal(Number(result.value.recruit_info.daily_ssr_draw_num), 0);
 
-  roll = 0.999999999999;
+  roll = 0.9;
   result = env.service.execute(601, { draw_lib: 2, point_draw_num: 1 });
-  assert.equal(result.valueForLog.results[0].quality, 60);
+  assert.equal(result.valueForLog.results[0].quality, 50);
+  assert.equal(result.valueForLog.results[0].tid, 1030101);
   assert.equal(result.valueForLog.results[0].wishHero, true);
+  assert.equal(Number(result.value.recruit_info.daily_ssr_draw_num), 1);
   assert.equal(Number(result.value.recruit_info.guaranteed_count ?? 0), 0);
 });
 
@@ -769,11 +769,10 @@ test('wish selection enforces progress, quality quotas and the elite library', t
     draw_lib: 2,
     choose_item_list: [
       { index: 0, hero_tid: 1030101 },
-      { index: 1, hero_tid: 1030201 },
-      { index: 2, hero_tid: 1040101 }
+      { index: 1, hero_tid: 1030201 }
     ]
   }).data);
-  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030101', '1030201', '1040101']);
+  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030101', '1030201']);
   rejected(() => env.service.execute(642, {
     draw_lib: 2,
     choose_item_list: [
@@ -781,6 +780,10 @@ test('wish selection enforces progress, quality quotas and the elite library', t
       { index: 1, hero_tid: 1030201 },
       { index: 2, hero_tid: 1030301 }
     ]
+  }), 5);
+  rejected(() => env.service.execute(642, {
+    draw_lib: 2,
+    choose_item_list: [{ index: 2, hero_tid: 1040101 }]
   }), 5);
   rejected(() => env.service.execute(642, {
     draw_lib: 2,
@@ -792,7 +795,7 @@ test('wish selection enforces progress, quality quotas and the elite library', t
   }).data);
   assert.equal(response.extra_wish_list[0].tid, '2030101');
   response = codec.unpack('pb_hero_recruit', env.service.execute(643, [2, 0]).data);
-  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030201', '1040101']);
+  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030201']);
   response = codec.unpack('pb_hero_recruit', env.service.execute(658, [2, 1]).data);
   assert.equal(response.extra_wish_list.length, 0);
   const support = codec.unpack('pb_draw_support_back', env.service.execute(652, [1]).data);
