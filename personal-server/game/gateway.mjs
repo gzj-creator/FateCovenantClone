@@ -46,6 +46,7 @@ import { createMissionFightService } from './mission-fight-service.mjs';
 import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createHundredDrawService } from './hundred-draw-service.mjs';
+import { createBonusDrawService } from './bonus-draw-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
@@ -474,6 +475,11 @@ export function createLocalGame({
   const guide=createGuideService({store,codec,tables,awards:guideAwards,now:clock,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
   const hundredDraw=createHundredDrawService({store,codec,tables,calendar,now:clock,random,logger});
+  // BonusDrawCmd 101901/101902/101904. The reward pools come from the shipped
+  // BonusDrawTable; the draw command mirrors the client's pool bookkeeping.
+  // There is no recovered login slot for BonusDrawMgr, so this service answers
+  // commands only and keeps its state in its own tables.
+  const bonusDraw=createBonusDrawService({store,codec,tables,now:clock,random,logger});
   // Fishing reads whose request body is an ETF integer argument (activity id).
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
@@ -1168,6 +1174,30 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'hundred_draw_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (bonusDraw.supports(type)) {
+        try {
+          if (type === bonusDraw.commands.switch) {
+            // Cmd.c2s_back carries no protobuf schema for 101902, so the client
+            // decodes this reply body as an Erlang term. Send the authoritative
+            // current pool as a map field named cur_pool.
+            const drawTid = Number(await etfArgument(request.data, 'Invalid bonus draw switch payload'));
+            const result = bonusDraw.execute(type, drawTid);
+            const reply = new E.OtpErlangMap(new Map([[new E.OtpErlangBinary(Buffer.from('cur_pool')), result.value.cur_pool]]));
+            send(seq, await encodeEtf(reply));
+            log({ event: 'bonus_draw_switch_committed', type, seq, ...result.valueForLog });
+          } else {
+            const input = bonusDraw.decode(type, request.data ?? Buffer.alloc(0));
+            const result = bonusDraw.execute(type, input);
+            send(seq, result.data);
+            log({ event: 'bonus_draw_command_committed', type, seq, ...result.valueForLog });
+          }
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'bonus_draw_command_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
