@@ -41,6 +41,8 @@ import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createTeamGenreService } from './team-genre-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
 import { createEliteMissionService } from './elite-mission-service.mjs';
+import { createPeakTowerService } from './peak-tower-service.mjs';
+import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -365,6 +367,7 @@ export function createLocalGame({
   const teamGenre = createTeamGenreService({ store, codec, tables, heroTables, calendar, now: clock });
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
+  const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -1138,6 +1141,19 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code }); log({ event: 'feature_rejected', type, seq, code });
+        }
+        return;
+      }
+      if (peakTower.supports(type)) {
+        try {
+          const input = type === 1103 ? unpack('peak_tower_sweeps_req', request.data) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await peakTower.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'peak_tower_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'peak_tower_rejected', type, seq, code, message: error.message });
         }
         return;
       }
