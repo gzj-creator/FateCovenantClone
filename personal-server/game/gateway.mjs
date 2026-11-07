@@ -1855,12 +1855,32 @@ export function createLocalGame({
       }
       const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]], [10507, ['pb_msg_range_list_with_role_info', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
-      if ([108, 53001, 53002, 102801, 10503].includes(type)) {
-        // Activity state/stage sync (53001/53002) uses an empty change_list meaning no server-side
-        // stage transition for this local account; real stage advancement stays unimplemented.
+      if (type === 53001 || type === 53002) {
+        try {
+          let input;
+          try {
+            input = await decodeEtf(request.data);
+          } catch {
+            throw new GameError(1, 'Invalid activity synchronization ETF');
+          }
+          // The three captured 53001 requests are proper ETF lists containing
+          // two integers. Their meanings and the 53002 argument contract are
+          // unrecovered, so neither command may assert a state transition.
+          if (type === 53001 && (
+            !(input instanceof E.OtpErlangList) || input.improper !== false ||
+            input.value.length !== 2 || !input.value.every(Number.isSafeInteger)
+          )) throw new GameError(1, 'Unsupported activity synchronization shape');
+          throw new GameError(5, 'Activity state transition contract is not recovered');
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'activity_stage_sync_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if ([108, 102801, 10503].includes(type)) {
         // 108 (req_remove_operate_display) is a UI-only acknowledgement after a purchase.
         send(seq);
-        if (type === 53001 || type === 53002) log({ event: 'activity_stage_sync_acknowledged', type, seq });
         if (type === 108) log({ event: 'operate_display_removed', type, seq });
         return;
       }
