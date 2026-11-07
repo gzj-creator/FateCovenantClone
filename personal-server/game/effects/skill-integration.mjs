@@ -9,7 +9,7 @@ import { EffectExecutor } from './effect-executor.mjs';
 import { TargetSelector } from './target-selector.mjs';
 import { TARGET_TYPES, DURATION_TYPES, TRIGGER_TYPES } from './effect-types.mjs';
 import { commonSkillEffect, commonSkillEffects, commonSkillTriggerType } from './common-skill-rules.mjs';
-import { proprietarySkillEffects } from './proprietary-rules.mjs';
+import { proprietarySkillEffects, proprietaryTriggerAllowed } from './proprietary-rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -287,6 +287,8 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
 
     if (Array.isArray(storedTriggers)) {
       for (const t of storedTriggers) {
+        // CORE-BATTLE-B: drop catalog approximations a proprietary rule replaces.
+        if (!proprietaryTriggerAllowed(skill, t)) continue;
         const rawEffect = t.effect ? commonSkillEffect(skill, { ...t.effect }) : skillToEffect(skill, skillDatabase);
         // CORE-BATTLE-B: per-skill damage ceilings apply to triggered effects too.
         const effect = rawEffect ? (proprietarySkillEffects(skill, [rawEffect])[0] ?? rawEffect) : rawEffect;

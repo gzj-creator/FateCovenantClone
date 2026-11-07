@@ -138,6 +138,7 @@ export const TRIGGER_TYPES = Object.freeze({
   ON_SKILL_USE: 'on-skill-use',     // When actor uses a skill
   ON_SKILL_HIT: 'on-skill-hit',     // When actor's skill hits
   ON_ULTIMATE_USE: 'on-ultimate-use', // When actor uses ultimate
+  ON_TIANJI_USE: 'on-tianji-use',   // When actor uses a 天极技 (paid with 天极值)
 
   // Round triggers
   ON_ROUND_START: 'on-round-start', // When round starts

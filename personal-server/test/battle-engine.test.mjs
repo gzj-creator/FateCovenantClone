@@ -47,8 +47,12 @@ test('charging a full skill produces archetype-specific targets and effects', ()
   ];
   const battle = simulateBattle({ attackers, defenders, seed: 7, maxRounds: 1 });
   const starts = battle.events.filter(event => event.kind === 'action-start');
-  const byActor = new Map(starts.map(event => [event.srcId, event]));
-  const attackerStarts = starts.filter(event => attackers.some(actor => actor.id === event.srcId));
+  // 120001001 (双重攻击) repeats the round-one action as a real extra action, so
+  // the shape checks below read each actor's first action of the battle.
+  const firstStarts = starts.filter((event, index) => starts
+    .findIndex(candidate => candidate.srcId === event.srcId) === index);
+  const byActor = new Map(firstStarts.map(event => [event.srcId, event]));
+  const attackerStarts = firstStarts.filter(event => attackers.some(actor => actor.id === event.srcId));
 
   assert.deepEqual(byActor.get(1).aimList.slice(0, 1), [201]);
   assert.deepEqual(byActor.get(2).aimList, [201]);
@@ -61,6 +65,9 @@ test('charging a full skill produces archetype-specific targets and effects', ()
   assert.deepEqual([...byActor.get(2).assistIds], [1]);
   assert.deepEqual([...byActor.get(3).assistIds], []);
   assert.deepEqual([...byActor.get(4).assistIds], []);
+  const repeats = starts.filter(event => event.srcId === 1);
+  assert.equal(repeats.length, 2, '双重攻击 repeats the first-round action of role 2010101');
+  assert.equal(repeats[1].actionType, repeats[0].actionType);
   const angerSyncs = battle.events.filter(event => event.kind === 'anger-sync');
   assert.equal(angerSyncs.length, starts.length);
   for (const start of attackerStarts) {
@@ -146,7 +153,9 @@ test('the shipped 500 initial anger reaches 1000 after basic and passive energy 
   const battle = simulateBattle({ attackers, defenders, seed: 11, maxRounds: 3 });
   const starts = battle.events.filter(event => event.kind === 'action-start' && event.srcId === 1);
 
-  assert.deepEqual(starts.map(event => event.actionType), [1, 2, 1]);
+  // Round one repeats the normal attack through the 双重攻击 extra action, so
+  // the meter stays empty for one more action before the ultimate lands.
+  assert.deepEqual(starts.map(event => event.actionType), [1, 1, 2, 1]);
   const angerAtEnd = battle.events
     .filter(event => event.kind === 'anger-sync' && event.id === starts[0].id)
     .flatMap(event => event.attrList)

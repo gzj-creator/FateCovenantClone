@@ -329,9 +329,13 @@ export function runHooks(state, hookName, payload = {}, events = null, filter = 
       for (const hook of unit.proprietary.hooks.get(hookName) ?? []) {
         if (!hookReady(hook, state)) continue;
         const result = hook.handler(unit, payload, state);
+        // `false` means the handler did not fire (its guard did not hold), so it
+        // must not consume the hook's per-round/per-battle budget. `null` means
+        // it fired and only mutated state.
+        if (result === false) continue;
         lockHook(hook);
-        if (result !== undefined && result !== null && result !== false) results.push(result);
         if (Array.isArray(result)) results.push(...result.filter(Boolean));
+        else if (result !== undefined && result !== null) results.push(result);
       }
     }
   } finally {

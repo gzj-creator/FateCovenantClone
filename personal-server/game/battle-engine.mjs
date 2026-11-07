@@ -31,8 +31,10 @@ import {
   createProprietaryState,
   resetProprietaryRound,
   runHooks,
+  spendTianji,
+  tianjiValue,
 } from './effects/proprietary-state.mjs';
-import { initProprietaryBattle } from './effects/proprietary-rules.mjs';
+import { initProprietaryBattle, isDeitySkill, tianjiCostFor } from './effects/proprietary-rules.mjs';
 
 export const BATTLE_RESULT = Object.freeze({ DRAW: 0, WIN: 1, LOSS: 2 });
 
@@ -407,9 +409,10 @@ function handleDamageTriggers(events, actionId, actor, harms, state) {
       const target = units.get(harm.aimId);
       if (!target) continue;
       processUnitTriggers(events, target, 'on-being-hit', state, actionId);
-      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_TAKEN, { target, actor, actionId, harm }, events,
+      const actionType = state.actionContext?.actionType ?? null;
+      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_TAKEN, { target, actor, actionId, harm, actionType }, events,
         unit => unit.id === target.id);
-      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_DEALT, { target, actor, actionId, harm }, events,
+      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_DEALT, { target, actor, actionId, harm, actionType }, events,
         unit => unit.id === actor.id);
       if (harm.oldHp > 0 && harm.hp === 0) {
         processUnitTriggers(events, actor, 'on-kill', state, actionId);
@@ -572,7 +575,17 @@ function executeTurn(events, actor, allUnits, state) {
   let actionId = state.nextActionId++;
   const behavior = behaviorFor(actor);
   const silenced = unitHasStatus(actor, 'silence');
-  const useSkill = actor.energy >= FIGHT_ENERGY_MAX && !silenced;
+  // 天极技 (FightTable ability type 2 / run_type 5) is paid with 天极值, never
+  // with energy. A deity skill that the description gives no price for cannot
+  // be cast, so the unit falls back to its normal action instead of treating
+  // energy as the currency of a 天极技.
+  const activeSkill = resolveActionSkill(actor, true, state.skillDatabase);
+  const deitySkill = activeSkill && isDeitySkill(activeSkill) ? activeSkill : null;
+  const deityCost = deitySkill ? tianjiCostFor(deitySkill) : null;
+  const deityReady = Boolean(deitySkill) && deityCost !== null && !silenced
+    && tianjiValue(actor) >= deityCost;
+  const useSkill = deityReady || (!deitySkill && actor.energy >= FIGHT_ENERGY_MAX && !silenced);
+  const actionKind = deityReady ? 'tianji' : useSkill ? 'ultimate' : 'attack';
   const abilityId = (useSkill ? actor.activeAbilityId : actor.abilityId) || 1;
   const actionType = useSkill ? 2 : 1;
   const assistIds = combinationAssistIds(actor, allUnits, useSkill);
@@ -581,12 +594,12 @@ function executeTurn(events, actor, allUnits, state) {
   const catalogSkill = resolveActionSkill(actor, useSkill, state.skillDatabase);
   state.currentActionId = actionId;
   state.actionOpen = true;
-  state.actionContext = { actorId: actor.id, actionType: useSkill ? 'ultimate' : 'attack', phase: 'before', damage: new Map() };
+  state.actionContext = { actorId: actor.id, actionType: actionKind, phase: 'before', damage: new Map() };
   runProprietary(state, PROPRIETARY_HOOKS.ACTION_START, {
     actor, actionId, useSkill, actionType: state.actionContext.actionType
   }, events);
   processUnitTriggers(events, actor, 'on-turn-start', state, actionId);
-  if (useSkill) processUnitTriggers(events, actor, 'before-ultimate-use', state, actionId);
+  if (useSkill && !deityReady) processUnitTriggers(events, actor, 'before-ultimate-use', state, actionId);
   const actionModifiers = new Map([...(actor.buffs || []), ...(actor.debuffs || [])]
     .map(entry => [entry, entry.applicationId]));
   state.actionContext.phase = 'action';
@@ -661,11 +674,17 @@ function executeTurn(events, actor, allUnits, state) {
     executeAttack(events, actionId, actor, targets, behavior.basicMultiplier, state);
   }
 
-  actor.energy = useSkill ? 0 : Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN);
+  if (deityReady) {
+    spendTianji(actor, deityCost, { events, reason: 'deity-skill' });
+  } else {
+    actor.energy = useSkill ? 0 : Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN);
+  }
   state.actionContext.phase = 'after';
-  consumeTriggerCount(actor, useSkill ? 'ultimate' : 'attack', actionModifiers);
+  // "下一次终结技" modifiers are not consumed by a 天极技.
+  if (!deityReady) consumeTriggerCount(actor, useSkill ? 'ultimate' : 'attack', actionModifiers);
   processUnitTriggers(events, actor, useSkill ? 'on-skill-use' : 'on-attack', state, actionId);
-  if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
+  if (deityReady) processUnitTriggers(events, actor, 'on-tianji-use', state, actionId);
+  else if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
   processUnitTriggers(events, actor, 'on-turn-end', state, actionId);
   runProprietary(state, PROPRIETARY_HOOKS.ACTION_END, {
     actor, actionId, useSkill, actionType: state.actionContext.actionType

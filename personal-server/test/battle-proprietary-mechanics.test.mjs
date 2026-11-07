@@ -12,6 +12,16 @@ function catalogSkill(id) {
   return skill;
 }
 
+// 2404030123 and 2504030123 are 天极技 rows (ability type 2 / run_type 5) whose
+// own text omits the 天极值 price, so the engine refuses to cast them. These
+// cases test the described shield destruction and damage ceiling, so the
+// fixture states the price the sibling 天极技 rows use.
+function castableDeity(id, price = 3) {
+  const skill = structuredClone(catalogSkill(id));
+  skill.description = `消耗${price}点天极值，${skill.description}`;
+  return skill;
+}
+
 function fighter(id, overrides = {}) {
   return {
     id, role: 2010201, profession: 2, loc: 1, maxHp: 1000,
@@ -79,8 +89,8 @@ test('the guarded summon takes a fatal hit so its owner survives', () => {
 test('a described shield-destruction clause removes its share before the damage', () => {
   const battle = simulateBattle({
     attackers: [fighter(101, {
-      attack: 100, initialEnergy: 1000, activeAbilityId: 2404030123,
-      skills: [catalogSkill('2404030123')]
+      attack: 100, initialTianji: 3, activeAbilityId: 2404030123,
+      skills: [castableDeity('2404030123')]
     })],
     defenders: [fighter(201, {
       maxHp: 100000, attack: 10, speed: 90, initialEnergy: 0, skills: [openingShield(2000)]
@@ -94,24 +104,26 @@ test('a described shield-destruction clause removes its share before the damage'
 });
 
 test('a pre-ultimate shield-destruction mastery removes the described share', () => {
+  // "释放终结技前" is a 终结技 clause: the catalog enumerates 普攻/绝招/终结技/
+  // 天极技 as separate action kinds, so this mastery is exercised with a normal
+  // ultimate rather than with a 天极技.
   const battle = simulateBattle({
     attackers: [fighter(101, {
-      attack: 50, initialEnergy: 1000, activeAbilityId: 2404030123,
-      skills: [catalogSkill('2404030123'), catalogSkill('354010174')]
+      attack: 50, initialEnergy: 1000, activeAbilityId: 990000101,
+      skills: [catalogSkill('354010174')], behavior: 'striker'
     })],
     defenders: [fighter(201, { maxHp: 100000, attack: 10, speed: 90, skills: [openingShield(2000)] })],
     seed: 7, maxRounds: 1
   });
   const ratios = eventsOf(battle, PROPRIETARY_EVENT_KINDS.SHIELD_DESTROYED).map(event => event.ratio);
   assert.ok(ratios.includes(0.15), 'the pre-ultimate mastery clause runs');
-  assert.ok(ratios.includes(0.5), 'the skill clause runs');
 });
 
 test('a per-target damage ceiling caps the extra true damage at the described attack share', () => {
   const battle = simulateBattle({
     attackers: [fighter(101, {
-      attack: 100, initialEnergy: 1000, activeAbilityId: 2504030123,
-      skills: [catalogSkill('2504030123')], behavior: 'striker'
+      attack: 100, initialTianji: 3, activeAbilityId: 2504030123,
+      skills: [castableDeity('2504030123')], behavior: 'striker'
     })],
     defenders: [fighter(201, { maxHp: 1000000, attack: 10, defense: 0, speed: 90, skills: [] })],
     seed: 8, maxRounds: 1

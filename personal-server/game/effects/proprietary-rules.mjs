@@ -147,6 +147,54 @@ export let PROPRIETARY_SKILL_RULES = [
     requires: ['不超过自身攻击力80%'],
     evidence: '【给了糖也捣蛋】每颗额外造成目标4%最大生命值的法术伤害（不超过自身攻击力80%）',
     config: { basis: 'attack', ratio: 0.8, match: { damageType: 'percent-max-hp', magnitude: 0.04 } }
+  },
+
+  // 天极值 recovery: "每回合（自身）普攻/绝招行动后额外获得1点天极值".
+  {
+    kind: 'tianji-gain',
+    requires: [/每回合(?:自身)?(?:普攻\/绝招行动后|行动后)额外获得1点天极值/],
+    evidence: '每回合自身普攻/绝招行动后额外获得1点天极值',
+    config: { amount: 1 }
+  },
+  // 天极值 drain: "每回合首次释放终结技后降低敌方随机一人1点天极值".
+  {
+    kind: 'tianji-drain',
+    requires: [/首次释放终结技后[，,]?降低敌方随机一?人?1点天极值/],
+    evidence: '每回合首次释放终结技后降低敌方随机一人1点天极值',
+    config: { amount: 1 }
+  },
+  // 坠羽星落: "随后清空目标的能量和天极值".
+  {
+    skillId: '2504070123', kind: 'clear-resource',
+    requires: ['清空目标的能量和天极值'],
+    evidence: '对敌方全体造成138%魔法伤害，随后清空目标的能量和天极值',
+    config: { scope: 'all-enemies', resources: ['energy', 'tianji'] }
+  },
+
+  // 额外行动 / 追击 / 反击.
+  {
+    skillId: '120001001', kind: 'extra-action',
+    requires: ['首回合', '再次释放1次普攻/绝招', '无法回复能量'],
+    evidence: '首回合普攻/绝招后，再次释放1次普攻/绝招（该普攻/绝招无法回复能量）',
+    config: { trigger: 'action-end', round: 1, oncePerBattle: true, sameAction: true, replaceTriggers: true }
+  },
+  {
+    skillId: '334010173', kind: 'extra-action',
+    requires: ['敌方冒险者阵亡时', '追击', '每回合最多触发1次'],
+    evidence: '敌方冒险者阵亡时，立刻释放一次不消耗层数的{0}的追击，每回合最多触发1次',
+    config: { trigger: 'enemy-death', action: 'ultimate', maxPerRound: 1 }
+  },
+  {
+    skillId: '344020172', kind: 'extra-action',
+    requires: ['受到终结技攻击后，立刻释放一次终结技', '每回合最多触发1次'],
+    evidence: '受到终结技攻击后，立刻释放一次终结技，每回合最多触发1次',
+    config: { trigger: 'hit-by-ultimate', action: 'ultimate', maxPerRound: 1 }
+  },
+  {
+    skillId: '324020173', kind: 'extra-action',
+    requires: ['自身行动回合结束后额外释放1次终结技', '摧毁敌方全体20%护盾'],
+    evidence: '自身行动回合结束后额外释放1次终结技，且本次终结技释放前额外摧毁敌方全体20%护盾',
+    config: { trigger: 'action-end', action: 'ultimate', maxPerRound: 1, destroyShieldRatio: 0.2, replaceTriggers: true }
   }
 ];
 
@@ -188,7 +236,9 @@ export function proprietaryRulesFor(skills = []) {
   for (const skill of skills) {
     const id = String(skill?.id);
     for (const rule of PROPRIETARY_SKILL_RULES) {
-      if (String(rule.skillId) !== id) continue;
+      // Rules with a skillId bind one catalog row; rules without one express a
+      // description pattern shared by many rows (e.g. the 天极值 clauses).
+      if (rule.skillId !== undefined && String(rule.skillId) !== id) continue;
       if (!matchesDescription(skill, rule.requires)) continue;
       active.push({ rule, skill });
     }
@@ -299,10 +349,12 @@ const HANDLERS = Object.freeze({
     const config = rule.config;
     if (config.mode !== 'hook') return { mode: 'skill', ratio: config.ratio, scope: config.scope };
     registerHook(unit, PROPRIETARY_HOOKS.BEFORE_ACTION, (actor, payload, state) => {
-      if (actor.id !== unit.id) return null;
-      if (config.on === 'ultimate' && payload?.actionType !== 'ultimate') return null;
+      // runHooks hands every hook its own owner as the first argument, so the
+      // "自身释放" guards must read the acting unit from the payload.
+      if (payload?.actor?.id !== unit.id) return false;
+      if (config.on === 'ultimate' && payload?.actionType !== 'ultimate') return false;
       const enemies = livingEnemiesOf(actor, state);
-      if (!enemies.length) return null;
+      if (!enemies.length) return false;
       let scope = enemies;
       if (config.scope === 'target') {
         const actionTargets = typeof payload?.resolveTargets === 'function' ? payload.resolveTargets() : [];
@@ -321,12 +373,83 @@ const HANDLERS = Object.freeze({
         const share = Math.floor(removed / Math.max(1, allies.length));
         for (const ally of allies) ally.shield = Math.max(0, Number(ally.shield) || 0) + share;
       }
-      return removed > 0 ? { removed, detail } : null;
+      return removed > 0 ? { removed, detail } : false;
     }, { maxPerRound: config.maxPerRound ?? null });
     return { mode: 'hook', ratio: config.ratio, scope: config.scope, maxPerRound: config.maxPerRound ?? null };
   },
 
   'damage-cap': ({ rule }) => ({ ...rule.config }),
+
+  'tianji-gain': ({ unit, rule }) => {
+    const amount = Number(rule.config.amount) || 1;
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (actor, payload, state) => {
+      // "每回合…行动后额外获得1点": one gain per round, and free follow-up
+      // actions do not feed it again.
+      if (payload?.extra) return false;
+      if (payload?.actor?.id !== unit.id) return false;
+      gainTianji(actor, amount, { events: state?.events, reason: 'mastery-action' });
+      return null;
+    }, { oncePerRound: true });
+    return { amount };
+  },
+
+  'tianji-drain': ({ unit, rule }) => {
+    const amount = Number(rule.config.amount) || 1;
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (actor, payload, state) => {
+      if (payload?.extra || !payload?.useSkill) return false;
+      if (payload?.actor?.id !== unit.id) return false;
+      const enemies = livingEnemiesOf(actor, state).filter(enemy => tianjiValue(enemy) >= amount);
+      if (!enemies.length) return false;
+      const random = typeof state.random === 'function' ? state.random() : 0.5;
+      const index = Math.min(enemies.length - 1, Math.floor(random * enemies.length));
+      drainTianji(enemies[index], amount, {
+        events: state?.events, reason: 'ultimate-drain', sourceId: actor.id
+      });
+      return null;
+    }, { oncePerRound: true });
+    return { amount };
+  },
+
+  'clear-resource': ({ rule }) => ({ ...rule.config }),
+
+  'extra-action': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    const request = (actor, payload) => ({
+      kind: 'extra-action',
+      actorId: actor.id,
+      action: config.sameAction ? (payload?.useSkill ? 'ultimate' : 'attack') : (config.action ?? 'attack'),
+      reason: String(skill.id),
+      before: config.destroyShieldRatio
+        ? (owner, state, events) => {
+          for (const enemy of livingEnemiesOf(owner, state)) {
+            destroyShield(enemy, config.destroyShieldRatio, { sourceId: owner.id, events });
+          }
+        }
+        : null,
+    });
+    if (config.trigger === 'action-end') {
+      registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (actor, payload, state) => {
+        if (payload?.extra) return false;
+        if (payload?.actor?.id !== unit.id) return false;
+        if (config.round && Number(state.round) !== Number(config.round)) return false;
+        return request(actor, payload);
+      }, { oncePerBattle: config.oncePerBattle === true, maxPerRound: config.maxPerRound ?? 1 });
+    } else if (config.trigger === 'enemy-death') {
+      registerHook(unit, PROPRIETARY_HOOKS.UNIT_DEATH, (actor, payload) => {
+        const dead = payload?.unit;
+        if (!dead || dead.team === actor.team) return false;
+        return request(actor, payload);
+      }, { maxPerRound: config.maxPerRound ?? 1 });
+    } else if (config.trigger === 'hit-by-ultimate') {
+      registerHook(unit, PROPRIETARY_HOOKS.DAMAGE_TAKEN, (actor, payload) => {
+        if (payload?.target?.id !== actor.id) return false;
+        if (payload?.actor?.team === actor.team) return false;
+        if (payload?.actionType !== 'ultimate') return false;
+        return request(actor, payload);
+      }, { maxPerRound: config.maxPerRound ?? 1 });
+    }
+    return { trigger: config.trigger, action: config.action ?? null };
+  },
 });
 
 /**
@@ -389,11 +512,38 @@ export function proprietarySkillEffects(skill, definitions) {
         }, ...output];
       }
     }
+    if (rule.kind === 'clear-resource') {
+      const alreadyInjected = output.some(definition => definition?.effect?.type === 'clear-resource');
+      if (!alreadyInjected) {
+        output = [...output, {
+          target: { targetType: rule.config.scope },
+          effect: { type: 'clear-resource', resources: rule.config.resources },
+          duration: { durationType: 'instant', rounds: 0 },
+          chance: 1,
+        }];
+      }
+    }
   }
   return output;
 }
 
 /** Runtime trigger filter used to retire superseded catalog approximations. */
 export function proprietaryTriggerAllowed(skill, trigger) {
+  if (!skill || !trigger) return true;
+  const active = PROPRIETARY_SKILL_RULES.filter(rule =>
+    (rule.skillId === undefined || String(rule.skillId) === String(skill.id))
+    && matchesDescription(skill, rule.requires));
+  if (!active.length) return true;
+  // A rule that implements the whole clause (an extra action, for example)
+  // replaces the catalog's placeholder triggers for that row.
+  if (active.some(rule => rule.config?.replaceTriggers === true)) return false;
+  const effect = trigger?.effect?.effect;
+  // "降低敌方随机一人1点天极值" was approximated in the catalog as 100 energy
+  // loss. The proprietary drain hook now performs the described change, so the
+  // approximation must not also run.
+  if (active.some(rule => rule.kind === 'tianji-drain')
+    && effect?.type === 'energy' && effect.energyType === 'loss' && Number(effect.magnitude) <= 100) {
+    return false;
+  }
   return true;
 }

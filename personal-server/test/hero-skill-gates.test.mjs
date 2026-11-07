@@ -134,10 +134,14 @@ test('battle simulation honors a caller-supplied filtered skill list', () => {
   });
   const withoutDoubleAttackBattle = battle(withoutDoubleAttack);
   const withDoubleAttackBattle = battle(full);
-  assert.ok(!withoutDoubleAttackBattle.events.some(event => event.triggerType === 'on-attack'
-    && String(event.trigger).startsWith('120001001_')));
-  assert.ok(withDoubleAttackBattle.events.some(event => event.triggerType === 'on-attack'
-    && String(event.trigger).startsWith('120001001_')));
+  const startsFor = result => result.events
+    .filter(event => event.kind === 'action-start' && event.srcId === 101);
+  // 双重攻击 now grants the described repeat as a real extra action, so a
+  // filtered-out row is visible as a missing second action.
+  assert.equal(startsFor(withoutDoubleAttackBattle).length, 1);
+  assert.equal(startsFor(withDoubleAttackBattle).length, 2);
+  assert.equal(startsFor(withDoubleAttackBattle)[1].actionType,
+    startsFor(withDoubleAttackBattle)[0].actionType);
 });
 
 test('missing authoritative skill configuration is a business error', () => {

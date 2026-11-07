@@ -91,14 +91,14 @@ test('real normal and active actions fire their matching skill trigger types', (
     'an active action must not be reported as a normal on-attack action');
 });
 
-test('damage from an on-attack skill enters the battle death event stream', () => {
+test('the passive repeat action enters the battle death event stream', () => {
   const battle = simulateBattle({
     attackers: [unit(101, HERO_ROLE, 1, { loc: 1, speed: 120, attack: 60 })],
     defenders: [unit(201, 9002100, 2, {
       loc: 1,
       speed: 1,
       attack: 1,
-      // The normal hit is deterministic but non-lethal; the on-attack passive
+      // The normal hit is deterministic but non-lethal; the 双重攻击 repeat
       // supplies the killing hit and therefore proves passive deaths are encoded.
       // The bound is two plain 63-point hits: the mastery's "next ultimate"
       // bonus no longer boosts the same attack (CORE-BATTLE-A scoping), so the
@@ -109,19 +109,19 @@ test('damage from an on-attack skill enters the battle death event stream', () =
     maxRounds: 1
   });
 
-  const skillDamageIndex = battle.events.findIndex(event => event.type === 'damage'
-    && event.actor === 101
-    && event.target === 201
-    && event.triggerType === 'on-attack'
-    && String(event.trigger).startsWith('120001001_'));
-  assert.ok(skillDamageIndex >= 0,
-    '双重攻击 must apply its extra damage as an observable on-attack skill effect');
+  const ownActions = battle.events.filter(event => event.kind === 'action-start' && event.srcId === 101);
+  assert.equal(ownActions.length, 2, '双重攻击 must repeat the round-one action as a real action');
+  const repeatId = ownActions[1].id;
+  const repeatDamage = battle.events.findIndex(event => event.kind === 'damage'
+    && event.id === repeatId
+    && event.harms.some(harm => harm.srcId === 101 && harm.aimId === 201));
+  assert.ok(repeatDamage >= 0, 'the repeated action must carry its own damage under its action id');
 
-  const deathIndex = battle.events.findIndex((event, index) => index > skillDamageIndex
+  const deathIndex = battle.events.findIndex((event, index) => index > repeatDamage
     && event.kind === 'death'
     && event.aimId === 201);
   assert.ok(deathIndex >= 0,
-    'when an on-attack skill effect kills a unit, action_list-visible death state must be emitted');
+    'when a passives repeat action kills a unit, action_list-visible death state must be emitted');
 });
 
 test('a skill battle is reproducible from its seed without global RNG', () => {
@@ -234,7 +234,7 @@ function decodeAction(packet, schema) {
   return codec.unpack(schema, Buffer.from(packet.bin, 'base64'));
 }
 
-test('mission action_list encodes passive skill damage under the source action', t => {
+test('mission action_list encodes the passive repeat as its own action', t => {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-skill-battle-' });
   addResource(fixture.store, 100012900, 1000);
   setMission(fixture.store, 30201);
@@ -279,16 +279,20 @@ test('mission action_list encodes passive skill damage under the source action',
     assert.ok(Number(decodeAction(packet, schema).id) > 0,
       `${schema} must not use action id 0`);
   }
-  const actionBefore = packets
+  const ownNormalActions = packets
     .filter(packet => Number(packet.proto) === 101)
     .map(packet => decodeAction(packet, 'pb_fat_action_before'))
-    .find(action => Number(action.src_id) === Number(hero.id) && Number(action.type) === 1);
-  assert.ok(actionBefore, 'task battle must expose a normal action for role 2010101');
+    .filter(action => Number(action.src_id) === Number(hero.id) && Number(action.type) === 1);
+  assert.ok(ownNormalActions.length >= 2,
+    'the normal attack and the 双重攻击 repeat must be encoded as two separate actions');
+  const actionIds = ownNormalActions.map(action => Number(action.id));
+  assert.equal(new Set(actionIds).size, actionIds.length, 'every action keeps its own id');
 
-  const damages = packets
+  const harms = packets
     .filter(packet => Number(packet.proto) === 106)
-    .map(packet => decodeAction(packet, 'pb_fat_harm'))
-    .filter(damage => damage.id === actionBefore.id);
-  assert.ok(damages.length >= 2,
-    'the normal attack plus 双重攻击 skill damage must both be encoded under the same action id');
+    .map(packet => decodeAction(packet, 'pb_fat_harm'));
+  for (const action of ownNormalActions) {
+    assert.ok(harms.some(harm => Number(harm.id) === Number(action.id)),
+      'each encoded action carries its own damage under its own action id');
+  }
 });
