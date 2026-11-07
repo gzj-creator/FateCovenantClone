@@ -12,6 +12,7 @@ import { createEquipService } from './equip-service.mjs';
 import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
 import { createRankService } from './rank-service.mjs';
 import { createRankAchieveService } from './rank-achieve-service.mjs';
+import { createFirstWeekGoalService } from './first-week-goal-service.mjs';
 import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -365,6 +366,9 @@ export function createLocalGame({
   const rankAchieve = createRankAchieveService({
     store, codec, tables: readRankAchieveTables(), resourceTables: tables, now: clock, logger
   });
+  const firstWeekGoal = createFirstWeekGoalService({
+    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
     store,
@@ -465,6 +469,7 @@ export function createLocalGame({
       binary(rankAchieveLogin.cross),
       binary(rankAchieveLogin.cross)
     ]);
+    modules.set(firstWeekGoal.moduleId, binary(firstWeekGoal.loginPayload(clock())));
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
@@ -721,6 +726,19 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'online_gift_claim_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (firstWeekGoal.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = firstWeekGoal.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'first_week_goal_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'first_week_goal_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
