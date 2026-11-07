@@ -18,6 +18,7 @@ import { readGameTables } from '../config/game-tables.mjs';
 import { createWalletService } from './wallet-service.mjs';
 import { createWelfareService } from './welfare-service.mjs';
 import { createTaskService } from './task-service.mjs';
+import { createEveryTaskService } from './every-task-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
@@ -387,6 +388,7 @@ export function createLocalGame({
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
+  const everyTasks=createEveryTaskService({store,codec,tables,now:clock,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
   const itemBox=createItemBoxService({store,codec,tables,heroTables,logger});
   const guide=createGuideService({store,codec,tables,awards:guideAwards,now:clock,logger});
@@ -425,6 +427,7 @@ export function createLocalGame({
     magicCircle.ensureLoginState();
     guildRoster.ensureLoginState();
     norseRune.ensureLoginState();
+    everyTasks.ensureLoginState();
     timeTemple.ensureLoginState();
     lineFirstRecharge.ensureLoginState();
     cabin.ensureLoginState();
@@ -882,6 +885,20 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: type === 9005 ? 'common_task_rejected' : 'linear_task_rejected', type, seq, taskInput, code, message: error.message });
+        }
+        return;
+      }
+      if (everyTasks.supports(type)) {
+        let input;
+        try {
+          input = await etfArgument(request.data, 'Invalid every-task payload', { optional: [9006, 9007, 9009].includes(type) });
+          const result = everyTasks.execute(type, input);
+          send(seq, result.data);
+          everyTasks.logClaim(result);
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'every_task_rejected', type, seq, code, message: error.message });
         }
         return;
       }

@@ -82,7 +82,7 @@ function destinyStageProgress(model, codec) {
   return stage;
 }
 
-function currentProgress(model, config, codec, tables) {
+export function currentTaskProgress(model, config, codec, tables) {
   const taskType = Number(config.task_type);
   if (taskType === MAIN_LINEAR_TASK_PROGRESS) {
     const module = new Map(model.state.modules.value).get(MISSION_MODULE);
@@ -311,7 +311,7 @@ export function createTaskService({ store, codec, tables, commonTasks = readComm
 
     return store.transaction((model, db) => {
       if (db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'linear_task', String(id))) throw new GameError(310, 'Linear task reward already claimed');
-      const progress = currentProgress(model, config, codec, tables);
+      const progress = currentTaskProgress(model, config, codec, tables);
       if (progress < Number(config.target_count)) throw new GameError(5, 'Linear task is not complete');
 
       const module = new Map(model.state.modules.value).get(TASK_MODULE);
