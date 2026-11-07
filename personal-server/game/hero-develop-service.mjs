@@ -28,11 +28,6 @@ const STAR_PROGRESS_MAX = 6;
 // DevelopConst.keep_trial_type = [6702]: the hero trail task type.
 const TRIAL_TASK_TYPE = 6702;
 const DEFAULT_MAX_STAR = 10;
-// HeroTable.TID_QA_GOLD. HeroDevelopMgr.GetElevateHeroStarChipCount switches
-// the trail cost from Quality.trial_piece_num to UpStarCost.piece_num plus
-// stones at this quality, and CalcChipStarAndQuality advances the star on the
-// same step.
-const GOLD_QUALITY = 50;
 
 const CODE_INVALID = 1;
 const CODE_STATE = 5;
@@ -333,6 +328,18 @@ export function createHeroDevelopService({
     }).filter(task => task.type > 0 && task.target > 0);
   }
 
+  function trialBaseline(model, heroTid) {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(HERO_MODULE_ID);
+    const bytes = module?.value?.[TRIAL_SLOT] ? rawBinary(module.value[TRIAL_SLOT]) : Buffer.alloc(0);
+    if (!bytes.length) return 0;
+    let data;
+    try { data = codec.unpack('pb_role_hero_trial', bytes); } catch { return 0; }
+    const record = (data.hero_trial ?? []).find(entry => Number(entry?.hero_tid) === heroTid);
+    const progress = (record?.task_progress ?? []).find(entry => Number(entry?.type) === TRIAL_TASK_TYPE);
+    return Number(progress?.progress ?? 0);
+  }
+
   function writeTrialProgress(model, heroTid, progress) {
     const modules = new Map(model.state.modules.value);
     const module = modules.get(HERO_MODULE_ID);
@@ -389,13 +396,12 @@ export function createHeroDevelopService({
     return chosen;
   }
 
-  // HeroDevelopMgr.CalcChipStarAndQuality is the client-side model of a trail
-  // step: quality always advances to the next Quality row, while the star only
-  // advances on the last trail (TID_QA_GOLD = 50). The reply carries both
-  // values, so the server owns the transition.
-  function applyTrialOutcome(hero, quality, star, fromQuality) {
+  // HeroTrailMgr.GetNextQualityAttr finds the next QualityList row and indexes
+  // HighStarAddAttr with star + 1, so one trail advances both the quality and
+  // the star. HeroDevelopMgr applies rsp.new_quality/new_star verbatim.
+  function applyTrialOutcome(hero, quality, star) {
     hero.quality = quality;
-    if (fromQuality === GOLD_QUALITY) hero.star = star + 1;
+    hero.star = star + 1;
     hero.star_progress = 0;
     return { quality: hero.quality, star: hero.star };
   }
@@ -415,42 +421,28 @@ export function createHeroDevelopService({
       if (!tasks.length) fail(CODE_STATE, 'Hero trail task configuration is missing');
       // TaskTable.Type[6702] counts the hero star total, so the trail is ready
       // once the hero reached the target star. The local server has no task
-      // subsystem for 6702 and uses the star total as the progress proxy; the
-      // login slot 6 baseline is still read so a future task service can take
-      // over without changing the protocol.
-      const progress = star;
+      // subsystem for 6702 and uses the star total minus the login slot 6
+      // baseline as the progress proxy; a missing baseline counts from zero.
+      const progress = Math.max(0, star - trialBaseline(model, heroTid));
       for (const task of tasks) if (progress < task.target) fail(CODE_STATE, 'Hero trail task is not finished');
       const qualityRow = heroTables.Quality.get(quality);
       const chipTid = Number(config.chip ?? 0);
       const cost = heroTables.UpStarCost.get(quality * 100 + star);
-      const gold = quality === GOLD_QUALITY;
-      // HeroDevelopMgr.GetElevateHeroStarChipCount: non-gold trails spend
-      // Quality.trial_piece_num chips only; the gold trail spends
-      // UpStarCost.piece_num chips plus stones.
-      const chipCount = gold ? Number(cost?.piece_num ?? 0) : Number(qualityRow?.trial_piece_num ?? 0);
+      // HeroRisingStarMgr.GetElevateHeroStarChipCount prices the trail with
+      // Quality.trial_piece_num; the awakening stones follow the same
+      // UpStarCost[quality * 100 + 5] row that command 640 also uses.
+      const chipCount = Number(qualityRow?.trial_piece_num ?? 0);
       if (!chipTid || !Number.isSafeInteger(chipCount) || chipCount <= 0) fail(CODE_STATE, 'Hero trail chip cost is missing');
-      let stoneCount = 0;
-      let stones = [];
-      let requestedStone = 0;
-      if (gold) {
-        stoneCount = Number(cost?.stone_num ?? 0);
-        if (!cost || !Number.isSafeInteger(stoneCount) || stoneCount <= 0) fail(CODE_STATE, 'Hero trail stone cost is missing');
-        stones = allowedStones(config, quality);
-        requestedStone = parseStoneSelection(selections, stones, stoneCount);
-      } else if (selections.length) {
-        // Blue and purple trails have no stone input; refusing the payload
-        // keeps a malformed client from silently losing unknown resources.
-        fail(CODE_INVALID, 'Hero trail does not accept awakening stones at this quality');
-      }
+      const stoneCount = Number(cost?.stone_num ?? 0);
+      if (!cost || !Number.isSafeInteger(stoneCount) || stoneCount <= 0) fail(CODE_STATE, 'Hero trail stone cost is missing');
+      const stones = allowedStones(config, quality);
+      const requestedStone = parseStoneSelection(selections, stones, stoneCount);
       const upgraded = nextQuality(quality);
       if (!upgraded) fail(CODE_LOCKED, 'Hero trail has no next quality');
       const chips = consumeResources(model, [[chipTid, chipCount]], CODE_CHIP_INSUFFICIENT);
-      let stoneChanges = [];
-      if (gold) {
-        const stoneTid = pickStone(model, requestedStone, stones, stoneCount);
-        stoneChanges = consumeResources(model, [[stoneTid, stoneCount]], CODE_INSUFFICIENT).changes;
-      }
-      const outcome = applyTrialOutcome(hero, upgraded, star, quality);
+      const stoneTid = pickStone(model, requestedStone, stones, stoneCount);
+      const stoneChanges = consumeResources(model, [[stoneTid, stoneCount]], CODE_INSUFFICIENT).changes;
+      const outcome = applyTrialOutcome(hero, upgraded, star);
       const trial = writeTrialProgress(model, heroTid, progress);
       const value = {
         res: { changes: [...chips.changes, ...stoneChanges], is_overflow: false },
@@ -485,31 +477,9 @@ export function createHeroDevelopService({
         hero.star_progress = 0;
         continue;
       }
-      if (star === FIRST_MAX_STAR && trialTaskTable.has(Number(hero.tid) * 100 + quality)) {
-        // HeroDevelopMgr.CalcChipStarAndQuality: the trail stage spends
-        // Quality.trial_piece_num chips below gold and switches to
-        // UpStarCost.piece_num plus stones at gold, where the star also rises.
-        const gold = quality === GOLD_QUALITY;
-        const chips = gold ? Number(cost.piece_num ?? 0) : Number(heroTables.Quality.get(quality)?.trial_piece_num ?? 0);
-        if (!chipTid || !Number.isSafeInteger(chips) || chips <= 0) break;
-        if (!hasEnough(model, chipTid, chips)) break;
-        let stoneTid = 0;
-        let stoneCount = 0;
-        if (gold) {
-          stoneCount = Number(cost.stone_num ?? 0);
-          if (!Number.isSafeInteger(stoneCount) || stoneCount <= 0) break;
-          stoneTid = allowedStones(config, quality).find(tid => hasEnough(model, tid, stoneCount)) ?? 0;
-          if (!stoneTid) break;
-        }
-        const costs = gold ? [[chipTid, chips], [stoneTid, stoneCount]] : [[chipTid, chips]];
-        changes.push(...consumeResources(model, costs, CODE_INSUFFICIENT).changes);
-        const upgraded = nextQuality(quality);
-        if (!upgraded) break;
-        hero.quality = upgraded;
-        hero.star_progress = 0;
-        if (gold) hero.star = star + 1;
-        continue;
-      }
+      // From the first star maximum the manual trail gate (641) takes over; a
+      // one-key request never skips the TrialTask and stone prompt.
+      if (star === FIRST_MAX_STAR && trialTaskTable.has(Number(hero.tid) * 100 + quality)) break;
       // Unrivaled qualities (>= TID_QA_WHITE) spend the high-star cost and
       // stones for every further star.
       const stoneCount = Number(cost.stone_num ?? 0);
