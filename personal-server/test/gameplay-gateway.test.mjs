@@ -219,7 +219,10 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(response.err, undefined);
   const shops = codec.unpack('pb_query_shops_back', Buffer.from(response.data ?? '', 'base64')).shops;
   assert.deepEqual(shops.map(shop => shop.id), [207, 206, 402]);
-  assert.deepEqual(shops.map(shop => shop.items_groups.length), [1, 1, 0]);
+  // 207/206 keep their auto-refresh group, and 402 is now served from the ordinary mall catalogue
+  // instead of the former empty placeholder.
+  assert.deepEqual(shops.map(shop => shop.items_groups.length), [1, 1, 1]);
+  assert.equal(shops[2].items_groups[0].item_list.length, 28);
   const autoRefresh = codec.unpack('pb_shop_auto_refresh', Buffer.from(shops[0].items_groups[0].group_data_bin, 'base64'));
   assert.ok(Number(autoRefresh.next_refresh_time) > Math.floor(GAME_NOW / 1000));
   assert.equal(Number(autoRefresh.limit_bought_count ?? 0), 0);
