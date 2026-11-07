@@ -60,11 +60,12 @@ function modifierCollections(source) {
  * Additive modifiers scale linearly with stacks. Non-additive modifiers are
  * compounded as (1 + magnitude) ** stacks - 1.
  */
-export function statTotal(source, statType) {
+export function statTotal(source, statType, actionType = null) {
   let total = 0;
   for (const collection of modifierCollections(source)) {
     for (const modifier of collection) {
       if (modifier?.statType !== statType) continue;
+      if (modifier.actionType && modifier.actionType !== actionType) continue;
       const magnitude = finiteNumber(modifier.magnitude);
       const stacks = modifierStacks(modifier);
       total += modifier.stacksAdditive === false
@@ -98,13 +99,13 @@ export function effectiveMaxHp(unit) {
   return Math.max(1, finiteNumber(unit?.maxHp, 1) * (1 + percent));
 }
 
-export function effectiveCritChance(attacker, defender = null) {
+export function effectiveCritChance(attacker, defender = null, actionType = null) {
   const resistance = defender
     ? statTotal(defender, STAT_TYPES.ANTI_CRIT)
       + statTotal(defender, STAT_TYPES.CRIT_RESIST)
       + statTotal(defender, STAT_TYPES.CRIT_RESISTANCE)
     : 0;
-  const chance = finiteNumber(attacker?.critChance) + statTotal(attacker, STAT_TYPES.CRIT_RATE) - resistance;
+  const chance = finiteNumber(attacker?.critChance) + statTotal(attacker, STAT_TYPES.CRIT_RATE, actionType) - resistance;
   return Math.max(0, Math.min(1, chance));
 }
 
@@ -113,8 +114,8 @@ export function effectiveCritMultiplier(attacker, defender = null) {
   return Math.max(1, 1.5 + statTotal(attacker, STAT_TYPES.CRIT_DAMAGE) - reduction);
 }
 
-export function effectiveDamageBonus(unit) {
-  return Math.max(MIN_EFFECT_BONUS, statTotal(unit, STAT_TYPES.DAMAGE_BONUS));
+export function effectiveDamageBonus(unit, actionType = null) {
+  return Math.max(MIN_EFFECT_BONUS, statTotal(unit, STAT_TYPES.DAMAGE_BONUS, actionType));
 }
 
 export function effectiveDamageReduction(unit) {
@@ -169,6 +170,47 @@ function normalizeDuration(effect) {
     conditionKey: effect.conditionKey ?? null,
     trigger: effect.trigger ?? null
   };
+}
+
+export function recordActionDamage(actor, target, oldHp, newHp, absorbed, state) {
+  const hpDamage = Math.max(0, oldHp - newHp);
+  actor.damageDealt = (actor.damageDealt || 0) + hpDamage;
+  target.damageTaken = (target.damageTaken || 0) + hpDamage;
+  const totals = state?.actionContext?.damage;
+  if (totals instanceof Map && (!state.actionContext.phase || state.actionContext.phase === 'action')) {
+    const previous = totals.get(actor.id) ?? { hpDamage: 0, absorbed: 0 };
+    totals.set(actor.id, { hpDamage: previous.hpDamage + hpDamage, absorbed: previous.absorbed + absorbed });
+  }
+  return hpDamage;
+}
+
+/**
+ * Modifiers may carry the action they describe ("next ultimate", "first
+ * ultimate"). Passives and masteries run their effects while the enclosing
+ * action window is still open, so the buff has to be scoped by phase: an
+ * action's own effects see it, a separately triggered ability does not.
+ * Both damage paths read the scope from here so they cannot drift apart.
+ */
+export function actionScopedType(state) {
+  const context = state?.actionContext;
+  if (!context || context.phase === 'trigger') return null;
+  return context.actionType ?? null;
+}
+
+export function consumeTriggerCount(target, trigger, snapshot = null) {
+  const consumed = [];
+  for (const collection of [target.buffs || [], target.debuffs || []]) {
+    for (let index = collection.length - 1; index >= 0; index--) {
+      const status = collection[index];
+      if (status.durationType !== 'trigger-count') continue;
+      if (status.trigger ? status.trigger !== trigger : trigger !== 'damage-taken') continue;
+      if (snapshot && (!snapshot.has(status) || snapshot.get(status) !== status.applicationId)) continue;
+      status.remainingTriggers = Math.max(0, Number(status.remainingTriggers ?? 1) - 1);
+      consumed.push(status.id || status.statType || status.type);
+      if (status.remainingTriggers === 0) collection.splice(index, 1);
+    }
+  }
+  return consumed;
 }
 
 export class EffectExecutor {
@@ -232,7 +274,8 @@ export class EffectExecutor {
     // Check crit
     const isTrueDamage = effect.damageType === DAMAGE_TYPES.TRUE;
     const canCrit = effect.canCrit !== false && !isTrueDamage;
-    const critChance = effectiveCritChance(actor, target);
+    const actionType = actionScopedType(this.state);
+    const critChance = effectiveCritChance(actor, target, actionType);
     const isCrit = canCrit && this.random() < critChance;
     const critMultiplier = isCrit ? (effect.critMultiplier || effectiveCritMultiplier(actor, target)) : 1.0;
 
@@ -246,7 +289,7 @@ export class EffectExecutor {
     const defenseReduction = isPercentHp || isTrueDamage ? 0 : defense * 0.45;
     let finalDamage = Math.max(1, Math.floor(
       (baseDamage - defenseReduction)
-      * (1 + effectiveDamageBonus(actor))
+      * (1 + effectiveDamageBonus(actor, actionType))
       * critMultiplier
     ));
     const damageReduction = effectiveDamageReduction(target);
@@ -263,6 +306,7 @@ export class EffectExecutor {
       target.alive = false;
     }
 
+    const hpDamage = recordActionDamage(actor, target, oldHp, target.hp, absorbed, this.state);
     const consumedDurations = this.consumeTriggerCount(target, 'damage-taken');
 
     // Grant energy to target on being hit
@@ -273,6 +317,7 @@ export class EffectExecutor {
       actor: actor.id,
       target: target.id,
       value: finalDamage,
+      hpDamage,
       absorbed,
       crit: isCrit,
       oldHp,
@@ -298,6 +343,8 @@ export class EffectExecutor {
       baseHeal = effectiveMaxHp(target) * (effect.multiplier || 1);
     } else if (effect.healType === HEAL_TYPES.PERCENT_MISSING_HP) {
       baseHeal = (target.maxHp - target.hp) * (effect.multiplier || 1);
+    } else if (effect.healType === HEAL_TYPES.PERCENT_DAMAGE_DEALT) {
+      baseHeal = (this.state.actionContext?.damage?.get(actor.id)?.hpDamage ?? 0) * (effect.multiplier ?? 1);
     }
 
     // Apply conditional bonus
@@ -314,12 +361,15 @@ export class EffectExecutor {
     } else {
       target.hp += healAmount;
     }
+    const actualHeal = target.hp - oldHp;
+    target.healsReceived = (target.healsReceived || 0) + actualHeal;
 
     return {
       type: 'heal',
       actor: actor.id,
       target: target.id,
       value: healAmount,
+      actualHeal,
       oldHp,
       newHp: target.hp,
       overheal: effect.overheal && target.hp > target.maxHp,
@@ -340,6 +390,8 @@ export class EffectExecutor {
       baseShield = effectiveMaxHp(target) * (effect.multiplier || 1);
     } else if (effect.shieldType === SHIELD_TYPES.PERCENT_ATTACK) {
       baseShield = effectiveAttack(actor) * (effect.multiplier || 1);
+    } else if (effect.shieldType === SHIELD_TYPES.PERCENT_DAMAGE_DEALT) {
+      baseShield = (this.state.actionContext?.damage?.get(actor.id)?.hpDamage ?? 0) * (effect.multiplier ?? 1);
     }
 
     // Apply conditional bonus
@@ -383,6 +435,8 @@ export class EffectExecutor {
       remainingTriggers: duration.remainingTriggers,
       conditionKey: duration.conditionKey,
       trigger: duration.trigger,
+      actionType: effect.actionType ?? null,
+      applicationId: this.nextApplicationId(),
       maxStacks: effect.maxStacks || 0,
       stacksAdditive: effect.stacksAdditive !== false,
       appliedRound: currentRound(this.state),
@@ -501,6 +555,7 @@ export class EffectExecutor {
       remainingTriggers: duration.remainingTriggers,
       conditionKey: duration.conditionKey,
       trigger: duration.trigger,
+      applicationId: this.nextApplicationId(),
       tickInterval: effect.tickInterval || 0,
       tickEffect: effect.tickEffect || null,
       nextTick: 0,
@@ -560,18 +615,12 @@ export class EffectExecutor {
   }
 
   consumeTriggerCount(target, trigger) {
-    const consumed = [];
-    for (const collection of [target.buffs || [], target.debuffs || []]) {
-      for (let index = collection.length - 1; index >= 0; index--) {
-        const status = collection[index];
-        if (status.durationType !== 'trigger-count') continue;
-        if (status.trigger && status.trigger !== trigger) continue;
-        status.remainingTriggers = Math.max(0, Number(status.remainingTriggers ?? 1) - 1);
-        consumed.push(status.id || status.statType || status.type);
-        if (status.remainingTriggers === 0) collection.splice(index, 1);
-      }
-    }
-    return consumed;
+    return consumeTriggerCount(target, trigger);
+  }
+
+  nextApplicationId() {
+    this.state.nextEffectApplicationId = (this.state.nextEffectApplicationId || 0) + 1;
+    return this.state.nextEffectApplicationId;
   }
 
   /**

@@ -100,7 +100,10 @@ test('damage from an on-attack skill enters the battle death event stream', () =
       attack: 1,
       // The normal hit is deterministic but non-lethal; the on-attack passive
       // supplies the killing hit and therefore proves passive deaths are encoded.
-      maxHp: 130
+      // The bound is two plain 63-point hits: the mastery's "next ultimate"
+      // bonus no longer boosts the same attack (CORE-BATTLE-A scoping), so the
+      // fixture cannot rely on that +15% to reach zero.
+      maxHp: 126
     })],
     seed: 43,
     maxRounds: 1
