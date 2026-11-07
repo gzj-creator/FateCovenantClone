@@ -6,6 +6,7 @@
 
 | 任务 ID | 状态 | 负责人 / 分支 | 服务 / TCP / SQLite 证据 | APK 验收 | 下一依赖或证据缺口 |
 | --- | --- | --- | --- | --- | --- |
+| `PAY-ONLINEGIFT` | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` | 专项 service 4/4 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；其余等待隔离 APK 验收 |
 | CORE-BATTLE | 待领取 | — | — | 未安排 | 可按 A/B/C 拆分，统一共享执行器负责人 |
 | CORE-ATTR | 待领取 | — | — | 未安排 | 属性公式与所有养成来源 |
 | CORE-SKILL-GATES | 待领取 | — | — | 未安排 | 实际养成状态到可用技能的映射 |
