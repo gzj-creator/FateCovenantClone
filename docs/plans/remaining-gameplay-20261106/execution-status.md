@@ -1,24 +1,25 @@
 # 执行状态
 
-2026-11-06 建表。2026-11-07 第一轮并行实施与集成验收。
+2026-11-06 建表。2026-11-07 第一轮并行实施与集成验收，同日第二轮续接 CORE-BATTLE-A、SOC-FRIEND 并新增 PLAY-FISHINGACT。
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 16 个模块任务、2 个共享任务已有玩法实现交付合入 main，共 18 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；18/355 约 5.1% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务进入仅待 APK 验收队列。
+交付与整卡销项分开计数：当前 18 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 21 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；21/355 约 5.9% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
 
-2026-11-07 换 session：已保存[总控续接提示词](../../../promot/2026-11-07-remaining-gameplay-handoff.md)。CORE-BATTLE-A 与 SOC-FRIEND 已各自在独立分支提交 checkpoint 并停止本轮扩展，未合 main；下一 session 先续接，不把 WIP 或证据提交算作完成。
+2026-11-07 第二轮：CORE-BATTLE-A 与 SOC-FRIEND 两个 checkpoint 已续接完成并合入 main，另完成 PLAY-FISHINGACT；三者均通过合并后的定向回归与一次主线全量，业务层为“服务端完成”，各自的证据缺口与 APK 验收边界见下表。
 
 | 任务 ID | 状态 | 负责人 / 分支 | 服务 / TCP / SQLite 证据 | APK 验收 | 下一依赖或证据缺口 |
 | --- | --- | --- | --- | --- | --- |
 | PAY-ONLINEGIFT | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` @ 4078f6e | 4 专项 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改；合并后全量 2190/2190 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；当前按服务器 05:00 日号映射配置周期；APK 验收待安排 |
-| CORE-BATTLE | 实施中（A 已存 WIP，待新 session 续接） | `task/CORE-BATTLE-A-20261107` @ ffd0ab7；未合 main | 基线 e90ef1e；worktree core-battle-a 干净；新增专项10/10；完整回归/生产TCP/SQLite未验收 | 未安排 | 先复核phase与actionType对附加伤害范围；实际伤害转治疗/护盾及消费仍待生产验证；heal报告缺证归C；不能合WIP销项 |
+| CORE-BATTLE | 服务端完成（A 已合入；B/C 及部分证据待补） | `task/CORE-BATTLE-A-20261107`，A 合入 main | A：通用效果专项 15/15、真实临时 TCP 201/207 证明实际 HP 伤害转治疗（834 伤害→+83）与 SQLite 重开/回滚；合并后战斗/技能/副本定向 127/127。复核修正 phase 泄漏：`actionScopedType()` 使“下一/首次终结技”加成不作用于动作内触发伤害；转换效果（伤害转治疗/护盾）固定后置 | 未安排 | `mission-fight-service.actionList` 未投影 heal 事件，缺 `pb_fat_harm` 治疗 type/prompt 权威证据（归 CORE-BATTLE-C）；精通 `...174` 生产选择依赖 CORE-SKILL-GATES；跨单位触发/命中闪避/反弹与 B 类专有机制未做 |
 | CORE-ATTR | 服务端完成（属性查询/战力/普通副本战斗同源；装备等养成来源待扩展） | `task/CORE-ATTR-20261106` @ ec41751 | 4 专项 + 真实 TCP 1316 + SQLite 重开；mission/rank/lineup/equip 等联合回归 66/66；合并后全量 2219/2219 | 未安排 | 逐级成长分母、战力权重、1316 attr_list play_type、1314 回包、NpcAttr 外部数据、速度表均未取证；装备/团长装备/图鉴/好感/法阵/符文/圣器尚未汇入 |
 | CORE-SKILL-GATES | 证据待补（已合入 AbilityLevel/mastery/soul 部分实现） | b87b99d；复核修复 e05533d/60b7ab7 | 专项累计 10/10；复核聚焦 37/37；总控技能/奖池/TCP 17/17；最终主线全量 2234/2234；mission 与 1316 共用 loadout；未改 gateway/game-store | 未安排 | 通用 Passive 突破筛选和每级倍率未完成；可达英雄 4040101 缺技能目录；AbilityLevel 索引与 mastery 完整选择/替换待证，不能认定整卡完成 |
 | CORE-EVENTS | 证据待补/部分交付（53001/53002 未知推进拒绝） | `task/CORE-EVENTS-20261106` @ db2daa7；合入13231a4 | 真实临时 TCP 验证已证 ETF shape、坏编码/未知规则错误码及 module92/183 不变；相关回归 100/100；无迁移 | 未安排 | 三次 53001 空成功不能证明转换规则；53002 请求字段、53006 参数、状态枚举、任务函数/周期统计及结束结算仍待恢复；[交付记录](../../../agent/workflow/gameplay-completion/CORE-EVENTS/implementation.md) |
 | CORE-DRAW-POOLS | 证据待补；已有圣器生产路径复核通过 | `task/CORE-DRAW-POOLS-20261106` @ be514bb；合入7599ef8 | 无奖励 resolver 注入：14 圣器版本正常/保底与 SQLite 重开；38 神灵版本和226无变更拒绝；真 TCP 601→7001、88932；相关回归102/102；最终主线全量2234/2234；静态配置报告与7资产SHA256见 implementation.md | 未安排 | 226的60101/60102及神灵56组lib_range为空；多心愿/替换阶段与神灵心愿/重置规则待证据；Fantasy Task 0行，不能推断当前版本无入口 |
 | CORE-TIME-TEMPLE | 待领取 | — | — | 未安排 | 八个 C2S 编码器的数字命令映射 |
 | CORE-CABIN | 待领取 | — | — | 未安排 | 房间/任务/交互/奖励/加速的可达性与协议 |
-| SOC-FRIEND | 实施中（证据 checkpoint 已存，业务未实现） | `task/SOC-FRIEND-20261107` @ 75dcdc7；未合 main | 基线 e90ef1e；worktree soc-friend 干净；仅3个证据/实施记录与脚本文件；脚本复现通过，无业务服务/接入/测试 | 未安排 | 先核历史Lua与当前资产版本对应；数字登录槽、日界、赠礼奖励/好感仍未知；申请/双向关系/领取等独立服务与总控接入均待实现 |
+| SOC-FRIEND | 服务端完成（20012/20013 语义与友情点结算证据待补） | `task/SOC-FRIEND-20261107`，合入 main | 20001–20013 全部网关派发；服务专项 15/15 + 真实临时 TCP 13 个 type + SQLite 重开 + PB 编码失败与 `friend_gifts` ABORT 触发器整体回滚；合并后好友/网关回归 35/35 | 未安排 | 数字登录槽未取证（`loginPayload` 已就绪，待总控选定槽位）；`FlushTime.NowDay` 日界为推断（用 serverDayNumber）；`daily_present_rewards` 发放触发点、favors 增量与友情币换算、20012 过滤语义、20013 举报参数与重复规则未知；2200/2202 推送载荷未取证 |
+| PLAY-FISHINGACT | 服务端完成（记录筛选与活动结束结算证据待补） | `task/PLAY-FISHINGACT-20261107`，合入 main | 110303/110304/110306/110307/110308/110309/110310 补齐，110301/110302/110305/110311 保留；新增 `fishing_act_catches` 真实收鱼记录驱动榜/记录；服务+TCP 14/14、网关 7/7（真实 seq 70–82）、合并后钓鱼/活动/网关 28/28；SQLite 重开与编码回滚通过 | 未安排 | 110308 筛选与上限未取证（当前按该活动全部渔获 id 倒序）；活动结束名次结算（HighScoreRank/ScoreRank）未实现；充值 FishBuy 139001/139002 直发鱼竿未接；天气/鱼竿加成与尺寸公式、错误文案映射未对齐 |
 | HERO-LINEUP | 服务端完成 | `task/HERO-LINEUP-20261106` @ cd3b3ea | 5 专项测试 + 真实 TCP 214→215→216→209→210→217 + 重开 DB；集成分支 30/30 | 未安排 | 217 回包 schema 未恢复（当前 ETF 回显索引）；名称长度上限属推断；214 请求形态待实测 |
 | HERO-HERO | 服务端部分完成（本小批 614/647/663/664/665） | `task/HERO-HERO-20261106` @ ead0359 | 专项与 gateway 回归 16/16 + 真实 TCP 五命令 + 模块 10 槽位 5 + SQLite 重开 + 编码回滚；合并后全量 2206/2206 | 未安排 | 剩余 602/627–631/634/635/637/641/651/652/654/656/661/666/672/673；Visit 品质映射、锁价比例、custom_tid 与 HeroErr 线上码待证据；重铸属性归 CORE-ATTR/CORE-SKILL-GATES |
 | HERO-MASTERY | 服务端完成（技能已由 CORE-SKILL-GATES 接线；属性与完整规则待补） | `task/HERO-MASTERY-20261106` @ 1afea74 | 5 专项测试 + 真实 TCP 660→659 + 故障回滚 + 重开 DB；合并后全量 2164/2164；b6e1766 接入星级/等级门槛与唯一 mastery 技能 | 未安排 | 659/660 请求仅确认含 tid；未突破时等级上限与完整解锁规则待实测；精通属性、每级技能倍率和突破换技能仍未闭合 |
@@ -49,3 +50,12 @@
 - 最终 main13231a4 在 personal-server 执行 npm test：tests2234 / pass2234 / fail0 / skipped0，退出0，duration_ms216911.0109。完整日志：analysis/test-runs/gameplay-20261106/main-after-core-skill-events-draw-full.log。技能/生产奖池/TCP单独联合复核17/17也通过；未引入新运行资产或部署依赖。
 - 合并保持核对：96d4c18/4ee1f8b/7b5af58均为主线祖先；game-store、energy、mission-progress、mail-service、task-service、activity-calendar与1a15105无差异，gateway保留onlineGift/rankAchieve/heroExtra/firstWeekGoal/growthRoad登录和1316路由。冲突仅发生于总控状态表，逐行保留最新各任务状态后解决；测试期间未变更业务源码。
 - 后续已派发 CORE-BATTLE-A 和 SOC-FRIEND，各自独立worktree；SOC-FRIEND另有只读证据辅助。尚无两项代码交付，不计入上述18项；实时服务、运行库和APK仍未操作。
+
+## 集成与验收记录（2026-11-07 第二轮）
+
+- 起点核对：会话开始时 main=1fb6824（仅文档）；会话期间主线被外部推进到 9593baa（合入 fix/daily-discount-acc-recharge-20261107，含 wallet-service/acc-recharge-service 业务改动）与 0c4f84e（v10 APK 文档）。本轮三个分支均以 9593baa 为基线，合并前分别 rebase 到当时最新 main，未覆盖外部业务改动；gateway 合并后逐项核对仍保留 onlineGift/rankAchieve/heroExtra/firstWeekGoal/growthRoad 登录、1316 属性、207 结算/体力、邮件推送与活动期限。
+- CORE-BATTLE-A：`aa4a5d8` 系列以 `--no-ff` 合入 main，合并后战斗/技能/副本/网关定向 127/127；独立复核发现 phase 泄漏（终结技加成作用于动作内触发伤害）并已修正，转换效果固定后置；生产路径用真实临时 TCP 201/207、临时 SQLite 重开与 ABORT 触发器回滚验证，834 实际伤害对应 +83 治疗。日志：`analysis/test-runs/gameplay-20261106/main-after-core-battle-a-focused.log`。
+- SOC-FRIEND：以 `--no-ff` 合入 main d1701a2；合并后 friend-service/friend-gateway/gameplay-gateway/m5-command-matrix/login-business-reads 35/35 通过，真实临时 TCP 覆盖 13 个 type、SQLite 重开与整体回滚。日志：`analysis/test-runs/gameplay-20261106/main-after-soc-friend-focused.log`。
+- PLAY-FISHINGACT：rebase 后以 `--no-ff` 合入 main 3b2d8fa；合并后钓鱼/活动/网关 28/28 通过，真实 TCP seq 70–82、跨活动隔离、重复领奖 310、编码失败回滚。日志：`analysis/test-runs/gameplay-20261106/main-after-fishing-focused.log`。
+- 主线全量：在 personal-server 执行 `npm test`，tests 2281 / pass 2279 / fail 0 / cancelled 0 / skipped 2 / todo 0，duration_ms 229348.9777，退出 0。完整日志：`analysis/test-runs/gameplay-20261106/main-after-battle-friend-fishing-full.log`。
+- 本轮未启停实时服务、未读写 `runtime.local-only.data`、未操作模拟器/ADB/APK，也未连接原游戏服务器；三项均未进入 APK 验收，纯服务端改动未生成 APK。
