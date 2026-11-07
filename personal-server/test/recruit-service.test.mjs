@@ -809,9 +809,5 @@ test('wish selection enforces progress, quality quotas and the elite library', t
   assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030201']);
   response = codec.unpack('pb_hero_recruit', env.service.execute(658, [2, 1]).data);
   assert.equal(response.extra_wish_list.length, 0);
-  const support = codec.unpack('pb_draw_support_back', env.service.execute(652, [1]).data);
-  assert.deepEqual(support.role_support.support_list, []);
-  assert.deepEqual(support.server_support.support_list, []);
-  const marquee = codec.unpack('pb_draw_marquee_rsp', env.service.execute(673, { draw_lib: 1 }).data);
-  assert.ok(marquee.data === undefined || marquee.data === '');
+  // 651/652/673 are covered by test/hero-support-service.test.mjs.
 });

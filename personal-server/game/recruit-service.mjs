@@ -974,7 +974,9 @@ export function createRecruitService({
   }
 
   return {
-    supports: type => [599, 600, 601, 642, 643, 651, 652, 657, 658, 662, 673, 77901, 87617, 87618].includes(type),
+    // 651/652/673 (draw lineup support and the marquee channel) moved to
+    // game/hero-support-service.mjs, which owns their state and decoding.
+    supports: type => [599, 600, 601, 642, 643, 657, 658, 662, 77901, 87617, 87618].includes(type),
     ensureLoginState() {
       const seconds = now();
       store.transaction(model => {
@@ -987,14 +989,6 @@ export function createRecruitService({
       });
     },
     execute(type, input) {
-      if (type === 651 || type === 652) {
-        const response = { schema: 'pb_draw_support_back', value: { role_support: { support_list: [] }, server_support: { support_list: [] } } };
-        return { ...response, data: codec.pack(response.schema, response.value) };
-      }
-      if (type === 673) {
-        const response = { schema: 'pb_draw_marquee_rsp', value: { data: Buffer.alloc(0) } };
-        return { ...response, data: codec.pack(response.schema, response.value) };
-      }
       if (type === 77901) {
         return { schema: 'etf-fallback', value: null, data: store.transaction(model => customStatisticsResponse(model)) };
       }
