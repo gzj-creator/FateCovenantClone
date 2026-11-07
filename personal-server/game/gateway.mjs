@@ -18,6 +18,7 @@ import { createRankAchieveService } from './rank-achieve-service.mjs';
 import { createFirstWeekGoalService } from './first-week-goal-service.mjs';
 import { createGrowthRoadService } from './growth-road-service.mjs';
 import { createFriendService } from './friend-service.mjs';
+import { createMessageService } from './message-service.mjs';
 import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -386,6 +387,11 @@ export function createLocalGame({
   // FriendCmd 20001-20013. The login module slot for res_friend_login is not
   // recovered, so it stays out of the login container until the owner wires it.
   const friend = createFriendService({
+    store, codec, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
+  // MsgCmd 10501-10511. ETF requests are decoded by Connection.EncodeErl; 10501
+  // and 10510 carry protobuf pb_req_send_msg on the same envelope.
+  const message = createMessageService({
     store, codec, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
   });
   const features = createFeatureService({ store, codec, sprintPreview });
@@ -808,6 +814,24 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'friend_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (message.supports(type)) {
+        try {
+          let result;
+          if (message.isProtobufRequest(type)) {
+            result = message.executeBinary(type, request.data ?? Buffer.alloc(0));
+          } else {
+            const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+            result = message.execute(type, decoded?.value ?? decoded);
+          }
+          send(seq, result.data);
+          log({ event: 'message_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'message_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
@@ -1928,7 +1952,7 @@ export function createLocalGame({
         }
         return;
       }
-      const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]], [10507, ['pb_msg_range_list_with_role_info', {}]]]);
+      const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
       if (type === 53001 || type === 53002) {
         try {
@@ -1953,7 +1977,7 @@ export function createLocalGame({
         }
         return;
       }
-      if ([108, 102801, 10503].includes(type)) {
+      if ([108, 102801].includes(type)) {
         // 108 (req_remove_operate_display) is a UI-only acknowledgement after a purchase.
         send(seq);
         if (type === 108) log({ event: 'operate_display_removed', type, seq });
@@ -1973,7 +1997,7 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, rankAchieve,
-    cms, guildNationAssist, groupBuyAct,
+    cms, guildNationAssist, groupBuyAct, message,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
