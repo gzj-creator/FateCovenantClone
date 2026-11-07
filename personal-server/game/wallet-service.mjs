@@ -72,6 +72,21 @@ export function createWalletService({
   });
   const dailyDay = seconds => Math.floor((seconds + DAILY_RESET_OFFSET_SECONDS) / 86400);
   const nextDailyRefresh = seconds => (dailyDay(seconds) + 1) * 86400 - DAILY_RESET_OFFSET_SECONDS;
+  // WishTree only accepts rebate days inside the open 14-day cycle. A purchase
+  // whose server day falls outside that cycle still debits vouchers, grants
+  // rewards and records its order; only the rebate bookkeeping is unavailable.
+  // Skip that entry instead of failing the whole purchase, and leave every
+  // other wish-tree error visible.
+  const recordWishTreePurchase = args => {
+    if (typeof wishTree?.recordPurchase !== 'function') return null;
+    try {
+      return wishTree.recordPurchase(args);
+    } catch (error) {
+      if (Number(error?.code) !== 310) throw error;
+      log({ event: 'wish_tree_rebate_skipped', product_id: args.productId, day: args.day, code: 310, reason: error.message });
+      return null;
+    }
+  };
   const dailyDiscountInfo = modules => {
     const raw = modules.get(DAILY_DISCOUNT_MODULE);
     if (!raw) return { refresh_time: 0, buy_additionally: 0, daily_discount_list: [], select_list: [], data_version: 0 };
@@ -552,7 +567,7 @@ export function createWalletService({
       // WishTree is a server-day ledger. RechargeMgr may retain a stale client
       // day or a WeekHunt makeup day in extra_params; neither may move rebate
       // purchases outside the current 14-day cycle.
-      wishTree?.recordPurchase({ modules, productId: product_id, day, at: purchasedAt * 1000 });
+      recordWishTreePurchase({ modules, productId: product_id, day, at: purchasedAt * 1000 });
       if (petGift) {
         petActivity.recordGiftPurchase({
           model, db, activityId: petGift.activityId, productId: product_id, buyNum: 1,
@@ -807,7 +822,7 @@ export function createWalletService({
       addBuyGiftRecord(login, product_id, purchasedAt);
       modules.set(19, serializedBinary(codec.pack('res_recharge_login', login)));
       const dailyDiscount = dailyPlan ? setDailyDiscountInfo(modules, dailyPlan.info) : null;
-      wishTree?.recordPurchase({
+      recordWishTreePurchase({
         modules,
         productId: product_id,
         day: wishTree?.supportsProduct?.(product_id) ? dailyDay(purchasedAt) : (normalizedDay > 0 ? normalizedDay : dailyDay(purchasedAt)),
