@@ -8,6 +8,29 @@ export const TIME_TEMPLE_DRAW_SCHEMA = 'pb_time_temple_draw';
 
 const UINT32_MAX = 0xffffffff;
 
+// Eight request encoders ship in TimeTempleCmd.lua (project bundle prototypes
+// 0-7) but client build 1.55.090365 never registers them in Cmd.c2s_index, and
+// Connection:Send resolves a request with `Cmd.c2s_index[cmd]`, aborting with
+// "send msg type error" when the name is missing. No numeric C2S type therefore
+// exists to route, so the gateway keeps answering LOCAL_NOT_IMPLEMENTED instead
+// of claiming a number that belongs to another module (90501-90507 are pet
+// activity, 91001 is energy burst, 7801 is the S2C draw push).
+// Evidence and the full registry dump: agent/workflow/time-temple/cmd-registry-20261108.json
+export const TIME_TEMPLE_UNREGISTERED_COMMANDS = Object.freeze([
+  { name: 'req_time_temple_embryo_up', encoding: 'etf', requestSchema: null, responseSchema: 'pb_embryo_up_back' },
+  { name: 'req_time_temple_bond_up', encoding: 'etf', requestSchema: null, responseSchema: null },
+  { name: 'req_time_temple_runes_collect', encoding: 'etf', requestSchema: null, responseSchema: 'pb_runes_collect_back' },
+  { name: 'req_time_temple_runes_up', encoding: 'etf', requestSchema: null, responseSchema: null },
+  { name: 'req_time_temple_runes_skill_select', encoding: 'protobuf', requestSchema: 'pb_time_temple_select_runes_skills', responseSchema: 'pb_time_temple_select_runes_skills' },
+  { name: 'req_time_temple_god_up', encoding: 'etf', requestSchema: null, responseSchema: null },
+  { name: 'req_time_temple_season_shop', encoding: 'etf', requestSchema: null, responseSchema: null },
+  { name: 'req_time_temple_draw_award', encoding: 'etf', requestSchema: null, responseSchema: 'pb_draw_phase_award_back' }
+].map(command => Object.freeze({ ...command, numericType: null })));
+
+export function unregisteredTimeTempleCommands() {
+  return TIME_TEMPLE_UNREGISTERED_COMMANDS.map(command => ({ ...command }));
+}
+
 function fail(message) {
   throw new GameError(5, message);
 }
