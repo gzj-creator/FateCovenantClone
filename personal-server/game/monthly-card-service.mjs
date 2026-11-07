@@ -26,6 +26,7 @@ function rewardBytes(value) {
 // RechargeTable type 47 products activate an entry in login module 20. The
 // client's MonthlyCardMgr.LoginParse decodes pb_monthly_card_info and derives
 // the buy state from monthly_card.start_day + MonthlyCardTable.reward_period.
+// Monthly-card day N uses BitBlock index N (not the generic zero-based index).
 export function createMonthlyCardService({ codec, tables, now = Date.now }) {
   const cardByRecharge = new Map();
   const cardById = new Map();
@@ -62,10 +63,37 @@ export function createMonthlyCardService({ codec, tables, now = Date.now }) {
 
   function countRewardBits(bits, rewardPeriod) {
     let count = 0;
-    for (let index = 0; index < rewardPeriod; index++) {
-      if (hasBit(bits, index)) count++;
+    for (let day = 1; day <= rewardPeriod; day++) {
+      if (hasBit(bits, day)) count++;
     }
     return count;
+  }
+
+  // The first implementation wrote claim day N at index N - 1. The client's
+  // AwardIsGotByDayIndex uses index N, so move legacy bits one position and
+  // regenerate got_count. The old encoding always set index 0 when day 1 was
+  // claimed, which also makes this repair naturally idempotent.
+  function repairLegacyClaimBits({ model }) {
+    const modules = new Map(model.state.modules.value);
+    if (!modules.has(MONTHLY_CARD_MODULE)) return { changed: false, repaired: [] };
+    const { info } = readInfo(modules);
+    const repaired = [];
+    for (const row of info.card_list) {
+      const cardConfig = cardById.get(Number(row.id));
+      const current = rewardBytes(row.got_reward);
+      if (!cardConfig || !hasBit(current, 0)) continue;
+      let bits = Buffer.alloc(Math.max(current.length, Math.ceil((cardConfig.reward_period + 1) / 8)));
+      for (let day = 1; day <= cardConfig.reward_period; day++) {
+        if (hasBit(current, day - 1)) bits = setBit(bits, day);
+      }
+      row.got_reward = bits;
+      row.got_count = countRewardBits(bits, cardConfig.reward_period);
+      repaired.push({ cardId: cardConfig.tid, gotCount: row.got_count });
+    }
+    if (!repaired.length) return { changed: false, repaired: [] };
+    modules.set(MONTHLY_CARD_MODULE, serializedBinary(codec.pack('pb_monthly_card_info', info)));
+    model.state.modules.value = [...modules];
+    return { changed: true, repaired };
   }
 
   function assertPurchaseAvailable({ modules, product, at }) {
@@ -146,9 +174,8 @@ export function createMonthlyCardService({ codec, tables, now = Date.now }) {
         if (seenDays.has(day)) throw new GameError(1, 'Monthly card reward day is duplicated');
         seenDays.add(day);
         if (startDay + day - 1 > currentDay) throw new GameError(309, 'Monthly card reward is not available yet');
-        const bitIndex = day - 1;
-        if (hasBit(rewardBits, bitIndex)) throw new GameError(310, 'Monthly card reward already claimed');
-        rewardBits = setBit(rewardBits, bitIndex);
+        if (hasBit(rewardBits, day)) throw new GameError(310, 'Monthly card reward already claimed');
+        rewardBits = setBit(rewardBits, day);
 
         if (!Array.isArray(cardConfig.reward)) throw new GameError(5, 'Monthly card reward configuration is unavailable');
         for (const reward of cardConfig.reward) {
@@ -181,5 +208,5 @@ export function createMonthlyCardService({ codec, tables, now = Date.now }) {
     };
   }
 
-  return { supports, assertPurchaseAvailable, purchase, claim, cardByRecharge, cardById };
+  return { supports, assertPurchaseAvailable, purchase, claim, repairLegacyClaimBits, cardByRecharge, cardById };
 }

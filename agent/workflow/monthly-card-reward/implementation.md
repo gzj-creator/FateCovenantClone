@@ -26,3 +26,25 @@
 
 - 月卡页面点击“领取”应立即显示奖励，并刷新为已领取/售罄状态。
 - 标准通行证和月令通行证需要重新点买或打开页面，确认购买入口立即切换且不会重复扣款。
+
+## 2026-11-07 已领取按钮未置灰修复
+
+### 根因与客户端契约
+
+- 客户端 `MonthlyCardMgr:AwardIsGotByDayIndex` 使用 1 基的 `dayIndex` 检查 `got_reward`，第 1 天对应 BitBlock 索引 1，即首个字节 `0x40`；它不检查索引 0。
+- 原服务端把第 N 天写入索引 N-1。当前运行日志中 `seq=49` 的 `17001` 首次领取成功，返回 `claims:[{cardId:2,day:1}]`；`seq=51`、`seq=73` 再点均返回 `310 Monthly card reward already claimed`。服务端知道已领取，但模块 20 中的卡 2 为 `got_reward=80 00, got_count=1`，客户端检查不到索引 1，所以按钮仍可点击。
+
+### 修复
+
+- `monthly-card-service.mjs` 将第 N 天改为写入 BitBlock 索引 N；`got_count` 改为统计索引 `1..reward_period`。
+- 新增启动期 `repairLegacyClaimBits()`：旧数据若索引 0 被置位，就把索引 `0..reward_period-1` 整体前移一位到 `1..reward_period`，清除旧索引 0，并按新索引重算 `got_count`。修复后不再触发迁移，重复启动幂等。
+- `gateway.mjs` 在创建游戏服务、接收登录和命令前，以事务执行迁移；有改动时记录 `monthly_card_claim_bits_repaired` 日志。
+- 专项测试新增新编码断言、旧位迁移与幂等断言，以及 `createLocalGame` 重启时自动迁移的集成覆盖；真实 TCP `17001` 回包也断言第 1 天为 `0x40`。
+
+### 验证与状态
+
+- 当前运行库只读副本中的卡 2 由 `got_reward=80 00` 迁移为 `40 00 00 00`，`got_count` 保持 `1`；真实运行库未写入。
+- `node --test test/monthly-card-reward.test.mjs`：5/5 通过。
+- 全量 `npm test`：2317 项，pass 2315、fail 0、skipped 2。
+- 分支 `fix/monthly-card-claim-state-20261107`，worktree `.worktree/monthly-card-claim-state-20261107`。
+- 尚未部署、未重启实时服务、未修改运行数据库，也未操作模拟器、ADB 或 APK。部署并重启后启动迁移才会执行；用户重新登录后应确认已领取日期按钮置灰，且重复点击不再发奖。
