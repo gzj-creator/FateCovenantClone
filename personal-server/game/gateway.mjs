@@ -25,6 +25,7 @@ import { createFirstWeekGoalService } from './first-week-goal-service.mjs';
 import { createGrowthRoadService } from './growth-road-service.mjs';
 import { createFriendService } from './friend-service.mjs';
 import { createMessageService } from './message-service.mjs';
+import { createArtifactService } from './artifact-service.mjs';
 import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -387,6 +388,9 @@ export function createLocalGame({
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
+  // ArtifactCmd 37060-37075. The artifact login payload is module 50 slot 0, so
+  // ensureLoginState only normalises rows that grantArtifact() stored as {tid,num}.
+  const artifact = createArtifactService({ store, codec, logger });
   const cabin = createCabinService({ store, codec, heroTables });
   const houseAssistant = createHouseAssistantService({
     store,
@@ -492,6 +496,7 @@ export function createLocalGame({
     handbook.ensureLoginState();
     heroFavor.ensureLoginState();
     heroExtra.ensureLoginState();
+    artifact.ensureLoginState();
     for (const service of heroCommandServices) service.ensureLoginState?.();
     teamSuggest.ensureLoginState();
     teamGenre.ensureLoginState();
@@ -1649,6 +1654,21 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'fantasy_equipment_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (artifact.supports(type)) {
+        try {
+          const artifactInput = artifact.isProtobufRequest(type)
+            ? artifact.decode(type, request.data ?? Buffer.alloc(0))
+            : await etfArgument(request.data, 'Invalid artifact payload');
+          const result = artifact.execute(type, artifactInput);
+          send(seq, result.data);
+          log({ event: 'artifact_command_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'artifact_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
