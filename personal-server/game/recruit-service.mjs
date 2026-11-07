@@ -1,4 +1,4 @@
-import { encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { encodeEtfBinaryAndSmallIntegerTuple, encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mjs';
 import { GameError } from './hero-progression.mjs';
 import {
@@ -365,7 +365,7 @@ export function createRecruitService({
         stat_tid: TID_COUNT_DRAW
       }]
     };
-    return { type: 2000, data: codec.pack('pb_count_statics_send_list', value) };
+    return { type: 2000, data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', value)) };
   }
 
   function drawAchievementData(state, seconds) {
@@ -384,9 +384,9 @@ export function createRecruitService({
   function drawAchievementPush(data) {
     return {
       type: 2000,
-      data: codec.pack('pb_count_statics_send_list', {
+      data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', {
         data_list: [{ data, expand_id_list: [0], stat_tid: TID_COUNT_DRAW_ACHIEVE }]
-      })
+      }))
     };
   }
 

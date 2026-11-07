@@ -121,6 +121,13 @@ async function customStatistics(env) {
   return decoded.value.map(item => codec.unpack('pb_count_statics_data', Buffer.from(item.value)));
 }
 
+async function statisticsPush(push) {
+  const decoded = await decodeEtf(push.data);
+  assert.equal(decoded.length, 2);
+  assert.equal(decoded[1], 0);
+  return codec.unpack('pb_count_statics_send_list', Buffer.from(decoded[0].value));
+}
+
 function statisticsTid75(data) {
   const customTids = [...tables.CountStatistics.values()].filter(row => row.custom_login).map(row => Number(row.tid));
   return data[customTids.indexOf(75)];
@@ -457,11 +464,11 @@ test('draw statistics backfill historical counts and publish both draw and achie
   const result = env.service.execute(601, { draw_lib: 1, point_draw_num: 2 });
   assert.equal(result.pushes.length, 2);
   assert.equal(result.pushes[0].type, 2000);
-  const pushed = codec.unpack('pb_count_statics_send_list', result.pushes[0].data).data_list[0];
+  const pushed = (await statisticsPush(result.pushes[0])).data_list[0];
   assert.equal(pushed.stat_tid, 1);
   assert.deepEqual(pushed.expand_id_list, ['1']);
   assert.equal(Number(pushed.data.list.find(row => Number(row.id) === 1).total), 7);
-  const achievementPush = codec.unpack('pb_count_statics_send_list', result.pushes[1].data).data_list[0];
+  const achievementPush = (await statisticsPush(result.pushes[1])).data_list[0];
   assert.equal(achievementPush.stat_tid, 75);
   assert.equal(achievementPush.data.list.reduce((sum, row) => sum + Number(row.total), 0), 68);
   assert.equal(Number(statisticsTid75(await customStatistics(env)).list[0].total), 68);

@@ -357,14 +357,20 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(game.store.read().resources.get('2002').num, String(ticketsBeforeRecruitment));
   const drawStatistics = codec.unpack('pb_s2c', await next());
   assert.equal(drawStatistics.type, 2000);
-  const statisticsPush = codec.unpack('pb_count_statics_send_list', Buffer.from(drawStatistics.data, 'base64'));
+  const drawStatisticsTuple = await decodeEtf(Buffer.from(drawStatistics.data, 'base64'));
+  assert.equal(drawStatisticsTuple.length, 2);
+  assert.equal(drawStatisticsTuple[1], 0);
+  const statisticsPush = codec.unpack('pb_count_statics_send_list', Buffer.from(drawStatisticsTuple[0].value));
   assert.equal(statisticsPush.data_list.length, 1);
   assert.equal(statisticsPush.data_list[0].stat_tid, 1);
   assert.deepEqual(statisticsPush.data_list[0].expand_id_list, ['1']);
   assert.equal(Number(statisticsPush.data_list[0].data.list.find(row => Number(row.id) === 1).total), 3);
   const achievementStatistics = codec.unpack('pb_s2c', await next());
   assert.equal(achievementStatistics.type, 2000);
-  const achievementPush = codec.unpack('pb_count_statics_send_list', Buffer.from(achievementStatistics.data, 'base64'));
+  const achievementStatisticsTuple = await decodeEtf(Buffer.from(achievementStatistics.data, 'base64'));
+  assert.equal(achievementStatisticsTuple.length, 2);
+  assert.equal(achievementStatisticsTuple[1], 0);
+  const achievementPush = codec.unpack('pb_count_statics_send_list', Buffer.from(achievementStatisticsTuple[0].value));
   assert.equal(achievementPush.data_list.length, 1);
   assert.equal(achievementPush.data_list[0].stat_tid, 75);
 
