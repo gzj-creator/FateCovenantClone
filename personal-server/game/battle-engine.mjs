@@ -84,10 +84,13 @@ function normalizeUnit(unit, skillDatabase) {
   const speed = finitePositive(Number(unit.speed ?? 100), 'speed');
   const initialEnergy = Math.max(0, Math.min(FIGHT_ENERGY_MAX, Number(unit.initialEnergy ?? FIGHT_INITIAL_ENERGY)));
 
-  // Load hero skills if skill database is available
+  // A caller that has authoritative progression must pass the filtered catalog.
+  // Role-only tests and systems without roster state retain the legacy lookup.
   let skills = [];
   if (skillDatabase) {
-    skills = getHeroSkills(unit.role ?? unit.id, skillDatabase);
+    skills = Array.isArray(unit.skills)
+      ? unit.skills
+      : getHeroSkills(unit.role ?? unit.id, skillDatabase);
   }
 
   return {

@@ -1,5 +1,6 @@
 import { GameError } from './hero-progression.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
+import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
 
 // Attribute values are stored as fixed-point integers in HeroTable: growth rows
 // use 1/10000 steps (BaseAttrNew.hp_grow = 396000 means +39.6 HP per level) and
@@ -283,7 +284,7 @@ export function assembleLineup({ model, lineupType = 1, heroTables, attributeTab
   if (!target) fail(5, 'Lineup state missing');
   const entries = lineupFighters(model, target).map(({ hero, teamId, loc }) => ({
     ...assembleHeroAttributes({ hero, heroTables, attributeTables }),
-    teamId, loc
+    hero, teamId, loc
   }));
   const totalPower = entries.reduce((sum, entry) => sum + entry.power, 0);
   const teamPowers = new Map();
@@ -297,11 +298,11 @@ export function assembleLineup({ model, lineupType = 1, heroTables, attributeTab
 export function buildLineupAttrInfo({ model, lineupType = 1, heroTables, attributeTables = readAttributeTables() }) {
   const assembled = assembleLineup({ model, lineupType, heroTables, attributeTables });
   const attrList = assembled.entries.map(entry => {
-    const config = heroTables?.Ability?.get(entry.tid);
+    const loadout = buildHeroSkillLoadout({ hero: entry.hero, heroTables });
     return {
       tid: entry.uid ?? String(entry.tid),
       fight_attr_list: Object.entries(entry.fightAttrs).map(([key, value]) => ({ key: Number(key), value: String(Math.max(0, Math.round(Number(value)))) })),
-      skills: (config?.ability ?? []).slice(0, 8).map(Number),
+      skills: loadout.abilityIds,
       team_attrs: [],
       base_attr_list: [
         { key: FIGHT_ATTR.HP, value: String(entry.stats.hp) },
