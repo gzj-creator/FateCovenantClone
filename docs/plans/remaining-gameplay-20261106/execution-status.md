@@ -4,7 +4,7 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 23 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 26 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；26/355 约 7.3% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
+交付与整卡销项分开计数：当前 26 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 29 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；29/355 约 8.2% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
 
 2026-11-07 第二轮：CORE-BATTLE-A 与 SOC-FRIEND 两个 checkpoint 已续接完成并合入 main，另完成 PLAY-FISHINGACT；三者均通过合并后的定向回归与一次主线全量，业务层为“服务端完成”，各自的证据缺口与 APK 验收边界见下表。
 
@@ -27,6 +27,9 @@
 | HERO-LINEUP | 服务端完成 | `task/HERO-LINEUP-20261106` @ cd3b3ea | 5 专项测试 + 真实 TCP 214→215→216→209→210→217 + 重开 DB；集成分支 30/30 | 未安排 | 217 回包 schema 未恢复（当前 ETF 回显索引）；名称长度上限属推断；214 请求形态待实测 |
 | HERO-HERO | 服务端完成（18 条剩余命令已补齐；多项规则证据待补） | `task/HERO-HERO-20261106` @ ead0359；`task/HERO-HERO-B-20261107` @ d92122b；合入 main eb1b1e1 | B 批 602/627–631/634/635/637/641/651/652/654/656/661/666/672/673 全部有服务路径；专项 100/100、分支全量 2368（pass 2366 / fail 0 / skipped 2），合并后英雄/招募/网关/M5 定向 131/131；真实临时 TCP、SQLite 重开与编码/SQLite 回滚 | 未安排 | 635 `DrawProgAward` 0 行返回 3001；651/652/673 客户端本版本不可达；641 品质/星级/碎片规则为强推断；637 Cell 4–6、654/672 登录/属性影响、629–634 跨角色租借和其他角色登录槽仍缺证据；全部条目未 APK 验收 |
 | DRAW-HUNDREDDRAWACT | 服务端完成（保底选择与非英雄星级奖证据待补） | `task/DRAW-HUNDREDDRAWACT-20261107` @ fa2d79d，合入 main | 117001–117005 全部网关派发；从 LuaJIT 资产可复现生成 `HundredDrawActTable`；真实临时 TCP 覆盖五命令，专项 8/8、活动/福利/网关 24/24；消耗/授予/领取位/跑马灯落 SQLite，重开及编码/SQLite 回滚通过 | 未安排 | `GuaranteeWeight` 服务端选择语义未恢复，当前保底按排序后的首个本体奖；宠物/精灵/幻装星级条件与 type-104 技能奖励、部分 target-chip 映射缺证据并 fail closed；APK 未验收 |
+| SOC-CHAT | 服务端完成（公会/跨服/封禁/点赞 fail closed） | `task/SOC-CHAT-20261107` @ 5158c13，合入 main `680b2b7` | 11000–11014 全部网关派发；新增 `chat-service`、`ChatTable.Param`/`ReportConst` 资产与生成器；11000/11002 真实写 `message_history` 并推 1400、11013 按 ReportConst 去重与 24h 上限、11010 持久化设置、11012 幂等删除私聊目标；72 项定向（chat 15 + SOC-MSG 13 + 网关/m5）与合并后 44/44 通过，PB 编码失败与 SQLite ABORT 整体回滚、SQLite 重开通过 | 未安排 | 11001 无公会权威状态、11003 跨服聚合、11006/11008 封禁状态机、11014 点赞奖励无证据 fail closed；1400 为本服自定 wire type 未与抓包比对；频控参数（send_time_interval/count_limit_in_cd）已恢复但服务端未限速；11010 设置结构未反解且未挂登录；推送沿用全连接广播，多角色会话需按角色定向 |
+| EQUIP-ARTIFACT | 服务端完成（4 条证据待补 fail closed，1 条部分交付） | `task/EQUIP-ARTIFACT-20261107` @ df3775e，合入 main `93bd156` | 37060/37061/37068/37069/37070/37071 真实状态+资源+回包，37074 部分交付；权威状态统一落 module 50 slot 0 `pb_artifact_info` 并由 `ensureLoginState()` 归一化；`ArtifactTable`/`ArtifactLevelUp` 资产由 LuaJIT 可复现生成；专项 12/12 + 真实 TCP（五成功命令 + 一条 fail closed）+ SQLite 重开 + PB 编码失败与 SQLite 触发器失败回滚；合并后定向 35/35 | 未安排 | 37062 品质、37072 inject、37073 handbook、37075 skin 缺语义 fail closed；37061 forge 累计口径、37069 star 阈值、37074 `star_limit=6` 与品质 50 上限 5 冲突为推断/拒绝；属性与战力接入未做 |
+| EQUIP-RELIC | 服务端完成（保底/概率与登录 depot 槽位证据待补） | `task/EQUIP-RELIC-20261107` @ bfe4c15（rebase 后 c3bf25f 系列 + 空白修正），合入 main `e30f15c` | 89701/89702/89704/89705/89706/89707/89708/89709/89710/89711/89712 全部网关派发；新增 `relic-service` 与 `RelicTable` 资产（生成器可复现同哈希）；服务 10 项 + 真实 TCP 1 项（11 个 type）+ SQLite 重开 + 编码/写入失败整笔回滚；合并后定向 40/40 | 未安排 | `pb_relic_depot` 登录模块号未定位，仓库列表不随登录下发（`hero.relic` 与专属符文进度经模块 10 恢复）；`RecastTimes` 保底与 `recast_probability`/`variation_return` 语义无据，变异按消耗即成功；重置成本字段语义未定；穿戴按整组覆盖解释；`StageAttr`/`RecastAttr*`/`Suit`/`VariationAddition` 未汇入属性与战力 |
 | HERO-MASTERY | 服务端完成（技能已由 CORE-SKILL-GATES 接线；属性与完整规则待补） | `task/HERO-MASTERY-20261106` @ 1afea74 | 5 专项测试 + 真实 TCP 660→659 + 故障回滚 + 重开 DB；合并后全量 2164/2164；b6e1766 接入星级/等级门槛与唯一 mastery 技能 | 未安排 | 659/660 请求仅确认含 tid；未突破时等级上限与完整解锁规则待实测；精通属性、每级技能倍率和突破换技能仍未闭合 |
 | ITEM-SHOP | 服务端完成 | `task/ITEM-SHOP-20261106` @ 3ac6f3c | 15 专项测试 + 真实 TCP 1202→1203→1202 + 重开 DB；集成分支 26/26 | 未安排 | 1202–1205/1207/1208 ETF 请求形态待录制；1205 wipe 语义未取证；结算 data 布局未知；无刷新价格表 |
 | ITEM-ITEM | 服务端完成（153/157 证据阻塞） | `task/ITEM-ITEM-20261106` @ c3e2df7 | 9 专项测试 + 真实 TCP 156/158/154 成功、153/157 返回 code 5；集成分支 47/47 | 未安排 | 153 本版本不可达（BoxRepeat 0 行、无 type=85 物品、module 54 空）；157.lottery_list 无奖池表；保底登录槽位未定位；MatchHeroChip 无奖励 handler |
@@ -84,3 +87,15 @@
 2026-11-07 第二批后换 session：续接提示词已保存为[剩余玩法计划下一 session](../../../promot/2026-11-07-remaining-gameplay-next-session.md)。main=b5a44f0；
 下一批工作树 `hero-hero2`（HERO-HERO-B）、`soc-msg`（SOC-MSG）、`draw-hundred`（DRAW-HUNDREDDRAWACT）已创建且无提交，可直接复用；
 上一轮中止未产生额外业务改动，不等待旧 agent。
+
+## 集成与验收记录（2026-11-08 第四批）
+
+- 起点核对：会话开始时 main 为 `7c5f5f2`（仅文档），最新业务提交 `354e1ca`。会话期间主线被外部推进到 `866117e`（`feat(house-assistant): implement four house commands`，含 gateway 增量），本轮三个业务分支都在该提交之后合并，未覆盖外部改动。
+- 主线 post-batch3 全量：在 `7c5f5f2` 上执行 `npm test`，tests 2378 / pass 2376 / fail 0 / skipped 2、退出 0。因为后续 agent 在同一路径重跑，`analysis/test-runs/gameplay-20261106/main-after-batch3-full.log` 现在保存的是 `866117e`（含 house-assistant）上的运行：tests 2385 / pass 2383 / fail 0 / skipped 2，duration_ms 288520。两次基线都通过，日志路径内容以最近一次为准。
+- `866117e` 网关基线定向：house-assistant、gameplay-gateway、m5-command-matrix、login-business-reads 共 26/26 通过，日志 `analysis/test-runs/gameplay-20261106/main-866117e-gateway-sanity.log`。
+- EQUIP-ARTIFACT（`df3775e`）以 `--no-ff` 合入 main `93bd156`。合并前 `git merge-base --is-ancestor main HEAD`、`git diff --check`、`git diff --diff-filter=D` 均通过；总控独立复核 13/13，合并后定向 35/35（artifact + gateway + m5 + login + house-assistant + message + hundred-draw），日志 `main-after-equip-artifact-focused.log`。
+- EQUIP-RELIC（`c3bf25f` 系列）由总控 rebase 到 `93bd156`：gateway 冲突只保留双方 import 与实例（`createArtifactService` + `createRelicService`），两处派发块共存，另补 `relic-tables.mjs` 尾随空行的空白修正提交 `bfe4c15`。总控独立复核 40/40，随后以 `--no-ff` 合入 main `e30f15c`。
+- SOC-CHAT（`eabc10a`）由总控 rebase 到 `e30f15c`：gateway 仅 import 冲突，保留 artifact/relic/chat 三方；chat 派发位于 message 派发之后、909103 登录之前。总控独立复核 44/44（chat + SOC-MSG + gateway + m5），随后以 `--no-ff` 合入 main `680b2b7`。
+- 合并后 gateway 逐项核对：`onlineGift.beginSession`、`rankAchieve.ensureLoginState`、`heroExtra.ensureLoginState`、`firstWeekGoal.loginPayload`、`growthRoad.ensureLoginState`、`activityRead.synchronizeHelpUpLogin`、`groupBuyAct.synchronizeLogin`、`hundredDraw.synchronizeLogin`、`artifact.ensureLoginState` 全部保留；1316、67004/67005、69001/69002、20001–20013、钓鱼 ETF、精英 201/207、团购 100601/100602、207 结算/体力、邮件推送、活动期限、module 8/90 多槽、10501–10511、11000–11014、117001–117005、37060–37075、89701–89712、house-assistant 派发共存；recruit 仍在 heroCommandServices 之前，百抽仍在通用 activityRead 之前。
+- 本轮主线工作树存在另一个 session 的未提交改动（`activity-calendar.mjs`、`welfare-service.mjs` 及三个测试、hundred-schools 文档）与未跟踪 `assets/`。总控未清理、未覆盖、未提交这些改动；三次合并均未触碰这些路径。
+- 三项都没有进入 APK 验收，未启停实时服务、未读写 `runtime.local-only.data` 或运行数据库、未操作模拟器/ADB/APK、未连接原游戏服务器。
