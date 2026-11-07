@@ -14,8 +14,10 @@
  */
 
 import {
+  PROPRIETARY_EVENT_KINDS,
   PROPRIETARY_HOOKS,
   addLayer,
+  activeDomains,
   addSuperHp,
   destroyShield,
   drainTianji,
@@ -171,6 +173,71 @@ export let PROPRIETARY_SKILL_RULES = [
     config: { scope: 'all-enemies', resources: ['energy', 'tianji'] }
   },
 
+  // 领域: 【魔能领域】 lasts two rounds, heals allies on opening and grants
+  // 【魔能】 layers to the allies inside it.
+  {
+    skillId: '2104010123', kind: 'domain',
+    requires: ['展开1层【魔能领域】',
+      '领域内我方全体立刻回复自身10%的最大生命并额外提升10%攻击力，持续2回合',
+      '领域内所有友方冒险者每回合开始时额外获得1层【魔能】'],
+    evidence: '消耗3点天极值，造成敌方全体130%法术伤害，展开1层【魔能领域】；'
+      + '【魔能领域】:领域内我方全体立刻回复自身10%的最大生命并额外提升10%攻击力，持续2回合；'
+      + '领域内所有友方冒险者每回合开始时额外获得1层【魔能】、每次普攻/绝招时额外获得1层【魔能】、'
+      + '每回合首次释放终结技时额外获得1层【魔能】、每次受到普攻/绝招/终结技/天极技伤害时额外获得1层【魔能】，持续2回合',
+    config: {
+      name: '魔能领域', rounds: 2, healRatio: 0.1,
+      allyStats: [{ statType: 'attack-percent', magnitude: 0.1 }],
+      layers: { name: '魔能', roundStart: 1, action: 1, firstUltimate: 1, damageTaken: 1 },
+    }
+  },
+
+  // 命名层数: 【魂】 from any character death, capped at 8 by 314030175.
+  {
+    skillId: '2104030123', kind: 'layer',
+    requires: ['敌我双方任意角色死亡时，自身将获得1层【魂】，每个角色仅能获取1次'],
+    evidence: '敌我双方任意角色死亡时，自身将获得1层【魂】，每个角色仅能获取1次',
+    config: { name: '魂', perDeath: 1 }
+  },
+  {
+    skillId: '314030171', kind: 'layer',
+    requires: ['战斗开始时，额外获得2层【魂】', '自身额外获得20%最大生命值的护盾'],
+    evidence: '战斗开始时，额外获得2层【魂】；通过敌我双方角色死亡途径获取【魂】时（魂溢出时也可触发），'
+      + '自身额外获得20%最大生命值的护盾',
+    config: { name: '魂', opening: 2, deathShieldRatio: 0.2 }
+  },
+  {
+    skillId: '314030175', kind: 'layer',
+    requires: ['【魂】的层数上限提升至8层'],
+    evidence: '【魂】的层数上限提升至8层',
+    config: { name: '魂', cap: 8 }
+  },
+
+  // 命名层数: 【月光】, 100 层上限, 每层 +0.5% 最终伤害加成与无视防御.
+  {
+    skillId: '2404030123', kind: 'layer',
+    requires: ['【月光】：至多叠加100层，每层提升0.5%最终伤害加成及0.5%无视防御'],
+    evidence: '【月光】：至多叠加100层，每层提升0.5%最终伤害加成及0.5%无视防御',
+    config: {
+      name: '月光', cap: 100,
+      perLayer: [
+        { statType: 'damage-bonus', magnitude: 0.005 },
+        { statType: 'ignore-defense', magnitude: 0.005 },
+      ],
+    }
+  },
+  {
+    skillId: '2404040123', kind: 'layer',
+    requires: ['【月光】：至多叠加100层，每层提升0.5%最终伤害加成及0.5%无视防御'],
+    evidence: '【月光】：至多叠加100层，每层提升0.5%最终伤害加成及0.5%无视防御',
+    config: {
+      name: '月光', cap: 100,
+      perLayer: [
+        { statType: 'damage-bonus', magnitude: 0.005 },
+        { statType: 'ignore-defense', magnitude: 0.005 },
+      ],
+    }
+  },
+
   // 额外行动 / 追击 / 反击.
   {
     skillId: '120001001', kind: 'extra-action',
@@ -303,6 +370,66 @@ function summonLeft(owner) {
   return result;
 }
 
+function emitProprietary(events, payload) {
+  if (Array.isArray(events)) events.push(payload);
+}
+
+/** Add named layers to one unit and emit the observable layer event. */
+function gainNamedLayers(events, unit, def, count, reason) {
+  if (!unit || !def || !(count > 0)) return 0;
+  const before = layerValue(unit, def.name);
+  const after = addLayer(unit, def.name, count, { max: def.cap ?? null, perLayer: def.perLayer });
+  const delta = after - before;
+  if (delta > 0) {
+    emitProprietary(events, {
+      kind: PROPRIETARY_EVENT_KINDS.LAYER, aimId: unit.id, name: def.name,
+      value: after, delta, reason,
+    });
+  }
+  return delta;
+}
+
+/** Heal one unit and emit the same shape the effect pipeline reports. */
+function healNamedUnit(events, unit, amount, sourceId) {
+  if (!unit?.alive || !(amount > 0)) return 0;
+  const oldHp = Math.max(0, Number(unit.hp) || 0);
+  const newHp = Math.min(unit.maxHp, oldHp + Math.floor(amount));
+  const actualHeal = newHp - oldHp;
+  if (actualHeal <= 0) return 0;
+  unit.hp = newHp;
+  unit.healsReceived = (Number(unit.healsReceived) || 0) + actualHeal;
+  emitProprietary(events, {
+    kind: 'effect', type: 'heal', actor: sourceId, target: unit.id,
+    value: actualHeal, actualHeal, oldHp, newHp, overheal: false,
+  });
+  return actualHeal;
+}
+
+/** Add a stat modifier whose lifetime is expressed in rounds. */
+function applyTimedStat(unit, { statType, magnitude, rounds, sourceSkill = null, state = null }) {
+  unit.buffs = unit.buffs ?? [];
+  const entry = {
+    statType,
+    magnitude: Number(magnitude) || 0,
+    stacks: 1,
+    stacksAdditive: true,
+    source: unit.id,
+    sourceSkill,
+    durationType: 'timed',
+    remainingRounds: Math.max(0, Math.floor(Number(rounds) || 0)),
+    appliedRound: Number(state?.round) || null,
+  };
+  const existing = unit.buffs.find(item => item.statType === statType
+    && item.sourceSkill === sourceSkill && item.durationType === 'timed');
+  if (existing) {
+    existing.magnitude = entry.magnitude;
+    existing.remainingRounds = Math.max(Number(existing.remainingRounds) || 0, entry.remainingRounds);
+    existing.appliedRound = entry.appliedRound;
+  } else {
+    unit.buffs.push(entry);
+  }
+}
+
 const HANDLERS = Object.freeze({
   'super-hp': ({ unit, rule, events }) => {
     const amount = Math.max(1, Math.floor(unit.maxHp * Number(rule.config.ratio)));
@@ -411,6 +538,133 @@ const HANDLERS = Object.freeze({
   },
 
   'clear-resource': ({ rule }) => ({ ...rule.config }),
+
+  'domain': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    const layerDef = { name: config.layers.name };
+    const openedBy = state => activeDomains(state, config.name)
+      .find(domain => domain.ownerId === unit.id) ?? null;
+
+    // The field opens after the cast resolves: the description deals damage
+    // first and only then opens the domain, so its opening buffs never boost
+    // the cast that created it.
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+      if (payload?.extra) return false;
+      if (payload?.actor?.id !== unit.id) return false;
+      if (String(payload?.skill?.id ?? '') !== String(skill.id)) return false;
+      const existing = openedBy(state);
+      if (existing) existing.roundsRemaining = Math.max(existing.roundsRemaining, Number(config.rounds));
+      else openDomain(state, { name: config.name, ownerId: unit.id, team: unit.team, rounds: Number(config.rounds) });
+      emitProprietary(state?.events, {
+        kind: PROPRIETARY_EVENT_KINDS.DOMAIN, aimId: unit.id, name: config.name,
+        rounds: Number(config.rounds), delta: 1, reason: 'cast',
+      });
+      for (const ally of livingAlliesOf(unit, state)) {
+        healNamedUnit(state?.events, ally, ally.maxHp * Number(config.healRatio), unit.id);
+        for (const stat of config.allyStats ?? []) {
+          applyTimedStat(ally, {
+            statType: stat.statType, magnitude: stat.magnitude,
+            rounds: Number(config.rounds), sourceSkill: String(skill.id), state,
+          });
+          emitProprietary(state?.events, {
+            kind: 'effect', type: 'stat-modifier', id: state?.currentActionId ?? 0,
+            actor: unit.id, target: ally.id, statType: stat.statType,
+            magnitude: stat.magnitude, duration: Number(config.rounds),
+            remainingRounds: Number(config.rounds), reason: 'domain-opening',
+          });
+        }
+      }
+      return null;
+    }, {});
+
+    // "领域内所有友方冒险者每回合开始时额外获得1层【魔能】"
+    registerHook(unit, PROPRIETARY_HOOKS.ROUND_START, (owner, payload, state) => {
+      if (!openedBy(state)) return false;
+      for (const ally of livingAlliesOf(unit, state)) {
+        gainNamedLayers(state?.events, ally, layerDef, Number(config.layers.roundStart), 'domain-round-start');
+      }
+      return null;
+    }, {});
+
+    // "每次普攻/绝招时额外获得1层" plus the extra layer on the round's first
+    // ultimate. 绝招 is the ultimate action in this catalog, which is also what
+    // makes "每回合首次释放终结技时额外获得1层" an additional layer.
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+      if (!openedBy(state)) return false;
+      const acting = payload?.actor;
+      if (!acting || acting.team !== unit.team) return false;
+      if (payload.actionType !== 'attack' && payload.actionType !== 'ultimate') return false;
+      let count = Number(config.layers.action) || 0;
+      if (payload.actionType === 'ultimate') {
+        const key = 'domain:' + config.name + ':first-ultimate';
+        const round = Number(state?.round);
+        if (Number(unit.proprietary.counters.get(key)) !== round) {
+          unit.proprietary.counters.set(key, round);
+          count += Number(config.layers.firstUltimate) || 0;
+        }
+      }
+      for (const ally of livingAlliesOf(unit, state)) {
+        gainNamedLayers(state?.events, ally, layerDef, count, 'domain-action');
+      }
+      return null;
+    }, {});
+
+    // "每次受到普攻/绝招/终结技/天极技伤害时额外获得1层"
+    registerHook(unit, PROPRIETARY_HOOKS.DAMAGE_TAKEN, (owner, payload, state) => {
+      if (!openedBy(state)) return false;
+      const target = payload?.target;
+      if (!target?.alive || target.team !== unit.team) return false;
+      if (!['attack', 'ultimate', 'tianji'].includes(payload?.actionType)) return false;
+      gainNamedLayers(state?.events, target, layerDef, Number(config.layers.damageTaken), 'domain-damage-taken');
+      return null;
+    }, {});
+
+    return { name: config.name, rounds: Number(config.rounds) };
+  },
+
+  'layer': ({ unit, skill, rule, state, events }) => {
+    const config = rule.config;
+    const defs = unit.proprietary.layerDefs;
+    const def = defs.get(config.name) ?? { name: config.name };
+    if (config.cap !== undefined) def.cap = Math.max(Number(def.cap ?? 0), Number(config.cap));
+    if (Array.isArray(config.perLayer)) def.perLayer = config.perLayer;
+    if (config.opening !== undefined) def.opening = (def.opening ?? 0) + Number(config.opening);
+    if (config.perDeath !== undefined) def.perDeath = (def.perDeath ?? 0) + Number(config.perDeath);
+    if (config.deathShieldRatio !== undefined) def.deathShieldRatio = Number(config.deathShieldRatio);
+    defs.set(config.name, def);
+
+    if (def.opening > 0 && !def.opened) {
+      def.opened = true;
+      gainNamedLayers(events, unit, def, def.opening, 'layer-opening');
+      if (Array.isArray(def.perLayer)) {
+        unit.proprietary.layerStats.set(def.name, def.perLayer);
+      }
+    }
+    if (Array.isArray(def.perLayer)) unit.proprietary.layerStats.set(def.name, def.perLayer);
+
+    if (def.perDeath > 0 && !def.deathHook) {
+      def.deathHook = true;
+      const seen = unit.proprietary.deathsSeen ?? (unit.proprietary.deathsSeen = new Set());
+      registerHook(unit, PROPRIETARY_HOOKS.UNIT_DEATH, (owner, payload, hookState) => {
+        const dead = payload?.unit;
+        if (!dead || seen.has(dead.id)) return false;
+        seen.add(dead.id);
+        gainNamedLayers(hookState?.events, owner, def, def.perDeath, 'layer-death');
+        if (def.deathShieldRatio > 0) {
+          const amount = Math.floor(owner.maxHp * def.deathShieldRatio);
+          if (amount > 0) {
+            owner.shield = Math.max(0, Number(owner.shield) || 0) + amount;
+            emitProprietary(hookState?.events, {
+              kind: 'shield', id: hookState?.currentActionId ?? 0, aimId: owner.id,
+              shield: owner.shield, reason: 'layer-death',
+            });
+          }
+        }
+        return null;
+      }, {});
+    }
+    return { name: config.name, cap: def.cap ?? null };
+  },
 
   'extra-action': ({ unit, skill, rule }) => {
     const config = rule.config;

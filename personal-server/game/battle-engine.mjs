@@ -521,7 +521,7 @@ function executeExtraAction(events, actor, allUnits, state, request) {
   processUnitTriggers(events, actor, useSkill ? 'on-skill-use' : 'on-attack', state, actionId);
   if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
   runProprietary(state, PROPRIETARY_HOOKS.ACTION_END, {
-    actor, actionId, useSkill, actionType: state.actionContext.actionType, extra: true
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType, extra: true
   }, events);
   emitAutoRevives(events, actionId, allUnits);
   emitAngerSync(events, actionId, beforeEnergy, allUnits);
@@ -687,7 +687,7 @@ function executeTurn(events, actor, allUnits, state) {
   else if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
   processUnitTriggers(events, actor, 'on-turn-end', state, actionId);
   runProprietary(state, PROPRIETARY_HOOKS.ACTION_END, {
-    actor, actionId, useSkill, actionType: state.actionContext.actionType
+    actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType
   }, events);
   emitAutoRevives(events, actionId, allUnits);
   emitAngerSync(events, actionId, beforeEnergy, allUnits);

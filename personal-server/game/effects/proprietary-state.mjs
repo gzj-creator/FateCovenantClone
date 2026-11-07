@@ -68,6 +68,7 @@ export function createProprietaryState(unit = {}) {
     superHp: { value: 0, max: 0 },
     layers: new Map(),
     layerStats: new Map(),
+    layerDefs: new Map(),
     summons: [],
     hooks: new Map(),
     counters: new Map(),
