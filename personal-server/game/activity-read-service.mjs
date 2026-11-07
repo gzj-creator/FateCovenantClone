@@ -1,20 +1,14 @@
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { rawBinary } from '../protocol/game-codec.mjs';
+import { hasBit, setBit } from './bit-block.mjs';
 
 const reads = new Map([
-  [110308, ['pb_fishing_act_get_record_rsp', { record_list: [] }]],
-  [110303, ['pb_fishing_act_get_top_rsp', { high_score_list: [] }]],
   [116004, ['pb_help_up_get_times_rsp', { times: 0 }]],
   [117005, ['pb_hundred_draw_act_marquee_rsp', { data: {} }]]
 ]);
 
 const refused = new Map([
-  [110304, 'Fishing codex awards are not implemented'],
-  [110306, 'Fishing rod change is not implemented'],
-  [110307, 'Fishing level awards are not implemented'],
-  [110309, 'Fishing rank awards are not implemented'],
-  [110310, 'Fishing progress awards are not implemented'],
   [116001, 'Help-up task rewards are not implemented'],
   [116002, 'Help-up stage awards are not implemented'],
   [116003, 'Help-up requests are not implemented']
@@ -23,6 +17,12 @@ const refused = new Map([
 const DEFAULT_STATE_BLOCK = Buffer.from([0]).toString('base64');
 const FISHING_ACT_FIRST = 1074001;
 const FISHING_ACT_LAST = 1074011;
+// FishingActTable.FISH_TYPE_FISH / FISH_TYPE_BOX; only ordinary fish enter the codex.
+const FISH_TYPE_FISH = 0;
+// FishingActTable.FISH_VALUE_TYPE_HIGH marks the special fish whose sizes feed
+// pb_fishing_act_role_data.high_size ("特殊鱼总尺寸") and the up-rank threshold.
+const FISH_VALUE_TYPE_HIGH = 1;
+const FISHING_MUTATIONS = [110301, 110302, 110303, 110304, 110305, 110306, 110307, 110308, 110309, 110310, 110311];
 
 function parseJsonList(value) {
   const parsed = JSON.parse(value || '[]');
@@ -65,6 +65,18 @@ function fishingLevel(score, islandVersion, levels) {
     if (Number(row.belonging_version) === islandVersion && scoreValue >= BigInt(row.score)) level = Math.max(level, Number(row.level));
   }
   return level;
+}
+
+// pb_fishing_act_new_fish_record.name carries the catching role's display name.
+// The store keeps to_client_role_info bytes as base64 text, so accept both forms.
+function roleDisplayName(role) {
+  const raw = role?.nick_name ?? role?.name ?? '';
+  if (Buffer.isBuffer(raw)) return raw.toString('utf8');
+  if (typeof raw !== 'string' || !raw) return '';
+  const decoded = Buffer.from(raw, 'base64');
+  if (!decoded.length) return raw;
+  const padding = '='.repeat((4 - (raw.length % 4)) % 4);
+  return decoded.toString('base64') === raw + padding ? decoded.toString('utf8') : raw;
 }
 
 function newState(actId, timestamp) {
@@ -162,6 +174,73 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
     );
   }
 
+  // Catches are the authority for 110303 (per-fish top three) and 110308
+  // (recent catches); both responses are built from rows this service writes
+  // inside the collecting transaction.
+  function ensureCatchTable(db) {
+    db.exec(`CREATE TABLE IF NOT EXISTS fishing_act_catches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      role_id INTEGER NOT NULL REFERENCES roles(role_id),
+      act_id INTEGER NOT NULL,
+      fish_id INTEGER NOT NULL,
+      size INTEGER NOT NULL,
+      score TEXT NOT NULL,
+      map_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      caught_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS fishing_act_catches_pool_idx ON fishing_act_catches(act_id,fish_id,size);
+    CREATE INDEX IF NOT EXISTS fishing_act_catches_recent_idx ON fishing_act_catches(act_id,id);`);
+  }
+
+  if (store?.inspect) store.inspect(ensureCatchTable);
+
+  // FishingActRodChangeNode opens CommonGetWayNewForm(FishingRod.item) for rods
+  // missing from have_rod_list, so owning the rod item activates it. Rods that
+  // were granted by another path are never dropped from the stored list.
+  function syncRodLibrary(model, state, version) {
+    const activated = new Set(parseJsonList(state.have_rod_list_json).map(Number).filter(value => value > 0));
+    for (const rod of tables.FishingRod?.values() ?? []) {
+      if (Number(rod.ver) !== Number(version.fishing_rod_library)) continue;
+      if (rod.is_free || model.resources.has(String(rod.item))) activated.add(Number(rod.tid));
+    }
+    const sorted = [...activated].sort((left, right) => left - right);
+    state.have_rod_list_json = JSON.stringify(sorted);
+    return sorted;
+  }
+
+  function codexFish(version) {
+    const library = Number(version.illustrated_guide_version_library);
+    return [...(tables.FishingFish?.values() ?? [])]
+      .filter(fish => Number(fish.version) === library && Number(fish.type) === FISH_TYPE_FISH)
+      .sort((left, right) => Number(left.tid) - Number(right.tid));
+  }
+
+  function unlockedFishIdSet(state) {
+    return new Set(parseJsonList(state.high_size_list_json).map(row => Number(row.fish_id)));
+  }
+
+  function levelRows(version) {
+    const library = Number(version.level_library);
+    return [...(tables.FishingLevel?.values() ?? [])]
+      .filter(row => Number(row.belonging_version) === library)
+      .sort((left, right) => Number(left.level) - Number(right.level));
+  }
+
+  function progressRows(version) {
+    return [...(tables.FishingProgress?.values() ?? [])]
+      .filter(row => Number(row.version) === Number(version.tid))
+      .sort((left, right) => Number(left.progress) - Number(right.progress));
+  }
+
+  function insertCatch(db, model, state, fishId, generated, mapId) {
+    db.prepare(`INSERT INTO fishing_act_catches
+      (role_id,act_id,fish_id,size,score,map_id,name,caught_at) VALUES (?,?,?,?,?,?,?,?)`).run(
+      model.state.roleId, state.act_id, Number(fishId), Number(generated.size),
+      String(generated.score), Number(mapId), roleDisplayName(model.role), currentSeconds()
+    );
+  }
+
   function ensureDefaultRod(state, version) {
     if (Number(state.rod) > 0) return;
     const freeRod = [...(tables.FishingRod?.values() ?? [])]
@@ -223,9 +302,7 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
         firstUnlock = true;
       }
       state.updated_at = nowIso();
-      let haveRods = parseJsonList(state.have_rod_list_json).map(Number);
-      if (state.rod && !haveRods.includes(Number(state.rod))) haveRods = [...haveRods, Number(state.rod)].sort((a, b) => a - b);
-      state.have_rod_list_json = JSON.stringify(haveRods);
+      syncRodLibrary(model, state, version);
       saveState(db, roleId, state);
       const changes = [...bait.changes, ...unlockRewards.changes];
       const value = { data: roleData(state), res: { changes, is_overflow: false } };
@@ -312,8 +389,13 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
     state.get_num = (BigInt(state.get_num) + 1n).toString();
     state.base_score = (BigInt(state.base_score) + BigInt(generated.base)).toString();
     state.score = (BigInt(state.score) + BigInt(generated.score)).toString();
-    state.high_size = (BigInt(state.high_size) > BigInt(generated.size) ? BigInt(state.high_size) : BigInt(generated.size)).toString();
-    if (Number(fish.value_type) === 1) state.get_money_num = (BigInt(state.get_money_num) + BigInt(Number(fish.obtained_money) || 0)).toString();
+    // pb_fishing_act_role_data.high_size is the accumulated size of the special
+    // fish ("特殊鱼总尺寸") that FishingActVersion.rank_need_score gates for the
+    // up-rank award; ordinary catches only feed score/base_score.
+    if (Number(fish.value_type) === FISH_VALUE_TYPE_HIGH) {
+      state.high_size = (BigInt(state.high_size) + BigInt(generated.size)).toString();
+      state.get_money_num = (BigInt(state.get_money_num) + BigInt(Number(fish.obtained_money) || 0)).toString();
+    }
     state.wait_fish_json = '{}';
     state.updated_at = nowIso();
   }
@@ -327,6 +409,7 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
     const result = store.transaction((model, db) => {
       const roleId = model.state.roleId;
       const { version, state } = fishingVersionAndState(db, roleId, actId);
+      syncRodLibrary(model, state, version);
       const map = mapConfig(mapId, version);
       if (!parseJsonList(state.unlock_map_list_json).map(Number).includes(mapId)) throw new GameError(311, 'Fishing map is not unlocked');
       const bait = ensureFreeBait(model, db, actId, version);
@@ -378,6 +461,7 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
       const awards = fishAwards(fish, version, generated);
       const res = grantResources(model, awards, tables);
       recordCatch(state, fish, generated);
+      insertCatch(db, model, state, generated.fish_id, generated, waiting.map_id);
       saveState(db, roleId, state);
       const value = { data: roleData(state), fish_id: generated.fish_id, size: generated.size, score: generated.score, res: { changes: res.changes, is_overflow: false } };
       return { value, data: codec.pack('pb_fishing_act_get_rsp', value), fishId: Number(generated.fish_id), mapId: Number(map.tid), changes: res.changes.length };
@@ -414,6 +498,7 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
         qteList.push(Boolean(request.is_jump_qte || rod?.auto_qte_success || Number(fish.qte_num) === 0));
         awards.push(...fishAwards(fish, version, generated));
         recordCatch(state, fish, generated);
+        insertCatch(db, model, state, generated.fish_id, generated, mapId);
       }
       const spent = consumeResources(model, [[Number(version.ticket_item), count * (Number(map.cost_num) || 1)]], 301);
       const earned = grantResources(model, awards, tables);
@@ -428,17 +513,262 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
     return result;
   }
 
+  function unpackCommon(data, message) {
+    let request;
+    try { request = codec.unpack('pb_fishing_act_common_req', data ?? Buffer.alloc(0)); }
+    catch { throw new GameError(1, message); }
+    const actId = Number(request.act_id), value = Number(request.value);
+    if (!Number.isSafeInteger(actId) || actId <= 0 || !Number.isSafeInteger(value) || value <= 0) throw new GameError(1, message);
+    fishingConfiguration(actId);
+    return { actId, value };
+  }
+
+  function unpackCommonList(data, message) {
+    let request;
+    try { request = codec.unpack('pb_fishing_act_common_list_req', data ?? Buffer.alloc(0)); }
+    catch { throw new GameError(1, message); }
+    const actId = Number(request.act_id);
+    const ids = [...new Set((request.value ?? []).map(Number))];
+    if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, message);
+    if (!ids.length || ids.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new GameError(1, message);
+    fishingConfiguration(actId);
+    return { actId, ids };
+  }
+
+  // 110303/110308/110309 send an ETF integer argument. The gateway decodes it
+  // and passes it as options.etfValue; without an argument the currently running
+  // fishing activity is used, which keeps the login-time empty read working.
+  function readActId(options, { allowInactive = false } = {}) {
+    const requested = options?.etfValue;
+    if (requested === null || requested === undefined) {
+      const actId = calendar.activeFishingActivityId(currentSeconds(), storedActivity());
+      // The login initialization reads these lists without an argument; keep
+      // returning empty lists when no fishing cycle is scheduled.
+      if (!actId) {
+        if (allowInactive) return null;
+        throw new GameError(309, 'Activity is not running');
+      }
+      fishingConfiguration(actId);
+      assertRunning(actId);
+      return actId;
+    }
+    const candidate = Array.isArray(requested) ? (requested.length === 1 ? requested[0] : null) : requested;
+    if (candidate === null || typeof candidate === 'object') throw new GameError(1, 'Invalid fishing activity payload');
+    const actId = Number(candidate);
+    if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, 'Invalid fishing activity payload');
+    fishingConfiguration(actId);
+    assertRunning(actId);
+    return actId;
+  }
+
+  // pb_fishing_act_fish_record keeps the top three catches per fish with the
+  // catching role id; on a single-role deployment only that role's real catches
+  // can be listed.
+  function fishTopRead(options) {
+    const actId = readActId(options, { allowInactive: true });
+    if (actId === null) {
+      const value = { high_score_list: [] };
+      return { value, data: codec.pack('pb_fishing_act_get_top_rsp', value), actId, fishCount: 0 };
+    }
+    const rows = store.inspect(db => db.prepare(
+      'SELECT fish_id,size,score,role_id FROM fishing_act_catches WHERE act_id=? ORDER BY fish_id,size DESC,id'
+    ).all(actId));
+    const grouped = new Map();
+    for (const row of rows) {
+      const fishId = Number(row.fish_id);
+      const entry = grouped.get(fishId) ?? { fish_id: String(fishId), data_list: [] };
+      if (entry.data_list.length >= 3) continue;
+      entry.data_list.push({ size: String(row.size), score: String(row.score), role_id: String(row.role_id) });
+      grouped.set(fishId, entry);
+    }
+    const value = { high_score_list: [...grouped.values()] };
+    return { value, data: codec.pack('pb_fishing_act_get_top_rsp', value), actId, fishCount: grouped.size };
+  }
+
+  function recordRead(options) {
+    const actId = readActId(options, { allowInactive: true });
+    if (actId === null) {
+      const value = { record_list: [] };
+      return { value, data: codec.pack('pb_fishing_act_get_record_rsp', value), actId, count: 0 };
+    }
+    const rows = store.inspect(db => db.prepare(
+      'SELECT fish_id,size,score,map_id,name FROM fishing_act_catches WHERE act_id=? ORDER BY id DESC'
+    ).all(actId));
+    const value = {
+      record_list: rows.map(row => ({
+        fish_id: String(row.fish_id), size: String(row.size), score: String(row.score),
+        name: row.name, map_id: String(row.map_id)
+      }))
+    };
+    return { value, data: codec.pack('pb_fishing_act_get_record_rsp', value), actId, count: rows.length };
+  }
+
+  // FishingActTable.Fish.first_award is the codex award shown by
+  // FishingActCodexNode; book_state holds one bit per claimed fish tid.
+  function bookAward(data) {
+    const request = unpackCommonList(data, 'Invalid fishing codex award request');
+    const actId = request.actId;
+    assertRunning(actId);
+    const { version } = fishingConfiguration(actId);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const state = existingState(db, roleId, actId);
+      if (!state) throw new GameError(309, 'Fishing activity is not initialized');
+      const byTid = new Map(codexFish(version).map(fish => [Number(fish.tid), fish]));
+      const unlocked = unlockedFishIdSet(state);
+      let bits = Buffer.from(state.book_state || DEFAULT_STATE_BLOCK, 'base64');
+      const awards = [];
+      for (const tid of request.ids) {
+        const fish = byTid.get(tid);
+        if (!fish) throw new GameError(1, 'Fish is not configured for this fishing codex');
+        if (!unlocked.has(tid)) throw new GameError(311, 'Fish is not recorded in the fishing codex yet');
+        if (hasBit(bits, tid)) throw new GameError(310, 'Fishing codex award is already claimed');
+        awards.push(...(fish.first_award ?? []));
+        bits = setBit(bits, tid);
+      }
+      const res = grantResources(model, awards, tables);
+      state.book_state = bits.toString('base64');
+      state.updated_at = nowIso();
+      syncRodLibrary(model, state, version);
+      saveState(db, roleId, state);
+      const value = { data: roleData(state), res: { changes: res.changes, is_overflow: false } };
+      return { value, data: codec.pack('pb_fishing_act_data_res', value), changes: res.changes.length, tids: request.ids };
+    });
+    result.valueForLog = { actId, tids: result.tids, changes: result.changes };
+    return result;
+  }
+
+  // FishingActTable.Level.unlock_reward is the level award; level_state holds one
+  // bit per claimed level tid and the gate is the activity level from score.
+  function levelAward(data) {
+    const request = unpackCommon(data, 'Invalid fishing level award request');
+    const actId = request.actId, levelTid = request.value;
+    assertRunning(actId);
+    const { version } = fishingConfiguration(actId);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const state = existingState(db, roleId, actId);
+      if (!state) throw new GameError(309, 'Fishing activity is not initialized');
+      const level = tables.FishingLevel?.get(levelTid);
+      if (!level || Number(level.belonging_version) !== Number(version.level_library)) throw new GameError(1, 'Level is not configured for this fishing activity');
+      const current = fishingLevel(state.score, Number(version.level_library), tables.FishingLevel);
+      if (current < Number(level.level)) throw new GameError(311, 'Fishing level has not been reached');
+      const bits = Buffer.from(state.level_state || DEFAULT_STATE_BLOCK, 'base64');
+      if (hasBit(bits, levelTid)) throw new GameError(310, 'Fishing level award is already claimed');
+      const res = grantResources(model, level.unlock_reward ?? [], tables);
+      state.level_state = setBit(bits, levelTid).toString('base64');
+      state.updated_at = nowIso();
+      syncRodLibrary(model, state, version);
+      saveState(db, roleId, state);
+      const value = { data: roleData(state), res: { changes: res.changes, is_overflow: false } };
+      return { value, data: codec.pack('pb_fishing_act_data_res', value), changes: res.changes.length, level: Number(level.level), current };
+    });
+    result.valueForLog = { actId, levelTid, level: result.level, current: result.current, changes: result.changes };
+    return result;
+  }
+
+  // FishingActTable.Progress.progress counts unlocked codex fish; progress_state
+  // holds one bit per claimed progress tid and the award is Progress.award.
+  function progressAward(data) {
+    const request = unpackCommonList(data, 'Invalid fishing progress award request');
+    const actId = request.actId;
+    assertRunning(actId);
+    const { version } = fishingConfiguration(actId);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const state = existingState(db, roleId, actId);
+      if (!state) throw new GameError(309, 'Fishing activity is not initialized');
+      const configured = new Map(progressRows(version).map(row => [Number(row.tid), row]));
+      const unlockedCount = codexFish(version).filter(fish => unlockedFishIdSet(state).has(Number(fish.tid))).length;
+      let bits = Buffer.from(state.progress_state || DEFAULT_STATE_BLOCK, 'base64');
+      const awards = [];
+      for (const tid of request.ids) {
+        const row = configured.get(tid);
+        if (!row) throw new GameError(1, 'Progress award is not configured for this fishing activity');
+        if (unlockedCount < Number(row.progress)) throw new GameError(311, 'Fishing codex has not reached this progress tier');
+        if (hasBit(bits, tid)) throw new GameError(310, 'Fishing progress award is already claimed');
+        awards.push(...(row.award ?? []));
+        bits = setBit(bits, tid);
+      }
+      const res = grantResources(model, awards, tables);
+      state.progress_state = bits.toString('base64');
+      state.updated_at = nowIso();
+      syncRodLibrary(model, state, version);
+      saveState(db, roleId, state);
+      const value = { data: roleData(state), res: { changes: res.changes, is_overflow: false } };
+      return { value, data: codec.pack('pb_fishing_act_data_res', value), changes: res.changes.length, tids: request.ids, unlockedCount };
+    });
+    result.valueForLog = { actId, tids: result.tids, unlockedCount: result.unlockedCount, changes: result.changes };
+    return result;
+  }
+
+  // FishingVersion.up_rank_award pays once when the special-fish total size
+  // reaches rank_need_score; go_rank_reward is the claim flag the client reads.
+  function upRankAward(options) {
+    const actId = readActId(options);
+    const { version } = fishingConfiguration(actId);
+    const threshold = BigInt(Number(version.rank_need_score) || 0);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const state = existingState(db, roleId, actId);
+      if (!state) throw new GameError(309, 'Fishing activity is not initialized');
+      if (Number(state.go_rank_reward)) throw new GameError(310, 'Fishing rank award is already claimed');
+      if (BigInt(state.high_size) < threshold) throw new GameError(311, 'Fishing high score has not reached the rank threshold');
+      const res = grantResources(model, version.up_rank_award ?? [], tables);
+      state.go_rank_reward = 1;
+      state.updated_at = nowIso();
+      syncRodLibrary(model, state, version);
+      saveState(db, roleId, state);
+      const value = { data: roleData(state), res: { changes: res.changes, is_overflow: false } };
+      return { value, data: codec.pack('pb_fishing_act_data_res', value), changes: res.changes.length, highSize: state.high_size };
+    });
+    result.valueForLog = { actId, highSize: result.highSize, threshold: threshold.toString(), changes: result.changes };
+    return result;
+  }
+
+  // 110306 only switches the equipped rod. FishingActMgr.ReqChangeRod refreshes
+  // local state and fires EVT_ROD_CHANGED, and the client command carries no
+  // recovered response schema, so the reply body stays empty.
+  function changeRod(data) {
+    const request = unpackCommon(data, 'Invalid fishing rod change request');
+    const actId = request.actId, rodTid = request.value;
+    assertRunning(actId);
+    const { version } = fishingConfiguration(actId);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const state = existingState(db, roleId, actId);
+      if (!state) throw new GameError(309, 'Fishing activity is not initialized');
+      const rod = tables.FishingRod?.get(rodTid);
+      if (!rod || Number(rod.ver) !== Number(version.fishing_rod_library)) throw new GameError(1, 'Fishing rod is not configured for this fishing activity');
+      const activated = syncRodLibrary(model, state, version);
+      if (!activated.includes(rodTid)) throw new GameError(311, 'Fishing rod is not activated');
+      state.rod = String(rodTid);
+      state.updated_at = nowIso();
+      saveState(db, roleId, state);
+      return { data: Buffer.alloc(0), value: { rod: String(rodTid) }, rod: rodTid, activated };
+    });
+    result.valueForLog = { actId, rod: result.rod };
+    return result;
+  }
+
   return {
-    supports: type => reads.has(type) || refused.has(type) || [110301, 110302, 110305, 110311].includes(type),
+    supports: type => reads.has(type) || refused.has(type) || FISHING_MUTATIONS.includes(type),
     ensureActiveFishingBenefits,
-    execute(type, data) {
+    execute(type, data, options = {}) {
       log({
         event: 'activity_read_execute_entry', type, dataLength: data?.length,
         dataHex: Buffer.isBuffer(data) || data instanceof Uint8Array ? Buffer.from(data).toString('base64') : undefined
       });
       if (type === 110301) return castRod(data);
       if (type === 110302) return collectFish(data);
+      if (type === 110303) return fishTopRead(options);
+      if (type === 110304) return bookAward(data);
       if (type === 110305) return unlockFishingMap(data);
+      if (type === 110306) return changeRod(data);
+      if (type === 110307) return levelAward(data);
+      if (type === 110308) return recordRead(options);
+      if (type === 110309) return upRankAward(options);
+      if (type === 110310) return progressAward(data);
       if (type === 110311) return batchFish(data);
       if (refused.has(type)) throw new GameError(5, refused.get(type));
       const [schema, value] = reads.get(type);

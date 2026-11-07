@@ -427,6 +427,8 @@ export function createLocalGame({
   const itemBox=createItemBoxService({store,codec,tables,heroTables,logger});
   const guide=createGuideService({store,codec,tables,awards:guideAwards,now:clock,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
+  // Fishing reads whose request body is an ETF integer argument (activity id).
+  const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
   const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
   // Mission commands around the journey fight path (meal, stamina exchange and
@@ -1033,9 +1035,19 @@ export function createLocalGame({
       }
       if (activityRead.supports(type)) {
         try {
-          const result = activityRead.execute(type, request.data);
+          const etfValue = fishingEtfTypes.has(type)
+            ? await etfArgument(request.data, 'Invalid fishing activity payload', { optional: true })
+            : undefined;
+          const result = activityRead.execute(type, request.data, { etfValue });
           send(seq, result.data);
-          const event = ({ 110301: 'fishing_cast_committed', 110302: 'fishing_collect_committed', 110305: 'fishing_map_unlock_committed', 110311: 'fishing_batch_collect_committed' })[type] ?? 'activity_read_committed';
+          const event = ({
+            110301: 'fishing_cast_committed', 110302: 'fishing_collect_committed',
+            110303: 'fishing_top_sent', 110304: 'fishing_codex_award_committed',
+            110305: 'fishing_map_unlock_committed', 110306: 'fishing_rod_changed',
+            110307: 'fishing_level_award_committed', 110308: 'fishing_record_sent',
+            110309: 'fishing_rank_award_committed', 110310: 'fishing_progress_award_committed',
+            110311: 'fishing_batch_collect_committed'
+          })[type] ?? 'activity_read_committed';
           log({ event, type, seq, ...result.valueForLog });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
