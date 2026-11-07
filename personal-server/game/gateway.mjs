@@ -11,6 +11,8 @@ import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
 import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
 import { createRankService } from './rank-service.mjs';
+import { createRankAchieveService } from './rank-achieve-service.mjs';
+import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { readEquipTables } from '../config/equip-tables.mjs';
@@ -360,6 +362,9 @@ export function createLocalGame({
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
   const cabin = createCabinService({ store, codec, heroTables });
   const ranks = createRankService({ codec, store, now: clock, logger });
+  const rankAchieve = createRankAchieveService({
+    store, codec, tables: readRankAchieveTables(), resourceTables: tables, now: clock, logger
+  });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
     store,
@@ -443,6 +448,7 @@ export function createLocalGame({
     cabin.ensureLoginState();
     rechargeBonus.synchronize();
     onlineGift.beginSession();
+    rankAchieve.ensureLoginState();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
@@ -452,6 +458,13 @@ export function createLocalGame({
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary('Local Server'), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
+    const rankAchieveLogin = rankAchieve.loginPayload();
+    modules.set(rankAchieve.moduleId, [
+      binary(rankAchieveLogin.person),
+      binary(rankAchieveLogin.server),
+      binary(rankAchieveLogin.cross),
+      binary(rankAchieveLogin.cross)
+    ]);
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
@@ -1254,6 +1267,20 @@ export function createLocalGame({
         }
         return;
       }
+      if (rankAchieve.supports(type)) {
+        try {
+          const input = unpack('pb_rank_achieve_award_req', request.data);
+          const result = rankAchieve.execute(input);
+          send(seq, result.data);
+          for (const pushed of result.pushes) publish(pushed.type, pushed.data);
+          log({ event: 'rank_achieve_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'rank_achieve_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (ranks.supports(type)) {
         try {
           // RankCmd.batch_get_player_hero_rank (2004) is the only rank command
@@ -1769,7 +1796,7 @@ export function createLocalGame({
   return {
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
-    guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin,
+    guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, rankAchieve,
     cms, guildNationAssist,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
