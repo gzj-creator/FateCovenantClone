@@ -2,7 +2,7 @@
 
 日期：2026-11-07
 分支：`task/ITEM-GROWTHROAD-20261106`
-基线：`main@63b9f85`（含 ITEM-FIRSTWEEKGOAL、207 体力、邮件推送、活动/fishing 登录期限修复）
+基线：`main@d375bf6`（含 ITEM-FIRSTWEEKGOAL、HERO-HERO、207 体力、邮件推送、活动/fishing 登录期限修复；实现提交 `69e3f03`）
 
 ## 结论
 
@@ -41,12 +41,13 @@ cd personal-server
 node --test test/item-growthroad-service.test.mjs test/item-growthroad-gateway.test.mjs test/item-firstweekgoal-service.test.mjs test/item-firstweekgoal-gateway.test.mjs test/gameplay-gateway.test.mjs
 ```
 
-结果：`23/23` 通过（本任务专项 9 项 + 首周目标 13 项 + gameplay-gateway 1 项）。覆盖：
+结果：`32/32` 通过（本任务专项 9 项 + 首周目标 13 项 + HERO-HERO 9 项 + gameplay-gateway 1 项）。覆盖：
 
 - 配置抽取行数与字段；任务奖励、成长值累加、进度门槛与奖励档位。
 - 未完成统计、未达门槛、非法 ID、多 ID 请求、重复领取（`310`）、`progress_fun` 缺来源（`5`）。
 - PB 编码异常时领取位与资源整体回滚；SQLite 关闭重开后领取位与 `progress_value` 仍有效。
 - 临时 TCP：真实握手 → `909103` 登录 → 登录模块 `53696` 解出 `pb_growth_road_master` → `69002` ETF 请求 → `pb_growth_road_back`，并验证重复 `310`、未达门槛 `5`、非法 ID `1`。
+- 已 rebase 到含 HERO-HERO 的 `main@d375bf6`，网关同时保留 `heroExtra`、`growthRoad`、`firstWeekGoal` 派发以及 `onlineGift.beginSession()` / `rankAchieve.ensureLoginState()` 登录路径；`git diff main..HEAD` 只新增本任务文件。
 
 未执行：实时服务启停、模拟器/ADB、运行数据库读写、APK 改动或 APK/UI 验收（不属于本任务阶段）。
 
