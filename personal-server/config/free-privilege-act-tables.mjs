@@ -56,4 +56,3 @@ export function freePrivilegeVersionFor(tables, version) {
   if (!Number.isSafeInteger(id) || id <= 0) return null;
   return tables?.versions?.get(id) ?? null;
 }
-

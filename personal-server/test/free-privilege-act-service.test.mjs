@@ -279,4 +279,3 @@ test('SQLite write failure rolls the month-card module and login sync back', t =
     db.prepare('SELECT COUNT(*) AS count FROM free_privilege_role_state').get().count
   )), 0);
 });
-

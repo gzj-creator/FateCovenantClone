@@ -177,4 +177,3 @@ test('FreePrivilegeActCmd rejects an unconfigured activity id over the wire', as
   const empty = await client.request(110601, 4, Buffer.alloc(0));
   assert.equal(client.errorCode(empty), 2);
 });
-

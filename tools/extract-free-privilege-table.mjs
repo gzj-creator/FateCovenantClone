@@ -182,5 +182,3 @@ fs.writeFileSync(outputPath, zlib.gzipSync(Buffer.from(json, 'utf8')));
 for (const [name, value] of Object.entries(result.tables)) {
   console.log(name, value.rows.length + ' rows', 'fields=' + value.fields.join(','));
 }
-
-
