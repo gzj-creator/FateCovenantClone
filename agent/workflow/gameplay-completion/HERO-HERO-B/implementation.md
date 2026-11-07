@@ -1,6 +1,6 @@
 # HERO-HERO 卡补齐实施记录（剩余 18 条命令）
 
-日期：2026-11-07。分支 task/HERO-HERO-B-20261107，worktree .worktree/gameplay-20261106/hero-hero2，基线 main@b5a44f0。
+日期：2026-11-07。分支 task/HERO-HERO-B-20261107，worktree .worktree/gameplay-20261106/hero-hero2，起始基线 main@b5a44f0，提交前已 rebase 到 main@8dbceb2（含 SOC-MSG 通道与招募统计 ETF 推送）。
 范围：HERO-HERO 卡 41 条命令里此前未路由的 18 条（602、627–631、634、635、637、641、651、652、654、656、661、666、672、673）。其余 23 条已有实现，本轮不动。
 分簇详表：rent-share.md（627/628/629/630/631/634）、develop.md（637/641/656/666）、bond.md（602/654/661/672）、support.md（635/651/652/673）。
 
@@ -25,7 +25,7 @@
 | 634 | req_query_share_data | hero-rent-service | 部分：本服缓存真实查询 | hero_share_cache 命中真实返回，其他角色 3001；上传端在客户端侧，本任务无该命令 |
 | 635 | req_rev_recruit_progress_award | hero-support-service | 服务端完成（业务码 + 配置缺口） | HeroTable.DrawProgAward 本版本 0 行，无奖励配置，回 3001 并登记 hero_draw_progress_award_unconfigured |
 | 637 | req_develop_submit_hero | hero-develop-service | 服务端完成 | 格子校验、占用交换/替换、等级随格子同步，回 pb_hero_submit_ret；站位交换细节未完全还原 |
-| 641 | req_develop_hero_trial | hero-develop-service | 服务端完成（强推断） | star=5 + TrialTask 达标 + 碎片/觉醒石校验，品质升档、星级 +1，基线写模块 10 槽位 6 |
+| 641 | req_develop_hero_trial | hero-develop-service | 服务端完成（强推断） | star=5 + TrialTask 达标 + 碎片/觉醒石校验（碎片取 Quality.trial_piece_num，觉醒石取 UpStarCost[品质*100+5]，与 640 同源），品质升档、星级 +1，基线写模块 10 槽位 6 |
 | 651 | req_draw_support_lineup | hero-support-service | 服务端完成（单角色真实状态） | 校验 DrawExchangeLineup / NormalDrawExchangeLineup 行后写 hero_draw_support，同库重复上报覆盖 |
 | 652 | req_draw_get_support_data | hero-support-service | 服务端完成（单角色真实状态） | role_support 为本角色选择，server_support 为本服角色计数；不含跨服聚合 |
 | 654 | req_active_fetter | hero-bond-service | 服务端完成（客户端不可达） | 校验归属、Fetter 行、索引、条件 101、重复激活，写 hero_bond_fetter_activation |
@@ -50,7 +50,7 @@
 
 - 本轮新增 39 项测试：test/hero-rent-service.test.mjs 7 + test/hero-rent-gateway.test.mjs 1；test/hero-bond-service.test.mjs 12 + test/hero-bond-gateway.test.mjs 1；test/hero-support-service.test.mjs 7 + test/hero-support-gateway.test.mjs 1；test/hero-develop-service.test.mjs 9 + test/hero-develop-gateway.test.mjs 1。
 - 每个分簇的服务测试覆盖正常路径、非法参数、资源不足、重复操作、编码/写入失败回滚、临时 SQLite 重开保持；网关测试是临时 loopback 端口 + 真实握手 + 真实 909103 登录 + 真实数字 type + SQLite 状态断言。
-- hero 相关全量回归 141 项、141 通过、0 失败（含 hero-progression、hero-extra、hero-favor、hero-handbook、hero-lineup、hero-mastery、hero-skill-gates、四个分簇、recruit-service、gameplay-gateway），日志 analysis/test-runs/hero-hero-b/hero-suites-full.log。
+- hero 相关全量回归 142 项、142 通过、0 失败（含 hero-progression、hero-extra、hero-favor、hero-handbook、hero-lineup、hero-mastery、hero-skill-gates、四个分簇、recruit-service、gameplay-gateway），日志 analysis/test-runs/hero-hero-b/hero-suites-full.log（该轮在 rebase 到 main@8dbceb2 之后执行）。
 - 未跑全量 npm test（留给总控合并后统一跑）；未启停实时服务、未读写 runtime.local-only.data、未操作模拟器/ADB/APK、未连原服。
 
 ## 剩余证据缺口汇总
@@ -60,7 +60,7 @@
 3. 租借登录槽位：RentHeroMgr.LoginParse 读 login[1..3]，但模块 id 在可解析 Lua 里没有给出，重登后客户端侧租借 UI 不会恢复。
 4. 651/652/673：客户端不发这三条命令、请求无字段名；652 的 server_support 不含跨服聚合，673 的跑马灯在单角色部署恒为空。
 5. 654 / 672：客户端不可达，服务端表只是记账；羁绊与挂件对属性/战斗的影响未接入。
-6. 641：品质升一档 + 星级 +1 属强推断（客户端直读回包、HeroTrailMgr 预览用 star+1），已收敛在 applyTrialOutcome() 便于修正；6702 任务口径不可复现（TaskTable.Type[6702].progress_fun=171），当前以英雄星级近似；试炼属性加成属 CORE-ATTR。
+6. 641：品质升一档 + 星级 +1 属强推断（客户端直读回包、HeroTrailMgr 预览用 star+1），已收敛在 applyTrialOutcome() 便于修正；6702 任务口径不可复现（TaskTable.Type[6702].progress_fun=171），当前以“星级总数减去模块 10 槽位 6 基线”近似；试炼属性加成属 CORE-ATTR。
 7. 637：Cell 4–6 的 assert（MethodScript 377309400004 / 955132601046）本地无法求值，登录补状态只自动开 1–3 格；站位交换细节未完全还原。
 
 ## 复现
