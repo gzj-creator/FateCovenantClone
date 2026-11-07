@@ -52,6 +52,8 @@ import { activityWindow, createActivityCalendar, serverDayNumber } from './activ
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createGroupBuyActService } from './group-buy-act-service.mjs';
 import { readGroupBuyActTables } from '../config/group-buy-act-tables.mjs';
+import { createDragonLandActService } from './dragon-land-act-service.mjs';
+import { readDragonLandTables } from '../config/dragon-land-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createShopService } from './shop-service.mjs';
@@ -482,6 +484,7 @@ export function createLocalGame({
   const missionExtra = createMissionExtraService({ store, codec, now: clock, logger });
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
   const groupBuyAct=createGroupBuyActService({store,codec,tables,groupBuyTables:readGroupBuyActTables(),calendar,now:clock,logger});
+  const dragonLandAct=createDragonLandActService({store,codec,tables,dragonLandTables:readDragonLandTables(),calendar,now:clock,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     const repairedLineups = lineups.ensureLoginState();
@@ -583,6 +586,9 @@ export function createLocalGame({
     const helpUpLoginIds = activityRead.synchronizeHelpUpLogin(activity, loginSeconds);
     if (helpUpLoginIds.length) logger({ event: 'help_up_act_login_synced', actIds: helpUpLoginIds });
     const groupBuyActLogin = groupBuyAct.synchronizeLogin(activity, loginSeconds);
+    // DragonLandActData parses pb_dragon_land_role_data from the activity entry's
+    // module_login_data (ActFrameTable type 1036/1037/1044/1045/1046).
+    const dragonLandLogin = dragonLandAct.synchronizeLogin(activity, loginSeconds);
     // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
     // entry's module_login_data (ActFrameTable type 1102).
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
@@ -659,6 +665,7 @@ export function createLocalGame({
       accRechargeActivityIds: accRechargeLogin.activityIds,
       groupBuyActActivityId: groupBuyActLogin.actId,
       groupBuyActGiftIds: groupBuyActLogin.giftIds,
+      dragonLandActId: dragonLandLogin.actId,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -1251,6 +1258,21 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'group_buy_rejected', type, seq, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }
+      if (dragonLandAct.supports(type)) {
+        try {
+          const result = dragonLandAct.execute(type, request.data);
+          send(seq, result.data);
+          log({ event: 'dragon_land_command_committed', type, seq, actId: result.actId });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'dragon_land_rejected', type, seq, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
         }
@@ -2115,7 +2137,7 @@ export function createLocalGame({
         }
         return;
       }
-      const reads = new Map([[107703, ['pb_dragon_land_guild_data_rsp', {}]], [100601, ['pb_group_buy_act_server', {}]]]);
+      const reads = new Map([[100601, ['pb_group_buy_act_server', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
       if (type === 53001 || type === 53002) {
         try {
@@ -2160,7 +2182,7 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
-    cms, guildNationAssist, groupBuyAct, message, hundredDraw,
+    cms, guildNationAssist, groupBuyAct, dragonLandAct, message, hundredDraw,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
