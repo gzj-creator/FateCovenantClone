@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import crypto from 'node:crypto';
@@ -67,6 +67,8 @@ import { createLineFirstRechargeService } from './line-first-recharge-service.mj
 import { createRechargeRebateResetService } from './recharge-rebate-reset-service.mjs';
 import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
 import { createTimeTempleService } from './time-temple-service.mjs';
+import { createGuideService } from './guide-service.mjs';
+import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
@@ -87,6 +89,7 @@ export function createLocalGame({
   sprintPreview = false,
   localWallet = false,
   missionFightPlayback = false,
+  guideAwards = readGuideAwards(),
   now = Date.now,
   random = Math.random,
   logger = () => {}
@@ -380,6 +383,7 @@ export function createLocalGame({
   const tasks=createTaskService({store,codec,tables,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
   const itemBox=createItemBoxService({store,codec,tables,heroTables,logger});
+  const guide=createGuideService({store,codec,tables,awards:guideAwards,now:clock,logger});
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
   const cms=createCmsService({codec,store,tables,now:clock});
   const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
@@ -1513,6 +1517,21 @@ export function createLocalGame({
           log({ event: 'shop_rejected', type, seq, code, message: error.message });
           return;
         }
+      }
+      if (guide.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = await guide.execute(type, decoded?.value ?? decoded);
+          // 8002 req_check_guide_net has no response schema and no c2s_back
+          // registration, so a successful probe writes no frame back.
+          if (result) send(seq, result.data);
+          log({ event: 'guide_command_committed', type, seq, ...(result?.value ? { awardTid: result.value.awardTid, claimKey: result.value.claimKey, changes: result.value.res?.changes?.length } : {}) });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guide_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
       }
       if (type === 1202) {
         // Hall entry asks for shop ids. Auto-refresh shops require one decodable group even when
