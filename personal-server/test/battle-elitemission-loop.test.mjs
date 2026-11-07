@@ -341,4 +341,3 @@ test('gateway drives the elite 87001 -> 201 -> 207 chain on a temporary port', a
   }));
   assert.equal(locked.err.err, 5);
 });
-

@@ -85,4 +85,3 @@ node --test test/battle-elitemission-loop.test.mjs test/elite-mission-service.te
 ## 状态判定
 
 服务端完成（组件 + 真实临时 TCP + SQLite 回滚/重开均通过），**无 APK 验收**。精英战斗在未注入 `eliteEnemies` 的部署中会明确拒绝开战。
-

@@ -334,4 +334,3 @@ export function createEliteMissionBattle({
     hasPending: () => Boolean(pending)
   };
 }
-
