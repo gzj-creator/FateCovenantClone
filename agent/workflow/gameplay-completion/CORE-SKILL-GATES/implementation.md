@@ -30,7 +30,7 @@
 - `mission-fight-service.mjs`：攻击方按真实英雄行构造 loadout，原始 `ability_list`、active id 和模拟 catalog 使用同一筛选结果。
 - `attribute-service.mjs`：1316 编队属性的 skill id 改为同一 loadout，不再固定 `slice(0,8)`。
 
-未改动 `gateway.mjs`、`game-store.mjs`、`game/effects/*` 和 `skill-database.json`；207 体力、邮件、活动期限、module 8/90 与既有路由保持原样。
+初始实现未改动 `gateway.mjs`、`game-store.mjs`、`game/effects/*` 和 `skill-database.json`；总控复核后的 `skill-integration.mjs` 修复见第 6 节。207 体力、邮件、活动期限、module 8/90 与既有路由保持原样。
 
 ## 3. 行为边界
 
@@ -64,6 +64,7 @@ npm test
 3. `AbilityLevel` 只提供技能等级整数，未随包提供“每级倍率/成长值”行。战斗技能已携带 level 元数据，但倍率随等级变化仍需 FightTable 或 AbilityLevel 对应数值证据，不能人为线性放大。
 4. 五个 mastery 候选的选择命令/存储尚未恢复；当前按 `Ability.mastery_ability` 作为唯一选中项，掌握突破是否切换技能 id 仍待证据。
 5. 1316 `play_type` 分层、APK 中实际技能升级/替换表现与战斗回放仍未做客户端验收。
+6. `4040101` 确认可经招募池 1/2/10 或碎片 `24400104` 的 614 合成获得，但技能目录缺少该英雄定义。其原始 Hero/Ability/AbilityLevel 行存在，当前仍依赖原有职业基础行为；不能把该英雄的技能精度列为完成，也不编造定义或无依据阻断其战斗。
 
 ## 6. 总控集成验收
 
@@ -71,3 +72,7 @@ npm test
 - 合并后在 main 执行 `npm test`：tests 2226 / pass 2226 / fail 0；运行摘要为 `analysis/test-runs/gameplay-20261106/main-after-core-skill-gates-summary.md`。
 - 保留 gateway、SQLite schema、邮件推送、活动日历、module 8/90 和普通主线 207 结算路径。未进行 APK、实时服务或运行数据库验收。
 - 本提交是部分交付。尤其是通用 Passive 仍从目录全部加载，不能凭本次测试通过宣称所有未解锁技能均不会触发；等级只是技能元数据，尚未驱动缺表的倍率计算。
+- 独立复核补丁 `e05533d`：调用方显式传入 `skills=[]` 时，动作解析和被动注册均不再回退整份目录。复现为英雄 `2010101` 原先重新注册 18 个触发器，包含全部五个 mastery；新增直接解析与真实模拟回归。
+- 独立复核补丁 `60b7ab7`：同时检查技能顶层的 `category`，防止普通 `1040201` 错选 `6910001063` 固定 2 倍物伤占位技能；稀有形态的已配置 soul 保留。新增真实配置回归，专项累计 10/10，复核聚焦 37/37；总控技能/生产奖池/TCP 联合复核 17/17。
+- `e05533d` 合并后 main `7e27826` 全量为 2228/2228，日志 `analysis/test-runs/gameplay-20261106/main-after-core-skill-gates-empty-full.log`；第二补丁及奖池证据的最终集成回归单独记录，不能把前一轮结果当成最终版本结果。
+- 最终 main `13231a4`（包含第二补丁、CORE-DRAW-POOLS 复核与 CORE-EVENTS 部分交付）运行 `npm test`：2234/2234，通过且退出 0；完整日志 `analysis/test-runs/gameplay-20261106/main-after-core-skill-events-draw-full.log`。这轮结果覆盖最终业务源码，后续仅更新交付文档。

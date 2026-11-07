@@ -48,3 +48,9 @@ node --test --test-concurrency=1 test/draw-pool-production.test.mjs test/fantasy
 2. 取得常驻多心愿选择与替换阶段、神灵心愿率与保底重置语义的证据。现有空组不可用于证明这些规则完整。
 3. 取得幻武活动任务和版本配置，或可核查的当前客户端无入口证据；目前保持 `88932` 明确拒绝。
 4. 有证据配置可执行后，再安排真实隔离 APK 的展示、资源、推送与重登验收。当前没有生成新 APK 快照。
+
+## 总控集成验收
+
+- 提交 `be514bb` 以 `--no-ff` 合入 main `7599ef8`；无 gateway 或 schema 改动，合并前 main 为分支祖先、工作区干净、`git diff --check` 通过。
+- 总控技能/生产奖池/TCP 联合复核 17/17；最终集成 main `13231a4` 执行 `npm test`：2234/2234，退出 0。完整日志 `analysis/test-runs/gameplay-20261106/main-after-core-skill-events-draw-full.log`。
+- 本次是生产配置取证和已实现路径复核，不增加完整玩法完成数；常驻幻武和神灵空组仍为明确证据缺口。

@@ -4,18 +4,19 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 16 个模块任务、2 个共享任务已有代码交付合入 main，共 18 项，其中包括部分交付和证据待补项。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；18/355 约 5.1% 仅表示已有交付的任务占比，不表示工作量或完整玩法完成率。尚无任务进入仅待 APK 验收队列。
+交付与整卡销项分开计数：当前 16 个模块任务、2 个共享任务已有玩法实现交付合入 main，共 18 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；18/355 约 5.1% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。尚无任务进入仅待 APK 验收队列。
 
 | 任务 ID | 状态 | 负责人 / 分支 | 服务 / TCP / SQLite 证据 | APK 验收 | 下一依赖或证据缺口 |
 | --- | --- | --- | --- | --- | --- |
 | PAY-ONLINEGIFT | 服务端完成（PeriodMax 精确语义待补） | `task/PAY-ONLINEGIFT-20261106` @ 4078f6e | 4 专项 + 真实握手/TCP 37010 + SQLite 重开 + 编码/SQLite 回滚；`game-store.mjs` 未改；合并后全量 2190/2190 | 未安排 | `PeriodMax` 历史选择规则待客户端对照；当前按服务器 05:00 日号映射配置周期；APK 验收待安排 |
-| CORE-BATTLE | 待领取 | — | — | 未安排 | 可按 A/B/C 拆分，统一共享执行器负责人 |
+| CORE-BATTLE | 实施中（已派发 A 子任务） | `task/CORE-BATTLE-A-20261107`；agent core_battle_a | 基线 d252af1；独立 worktree core-battle-a；尚未提交或验收 | 未安排 | A 优先实际伤害转治疗/护盾与动作限定消费；B/C 未领取；未知公式与 BUFF tid 不猜测 |
 | CORE-ATTR | 服务端完成（属性查询/战力/普通副本战斗同源；装备等养成来源待扩展） | `task/CORE-ATTR-20261106` @ ec41751 | 4 专项 + 真实 TCP 1316 + SQLite 重开；mission/rank/lineup/equip 等联合回归 66/66；合并后全量 2219/2219 | 未安排 | 逐级成长分母、战力权重、1316 attr_list play_type、1314 回包、NpcAttr 外部数据、速度表均未取证；装备/团长装备/图鉴/好感/法阵/符文/圣器尚未汇入 |
-| CORE-SKILL-GATES | 证据待补（已合入 AbilityLevel/mastery/soul 部分实现） | `task/CORE-SKILL-GATES-20261106` @ b87b99d；合入 b6e1766 | 新增 7 专项 + battle/skill/mission/attribute/mastery/gateway 57/57；总控合并后 npm test 2226/2226；mission 与 1316 共用 loadout；未改 gateway/game-store | 未安排 | AbilityLevel 索引语义待可读反编译确认；通用 Passive 仍未按突破筛选；每级倍率、mastery 选择/突破换技能证据未取得，不能认定整卡完成 |
-| CORE-EVENTS | 证据待补/部分交付（53001/53002 未知推进拒绝） | `task/CORE-EVENTS-20261106` | 真实临时 TCP 验证已证 ETF shape、坏编码/未知规则错误码及 module92/183 不变；相关回归 100/100；无迁移 | 未安排 | 三次 53001 空成功不能证明转换规则；53002 请求字段、53006 参数、状态枚举、任务函数/周期统计及结束结算仍待恢复；[交付记录](../../../agent/workflow/gameplay-completion/CORE-EVENTS/implementation.md) |
-| CORE-DRAW-POOLS | 证据待补；已有圣器生产路径复核通过 | `task/CORE-DRAW-POOLS-20261106` @ 本次提交 | 无奖励 resolver 注入：14 圣器版本正常/保底与 SQLite 重开；38 神灵版本和226无变更拒绝；真 TCP 601→7001、88932；相关回归102/102；静态配置报告与7资产SHA256见 implementation.md | 未安排 | 226的60101/60102及神灵56组lib_range为空；多心愿/替换阶段与神灵心愿/重置规则待证据；Fantasy Task 0行，不能推断当前版本无入口 |
+| CORE-SKILL-GATES | 证据待补（已合入 AbilityLevel/mastery/soul 部分实现） | b87b99d；复核修复 e05533d/60b7ab7 | 专项累计 10/10；复核聚焦 37/37；总控技能/奖池/TCP 17/17；最终主线全量 2234/2234；mission 与 1316 共用 loadout；未改 gateway/game-store | 未安排 | 通用 Passive 突破筛选和每级倍率未完成；可达英雄 4040101 缺技能目录；AbilityLevel 索引与 mastery 完整选择/替换待证，不能认定整卡完成 |
+| CORE-EVENTS | 证据待补/部分交付（53001/53002 未知推进拒绝） | `task/CORE-EVENTS-20261106` @ db2daa7；合入13231a4 | 真实临时 TCP 验证已证 ETF shape、坏编码/未知规则错误码及 module92/183 不变；相关回归 100/100；无迁移 | 未安排 | 三次 53001 空成功不能证明转换规则；53002 请求字段、53006 参数、状态枚举、任务函数/周期统计及结束结算仍待恢复；[交付记录](../../../agent/workflow/gameplay-completion/CORE-EVENTS/implementation.md) |
+| CORE-DRAW-POOLS | 证据待补；已有圣器生产路径复核通过 | `task/CORE-DRAW-POOLS-20261106` @ be514bb；合入7599ef8 | 无奖励 resolver 注入：14 圣器版本正常/保底与 SQLite 重开；38 神灵版本和226无变更拒绝；真 TCP 601→7001、88932；相关回归102/102；最终主线全量2234/2234；静态配置报告与7资产SHA256见 implementation.md | 未安排 | 226的60101/60102及神灵56组lib_range为空；多心愿/替换阶段与神灵心愿/重置规则待证据；Fantasy Task 0行，不能推断当前版本无入口 |
 | CORE-TIME-TEMPLE | 待领取 | — | — | 未安排 | 八个 C2S 编码器的数字命令映射 |
 | CORE-CABIN | 待领取 | — | — | 未安排 | 房间/任务/交互/奖励/加速的可达性与协议 |
+| SOC-FRIEND | 实施中 | `task/SOC-FRIEND-20261107`；agent soc_friend | 基线 7599ef8；独立 worktree soc-friend；尚未提交或验收 | 未安排 | 申请/双向好友/黑名单/真实本地角色查询及友情赠送领取闭环；gateway/登录补丁由总控接入 |
 | HERO-LINEUP | 服务端完成 | `task/HERO-LINEUP-20261106` @ cd3b3ea | 5 专项测试 + 真实 TCP 214→215→216→209→210→217 + 重开 DB；集成分支 30/30 | 未安排 | 217 回包 schema 未恢复（当前 ETF 回显索引）；名称长度上限属推断；214 请求形态待实测 |
 | HERO-HERO | 服务端部分完成（本小批 614/647/663/664/665） | `task/HERO-HERO-20261106` @ ead0359 | 专项与 gateway 回归 16/16 + 真实 TCP 五命令 + 模块 10 槽位 5 + SQLite 重开 + 编码回滚；合并后全量 2206/2206 | 未安排 | 剩余 602/627–631/634/635/637/641/651/652/654/656/661/666/672/673；Visit 品质映射、锁价比例、custom_tid 与 HeroErr 线上码待证据；重铸属性归 CORE-ATTR/CORE-SKILL-GATES |
 | HERO-MASTERY | 服务端完成（技能已由 CORE-SKILL-GATES 接线；属性与完整规则待补） | `task/HERO-MASTERY-20261106` @ 1afea74 | 5 专项测试 + 真实 TCP 660→659 + 故障回滚 + 重开 DB；合并后全量 2164/2164；b6e1766 接入星级/等级门槛与唯一 mastery 技能 | 未安排 | 659/660 请求仅确认含 tid；未突破时等级上限与完整解锁规则待实测；精通属性、每级技能倍率和突破换技能仍未闭合 |
@@ -42,3 +43,7 @@
 - ITEM-FIRSTWEEKGOAL 以 `--no-ff` 合入 main `bf5d95b`；独立专项 14/14，合并后 main 全量 2197/2197。网关保留 `onlineGift.beginSession()`、`rankAchieve.ensureLoginState()` 与首周目标模块 59015 三条登录路径，并保留既有数字 type 派发；207 结算/体力、邮件推送与活动期限定向回归 60/60 再次通过。全量日志：`analysis/test-runs/gameplay-20261106/main-after-firstweekgoal-full.log`。
 - HERO-HERO、ITEM-GROWTHROAD、CORE-ATTR 依次以 --no-ff 合入 main d375bf6、8979fe5、427f9e5。每次合并前均确认 main 为分支祖先、git diff --check 通过，并逐项检查网关同时保留 onlineGift、rankAchieve、heroExtra、firstWeekGoal、growthRoad 与 1316 属性路由；git diff 未覆盖 207 结算/体力、邮件推送、活动期限或 module8/90 多槽。三次合并后的全量回归依次为 2206/2206、2215/2215、2219/2219。最终日志：analysis/test-runs/gameplay-20261106/main-after-core-attr-full.log。
 - CORE-SKILL-GATES 提交 b87b99d 以 --no-ff 合入 main b6e1766。合并前工作区干净、main 为分支祖先、git diff --check 通过；gateway.mjs/game-store.mjs 未变，207 路径仅增加技能 loadout 输入。合并后 npm test 为 2226/2226，fail 0。运行摘要见 analysis/test-runs/gameplay-20261106/main-after-core-skill-gates-summary.md。通用 Passive 的突破筛选和等级倍率仍未实现，整卡状态为证据待补；全量通过不能替代这些业务验收。
+- 总控独立技能复核补丁 e05533d/60b7ab7 分别以 --no-ff 合入 7e27826/d252af1：修复显式空技能列表重新加载全目录，以及普通1040201误选metadata占位技能；专项累计10/10。CORE-DRAW-POOLS 的 be514bb 以 --no-ff 合入7599ef8，只提交配置审计与生产路径复核；CORE-EVENTS 的 db2daa7 以 --no-ff 合入13231a4，只落实未知推进拒绝与证据，均不当作新玩法完成。
+- 最终 main13231a4 在 personal-server 执行 npm test：tests2234 / pass2234 / fail0 / skipped0，退出0，duration_ms216911.0109。完整日志：analysis/test-runs/gameplay-20261106/main-after-core-skill-events-draw-full.log。技能/生产奖池/TCP单独联合复核17/17也通过；未引入新运行资产或部署依赖。
+- 合并保持核对：96d4c18/4ee1f8b/7b5af58均为主线祖先；game-store、energy、mission-progress、mail-service、task-service、activity-calendar与1a15105无差异，gateway保留onlineGift/rankAchieve/heroExtra/firstWeekGoal/growthRoad登录和1316路由。冲突仅发生于总控状态表，逐行保留最新各任务状态后解决；测试期间未变更业务源码。
+- 后续已派发 CORE-BATTLE-A 和 SOC-FRIEND，各自独立worktree；SOC-FRIEND另有只读证据辅助。尚无两项代码交付，不计入上述18项；实时服务、运行库和APK仍未操作。

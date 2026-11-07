@@ -72,3 +72,9 @@ node --test --test-concurrency=1 test/gameplay-gateway.test.mjs test/activity-ca
 - 与 main 比较，`game-store.mjs`、`energy.mjs`、`mission-progress.mjs`、`resources.mjs`、`mail-service.mjs`、`activity-calendar.mjs`、`relic-divine-login.mjs`、`mission-fight-service.mjs`、`mission-extra-service.mjs`、`task-service.mjs` 无差异。
 - gateway 仅替换原 53001/53002 空成功分支；108/102801/10503 的既有确认、全部其他路由、在线礼包/成就/首周/成长登录、1316 属性与技能装配保持不变。
 - 测试临时 TCP/SQLite 由已有测试清理；未留下 inspect 脚本、独立临时数据库或未结束测试进程。本轮未运行全量，集成全量由总控执行。
+
+### 总控集成验收
+
+- 提交 `db2daa7` 以 `--no-ff` 合入 main `13231a4`，合并前确认 main 为分支祖先及 `git diff --check` 通过。
+- 总控最终 `npm test`：2234/2234，退出 0，完整日志 `analysis/test-runs/gameplay-20261106/main-after-core-skill-events-draw-full.log`。
+- 总控状态表与自己的未提交记录重合时逐行解决冲突，保留技能复核、奖池证据和本卡部分交付状态；业务源码无冲突。上述结果不代替尚缺的活动推进、任务周期或 APK 提示验收。
