@@ -1,6 +1,6 @@
 # 希望树返利周期关闭导致 16004 每日折扣购买失败
 
-状态：wallet-service 修复完成，组件/回归/全量测试通过；未部署实时服务、未做 APK 验收（本轮仅临时 loopback/SQLite）。
+状态：wallet-service 修复完成，组件/回归/全量测试通过；未部署实时服务、未做 APK 验收（本轮仅临时 loopback/SQLite）。分支 fix/wish-tree-rebate-cycle-20261108 基于 main 72c8d4d（创建时为 6dcc805，完成前 rebase 到最新 main），未自行合入 main。
 
 ## 现象
 
@@ -25,7 +25,7 @@
 - wallet-service 专项新增 3 项：310 时购买成功且订单、扣费、发奖、flag-40 事件齐全；非现金赠礼的第二调用点同样跳过；311 仍传播且事务回滚。
 - 目标集（wallet-service、recommend-gift-count、wish-tree-service、mail-voucher、month-permit-voucher）：53/53。
 - 购买链路回归（purchase-flow-regression、permit-purchase、recharge-client-patch、gameplay-gateway、admin-pending-request）：22 项，20 通过、0 失败、2 跳过（缺 `FC_RECHARGE_CLIENT_BUNDLE`）。
-- 全量 `npm test --prefix personal-server`：2470 项，2468 通过、0 失败、2 跳过。
+- 全量 `npm test --prefix personal-server`：2481 项，2479 通过、0 失败、2 跳过（rebase 前旧基线为 2470 项、2468 通过，同为 0 失败、2 跳过）。
 
 ## 边界与缺口
 
