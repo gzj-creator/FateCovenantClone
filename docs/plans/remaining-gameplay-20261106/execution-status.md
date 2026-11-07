@@ -27,6 +27,7 @@
 | ITEM-COMMONTASK | 服务端完成（奖励/爬塔进度证据阻塞） | `task/ITEM-COMMONTASK-20261106` @ 321655f | 7 专项测试 + 同组列表事务 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | 四张组表 2774 行奖励列为空；progress_fun 12 无爬塔状态来源；module 90 线性槽位从 0 修正为 4，需 APK 联合验收 |
 | ITEM-GUIDE | 服务端完成（奖励配置证据阻塞） | `task/ITEM-GUIDE-20261106` @ 042be27 | 9 专项测试 + 真实 TCP 8000→8001→8002 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | GuideTable 无 JSON 导出，生产 8001 对所有 awardTid 返回 code 5；8001 参数位置与 8002 不回帧均待 APK 实测 |
 | ITEM-RANKACHIEVE | 服务端完成（多数成就事件源证据阻塞） | `task/ITEM-RANKACHIEVE-20261106` @ 9c1a880 | 7 专项测试 + 真实 TCP 43101→rsp/8601 + 模块 170 登录 + 重开 DB + 编码/SQLite 回滚；合并后全量 2190/2190 | 未安排 | 当前仅闭合巅峰塔 500/1000 层与可解析指定英雄拥有共 13 行；其余 71 行缺权威完成值来源并返回 code 5；`finish_award` 发放语义与跨服/公会完成信息待证据 |
+| ITEM-GROWTHROAD | 服务端完成（1111–1113 任务进度证据阻塞） | `task/ITEM-GROWTHROAD-20261106` @ 69e3f03 | 9 专项测试 + 真实 TCP 909103→69002→69001 + 模块 53696 登录 + 重开 DB + 编码回滚；与首周目标/HERO-HERO/gateway 回归 32/32 | 未安排 | `progress_fun=203/82`（1111–1113）无权威事件来源；ETF 单 tid 形状来自客户端反汇编、未取得实包；`award_new` 选择与过期 `rev_overdue/overdue_award` 语义待原服对照 |
 | ITEM-FIRSTWEEKGOAL | 服务端完成（部分进度事件证据阻塞） | `task/ITEM-FIRSTWEEKGOAL-20261106` @ 6155312 | 6 项 service + 真实临时 TCP 67004/67005 + 登录模块 59015 + SQLite 重开 + 编码/SQLite 回滚；网关 14/14；合并后全量 2197/2197 | 未安排 | TaskType.progress_fun=1/3 尚无统一生产事件来源；当前统计源任务可领取，其余明确 code 5，不按固定进度放行 |
 
 ## 集成与验收记录（2026-11-07 第一轮）
