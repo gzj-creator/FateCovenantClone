@@ -1,0 +1,62 @@
+# 首次招募误判已拥有与队伍英雄缺失
+
+状态：服务端根因已修复，已部署并从 v15 迁移实时库到 v16；客户端已自动重连并完成登录，英雄列表与队伍视觉验收待用户确认。本次只改服务端，不改 APK。
+
+- 工作树：`F:\projects\FateCovenantClone\.worktree\recruit-first-hero-20261107`
+- 分支：`fix/recruit-first-hero-20261107`
+- 基线：`main@e90ef1e`；提交后已合入最新 `main@9593baa`
+
+## 现象与结论
+
+用户看到首次招募结果被分解成碎片，且新招募角色没有出现在队伍可用角色中，并怀疑回退操作留下了未清理的“已拥有”记录。
+
+实时库一致副本显示两套英雄数据已分叉：
+
+| 来源 | 修复前数量 |
+|---|---:|
+| SQLite `heroes` 权威表 | 25 |
+| 持久化登录模块 `login_modules[10].value[0]` | 6 |
+
+登录模块少掉的 19 个角色为 `4020401, 3010201, 3010101, 4010301, 2020501, 4030401, 4010201, 3010301, 4010101, 4020301, 1010101, 1020101, 1020201, 3020101, 1010201, 4020501, 2030401, 4020201, 1030601`。
+
+这 19 个角色并非无来源的残留：`events.jsonl` 中 2026-11-07 UTC 的 `09:30:34`、`09:31:14`、`09:34:35`、`09:35:00` 四次真实 `type=601/count=10` 招募分别记录了其中 5、7、4、3 个新角色，数量与 ID 集合完全吻合。问题不是“角色表多写了幽灵角色”，而是角色表已经提交真实招募结果，登录模块仍保存事务前的旧快照。
+
+招募判断读取 `model.heroInfo`（由 `heroes` 表重建），因此能正确识别这些角色已拥有；旧登录快照又不能稳定提供给客户端，造成碎片转换和可用角色列表表现不一致。
+
+## 根因
+
+`game-store.mjs` 的 `writeModel()` 原先直接持久化 `model.state.modules`。该对象来自事务开始时的模块快照，虽然 `materializeState()` 会在返回状态时临时重建模块 10，但持久化路径没有同步这次重建；同一事务又单独更新 `heroes`/`hero_cells` 表。于是每次成功事务都会再次把旧的六人模块 10 写回，形成长期分叉。
+
+## 修复
+
+- 新增统一的 `synchronizeHeroInfoModule()`，从 `model.heroInfo` 重建模块 10 slot 0，并保留 slot 1 及后续招募状态。
+- `writeModel()` 在事务提交前对实际写入的模块集合执行同步，招募、升级、升星、合成及其他事务不再把旧英雄快照写回。
+- schema 从 v15 升级到 v16，新增幂等迁移 `hero-login-snapshot-v16`：每个角色以 `heroes` 和 `hero_cells` 表为权威，只替换模块 10 slot 0，保留其他 slot。
+- 招募回归测试改为直接读取持久化模块 10，而不是只读取会临时重建模块的内存状态；数据库重开后继续断言新角色存在。
+- 新增 v16 回归：构造“英雄表比模块 10 多一个角色”的 v15 库，重开服务后断言角色恢复、slot 1+ 保留、迁移只执行一次。
+
+## 验证
+
+- 定向测试：`47/47` 通过。
+- 合并最新 `main` 后全量测试：`npm test --prefix .\personal-server`，共 2240 项，2238 通过、0 失败、2 跳过；日志在 `analysis/test-runs/recruit-hero-snapshot-20261107/after-main-merge-full.log`。
+- `git diff --check` 通过。
+- 使用 `VACUUM INTO` 从实时库生成一致副本，仅对副本执行迁移。
+- 修复前副本：schema v15、`integrity_check=ok`、角色表 25、模块 10 为 6，SHA256 `c8f9c27985bfa6cc42f97dc4891293f78362ee2ac08ebe3d5588dcb2b5840848`。
+- 修复后副本：schema v16、`integrity_check=ok`、角色表 25、模块 10 为 25，ID 集合完全一致，SHA256 `35ddc4cc373562dacb3414746012b0c0f6f6b5f10f01ea811f508cc38afe34f9`。
+- 迁移记录：`synchronized-roles=1; authoritative=heroes,hero_cells`。
+- 机器可读证据：`analysis/experiments/private-server-20261025/p3/recruit-hero-snapshot-20261107/verification.local-only.json`（位于本工作树，内容按现有规则不提交）。
+
+## 边界
+
+该修复恢复当前账号已经真实获得的角色，不会把中局账号伪装成全新号。当前存档本身预置六名角色，普通招募抽到这些已有角色时仍按重复角色转换为碎片，这是正常语义。若目标是验证“全新账号首次招募”，需要另行明确重置服务器角色；本次没有删除 19 个有招募事件来源的角色，也没有写入虚构英雄。
+
+组件测试和数据库副本迁移通过不等于客户端闭环。实时服务部署后仍需在隔离客户端重登，确认英雄列表、队伍可用角色与后续招募结果；完成视觉验收前不标记客户端问题已完全解决。
+
+## 实时部署
+
+- 部署前使用 `VACUUM INTO` 生成一致备份：`analysis/experiments/private-server-20261025/p3/recruit-hero-snapshot-20261107/game.before-v16-deploy-20261107T104819.local-only.sqlite`。文件 466944 字节，SHA256 `4baa61926903201e93b59cb5ae9a6e349aab3d4c3407ea0698df855d7bebcf94`，schema v15，`integrity_check=ok`，角色表 25、模块 10 为 6。
+- 从本工作树启动 v16 后，实时服务 PID 为 `2668`，`startedAt=2026-11-07T10:54:59.306Z`；五个端口 `18880/18881/18882/18883/19090` 均由该 PID 仅监听 `127.0.0.1`，stderr 为空。
+- 实时库现为 schema v16、`integrity_check=ok`、角色表 25、模块 10 为 25，英雄 ID 集合完全一致；六条现有队伍引用均能在英雄表中解析。迁移记录为 `synchronized-roles=1; authoritative=heroes,hero_cells`。
+- 隔离客户端在服务恢复后自动连接并于 `2026-11-07T10:55:01.535Z` 完成 `login_sent`，登录包含 145 个模块；本次没有由 agent 点击客户端。
+- 用户随后在真实客户端继续执行多次 `type=601/count=10`。截至 `2026-11-07T11:00:10Z` 只读核对，角色表已从 25 增至 37，持久化模块 10 同样为 37，ID 集合仍完全一致，缺失与多余均为空；说明修复不只迁移了历史数据，后续真实招募事务也会持续写入一致快照。
+- 部署后机器证据：`analysis/experiments/private-server-20261025/p3/recruit-hero-snapshot-20261107/after-v16-deploy.local-only.json`。

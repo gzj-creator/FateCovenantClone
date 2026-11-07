@@ -81,7 +81,7 @@ function insertAssist(store, value) {
 
 test('schema v12 stores business read state and CMS returns only active matching questions', t => {
   const env = setup(t);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 15);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 16);
   assert.ok(env.store.inspect(db => db.prepare("SELECT name FROM migrations WHERE name='login-business-reads-v11'").get()));
   assert.ok(env.cms.supports(89501));
   assert.equal(env.cms.supports(89502), false);

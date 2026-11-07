@@ -95,7 +95,7 @@ test('migrates once into relational SQLite tables, backs up JSON, and preserves 
   env.reopen();
   assert.equal(env.store.state().guides[55], 66);
   const db = new DatabaseSync(env.databasePath, { readOnly: true });
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 15);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 16);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_rewards'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reward_claims'").get());
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
@@ -136,7 +136,32 @@ test('version-nine migration aligns recruited hero ids with tids and rewrites ev
   const migrated = codec.unpack('pb_lineup_login', rawBinary(new Map(store.state().modules.value).get(9)));
   const migratedCustom = codec.unpack('pb_custom_lineup_role', Buffer.from(migrated.custom_pre_lineup, 'base64'));
   assert.equal(migratedCustom.custom_pre_lineups[0].lineup.team_list[0].fighter_list.find(fighter => fighter.index === 1).hero_id, '2010101');
-  assert.equal(store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 15);
+  assert.equal(store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 16);
+});
+
+test('version sixteen repairs a stale persisted hero snapshot from authoritative tables', t => {
+  const env = setup(t);
+  const original = new Map(env.store.read().state.modules.value).get(10);
+  const preservedSlots = structuredClone(original.value.slice(1));
+  const heroInfo = codec.unpack('pb_hero_info', rawBinary(original.value[0]));
+  const removed = heroInfo.hero_list.shift();
+  const stale = { ...original, value: [...original.value] };
+  stale.value[0] = serializedBinary(codec.pack('pb_hero_info', heroInfo));
+  env.store.inspect(db => {
+    db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=10')
+      .run(JSON.stringify(stale), env.store.state().roleId);
+    db.exec("DELETE FROM migrations WHERE name='hero-login-snapshot-v16'; PRAGMA user_version=15;");
+  });
+  assert.equal(codec.unpack('pb_hero_info', rawBinary(new Map(env.store.read().state.modules.value).get(10).value[0])).hero_list.length, 5);
+
+  env.reopen();
+
+  const repaired = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.read().state.modules.value).get(10).value[0]));
+  assert.deepEqual(repaired.hero_list.map(hero => hero.tid), env.store.read().heroInfo.hero_list.map(hero => hero.tid));
+  assert.ok(repaired.hero_list.some(hero => hero.tid === removed.tid));
+  assert.deepEqual(new Map(env.store.read().state.modules.value).get(10).value.slice(1), preservedSlots);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 16);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM migrations WHERE name='hero-login-snapshot-v16'").get().n), 1);
 });
 
 test('multi-level upgrade deducts summed experience, preserves hero fields, and survives reopen', t => {

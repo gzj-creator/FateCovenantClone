@@ -16,6 +16,17 @@ import {
   rollbackPrematureOfflineFixtureMissionCursor
 } from '../game/mission-progress.mjs';
 
+const HERO_INFO_MODULE_ID = 10;
+
+function synchronizeHeroInfoModule(modules, codec, heroInfo) {
+  const module = modules.get(HERO_INFO_MODULE_ID);
+  if (!module || !Array.isArray(module.value)) throw new Error('Hero login module 10 is unavailable');
+  const values = [...module.value];
+  while (!values.length) values.push(serializedBinary(Buffer.alloc(0)));
+  values[0] = serializedBinary(codec.pack('pb_hero_info', heroInfo));
+  modules.set(HERO_INFO_MODULE_ID, { ...module, value: values });
+}
+
 function modelFromState(state, codec) {
   const modules = new Map(state.modules.value);
   const heroes = codec.unpack('pb_hero_info', rawBinary(modules.get(10).value[0]));
@@ -129,7 +140,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   const clock = typeof now === 'function' ? now : () => now;
   const missionTables = readMissionTables();
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 15) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 16) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -198,7 +209,9 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     const { modules, rolePb, guides = {}, lineups: ignored, ...metadata } = state;
     db.prepare('INSERT OR REPLACE INTO roles VALUES (?,?,?,?,?)').run(state.roleId, state.serverId, state.createdAt, JSON.stringify(role), JSON.stringify(metadata));
     const moduleInsert = db.prepare('INSERT OR REPLACE INTO login_modules VALUES (?,?,?)');
-    for (const [key, value] of new Map(modules.value)) moduleInsert.run(state.roleId, key, JSON.stringify(value));
+    const storedModules = new Map(modules.value);
+    synchronizeHeroInfoModule(storedModules, codec, heroInfo);
+    for (const [key, value] of storedModules) moduleInsert.run(state.roleId, key, JSON.stringify(value));
     for (const table of ['heroes', 'hero_cells', 'resources', 'guides']) db.prepare('DELETE FROM ' + table + ' WHERE role_id=?').run(state.roleId);
     const heroInsert = db.prepare('INSERT INTO heroes VALUES (?,?,?,?,?,?,?,?)');
     for (const hero of heroInfo.hero_list) heroInsert.run(state.roleId, String(hero.uid), String(hero.tid), hero.level ?? 1, hero.star ?? 0, hero.star_progress ?? 0, hero.breakthrough_level ?? 0, JSON.stringify(hero));
@@ -538,6 +551,35 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         );
         db.exec('PRAGMA user_version=15; COMMIT');
         version = 15;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 16) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        let synchronized = 0;
+        const updateModule = db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=? AND module_id=10');
+        for (const role of db.prepare('SELECT role_id FROM roles').all()) {
+          const moduleRow = db.prepare('SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=10').get(role.role_id);
+          if (!moduleRow) continue;
+          const hero_list = db.prepare('SELECT * FROM heroes WHERE role_id=? ORDER BY rowid').all(role.role_id).map(row => ({
+            ...JSON.parse(row.payload_json), uid: row.uid, tid: row.tid, level: row.level,
+            star: row.star, star_progress: row.star_progress, breakthrough_level: row.break_level
+          }));
+          const cell_list = db.prepare('SELECT * FROM hero_cells WHERE role_id=? ORDER BY cell_index').all(role.role_id).map(row => ({
+            ...JSON.parse(row.payload_json), index: row.cell_index, level: row.level, break_level: row.break_level
+          }));
+          const modules = new Map([[HERO_INFO_MODULE_ID, JSON.parse(moduleRow.payload_json)]]);
+          synchronizeHeroInfoModule(modules, codec, { hero_list, cell_list });
+          updateModule.run(JSON.stringify(modules.get(HERO_INFO_MODULE_ID)), role.role_id);
+          synchronized++;
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run(
+          'hero-login-snapshot-v16',
+          `synchronized-roles=${synchronized}; authoritative=heroes,hero_cells`,
+          new Date(clock()).toISOString()
+        );
+        db.exec('PRAGMA user_version=16; COMMIT');
+        version = 16;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

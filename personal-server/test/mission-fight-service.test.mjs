@@ -116,7 +116,7 @@ test('v15 keeps stamina in module 8 and rejects the stale full-energy projection
   const stored = env.store.read().resources.get('100012900');
   assert.deepEqual(stored.location, [8, 2, 0]);
   assert.equal(stored.produce_time, nowSeconds);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 15);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 16);
 
   const module = new Map(env.store.state().modules.value).get(8);
   const loginEnergy = codec.unpack('pb_role_energy_res', rawBinary(module.value[2]));
