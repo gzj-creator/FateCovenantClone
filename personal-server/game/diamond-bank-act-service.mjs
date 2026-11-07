@@ -417,14 +417,12 @@ export function createDiamondBankActService({
       const state = roleState(db, roleId, act);
       if (!state.is_buy) throw new GameError(311, 'Diamond bank must be opened before its tasks can be claimed');
       const claims = parseClaims(state.task_get_json);
-      const grantable = [];
       const claimed = [];
       for (const { row, tid, target, award } of rows) {
         if (isTaked(claims, row, at)) continue;
         const progress = taskProgress(model, row);
         if (progress < target) throw new GameError(311, 'Diamond bank task has not been completed');
-        grantable.push(...award);
-        claimed.push({ tid, count: Number(row.target_count), award });
+        claimed.push({ tid, award });
       }
       if (!claimed.length) {
         const res = { changes: [] };
@@ -432,16 +430,22 @@ export function createDiamondBankActService({
         const value = { role_data: rolePayloadOf(db, roleId, act, state), res };
         return { value, data: codec.pack('pb_diamond_bank_act_task_rsp', value) };
       }
-      const partitioned = partitionGrantableResources(grantable, tables);
-      const res = grantResources(model, partitioned.grantable, tables);
+      // Each task keeps its own partition so a reward without a server handler
+      // is recorded once under that task's source key instead of once per
+      // claimed task; the grantable rows still share one grantResources call.
+      const partitioned = claimed.map(entry => ({
+        tid: entry.tid,
+        ...partitionGrantableResources(entry.award, tables)
+      }));
+      const res = grantResources(model, partitioned.flatMap(entry => entry.grantable), tables);
       const createdAt = new Date(at * 1000).toISOString();
       const insertPending = db.prepare(
         'INSERT INTO pending_rewards(role_id,source_key,item_tid,quantity,res_type,reason,status,created_at) VALUES (?,?,?,?,?,?,\'pending\',?)'
       );
-      for (const entry of claimed) {
+      for (const entry of partitioned) {
         claims.push({ tid: entry.tid, get_time: at });
         const sourceKey = [SOURCE_PREFIX.slice(0, -1), actId, 'task', entry.tid, at].join(':');
-        for (const reward of partitioned.pending) {
+        for (const reward of entry.pending) {
           insertPending.run(
             roleId, sourceKey, reward.tid, reward.quantity, reward.resType,
             reward.resType === null ? reward.reason : `${reward.reason}:${reward.resType}`, createdAt
@@ -452,8 +456,9 @@ export function createDiamondBankActService({
       saveRoleState(db, state);
       refreshStoredLogin(model, db, act, roleId);
       log({
-        event: 'diamond_bank_task_committed', actId, ids: claimed.map(entry => entry.tid),
-        changes: res.changes.length, pending: partitioned.pending.map(reward => reward.tid)
+        event: 'diamond_bank_task_committed', actId, ids: partitioned.map(entry => entry.tid),
+        changes: res.changes.length,
+        pending: partitioned.flatMap(entry => entry.pending.map(reward => [entry.tid, reward.tid, reward.quantity]))
       });
       const value = { role_data: rolePayloadOf(db, roleId, act, state), res };
       // Encoding stays inside the transaction so a serialisation failure rolls

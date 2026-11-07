@@ -265,6 +265,46 @@ test('DiamondBankActCmd 110201 keeps unevidenced progress tasks unavailable', t 
   assert.equal(Number(resource(harness.store, ACT_ITEM)), 1000);
 });
 
+// Reward handlers exist for the shipped 820902 deposit; 101600 (Type 91) has no
+// server handler, so it is the cheapest way to exercise the pending list.
+test('DiamondBankActCmd 110201 records a handler-less reward once per task', t => {
+  const harness = setup(t);
+  const customTables = { ...bankTables, liveTasks: new Map(bankTables.liveTasks) };
+  for (const tid of [101, 102]) {
+    customTables.liveTasks.set(tid, {
+      ...customTables.liveTasks.get(tid),
+      award: [[ACT_ITEM, tid === 101 ? 50 : 100], [101600, 7]]
+    });
+  }
+  const service = createDiamondBankActService({
+    store: harness.store,
+    codec,
+    tables,
+    diamondBankTables: customTables,
+    calendar: { serverOpenedAt: SERVER_OPENED_AT, mode: 'all-open', isActivityRunning: () => true },
+    now: () => DAY_ONE * 1000,
+    logger: () => {}
+  });
+  seedDiamonds(harness.store);
+  open(service);
+  setStatistic(harness.store, 29, '1', 200);
+
+  const { value } = claimTasks(service, [101, 102]);
+  // The single grantable resource is still aggregated into one change.
+  assert.deepEqual(
+    value.res.changes.map(change => [Number(change.tid), Number(change.diff_num)]),
+    [[ACT_ITEM, 150]]
+  );
+  const pending = harness.store.inspect(db => db.prepare(
+    'SELECT source_key, item_tid, quantity FROM pending_rewards WHERE role_id=? ORDER BY source_key'
+  ).all(harness.store.state().roleId).map(row => [row.source_key, Number(row.item_tid), Number(row.quantity)]));
+  assert.deepEqual(pending, [
+    [`diamond_bank_act:${ACT_ID}:task:101:${DAY_ONE}`, 101600, 7],
+    [`diamond_bank_act:${ACT_ID}:task:102:${DAY_ONE}`, 101600, 7]
+  ]);
+  assert.deepEqual((value.role_data.task_get ?? []).map(entry => Number(entry.tid)), [101, 102]);
+});
+
 test('DiamondBankActCmd 110202 pays the deposit out once and consumes it', t => {
   const harness = setup(t);
   const service = harness.service;
