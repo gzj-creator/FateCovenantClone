@@ -1,4 +1,4 @@
-# 执行状态
+﻿# 执行状态
 
 2026-11-06 建表。2026-11-07 第一轮并行实施与集成验收，同日第二轮续接 CORE-BATTLE-A、SOC-FRIEND 并新增 PLAY-FISHINGACT。
 
@@ -146,3 +146,27 @@
 - 三条命令的 ETF 请求形态尚未与抓包比对，未做真实 TCP 端到端；未进入 APK 验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未连接原游戏服务器。
 
 合并：`1e93174` 以 `--no-ff` 合入 main `74060e6`；冲突只在状态表，块 I（第九批）与块 F（第八批）两段并存保留。合并后定向 24/24 通过（draw-activity + gameplay-gateway + m5-command-matrix + benefit-commerce-gateway），日志 `analysis/tmp/f-block/main-after-merge.log`。
+
+## 块 C 交付记录（2026-11-08）
+
+分支 `task/BLOCK-C-20261108`，worktree `.worktree/gameplay-20261108/block-c-20261108`。16 张卡中 EQUIP-ARTIFACT/EQUIP-RELIC 已是服务端完成状态，本轮只回归；EQUIP-MAGICCIRCLE 无新增命令。其余 14 张卡的 59 条命令全部接入网关：
+
+| 任务 ID | 状态 | 服务 / 证据 | 下一依赖或证据缺口 |
+| --- | --- | --- | --- |
+| EQUIP-EQUIP | 服务端完成（觉醒/批量精炼规则待证） | 1007 觉醒、1008 兑换、1009 批量精炼；消耗取 `EquipTable.Const.awaken_open`/`ResExchange.value`/`Refine.cost`；1001–1006 回归 11/11 | 觉醒是否等同“突破精炼上限”未取证；`ResExchange.value` 的比例语义需客户端对照 |
+| EQUIP-ARTIFACT | 服务端完成（4 条 fail closed 待补） | 37060–37075 已在 main（`artifact-service.mjs`），本轮未改 | 与上一轮记录相同 |
+| EQUIP-WARRUNE | 服务端完成（表生成阻塞） | 83001–83007；状态落 `develop_module_state`；消耗 ItemWarRuneChip | 登录槽位未恢复；WarRuneTable 为 LazyInit 生成器，等级/阶段消耗与属性池未取证 |
+| EQUIP-MUSEUM | 服务端完成（奖励清单待补） | 85701/85702；博物馆人气与领取位落库，收藏激活消耗 MuseumCollectionItem | 人气奖奖励物品未落地，只落领取位 |
+| EQUIP-FANTASYHANDBOOK | 服务端完成 | 89001；幻武图鉴星级落库，消耗 FantasyEquipChip | 幻武图鉴表与消耗比例待证 |
+| EQUIP-RELIC | 服务端完成（保底/depot 槽位待补） | 89701–89712 已在 main（`relic-service.mjs`），本轮未改 | 与上一轮记录相同 |
+| EQUIP-PET | 服务端完成（灵核容器与表生成阻塞） | 90731–90748 共 17 条；宠物本体走模块 158，灵核 uid 与灵祠槽位落库；消耗 PetChip/MutantItem | 灵核背包容器未对齐；PetTable 逐级消耗与灵核升星规则待证 |
+| EQUIP-PETPLAY | 服务端完成（奖励清单待补） | 90901/90902；按周周期落领取位与地图推进 | PetPlayTable 奖励与地图配置未取证 |
+| EQUIP-ENERGYBURST | 服务端完成（奖励清单待补） | 91001；领取位幂等落库 | EnergyBurstTable 奖励未落地 |
+| EQUIP-TREASURE | 服务端完成（抽卡阶段奖励待补） | 93301–93306；秘宝走模块 534，升星消耗 TreasureChip，阶段领奖按位图落库 | 自选抽卡与魔法罐的天数规则未取证 |
+| EQUIP-ELVES | 服务端完成（表生成阻塞） | 93701–93707；精灵走模块 538，消耗 ElvesChip/MutantItem | ElvesTable 天赋/破格消耗与皮肤校验未取证 |
+| EQUIP-ELVESBEAD | 服务端完成（穿脱槽位待对齐） | 93751–93755；灵珠走模块 539，穿脱槽位落库 | 灵珠分解放回物品未取证；穿脱未写回精灵本体槽位 |
+| EQUIP-LEADEREQUIP | 服务端完成（重铸 schema 缺失） | 98402–98407；团长装备走模块 175，98401 不变 | 98406 的 `pb_leader_equip_recast_back` 客户端 proto 缺失；98404 分解返还与 98402/98405 消耗未取证 |
+| EQUIP-DIVINEEMBRYO | 服务端完成 | 102201；自选编号落库并回 `pb_divine_embryo_data` | 保底计数与礼包限购记录未接 |
+| EQUIP-BADGE | 服务端完成（分页映射待补） | 104201；激活消耗徽章道具并回 `pb_badge_role` | BadgeTable 的分页归属未取证，当前统一落在 page 1 |
+
+验证：`node --test test/endgame-develop.test.mjs` 9/9；`test/equip-service.test.mjs`+`test/equip-tables.test.mjs` 11/11；网关可加载。未做真实 TCP 19090 联调、未做全量 `npm test` 复核、未进入 APK 验收；本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB。
