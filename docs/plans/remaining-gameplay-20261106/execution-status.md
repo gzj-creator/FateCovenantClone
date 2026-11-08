@@ -226,6 +226,13 @@
 - 明确拒绝均为 GameError(5, 缺口说明)，无空包/固定值销项。逐卡记录见 agent/workflow/gameplay-completion/<CARD>/implementation.md，块记录见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md。
 - 测试：专项 17/17；分支内全量 2560 项 pass 2558 / fail 0 / skipped 2；合入 main（24f90e9）后在干净 worktree 复核 2632 项 pass 2630 / fail 0 / skipped 2；补跨块表格式兼容（88219ca）后，main 最终全量 2674 项 pass 2672 / fail 0 / skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
 
+### G2 残余项补完（2026-11-08）
+
+- 分支 `task/BLOCK-G2-RESIDUAL-20261108`，worktree `.worktree/gameplay-20261108/g2-residual`，基于 `main@649a903`。首轮 21 条明确拒绝中补齐 16 条：TOWERACT 104303；SPIRITCOURTYARD 105005；MONOPOLYACT 107802/107804；DIAMONDVEINACT 109005；SOURCEPOINT 110101/110102/110103；HOMELAND 110904；BAKINGACT 111002/111003/111004/111006/111011/111012/111013。
+- SOURCEPOINT 已新增 `source_point:1` 实例/领取位状态和英雄 `source_point_list` 迁移；BAKINGACT 补齐交换、合成、订单、事件和限时刷新，111001/111005 同步扩展棋盘/订单边界；MONOPOLYACT 登录回包补 `act_role_data`、`guild_data`、`guild_count_statics_send`，`task_type=0` 用本地累计 score 对 `target_count`，custom_login 统计读 `guild_count_stats[1006]`。
+- 仍明确拒绝 5 条：SPIRITCOURTYARD 105008/105009/105015（单角色公会社交数据）、TRIPLEMATCH 106005（棋盘通关自报未取证）、MONOPOLYACT 107806（补给由其他角色创建）。
+- 已合并当前 `main@05ec76c`（合并提交 `a5966e4`）。最终验证：专项 35/35；全量 2724 项 pass 2722 / fail 0 / skipped 2（日志 `analysis/test-runs/gameplay-20261106/g2-residual-post-merge-20261108.log`）。未做 APK 实测，未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
+
 ## 块 D 交付记录（2026-11-08）
 
 分支 `task/BLOCK-D-20261108`，worktree `.worktree/gameplay-20261108/block-d-20261108`，基于 `main@bd650ba`。块内 22 卡 / 58 条命令中，9 卡（ITEM-SHOP、ITEM-ITEM、ITEM-MISSION、ITEM-GUIDE、ITEM-EVERYTASK、ITEM-COMMONTASK、ITEM-RANKACHIEVE、ITEM-FIRSTWEEKGOAL、ITEM-GROWTHROAD）此前已合入 main，本轮处理剩余 13 卡 / 27 条命令。
