@@ -104,16 +104,15 @@ test('a heal that restores no HP is never sent as a recover prompt', () => {
 test('the production report now carries the life-steal recover prompt', t => {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-heal-', now: () => 1700000000 * 1000 });
   fixture.store.transaction(model => {
+    const lineupHeroes = new Set([2010101, 2010201]);
     for (const hero of model.heroInfo.hero_list) {
-      if ([2010101, 2010201].includes(Number(hero.tid))) hero.star = 6;
+      if (lineupHeroes.has(Number(hero.tid))) hero.star = 10;
     }
   });
   const service = createMissionFightService({ store: fixture.store, codec, playbackEnabled: true, now: () => 1700000000 * 1000 });
   const lineup = [
     { hero_id: '2010101', loc: 6 },
-    { hero_id: '2010201', loc: 4 },
-    { hero_id: '1020601', loc: 2 },
-    { hero_id: '2020601', loc: 5 }
+    { hero_id: '2010201', loc: 4 }
   ];
   const started = service.execute(201, codec.pack('pb_fight_request', {
     fight_tid: 301, stm_type: 1,

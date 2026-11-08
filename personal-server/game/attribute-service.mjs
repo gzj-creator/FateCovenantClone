@@ -161,10 +161,10 @@ export function assembleHeroAttributes({ hero, heroTables, attributeTables = rea
   const storedStar = clampInteger(overrides.star ?? hero.star, 0, STAR_LIMIT, 0);
   const star = Math.max(1, storedStar);
   const breakLevel = clampInteger(overrides.breakLevel ?? hero.breakthrough_level, 0, 50, 0);
-  // pb_single_hero does not persist a quality field; the configured Hero.quality
-  // tier is used until a quality-upgrade system stores the current tier. An
-  // explicit override keeps the assembler ready for that state.
-  const quality = Number(overrides.quality ?? config.quality ?? 0);
+  // Some persisted/imported rosters carry a current quality after a quality-up
+  // step even though pb_single_hero omits it from its ordinary wire shape.
+  // Honour it before falling back to the static Hero.quality tier.
+  const quality = Number(overrides.quality ?? hero.quality ?? config.quality ?? 0);
   const camp = Number(config.camp ?? 0);
   const flat = new Map(), rate = new Map(), sources = [], notes = [];
 

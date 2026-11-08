@@ -74,17 +74,16 @@ test('扶危定乱 (343010174) registers on-attack/on-skill-use dispel debuff', 
   }
 });
 
-test('预言梦境 (343010175) registers on-ultimate-use crit-damage-reduction 0.10 all-allies 2 rounds', () => {
+test('星爆陨灭 (343010175) grants self crit-rate 0.10 and crit-damage 0.15', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '343010175');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.triggerType, 'on-ultimate-use');
-  assert.equal(trig.effect.effect.type, 'stat-modifier');
-  assert.equal(trig.effect.effect.statType, 'crit-damage-reduction');
-  assert.equal(trig.effect.effect.magnitude, 0.10);
-  assert.equal(trig.effect.target.targetType, 'all-allies');
-  assert.equal(trig.effect.duration.rounds, 2);
+  assert.equal(skill.implementation.triggers.length, 2);
+  const byStat = Object.fromEntries(skill.implementation.triggers.map(trig =>
+    [trig.effect.effect.statType, trig.effect.effect.magnitude]));
+  assert.deepEqual(byStat, { 'crit-rate': 0.1, 'crit-damage': 0.15 });
+  assert.ok(skill.implementation.triggers.every(trig =>
+    trig.triggerType === 'on-ultimate-use' && trig.effect.target.targetType === 'self'));
 });
 
 test('突破6 (120001028) grants 50 energy on attack/skill', () => {

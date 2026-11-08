@@ -74,14 +74,16 @@ test('喷薄焰火 (333070174) registers on-attack/on-skill-use attack-percent 0
   }
 });
 
-test('毁灭业火 (333070175) registers on-ultimate-use crit-rate 0.10 and crit-damage 0.15 timed 2 rounds', () => {
+test('蚀骨之痛 (333070175) registers on-ultimate-use 3% target-max-HP damage', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '333070175');
-  assert.equal(skill.implementation.triggers.length, 2);
-  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
-  assert.ok(statTypes.includes('crit-rate'));
-  assert.ok(statTypes.includes('crit-damage'));
+  assert.equal(skill.implementation.triggers.length, 1);
+  const trigger = skill.implementation.triggers[0];
+  assert.equal(trigger.triggerType, 'on-ultimate-use');
+  assert.equal(trigger.effect.effect.type, 'damage');
+  assert.equal(trigger.effect.effect.damageType, 'percent-max-hp');
+  assert.equal(trigger.effect.effect.magnitude, 0.03);
 });
 
 test('突破9 (120001031) grants 200 energy on normal/skill', () => {

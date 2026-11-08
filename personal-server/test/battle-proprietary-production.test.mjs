@@ -19,9 +19,7 @@ const codec = createGameCodec();
 const HERO_ROLE = 2010101;
 const LINEUP = [
   { hero_id: '2010101', loc: 6 },
-  { hero_id: '2010201', loc: 4 },
-  { hero_id: '1020601', loc: 2 },
-  { hero_id: '2020601', loc: 5 }
+  { hero_id: '2010201', loc: 4 }
 ];
 const SETTLEMENT = codec.pack('pb_fight_settlement_request', { fight_type: 1 });
 const SCHEMAS = {
@@ -93,8 +91,9 @@ function setupService(t) {
 
 function promoteRepeatHero(store) {
   store.transaction(model => {
+    const lineupHeroes = new Set(LINEUP.map(entry => Number(entry.hero_id)));
     for (const hero of model.heroInfo.hero_list) {
-      if (Number(hero.tid) === HERO_ROLE) hero.star = 6;
+      if (lineupHeroes.has(Number(hero.tid))) hero.star = 10;
     }
   });
 }

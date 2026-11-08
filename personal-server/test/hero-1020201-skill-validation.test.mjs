@@ -144,6 +144,6 @@ test('ultimate 6910001010 deals 2x attack damage and is marked requiresInvestiga
   const target = { id: 9102, team: 2, loc: 1, hp: 1000, maxHp: 1000, attack: 100, defense: 100, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0, energy: 0 };
   const result = executor.executeDamage(effect, actor, target);
   assert.equal(result.crit, false);
-  assert.equal(result.value, 355, 'attack 200 * 2 minus defense 100 * 0.45 at neutral variance');
-  assert.equal(result.newHp, 645);
+  assert.equal(result.value, 326, 'attack 200 * 2 is mitigated by the shared defense-ratio formula');
+  assert.equal(result.newHp, 674);
 });

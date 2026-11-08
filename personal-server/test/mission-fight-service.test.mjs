@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
-import { createMissionFightService } from '../game/mission-fight-service.mjs';
+import { createMissionFightService, lineupReferenceStats } from '../game/mission-fight-service.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 
 const codec = createGameCodec();
@@ -49,6 +49,22 @@ const fightRequest = (mission, extra = {}) => codec.pack('pb_fight_request', {
 });
 
 const actions = report => report.battle_list[0].action_list.map(bytes => codec.unpack('pb_generic', Buffer.from(bytes, 'base64')));
+
+test('NPC compatibility reference balances every lineup stat instead of copying the top-HP tank', () => {
+  const reference = lineupReferenceStats([
+    { max_hp: 10000, attack: 100, defense: 500, speed: 80 },
+    { max_hp: 5000, attack: 600, defense: 200, speed: 100 },
+    { max_hp: 3000, attack: 1400, defense: 100, speed: 120 }
+  ]);
+  assert.deepEqual(reference, {
+    maxHp: 6000,
+    attack: 700,
+    defense: 267,
+    speed: 100
+  });
+  assert.notEqual(reference.attack, 100, 'the tank attack must not set every enemy attack');
+  assert.notEqual(reference.defense, 500, 'the tank defense must not set every enemy defense');
+});
 
 test('v14 restores only a missing offline-fixture level-9 stamina row', t => {
   const env = setup(t);

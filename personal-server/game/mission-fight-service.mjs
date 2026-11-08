@@ -192,6 +192,22 @@ function defenseChannel(stats) {
   return Math.max(0, Math.round((Number(stats.physicalDefense ?? 0) + Number(stats.magicDefense ?? 0)) / 2));
 }
 
+// NPC base rows are unavailable, so the compatible enemy template is derived
+// from the complete player lineup. Averaging each channel prevents one
+// high-HP tank from setting every enemy's attack, defense and speed.
+export function lineupReferenceStats(attackers) {
+  const count = Math.max(1, attackers.length);
+  const average = key => Math.max(0, Math.round(
+    attackers.reduce((sum, unit) => sum + Number(unit[key] ?? 0), 0) / count
+  ));
+  return {
+    maxHp: Math.max(1, average('max_hp')),
+    attack: Math.max(1, average('attack')),
+    defense: average('defense'),
+    speed: Math.max(1, average('speed'))
+  };
+}
+
 function initialFightAttributes(initialEnergy) {
   return [
     { type: FIGHT_ATTR.ANGER, value: initialEnergy },
@@ -279,7 +295,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
       : cfg.abilities.slice(0, 8).map(Number);
     return {
       id: 101 + index, tid: role, role_type: FIGHTER_ROLE_HERO, uid: String(hero.uid), role,
-      team: 1, team_index: selected.teamIndex, loc: entry.loc,
+      team: 1, team_index: selected.teamIndex, camp: assembled.camp, loc: entry.loc,
       star: assembled.star, level, quality, hp: maxHp, max_hp: maxHp,
       enable: true, final_hp: maxHp, style: Number(cfg.hero.style ?? role),
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
@@ -290,16 +306,15 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     };
   });
   const attackerLevel = Math.max(...attackers.map(unit => unit.level));
-  // NpcAttr growth rows are not shipped. Until they are recovered, combat NPCs
-  // reuse the strongest player fighter as the reference baseline (the same 0.88
-  // relationship the previous local estimate used) and then apply the shipped
+  // The FightTable.NpcAttr growth mapping is not recovered. Until it is, combat
+  // NPCs use a balanced whole-lineup template and then apply the shipped
   // NpcAttrRatio / NpcFightCustom.elite_scale values.
-  const reference = attackers.reduce((best, unit) => (unit.max_hp > best.max_hp ? unit : best), attackers[0]);
+  const reference = lineupReferenceStats(attackers);
   const defenders = config.enemies.map((role, index) => {
     const cfg = unitConfig(config.tables, role, 2);
     const level = Math.max(1, attackerLevel), quality = Number(cfg.hero.quality ?? 1);
     const fallback = {
-      hp: Math.max(1, Math.round(reference.max_hp * 0.88)),
+      hp: Math.max(1, Math.round(reference.maxHp * 0.88)),
       attack: Math.max(1, Math.round(reference.attack * 0.88)),
       physicalDefense: Math.max(0, Math.round(reference.defense * 0.88)),
       magicDefense: Math.max(0, Math.round(reference.defense * 0.88)),
@@ -319,7 +334,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     const abilities = cfg.abilities.slice(0, 8).map(Number);
     return {
       id: 201 + index, tid: role, role_type: cfg.npc ? FIGHTER_ROLE_NPC : FIGHTER_ROLE_HERO, uid: '0', role,
-      team: 2, team_index: 1, loc: index + 1,
+      team: 2, team_index: 1, camp: Number(cfg.hero.camp ?? 0), loc: index + 1,
       star: Number(cfg.hero.star ?? 0), level, quality, hp: maxHpFinal, max_hp: maxHpFinal,
       enable: true, final_hp: 0, style: Number(cfg.hero.style ?? role),
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
@@ -334,6 +349,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     id: unit.id,
     role: unit.role,
     profession: unit.profession,
+    camp: unit.camp,
     loc: unit.loc,
     abilityId: unit.abilityId,
     activeAbilityId: unit.activeAbilityId,

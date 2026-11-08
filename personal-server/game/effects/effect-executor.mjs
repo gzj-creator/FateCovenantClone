@@ -54,6 +54,18 @@ function finiteNumber(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function targetCampMultiplier(effect, target) {
+  const configured = effect?.targetCampMultiplier ?? effect?.targetCampMultipliers;
+  if (!configured) return 1;
+  const rules = Array.isArray(configured) ? configured : [configured];
+  for (const rule of rules) {
+    if (!rule || Number(rule.camp) !== Number(target?.camp)) continue;
+    const multiplier = finiteNumber(rule.multiplier, 1);
+    return multiplier > 0 ? multiplier : 1;
+  }
+  return 1;
+}
+
 function modifierStacks(modifier) {
   return Math.max(1, Math.floor(finiteNumber(modifier?.stacks, 1)));
 }
@@ -138,6 +150,22 @@ export function effectiveDamageReduction(unit) {
 
 export function effectiveIgnoreDefense(unit) {
   return Math.max(0, Math.min(1, statTotal(unit, STAT_TYPES.IGNORE_DEFENSE)));
+}
+
+// Compatibility mitigation shared by fallback attacks and catalog effects.
+// The original server formula is not recovered. A subtractive defense term
+// collapses every low-attack/high-defense hit to the final min(1) clamp, so use
+// attack / (attack + 0.45 * defense): defense still matters, but there is no
+// attack-versus-defense threshold where ordinary damage suddenly becomes 1.
+export const DEFENSE_DAMAGE_WEIGHT = 0.45;
+
+export function mitigateDamageByDefense(baseDamage, actor, target, { ignoreDefense = 0, bypassDefense = false } = {}) {
+  const damage = Math.max(0, finiteNumber(baseDamage));
+  if (bypassDefense) return damage;
+  const attack = Math.max(1, effectiveAttack(actor));
+  const ignored = Math.max(0, Math.min(1, finiteNumber(ignoreDefense)));
+  const defense = effectiveDefense(target) * (1 - ignored) * DEFENSE_DAMAGE_WEIGHT;
+  return damage * attack / (attack + defense);
 }
 
 export function effectiveHealBonus(unit) {
@@ -285,28 +313,29 @@ export class EffectExecutor {
       baseDamage += effect.conditionalDamage(actor, target, this.state);
     }
 
+    const isTrueDamage = effect.damageType === DAMAGE_TYPES.TRUE;
+    const isPercentHp = effect.damageType === 'percent-max-hp' || effect.damageType === 'percent-current-hp';
+    const ignoreDefense = Math.max(0, Math.min(1,
+      finiteNumber(effect.ignoreDefense) + effectiveIgnoreDefense(actor)
+    ));
+    baseDamage = mitigateDamageByDefense(baseDamage, actor, target, {
+      ignoreDefense,
+      bypassDefense: isPercentHp || isTrueDamage,
+    });
+
     // Apply variance (default 0.92-1.08)
     const variance = effect.variance !== undefined ? effect.variance : (0.92 + this.random() * 0.16);
     baseDamage *= variance;
 
     // Check crit
-    const isTrueDamage = effect.damageType === DAMAGE_TYPES.TRUE;
     const canCrit = effect.canCrit !== false && !isTrueDamage;
     const actionType = actionScopedType(this.state);
     const critChance = effectiveCritChance(actor, target, actionType);
     const isCrit = canCrit && this.random() < critChance;
     const critMultiplier = isCrit ? (effect.critMultiplier || effectiveCritMultiplier(actor, target)) : 1.0;
 
-    // Calculate defense reduction
-    let defense = effectiveDefense(target);
-    const ignoreDefense = Math.max(0, Math.min(1,
-      finiteNumber(effect.ignoreDefense) + effectiveIgnoreDefense(actor)
-    ));
-    defense *= (1 - ignoreDefense);
-    const isPercentHp = effect.damageType === 'percent-max-hp' || effect.damageType === 'percent-current-hp';
-    const defenseReduction = isPercentHp || isTrueDamage ? 0 : defense * 0.45;
     let finalDamage = Math.max(1, Math.floor(
-      (baseDamage - defenseReduction)
+      baseDamage
       * (1 + effectiveDamageBonus(actor, actionType))
       * critMultiplier
     ));
@@ -406,7 +435,13 @@ export class EffectExecutor {
       baseHeal += effect.conditionalHeal(actor, target, this.state);
     }
 
-    const healAmount = Math.floor(baseHeal * (1 + effectiveHealBonus(actor)));
+    const campMultiplier = targetCampMultiplier(effect, target);
+    let healAmount = Math.floor(baseHeal * campMultiplier * (1 + effectiveHealBonus(actor)));
+    const actorMaxHpPercent = Number(effect.maxHealPercentActorMaxHp);
+    const capApplied = Number.isFinite(actorMaxHpPercent) && actorMaxHpPercent > 0;
+    const actorMaxHpCap = capApplied
+      ? Math.floor(effectiveMaxHp(actor) * actorMaxHpPercent) : null;
+    if (capApplied) healAmount = Math.min(healAmount, actorMaxHpCap);
 
     // Apply to target
     const oldHp = target.hp;
@@ -424,6 +459,8 @@ export class EffectExecutor {
       target: target.id,
       value: healAmount,
       actualHeal,
+      targetCampMultiplier: campMultiplier,
+      actorMaxHpCap,
       oldHp,
       newHp: target.hp,
       overheal: effect.overheal && target.hp > target.maxHp,
@@ -556,8 +593,10 @@ export class EffectExecutor {
 
     switch (effect.energyType) {
       case ENERGY_TYPES.GAIN:
+        const campMultiplier = targetCampMultiplier(effect, target);
         newEnergy = Math.min(1000,
-          oldEnergy + Math.max(0, finiteNumber(effect.magnitude)) * (1 + effectiveEnergyBonus(target)));
+          oldEnergy + Math.max(0, finiteNumber(effect.magnitude)) * campMultiplier
+            * (1 + effectiveEnergyBonus(target)));
         break;
       case ENERGY_TYPES.LOSS:
         newEnergy = Math.max(0, oldEnergy - effect.magnitude);
@@ -581,6 +620,8 @@ export class EffectExecutor {
       target: target.id,
       energyType: effect.energyType,
       magnitude: effect.magnitude,
+      targetCampMultiplier: effect.energyType === ENERGY_TYPES.GAIN
+        ? targetCampMultiplier(effect, target) : 1,
       oldEnergy,
       newEnergy,
       actorEnergy: actor.energy || 0,
