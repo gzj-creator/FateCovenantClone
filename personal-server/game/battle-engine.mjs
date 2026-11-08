@@ -35,6 +35,12 @@ import {
   tianjiValue,
 } from './effects/proprietary-state.mjs';
 import { initProprietaryBattle, isDeitySkill, tianjiCostFor } from './effects/proprietary-rules.mjs';
+import {
+  BUFF_CHANGE_REASON,
+  BUFF_SIGN,
+  provenBuffTid,
+  removesOnDeath,
+} from './effects/report-codes.mjs';
 
 export const BATTLE_RESULT = Object.freeze({ DRAW: 0, WIN: 1, LOSS: 2 });
 
@@ -256,10 +262,47 @@ function emitAutoRevives(events, actionId, allUnits) {
   }
 }
 
-function emitDeathEvents(events, actionId, actor, harmList) {
+// The client keeps one layer counter per buff tid and subtracts the reported
+// overlay, so every removal has to carry the real layer count that vanished.
+function statusLayers(status) {
+  return Math.max(1, Math.floor(Number(status?.stacks) || 1));
+}
+
+// dead_rm=true rows are proven for the three statuses this engine can map to a
+// FightTable.Buff tid (stun 10001, poison 11003, burning 11004), so a death
+// removes exactly those layers and reports change_reason=DEAD. Unproven
+// statuses keep their previous behaviour and stay unreported.
+function collectDeathBuffChanges(buffChanges, unit) {
+  const statuses = [...(unit.buffs || []), ...(unit.debuffs || [])];
+  let removedAny = false;
+  for (const status of statuses) {
+    if (!removesOnDeath(status.type)) continue;
+    removedAny = true;
+    buffChanges.push({
+      aimId: unit.id,
+      tid: provenBuffTid(status.type),
+      overlay: statusLayers(status),
+      sign: BUFF_SIGN.REMOVE,
+      casterId: Number(status.source ?? 0) || 0,
+      changeReason: BUFF_CHANGE_REASON.DEAD,
+      abilityId: 0,
+    });
+  }
+  if (!removedAny) return buffChanges;
+  unit.buffs = (unit.buffs || []).filter(status => !removesOnDeath(status.type));
+  unit.debuffs = (unit.debuffs || []).filter(status => !removesOnDeath(status.type));
+  return buffChanges;
+}
+
+function emitDeathEvents(events, actionId, actor, harmList, allUnits = null) {
   for (const harm of harmList) {
     if (harm.hp === 0 && harm.oldHp > 0) {
       events.push({ kind: 'death', id: actionId, srcId: actor.id, aimId: harm.aimId, count: 1 });
+      const target = allUnits?.find(unit => unit.id === harm.aimId);
+      if (target) {
+        const buffChanges = collectDeathBuffChanges([], target);
+        if (buffChanges.length) events.push({ kind: 'buff-change', id: actionId, buffs: buffChanges });
+      }
     }
   }
 }
@@ -273,7 +316,7 @@ function executeAttack(events, actionId, actor, targets, multiplier, state, bonu
   }
   if (!harmList.length) return harmList;
   events.push({ kind: 'damage', id: actionId, harms: harmList });
-  emitDeathEvents(events, actionId, actor, harmList);
+  emitDeathEvents(events, actionId, actor, harmList, state.allUnits);
   handleDamageTriggers(events, actionId, actor, harmList, state);
   return harmList;
 }
@@ -309,6 +352,7 @@ function appendEffectResults(events, actionId, results, actor, state) {
   if (!Array.isArray(results) || !results.length) return;
   const units = new Map((state.allUnits || []).map(unit => [unit.id, unit]));
   const damageForTriggers = [];
+  const buffChanges = [];
 
   for (const result of results) {
     if (result.type === 'damage') {
@@ -319,16 +363,87 @@ function appendEffectResults(events, actionId, results, actor, state) {
         if (harm.hp === 0 && harm.oldHp > 0) {
           actor.kills = (actor.kills || 0) + 1;
           events.push({ kind: 'death', id: actionId, srcId: actor.id, aimId: target.id, count: 1 });
+          collectDeathBuffChanges(buffChanges, target);
         }
       }
       damageForTriggers.push(harm);
     } else if (result.type === 'shield') {
       events.push({ kind: 'shield', id: actionId, aimId: result.target, shield: result.newShield });
+    } else if (result.type === 'heal') {
+      // TID_PROMPT_HEAL=107 is the positive-number prompt the client renders as
+      // a recover value; a heal never changes shield, so both shield fields
+      // repeat the current shield to keep the withShield branch consistent.
+      const target = units.get(result.target);
+      events.push({
+        // Keep the executor's original fields (value/actualHeal/newHp) so
+        // existing engine consumers still see the unclipped heal, then add the
+        // report-facing aliases used by the action projector.
+        ...result,
+        kind: 'heal',
+        type: 'heal',
+        id: actionId,
+        srcId: result.actor,
+        aimId: result.target,
+        hp: result.newHp,
+        oldShield: target?.shield ?? 0,
+        shield: target?.shield ?? 0,
+        tick: result.tick === true,
+        status: result.status ?? null,
+      });
+    } else if (result.type === 'status') {
+      events.push({ ...result, kind: 'effect', id: actionId });
+      const tid = provenBuffTid(result.statusType);
+      // overlay is a layer delta on the client; a refresh that added nothing
+      // must not produce a 103 entry.
+      const layers = Math.max(0, Math.floor(Number(result.stacksDelta ?? result.stacks) || 0));
+      if (tid && layers > 0) {
+        buffChanges.push({
+          aimId: result.target,
+          tid,
+          overlay: layers,
+          sign: BUFF_SIGN.ADD,
+          casterId: result.actor,
+          changeReason: BUFF_CHANGE_REASON.NONE,
+          abilityId: Number(state.currentAbilityId) || 0,
+        });
+      }
     } else {
       events.push({ ...result, kind: 'effect', id: actionId });
+      if (result.type === 'status-expire') {
+        const tid = provenBuffTid(result.statusType);
+        if (tid) {
+          buffChanges.push({
+            aimId: result.target,
+            tid,
+            overlay: Math.max(1, Math.floor(Number(result.stacks) || 1)),
+            sign: BUFF_SIGN.REMOVE,
+            casterId: 0,
+            changeReason: BUFF_CHANGE_REASON.NONE,
+            abilityId: 0,
+          });
+        }
+      } else if (result.type === 'dispel') {
+        const dispelled = Array.isArray(result.removedDetail) && result.removedDetail.length
+          ? result.removedDetail
+          : (result.removed || []).map(statusType => ({ statusType, stacks: 1 }));
+        for (const entry of dispelled) {
+          const tid = provenBuffTid(entry.statusType);
+          if (!tid) continue;
+          buffChanges.push({
+            aimId: result.target,
+            tid,
+            overlay: Math.max(1, Math.floor(Number(entry.stacks) || 1)),
+            sign: BUFF_SIGN.REMOVE,
+            casterId: result.actor,
+            changeReason: BUFF_CHANGE_REASON.DISPEL,
+            abilityId: 0,
+          });
+        }
+      }
     }
   }
 
+  if (buffChanges.length) events.push({ kind: 'buff-change', id: actionId, buffs: buffChanges });
   if (damageForTriggers.length) handleDamageTriggers(events, actionId, actor, damageForTriggers, state);
 
   // Status and stat modifier results are the only observable signal currently
@@ -358,6 +473,13 @@ function processUnitTriggers(events, unit, triggerType, state, actionId = state.
 
 function appendStandaloneResults(events, unit, results, state) {
   if (!unit || !Array.isArray(results) || !results.length) return;
+  // A passive action still needs an existing FightTable.Ability id; reuse the
+  // trigger prefix when present, otherwise the unit's own action ability.
+  const triggerSkill = results.find(result => result.trigger)?.trigger;
+  const parsedAbilityId = Number(String(triggerSkill || '').split('_')[0]);
+  const abilityId = Number.isSafeInteger(parsedAbilityId) && parsedAbilityId > 0
+    ? parsedAbilityId
+    : (Number(unit.abilityId) || Number(unit.activeAbilityId) || 1);
   if (state.actionOpen) {
     appendEffectResults(events, state.currentActionId, results, unit, state);
     return;
@@ -368,9 +490,18 @@ function appendStandaloneResults(events, unit, results, state) {
   // the battle before any character acts.
   const actionId = Math.max(1, state.nextActionId);
   const startIndex = events.length;
-  appendEffectResults(events, actionId, results, unit, state);
-  const visibleKinds = new Set(['damage', 'shield', 'death', 'revive', 'anger-sync']);
-  if (!events.slice(startIndex).some(event => visibleKinds.has(event.kind))) return;
+  const previousAbilityId = state.currentAbilityId;
+  state.currentAbilityId = abilityId;
+  try {
+    appendEffectResults(events, actionId, results, unit, state);
+  } finally {
+    state.currentAbilityId = previousAbilityId;
+  }
+  const visibleKinds = new Set(['damage', 'shield', 'death', 'revive', 'anger-sync', 'buff-change']);
+  // A heal that restores no HP is not a visible step; only a real recovery
+  // opens a passive action window.
+  if (!events.slice(startIndex).some(event => visibleKinds.has(event.kind)
+    || (event.kind === 'heal' && Number(event.actualHeal ?? event.value) > 0))) return;
 
   state.nextActionId = actionId + 1;
   const targets = new Map();
@@ -385,15 +516,13 @@ function appendStandaloneResults(events, unit, results, state) {
   }
   if (!targets.size) targets.set(unit.id, unit);
 
-  const triggerSkill = results.find(result => result.trigger)?.trigger;
-  const parsedAbilityId = Number(String(triggerSkill || '').split('_')[0]);
   events.splice(startIndex, 0, {
     kind: 'passive-action-start',
     id: actionId,
     srcId: unit.id,
     assistIds: [],
     aimList: [...targets.values()].map(target => target.id),
-    abilityId: Number.isSafeInteger(parsedAbilityId) && parsedAbilityId > 0 ? parsedAbilityId : 1,
+    abilityId,
     actionType: 1,
     synthetic: true,
   });
@@ -490,6 +619,7 @@ function executeExtraAction(events, actor, allUnits, state, request) {
   const assistIds = combinationAssistIds(actor, allUnits, useSkill);
   state.currentActionId = actionId;
   state.actionOpen = true;
+  state.currentAbilityId = abilityId;
   state.actionContext = {
     actorId: actor.id,
     actionType: useSkill ? 'ultimate' : 'attack',
@@ -528,6 +658,7 @@ function executeExtraAction(events, actor, allUnits, state, request) {
   events.push({ kind: 'action-end', id: actionId });
   state.actionOpen = false;
   state.actionContext = null;
+  state.currentAbilityId = 0;
 }
 
 function runRoundTrigger(events, unit, triggerType, state) {
@@ -594,6 +725,7 @@ function executeTurn(events, actor, allUnits, state) {
   const catalogSkill = resolveActionSkill(actor, useSkill, state.skillDatabase);
   state.currentActionId = actionId;
   state.actionOpen = true;
+  state.currentAbilityId = abilityId;
   state.actionContext = { actorId: actor.id, actionType: actionKind, phase: 'before', damage: new Map() };
   runProprietary(state, PROPRIETARY_HOOKS.ACTION_START, {
     actor, actionId, useSkill, actionType: state.actionContext.actionType
@@ -694,6 +826,7 @@ function executeTurn(events, actor, allUnits, state) {
   events.push({ kind: 'action-end', id: actionId });
   state.actionOpen = false;
   state.actionContext = null;
+  state.currentAbilityId = 0;
   drainProprietaryActions(events, state);
 }
 
@@ -721,6 +854,9 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     seed: (Number(seed) >>> 0) || 1,
     nextActionId: 1,
     currentActionId: 0,
+    // FightTable.Ability id of the action currently being reported, used as
+    // pb_buff_obj.ab_tid when a status is applied inside that action.
+    currentAbilityId: 0,
     actionOpen: false,
     round: 0,
     skillDatabase,
