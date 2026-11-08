@@ -170,3 +170,12 @@
 | EQUIP-BADGE | 服务端完成（分页映射待补） | 104201；激活消耗徽章道具并回 `pb_badge_role` | BadgeTable 的分页归属未取证，当前统一落在 page 1 |
 
 验证：`node --test test/endgame-develop.test.mjs` 9/9；`test/equip-service.test.mjs`+`test/equip-tables.test.mjs` 11/11；网关可加载。未做真实 TCP 19090 联调、未做全量 `npm test` 复核、未进入 APK 验收；本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB。
+
+## ���������ռ�¼��2026-11-08 ��ʮ������ H��
+
+- �� [15-three-work-blocks.md](15-three-work-blocks.md) �Ŀ� H��#180�C#211��32 �� / 94 ��ȱʧ���ʵʩ����֧ `task/ACT-REWARD-H-20261108`�������� `.worktree/gameplay-20261108/act-reward-h`��
+- ���ʲ���`tools/extract-act-tables.mjs` �ӿͻ��� Lua ��Ŀ����`analysis/tmp/lua-bundles/64_lua_project.bundle`���ؽ� 27 ��������ԭ�� dump������ `personal-server/assets/tables/*.data.lua.json.gz`��`config/act-activity-tables.mjs` �ṩ 29 ��������ȡ����
+- �������� `personal-server/game/act-reward-service.mjs`��94 ������ȫ����·�ɣ����� 92 ������ʵҵ�񣨿ͻ��˱�������`activity_claims` ��ȡλ��`act_reward_state` ���ȣ����ظ���ȡ 310��δ��ʼ 309������ 301����������ع���
+- 41 �������񿨷��� fail closed��`err 5` ��ȱʧ֤�ݣ���79103��99401/99402��100101��102906��104601/104602��106203/106205��118001��������ع�� 105201/105202/105250/105251/105303/105305/105307���Լ����� PVE/PVP/����/����� 1037xx/1038xx/1039xx/1041xx һ�塣����ԭ��� [ACT-REWARD-H ʵʩ��¼](../../../agent/workflow/gameplay-completion/ACT-REWARD-H/implementation.md)��
+- ��֤��ר�� `test/act-reward-service.test.mjs` 9/9��`gameplay-gateway` �� `m5-command-matrix` �ع�ͨ����������ȫ�� `npm test` ��־ `analysis/test-runs/gameplay-20261106/main-after-block-h-full.log`��
+- ֤��ȱ�ڣ�`*_bin` ��ȡλ�� proto3 ��� repeated uint32 �ƶϣ�Ԥ�ȱ��� `act_id % 1000` ȡ board��`<version><1000><index>` �� Award��`available_sec` ��Ϊ�Ի��ʼ��������������δ��ץ�����գ�δ�ӵ�¼ģ�� 92���� APK ���ա�����δ��ͣʵʱ����δ��д�������ݿ⡢δ����ģ����/ADB/APK��

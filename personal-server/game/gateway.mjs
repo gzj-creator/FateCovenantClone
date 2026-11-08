@@ -74,6 +74,8 @@ import { readDiamondBankActTables } from '../config/diamond-bank-act-tables.mjs'
 import { createFreePrivilegeActService } from './free-privilege-act-service.mjs';
 import { readFreePrivilegeActTables } from '../config/free-privilege-act-tables.mjs';
 import { createSlotGameActService } from './slot-game-act-service.mjs';
+import { createActRewardService, ACT_REWARD_ETF_TYPES } from './act-reward-service.mjs';
+import { readActActivityTables } from '../config/act-activity-tables.mjs';
 import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
@@ -558,6 +560,8 @@ export function createLocalGame({
   const diamondBankAct=createDiamondBankActService({store,codec,tables,diamondBankTables:readDiamondBankActTables(),calendar,now:clock,logger});
   const freePrivilegeAct=createFreePrivilegeActService({store,codec,tables,freePrivilegeTables:readFreePrivilegeActTables(),calendar,monthlyCard,now:clock,logger});
   const slotGameAct=createSlotGameActService({store,codec,tables,slotGameTables:readSlotGameActTables(),calendar,now:clock,random,logger});
+  // Festival, sign-in, limited-target and co-op activity commands (#180-#211).
+  const actReward=createActRewardService({store,codec,tables,actTables:readActActivityTables(),calendar,now:clock,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
   // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
@@ -1473,6 +1477,26 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'dragon_land_rejected', type, seq, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }
+      if (actReward.supports(type)) {
+        try {
+          // Sign-in and festival boards carry their argument list as an Erlang
+          // term; the protobuf commands keep their request body untouched.
+          const etfValue = ACT_REWARD_ETF_TYPES.has(type)
+            ? await etfArgument(request.data, 'Invalid activity payload', { optional: true })
+            : undefined;
+          const result = actReward.execute(type, request.data, { etf: etfValue });
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'act_reward_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'act_reward_rejected', type, seq, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
         }
