@@ -77,6 +77,8 @@ import { createSlotGameActService } from './slot-game-act-service.mjs';
 import { createActRewardService, ACT_REWARD_ETF_TYPES } from './act-reward-service.mjs';
 import { readActActivityTables } from '../config/act-activity-tables.mjs';
 import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
+import { createMinigameActService } from './minigame-act-service.mjs';
+import { readMinigameActTables } from '../config/minigame-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createShopService } from './shop-service.mjs';
@@ -562,6 +564,11 @@ export function createLocalGame({
   const slotGameAct=createSlotGameActService({store,codec,tables,slotGameTables:readSlotGameActTables(),calendar,now:clock,random,logger});
   // Festival, sign-in, limited-target and co-op activity commands (#180-#211).
   const actReward=createActRewardService({store,codec,tables,actTables:readActActivityTables(),calendar,now:clock,logger});
+  // G2 exploration / mini-game block: puzzle, tile swap, mushroom monster,
+  // gopher, tower, spirit courtyard, triple match, matching game, monopoly,
+  // dream trial, diamond vein, source point, homeland album, homeland and
+  // baking. Rules without shipped evidence fail closed inside the service.
+  const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
   // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
@@ -689,6 +696,11 @@ export function createLocalGame({
     // entry's module_login_data (ActFrameTable type 1095 / 1306).
     const slotGameLoginIds = slotGameAct.synchronizeLogin(activity, loginSeconds);
     if (slotGameLoginIds.length) logger({ event: 'slot_game_act_login_synced', actIds: slotGameLoginIds });
+    // The mini-game block writes its activity role data into the same module 92
+    // entries (tower, gopher, triple match, matching game, monopoly, dream
+    // trial, diamond vein and baking).
+    const minigameLoginIds = minigameAct.synchronizeLogin(activity, loginSeconds);
+    if (minigameLoginIds.length) logger({ event: 'minigame_act_login_synced', actIds: minigameLoginIds });
     // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
     // entry's module_login_data (ActFrameTable type 1102).
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
@@ -1559,6 +1571,19 @@ export function createLocalGame({
             event: 'slot_game_rejected', type, seq, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
+        }
+        return;
+      }
+      if (minigameAct.supports(type)) {
+        try {
+          const input = await minigameAct.decode(type, request.data ?? Buffer.alloc(0));
+          const result = minigameAct.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'minigame_command_committed', type, seq, card: minigameAct.commandCard(type), actKey: result.actKey });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'minigame_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
@@ -2623,7 +2648,7 @@ export function createLocalGame({
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
     cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, message, hundredDraw,
-    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, message, hundredDraw,
+    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
