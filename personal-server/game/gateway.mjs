@@ -83,6 +83,9 @@ import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
 // Card BATTLE-MARTIALCLUB: MartialClubCmd 84401 / 84404-84426.
 import { MARTIAL_CLUB_MODULE_ID, MARTIAL_CLUB_REQUEST_SCHEMAS, createMartialClubService, isEtfRequest as isMartialClubEtfRequest } from './martial-club-service.mjs';
 import { readMartialClubTables } from '../config/martial-club-tables.mjs';
+// Card BATTLE-MARTIALCLUBACT: MartialClubActCmd 84431-84432.
+import { createMartialClubActService } from './martial-club-act-service.mjs';
+import { readMartialClubActTables } from '../config/martial-club-act-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
@@ -460,6 +463,8 @@ export function createLocalGame({
   const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
   // Card BATTLE-MARTIALCLUB: 84401 / 84404-84426, authoritative state in SQLite.
   const martialClub = createMartialClubService({ store, codec, tables: readMartialClubTables(), gameTables: tables, logger, now: clock, enemyRoster: martialClubRoster });
+  // Card BATTLE-MARTIALCLUBACT: 84431-84432, awards driven by MartialClubActTable.
+  const martialClubAct = createMartialClubActService({ store, codec, tables: readMartialClubActTables(), gameTables: tables, logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
@@ -1621,6 +1626,20 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code }); log({ event: 'feature_rejected', type, seq, code });
+        }
+        return;
+      }
+      // Card BATTLE-MARTIALCLUBACT: MartialClubActCmd 84431-84432.
+      if (martialClubAct.supports(type)) {
+        try {
+          const input = request.data?.length ? (await decodeEtf(request.data))?.value : undefined;
+          const result = await martialClubAct.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'martial_club_act_committed', type, seq, changed: result.value?.changes ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'martial_club_act_rejected', type, seq, code, message: error.message });
         }
         return;
       }
