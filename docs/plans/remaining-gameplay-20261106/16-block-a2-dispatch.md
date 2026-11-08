@@ -64,3 +64,13 @@
 2. 逐卡独立复核 147 条路由与 fail closed 语义，确认没有空包冒充实现。
 3. 在 personal-server 执行定向与全量 `npm test`，补真实临时 TCP/SQLite 证据，修复合并后缺陷。
 4. 验收通过后再更新执行状态表与任务索引；本记录不声明 APK 验收。
+
+## 合并结果（2026-11-08）
+
+- arena 以 `--no-ff` 合入 main `4a5ab5f`；gateway 自动合并通过。
+- martial 合入 `aea32d5`；手工解决 gateway 的 import、服务实例与派发块冲突，arena 与 martial 的派发、登录同步全部保留。
+- trimatch 合入 `a6f5fa1`；`TripleMatchTable` 与 G2 小游戏块共用同一资产，保留 main 既有行数组格式，并把 `trimatch-tables.mjs` 的读取器改为同时接受行数组与 `{fields, rows}` 两种 dump 格式；`readTriMatchTables()` 实载验证 gate 3、game 21、tiles 84、fightLevels 105、pvpGrades 19、towerMissions 500。
+- overallpvp 合入 `2561103`；`overall-pvp-tables.mjs` 采用综合 PVP 分支的完整读取器，gateway 保留小游戏块与 `OVERALL_PVP_PB_TYPES`、`functionManual` 登录模块与 `overallPvp.ensureLoginState()`。
+- 合并后定向回归 `gameplay-gateway` + `m5-command-matrix` + `login-business-reads` 共 19/19 通过；`attribute-service` 4/4 单文件通过。
+- 全量 `npm test` 因环境里同时存在多条测试/服务进程，临时 TCP 用例出现超时并长时间无进展，已中止；中止日志在 `analysis/test-runs/gameplay-20261106/main-after-a2-merge-full-aborted.log`。全量重跑留给验收 agent 在安静环境执行。
+- 本轮未启停实时服务、未读写 `runtime.local-only.data` 或运行数据库、未操作模拟器/ADB/APK；A2 仍无 APK 验收。
