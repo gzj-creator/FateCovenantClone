@@ -256,6 +256,12 @@
 
 分支 task/G1-EXPLORATION-20261108（worktree .worktree/gameplay-20261108/g1-exploration）。98 条命令全部注册；真实状态迁移已覆盖 PLAY-EXPERIENCEACT（2）、PLAY-RADISHFARM（6）、PLAY-HOMEPUZZLEACT（9）、PLAY-MINIGAME（4）、PLAY-GRANDTOURER 每日令牌（1），共 22 条。其余 76 条以 err=5 显式 fail closed，不计作完成。11 张客户端活动表由 tools/extract-exploration-tables.mjs 恢复。专项 7/7 与 gateway 7/7 通过；无 APK 验收。详见 agent/workflow/gameplay-completion/G1-EXPLORATION/implementation.md。
 
+## 2026-11-08 G1 剩余功能补齐（续作）
+
+分支 task/G1-REMAINING-20261108（worktree .worktree/gameplay-20261108/g1-remaining，起点 985720a）。在首轮 22/98 基础上补齐 PLAY-HOMELANDACT、PLAY-CARNIVAL、PLAY-TREASUREHUNT、PLAY-GRANDTOURER 其余命令、PLAY-DREAM、PLAY-MAGICALJOURNEY、PLAY-PETACTIVITY、PLAY-THEMETREASURE 与缺失的小游戏结算路径，真实处理器达到 93/98。仅 76510/76511（主题秘藏特殊奖/日奖）、88005/88007（梦境任务/随机盒）、89913（万象历险节点排名）仍以 GameError(5) 显式拒绝；具体缺口见 implementation.md。
+
+登录同步已接入：module 92 写入 HomePuzzle（ActFrame 1080/1090）、Homeland（1085/1086/1087）、ThemeTreasure（Activity func 63）、RadishFarm（func 84）、ExperienceAct（func 100）的 module_login_data；独立模块 136 TreasureHunt、145 WeekendBonus、155 MagicalJourney、168 Carnival、519 Dream 已下发。运行时活动 id 经 ActFrameTable/ActivityTable 的 version 映射到配置行族。Dream 88002 每日奖按 DreamTableUtil.IsNewAward 选择 FixAward/FixAwardNew，按服务器日限制一次并持久化领取时间。主题 76509 服务器任务奖按 ChallengeTask type=1 的 award/count 发放并使用 pb_res_to_client；76502/76505/76507/76508 响应同步改为 pb_res_to_client。剑等级每日经验上限与跨天重置已补测试。12 张客户端活动表由 tools/extract-exploration-tables.mjs 恢复（新增 WeekendBonusTable）。合入当前 main（43b4769）后，专项 21/21、gateway 7/7、全量 2748（pass 2746 / fail 0 / skipped 2）通过，日志 analysis/test-runs/gameplay-20261106/g1-remaining-post-merge-full.log；无 APK 验收。
+
 ## 块 E2 交付记录（2026-11-08）
 
 - 分支 `task/BLOCK-E2-20261108` 完成 #107–#119 共 13 卡、154 条原缺失命令。153 条进入真实业务服务，`105805` 因响应 schema 缺失明确返回业务错误码 5；既有 `99229` 继续由 `guild-nation-assist-service` 单一持有。
