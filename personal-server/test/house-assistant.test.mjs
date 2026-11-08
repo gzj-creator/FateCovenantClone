@@ -47,7 +47,7 @@ function defaultState(overrides = {}) {
   };
 }
 
-function setup(t, { initialState = defaultState(), now = () => START, omitted = false } = {}) {
+function setup(t, { initialState = defaultState(), now = () => START, omitted = false, rawModule = null } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-house-assistant-'));
   const databasePath = path.join(directory, 'game.sqlite');
   const legacyStatePath = path.join(directory, 'legacy.json');
@@ -56,7 +56,10 @@ function setup(t, { initialState = defaultState(), now = () => START, omitted = 
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   store.transaction(model => {
     const modules = new Map(model.state.modules.value);
-    if (!omitted) modules.set(148, { value: [serializedBinary(codec.pack(SCHEMA, initialState))], improper: false });
+    if (!omitted) modules.set(148, {
+      value: [serializedBinary(rawModule ?? codec.pack(SCHEMA, initialState))],
+      improper: false
+    });
     model.state.modules.value = [...modules];
   });
   if (omitted) store.inspect(db => db.prepare('DELETE FROM login_modules WHERE module_id=148').run());
@@ -119,7 +122,7 @@ test('88202 selects assistants and 88201 selects backgrounds for both scenes, wi
   ] });
   assert.equal(result.schema, 'pb_house_assistant_use_rsp');
   assert.deepEqual(houseData(env.store).use.map(row => ({
-    scene: Number(row.scene_tid), assistant: Number(row.use_assistant), bg: Number(row.use_bg)
+    scene: Number(row.scene_tid), assistant: Number(row.use_assistant ?? 0), bg: Number(row.use_bg ?? 0)
   })), [
     { scene: 1, assistant: 10063200, bg: 20013200 },
     { scene: 2, assistant: 10023200, bg: 20023200 }
@@ -127,6 +130,57 @@ test('88202 selects assistants and 88201 selects backgrounds for both scenes, wi
   env.reopen();
   assert.equal(houseData(env.store).use[0].use_assistant, '10063200');
   assert.equal(houseData(env.store).use[0].use_bg, '20013200');
+});
+
+test('accepts the live single-selection payload and zero ids for unselected scenes', t => {
+  const env = setup(t, {
+    initialState: defaultState({ use: [{ scene_tid: '1', use_assistant: '10063200' }] })
+  }), service = env.service();
+  service.ensureLoginState();
+
+  let result = service.execute(88202, { req: [
+    { scene_tid: 1, assistant_tid: 10063200 },
+    { scene_tid: 2 }
+  ] });
+  assert.equal(result.schema, 'pb_house_assistant_use_rsp');
+  assert.deepEqual(codec.unpack('pb_house_assistant_use_rsp', result.data).use.map(row => ({
+    scene: Number(row.scene_tid), assistant: Number(row.use_assistant ?? 0), bg: Number(row.use_bg ?? 0)
+  })), [
+    { scene: 1, assistant: 10063200, bg: 0 },
+    { scene: 2, assistant: 0, bg: 0 }
+  ]);
+
+  result = service.execute(88201, { req: [
+    { scene_tid: 1, assistant_tid: 20013200 },
+    { scene_tid: 2, assistant_tid: 0 }
+  ] });
+  assert.equal(result.schema, 'pb_house_assistant_use_rsp');
+  assert.deepEqual(houseData(env.store).use.map(row => ({
+    scene: Number(row.scene_tid), assistant: Number(row.use_assistant ?? 0), bg: Number(row.use_bg ?? 0)
+  })), [
+    { scene: 1, assistant: 10063200, bg: 20013200 },
+    { scene: 2, assistant: 0, bg: 0 }
+  ]);
+});
+
+test('migrates the legacy single-scene house-assistant payload', t => {
+  const legacy = codec.pack('pb_house_assistant_info_old', {
+    res: [
+      { tid: '10043200', num: '1' },
+      { tid: '20013200', num: '1' }
+    ],
+    use_bg: 20013200,
+    use_assistant: 10043200
+  });
+  const env = setup(t, { rawModule: legacy }), service = env.service();
+  const repair = service.ensureLoginState();
+  assert.deepEqual(repair.defaults, []);
+  assert.deepEqual(houseData(env.store).use, [
+    { scene_tid: '1', use_bg: '20013200', use_assistant: '10043200' }
+  ]);
+  assert.deepEqual(codec.unpack(SCHEMA, service.loginPayload()).use, [
+    { scene_tid: '1', use_bg: '20013200', use_assistant: '10043200' }
+  ]);
 });
 
 test('88203 starts configured trials and 88204 restores last_use after the final cancellation', t => {

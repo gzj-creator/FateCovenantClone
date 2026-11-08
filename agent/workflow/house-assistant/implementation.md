@@ -59,3 +59,34 @@ node --test --test-concurrency=1 test/house-assistant.test.mjs test/house-assist
 ## 验收边界
 
 本轮完成服务端与 TCP 协议验证。未重启当前实时服务，未修改或安装 APK，也未操作模拟器；因此真实客户端弹出错误是否消失仍需在部署新服务后由用户登录确认。
+## 2026-11-08 零值场景兼容与旧结构迁移
+
+### 复现与证据
+
+- 实时库 `role 100001` 的模块 148 当前内容为：`res = [10023200, 10043200, 10063200, 20013200]`，`use = [{ scene_tid: 1, use_assistant: 10063200 }]`；主场景没有 `use_bg`，Support(2) 也没有记录。
+- 客户端 `HouseAssistantMgr.ReqChangeSceneBg` 会遍历 `ASSISTANT_PLACE`，为每个场景构造 `{ scene_tid, assistant_tid = GetCurSceneTid(place) }`。没有选择背景的场景会传入 0；88201 的 `assistant_tid` 字段复用为背景物品 tid，protobuf 的 uint64 零值在服务端读到的就是 0 或缺省。
+- 旧 `parseRequests()` 对每个 `assistant_tid` 调用 `positiveInteger()`，一条零值会让整个请求返回 `GameError(1, 'House-assistant item is invalid')`，网关记录 `house_assistant_rejected`，客户端显示“橘屋参数出错”。
+- 客户端旧版 `pb_house_assistant_info_old` 把 `use_bg`、`use_assistant` 直接放在字段 2、3（varint）。用新的 `pb_house_assistant_info` 解码旧 payload 时，protobufjs 会静默跳过这两个字段，导致旧存档的选择丢失。
+
+### 修复
+
+- `88201`、`88202` 现在允许 `assistant_tid = 0`：0 表示该场景没有选择，跳过物品类型与拥有校验，并在 `use_bg` / `use_assistant` 中写入 `'0'`。非零物品仍执行原有场景、类型和拥有校验。
+- `readState()` 先尝试旧结构；仅当旧结构确实带有选择（`use_bg > 0` 或 `use_assistant > 0`）时，将其转换为 `scene_tid = 1` 的新结构，否则按新结构解码。正常的新 payload 不会被旧结构误判。
+- 返回的 `use` 行保留零值场景，客户端原有的默认展示补齐逻辑不受影响。
+
+### 验证
+
+定向测试：
+
+```powershell
+cd personal-server
+node --test --test-concurrency=1 test/house-assistant.test.mjs test/house-assistant-gateway.test.mjs
+```
+
+结果：9 项全部通过。新增用例覆盖实时库同形态的单场景选择 payload、88201/88202 的零值场景请求，以及旧 `pb_house_assistant_info_old` payload 的迁移；真实 TCP 网关用例确认两个类型均未进入 `LOCAL_NOT_IMPLEMENTED`。
+
+全量测试：在 worktree 的 `personal-server` 执行 `npm test`，共 2752 项，pass 2750、fail 0、skipped 2，日志 `analysis/test-runs/house-assistant-zero-20261108/full.log`。
+
+### 验收边界
+
+本轮只修改服务端代码和测试，未重启实时服务、未修改实时数据库、未操作模拟器或 APK。部署新服务后，进入橘屋或切换场景不再应因零值选择返回“橘屋参数出错”；仍需用户重启服务后实测确认。
