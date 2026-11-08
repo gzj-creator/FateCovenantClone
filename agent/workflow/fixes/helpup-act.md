@@ -1,27 +1,26 @@
 # G4 超凡冒险者活动打不开
 
-状态：读取命令已实现；**入口映射与活动数据未确认，视觉验收未完成**。
+状态：2026-11-08 已在服务端定位并修复；组件与临时 TCP 回归通过，真实客户端验收尚未执行。
 
-> 2026-11-07 更新：Play-HELPUPACT 已补齐 116001–116004 的服务端闭环（ActFrame act 1096001 + `HelpUpActTable` 配置、助力/任务/阶段/登录块），详见 `agent/workflow/gameplay-completion/PLAY-HELPUPACT/implementation.md`。本文保留的历史缺口仅剩"客户端真实请求与界面验收未取证"。
+## 结论
 
-## 证据
+- `ModuleTable` 92144 对应 `活动_助力升超凡`，实际活动为 `ActFrameTable.Act 1096001`（type 1096）。
+- all-open 登录已经通过 module 92 下发活动条目和 `pb_help_up_act_login_data`，但 module 183 的参考快照没有 `1096001` 的 `pb_act_server_data` / `pb_act_role_login` 阶段行。
+- 客户端 `Activity._Ctor(extra)` 从 `extra[1]`、`extra[2]` 读取 server/player 阶段；`Activity:IsValid()` 依赖这两份数据。缺行时 `HelpUpActMgr:OpenMainForm()` 在 `ActMgr:IsValid()` 处返回 `ACTIVITY_NOT_OPEN`，不会发送 116001–116004。这解释了活动条目可见但点击后无网络请求。
 
-- `ModuleTable`：92144 = `活动_助力升超凡`（`e_dir=project/activity/help_up_act`，`parent=92`）。
-- 接口目录：`HelpUpActCmd` 116001 任务奖励、116002 阶段奖励、116003 助力、116004 获取助力次数；请求/响应结构完整（`help_up_act.net.proto.bin`）。
-- 客户端 `HelpUpActData` 是 `Activity.Class`：其 `_ParseDataImpl` 用 `Codec.DecodePB('pb_help_up_act_login_data', …)` 解析**活动自身的数据块**（`{act_data{act_id,daily/weekly task lists,stage list,last_update_time,last_rec_time},help_times}`），不是独立登录模块。
-- 运行事件日志中**没有** 116001-116004 的任何真实请求；当前 module 92 `act_list` 的 13 条活动里也没有 92144。因此不能仅凭中文名把用户入口等同于助力升超凡。
+## 修复
 
-## 根因判断
+- `personal-server/game/activity-calendar.mjs`：`normalizeActFrameLogin()` 在 all-open 模式下可接收当前 module 92 活动 ID；对 module 183 中缺少的 server/player 行补齐 type、当前可用的起止时间、stage 50、非暂停状态和 history。
+- `personal-server/game/gateway.mjs`：活动登录同步完成后把 module 92 的活动 ID 传给 module 183 归一化。
+- 修复只补缺失行，重复登录保持幂等，既有 module 183 活动数据继续保留。
 
-用户所称“超凡冒险者活动”最可能的候选是 92144 助力升超凡，但缺少真实请求证据；若入口失败发生在活动列表/数据解析阶段，则根因是 module 92 中没有该活动的数据块，而不是命令未实现。
+## 验证
 
-## 实现（`personal-server/game/activity-read-service.mjs`）
+- 定向测试：`activity-calendar`、`help-up-act`、`relic-divine-gateway`、`gameplay-gateway` 共 28 项，pass 28 / fail 0。
+- 真实临时 TCP：登录同时断言 module 92 的 `1096001` 数据块、module 183 的 player/server 阶段行，以及 116001–116004 路由。
+- 完整 `personal-server` 测试：2751 项，pass 2749 / fail 0 / skipped 2；跳过项是缺少已验收客户端 bundle 的既有条件测试。
 
-- 116004 `req_help_up_get_times` → `pb_help_up_get_times_rsp{times: 0}`（本地无助力次数）。
-- 116001/116002/116003 返回业务错误 5，明确“未实现”，不写领取位、不发奖励、不伪造助力次数。
+## 状态边界
 
-## 未实现与下一步
-
-- 未构造 92144 的活动开启状态与 `pb_help_up_act_data`（缺 `ActivityTable` 时间段/条件与真实数据块证据）。
-- 未实现任务/阶段/助力奖励与全服助力次数。
-- 下一步需要用户点击该入口并回传时间点，用 `events.jsonl` 的 `unsupported_command`/`payloadHead` 确定真实 type，再决定是补活动数据还是补命令。
+- 本次未重启实时服务、未读取或修改运行数据库、未操作模拟器/ADB/APK。
+- 部署后需要客户端重新登录，让新的 module 183 登录数据生效；真实入口点击和界面打开仍需客户端验收。

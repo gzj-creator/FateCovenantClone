@@ -934,7 +934,9 @@ export function createLocalGame({
         entry: storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null,
         activities: loginActivities,
         normalize: calendar.mode === 'all-open'
-          ? ({ player, server }) => calendar.normalizeActFrameLogin(player, server, loginSeconds)
+          ? ({ player, server }) => calendar.normalizeActFrameLogin(player, server, loginSeconds, {
+            activityIds: [...afterActivityIds]
+          })
           : null
       });
       actFrameNormalization = merged.normalization;

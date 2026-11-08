@@ -271,6 +271,48 @@ test('all-open mode makes every ActFrame server row active for the current login
   assert.deepEqual(server, untouched);
 });
 
+test('all-open materializes module-92 activities missing from act-frame login rows', () => {
+  const at = SERVER_OPENED_AT + 14 * DAY;
+  const actId = 1096001;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    mode: 'all-open',
+    currentFishingActivityId: 1074011,
+    now: () => at * 1000
+  });
+  const player = { data_list: [] };
+  const server = { act_stage_list: [] };
+
+  const result = calendar.normalizeActFrameLogin(player, server, at, { activityIds: [actId, actId] });
+  assert.ok(result.activityIds.includes(actId));
+  const serverRow = server.act_stage_list.find(row => Number(row.act_id) === actId);
+  const playerRow = player.data_list.find(row => Number(row.act_stage?.act_id) === actId);
+  assert.ok(serverRow);
+  assert.ok(playerRow);
+  assert.equal(Number(serverRow.type), Number(tables.ActFrameAct.get(actId).type));
+  assert.ok(Number(serverRow.start_time) <= at);
+  assert.ok(Number(serverRow.end_time) > at);
+  assert.equal(serverRow.cur_stage_id, 50);
+  assert.equal(serverRow.is_pause, false);
+  assert.deepEqual(serverRow.stage_time_list, [{
+    stage_id: 50,
+    start_time: serverRow.start_time,
+    end_time: serverRow.end_time
+  }]);
+  assert.equal(playerRow.act_stage.cur_stage_id, 50);
+  assert.ok(Number(playerRow.act_stage.start_time) <= at);
+  assert.ok(Number(playerRow.act_stage.end_time) > at);
+  assert.deepEqual(playerRow.act_stage.history_time, [{
+    stage_id: 50,
+    enter_time: playerRow.act_stage.start_time
+  }]);
+
+  calendar.normalizeActFrameLogin(player, server, at + 60, { activityIds: [actId] });
+  assert.equal(server.act_stage_list.filter(row => Number(row.act_id) === actId).length, 1);
+  assert.equal(player.data_list.filter(row => Number(row.act_stage?.act_id) === actId).length, 1);
+});
+
 test('all-open materializes the white-ribbon draw paid and exchange shops from their parent batch', () => {
   const at = SERVER_OPENED_AT + 14 * DAY;
   const calendar = createActivityCalendar({
