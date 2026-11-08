@@ -4,7 +4,7 @@
 
 ## 交付物
 
-- personal-server/game/minigame-act-service.mjs：96 条命令的统一服务，权威状态写入 SQLite（minigame_act_state / minigame_act_claims / minigame_act_records），资源消耗与发放走 game/resources.mjs。
+- personal-server/game/minigame-act-service.mjs：本块 96 条命令中 85 个 type 的统一服务（其余 11 条沿用既有 FISHINGACT 7 条与 HELPUPACT 4 条实现），权威状态写入 SQLite（minigame_act_state / minigame_act_claims / minigame_act_records），资源消耗与发放走 game/resources.mjs。
 - personal-server/config/minigame-act-tables.mjs：15 张活动表的加载器，逐表校验行数，缺失或行数变化直接报错。
 - personal-server/assets/tables/*.data.lua.json.gz：PuzzleAct、TileSwap、MushroomMonster、BeatGopherAct、TowerAct、SpiritCourtyard、TripleMatch、MatchingGameAct、MonopolyAct、DreamTrialAct、DiamondVeinAct、SourcePoint、Homeland、HomelandAct、BakingAct 共 15 个表资产。
 - personal-server/game/gateway.mjs：新增 minigameAct 实例、模块 92 登录同步（塔/打地鼠/三消/对对碰/大富翁/梦境/钻石矿脉/烘焙）与命令派发分支。
