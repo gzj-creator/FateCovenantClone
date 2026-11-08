@@ -1,6 +1,7 @@
 import { decodeEtf } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
+import { wrapEtfBinary } from './etf-binary.mjs';
 
 // G1 (#151-#162): exploration and home activities.
 //
@@ -58,6 +59,50 @@ function awardsOf(row, field) {
     .filter(([tid, count]) => Number.isSafeInteger(tid) && tid > 0 && Number.isSafeInteger(count) && count > 0);
 }
 
+// Several shipped family tables store a parallel `item`/`count` pair instead
+// of the usual [tid, count] rows. Fold both layouts into one award list.
+function pairsOf(items, counts) {
+  if (!Array.isArray(items) || !Array.isArray(counts)) return [];
+  return items.map((item, index) => [Number(item), Number(counts[index])])
+    .filter(([tid, count]) => Number.isSafeInteger(tid) && tid > 0 && Number.isSafeInteger(count) && count > 0);
+}
+
+// Login/battle blobs are opaque to the client, but keeping the claim keys as
+// UTF-8 text preserves IDs above one byte and remains stable across reopen.
+function idBytes(value) {
+  return Buffer.from(listOf(value).map(item => String(item)).join(','), 'utf8');
+}
+
+function binaryOf(value) {
+  if (Buffer.isBuffer(value)) return value;
+  if (value == null) return Buffer.alloc(0);
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (typeof value === 'string') return Buffer.from(value, 'base64');
+  return Buffer.from(value);
+}
+
+function argAt(request, index, keys = []) {
+  if (Array.isArray(request)) return plainOf(request[index]);
+  if (request && typeof request === 'object') {
+    for (const key of keys) if (request[key] !== undefined) return plainOf(request[key]);
+    const values = Object.values(request);
+    return plainOf(values[index]);
+  }
+  return index === 0 ? plainOf(request) : undefined;
+}
+
+function numberArg(request, index, keys = [], fallback = 0) {
+  const value = Number(argAt(request, index, keys));
+  return Number.isSafeInteger(value) ? value : fallback;
+}
+
+function pairListOf(value) {
+  return listOf(value).map(entry => {
+    const pair = plainOf(entry);
+    return Array.isArray(pair) ? [Number(pair[0]), Number(pair[1])] : null;
+  }).filter(pair => pair && Number.isSafeInteger(pair[0]) && pair[0] > 0 && Number.isSafeInteger(pair[1]));
+}
+
 function requireAwards(list, message) {
   if (!list.length) throw new GameError(5, message);
   return list;
@@ -68,13 +113,24 @@ function resOf(granted) {
 }
 
 export function createExplorationActService({
-  store, codec, tables, explorationTables,
+  store, codec, tables, explorationTables, calendar,
   now = Date.now, random = Math.random, logger = () => {}
 }) {
   if (!store?.transaction) throw new Error('Exploration activity store is unavailable');
   if (!explorationTables) throw new Error('Exploration activity tables are unavailable');
   const log = event => { try { logger(event); } catch {} };
   const at = () => seconds(now());
+
+  // Runtime activity ids (1080001, 63001, 84001...) point at a table version
+  // through ActFrameTable or ActivityTable. The row families below are keyed by
+  // that version, while state rows stay keyed by the runtime id so two open
+  // generations never share progress.
+  function configKeyOf(actTid) {
+    const direct = Number(actTid);
+    const row = tables?.ActFrameAct?.get?.(direct) ?? tables?.Activity?.get?.(direct);
+    const version = Number(row?.version);
+    return Number.isSafeInteger(version) && version > 0 ? version : direct;
+  }
 
   store.inspect(db => {
     db.exec(`CREATE TABLE IF NOT EXISTS exploration_act_state (
@@ -205,7 +261,7 @@ export function createExplorationActService({
   }
 
   function radishConfig(actTid) {
-    const row = radishActivities.get(Number(actTid));
+    const row = radishActivities.get(configKeyOf(actTid));
     if (!row) throw new GameError(5, 'Radish farm activity is not configured');
     return row;
   }
@@ -295,9 +351,9 @@ export function createExplorationActService({
   }
 
   function radishVisit(request) {
-    const actTid = idOf(request.act_tid ?? 1, 'Invalid radish farm activity id');
+    const actTid = idOf(request?.act_tid ?? 1, 'Invalid radish farm activity id');
     radishConfig(actTid);
-    const target = Number(plainOf(request.role_id) ?? 0);
+    const target = Number(plainOf(request?.role_id) ?? 0);
     const roleId = store.state().roleId;
     if (Number.isSafeInteger(target) && target > 0 && target !== Number(roleId)) {
       throw new GameError(5, 'Only the local role farm is available');
@@ -393,7 +449,7 @@ export function createExplorationActService({
       value: { tid },
       data: codec.pack('pb_mini_game_handle_rsp', {
         res_change: { changes: [], is_overflow: false },
-        custom_bin: Buffer.from(request.custom_bin ?? Buffer.alloc(0))
+        custom_bin: binaryOf(request.custom_bin)
       })
     };
   }
@@ -454,7 +510,8 @@ export function createExplorationActService({
   const puzzleSocial = puzzleTables.SocialConf ?? new Map();
 
   function puzzleVersion(actTid) {
-    const row = [...puzzleVersions.values()].find(entry => Number(entry.tid) === Number(actTid));
+    const version = configKeyOf(actTid);
+    const row = [...puzzleVersions.values()].find(entry => Number(entry.tid) === version);
     if (!row) throw new GameError(5, 'Home puzzle activity version is not configured');
     return row;
   }
@@ -690,14 +747,1890 @@ export function createExplorationActService({
     });
   }
 
-  // ---- PLAY-GRANDTOURER: 87801 daily token, remaining rules not recovered
+  // ---- PLAY-HOMELANDACT: 11501-11505 --------------------------------
+  const homelandTables = explorationTables.homeland ?? {};
+  const homelandVersions = homelandTables.Version ?? new Map();
+  const homelandTasks = homelandTables.Task ?? new Map();
+  const homelandFurniture = homelandTables.Furniture ?? new Map();
+  const homelandConst = [...(homelandTables.Const ?? new Map()).values()][0] ?? null;
+
+  function homelandVersion(actTid) {
+    const row = homelandVersions.get(configKeyOf(actTid));
+    if (!row) throw new GameError(5, 'Homeland activity is not configured');
+    return row;
+  }
+
+  function homelandState() {
+    return {
+      selected_hero_tid: 0, finish_tasks: [], decorate_list: [], is_cleaned: false,
+      clear_count: 0, hero_select_count: 0, task_score: 0
+    };
+  }
+
+  function homelandActInfo(state, actTid) {
+    return {
+      act_id: actTid,
+      selected_hero_tid: Number(state.selected_hero_tid ?? 0),
+      task_score: Number(state.task_score ?? 0),
+      finish_tasks: (state.finish_tasks ?? []).map(row => ({
+        task_tid: Number(row.task_tid), finish_time: Number(row.finish_time ?? 0)
+      })),
+      settled_stages: [], stage_history: [],
+      decorate_list: (state.decorate_list ?? []).map(row => ({
+        furniture_tid: Number(row.furniture_tid), x: Number(row.x), y: Number(row.y),
+        furniture_type: Number(row.furniture_type ?? 0)
+      })),
+      is_cleaned: Boolean(state.is_cleaned),
+      favour_intimacy: Number(state.favour_intimacy ?? 0),
+      hero_records: [], happiness_detail: []
+    };
+  }
+
+  function homelandProgress(state, task) {
+    switch (Number(task.task_type)) {
+      case 1803: return state.selected_hero_tid ? 1 : 0;
+      case 2407: return Number(state.hero_select_count ?? 0);
+      case 1805: return (state.decorate_list ?? []).length;
+      case 6901: return Number(state.clear_count ?? 0);
+      case 1: return Number(state.task_score ?? 0);
+      default: return null;
+    }
+  }
+
+  function homelandSelectHero(request) {
+    const actTid = idOf(request.activity_id, 'Invalid homeland activity id');
+    const heroTid = idOf(request.hero_tid, 'Invalid homeland hero id');
+    const version = homelandVersion(actTid);
+    const heroes = listOf(version.rank_up_hero).map(Number);
+    if (!heroes.includes(heroTid)) throw new GameError(1, 'Homeland hero is not available in this version');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'homeland_act', actTid, homelandState());
+      if (Number(state.selected_hero_tid) && Number(state.selected_hero_tid) !== heroTid) {
+        throw new GameError(311, 'Homeland hero is already selected');
+      }
+      if (!Number(state.selected_hero_tid)) {
+        state.selected_hero_tid = heroTid;
+        state.hero_select_count = Number(state.hero_select_count ?? 0) + 1;
+        state.task_score = Number(state.task_score ?? 0) + Number(version.change_happiness ?? 0);
+      }
+      writeState(db, roleId, 'homeland_act', actTid, state);
+      log({ event: 'homeland_select_hero', actTid, heroTid });
+      return { value: { actTid }, data: codec.pack('pb_homeland_act_select_hero_rsp', { act_info: homelandActInfo(state, actTid) }) };
+    });
+  }
+
+  function homelandTaskAward(request) {
+    const actTid = idOf(request.activity_id, 'Invalid homeland activity id');
+    const taskTid = idOf(request.task_tid, 'Invalid homeland task id');
+    const version = homelandVersion(actTid);
+    const task = homelandTasks.get(taskTid);
+    if (!task || Number(task.version) !== Number(version.tid)) throw new GameError(5, 'Homeland task is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'homeland_act', actTid, homelandState());
+      if (hasClaim(db, roleId, 'homeland_task', actTid + ':' + taskTid)) throw new GameError(310, 'Homeland task already claimed');
+      const progress = homelandProgress(state, task);
+      if (progress == null) throw new GameError(5, 'Homeland task progress rule is not recovered');
+      if (progress < Number(task.task_count ?? 0)) throw new GameError(311, 'Homeland task is not finished');
+      const granted = grantResources(model, requireAwards(awardsOf(task, 'award'), 'Homeland task award is not configured'),
+        tables, { codec, now: () => at() });
+      markClaim(db, roleId, 'homeland_task', actTid + ':' + taskTid);
+      state.finish_tasks = [...(state.finish_tasks ?? []), { task_tid: taskTid, finish_time: at() }];
+      writeState(db, roleId, 'homeland_act', actTid, state);
+      log({ event: 'homeland_task_award', actTid, taskTid });
+      return { value: { actTid }, data: codec.pack('pb_homeland_act_task_award_rsp', {
+        act_info: homelandActInfo(state, actTid), res: resOf(granted)
+      }) };
+    });
+  }
+
+  function homelandDecorate(request) {
+    const actTid = idOf(request.activity_id, 'Invalid homeland activity id');
+    const version = homelandVersion(actTid);
+    const furnitureRow = homelandFurniture.get(Number(version.tid));
+    if (!furnitureRow) throw new GameError(5, 'Homeland furniture is not configured');
+    const allowed = new Set(listOf(furnitureRow.furniture).map(Number));
+    const cells = listOf(homelandConst?.cell_num).map(Number);
+    const width = Number(cells[0] ?? 0), height = Number(cells[1] ?? 0);
+    const layers = Number(homelandConst?.layer_count ?? 0);
+    const incoming = listOf(request.furniture_list).map(row => ({
+      furniture_tid: Number(plainOf(row?.furniture_tid)),
+      x: Number(plainOf(row?.x)), y: Number(plainOf(row?.y)),
+      furniture_type: Number(plainOf(row?.furniture_type ?? 0))
+    }));
+    if (!incoming.length) throw new GameError(1, 'Homeland decoration list is empty');
+    const positions = new Set();
+    for (const row of incoming) {
+      if (!allowed.has(row.furniture_tid)) throw new GameError(5, 'Homeland furniture is not available in this version');
+      if (!Number.isSafeInteger(row.x) || !Number.isSafeInteger(row.y) || row.x < 0 || row.y < 0
+        || (width > 0 && row.x >= width) || (height > 0 && row.y >= height)) {
+        throw new GameError(1, 'Homeland decoration position is out of range');
+      }
+      if (Number.isSafeInteger(row.furniture_type) && layers > 0 && (row.furniture_type < 0 || row.furniture_type >= layers)) {
+        throw new GameError(1, 'Homeland decoration layer is out of range');
+      }
+      const key = row.x + ',' + row.y + ',' + row.furniture_type;
+      if (positions.has(key)) throw new GameError(1, 'Homeland decoration positions overlap');
+      positions.add(key);
+    }
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'homeland_act', actTid, homelandState());
+      state.decorate_list = incoming;
+      state.is_cleaned = false;
+      state.task_score = Number(state.task_score ?? 0) + incoming.length * Number(version.change_happiness ?? 0);
+      writeState(db, roleId, 'homeland_act', actTid, state);
+      log({ event: 'homeland_decorate', actTid, count: incoming.length });
+      return { value: { actTid }, data: codec.pack('pb_homeland_act_decorate_rsp', { act_info: homelandActInfo(state, actTid) }) };
+    });
+  }
+
+  function homelandClearRoom(request) {
+    const actTid = idOf(request.activity_id, 'Invalid homeland activity id');
+    const version = homelandVersion(actTid);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'homeland_act', actTid, homelandState());
+      if (state.is_cleaned) throw new GameError(311, 'Homeland room is already cleared');
+      state.decorate_list = [];
+      state.is_cleaned = true;
+      state.clear_count = Number(state.clear_count ?? 0) + 1;
+      state.task_score = Number(state.task_score ?? 0) + Number(version.change_happiness ?? 0);
+      writeState(db, roleId, 'homeland_act', actTid, state);
+      log({ event: 'homeland_clear_room', actTid });
+      return { value: { actTid }, data: codec.pack('pb_homeland_act_clear_room_rsp', { act_info: homelandActInfo(state, actTid) }) };
+    });
+  }
+
+  // ---- PLAY-PETACTIVITY: 90501-90507 --------------------------------
+  const petTables = explorationTables.petActivity ?? {};
+  const petChallenges = petTables.Challenge ?? new Map();
+  const petChallengeTasks = petTables.ChallengeTask ?? new Map();
+  const petCures = petTables.Cure ?? new Map();
+  const petWounds = petTables.CureWound ?? new Map();
+  const petFavors = petTables.CureFavor ?? new Map();
+  const petExchanges = petTables.Exchange ?? new Map();
+  const petVitality = tables.DailyTaskVitality ?? new Map();
+
+  function petConfig(actTid) {
+    const row = tables.PetActivity?.get(Number(actTid));
+    if (!row) throw new GameError(5, 'Pet activity is not configured');
+    return row;
+  }
+
+  function petState() {
+    return {
+      selected_pet_tid: 0, fight_acc_dmg: 0, fight_max_dmg: 0, fight_mission_tid: 0,
+      wounds: {}, favor: 0, favor_claims: [], challenge_claims: [], daily_time: 0,
+      daily_claims: [], rev_daily_award_num: 0, vitality_award_state: []
+    };
+  }
+
+  function petPlayer(state, actTid) {
+    return {
+      act_tid: actTid,
+      fight_record: {
+        mission_tid: Number(state.fight_mission_tid ?? 0),
+        last_fight_time_sec: Number(state.last_fight_time_sec ?? 0),
+        acc_dmg: String(state.fight_acc_dmg ?? 0), max_dmg: String(state.fight_max_dmg ?? 0),
+        award_state: idBytes(state.challenge_claims ?? [])
+      },
+      wounds: Object.values(state.wounds ?? {}).map(wound => ({
+        wound_tid: Number(wound.wound_tid), last_cure_time_sec: Number(wound.last_cure_time_sec ?? 0),
+        cure_times: Number(wound.cure_times ?? 0), today_finish: Boolean(wound.today_finish)
+      })),
+      selected_pet_tid: Number(state.selected_pet_tid ?? 0),
+      likability_award_state: idBytes(state.favor_claims ?? []),
+      rev_daily_award_num: Number(state.rev_daily_award_num ?? 0),
+      daily_time: Number(state.daily_time ?? 0),
+      vitality_award_state: idBytes(state.daily_claims ?? [])
+    };
+  }
+
+  function petFlush(state, actTid, granted) {
+    return {
+      act_player_list: { act_data_list: [petPlayer(state, actTid)] },
+      res: granted ? resOf(granted) : { changes: [], is_overflow: false }
+    };
+  }
+
+  function petSelect(request) {
+    const actTid = idOf(request.act_tid, 'Invalid pet activity id');
+    const petTid = idOf(request.pet_tid, 'Invalid pet activity pet id');
+    const config = petConfig(actTid);
+    if (!listOf(config.pet).map(Number).includes(petTid)) throw new GameError(1, 'Pet is not available in this activity');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'pet_activity', actTid, petState());
+      state.selected_pet_tid = petTid;
+      writeState(db, roleId, 'pet_activity', actTid, state);
+      log({ event: 'pet_select', actTid, petTid });
+      return { value: { actTid }, data: codec.pack('pb_pet_act_player', petPlayer(state, actTid)) };
+    });
+  }
+
+  function petClaimFight(request) {
+    const actTid = idOf(request.act_tid, 'Invalid pet activity id');
+    const challengeTid = idOf(request.challenge_tid, 'Invalid pet challenge id');
+    const taskIds = (request.task_id ?? []).map(Number).filter(Number.isSafeInteger);
+    if (!taskIds.length) throw new GameError(1, 'Pet challenge task list is empty');
+    const config = petConfig(actTid);
+    const challenge = petChallenges.get(challengeTid);
+    if (!challenge || Number(challenge.version) !== Number(config.challenge)) throw new GameError(5, 'Pet challenge is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'pet_activity', actTid, petState());
+      const grants = [];
+      for (const taskId of taskIds) {
+        const task = petChallengeTasks.get(taskId);
+        if (!task || Number(task.level_tid) !== challengeTid) throw new GameError(5, 'Pet challenge task is not configured');
+        const key = actTid + ':' + challengeTid + ':' + taskId;
+        if (state.challenge_claims.includes(key) || hasClaim(db, roleId, 'pet_challenge', key)) throw new GameError(310, 'Pet challenge task already claimed');
+        let progress;
+        if (Number(task.task_type) === 1803) progress = state.selected_pet_tid ? 1 : 0;
+        else if (Number(task.task_type) === 13101) progress = Number(state.fight_acc_dmg ?? 0);
+        else throw new GameError(5, 'Pet challenge task rule is not recovered');
+        if (progress < Number(task.task_count ?? 0)) throw new GameError(311, 'Pet challenge task is not finished');
+        grants.push(...requireAwards(awardsOf(task, 'award'), 'Pet challenge task award is not configured'));
+        state.challenge_claims.push(key);
+        markClaim(db, roleId, 'pet_challenge', key);
+      }
+      const granted = grantResources(model, grants, tables, { codec, now: () => at() });
+      state.rev_daily_award_num = Number(state.rev_daily_award_num ?? 0) + taskIds.length;
+      writeState(db, roleId, 'pet_activity', actTid, state);
+      log({ event: 'pet_claim_fight', actTid, challengeTid, tasks: taskIds });
+      return { value: { actTid }, data: codec.pack('pb_pet_act_flush', petFlush(state, actTid, granted)) };
+    });
+  }
+
+  function petClaimFavor(request) {
+    const actTid = idOf(request.act_tid, 'Invalid pet activity id');
+    const favorTid = idOf(request.favor_tid, 'Invalid pet favor tier id');
+    const config = petConfig(actTid);
+    const favor = petFavors.get(favorTid);
+    if (!favor || Number(favor.version) !== Number(config.cure)) throw new GameError(5, 'Pet favor tier is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'pet_activity', actTid, petState());
+      const key = actTid + ':' + favorTid;
+      if (state.favor_claims.includes(key) || hasClaim(db, roleId, 'pet_favor', key)) throw new GameError(310, 'Pet favor tier already claimed');
+      if (Number(state.favor ?? 0) < Number(favor.favor_num ?? 0)) throw new GameError(311, 'Pet favor has not reached this tier');
+      const granted = grantResources(model, requireAwards(awardsOf(favor, 'award'), 'Pet favor award is not configured'),
+        tables, { codec, now: () => at() });
+      state.favor_claims.push(key);
+      markClaim(db, roleId, 'pet_favor', key);
+      writeState(db, roleId, 'pet_activity', actTid, state);
+      log({ event: 'pet_claim_favor', actTid, favorTid });
+      return { value: { actTid }, data: codec.pack('pb_pet_act_flush', petFlush(state, actTid, granted)) };
+    });
+  }
+
+  function petCure(request, finish) {
+    const actTid = idOf(request.act_tid, 'Invalid pet activity id');
+    const woundTid = idOf(request.wound_tid, 'Invalid pet wound id');
+    const config = petConfig(actTid);
+    const woundConfig = petWounds.get(woundTid);
+    if (!woundConfig || Number(woundConfig.version) !== Number(config.cure)) throw new GameError(5, 'Pet wound is not configured');
+    const cureConfig = petCures.get(Number(config.cure));
+    if (!cureConfig) throw new GameError(5, 'Pet cure activity is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'pet_activity', actTid, petState());
+      const wound = state.wounds[String(woundTid)] ?? {
+        wound_tid: woundTid, last_cure_time_sec: 0, cure_times: 0, today_finish: false
+      };
+      const time = at();
+      if (!finish) {
+        if (wound.last_cure_time_sec && time < Number(wound.last_cure_time_sec) + Number(woundConfig.effect_time ?? 0)) {
+          throw new GameError(311, 'Pet wound is still healing');
+        }
+        state.wounds[String(woundTid)] = wound;
+        const costs = pairListOf(woundConfig.cure_item);
+        if (!costs.length) throw new GameError(5, 'Pet wound cure cost is not configured');
+        consumeResources(model, costs, 301, { codec, now: () => time });
+        wound.last_cure_time_sec = time;
+        wound.today_finish = false;
+        writeState(db, roleId, 'pet_activity', actTid, state);
+        log({ event: 'pet_cure_start', actTid, woundTid });
+        return { value: { actTid }, data: codec.pack('pb_res_pet_act_cure', {
+          wound: { wound_tid: woundTid, last_cure_time_sec: time, cure_times: Number(wound.cure_times ?? 0), today_finish: false },
+          res: { changes: [], is_overflow: false }
+        }) };
+      }
+      if (!wound.last_cure_time_sec) throw new GameError(311, 'Pet wound has not started healing');
+      if (time < Number(wound.last_cure_time_sec) + Number(woundConfig.effect_time ?? 0)) throw new GameError(311, 'Pet wound is still healing');
+      if (wound.today_finish) throw new GameError(310, 'Pet wound already finished today');
+      const granted = grantResources(model, requireAwards(awardsOf(cureConfig, 'finish_award'), 'Pet cure award is not configured'),
+        tables, { codec, now: () => time });
+      wound.today_finish = true;
+      wound.cure_times = Number(wound.cure_times ?? 0) + 1;
+      state.favor = Number(state.favor ?? 0) + Number(cureConfig.favor_num ?? 0);
+      state.wounds[String(woundTid)] = wound;
+      writeState(db, roleId, 'pet_activity', actTid, state);
+      log({ event: 'pet_cure_finish', actTid, woundTid, favor: state.favor });
+      return { value: { actTid }, data: codec.pack('pb_res_pet_act_cure', {
+        wound: { wound_tid: woundTid, last_cure_time_sec: Number(wound.last_cure_time_sec), cure_times: wound.cure_times, today_finish: true },
+        res: resOf(granted)
+      }) };
+    });
+  }
+
+  function petDailyVitality(request) {
+    const actTid = idOf(argAt(request, 0, ['act_tid', 'actId']), 'Invalid pet activity id');
+    const config = petConfig(actTid);
+    const rows = [...petVitality.values()].sort((left, right) => Number(left.open_day) - Number(right.open_day));
+    if (!rows.length) throw new GameError(5, 'Pet daily vitality table is not configured');
+    const day = dayOf(at());
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'pet_activity', actTid, petState());
+      if (Number(state.daily_time ?? 0) === day) throw new GameError(310, 'Pet daily vitality award already claimed today');
+      const row = rows[rows.length - 1];
+      const items = listOf(row.award_1).map(Number);
+      const counts = listOf(row.award_1_n).map(Number);
+      const grants = pairsOf(items, counts);
+      const granted = grantResources(model, requireAwards(grants, 'Pet daily vitality award is not configured'),
+        tables, { codec, now: () => at() });
+      state.daily_time = day;
+      state.daily_claims.push(String(day));
+      state.vitality_award_state = [...(state.vitality_award_state ?? []), day];
+      writeState(db, roleId, 'pet_activity', actTid, state);
+      log({ event: 'pet_daily_vitality', actTid, day, cure: config.cure });
+      return { value: { actTid }, data: codec.pack('pb_rev_pet_vitality_award_ret', petFlush(state, actTid, granted)) };
+    });
+  }
+
+  function petExchange(request) {
+    const petTid = idOf(argAt(request, 0, ['pet_tid', 'tid']), 'Invalid pet exchange id');
+    const exchange = [...petExchanges.values()][0];
+    if (!exchange) throw new GameError(5, 'Pet exchange is not configured');
+    if (!listOf(exchange.exchange_pet).map(Number).includes(petTid)) throw new GameError(1, 'Pet is not available in the exchange');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'pet_activity', 1, petState());
+      const key = 'exchange:' + petTid;
+      if (state.favor_claims.includes(key)) throw new GameError(310, 'Pet exchange already claimed');
+      consumeResources(model, [[Number(exchange.exchange_item), 1]], 301, { codec, now: () => at() });
+      const granted = grantResources(model, [[petTid, 1]], tables, { codec, now: () => at() });
+      state.favor_claims.push(key);
+      writeState(db, roleId, 'pet_activity', 1, state);
+      log({ event: 'pet_exchange', petTid });
+      return { value: { petTid }, data: codec.pack('pb_pet_exchange_ret', { res: resOf(granted) }) };
+    });
+  }
+
+  // ---- PLAY-THEMETREASURE: 76501-76512 ------------------------------
+  const themeTables = explorationTables.themeTreasure ?? {};
+  const themeHunts = themeTables.Hunt ?? new Map();
+  const themeConsts = themeTables.Const ?? new Map();
+  const themeBoxes = themeTables.MapBox ?? new Map();
+  const themeCustomBoxes = themeTables.CustomBox ?? new Map();
+  const themeExchanges = themeTables.Exchange ?? new Map();
+  const themeTasks = themeTables.ChallengeTask ?? new Map();
+  const themeBoxIndex = new Map();
+  for (const row of themeBoxes.values()) {
+    const key = Number(row.version) + ':' + Number(row.step_number);
+    if (!themeBoxIndex.has(key)) themeBoxIndex.set(key, []);
+    themeBoxIndex.get(key).push(Number(row.tid));
+  }
+
+  function themeConfig(actTid) {
+    const version = configKeyOf(actTid);
+    const hunt = themeHunts.get(version);
+    const config = themeConsts.get(version);
+    if (!hunt || !config) throw new GameError(5, 'Theme treasure activity is not configured');
+    return { hunt, config };
+  }
+
+  function themeState() {
+    return { step: 0, free_times: 0, day: 0, boxes: [], claims: [], exchange: {}, version_award: [], dice_seq: [] };
+  }
+
+  function themeExchangeView(state, config) {
+    return {
+      exchange: Object.entries(state.exchange ?? {}).map(([tid, times]) => ({ tid: Number(tid), times: Number(times) })),
+      cost: Number(config.res_exchange ?? 0)
+    };
+  }
+
+  function themeHunt(request) {
+    const actTid = idOf(request.activity_id, 'Invalid theme treasure activity id');
+    const version = configKeyOf(actTid);
+    const requested = Math.max(0, Number(request.step ?? 0));
+    const { hunt, config } = themeConfig(actTid);
+    if (!Number.isSafeInteger(requested) || requested > Number(config.multiple_open ?? 50)) throw new GameError(1, 'Theme treasure step count is invalid');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'theme_treasure', actTid, themeState());
+      const steps = requested || 1;
+      const maxStep = Number(config.max_step ?? 100);
+      const loopStep = Number(config.loop_step ?? maxStep);
+      const customBox = themeCustomBoxes.get(Number(hunt.custom_info));
+      const costId = Number(hunt.cost_id), costCount = Number(hunt.cost_count ?? 1);
+      if (!Number.isSafeInteger(costId) || costId <= 0 || !Number.isSafeInteger(costCount) || costCount <= 0) {
+        throw new GameError(5, 'Theme treasure hunt cost is not configured');
+      }
+      const time = at();
+      consumeResources(model, [[costId, costCount * steps]], 301, { codec, now: () => time });
+      const awards = [];
+      const stepRows = [];
+      let step = Number(state.step ?? 0);
+      for (let index = 0; index < steps; index++) {
+        step++;
+        if (step > maxStep) step = ((step - 1) % Math.max(1, loopStep)) + 1;
+        const boxIds = themeBoxIndex.get(version + ':' + step) ?? [];
+        let boxAward = [];
+        if (boxIds.length) {
+          if (customBox) boxAward = awardsOf(customBox, 'award');
+          if (boxAward.length) awards.push(...boxAward);
+          state.boxes.push({ step, tid: boxIds[0] });
+        }
+        stepRows.push({ step, box_award: boxAward, dice: [] });
+      }
+      const granted = grantResources(model, awards, tables, { codec, now: () => time });
+      state.step = step;
+      state.free_times = 0;
+      writeState(db, roleId, 'theme_treasure', actTid, state);
+      log({ event: 'theme_treasure_hunt', actTid, steps, step });
+      return { value: { actTid, step }, data: codec.pack('pb_theme_treasure_hunt_rsp', {
+        steps: stepRows.map(row => ({
+          res_changes: resOf(granted),
+          step: row.step,
+          box_award: row.box_award.map(([tid, count]) => ({ tid: String(tid), num: String(count) })),
+          dice: row.dice
+        })),
+        free_times: 0,
+        new_award_list: awards.map(([tid, count]) => ({ tid: String(tid), num: String(count) }))
+      }) };
+    });
+  }
+
+  function themeChallenge(request, turn = false) {
+    const actTid = idOf(request.activity_id ?? argAt(request, 0, ['activity_id']), 'Invalid theme treasure activity id');
+    const version = configKeyOf(actTid);
+    const { config } = themeConfig(actTid);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'theme_treasure', actTid, themeState());
+      const progress = turn
+        ? Math.floor(Number(state.step ?? 0) / Math.max(1, Number(config.personal_challenge_turn ?? 1)))
+        : Number(state.step ?? 0);
+      let taskTid = Number(request.tid ?? request.task_tid ?? 0);
+      if (!taskTid) {
+        const candidates = [...themeTasks.values()]
+          .filter(row => Number(row.version) === version && Number(row.type ?? 0) === 0
+            && Number(row.target ?? 0) <= progress)
+          .sort((left, right) => Number(left.target) - Number(right.target));
+        taskTid = Number(candidates.find(row => !state.claims.includes((turn ? 'turn:' : 'challenge:') + row.tid))?.tid ?? 0);
+      }
+      if (!taskTid) throw new GameError(311, 'Theme treasure has no claimable challenge');
+      const task = themeTasks.get(taskTid);
+      if (!task || Number(task.version) !== version) throw new GameError(5, 'Theme treasure challenge task is not configured');
+      if (Number(task.type ?? 0) !== 0) throw new GameError(5, 'Theme treasure server challenge is not available locally');
+      const key = (turn ? 'turn:' : 'challenge:') + taskTid;
+      if (state.claims.includes(key) || hasClaim(db, roleId, turn ? 'theme_treasure_turn' : 'theme_treasure_challenge', actTid + ':' + taskTid)) {
+        throw new GameError(310, 'Theme treasure challenge already claimed');
+      }
+      if (progress < Number(task.target ?? 0)) throw new GameError(311, 'Theme treasure challenge is not finished');
+      const grants = pairsOf(task.award, task.count);
+      const granted = grantResources(model, requireAwards(grants, 'Theme treasure challenge award is not configured'),
+        tables, { codec, now: () => at() });
+      state.claims.push(key);
+      markClaim(db, roleId, turn ? 'theme_treasure_turn' : 'theme_treasure_challenge', actTid + ':' + taskTid);
+      writeState(db, roleId, 'theme_treasure', actTid, state);
+      log({ event: turn ? 'theme_treasure_turn' : 'theme_treasure_challenge', actTid, taskTid });
+      // ThemeTreasureMgr / ThemeTreasureTaskMgr consume every task award with
+      // the shared pb_res_to_client body; the older *_challenge_rsp wrappers
+      // are not referenced by the shipped Lua.
+      return { value: { actTid }, data: codec.pack('pb_res_to_client', resOf(granted)) };
+    });
+  }
+
+  function themeExchange(request) {
+    const actTid = idOf(request.activity_id, 'Invalid theme treasure activity id');
+    const tid = idOf(request.tid, 'Invalid theme treasure exchange id');
+    const count = Math.max(1, Number(request.exchange_num ?? 1));
+    const { config } = themeConfig(actTid);
+    const row = themeExchanges.get(tid);
+    if (!row) throw new GameError(5, 'Theme treasure exchange item is not configured');
+    if (!Number.isSafeInteger(count) || count > 999) throw new GameError(1, 'Theme treasure exchange count is invalid');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'theme_treasure', actTid, themeState());
+      const used = Number(state.exchange[String(tid)] ?? 0);
+      const limit = Number(row.limit_count ?? 0);
+      if (limit > 0 && used + count > limit) throw new GameError(311, 'Theme treasure exchange limit reached');
+      const price = Number(row.price ?? 0), currency = Number(row.currency ?? 0);
+      if (!Number.isSafeInteger(price) || price < 0 || !Number.isSafeInteger(currency) || currency <= 0) {
+        throw new GameError(5, 'Theme treasure exchange cost is not configured');
+      }
+      const time = at();
+      consumeResources(model, [[currency, price * count]], 301, { codec, now: () => time });
+      const granted = grantResources(model, [[Number(row.item), Number(row.count) * count]], tables, { codec, now: () => time });
+      state.exchange[String(tid)] = used + count;
+      writeState(db, roleId, 'theme_treasure', actTid, state);
+      log({ event: 'theme_treasure_exchange', actTid, tid, count });
+      return { value: { actTid }, data: codec.pack('pb_theme_treasure_exchange_rsp', {
+        res_changes: resOf(granted), exchange: themeExchangeView(state, config)
+      }) };
+    });
+  }
+
+  function themeServerQuery(request, responseType = 'pb_theme_treasure_server_rsp') {
+    const actTid = idOf(argAt(request, 0, ['activity_id']), 'Invalid theme treasure activity id');
+    themeConfig(actTid);
+    const roleId = store.state().roleId;
+    const state = store.inspect(db => readState(db, roleId, 'theme_treasure', actTid, themeState()));
+    return { value: { actTid }, data: codec.pack(responseType, { server_step: Number(state.step ?? 0), stats: [] }) };
+  }
+
+  function themeEtfRequest(request) {
+    const values = listOf(request).map(value => Number(plainOf(value)));
+    return values.length >= 2
+      ? { activity_id: values[0], tid: values[1] }
+      : { activity_id: 1, tid: values[0] };
+  }
+
+  // 76509 theme_treasure_server_award_req is an ETF task id (the client sends
+  // [activity_id, task_id] whenever it already knows the running generation).
+  // Server challenges are the type=1 ChallengeTask rows; in this single-role
+  // server the aggregate server step equals the local hunt step.
+  function themeServerAward(request) {
+    const values = listOf(request).map(value => Number(plainOf(value)));
+    let actTid = values.length >= 2 ? Number(values[0]) : 0;
+    const taskTid = Number(values.length >= 2 ? values[1] : values[0]);
+    const task = themeTasks.get(taskTid);
+    if (!task || Number(task.type ?? 0) !== 1) throw new GameError(5, 'Theme treasure server challenge is not configured');
+    if (!actTid) {
+      const version = Number(task.version);
+      actTid = Number([...(tables?.Activity ?? new Map()).entries()]
+        .find(([, row]) => Number(row.func) === 63 && Number(row.version) === version)?.[0] ?? 0);
+    }
+    if (!actTid) throw new GameError(5, 'Theme treasure activity is not configured');
+    const version = configKeyOf(actTid);
+    if (Number(task.version) !== version) throw new GameError(5, 'Theme treasure server challenge is not configured');
+    themeConfig(actTid);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'theme_treasure', actTid, themeState());
+      const key = 'server:' + task.tid;
+      if (state.claims.includes(key) || hasClaim(db, roleId, 'theme_treasure_server', actTid + ':' + task.tid)) {
+        throw new GameError(310, 'Theme treasure server challenge already claimed');
+      }
+      if (Number(state.step ?? 0) < Number(task.target ?? 0)) throw new GameError(311, 'Theme treasure server challenge is not finished');
+      const granted = grantResources(model, requireAwards(pairsOf(task.award, task.count), 'Theme treasure server challenge award is not configured'),
+        tables, { codec, now: () => at() });
+      state.claims.push(key);
+      markClaim(db, roleId, 'theme_treasure_server', actTid + ':' + task.tid);
+      writeState(db, roleId, 'theme_treasure', actTid, state);
+      log({ event: 'theme_treasure_server_award', actTid, taskTid: task.tid });
+      return { value: { actTid, taskTid: task.tid }, data: codec.pack('pb_res_to_client', resOf(granted)) };
+    });
+  }
+
+  // ---- PLAY-TREASUREHUNT: 85601-85610 --------------------------------
+  const huntTables = explorationTables.treasureHunt ?? {};
+  const huntConst = [...(huntTables.Const ?? new Map()).values()][0] ?? null;
+  const huntAwardConst = [...(huntTables.AwardConst ?? new Map()).values()][0] ?? null;
+  const huntShovelLevels = huntTables.ShovelLevel ?? new Map();
+  const huntGridLevels = huntTables.MapGridLevel ?? new Map();
+  const huntMaxFloors = huntTables.MapMaxFloor ?? new Map();
+  const huntHighAwards = huntTables.HighAward ?? new Map();
+
+  function huntState() {
+    return {
+      shovels: [], next_index: 1, map: null, refresh_time: 0, box_award_num: 0,
+      normal_award_num: 0, all_award_list: [], box_award_list: [], last_award_coin_time: 0,
+      award_num_list: [], collection_flush_num: 0, daily: { day: 0, count: 0 }, claims: []
+    };
+  }
+
+  // The shipped table describes 18 columns with a maximum floor and an 8-row
+  // style ladder. The exact server board generator is not in the bundle, so
+  // this local reconstruction is deterministic and uses only those rows.
+  function huntMap(state) {
+    if (state.map) return state.map;
+    const floorRows = [...huntMaxFloors.values()].sort((a, b) => Number(a.tid) - Number(b.tid));
+    const styleRows = [...huntGridLevels.values()].sort((a, b) => Number(a.tid) - Number(b.tid));
+    const awards = [...huntHighAwards.values()].sort((a, b) => Number(a.tid) - Number(b.tid));
+    const gridList = [];
+    for (let index = 1; index <= floorRows.length; index++) {
+      const floor = Number(floorRows[index - 1].grid_max_floor ?? 1);
+      const style = styleRows[(index - 1) % Math.max(1, styleRows.length)];
+      const award = awards[(index - 1) % Math.max(1, awards.length)];
+      gridList.push({
+        level: Number(style?.grid_level ?? 1), res_tid: String(award?.res ?? 0),
+        index, res_num: Number(award?.num ?? 0), hp: Math.max(1, floor)
+      });
+    }
+    state.map = { grid_list: gridList, refresh_time: Number(state.refresh_time ?? 0), collection_flush_num: 0, mission_index: 0 };
+    return state.map;
+  }
+
+  function huntRole(state) {
+    return {
+      res: { shovel_list: (state.shovels ?? []).map(shovel => ({
+        tid: Number(shovel.tid), level: Number(shovel.tid), index: Number(shovel.index), hp: Number(shovel.hp)
+      })) },
+      award_num_list: state.award_num_list ?? [], box_award_num: Number(state.box_award_num ?? 0),
+      last_award_coin_time: Number(state.last_award_coin_time ?? 0),
+      all_award_list: (state.all_award_list ?? []).map(([tid, count]) => ({ tid: String(tid), num: String(count) })),
+      daily_flush_time: Number(state.refresh_time ?? 0),
+      daily_deleted_time: Number(state.daily?.count ?? 0),
+      normal_award_num: Number(state.normal_award_num ?? 0),
+      box_award_list: (state.box_award_list ?? []).map(([tid, count]) => ({ tid: String(tid), num: String(count) }))
+    };
+  }
+
+  function huntRet(state, granted, awards = []) {
+    return {
+      res: granted ? resOf(granted) : { changes: [], is_overflow: false },
+      map: huntMap(state),
+      award_list: awards.map(row => ({
+        index: Number(row.index),
+        award_list: row.award_list.map(([tid, count]) => ({ tid: String(tid), num: String(count) }))
+      })),
+      new_box_num_list: [], box_award_list: [],
+      all_award_list: (state.all_award_list ?? []).map(([tid, count]) => ({ tid: String(tid), num: String(count) })),
+      new_box_award_list: []
+    };
+  }
+
+  function huntShovel(state, index) {
+    const list = (state.shovels ?? []).slice().sort((a, b) => Number(a.hp) - Number(b.hp) || Number(a.tid) - Number(b.tid));
+    if (index != null) {
+      const exact = list.find(shovel => Number(shovel.index) === Number(index));
+      if (exact) return exact;
+    }
+    return list[0] ?? null;
+  }
+
+  function huntAddShovel(state, level, index = null) {
+    const resolved = index == null ? Number(state.next_index ?? 1) : Number(index);
+    state.next_index = Math.max(Number(state.next_index ?? 1), resolved + 1);
+    state.shovels.push({ tid: Number(level), index: resolved, hp: Number(level) });
+  }
+
+  function treasureHunt(request) {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'treasure_hunt', 1, huntState());
+      const map = huntMap(state);
+      const gridIndex = numberArg(request, 0, ['index', 'grid_index']);
+      const shovelIndex = numberArg(request, 1, ['src_index', 'shovel_index']) || null;
+      const grid = map.grid_list.find(row => Number(row.index) === Number(gridIndex || map.grid_list.find(entry => Number(entry.hp) > 0)?.index));
+      if (!grid) throw new GameError(5, 'Treasure hunt grid is not configured');
+      if (Number(grid.hp) <= 0) throw new GameError(311, 'Treasure hunt grid is already cleared');
+      const shovel = huntShovel(state, shovelIndex);
+      if (!shovel) throw new GameError(301, 'Treasure hunt shovel is not available');
+      const awards = [];
+      grid.hp = Math.max(0, Number(grid.hp) - Number(shovel.tid));
+      shovel.hp = Math.max(0, Number(shovel.hp) - 1);
+      if (Number(shovel.hp) <= 0) state.shovels = state.shovels.filter(entry => entry !== shovel);
+      let granted = null;
+      if (Number(grid.hp) <= 0) {
+        const pair = [[Number(grid.res_tid), Number(grid.res_num)]];
+        if (pair[0][0] > 0 && pair[0][1] > 0) {
+          granted = grantResources(model, pair, tables, { codec, now: () => at() });
+          state.all_award_list.push(...pair);
+          state.normal_award_num = Number(state.normal_award_num ?? 0) + 1;
+          awards.push({ index: grid.index, award_list: pair });
+        }
+      }
+      writeState(db, roleId, 'treasure_hunt', 1, state);
+      log({ event: 'treasure_hunt_dig', grid: grid.index, shovel: shovel.index, cleared: Number(grid.hp) <= 0 });
+      return { value: { grid: grid.index }, data: codec.pack('pb_treasure_hunt_ret_all', huntRet(state, granted, awards)) };
+    });
+  }
+
+  function treasureHuntBuy(request) {
+    const count = Math.max(1, Math.min(10, numberArg(request, 0, ['count', 'num'], 1)));
+    const level = huntShovelLevels.get(1);
+    if (!huntConst || !huntAwardConst || !level) throw new GameError(5, 'Treasure hunt shovel config is not configured');
+    const payItem = Number(huntConst.pay_item);
+    const price = Number(level.price ?? 0);
+    if (!Number.isSafeInteger(payItem) || payItem <= 0 || !Number.isSafeInteger(price) || price <= 0) {
+      throw new GameError(5, 'Treasure hunt shovel price is not configured');
+    }
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'treasure_hunt', 1, huntState());
+      consumeResources(model, [[payItem, price * count]], 301, { codec, now: () => at() });
+      for (let index = 0; index < count; index++) huntAddShovel(state, 1);
+      writeState(db, roleId, 'treasure_hunt', 1, state);
+      log({ event: 'treasure_hunt_buy_shovel', count });
+      return { value: { count }, data: codec.pack('pb_treasure_hunt_ret_all', huntRet(state, null)) };
+    });
+  }
+
+  function treasureHuntCompose(request, automatic = false) {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'treasure_hunt', 1, huntState());
+      const groups = [];
+      const compose = (srcIndex, tarIndex) => {
+        const src = state.shovels.find(entry => Number(entry.index) === Number(srcIndex));
+        const tar = state.shovels.find(entry => Number(entry.index) === Number(tarIndex));
+        if (!src || !tar || src === tar) throw new GameError(311, 'Treasure hunt shovels are not available');
+        if (Number(src.tid) !== Number(tar.tid)) throw new GameError(311, 'Treasure hunt shovels have different levels');
+        const level = Number(src.tid) + 1;
+        if (!huntShovelLevels.has(level)) throw new GameError(311, 'Treasure hunt shovel is already at max level');
+        state.shovels = state.shovels.filter(entry => entry !== src && entry !== tar);
+        huntAddShovel(state, level, tar.index);
+        groups.push([Number(srcIndex), Number(tarIndex), Number(tar.index)]);
+      };
+      if (automatic) {
+        for (;;) {
+          const byLevel = new Map();
+          let found = null;
+          for (const shovel of [...state.shovels].sort((a, b) => Number(a.index) - Number(b.index))) {
+            const list = byLevel.get(Number(shovel.tid)) ?? [];
+            list.push(shovel);
+            byLevel.set(Number(shovel.tid), list);
+            if (list.length === 2) { found = list; break; }
+          }
+          if (!found) break;
+          compose(found[0].index, found[1].index);
+        }
+      } else {
+        compose(request.src_index, request.tar_index);
+      }
+      writeState(db, roleId, 'treasure_hunt', 1, state);
+      log({ event: 'treasure_hunt_compose', groups: groups.length });
+      return { value: { groups: groups.length }, data: codec.pack('pb_treasure_hunt_compose_ret', {
+        hunt_res: huntRole(state).res,
+        all_compose_list: groups.map(indexes => ({ all_compose_indexes: indexes }))
+      }) };
+    });
+  }
+
+  function treasureHuntExchange(request) {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'treasure_hunt', 1, huntState());
+      const src = state.shovels.find(entry => Number(entry.index) === Number(request.src_index));
+      const tar = state.shovels.find(entry => Number(entry.index) === Number(request.tar_index));
+      if (!src || !tar || src === tar) throw new GameError(311, 'Treasure hunt shovels are not available');
+      const srcHp = src.hp;
+      src.hp = tar.hp; tar.hp = srcHp;
+      writeState(db, roleId, 'treasure_hunt', 1, state);
+      log({ event: 'treasure_hunt_exchange', src: src.index, tar: tar.index });
+      return { value: {}, data: codec.pack('pb_treasure_hunt_ret_all', huntRet(state, null)) };
+    });
+  }
+
+  function treasureHuntDelete(request) {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'treasure_hunt', 1, huntState());
+      const day = dayOf(at());
+      state.daily ??= { day: 0, count: 0 };
+      if (Number(state.daily.day) !== day) state.daily = { day, count: 0 };
+      const max = Number(huntConst?.daily_max_delete_time ?? 0);
+      if (max > 0 && Number(state.daily.count) >= max) throw new GameError(311, 'Treasure hunt daily delete limit reached');
+      const index = numberArg(request, 0, ['index']);
+      const shovel = index ? state.shovels.find(entry => Number(entry.index) === index) : state.shovels[0];
+      if (!shovel) throw new GameError(311, 'Treasure hunt shovel is not available');
+      state.shovels = state.shovels.filter(entry => entry !== shovel);
+      state.daily.count = Number(state.daily.count ?? 0) + 1;
+      writeState(db, roleId, 'treasure_hunt', 1, state);
+      log({ event: 'treasure_hunt_delete', count: state.daily.count });
+      return { value: {}, data: codec.pack('pb_treasure_hunt_delete_ret', {
+        res: { changes: [], is_overflow: false }, deleted_index_list: [Number(shovel.index)],
+        daily_time: Number(state.daily.day), delete_num: Number(state.daily.count)
+      }) };
+    });
+  }
+
+  function treasureHuntRefresh() {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'treasure_hunt', 1, huntState());
+      state.map = null;
+      state.refresh_time = at();
+      huntMap(state);
+      writeState(db, roleId, 'treasure_hunt', 1, state);
+      log({ event: 'treasure_hunt_refresh' });
+      return { value: {}, data: codec.pack('pb_treasure_hunt_refresh_ret', {
+        role_data: huntRole(state), res: { changes: [], is_overflow: false }
+      }) };
+    });
+  }
+
+  // ---- PLAY-DREAM: 88001-88010 --------------------------------------
+  const dreamTables = explorationTables.dream ?? {};
+  const dreamEvents = dreamTables.Event ?? new Map();
+  const dreamEventAwards = dreamTables.EventAward ?? new Map();
+  const dreamEventAwardsNew = dreamTables.EventAwardNew ?? new Map();
+  const dreamWeekAwards = dreamTables.WeekAward ?? new Map();
+  const dreamWeekAwardsNew = dreamTables.WeekAwardNew ?? new Map();
+  const dreamMonthAwards = dreamTables.MonthAward ?? new Map();
+  const dreamMonthAwardsNew = dreamTables.MonthAwardNew ?? new Map();
+  const dreamFixAwards = dreamTables.FixAward ?? new Map();
+  const dreamFixAwardsNew = dreamTables.FixAwardNew ?? new Map();
+  const dreamAwardSplit = [...(dreamTables.AwardSplit ?? new Map()).values()][0] ?? null;
+  const dreamCollectAwards = dreamTables.CollectAward ?? new Map();
+  const dreamCollect = dreamTables.Collect ?? new Map();
+  const dreamGroups = dreamTables.Group ?? new Map();
+  const dreamGroupSeq = dreamTables.GroupSeq ?? new Map();
+  const dreamConst = [...(dreamTables.Const ?? new Map()).values()][0] ?? null;
+
+  function dreamState() {
+    return {
+      start_stamp: at(), week_finish_event: 0, month_finish_event: 0, got_day_award_stamp: 0,
+      group: 1, group_index: 0, group_events: [], collect: [], got_week: [], got_month: [],
+      got_collect: [], got_single_collect: [], day_refresh: { day: 0, count: 0 },
+      finish_event_history: [], tasks: [], buffs: [], week: 1, period: 1
+    };
+  }
+
+  // DreamTableUtil.IsNewAward switches the whole reward family once the server
+  // has been open for the configured split and has entered a later week.
+  function dreamIsNewAward(state) {
+    if (!dreamAwardSplit) return false;
+    const openedAt = Number(store.serverOpenedAt ?? calendar?.serverOpenedAt ?? 0);
+    const splitTime = Number(dreamAwardSplit.server_open_time ?? 0);
+    if (!openedAt || splitTime > openedAt) return false;
+    const openDay = Math.floor((at() - openedAt) / DAY_SECONDS) + 1;
+    if (openDay < Number(dreamAwardSplit.server_open_day ?? 0)) return false;
+    const weekStart = Number(state.start_stamp ?? 0) + (Math.max(1, Number(state.week ?? 1)) - 1) * 7 * DAY_SECONDS;
+    if (weekStart < splitTime) return false;
+    const gapDay = dayOf(weekStart) - dayOf(splitTime);
+    return gapDay + 1 <= Number(dreamAwardSplit.server_open_day ?? 0);
+  }
+
+  function dreamFixAwardRow(state) {
+    const source = dreamIsNewAward(state) ? dreamFixAwardsNew : dreamFixAwards;
+    const row = source.get(1) ?? [...source.values()][0];
+    if (!row) throw new GameError(5, 'Dream day award is not configured');
+    return row;
+  }
+
+  function dreamGroupOrder() {
+    const sequence = listOf([...dreamGroupSeq.values()][0]?.group).map(Number);
+    return sequence.length ? sequence : [...dreamGroups.keys()].map(Number).sort((a, b) => a - b);
+  }
+
+  function dreamEventRow(type) {
+    return dreamEvents.get(Number(type)) ?? null;
+  }
+
+  function dreamEventPayload(type) {
+    switch (Number(type)) {
+      case 1: case 2: case 3: return codec.pack('pb_dream_event_fight', { enemies: [], refresh_times: 0 });
+      case 5: return codec.pack('pb_dream_event_buff', { buffs: [] });
+      case 7: return codec.pack('pb_dream_event_award', { num: 1, boxes: [] });
+      default: return Buffer.alloc(0);
+    }
+  }
+
+  function dreamGroupEvents(state) {
+    const order = dreamGroupOrder();
+    const groupTid = order[(Number(state.group ?? 1) - 1) % Math.max(1, order.length)];
+    const row = dreamGroups.get(groupTid);
+    if (!row) return [];
+    return listOf(row.event).map((type, index) => ({
+      type: Number(type), data: dreamEventPayload(type), index
+    }));
+  }
+
+  function dreamRole(state) {
+    return {
+      start_stamp: Number(state.start_stamp ?? 0),
+      week_finish_event: Number(state.week_finish_event ?? 0),
+      month_finish_event: Number(state.month_finish_event ?? 0),
+      tasks: state.tasks ?? [], buffs: state.buffs ?? [],
+      got_day_award_stamp: Number(state.got_day_award_stamp ?? 0),
+      group: Number(state.group ?? 1), group_events: dreamGroupEvents(state),
+      collect: Buffer.alloc(0), got_week_event_award: idBytes(state.got_week ?? []),
+      got_month_event_award: idBytes(state.got_month ?? []),
+      got_collect_award: idBytes(state.got_collect ?? []),
+      story: { choices: [] }, week: Number(state.week ?? 1), fight_index: [], period: Number(state.period ?? 1),
+      last_task_uid: 0, finish_event_history: (state.finish_event_history ?? []).map(Number),
+      got_single_collect_award: idBytes(state.got_single_collect ?? []),
+      day_refresh_event_times: { count: Number(state.day_refresh?.count ?? 0), flush_time: Number(state.day_refresh?.day ?? 0) },
+      data_version: 1
+    };
+  }
+
+  function dreamFightResponse(state, granted) {
+    return {
+      week_finish_event: Number(state.week_finish_event ?? 0),
+      month_finish_event: Number(state.month_finish_event ?? 0),
+      tasks: state.tasks ?? [], buffs: [], group: Number(state.group ?? 1),
+      group_events: dreamGroupEvents(state),
+      res_change: granted ? resOf(granted) : { changes: [], is_overflow: false },
+      collect: Buffer.alloc(0), story: { choices: [] }
+    };
+  }
+
+  function dreamAwardResponse(state, granted) {
+    return codec.pack('pb_dream_award_rsp', {
+      res_change: resOf(granted),
+      got_day_award_stamp: Number(state.got_day_award_stamp ?? 0),
+      got_week_event_award: idBytes(state.got_week ?? []),
+      got_month_event_award: idBytes(state.got_month ?? []),
+      got_collect_award: idBytes(state.got_collect ?? []),
+      tasks: state.tasks ?? [],
+      group_events: dreamGroupEvents(state),
+      got_single_collect_award: idBytes(state.got_single_collect ?? [])
+    });
+  }
+
+  function dreamFinishEvent(request) {
+    let event;
+    try { event = codec.unpack('pb_dream_event', binaryOf(request?.param)); }
+    catch { throw new GameError(1, 'Invalid dream event payload'); }
+    const type = Number(event?.type ?? 0);
+    if (!dreamEventRow(type)) throw new GameError(5, 'Dream event type is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'dream', 1, dreamState());
+      const awardRow = (dreamIsNewAward(state) ? dreamEventAwardsNew : dreamEventAwards).get(type);
+      const grants = awardsOf(awardRow, 'award');
+      const granted = grantResources(model, grants, tables, { codec, now: () => at() });
+      state.week_finish_event = Number(state.week_finish_event ?? 0) + 1;
+      state.month_finish_event = Number(state.month_finish_event ?? 0) + 1;
+      state.finish_event_history.push(type);
+      state.group_index = Number(state.group_index ?? 0) + 1;
+      const groupSize = dreamGroupEvents(state).length;
+      if (groupSize > 0 && state.group_index >= groupSize) {
+        state.group = Number(state.group ?? 1) + 1;
+        state.group_index = 0;
+      }
+      writeState(db, roleId, 'dream', 1, state);
+      log({ event: 'dream_finish_event', type, week: state.week_finish_event, month: state.month_finish_event });
+      return { value: { type }, data: codec.pack('pb_dream_fight_event_rsp', dreamFightResponse(state, granted)) };
+    });
+  }
+
+  function dreamDayAward() {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'dream', 1, dreamState());
+      const lastStamp = Number(state.got_day_award_stamp ?? 0);
+      if (lastStamp > 0 && dayOf(lastStamp) === dayOf(at())) {
+        throw new GameError(310, 'Dream day award already claimed');
+      }
+      const row = dreamFixAwardRow(state);
+      const granted = grantResources(model, requireAwards(awardsOf(row, 'award'), 'Dream day award is not configured'),
+        tables, { codec, now: () => at() });
+      state.got_day_award_stamp = at();
+      writeState(db, roleId, 'dream', 1, state);
+      log({ event: 'dream_day_award', stamp: state.got_day_award_stamp });
+      return { value: { stamp: state.got_day_award_stamp }, data: dreamAwardResponse(state, granted) };
+    });
+  }
+
+  function dreamWeekAward(request) {
+    const index = Math.max(1, numberArg(request, 0, ['index', 'tid'], 1));
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'dream', 1, dreamState());
+      const row = (dreamIsNewAward(state) ? dreamWeekAwardsNew : dreamWeekAwards).get(index);
+      if (!row) throw new GameError(5, 'Dream week award is not configured');
+      if (state.got_week.includes(index) || hasClaim(db, roleId, 'dream_week', '1:' + index)) throw new GameError(310, 'Dream week award already claimed');
+      if (Number(state.week_finish_event ?? 0) < Number(row.count ?? 0)) throw new GameError(311, 'Dream week progress is not enough');
+      const granted = grantResources(model, requireAwards(awardsOf(row, 'award'), 'Dream week award is not configured'),
+        tables, { codec, now: () => at() });
+      state.got_week.push(index);
+      markClaim(db, roleId, 'dream_week', '1:' + index);
+      writeState(db, roleId, 'dream', 1, state);
+      log({ event: 'dream_week_award', index });
+      return { value: { index }, data: codec.pack('pb_dream_award_rsp', {
+        res_change: resOf(granted), got_week_event_award: idBytes(state.got_week),
+        got_month_event_award: idBytes(state.got_month ?? []),
+        got_collect_award: idBytes(state.got_collect ?? []),
+        tasks: state.tasks ?? [], group_events: dreamGroupEvents(state),
+        got_single_collect_award: idBytes(state.got_single_collect ?? [])
+      }) };
+    });
+  }
+
+  function dreamMonthAward(request) {
+    const index = Math.max(1, numberArg(request, 0, ['index', 'tid'], 1));
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'dream', 1, dreamState());
+      const row = (dreamIsNewAward(state) ? dreamMonthAwardsNew : dreamMonthAwards).get(index);
+      if (!row) throw new GameError(5, 'Dream month award is not configured');
+      if (state.got_month.includes(index) || hasClaim(db, roleId, 'dream_month', '1:' + index)) throw new GameError(310, 'Dream month award already claimed');
+      if (Number(state.month_finish_event ?? 0) < Number(row.count ?? 0)) throw new GameError(311, 'Dream month progress is not enough');
+      const granted = grantResources(model, requireAwards(awardsOf(row, 'award'), 'Dream month award is not configured'),
+        tables, { codec, now: () => at() });
+      state.got_month.push(index);
+      markClaim(db, roleId, 'dream_month', '1:' + index);
+      writeState(db, roleId, 'dream', 1, state);
+      log({ event: 'dream_month_award', index });
+      return { value: { index }, data: codec.pack('pb_dream_award_rsp', {
+        res_change: resOf(granted), got_week_event_award: idBytes(state.got_week ?? []),
+        got_month_event_award: idBytes(state.got_month),
+        got_collect_award: idBytes(state.got_collect ?? []),
+        tasks: state.tasks ?? [], group_events: dreamGroupEvents(state),
+        got_single_collect_award: idBytes(state.got_single_collect ?? [])
+      }) };
+    });
+  }
+
+  function dreamCollectAward(request) {
+    const index = Math.max(1, numberArg(request, 0, ['index', 'tid'], 1));
+    const row = dreamCollectAwards.get(index);
+    if (!row) throw new GameError(5, 'Dream collect award is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'dream', 1, dreamState());
+      if (state.got_collect.includes(index) || hasClaim(db, roleId, 'dream_collect', '1:' + index)) throw new GameError(310, 'Dream collect award already claimed');
+      if (state.got_single_collect.length < Number(row.need ?? 0)) throw new GameError(311, 'Dream collect progress is not enough');
+      const granted = grantResources(model, requireAwards(awardsOf(row, 'award'), 'Dream collect award is not configured'),
+        tables, { codec, now: () => at() });
+      state.got_collect.push(index);
+      markClaim(db, roleId, 'dream_collect', '1:' + index);
+      writeState(db, roleId, 'dream', 1, state);
+      log({ event: 'dream_collect_award', index });
+      return { value: { index }, data: codec.pack('pb_dream_award_rsp', {
+        res_change: resOf(granted), got_week_event_award: idBytes(state.got_week ?? []),
+        got_month_event_award: idBytes(state.got_month ?? []),
+        got_collect_award: idBytes(state.got_collect),
+        tasks: state.tasks ?? [], group_events: dreamGroupEvents(state),
+        got_single_collect_award: idBytes(state.got_single_collect ?? [])
+      }) };
+    });
+  }
+
+  function dreamSingleCollect(request) {
+    const tid = Math.max(1, numberArg(request, 0, ['tid', 'index'], 1));
+    const row = dreamCollect.get(tid);
+    if (!row) throw new GameError(5, 'Dream collect record is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'dream', 1, dreamState());
+      if (state.got_single_collect.includes(tid) || hasClaim(db, roleId, 'dream_single_collect', '1:' + tid)) {
+        throw new GameError(310, 'Dream collect record already claimed');
+      }
+      const granted = grantResources(model, requireAwards(awardsOf(row, 'split_award'), 'Dream collect record award is not configured'),
+        tables, { codec, now: () => at() });
+      state.got_single_collect.push(tid);
+      markClaim(db, roleId, 'dream_single_collect', '1:' + tid);
+      writeState(db, roleId, 'dream', 1, state);
+      log({ event: 'dream_single_collect', tid });
+      return { value: { tid }, data: codec.pack('pb_dream_award_rsp', {
+        res_change: resOf(granted), got_week_event_award: idBytes(state.got_week ?? []),
+        got_month_event_award: idBytes(state.got_month ?? []),
+        got_collect_award: idBytes(state.got_collect ?? []),
+        tasks: state.tasks ?? [], group_events: dreamGroupEvents(state),
+        got_single_collect_award: idBytes(state.got_single_collect)
+      }) };
+    });
+  }
+
+  function dreamRefreshEvent() {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'dream', 1, dreamState());
+      state.day_refresh ??= { day: 0, count: 0 };
+      const day = dayOf(at());
+      if (Number(state.day_refresh.day) !== day) state.day_refresh = { day, count: 0 };
+      const tiers = listOf(dreamConst?.day_event_refresh_cost).map(pair => listOf(pair).map(Number));
+      const tier = tiers[Math.min(Number(state.day_refresh.count), Math.max(0, tiers.length - 1))] ?? [0, 0];
+      const count = Number(tier[1] ?? 0);
+      const item = Number(dreamConst?.event_refresh_cost_items ?? 0);
+      if (count > 0 && item > 0) consumeResources(model, [[item, count]], 301, { codec, now: () => at() });
+      state.day_refresh.count = Number(state.day_refresh.count ?? 0) + 1;
+      const events = dreamGroupEvents(state);
+      const event = events[Math.min(Number(state.group_index ?? 0), Math.max(0, events.length - 1))] ?? { type: 3, data: Buffer.alloc(0) };
+      writeState(db, roleId, 'dream', 1, state);
+      log({ event: 'dream_refresh_event', count: state.day_refresh.count });
+      return { value: {}, data: codec.pack('pb_dream_refresh_event_rsp', {
+        event: { type: Number(event.type), data: event.data },
+        res: { changes: [], is_overflow: false },
+        day_refresh_event_times: { count: state.day_refresh.count, flush_time: state.day_refresh.day }
+      }) };
+    });
+  }
+
+  function dreamNpcLineup() {
+    return { value: {}, data: codec.pack('pb_dream_npc_lineup_rsp', { npc_lineups: [] }) };
+  }
+
+  // ---- PLAY-CARNIVAL: 43003-43024 -----------------------------------
+  const carnivalTables = explorationTables.carnival ?? {};
+  const carnivalConst = [...(carnivalTables.Const ?? new Map()).values()][0] ?? null;
+  const carnivalBuilds = carnivalTables.MonopolyBuild ?? new Map();
+  const carnivalBuildLevels = carnivalTables.MonopolyBuildLevel ?? new Map();
+  const carnivalEvents = carnivalTables.MonopolyEvent ?? new Map();
+  const carnivalEventAwards = carnivalTables.MonopolyEventAward ?? new Map();
+  const carnivalPaths = carnivalTables.MonopolyPath ?? new Map();
+  const carnivalPathVersions = carnivalTables.MonopolyPathVersion ?? new Map();
+  const carnivalTechs = carnivalTables.MonopolyTech ?? new Map();
+  const carnivalAwardLibs = carnivalTables.AwardLib ?? new Map();
+  const carnivalAwards = carnivalTables.Award ?? new Map();
+  const carnivalLevels = carnivalTables.Level ?? new Map();
+
+  function carnivalState() {
+    return {
+      open_time: at(), dice: Number(carnivalConst?.init_dice_count ?? 10),
+      last_dice_flush: at(), daily_buy: 0, last_daily_flush: dayOf(at()),
+      total_throw: 0, cur_index: 0, events: {}, builds: [], next_build_id: 1,
+      techs: [], achievements: [], boxes_earned: 0, boxes_left: 0, use_items: [], version: 1
+    };
+  }
+
+  function carnivalPath(version = 1) {
+    return [...carnivalPaths.values()].filter(row => Number(row.belong_version) === Number(version))
+      .sort((left, right) => Number(right.cell_id) - Number(left.cell_id));
+  }
+
+  function carnivalEventList(state) {
+    const events = Object.values(state.events ?? {}).sort((left, right) => Number(left.index) - Number(right.index));
+    return events.map(event => ({
+      tid: Number(event.tid), index: Number(event.index), is_finish: Boolean(event.is_finish),
+      param: Number(event.param ?? 0), ext_data: { res_list: [] }
+    }));
+  }
+
+  function carnivalBuildList(state) {
+    return (state.builds ?? []).map(build => {
+      const config = carnivalBuilds.get(Number(build.tid));
+      const level = carnivalBuildLevels.get(Number(build.tid));
+      const output = Number(level?.output?.[Math.max(0, Number(build.level) - 1)] ?? 0);
+      return {
+        id: Number(build.id), tid: Number(build.tid), level: Number(build.level), output,
+        extra_award_args: [], output_acc: [], dispatch_hero: build.dispatch_hero ?? { heroes: [] },
+        extra_info: Buffer.alloc(0), _last_collect: Number(build.last_collect ?? at()),
+        _output_res: Number(config?.output_res ?? 0), _yield: Number(level?.yield ?? 100000)
+      };
+    });
+  }
+
+  function carnivalMonopoly(state) {
+    const path = carnivalPath(state.version);
+    return {
+      open_time: Number(state.open_time ?? 0), use_item_list: state.use_items ?? [],
+      last_dice_flush_time: Number(state.last_dice_flush ?? 0),
+      last_daily_flush_time: Number(state.last_daily_flush ?? 0),
+      daily_dice_buy_num: Number(state.daily_buy ?? 0), total_throw_dice_num: Number(state.total_throw ?? 0),
+      reset_time: Number(state.open_time ?? 0) + Number(carnivalConst?.act_duration ?? 0),
+      map_data: {
+        cur_index: Number(state.cur_index ?? 0), event_list: carnivalEventList(state),
+        is_custom: false, normal_events: path.map(row => Number(row.cell_id))
+      },
+      build_data: { builds: carnivalBuildList(state) },
+      achieve_data: { week_throw_dice_num: Number(state.total_throw ?? 0), achieve_rev_states: idBytes(state.achievements ?? []) },
+      tech_list: (state.techs ?? []).map(tech => ({ tid: Number(tech.tid), start_time: Number(tech.start_time ?? 0) })),
+      box_award_num: Number(state.boxes_earned ?? 0), left_box_num: Number(state.boxes_left ?? 0),
+      version: Number(state.version ?? 1)
+    };
+  }
+
+  function carnivalRefreshDice(state) {
+    const day = dayOf(at());
+    if (Number(state.last_daily_flush ?? 0) !== day) {
+      state.last_daily_flush = day;
+      state.daily_buy = 0;
+    }
+    const flush = Number(carnivalConst?.dice_flush_time ?? 86400);
+    if (!state.last_dice_flush || at() >= Number(state.last_dice_flush) + flush) {
+      state.dice = Math.max(Number(state.dice ?? 0), Number(carnivalConst?.init_dice_count ?? 10));
+      state.last_dice_flush = at();
+    }
+  }
+
+  function carnivalLatest() {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      carnivalRefreshDice(state);
+      writeState(db, roleId, 'carnival', 1, state);
+      return { value: {}, data: codec.pack('pb_mono_req_data_back', {
+        res: { changes: [], is_overflow: false }, monopoly: carnivalMonopoly(state)
+      }) };
+    });
+  }
+
+  function carnivalThrow(request) {
+    const count = Math.max(1, Math.min(10, numberArg(request, 0, ['count', 'dice_count'], 1)));
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      carnivalRefreshDice(state);
+      if (Number(state.dice ?? 0) < count) throw new GameError(301, 'Carnival dice is not enough');
+      const path = carnivalPath(state.version);
+      if (!path.length) throw new GameError(5, 'Carnival path is not configured');
+      const eventIds = [...carnivalEvents.keys()].map(Number).sort((a, b) => a - b);
+      let curIndex = Number(state.cur_index ?? 0);
+      state.events = {};
+      for (let index = 0; index < count; index++) {
+        const roll = 1 + Math.floor(Number(random()) * 6);
+        curIndex = ((curIndex + roll - 1) % path.length) + 1;
+        const eventTid = eventIds[(curIndex - 1) % eventIds.length];
+        state.events[String(curIndex)] = { tid: eventTid, index: curIndex, is_finish: false, param: roll };
+      }
+      state.cur_index = curIndex;
+      state.dice = Number(state.dice ?? 0) - count;
+      state.total_throw = Number(state.total_throw ?? 0) + count;
+      writeState(db, roleId, 'carnival', 1, state);
+      log({ event: 'carnival_throw_dice', count, curIndex });
+      return { value: { count }, data: codec.pack('pb_mono_throw_dice_back', {
+        res: { changes: [], is_overflow: false }, monopoly: carnivalMonopoly(state),
+        is_flush_map: false, dice_count: count, cur_index: curIndex,
+        build_data_before_magnet: { builds: [] }
+      }) };
+    });
+  }
+
+  function carnivalTouch(request) {
+    const index = numberArg(request, 0, ['index', 'event_index']);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      const event = state.events[String(index)];
+      if (!event) throw new GameError(311, 'Carnival event is not on the current cell');
+      writeState(db, roleId, 'carnival', 1, state);
+      return { value: {}, data: codec.pack('pb_mono_finish_ev_back', {
+        res: { changes: [], is_overflow: false }, use_item_list: state.use_items ?? []
+      }) };
+    });
+  }
+
+  function carnivalFinishEvent(request) {
+    const index = numberArg(request, 0, ['index', 'event_index']);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      const event = state.events[String(index)];
+      if (!event) throw new GameError(311, 'Carnival event is not on the current cell');
+      if (event.is_finish) throw new GameError(310, 'Carnival event already finished');
+      const award = carnivalEventAwards.get(Number(event.tid));
+      const grants = [];
+      if (award) {
+        const values = Array.isArray(award.awards) ? award.awards.map(Number) : [];
+        const amount = values[0] ?? 0;
+        if (amount > 0) grants.push([Number(award.res), amount]);
+      }
+      const granted = grantResources(model, grants, tables, { codec, now: () => at() });
+      event.is_finish = true;
+      if (Number(event.tid) === 11) { state.boxes_earned = Number(state.boxes_earned ?? 0) + 1; state.boxes_left = Number(state.boxes_left ?? 0) + 1; }
+      writeState(db, roleId, 'carnival', 1, state);
+      log({ event: 'carnival_finish_event', index, tid: event.tid });
+      return { value: {}, data: codec.pack('pb_mono_finish_ev_back', {
+        res: resOf(granted), use_item_list: state.use_items ?? []
+      }) };
+    });
+  }
+
+  function carnivalUseItem(request) {
+    const tid = numberArg(request, 0, ['tid', 'item_tid']);
+    if (!tid) throw new GameError(1, 'Carnival item id is missing');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      const row = (state.use_items ?? []).find(item => Number(item.tid) === tid);
+      if (row) row.effect_num = Number(row.effect_num ?? 0) + 1;
+      else state.use_items.push({ tid, effect_num: 1 });
+      writeState(db, roleId, 'carnival', 1, state);
+      return { value: { tid }, data: codec.pack('pb_mono_use_item_back', {
+        res: { changes: [], is_overflow: false }, use_item: { tid, effect_num: 1 }
+      }) };
+    });
+  }
+
+  function carnivalAutoFlush() {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      carnivalRefreshDice(state);
+      writeState(db, roleId, 'carnival', 1, state);
+      return { value: {}, data: codec.pack('pb_mono_auto_flush_dice_back', {
+        res: { changes: [], is_overflow: false }, dice_flush_time: Number(state.last_dice_flush ?? 0)
+      }) };
+    });
+  }
+
+  function carnivalBuyDice(request) {
+    const count = Math.max(1, Math.min(10, numberArg(request, 0, ['count', 'num'], 1)));
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      carnivalRefreshDice(state);
+      const max = Number(carnivalConst?.buy_dice_max_num ?? 5);
+      if (Number(state.daily_buy ?? 0) + count > max) throw new GameError(311, 'Carnival daily dice purchase limit reached');
+      const level = [...carnivalLevels.values()].sort((a, b) => Number(a.tid) - Number(b.tid))[0];
+      const costItem = Number(level?.item?.[0] ?? 0);
+      const costNum = Number(level?.num?.[0] ?? 0);
+      const gain = Number(level?.num?.[1] ?? 1);
+      if (costItem > 0 && costNum > 0) consumeResources(model, [[costItem, costNum * count]], 301, { codec, now: () => at() });
+      state.dice = Math.min(Number(carnivalConst?.dice_max_count ?? 60), Number(state.dice ?? 0) + gain * count);
+      state.daily_buy = Number(state.daily_buy ?? 0) + count;
+      writeState(db, roleId, 'carnival', 1, state);
+      log({ event: 'carnival_buy_dice', count });
+      return { value: { count }, data: codec.pack('pb_mono_buy_dice_back', {
+        res: { changes: [], is_overflow: false }, daily_flush_time: Number(state.last_daily_flush ?? 0),
+        today_buy_num: Number(state.daily_buy ?? 0)
+      }) };
+    });
+  }
+
+  function carnivalAchieveAward(request) {
+    const index = Math.max(1, numberArg(request, 0, ['index', 'tid'], 1));
+    const row = [...carnivalLevels.values()].sort((a, b) => Number(a.tid) - Number(b.tid))[index - 1];
+    if (!row) throw new GameError(5, 'Carnival achievement level is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      if (state.achievements.includes(index) || hasClaim(db, roleId, 'carnival_achieve', '1:' + index)) throw new GameError(310, 'Carnival achievement already claimed');
+      if (Number(state.total_throw ?? 0) < Number(row.num?.[0] ?? 0)) throw new GameError(311, 'Carnival achievement progress is not enough');
+      const grants = pairsOf(row.item, [row.num?.[1] ?? 1]);
+      const granted = grantResources(model, requireAwards(grants, 'Carnival achievement award is not configured'),
+        tables, { codec, now: () => at() });
+      state.achievements.push(index);
+      markClaim(db, roleId, 'carnival_achieve', '1:' + index);
+      writeState(db, roleId, 'carnival', 1, state);
+      return { value: { index }, data: codec.pack('pb_mono_rev_achieve_back', {
+        res: resOf(granted), achieve_data: { week_throw_dice_num: Number(state.total_throw ?? 0), achieve_rev_states: idBytes(state.achievements) }
+      }) };
+    });
+  }
+
+  function carnivalBuild(request, upgrade = false) {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      if (upgrade) {
+        const buildId = numberArg(request, 0, ['build_id', 'id']);
+        const build = (state.builds ?? []).find(row => Number(row.id) === buildId);
+        if (!build) throw new GameError(311, 'Carnival build is not found');
+        const config = carnivalBuilds.get(Number(build.tid));
+        if (!config || Number(build.level) >= Number(config.max_lv)) throw new GameError(311, 'Carnival build is already at max level');
+        build.level = Number(build.level) + 1;
+        writeState(db, roleId, 'carnival', 1, state);
+        return { value: { buildId }, data: codec.pack('pb_mono_build_handle_back', {
+          res: { changes: [], is_overflow: false },
+          one_build: carnivalBuildList(state).find(row => Number(row.id) === buildId)
+        }) };
+      }
+      const tid = numberArg(request, 0, ['tid', 'build_tid']);
+      const config = carnivalBuilds.get(tid);
+      if (!config || !config.construct) throw new GameError(5, 'Carnival build is not configured');
+      const same = (state.builds ?? []).filter(row => Number(row.tid) === tid).length;
+      if (same >= Number(config.max_count ?? 0)) throw new GameError(311, 'Carnival build count limit reached');
+      const build = { id: Number(state.next_build_id ?? 1), tid, level: 1, last_collect: at(), dispatch_hero: { heroes: [] } };
+      state.next_build_id = Number(state.next_build_id ?? 1) + 1;
+      state.builds.push(build);
+      writeState(db, roleId, 'carnival', 1, state);
+      log({ event: 'carnival_build', tid, id: build.id });
+      return { value: { buildId: build.id }, data: codec.pack('pb_mono_build_handle_back', {
+        res: { changes: [], is_overflow: false },
+        one_build: carnivalBuildList(state).find(row => Number(row.id) === build.id)
+      }) };
+    });
+  }
+
+  function carnivalBuildAward(request) {
+    const buildId = numberArg(request, 0, ['build_id', 'id']);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      const build = (state.builds ?? []).find(row => Number(row.id) === buildId);
+      if (!build) throw new GameError(311, 'Carnival build is not found');
+      const view = carnivalBuildList(state).find(row => Number(row.id) === buildId);
+      const elapsed = Math.max(0, at() - Number(build.last_collect ?? at()));
+      const amount = Math.floor(elapsed * view.output / Math.max(1, view._yield));
+      if (amount <= 0) throw new GameError(311, 'Carnival build has no output yet');
+      const granted = grantResources(model, [[view._output_res, amount]], tables, { codec, now: () => at() });
+      build.last_collect = at();
+      writeState(db, roleId, 'carnival', 1, state);
+      log({ event: 'carnival_build_award', buildId, amount });
+      return { value: { buildId, amount }, data: codec.pack('pb_mono_build_handle_back', {
+        res: resOf(granted), one_build: carnivalBuildList(state).find(row => Number(row.id) === buildId)
+      }) };
+    });
+  }
+
+  function carnivalDevelopTech(request) {
+    const tid = numberArg(request, 0, ['tid', 'tech_tid']);
+    const tech = carnivalTechs.get(tid);
+    if (!tech) throw new GameError(5, 'Carnival tech is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      if ((state.techs ?? []).some(row => Number(row.tid) === tid)) throw new GameError(310, 'Carnival tech already developed');
+      const week = Math.floor((at() - Number(state.open_time ?? at())) / 604800) + 1;
+      if (week < Number(tech.unlock_week ?? 1)) throw new GameError(311, 'Carnival tech is not unlocked yet');
+      state.techs.push({ tid, start_time: at() });
+      writeState(db, roleId, 'carnival', 1, state);
+      log({ event: 'carnival_develop_tech', tid });
+      return { value: { tid }, data: codec.pack('pb_mono_req_data_back', {
+        res: { changes: [], is_overflow: false }, monopoly: carnivalMonopoly(state)
+      }) };
+    });
+  }
+
+  function carnivalBoxAward(request) {
+    const count = Math.max(1, Math.min(10, numberArg(request, 0, ['count', 'num'], 1)));
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      if (Number(state.boxes_left ?? 0) < count) throw new GameError(311, 'Carnival box count is not enough');
+      const libs = [...carnivalAwardLibs.values()].sort((a, b) => Number(a.tid) - Number(b.tid));
+      if (!libs.length) throw new GameError(5, 'Carnival award library is not configured');
+      const lib = libs[0];
+      const weights = listOf(lib.num).map(Number);
+      const awards = listOf(lib.award).map(Number);
+      if (!weights.length || weights.length !== awards.length) throw new GameError(5, 'Carnival award library is invalid');
+      const total = weights.reduce((sum, value) => sum + Math.max(0, value), 0);
+      const grants = [];
+      for (let index = 0; index < count; index++) {
+        let roll = Number(random()) * total;
+        let picked = awards[0];
+        for (let slot = 0; slot < weights.length; slot++) {
+          roll -= Math.max(0, weights[slot]);
+          if (roll < 0) { picked = awards[slot]; break; }
+        }
+        const award = carnivalAwards.get(Number(picked));
+        if (award && Number(award.item) > 0) grants.push([Number(award.item), 1]);
+      }
+      const granted = grantResources(model, grants, tables, { codec, now: () => at() });
+      state.boxes_left = Number(state.boxes_left ?? 0) - count;
+      writeState(db, roleId, 'carnival', 1, state);
+      log({ event: 'carnival_box_award', count });
+      return { value: { count }, data: codec.pack('pb_mono_req_data_back', {
+        res: resOf(granted), monopoly: carnivalMonopoly(state)
+      }) };
+    });
+  }
+
+  function carnivalDispatch(request) {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      for (const row of request?.dispatch ?? []) {
+        const build = (state.builds ?? []).find(entry => Number(entry.id) === Number(row.index) || Number(entry.tid) === Number(row.index));
+        if (build) build.dispatch_hero = { heroes: row.one_dispatch?.heroes ?? [] };
+      }
+      writeState(db, roleId, 'carnival', 1, state);
+      return { value: {}, data: codec.pack('pb_mono_build_data', { builds: carnivalBuildList(state) }) };
+    });
+  }
+
+  function carnivalBuildExtra(request) {
+    const buildId = Number(request?.build_id ?? 0);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'carnival', 1, carnivalState());
+      const build = carnivalBuildList(state).find(row => Number(row.id) === buildId);
+      if (!build) throw new GameError(311, 'Carnival build is not found');
+      return { value: {}, data: codec.pack('pb_mono_build_handle_back', {
+        res: { changes: [], is_overflow: false }, one_build: build
+      }) };
+    });
+  }
+
+  // ---- PLAY-MAGICALJOURNEY: 89901-89917 ------------------------------
+  const journeyTables = explorationTables.magicalJourney ?? {};
+  const journeyConst = [...(journeyTables.Const ?? new Map()).values()][0] ?? null;
+  const journeySwordConfig = [...(journeyTables.Sword ?? new Map()).values()][0] ?? null;
+  const journeySwordAttrs = journeyTables.SwordAttr ?? new Map();
+  const journeyCountries = journeyTables.Country ?? new Map();
+  const journeySubs = journeyTables.CountrySub ?? new Map();
+  const journeyStars = journeyTables.CountryStar ?? new Map();
+  const journeyNormalCollect = journeyTables.NormalCollect ?? new Map();
+  const journeySeasonCollect = journeyTables.SeasonCollect ?? new Map();
+  const journeyMissions = journeyTables.Mission ?? new Map();
+  const journeyBoss = [...(journeyTables.Boss ?? new Map()).values()][0] ?? null;
+  const journeyBossDays = journeyTables.BossDay ?? new Map();
+  const journeyBossAwards = journeyTables.BossFightAward ?? new Map();
+  const journeyChapterTasks = journeyTables.ChapterTask ?? new Map();
+  const journeyEliteMissions = tables.EliteMission ?? new Map();
+
+  // CountrySub keys are 1_000_000 + type * 100_000 + index * 10_000 + level.
+  // The recovered rows run 1110001..1440015, so a type/index pair owns 15 levels.
+  function journeySubTid(type, index, level) {
+    return 1000000 + Number(type) * 100000 + Number(index) * 10000 + Number(level);
+  }
+
+  function journeyState() {
+    return {
+      main_level: 1, subs: {}, star_skills: [], sword: { use_free_times: 0, today_zero_stamp: 0, exp: 0, day_exp: 0, day: 0 },
+      collect: { normal: { items: [], exp: 0, level: 1 }, season: { items: [] } },
+      passed: {}, task_claims: [], star_awards: [], boss: { day: 0, fights: 0, score: 0 }
+    };
+  }
+
+  function journeyPower(state) {
+    let power = 0;
+    const main = journeyCountries.get(10000 + Number(state.main_level ?? 1));
+    for (const pair of main?.attrs ?? []) power += Number(pair?.[1] ?? 0);
+    for (const [key, level] of Object.entries(state.subs ?? {})) {
+      const [type, index] = key.split(':').map(Number);
+      const tid = journeySubTid(type, index, level);
+      const row = journeySubs.get(tid);
+      for (const pair of row?.attrs ?? []) power += Number(pair?.[1] ?? 0);
+    }
+    return Math.max(0, power);
+  }
+
+  function journeySwordLevel(exp) {
+    const rows = [...journeySwordAttrs.values()].sort((a, b) => Number(a.exp) - Number(b.exp));
+    let level = 1;
+    for (const row of rows) if (Number(exp) >= Number(row.exp)) level = Number(row.tid);
+    return level;
+  }
+
+  function journeyPassList(state) {
+    const chapters = new Map();
+    for (const [key, value] of Object.entries(state.passed ?? {})) {
+      const [chapter, mission] = key.split(':').map(Number);
+      if (!chapters.has(chapter)) chapters.set(chapter, []);
+      chapters.get(chapter).push({ mission, number: Number(value.number ?? 0), role_id_list: [] });
+    }
+    return [...chapters.entries()].sort((a, b) => a[0] - b[0])
+      .map(([chapter, missionList]) => ({ chapter, mission_list: missionList.sort((a, b) => a.mission - b.mission) }));
+  }
+
+  function journeySubState(state, type, index) {
+    state.subs ??= {};
+    const key = Number(type) + ':' + Number(index);
+    state.subs[key] ??= 0;
+    return { key, level: Number(state.subs[key]) };
+  }
+
+  function journeySubInfo(state, type, index) {
+    const sub = journeySubState(state, type, index);
+    return { type: Number(type), level: sub.level, active: Buffer.alloc(0) };
+  }
+
+  function journeySword(request) {
+    if (!journeySwordConfig) throw new GameError(5, 'Magical journey sword is not configured');
+    const costs = pairListOf(request?.cost);
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      state.sword ??= { use_free_times: 0, today_zero_stamp: 0, exp: 0, day_exp: 0, day: 0 };
+      const day = dayOf(at());
+      if (Number(state.sword.day) !== day) {
+        state.sword.day = day; state.sword.use_free_times = 0; state.sword.day_exp = 0;
+      }
+      if (Number(state.sword.use_free_times ?? 0) >= Number(journeySwordConfig.day_times ?? 0)) throw new GameError(311, 'Magical journey sword daily times reached');
+      const exp = Number(journeySwordConfig.exp ?? 0);
+      if (Number(state.sword.day_exp ?? 0) + exp > Number(journeySwordConfig.day_max ?? 200000)) throw new GameError(311, 'Magical journey sword exp limit reached');
+      if (costs.length) consumeResources(model, costs, 301, { codec, now: () => at() });
+      const granted = grantResources(model, requireAwards(awardsOf(journeySwordConfig, 'award'), 'Magical journey sword award is not configured'),
+        tables, { codec, now: () => at() });
+      state.sword.use_free_times = Number(state.sword.use_free_times ?? 0) + 1;
+      state.sword.exp = Number(state.sword.exp ?? 0) + exp;
+      state.sword.day_exp = Number(state.sword.day_exp ?? 0) + exp;
+      state.sword.today_zero_stamp = day * 86400;
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_sword', exp, total: state.sword.exp });
+      return { value: { exp }, data: codec.pack('pb_magical_journey_sword_rsp', {
+        res: resOf(granted),
+        sword: { use_free_times: state.sword.use_free_times, today_zero_stamp: state.sword.today_zero_stamp, exp_contributed: Number(state.sword.day_exp) },
+        cross_sword: { sword_exp: Number(state.sword.exp), sword_level: journeySwordLevel(state.sword.exp), last_refresh_stamp: state.sword.today_zero_stamp, day_exp: Number(state.sword.day_exp) }
+      }) };
+    });
+  }
+
+  function journeyMainUp() {
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      const next = journeyCountries.get(10000 + Number(state.main_level ?? 1) + 1);
+      if (!next) throw new GameError(311, 'Magical journey country is at max level');
+      const cost = pairListOf(next.cost);
+      if (cost.length) consumeResources(model, cost, 301, { codec, now: () => at() });
+      state.main_level = Number(state.main_level ?? 1) + 1;
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_main_up', level: state.main_level });
+      return { value: {}, data: codec.pack('pb_magical_journey_main_up_rsp', {
+        journey_power: journeyPower(state), res: { changes: [], is_overflow: false }
+      }) };
+    });
+  }
+
+  function journeySubActive(request) {
+    const type = Number(request.type ?? 0), index = Number(request.index ?? 0);
+    if (type < 1 || type > 4 || index < 1 || index > 4) throw new GameError(1, 'Magical journey country sub is invalid');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      const sub = journeySubState(state, type, index);
+      if (sub.level > 0) throw new GameError(310, 'Magical journey country sub already active');
+      const row = journeySubs.get(journeySubTid(type, index, 1));
+      if (!row) throw new GameError(5, 'Magical journey country sub is not configured');
+      const cost = pairListOf(row.cost);
+      if (cost.length) consumeResources(model, cost, 301, { codec, now: () => at() });
+      state.subs[sub.key] = 1;
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_sub_active', type, index });
+      return { value: {}, data: codec.pack('pb_magical_journey_country_sub_active_rsp', {
+        res: { changes: [], is_overflow: false }, sub_info: journeySubInfo(state, type, index), journey_power: journeyPower(state)
+      }) };
+    });
+  }
+
+  function journeySubUp(request) {
+    const type = Number(argAt(request, 0, ['type']) ?? 0), index = Number(argAt(request, 1, ['index']) ?? 0);
+    if (type < 1 || type > 4 || index < 1 || index > 4) throw new GameError(1, 'Magical journey country sub is invalid');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      const sub = journeySubState(state, type, index);
+      if (sub.level <= 0) throw new GameError(311, 'Magical journey country sub is not active');
+      const row = journeySubs.get(journeySubTid(type, index, sub.level + 1));
+      if (!row) throw new GameError(311, 'Magical journey country sub is at max level');
+      const cost = pairListOf(row.cost);
+      if (cost.length) consumeResources(model, cost, 301, { codec, now: () => at() });
+      state.subs[sub.key] = sub.level + 1;
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_sub_up', type, index, level: sub.level + 1 });
+      return { value: {}, data: codec.pack('pb_magical_journey_sub_up_rsp', {
+        journey_power: journeyPower(state), res: { changes: [], is_overflow: false }, sub_info: journeySubInfo(state, type, index)
+      }) };
+    });
+  }
+
+  function journeySwordRecord() {
+    const roleId = store.state().roleId;
+    const state = store.inspect(db => readState(db, roleId, 'magical_journey', 1, journeyState()));
+    return { value: {}, data: codec.pack('pb_magical_journey_sword_record_info', {
+      record_list: [{ role_name: 'Local Adventurer', sword_exp: Number(state.sword?.exp ?? 0), type: 1 }]
+    }) };
+  }
+
+  function journeyCollect(request, season) {
+    const items = listOf(request?.items).map(row => ({ tid: Number(plainOf(row?.tid)), star: Number(plainOf(row?.star ?? 0)) }));
+    if (!items.length) throw new GameError(1, 'Magical journey collect list is empty');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      state.collect ??= { normal: { items: [], exp: 0, level: 1 }, season: { items: [] } };
+      if (season) {
+        for (const item of items) {
+          const row = journeySeasonCollect.get(item.tid);
+          if (!row) throw new GameError(5, 'Magical journey season collect is not configured');
+          if (!state.collect.season.items.some(entry => Number(entry.tid) === item.tid)) {
+            state.collect.season.items.push({ tid: item.tid, star: item.star || 1 });
+          }
+        }
+      } else {
+        for (const item of items) {
+          const row = journeyNormalCollect.get(item.tid);
+          if (!row) throw new GameError(5, 'Magical journey normal collect is not configured');
+          const existing = state.collect.normal.items.find(entry => Number(entry.tid) === item.tid);
+          const previousStar = Number(existing?.star ?? 0);
+          const nextStar = Math.max(previousStar, item.star || 1);
+          if (existing) existing.star = nextStar;
+          else state.collect.normal.items.push({ tid: item.tid, star: nextStar });
+          if (!existing || nextStar > previousStar) {
+            state.collect.normal.exp = Number(state.collect.normal.exp ?? 0) + Number(row.exp ?? 0);
+          }
+        }
+        state.collect.normal.level = 1 + Math.floor(Number(state.collect.normal.exp ?? 0) / 100);
+      }
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: season ? 'magical_journey_season_collect' : 'magical_journey_normal_collect', items: items.length });
+      return { value: {}, data: codec.pack('pb_magical_journey_collect_activate_normal_rsp', {
+        exp: Number(state.collect.normal.exp ?? 0), level: Number(state.collect.normal.level ?? 1), journey_power: journeyPower(state)
+      }) };
+    });
+  }
+
+  function journeyMissionFight(request) {
+    const chapter = Number(request.chapter ?? 0), mission = Number(request.mission ?? 0);
+    const tid = chapter * 10000 + mission;
+    const row = journeyMissions.get(tid);
+    if (!row) throw new GameError(5, 'Magical journey mission is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      const granted = grantResources(model, requireAwards(awardsOf(row, 'award'), 'Magical journey mission award is not configured'),
+        tables, { codec, now: () => at() });
+      const key = chapter + ':' + mission;
+      state.passed[key] ??= { number: 1, role_id_list: [] };
+      state.passed[key].number = Math.max(1, Number(state.passed[key].number ?? 1));
+      state.passed[key].role_id_list = [];
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_mission_fight', chapter, mission });
+      const missionPass = { mission, number: state.passed[key].number, role_id_list: [] };
+      return { value: { chapter, mission }, data: codec.pack('pb_magical_journey_mission_multi_fight_back', {
+        fight_info: {
+          mission_info: {
+            chapter, mission, elite_star_bin: Buffer.alloc(0), task_award_bin: Buffer.alloc(0),
+            pass_stamp: at(), settle_rank: 0, task_progress: { settle_chapter_tid: 0, note_bin: Buffer.alloc(0) }
+          },
+          res: resOf(granted), normal_award: [], elite_award: [], mission_pass: missionPass
+        },
+        report_list: []
+      }) };
+    });
+  }
+
+  function journeyStarAward(request) {
+    const missionTid = Number(argAt(request, 0, ['mission', 'mission_tid']) ?? 0);
+    const row = journeyMissions.get(missionTid);
+    if (!row) throw new GameError(5, 'Magical journey mission is not configured');
+    if (!Number(row.elite_mission)) throw new GameError(5, 'Magical journey mission has no elite stage');
+    const key = String(missionTid);
+    const missionIndex = Number(missionTid) % 10000;
+    const passedKey = Number(row.chapter) + ':' + missionIndex;
+    const passed = store.inspect(db => readState(db, store.state().roleId, 'magical_journey', 1, journeyState()).passed[passedKey]);
+    if (!passed || Number(passed.number ?? 0) <= 0) throw new GameError(311, 'Magical journey elite mission is not passed');
+    const elite = journeyEliteMissions.get(Number(row.elite_mission));
+    if (!elite) throw new GameError(5, 'Magical journey elite mission award is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      if (state.star_awards.includes(key) || hasClaim(db, roleId, 'magical_journey_star', key)) throw new GameError(310, 'Magical journey elite star award already claimed');
+      const granted = grantResources(model, requireAwards(awardsOf(elite, 'award'), 'Magical journey elite award is not configured'),
+        tables, { codec, now: () => at() });
+      state.star_awards.push(key);
+      markClaim(db, roleId, 'magical_journey_star', key);
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_star_award', missionTid });
+      return { value: { missionTid }, data: codec.pack('pb_magical_journey_task_rev_back', {
+        task_award_bin: Buffer.alloc(0), res: resOf(granted)
+      }) };
+    });
+  }
+
+  function journeyChapterTaskProgress(state, task) {
+    const chapter = Number(task.belong_chapter ?? 0);
+    const passed = Object.entries(state.passed ?? {}).filter(([key]) => Number(key.split(':')[0]) === chapter).length;
+    switch (Number(task.task_type)) {
+      case 12801: return passed;
+      case 12808: return Object.keys(state.passed ?? {}).length;
+      case 12806: return state.star_awards.length;
+      default: return null;
+    }
+  }
+
+  function journeyTaskAward(request, progressResponse = false) {
+    const taskTid = Number(argAt(request, 0, ['task_tid', 'tid']) ?? 0);
+    const task = journeyChapterTasks.get(taskTid);
+    if (!task) throw new GameError(5, 'Magical journey chapter task is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      const key = String(taskTid);
+      if (state.task_claims.includes(key) || hasClaim(db, roleId, 'magical_journey_task', key)) throw new GameError(310, 'Magical journey chapter task already claimed');
+      const progress = journeyChapterTaskProgress(state, task);
+      if (progress == null) throw new GameError(5, 'Magical journey chapter task rule is not recovered');
+      if (progress < Number(task.task_count ?? 0)) throw new GameError(311, 'Magical journey chapter task is not finished');
+      const granted = grantResources(model, requireAwards(awardsOf(task, 'award'), 'Magical journey chapter task award is not configured'),
+        tables, { codec, now: () => at() });
+      state.task_claims.push(key);
+      markClaim(db, roleId, 'magical_journey_task', key);
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_task_award', taskTid });
+      return { value: { taskTid }, data: codec.pack(progressResponse ? 'pb_magical_journey_progress_rev_back' : 'pb_magical_journey_task_rev_back', progressResponse
+        ? { progress_award_bin: Buffer.alloc(0), res: resOf(granted) }
+        : { task_award_bin: Buffer.alloc(0), res: resOf(granted) }) };
+    });
+  }
+
+  function journeyBossFight(request) {
+    const fightTid = Number(request.fight_tid ?? 0), times = Math.max(1, Math.min(8, Number(request.times ?? 1)));
+    const row = journeyBossDays.get(fightTid)
+      ?? [...journeyBossDays.values()].find(candidate => Number(candidate.fight_tid) === fightTid);
+    if (!row) throw new GameError(5, 'Magical journey boss is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      state.boss ??= { day: 0, fights: 0, score: 0 };
+      const day = dayOf(at());
+      if (Number(state.boss.day) !== day) state.boss = { day, fights: 0, score: 0 };
+      const maxTimes = Number(journeyBoss?.day_times ?? 8);
+      if (Number(state.boss.fights ?? 0) + times > maxTimes) throw new GameError(311, 'Magical journey boss daily times reached');
+      const score = times * 1000 * Math.max(1, journeySwordLevel(state.sword?.exp ?? 0));
+      const awardRow = [...journeyBossAwards.values()].find(candidate => {
+        const range = listOf(candidate.score_range).map(Number);
+        return score >= Number(range[0] ?? 0) && score <= Number(range[1] ?? Number.MAX_SAFE_INTEGER);
+      });
+      const grants = awardsOf(awardRow, 'award').map(([tid, count]) => [tid, count * times]);
+      const granted = grantResources(model, grants, tables, { codec, now: () => at() });
+      state.boss.fights = Number(state.boss.fights ?? 0) + times;
+      state.boss.score = Number(state.boss.score ?? 0) + score;
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_boss_fight', fightTid, times, score });
+      return { value: { fightTid }, data: codec.pack('pb_magical_journey_boss_fight_back', {
+        boss_info: { fight_times: state.boss.fights, refresh_time: day * 86400, score: state.boss.score },
+        res: resOf(granted), this_score: score, rank: 0
+      }) };
+    });
+  }
+
+  function journeyStarSkill(request) {
+    const tid = Number(argAt(request, 0, ['tid', 'star_tid']) ?? 0);
+    const row = journeyStars.get(tid);
+    if (!row) throw new GameError(5, 'Magical journey star skill is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'magical_journey', 1, journeyState());
+      if (state.star_skills.includes(tid)) throw new GameError(310, 'Magical journey star skill already active');
+      consumeResources(model, [[Number(row.cost_id), Number(row.cost_num)]], 301, { codec, now: () => at() });
+      state.star_skills.push(tid);
+      writeState(db, roleId, 'magical_journey', 1, state);
+      log({ event: 'magical_journey_star_skill', tid });
+      return { value: { tid }, data: codec.pack('pb_magical_journey_star_activate_rsp', {
+        res: { changes: [], is_overflow: false }, journey_power: journeyPower(state),
+        skill_info: { page: Number(row.page ?? 1), active: Buffer.from([1]) }
+      }) };
+    });
+  }
+
+  function journeyLoginAfter() {
+    const roleId = store.state().roleId;
+    const state = store.inspect(db => readState(db, roleId, 'magical_journey', 1, journeyState()));
+    return { value: {}, data: codec.pack('pb_magical_journey_login_after_back', {
+      simple_pass_list: journeyPassList(state)
+    }) };
+  }
+
+  function journeyPowerInfo() {
+    const roleId = store.state().roleId;
+    const state = store.inspect(db => readState(db, roleId, 'magical_journey', 1, journeyState()));
+    return { value: {}, data: codec.pack('pb_magical_journey_open_handle', {
+      season_info: { season: 1, season_start_time: 0, season_end_time: 0, settle_boss_time: 0 },
+      mission_info: { chapter: 0, mission: 0, elite_star_bin: Buffer.alloc(0), task_award_bin: Buffer.alloc(0), pass_stamp: 0, settle_rank: 0, task_progress: { settle_chapter_tid: 0, note_bin: Buffer.alloc(0) } },
+      country_info: { main_level: Number(state.main_level ?? 1), sub: Object.keys(state.subs ?? {}).map(key => journeySubInfo(state, ...key.split(':').map(Number))), star_skill_active: [] }
+    }) };
+  }
+
+  function journeyLogin(state) {
+    return {
+      season_info: { season: 1, season_start_time: 0, season_end_time: 0, settle_boss_time: 0 },
+      mission_info: {
+        chapter: 0, mission: 0, elite_star_bin: Buffer.alloc(0),
+        task_award_bin: idBytes(state.task_claims ?? []), pass_stamp: 0, settle_rank: 0,
+        task_progress: { settle_chapter_tid: 0, note_bin: Buffer.alloc(0) }
+      },
+      country_info: {
+        main_level: Number(state.main_level ?? 1),
+        sub: Object.keys(state.subs ?? {}).map(key => journeySubInfo(state, ...key.split(':').map(Number))),
+        star_skill_active: (state.star_skills ?? []).map(tid => ({
+          page: Number(journeyStars.get(Number(tid))?.page ?? 1), active: Buffer.from([1])
+        }))
+      },
+      role_season_info: { season: 1, settled: false }
+    };
+  }
+
+  // ---- PLAY-GRANDTOURER: 87801-87805 --------------------------------
   const tourerConst = [...(explorationTables.grandTourer?.Const ?? new Map()).values()][0] ?? null;
+  const weekendConst = [...(explorationTables.weekendBonus?.Const ?? new Map()).values()][0] ?? null;
+  const weekendTasks = explorationTables.weekendBonus?.WeekendBonus ?? new Map();
+  const tourerProgressAwards = explorationTables.weekendBonus?.ProgressAward ?? new Map();
+
+  function tourerState() {
+    return { day: 0, play_times: 0, task_claims: [], progress_claims: [], speed: Number(tourerConst?.default_speed ?? 20) };
+  }
 
   function tourerToken(request) {
     if (!tourerConst) throw new GameError(5, 'Grand tourer constants are not configured');
     const roleId = store.state().roleId;
     return store.transaction((model, db) => {
-      const state = readState(db, roleId, 'grand_tourer', 1, { day: 0 });
+      const state = readState(db, roleId, 'grand_tourer', 1, tourerState());
       const today = dayOf(at());
       if (Number(state.day ?? 0) === today) throw new GameError(310, 'Grand tourer token already claimed today');
       const item = Number(tourerConst.award_item);
@@ -711,6 +2644,280 @@ export function createExplorationActService({
       log({ event: 'grand_tourer_token', item, amount });
       return { value: { amount }, data: codec.pack('pb_res_to_client', resOf(granted)) };
     });
+  }
+
+  function tourerTaskAward(request) {
+    const index = Math.max(1, numberArg(request, 0, ['tid', 'index'], 1));
+    const row = weekendTasks.get(index);
+    if (!row) throw new GameError(5, 'Grand tourer task is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'grand_tourer', 1, tourerState());
+      const key = String(index);
+      if (state.task_claims.includes(key) || hasClaim(db, roleId, 'grand_tourer_task', key)) throw new GameError(310, 'Grand tourer task already claimed');
+      const grants = pairsOf(row.award, row.count);
+      const granted = grantResources(model, requireAwards(grants, 'Grand tourer task award is not configured'),
+        tables, { codec, now: () => at() });
+      state.task_claims.push(key);
+      markClaim(db, roleId, 'grand_tourer_task', key);
+      writeState(db, roleId, 'grand_tourer', 1, state);
+      log({ event: 'grand_tourer_task', index });
+      return { value: { index }, data: codec.pack('pb_grand_tourer_task_back', {
+        res: resOf(granted), task_bin: idBytes(state.task_claims),
+        task_award_time: at(), online_day_index: 1
+      }) };
+    });
+  }
+
+  function tourerExchange(request) {
+    const count = Math.max(1, Math.min(99, numberArg(request, 0, ['count', 'num'], 1)));
+    const costItem = Number(weekendConst?.exchange_cost ?? 0);
+    const rewardItem = Number(weekendConst?.award_item ?? tourerConst?.award_item ?? 0);
+    const rewardCount = Number(weekendConst?.award_num ?? 0);
+    if (!costItem || !rewardItem || !rewardCount) throw new GameError(5, 'Grand tourer exchange is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      consumeResources(model, [[costItem, count]], 301, { codec, now: () => at() });
+      const granted = grantResources(model, [[rewardItem, rewardCount * count]], tables, { codec, now: () => at() });
+      log({ event: 'grand_tourer_exchange', count });
+      return { value: { count }, data: codec.pack('pb_res_to_client', resOf(granted)) };
+    });
+  }
+
+  function tourerDistanceAward(request) {
+    const progress = Math.max(1, numberArg(request, 0, ['progress', 'index'], 1));
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'grand_tourer', 1, tourerState());
+      state.play_times = Math.max(Number(state.play_times ?? 0), progress);
+      const rows = [...tourerProgressAwards.values()].sort((a, b) => Number(a.need_progress) - Number(b.need_progress));
+      const grants = [];
+      const claimed = [];
+      for (const row of rows) {
+        const key = String(row.tid);
+        if (state.progress_claims.includes(key) || hasClaim(db, roleId, 'grand_tourer_progress', key)) continue;
+        if (Number(state.play_times) < Number(row.need_progress ?? 0)) continue;
+        grants.push([Number(row.item), Number(row.count)]);
+        claimed.push(key);
+      }
+      if (!claimed.length) {
+        const next = rows.find(row => !state.progress_claims.includes(String(row.tid))
+          && !hasClaim(db, roleId, 'grand_tourer_progress', String(row.tid))
+          && Number(state.play_times) < Number(row.need_progress ?? 0));
+        if (next) throw new GameError(311, 'Grand tourer distance progress is not enough');
+        throw new GameError(310, 'Grand tourer distance award already claimed');
+      }
+      const granted = grantResources(model, requireAwards(grants, 'Grand tourer distance award is not configured'),
+        tables, { codec, now: () => at() });
+      for (const key of claimed) {
+        state.progress_claims.push(key);
+        markClaim(db, roleId, 'grand_tourer_progress', key);
+      }
+      writeState(db, roleId, 'grand_tourer', 1, state);
+      log({ event: 'grand_tourer_distance_award', progress: state.play_times, tiers: claimed.length });
+      return { value: { progress: state.play_times }, data: codec.pack('pb_res_to_client', resOf(granted)) };
+    });
+  }
+
+  function tourerEnhance(request) {
+    const count = Math.max(1, Math.min(20, numberArg(request, 0, ['count', 'num'], 1)));
+    const item = Number(tourerConst?.award_item ?? weekendConst?.award_item ?? 0);
+    const cost = Number(weekendConst?.award_num ?? 0);
+    const add = Number(tourerConst?.speed_add ?? 5);
+    const max = Number(tourerConst?.max_speed ?? 100);
+    if (!item || !cost) throw new GameError(5, 'Grand tourer enhance is not configured');
+    const roleId = store.state().roleId;
+    return store.transaction((model, db) => {
+      const state = readState(db, roleId, 'grand_tourer', 1, tourerState());
+      const current = Number(state.speed ?? tourerConst?.default_speed ?? 20);
+      const allowed = Math.max(0, Math.min(count, Math.floor((max - current) / Math.max(1, add))));
+      if (allowed <= 0) throw new GameError(311, 'Grand tourer speed is already at max');
+      consumeResources(model, [[item, cost * allowed]], 301, { codec, now: () => at() });
+      state.speed = current + add * allowed;
+      writeState(db, roleId, 'grand_tourer', 1, state);
+      log({ event: 'grand_tourer_enhance', speed: state.speed });
+      return { value: { speed: state.speed }, data: codec.pack('pb_res_to_client', { changes: [], is_overflow: false }) };
+    });
+  }
+
+  // ---- Login synchronization -------------------------------------------
+  // HomePuzzle, Homeland, ThemeTreasure, RadishFarm and ExperienceAct ride in
+  // module 92 entries; the remaining G1 families own dedicated modules. Every
+  // builder below publishes only state this service already persists for the
+  // implemented commands, so a restart never fabricates progress.
+  function applyLoginEntry(activity, actId, payload, loginAt) {
+    activity.act_list ??= [];
+    let entry = activity.act_list.find(candidate => Number(candidate?.state_data?.act_id) === Number(actId));
+    if (!entry) {
+      entry = { state_data: { act_id: Number(actId) }, module_login_data: '' };
+      activity.act_list.push(entry);
+    }
+    entry.state_data ??= {};
+    entry.state_data.act_id = Number(actId);
+    entry.state_data.cur_state_id = 50;
+    entry.state_data.history_time = Array.isArray(entry.state_data.history_time) ? entry.state_data.history_time : [];
+    const running = entry.state_data.history_time.find(item => Number(item?.state_id) === 50);
+    if (running) running.enter_time = String(loginAt);
+    else entry.state_data.history_time.push({ state_id: 50, enter_time: String(loginAt) });
+    entry.module_login_data = wrapEtfBinary(payload).toString('base64');
+  }
+
+  function runningActFrameIds(types, activity, loginAt) {
+    const result = [];
+    for (const [actId, row] of tables?.ActFrameAct ?? []) {
+      if (!types.includes(Number(row.type))) continue;
+      if (calendar?.isActivityRunning && !calendar.isActivityRunning(Number(actId), null, activity, loginAt)) continue;
+      result.push(Number(actId));
+    }
+    return result.sort((left, right) => left - right);
+  }
+
+  function runningActivityIds(func, activity, loginAt) {
+    const result = [];
+    for (const [actId, row] of tables?.Activity ?? []) {
+      if (Number(row.func) !== Number(func)) continue;
+      if (calendar?.isActivityRunning && !calendar.isActivityRunning(Number(actId), null, activity, loginAt)) continue;
+      result.push(Number(actId));
+    }
+    return result.sort((left, right) => left - right);
+  }
+
+  function themeLogin(state, actTid) {
+    const { config } = themeConfig(actTid);
+    const claimIds = prefix => (state.claims ?? [])
+      .filter(claim => String(claim).startsWith(prefix))
+      .map(claim => Number(String(claim).slice(prefix.length)))
+      .filter(Number.isSafeInteger);
+    return {
+      theme_treasure: {
+        free_times: Number(state.free_times ?? 0),
+        step: Number(state.step ?? 0),
+        challenge: {
+          award_personal_tasks: idBytes(claimIds('challenge:')),
+          award_server_tasks: idBytes(claimIds('server:')),
+          award_turn: idBytes(claimIds('turn:'))
+        },
+        buy_limit_info: { refresh_time: 0, buy_num_list: [] },
+        time_stamp: 0,
+        day_award: idBytes(state.day_award ?? []),
+        exchange: themeExchangeView(state, config),
+        award_list: [],
+        dice_seq: (state.dice_seq ?? []).map(Number),
+        dice_group: 0,
+        box_num: (state.boxes ?? []).length,
+        normal_num: 0,
+        version_award: idBytes(state.version_award ?? []),
+        last_login_day: Number(state.last_login_day ?? 0)
+      },
+      server_step: Number(state.step ?? 0)
+    };
+  }
+
+  function radishRole(state, actTid) {
+    return {
+      cells: radishCells(state, actTid),
+      last_refresh_stamp: Number(state.help_day ?? 0) * DAY_SECONDS,
+      help_times: Number(state.help_times ?? 0),
+      gifts: Object.values(state.gifts ?? {}).map(gift => ({
+        gift_tid: Number(gift.gift_tid), times: Number(gift.times ?? 0),
+        role_select: { recharge_id: Number(gift.gift_tid), select_idx: 0 }
+      })),
+      harvest_num: Number(state.harvest_num ?? 0),
+      visit_id: Number(state.visit_id ?? 0),
+      day_help_roles: []
+    };
+  }
+
+  function experienceLogin(state, actTid) {
+    const act = experienceAct(state, actTid);
+    return {
+      area_list: [{
+        act_tid: Number(actTid), area_list: experienceAreas(act),
+        begin_time: 0, end_time: 0, go_count: Number(act.go_count ?? 0)
+      }]
+    };
+  }
+
+  function synchronizeLogin(activity, loginAt = at()) {
+    if (!activity || typeof activity !== 'object') throw new GameError(5, 'Activity login data is invalid');
+    activity.act_list ??= [];
+    const stamp = seconds(loginAt);
+    const roleId = Number(store.state().roleId);
+    const activityIds = [];
+    const modules = new Map();
+    const syncActivity = (actId, schema, build) => {
+      const payload = store.inspect(db => codec.pack(schema, build(db)));
+      applyLoginEntry(activity, actId, payload, stamp);
+      activityIds.push(actId);
+    };
+
+    for (const actId of runningActFrameIds([1080, 1090], activity, stamp)) {
+      syncActivity(actId, 'pb_home_puzzle_act_data', db =>
+        puzzleActData(readState(db, roleId, 'home_puzzle', actId, puzzleState(actId))));
+    }
+    for (const actId of runningActFrameIds([1085, 1086, 1087], activity, stamp)) {
+      syncActivity(actId, 'pb_homeland_act_role_data', db =>
+        homelandActInfo(readState(db, roleId, 'homeland_act', actId, homelandState()), actId));
+    }
+    for (const actId of runningActivityIds(63, activity, stamp)) {
+      syncActivity(actId, 'pb_theme_treasure_hunt_login', db =>
+        themeLogin(readState(db, roleId, 'theme_treasure', actId, themeState()), actId));
+    }
+    for (const actId of runningActivityIds(84, activity, stamp)) {
+      syncActivity(actId, 'pb_radish_farm_role', db =>
+        radishRole(readState(db, roleId, 'radish_farm', actId, radishState()), actId));
+    }
+    for (const actId of runningActivityIds(100, activity, stamp)) {
+      syncActivity(actId, 'pb_experience_act_data', db =>
+        experienceLogin(readState(db, roleId, 'experience_act', actId, experienceState()), actId));
+    }
+
+    const built = store.transaction((model, db) => {
+      const hunt = readState(db, roleId, 'treasure_hunt', 1, huntState());
+      const huntPayload = codec.pack('pb_treasure_hunt_fun_open_ret', {
+        role_data: huntRole(hunt), map_data: huntMap(hunt)
+      });
+      writeState(db, roleId, 'treasure_hunt', 1, hunt);
+
+      const tourer = readState(db, roleId, 'grand_tourer', 1, tourerState());
+      const funcRows = [...(explorationTables.weekendBonus?.Func ?? new Map()).values()]
+        .sort((left, right) => Number(left.tid) - Number(right.tid));
+      const weekend = codec.pack('pb_weekend_bonus', {
+        rev_day: dayOf(stamp), seq_num: 1, func_tid: 2, end_time: stamp + 7 * DAY_SECONDS,
+        total_play_count: Number(tourer.play_times ?? 0), today_play_count: 0, play_ref_time: 0,
+        reward_bin: idBytes(tourer.task_claims ?? []), active_progress: 0, active_ref_time: 0
+      });
+      const funcPayloads = funcRows.map(row => Number(row.tid) === 2
+        ? codec.pack('pb_grand_tourer', {
+          task_award: idBytes(tourer.task_claims ?? []),
+          distance_award: idBytes(tourer.progress_claims ?? []),
+          max_distance: Number(tourer.play_times ?? 0), online_day_index: 1, version: 1
+        })
+        : codec.pack(row.func_pb, {}));
+
+      const journey = readState(db, roleId, 'magical_journey', 1, journeyState());
+      const journeyPayload = codec.pack('pb_magical_journey_login', journeyLogin(journey));
+
+      const carnival = readState(db, roleId, 'carnival', 1, carnivalState());
+      carnivalRefreshDice(carnival);
+      writeState(db, roleId, 'carnival', 1, carnival);
+      const carnivalPayload = codec.pack('pb_monopoly', carnivalMonopoly(carnival));
+
+      const dream = readState(db, roleId, 'dream', 1, dreamState());
+      const dreamPayload = codec.pack('pb_dream_role', dreamRole(dream));
+
+      return { huntPayload, weekend, funcPayloads, journeyPayload, carnivalPayload, dreamPayload };
+    });
+    modules.set(136, built.huntPayload);
+    modules.set(145, [built.weekend, ...built.funcPayloads]);
+    modules.set(155, built.journeyPayload);
+    modules.set(168, built.carnivalPayload);
+    modules.set(519, built.dreamPayload);
+
+    if (activityIds.length || modules.size) {
+      log({ event: 'exploration_login_synchronized', actIds: activityIds, modules: [...modules.keys()] });
+    }
+    return { activityIds, modules };
   }
 
   // ---- Command registry (#151-#162) -------------------------------------
@@ -731,29 +2938,41 @@ export function createExplorationActService({
   define(11420, 'home_puzzle_act', 'PLAY-HOMEPUZZLEACT', 'cancel_request', 'pb_home_puzzle_cancel_request_req', 'pb_home_puzzle_cancel_request_rsp', puzzleCancel);
 
   // PLAY-HOMELANDACT (#152)
-  define(11501, 'homeland_act', 'PLAY-HOMELANDACT', 'select_hero', 'pb_homeland_act_select_hero_req', 'pb_homeland_act_select_hero_rsp');
-  define(11502, 'homeland_act', 'PLAY-HOMELANDACT', 'task_award', 'pb_homeland_act_task_award_req', 'pb_homeland_act_task_award_rsp');
-  define(11503, 'homeland_act', 'PLAY-HOMELANDACT', 'decorate', 'pb_homeland_act_decorate_req', 'pb_homeland_act_decorate_rsp');
-  define(11505, 'homeland_act', 'PLAY-HOMELANDACT', 'clear_room', 'pb_homeland_act_clear_room_req', 'pb_homeland_act_clear_room_rsp');
+  define(11501, 'homeland_act', 'PLAY-HOMELANDACT', 'select_hero', 'pb_homeland_act_select_hero_req', 'pb_homeland_act_select_hero_rsp', homelandSelectHero);
+  define(11502, 'homeland_act', 'PLAY-HOMELANDACT', 'task_award', 'pb_homeland_act_task_award_req', 'pb_homeland_act_task_award_rsp', homelandTaskAward);
+  define(11503, 'homeland_act', 'PLAY-HOMELANDACT', 'decorate', 'pb_homeland_act_decorate_req', 'pb_homeland_act_decorate_rsp', homelandDecorate);
+  define(11505, 'homeland_act', 'PLAY-HOMELANDACT', 'clear_room', 'pb_homeland_act_clear_room_req', 'pb_homeland_act_clear_room_rsp', homelandClearRoom);
 
   // PLAY-CARNIVAL (#153)
-  for (const [type, name, schema] of [
-    [43003, 'use_item'], [43006, 'throw_dice'], [43008, 'touch_event'], [43009, 'finish_event'],
-    [43010, 'auto_flush_dice'], [43014, 'buy_dice'], [43016, 'latest_data'], [43017, 'achieve_award'],
-    [43018, 'build'], [43019, 'build_up_level'], [43020, 'build_award'], [43021, 'develop_tech'], [43023, 'box_award']
-  ]) define(type, 'carnival', 'PLAY-CARNIVAL', name, null, schema);
-  define(43022, 'carnival', 'PLAY-CARNIVAL', 'build_dispatch', 'pb_mono_dispatch_req', 'pb_mono_build_data');
-  define(43024, 'carnival', 'PLAY-CARNIVAL', 'build_extra', 'pb_mono_build_handle_req', 'pb_mono_build_handle_back');
+  define(43003, 'carnival', 'PLAY-CARNIVAL', 'use_item', null, 'pb_mono_use_item_back', carnivalUseItem);
+  define(43006, 'carnival', 'PLAY-CARNIVAL', 'throw_dice', null, 'pb_mono_throw_dice_back', carnivalThrow);
+  define(43008, 'carnival', 'PLAY-CARNIVAL', 'touch_event', null, 'pb_mono_finish_ev_back', carnivalTouch);
+  define(43009, 'carnival', 'PLAY-CARNIVAL', 'finish_event', null, 'pb_mono_finish_ev_back', carnivalFinishEvent);
+  define(43010, 'carnival', 'PLAY-CARNIVAL', 'auto_flush_dice', null, 'pb_mono_auto_flush_dice_back', carnivalAutoFlush);
+  define(43014, 'carnival', 'PLAY-CARNIVAL', 'buy_dice', null, 'pb_mono_buy_dice_back', carnivalBuyDice);
+  define(43016, 'carnival', 'PLAY-CARNIVAL', 'latest_data', null, 'pb_mono_req_data_back', carnivalLatest);
+  define(43017, 'carnival', 'PLAY-CARNIVAL', 'achieve_award', null, 'pb_mono_rev_achieve_back', carnivalAchieveAward);
+  define(43018, 'carnival', 'PLAY-CARNIVAL', 'build', null, 'pb_mono_build_handle_back', request => carnivalBuild(request, false));
+  define(43019, 'carnival', 'PLAY-CARNIVAL', 'build_up_level', null, 'pb_mono_build_handle_back', request => carnivalBuild(request, true));
+  define(43020, 'carnival', 'PLAY-CARNIVAL', 'build_award', null, 'pb_mono_build_handle_back', carnivalBuildAward);
+  define(43021, 'carnival', 'PLAY-CARNIVAL', 'develop_tech', null, 'pb_mono_req_data_back', carnivalDevelopTech);
+  define(43022, 'carnival', 'PLAY-CARNIVAL', 'build_dispatch', 'pb_mono_dispatch_req', 'pb_mono_build_data', carnivalDispatch);
+  define(43023, 'carnival', 'PLAY-CARNIVAL', 'box_award', null, 'pb_mono_req_data_back', carnivalBoxAward);
+  define(43024, 'carnival', 'PLAY-CARNIVAL', 'build_extra', 'pb_mono_build_handle_req', 'pb_mono_build_handle_back', carnivalBuildExtra);
 
   // PLAY-THEMETREASURE (#154)
-  for (const [type, name, schema] of [
-    [76501, 'hunt', 'pb_theme_treasure_hunt_req'], [76502, 'challenge', 'pb_theme_treasure_challenge_req'],
-    [76504, 'exchange', 'pb_theme_treasure_exchange_req'], [76505, 'challenge_turn', 'pb_theme_treasure_challenge_turn_req']
-  ]) define(type, 'theme_treasure', 'PLAY-THEMETREASURE', name, schema, null);
-  for (const [type, name] of [
-    [76503, 'server_challenge'], [76506, 'target'], [76507, 'task_award'], [76508, 'turn_award'],
-    [76509, 'server_award'], [76510, 'special_award'], [76511, 'daily_award'], [76512, 'server']
-  ]) define(type, 'theme_treasure', 'PLAY-THEMETREASURE', name, null, null);
+  define(76501, 'theme_treasure', 'PLAY-THEMETREASURE', 'hunt', 'pb_theme_treasure_hunt_req', 'pb_theme_treasure_hunt_rsp', themeHunt);
+  define(76502, 'theme_treasure', 'PLAY-THEMETREASURE', 'challenge', 'pb_theme_treasure_challenge_req', 'pb_res_to_client', request => themeChallenge(request, false));
+  define(76503, 'theme_treasure', 'PLAY-THEMETREASURE', 'server_challenge', null, 'pb_theme_treasure_server_rsp', request => themeServerQuery(request));
+  define(76504, 'theme_treasure', 'PLAY-THEMETREASURE', 'exchange', 'pb_theme_treasure_exchange_req', 'pb_theme_treasure_exchange_rsp', themeExchange);
+  define(76505, 'theme_treasure', 'PLAY-THEMETREASURE', 'challenge_turn', 'pb_theme_treasure_challenge_turn_req', 'pb_res_to_client', request => themeChallenge(request, true));
+  define(76506, 'theme_treasure', 'PLAY-THEMETREASURE', 'target', null, 'pb_theme_treasure_server_rsp', request => themeServerQuery(request));
+  define(76507, 'theme_treasure', 'PLAY-THEMETREASURE', 'task_award', null, 'pb_res_to_client', request => themeChallenge(themeEtfRequest(request), false));
+  define(76508, 'theme_treasure', 'PLAY-THEMETREASURE', 'turn_award', null, 'pb_res_to_client', request => themeChallenge(themeEtfRequest(request), true));
+  define(76509, 'theme_treasure', 'PLAY-THEMETREASURE', 'server_award', null, 'pb_res_to_client', themeServerAward);
+  define(76510, 'theme_treasure', 'PLAY-THEMETREASURE', 'special_award', null, null);
+  define(76511, 'theme_treasure', 'PLAY-THEMETREASURE', 'daily_award', null, null);
+  define(76512, 'theme_treasure', 'PLAY-THEMETREASURE', 'server', null, 'pb_theme_treasure_server_rsp', request => themeServerQuery(request));
 
   // PLAY-MINIGAME (#155)
   define(83701, 'mini_game', 'PLAY-MINIGAME', 'settle', 'pb_mini_game_settle_req', 'pb_mini_game_settle_rsp', miniSettle);
@@ -762,53 +2981,60 @@ export function createExplorationActService({
   define(83704, 'mini_game', 'PLAY-MINIGAME', 'handle', 'pb_mini_game_handle_req', 'pb_mini_game_handle_rsp', miniHandle);
 
   // PLAY-TREASUREHUNT (#156)
-  for (const [type, name] of [
-    [85601, 'hunt'], [85605, 'buy_shovel'], [85607, 'auto_compose'], [85608, 'delete_shovel'], [85610, 'refresh']
-  ]) define(type, 'treasure_hunt', 'PLAY-TREASUREHUNT', name, null, null);
-  define(85606, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'compose', 'pb_treasure_hunt_compose_req', null);
-  define(85609, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'exchange_shovel', 'pb_treasure_hunt_exchange_req', null);
+  define(85601, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'hunt', null, 'pb_treasure_hunt_ret_all', treasureHunt);
+  define(85605, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'buy_shovel', null, 'pb_treasure_hunt_ret_all', treasureHuntBuy);
+  define(85606, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'compose', 'pb_treasure_hunt_compose_req', 'pb_treasure_hunt_compose_ret', request => treasureHuntCompose(request, false));
+  define(85607, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'auto_compose', null, 'pb_treasure_hunt_compose_ret', request => treasureHuntCompose(request, true));
+  define(85608, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'delete_shovel', null, 'pb_treasure_hunt_delete_ret', treasureHuntDelete);
+  define(85609, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'exchange_shovel', 'pb_treasure_hunt_exchange_req', 'pb_treasure_hunt_ret_all', treasureHuntExchange);
+  define(85610, 'treasure_hunt', 'PLAY-TREASUREHUNT', 'refresh', null, 'pb_treasure_hunt_refresh_ret', treasureHuntRefresh);
 
   // PLAY-GRANDTOURER (#157)
   define(87801, 'grand_tourer', 'PLAY-GRANDTOURER', 'get_token', null, 'pb_res_to_client', tourerToken);
-  for (const [type, name, schema] of [
-    [87802, 'task_award', 'pb_grand_tourer_task_back'], [87803, 'exchange_token', 'pb_res_to_client'],
-    [87804, 'distance_award', 'pb_res_to_client'], [87805, 'enhance', 'pb_res_to_client']
-  ]) define(type, 'grand_tourer', 'PLAY-GRANDTOURER', name, null, schema);
+  define(87802, 'grand_tourer', 'PLAY-GRANDTOURER', 'task_award', null, 'pb_grand_tourer_task_back', tourerTaskAward);
+  define(87803, 'grand_tourer', 'PLAY-GRANDTOURER', 'exchange_token', null, 'pb_res_to_client', tourerExchange);
+  define(87804, 'grand_tourer', 'PLAY-GRANDTOURER', 'distance_award', null, 'pb_res_to_client', tourerDistanceAward);
+  define(87805, 'grand_tourer', 'PLAY-GRANDTOURER', 'enhance', null, 'pb_res_to_client', tourerEnhance);
 
   // PLAY-DREAM (#158)
-  define(88001, 'dream', 'PLAY-DREAM', 'finish_event', 'pb_dream_finish_event_req', 'pb_dream_fight_event_rsp');
-  for (const [type, name, schema] of [
-    [88002, 'day_award', 'pb_dream_award_rsp'], [88003, 'week_finish_award', 'pb_dream_award_rsp'],
-    [88004, 'all_finish_award', 'pb_dream_award_rsp'], [88005, 'finish_task', 'pb_dream_award_rsp'],
-    [88006, 'collect_award', 'pb_dream_award_rsp'], [88007, 'box_award', 'pb_dream_award_rsp'],
-    [88008, 'npc_lineup', 'pb_dream_npc_lineup_rsp'], [88009, 'single_collect_award', 'pb_dream_award_rsp'],
-    [88010, 'refresh_event', 'pb_dream_refresh_event_rsp']
-  ]) define(type, 'dream', 'PLAY-DREAM', name, null, schema);
+  define(88001, 'dream', 'PLAY-DREAM', 'finish_event', 'pb_dream_finish_event_req', 'pb_dream_fight_event_rsp', dreamFinishEvent);
+  define(88002, 'dream', 'PLAY-DREAM', 'day_award', null, 'pb_dream_award_rsp', dreamDayAward);
+  define(88003, 'dream', 'PLAY-DREAM', 'week_finish_award', null, 'pb_dream_award_rsp', dreamWeekAward);
+  define(88004, 'dream', 'PLAY-DREAM', 'all_finish_award', null, 'pb_dream_award_rsp', dreamMonthAward);
+  define(88005, 'dream', 'PLAY-DREAM', 'finish_task', null, 'pb_dream_award_rsp');
+  define(88006, 'dream', 'PLAY-DREAM', 'collect_award', null, 'pb_dream_award_rsp', dreamCollectAward);
+  define(88007, 'dream', 'PLAY-DREAM', 'box_award', null, 'pb_dream_award_rsp');
+  define(88008, 'dream', 'PLAY-DREAM', 'npc_lineup', null, 'pb_dream_npc_lineup_rsp', dreamNpcLineup);
+  define(88009, 'dream', 'PLAY-DREAM', 'single_collect_award', null, 'pb_dream_award_rsp', dreamSingleCollect);
+  define(88010, 'dream', 'PLAY-DREAM', 'refresh_event', null, 'pb_dream_refresh_event_rsp', dreamRefreshEvent);
 
   // PLAY-MAGICALJOURNEY (#159)
-  for (const [type, name, schema] of [
-    [89901, 'sword', 'pb_magical_journey_sword_req'], [89903, 'country_sub_active', 'pb_magical_journey_country_sub_active_req'],
-    [89906, 'activate_normal_collect', 'pb_magical_journey_collect_activate_req'],
-    [89907, 'activate_season_collect', 'pb_magical_journey_collect_activate_req'],
-    [89910, 'mission_multi_fight', 'pb_magical_journey_mission_fight_req'],
-    [89911, 'boss_multi_fight', 'pb_magical_journey_boss_fight_req']
-  ]) define(type, 'magical_journey', 'PLAY-MAGICALJOURNEY', name, schema, null);
-  for (const [type, name] of [
-    [89902, 'country_main_up'], [89904, 'country_sub_up'], [89905, 'sword_record'],
-    [89908, 'mission_star_award'], [89909, 'mission_task_award'], [89912, 'chapter_progress_award'],
-    [89913, 'node_rank_award'], [89914, 'mission_pass_info'], [89915, 'star_skill_active'],
-    [89916, 'power'], [89917, 'login_after']
-  ]) define(type, 'magical_journey', 'PLAY-MAGICALJOURNEY', name, null, null);
+  define(89901, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'sword', 'pb_magical_journey_sword_req', 'pb_magical_journey_sword_rsp', journeySword);
+  define(89902, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'country_main_up', null, 'pb_magical_journey_main_up_rsp', journeyMainUp);
+  define(89903, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'country_sub_active', 'pb_magical_journey_country_sub_active_req', 'pb_magical_journey_country_sub_active_rsp', journeySubActive);
+  define(89904, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'country_sub_up', null, 'pb_magical_journey_sub_up_rsp', journeySubUp);
+  define(89905, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'sword_record', null, 'pb_magical_journey_sword_record_info', journeySwordRecord);
+  define(89906, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'activate_normal_collect', 'pb_magical_journey_collect_activate_req', 'pb_magical_journey_collect_activate_normal_rsp', request => journeyCollect(request, false));
+  define(89907, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'activate_season_collect', 'pb_magical_journey_collect_activate_req', 'pb_magical_journey_collect_activate_normal_rsp', request => journeyCollect(request, true));
+  define(89908, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'mission_star_award', null, 'pb_magical_journey_task_rev_back', journeyStarAward);
+  define(89909, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'mission_task_award', null, 'pb_magical_journey_task_rev_back', request => journeyTaskAward(request, false));
+  define(89910, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'mission_multi_fight', 'pb_magical_journey_mission_fight_req', 'pb_magical_journey_mission_multi_fight_back', journeyMissionFight);
+  define(89911, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'boss_multi_fight', 'pb_magical_journey_boss_fight_req', 'pb_magical_journey_boss_fight_back', journeyBossFight);
+  define(89912, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'chapter_progress_award', null, 'pb_magical_journey_progress_rev_back', request => journeyTaskAward(request, true));
+  define(89913, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'node_rank_award', null, null);
+  define(89914, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'mission_pass_info', null, 'pb_magical_journey_login_after_back', journeyLoginAfter);
+  define(89915, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'star_skill_active', null, 'pb_magical_journey_star_activate_rsp', journeyStarSkill);
+  define(89916, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'power', null, 'pb_magical_journey_open_handle', journeyPowerInfo);
+  define(89917, 'magical_journey', 'PLAY-MAGICALJOURNEY', 'login_after', null, 'pb_magical_journey_login_after_back', journeyLoginAfter);
 
   // PLAY-PETACTIVITY (#160)
-  for (const [type, name, schema] of [
-    [90501, 'select_pet', 'pb_req_pet_act_select_pet'], [90502, 'claim_fight_rewards', 'pb_req_pet_act_daily_reward'],
-    [90503, 'claim_likability_rewards', 'pb_req_pet_act_claim_likability_rewards'], [90504, 'cure', 'pb_req_pet_act_cure'],
-    [90505, 'finish_cure', 'pb_req_pet_act_cure']
-  ]) define(type, 'pet_activity', 'PLAY-PETACTIVITY', name, schema, null);
-  for (const [type, name] of [[90506, 'daily_vitality_rewards'], [90507, 'exchange']]) {
-    define(type, 'pet_activity', 'PLAY-PETACTIVITY', name, null, null);
-  }
+  define(90501, 'pet_activity', 'PLAY-PETACTIVITY', 'select_pet', 'pb_req_pet_act_select_pet', 'pb_pet_act_player', petSelect);
+  define(90502, 'pet_activity', 'PLAY-PETACTIVITY', 'claim_fight_rewards', 'pb_req_pet_act_daily_reward', 'pb_pet_act_flush', petClaimFight);
+  define(90503, 'pet_activity', 'PLAY-PETACTIVITY', 'claim_likability_rewards', 'pb_req_pet_act_claim_likability_rewards', 'pb_pet_act_flush', petClaimFavor);
+  define(90504, 'pet_activity', 'PLAY-PETACTIVITY', 'cure', 'pb_req_pet_act_cure', 'pb_res_pet_act_cure', request => petCure(request, false));
+  define(90505, 'pet_activity', 'PLAY-PETACTIVITY', 'finish_cure', 'pb_req_pet_act_cure', 'pb_res_pet_act_cure', request => petCure(request, true));
+  define(90506, 'pet_activity', 'PLAY-PETACTIVITY', 'daily_vitality_rewards', null, 'pb_rev_pet_vitality_award_ret', petDailyVitality);
+  define(90507, 'pet_activity', 'PLAY-PETACTIVITY', 'exchange', null, 'pb_pet_exchange_ret', petExchange);
 
   // PLAY-RADISHFARM (#161)
   define(90801, 'radish_farm', 'PLAY-RADISHFARM', 'start', 'pb_radish_farm_normal_req', 'pb_radish_farm_normal_rsp', radishStart);
@@ -825,6 +3051,7 @@ export function createExplorationActService({
   return {
     moduleId: 'G1',
     commands,
+    synchronizeLogin,
     supports: type => commands.has(Number(type)),
     implemented: type => Boolean(commands.get(Number(type))?.run),
     async execute(type, data) {

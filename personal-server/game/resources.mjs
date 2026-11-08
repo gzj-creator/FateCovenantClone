@@ -25,7 +25,11 @@ const ITEM_GROUP_HANDLERS = new Map([
   ['1900:ItemBase', 3],
   ['3300:ItemBase', 9],
   ['4200:ItemBase', 0],
-  ['4100:ItemSpiritCourtyard', 19]
+  ['4100:ItemSpiritCourtyard', 19],
+  // TreasureHuntTable HighAward rows use museum collection items. The museum
+  // service consumes the same family, so rewards must land in an inventory
+  // container instead of failing with an unknown-resource error.
+  ['3000:MuseumCollectionItem', 0]
 ]);
 
 let schemaCodec;

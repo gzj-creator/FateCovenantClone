@@ -616,7 +616,7 @@ export function createLocalGame({
   // dream trial, diamond vein, source point, homeland album, homeland and
   // baking. Rules without shipped evidence fail closed inside the service.
   const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
-  const explorationAct=createExplorationActService({store,codec,tables,explorationTables:readExplorationActTables(),now:clock,random,logger});
+  const explorationAct=createExplorationActService({store,codec,tables,explorationTables:readExplorationActTables(),calendar,now:clock,random,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
   // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
@@ -759,6 +759,13 @@ export function createLocalGame({
     // trial, diamond vein and baking).
     const minigameLoginIds = minigameAct.synchronizeLogin(activity, loginSeconds);
     if (minigameLoginIds.length) logger({ event: 'minigame_act_login_synced', actIds: minigameLoginIds });
+    // G1 exploration families: HomePuzzle/Homeland/ThemeTreasure/RadishFarm/
+    // ExperienceAct ride in module 92 entries; TreasureHunt/WeekendBonus/
+    // MagicalJourney/Carnival/Dream have dedicated login modules.
+    const explorationLogin = explorationAct.synchronizeLogin(activity, loginSeconds);
+    if (explorationLogin.activityIds.length) {
+      logger({ event: 'exploration_act_login_synced', actIds: explorationLogin.activityIds, modules: [...explorationLogin.modules.keys()] });
+    }
     // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
     // entry's module_login_data (ActFrameTable type 1102).
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
@@ -768,6 +775,9 @@ export function createLocalGame({
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
     ]);
     modules.set(92, binary(pack('pb_act_login', activity)));
+    for (const [moduleId, payload] of explorationLogin.modules) {
+      modules.set(moduleId, Array.isArray(payload) ? payload.map(binary) : binary(payload));
+    }
     if (petLogin) modules.set(petActivity.moduleId, binary(petLogin.module));
     else modules.delete(petActivity.moduleId);
     const artifactIds = [...new Set([
@@ -839,6 +849,8 @@ export function createLocalGame({
       diamondBankActId: diamondBankLogin.actId,
       freePrivilegeActId: freePrivilegeLogin.actId,
       slotGameActIds: slotGameLoginIds,
+      explorationActActivityIds: explorationLogin.activityIds,
+      explorationLoginModules: [...explorationLogin.modules.keys()],
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });

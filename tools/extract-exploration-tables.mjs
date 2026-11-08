@@ -13,7 +13,7 @@ const TABLES = [
   'HomePuzzleActTable.data.lua', 'HomelandActTable.data.lua', 'CarnivalTable.data.lua',
   'ThemeTreasureTable.data.lua', 'MiniGameTable.data.lua', 'TreasureHuntTable.data.lua',
   'GrandTourerTable.data.lua', 'DreamTable.data.lua', 'MagicalJourneyTable.data.lua',
-  'RadishFarmTable.data.lua', 'ExperienceActTable.data.lua'
+  'RadishFarmTable.data.lua', 'ExperienceActTable.data.lua', 'WeekendBonusTable.data.lua'
 ];
 const bundlePath = process.argv[2] ?? 'analysis/tmp/lua-bundles/64_lua_project.bundle';
 const assets = new Map(readTextAssets(fs.readFileSync(bundlePath)).map(a => [a.name, a]));
