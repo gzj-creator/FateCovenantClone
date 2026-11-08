@@ -58,12 +58,14 @@ function decode(packets) {
 
 test('proven status types map to the shipped FightTable.Buff tids only', () => {
   assert.equal(provenBuffTid('stun'), 10001);
+  assert.equal(provenBuffTid('freeze'), 10002);
+  assert.equal(provenBuffTid('silence'), 10003);
   assert.equal(provenBuffTid('poison'), 11003);
   assert.equal(provenBuffTid('burn'), 11004);
-  for (const unproven of ['frightened', 'chain', 'pursuit', 'strengthened', 'protection', 'silence', 'freeze']) {
+  for (const unproven of ['frightened', 'chain', 'pursuit', 'strengthened', 'protection']) {
     assert.equal(provenBuffTid(unproven), null, unproven + ' has no proven FightTable.Buff row');
   }
-  assert.deepEqual(PROVEN_STATUS_BUFF_TIDS.map(entry => entry.tid), [10001, 11003, 11004]);
+  assert.deepEqual(PROVEN_STATUS_BUFF_TIDS.map(entry => entry.tid), [10001, 10002, 10003, 11003, 11004]);
 });
 
 test('sign is the add/remove flag the client branches on', () => {

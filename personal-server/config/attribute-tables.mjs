@@ -10,6 +10,7 @@ import { tableAsset } from '../assets.mjs';
 // attributes. NpcAttrRatio/NpcFightCustom are kept here as well so NPC scaling
 // can be applied from configuration rather than a player-level heuristic.
 const defaultPath = tableAsset('HeroTable.data.lua.json');
+const defaultNpcAttrPath = tableAsset('HeroTableNpcAttr.data.lua.json.gz');
 let defaultCache;
 
 export const ATTRIBUTE_TABLE_NAMES = [
@@ -18,9 +19,14 @@ export const ATTRIBUTE_TABLE_NAMES = [
   'NpcAttrRatio', 'NpcFightCustom'
 ];
 
-export function readAttributeTables(file = defaultPath) {
+export function readAttributeTables(file = defaultPath, npcAttrFile = defaultNpcAttrPath) {
   if (file === defaultPath && defaultCache) return defaultCache;
   const tables = readGeneratedTables(file, ATTRIBUTE_TABLE_NAMES);
-  if (file === defaultPath) defaultCache = tables;
-  return tables;
+  // NpcAttr is shipped in separate LuaJIT shards and extracted into its own
+  // generated asset. Keeping it in the same table family lets the same
+  // CalcValues implementation explain both player and NPC attributes.
+  const npcTables = readGeneratedTables(npcAttrFile, ['NpcAttr']);
+  const result = { ...tables, NpcAttr: npcTables.NpcAttr };
+  if (file === defaultPath) defaultCache = result;
+  return result;
 }

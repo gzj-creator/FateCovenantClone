@@ -19,18 +19,23 @@ import {
   addLayer,
   activeDomains,
   addSuperHp,
+  consumeLayers,
   destroyShield,
   drainTianji,
   gainTianji,
   layerValue,
   openDomain,
   registerHook,
+  runHooks,
   setLayer,
   summonGuard,
   tianjiValue,
 } from './proprietary-state.mjs';
+import { EffectExecutor } from './effect-executor.mjs';
+import { BUFF_CHANGE_REASON, BUFF_SIGN, provenBuffTid } from './report-codes.mjs';
 
 const ENEMY_TARGET = { targetType: 'all-enemies' };
+const CONTROL_STATUS_TYPES = new Set(['freeze', 'stun', 'silence', 'frightened']);
 
 /**
  * Rule table. `requires` is the evidence gate: every literal fragment and every
@@ -173,6 +178,34 @@ export let PROPRIETARY_SKILL_RULES = [
     config: { scope: 'all-enemies', resources: ['energy', 'tianji'] }
   },
 
+  // The description states a source of "20% of 零's max HP" rather than the
+  // target's HP. Keep the damage tagged as magical so it still follows the
+  // normal magical damage path; only the base value is replaced here.
+  {
+    skillId: '2504040123', kind: 'damage-source',
+    requires: ['对敌方全体造成零生命上限20%的魔法伤害', '目标无护盾时伤害提升40%'],
+    evidence: '削减敌方全体35%的护盾，对敌方全体造成零生命上限20%的魔法伤害（目标无护盾时伤害提升40%）',
+    config: {
+      matchDamageType: 'magical', damageBasis: 'actor-max-hp', magnitude: 0.2,
+      conditionalDamage: { condition: 'target-no-shield', multiplier: 0.4 },
+    }
+  },
+
+  // 蕾娜: replace the old 160%-attack approximation with the described 16% of
+  // the target's already-lost HP. The per-layer 4% escalation remains blocked on
+  // the unresolved `{0}` status binding; the stated attack ceiling is exact.
+  {
+    skillId: '6403050105', kind: 'damage-source',
+    requires: ['额外造成16%已损失生命值的真实伤害', '最高不超过自身攻击力的240%'],
+    evidence: '并额外造成16%已损失生命值的真实伤害（目标每拥有1层{0}使该伤害系数提升4%，最高不超过自身攻击力的240%）',
+    reportedEffectTypes: ['damage'],
+    limitations: ['the unresolved {0} status prevents applying the +4% per-layer scaling'],
+    config: {
+      matchDamageType: 'true', damageBasis: 'target-lost-hp', magnitude: 0.16,
+      canCrit: false, damageCap: { basis: 'attack', ratio: 2.4 },
+    },
+  },
+
   // 领域: 【魔能领域】 lasts two rounds, heals allies on opening and grants
   // 【魔能】 layers to the allies inside it.
   {
@@ -189,6 +222,118 @@ export let PROPRIETARY_SKILL_RULES = [
       allyStats: [{ statType: 'attack-percent', magnitude: 0.1 }],
       layers: { name: '魔能', roundStart: 1, action: 1, firstUltimate: 1, damageTaken: 1 },
     }
+  },
+
+  // 狐魅领域 explicitly gives the per-action energy values and the two final
+  // damage modifiers. Its duration is absent from AbilityDes; two rounds is an
+  // explicit compatibility approximation kept consistent with the catalog
+  // field rows and recorded in the alignment report.
+  {
+    skillId: '2504020123', kind: 'domain',
+    requires: [
+      '同时展开【狐魅领域】',
+      '我方全体最终伤害提高20%，每次普攻行动/绝招后额外恢复100能量值',
+      '敌方全体最终伤害降低20%，每次普攻/绝招行动后扣除100能量值',
+    ],
+    evidence: '【狐魅领域】：我方全体最终伤害提高20%，每次普攻行动/绝招后额外恢复100能量值；'
+      + '敌方全体最终伤害降低20%，每次普攻/绝招行动后扣除100能量值',
+    config: {
+      name: '狐魅领域', rounds: 2, durationApproximation: true,
+      energyGain: 100, energyLoss: 100,
+      guard: { name: '狐佑', healRatio: 0.15, rounds: 2 },
+    }
+  },
+
+  // 赤霄: the non-kill branch is evaluated over the complete action. A kill by
+  // any target in that cast suppresses the ally-wide 150 energy recovery.
+  {
+    skillId: '2204010123', kind: 'no-kill-energy',
+    requires: ['若没有造成击杀，则恢复我方全体150点能量'],
+    evidence: '若没有造成击杀，则恢复我方全体150点能量',
+    reportedEffectTypes: ['energy'],
+    config: { amount: 150, actionType: 'tianji' },
+  },
+
+  // 蜜雪儿: the rare skill resolves after 冰锥术 itself. A successful 30% freeze
+  // restores 200 energy; a failed freeze applies silence for one round. Both
+  // statuses have shipped FightTable.Buff rows (10002 and 10003).
+  {
+    skillId: '6401030108', kind: 'control-outcome',
+    requires: [
+      '释放冰锥术时，有30%概率使目标冰冻',
+      '若成功添加【冰冻】，则恢复自身200点能量',
+      '若【冰冻】失败，则为其添加【沉默】效果，持续1回合',
+    ],
+    evidence: '有30%概率使目标冰冻，若成功添加【冰冻】，则恢复自身200点能量，若【冰冻】失败，则为其添加【沉默】效果，持续1回合',
+    reportedEffectTypes: ['status', 'energy'],
+    config: {
+      chance: 0.3, successStatus: 'freeze', failureStatus: 'silence',
+      successEnergy: 200, rounds: 1,
+    },
+  },
+
+  // 蕾娜: every ally control application restores 150 energy, at most three
+  // times per round. The target-side `{0}` layer and the Sacred-camp bonus layer
+  // remain fail-closed because their AbilityBuffDes binding is absent.
+  {
+    skillId: '6403050105', kind: 'control-feedback',
+    requires: ['队友造成控制效果时', '为蕾娜恢复150点能量', '每回合最多触发3次'],
+    evidence: '队友造成控制效果时，为目标添加1层{0}，圣堂冒险者可额外添加1层，并为蕾娜恢复150点能量，每回合最多触发3次',
+    reportedEffectTypes: ['energy'],
+    limitations: [
+      'the unresolved {0} status prevents adding the target layer',
+      'the Sacred-camp extra {0} layer remains unimplemented',
+    ],
+    config: { energy: 150, maxPerRound: 3, controlTypes: [...CONTROL_STATUS_TYPES] },
+  },
+
+  // 冰镰使徒's rare effect reads the target's live debuff layer total at the
+  // moment each hit lands. At >=3 layers it heals its owner and at >=9 it also
+  // restores 200 energy; both clauses share the described five-per-round limit.
+  {
+    skillId: '6303020105', kind: 'debuff-threshold-reward',
+    requires: [
+      '若目标减益效果大于等于3层，恢复自身15%最大生命值，每回合最多触发5次',
+      '若目标减益效果大于等于9层，恢复自身200点能量，每回合最多触发5次',
+    ],
+    evidence: '若目标减益效果大于等于3层，恢复自身15%最大生命值，每回合最多触发5次；'
+      + '若目标减益效果大于等于9层，恢复自身200点能量，每回合最多触发5次',
+    reportedEffectTypes: ['heal', 'energy'],
+    config: { debuffThreshold: 3, healRatio: 0.15, energyThreshold: 9, energy: 200, maxPerRound: 5 },
+  },
+
+  // 一锤定音 revives its owner in the death hook, before the round checks for
+  // battle end. The reviving action id is retained for pb_fat_fighter_relive.
+  {
+    skillId: '344020175', kind: 'revive-full',
+    requires: [
+      '命运三姝死亡时立刻复活',
+      '恢复100%生命值和1000能量',
+      '复活后命运三姝所有伤害加成和所有伤害减免提高20%',
+    ],
+    evidence: '命运三姝死亡时立刻复活，并恢复100%生命值和1000能量；'
+      + '且复活后命运三姝所有伤害加成和所有伤害减免提高20%',
+    reportedEffectTypes: ['heal', 'energy', 'revive', 'stat-modifier'],
+    config: {
+      hpRatio: 1, energy: 1000,
+      stats: [
+        { statType: 'damage-bonus', magnitude: 0.2 },
+        { statType: 'damage-reduction', magnitude: 0.2 },
+      ],
+    },
+  },
+
+  // 汐夜: at 80 or more 月光 layers the Tianji action restores 240 energy. The
+  // same sentence requires removing every 月光 layer when that action ends.
+  {
+    skillId: '2404030123', kind: 'layer-threshold-energy',
+    requires: [
+      '80层：且天极技结束时回复240点能量值',
+      '且释放结束后移除所有【月光】',
+    ],
+    evidence: '80层：且天极技结束时回复240点能量值；且释放结束后移除所有【月光】',
+    reportedEffectTypes: ['energy'],
+    config: { layer: '月光', threshold: 80, energy: 240 },
   },
 
   // 命名层数: 【魂】 from any character death, capped at 8 by 314030175.
@@ -390,7 +535,7 @@ function gainNamedLayers(events, unit, def, count, reason) {
 }
 
 /** Heal one unit and emit the same shape the effect pipeline reports. */
-function healNamedUnit(events, unit, amount, sourceId) {
+function healNamedUnit(events, unit, amount, sourceId, actionId = 0) {
   if (!unit?.alive || !(amount > 0)) return 0;
   const oldHp = Math.max(0, Number(unit.hp) || 0);
   const newHp = Math.min(unit.maxHp, oldHp + Math.floor(amount));
@@ -399,10 +544,75 @@ function healNamedUnit(events, unit, amount, sourceId) {
   unit.hp = newHp;
   unit.healsReceived = (Number(unit.healsReceived) || 0) + actualHeal;
   emitProprietary(events, {
-    kind: 'effect', type: 'heal', actor: sourceId, target: unit.id,
+    kind: 'effect', id: actionId, type: 'heal', actor: sourceId, target: unit.id,
     value: actualHeal, actualHeal, oldHp, newHp, overheal: false,
   });
   return actualHeal;
+}
+
+/** Change energy for one unit and emit the same event shape as an energy effect. */
+function adjustEnergyNamed(events, unit, { energyType, magnitude, sourceId, actionId = 0, reason }) {
+  if (!unit?.alive || !(Number(magnitude) > 0)) return 0;
+  const oldEnergy = Math.max(0, Number(unit.energy) || 0);
+  const delta = Number(magnitude);
+  const newEnergy = energyType === 'gain'
+    ? Math.min(1000, oldEnergy + delta)
+    : Math.max(0, oldEnergy - delta);
+  unit.energy = newEnergy;
+  emitProprietary(events, {
+    kind: 'effect', id: actionId, type: 'energy', actor: sourceId, target: unit.id,
+    energyType, magnitude: delta, oldEnergy, newEnergy, reason,
+  });
+  return Math.abs(newEnergy - oldEnergy);
+}
+
+/**
+ * Apply a status through the same executor used by catalog effects, project the
+ * resulting buff change, and notify global status-reactive rules. Proprietary
+ * hooks use this instead of mutating buff arrays directly so the internal state
+ * and the client report cannot diverge.
+ */
+function applyNamedStatus(events, state, actor, target, {
+  statusType, rounds, actionId, sourceSkill, reason,
+}) {
+  if (!actor || !target?.alive || !statusType) return null;
+  const executor = new EffectExecutor(state);
+  const duration = { durationType: 'timed', rounds: Math.max(1, Number(rounds) || 1) };
+  const result = executor.executeStatus({
+    statusType, stacks: 1, maxStacks: 1, unique: true, duration, sourceSkill,
+  }, actor, target);
+  if (!result) return null;
+  result.sourceSkill = sourceSkill;
+  emitProprietary(events, {
+    ...result, kind: 'effect', id: actionId, reason,
+  });
+
+  const tid = provenBuffTid(statusType);
+  const layers = Math.max(0, Math.floor(Number(result.stacksDelta ?? result.stacks) || 0));
+  if (tid && layers > 0) {
+    emitProprietary(events, {
+      kind: 'buff-change', id: actionId,
+      buffs: [{
+        aimId: target.id,
+        tid,
+        overlay: layers,
+        sign: BUFF_SIGN.ADD,
+        casterId: actor.id,
+        changeReason: BUFF_CHANGE_REASON.NONE,
+        abilityId: Number(sourceSkill) || 0,
+      }],
+    });
+  }
+
+  runHooks(state, PROPRIETARY_HOOKS.STATUS_APPLIED, {
+    actor, target, statusType, actionId, sourceSkill, result, reason,
+  }, events);
+  return result;
+}
+
+function debuffLayerCount(unit) {
+  return (unit?.debuffs ?? []).reduce((total, debuff) =>
+    total + Math.max(1, Math.floor(Number(debuff?.stacks) || 1)), 0);
 }
 
 /** Add a stat modifier whose lifetime is expressed in rounds. */
@@ -491,7 +701,9 @@ const HANDLERS = Object.freeze({
       let removed = 0;
       const detail = [];
       for (const target of scope) {
-        const amount = destroyShield(target, config.ratio, { sourceId: actor.id, events: state.events });
+        const amount = destroyShield(target, config.ratio, {
+          sourceId: actor.id, events: state.events, actionId: state.currentActionId ?? 0,
+        });
         if (amount > 0) detail.push({ aimId: target.id, removed: amount, shield: target.shield });
         removed += amount;
       }
@@ -539,9 +751,192 @@ const HANDLERS = Object.freeze({
 
   'clear-resource': ({ rule }) => ({ ...rule.config }),
 
+  'no-kill-energy': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    const killedActions = unit.proprietary.killedActions
+      ?? (unit.proprietary.killedActions = new Set());
+    registerHook(unit, PROPRIETARY_HOOKS.UNIT_DEATH, (owner, payload, state) => {
+      if (payload?.killer?.id !== owner.id) return false;
+      if (Number(payload.actionId) !== Number(state?.currentActionId)) return false;
+      killedActions.add(Number(payload.actionId));
+      return null;
+    }, {});
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+      if (payload?.actor?.id !== owner.id) return false;
+      if (payload?.extra) return false;
+      if (payload?.actionType !== config.actionType) return false;
+      if (String(payload?.skill?.id ?? '') !== String(skill.id)) return false;
+      const actionId = Number(payload.actionId);
+      const hadKill = killedActions.delete(actionId);
+      if (hadKill) return false;
+      for (const ally of livingAlliesOf(owner, state)) {
+        adjustEnergyNamed(state?.events, ally, {
+          energyType: 'gain', magnitude: Number(config.amount),
+          sourceId: owner.id, actionId, reason: 'no-kill-energy',
+        });
+      }
+      return null;
+    }, {});
+    return { amount: config.amount, actionType: config.actionType };
+  },
+
+  'control-outcome': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    let pending = null;
+    registerHook(unit, PROPRIETARY_HOOKS.BEFORE_ACTION, (owner, payload) => {
+      if (payload?.actor?.id !== owner.id) return false;
+      if (String(payload?.skill?.id ?? '') !== String(skill.id)) return false;
+      const targets = typeof payload.resolveTargets === 'function' ? payload.resolveTargets() : [];
+      if (!targets.length) return false;
+      pending = { actionId: Number(payload.actionId), targets };
+      return null;
+    }, {});
+
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+      const actionId = Number(payload?.actionId);
+      if (!pending || pending.actionId !== actionId) return false;
+      if (payload?.actor?.id !== owner.id) return false;
+      if (String(payload?.skill?.id ?? '') !== String(skill.id)) return false;
+      const targets = pending.targets;
+      pending = null;
+      let resolved = false;
+      for (const target of targets) {
+        if (!target?.alive) continue;
+        const success = (typeof state.random === 'function' ? state.random() : 0.5)
+          < Number(config.chance);
+        const statusType = success ? config.successStatus : config.failureStatus;
+        const applied = applyNamedStatus(state?.events, state, owner, target, {
+          statusType, rounds: Number(config.rounds), actionId, sourceSkill: String(skill.id),
+          reason: success ? 'freeze-success' : 'freeze-failure-silence',
+        });
+        if (!applied) continue;
+        resolved = true;
+        if (success) {
+          adjustEnergyNamed(state?.events, owner, {
+            energyType: 'gain', magnitude: Number(config.successEnergy),
+            sourceId: owner.id, actionId, reason: 'freeze-success-energy',
+          });
+        }
+      }
+      return resolved ? null : false;
+    }, {});
+    return {
+      chance: config.chance, successStatus: config.successStatus,
+      failureStatus: config.failureStatus, successEnergy: config.successEnergy,
+      rounds: config.rounds, sourceSkill: String(skill.id),
+    };
+  },
+
+  'control-feedback': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    const controls = new Set(config.controlTypes ?? CONTROL_STATUS_TYPES);
+    registerHook(unit, PROPRIETARY_HOOKS.STATUS_APPLIED, (owner, payload, state) => {
+      if (!owner.alive) return false;
+      const actor = payload?.actor;
+      const target = payload?.target;
+      if (!actor || !target) return false;
+      if (actor.team !== owner.team || actor.id === owner.id) return false;
+      if (target.team === owner.team) return false;
+      if (!controls.has(payload?.statusType)) return false;
+      adjustEnergyNamed(state?.events, owner, {
+        energyType: 'gain', magnitude: Number(config.energy), sourceId: actor.id,
+        actionId: payload.actionId ?? state?.currentActionId ?? 0,
+        reason: 'control-ally-energy',
+      });
+      return null;
+    }, { maxPerRound: Number(config.maxPerRound) });
+    return {
+      energy: config.energy, maxPerRound: config.maxPerRound,
+      controlTypes: [...controls], sourceSkill: String(skill.id),
+    };
+  },
+
+  'debuff-threshold-reward': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    registerHook(unit, PROPRIETARY_HOOKS.DAMAGE_DEALT, (owner, payload, state) => {
+      if (payload?.actor?.id !== owner.id) return false;
+      if (!payload?.target?.alive) return false;
+      const layers = debuffLayerCount(payload.target);
+      if (layers < Number(config.debuffThreshold)) return false;
+      healNamedUnit(state?.events, owner, owner.maxHp * Number(config.healRatio), owner.id,
+        payload.actionId ?? state?.currentActionId ?? 0);
+      if (layers >= Number(config.energyThreshold)) {
+        adjustEnergyNamed(state?.events, owner, {
+          energyType: 'gain', magnitude: Number(config.energy),
+          sourceId: owner.id, actionId: payload.actionId ?? state?.currentActionId ?? 0,
+          reason: 'debuff-threshold-energy',
+        });
+      }
+      return null;
+    }, { maxPerRound: Number(config.maxPerRound) });
+    return {
+      debuffThreshold: config.debuffThreshold, healRatio: config.healRatio,
+      energyThreshold: config.energyThreshold, energy: config.energy,
+      maxPerRound: config.maxPerRound, sourceSkill: String(skill.id),
+    };
+  },
+
+  'revive-full': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    registerHook(unit, PROPRIETARY_HOOKS.UNIT_DEATH, (owner, payload, state) => {
+      if (payload?.unit?.id !== owner.id) return false;
+      owner.alive = true;
+      owner.hp = Math.max(1, Math.floor(owner.maxHp * Number(config.hpRatio)));
+      owner.energy = Math.min(1000, Number(config.energy) || 0);
+      owner.shield = 0;
+      owner.deadThisAction = false;
+      const actionId = payload?.actionId ?? state?.currentActionId ?? 0;
+      emitProprietary(state?.events, {
+        kind: 'revive', id: actionId, aimId: owner.id, hp: owner.hp,
+        energy: owner.energy, reason: 'revive-full',
+      });
+      for (const stat of config.stats ?? []) {
+        applyPermanentStat(owner, {
+          statType: stat.statType, magnitude: stat.magnitude, sourceSkill: String(skill.id),
+        });
+        emitProprietary(state?.events, {
+          kind: 'effect', id: actionId, type: 'stat-modifier',
+          actor: owner.id, target: owner.id, statType: stat.statType,
+          magnitude: stat.magnitude, durationType: 'permanent', reason: 'after-revive',
+        });
+      }
+      return null;
+    }, { oncePerBattle: true });
+    return { hpRatio: config.hpRatio, energy: config.energy, stats: config.stats };
+  },
+
+  'layer-threshold-energy': ({ unit, skill, rule }) => {
+    const config = rule.config;
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+      if (payload?.actor?.id !== owner.id || payload?.extra) return false;
+      if (payload?.actionType !== 'tianji') return false;
+      if (String(payload?.skill?.id ?? '') !== String(skill.id)) return false;
+      const before = layerValue(owner, config.layer);
+      if (before <= 0) return false;
+      if (before >= Number(config.threshold)) {
+        adjustEnergyNamed(state?.events, owner, {
+          energyType: 'gain', magnitude: Number(config.energy),
+          sourceId: owner.id, actionId: payload.actionId ?? state?.currentActionId ?? 0,
+          reason: 'moonlight-threshold-energy',
+        });
+      }
+      const removed = consumeLayers(owner, config.layer, before);
+      if (removed > 0) {
+        emitProprietary(state?.events, {
+          kind: PROPRIETARY_EVENT_KINDS.LAYER, id: payload.actionId ?? state?.currentActionId ?? 0,
+          aimId: owner.id, name: config.layer, value: layerValue(owner, config.layer),
+          delta: -removed, reason: 'tianji-end-consume',
+        });
+      }
+      return null;
+    }, {});
+    return { layer: config.layer, threshold: config.threshold, energy: config.energy };
+  },
+
   'domain': ({ unit, skill, rule }) => {
     const config = rule.config;
-    const layerDef = { name: config.layers.name };
+    const layerConfig = config.layers ?? null;
+    const layerDef = layerConfig ? { name: layerConfig.name } : null;
     const openedBy = state => activeDomains(state, config.name)
       .find(domain => domain.ownerId === unit.id) ?? null;
 
@@ -560,7 +955,8 @@ const HANDLERS = Object.freeze({
         rounds: Number(config.rounds), delta: 1, reason: 'cast',
       });
       for (const ally of livingAlliesOf(unit, state)) {
-        healNamedUnit(state?.events, ally, ally.maxHp * Number(config.healRatio), unit.id);
+        healNamedUnit(state?.events, ally, ally.maxHp * Number(config.healRatio), unit.id,
+          state?.currentActionId ?? 0);
         for (const stat of config.allyStats ?? []) {
           applyTimedStat(ally, {
             statType: stat.statType, magnitude: stat.magnitude,
@@ -574,50 +970,120 @@ const HANDLERS = Object.freeze({
           });
         }
       }
-      return null;
-    }, {});
-
-    // "领域内所有友方冒险者每回合开始时额外获得1层【魔能】"
-    registerHook(unit, PROPRIETARY_HOOKS.ROUND_START, (owner, payload, state) => {
-      if (!openedBy(state)) return false;
-      for (const ally of livingAlliesOf(unit, state)) {
-        gainNamedLayers(state?.events, ally, layerDef, Number(config.layers.roundStart), 'domain-round-start');
-      }
-      return null;
-    }, {});
-
-    // "每次普攻/绝招时额外获得1层" plus the extra layer on the round's first
-    // ultimate. 绝招 is the ultimate action in this catalog, which is also what
-    // makes "每回合首次释放终结技时额外获得1层" an additional layer.
-    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
-      if (!openedBy(state)) return false;
-      const acting = payload?.actor;
-      if (!acting || acting.team !== unit.team) return false;
-      if (payload.actionType !== 'attack' && payload.actionType !== 'ultimate') return false;
-      let count = Number(config.layers.action) || 0;
-      if (payload.actionType === 'ultimate') {
-        const key = 'domain:' + config.name + ':first-ultimate';
-        const round = Number(state?.round);
-        if (Number(unit.proprietary.counters.get(key)) !== round) {
-          unit.proprietary.counters.set(key, round);
-          count += Number(config.layers.firstUltimate) || 0;
+      if (config.guard?.healRatio > 0) {
+        const throughRound = Number(state?.round) + Math.max(1, Number(config.guard.rounds) || 1) - 1;
+        for (const ally of livingAlliesOf(unit, state)) {
+          const guards = ally.proprietary.actionHeals
+            ?? (ally.proprietary.actionHeals = []);
+          const existing = guards.find(entry => entry.name === config.guard.name
+            && String(entry.sourceSkill) === String(skill.id));
+          if (existing) {
+            existing.healRatio = Number(config.guard.healRatio);
+            existing.throughRound = Math.max(existing.throughRound, throughRound);
+          } else {
+            guards.push({
+              name: config.guard.name, healRatio: Number(config.guard.healRatio),
+              throughRound, sourceSkill: String(skill.id),
+            });
+          }
         }
       }
-      for (const ally of livingAlliesOf(unit, state)) {
-        gainNamedLayers(state?.events, ally, layerDef, count, 'domain-action');
-      }
       return null;
     }, {});
 
-    // "每次受到普攻/绝招/终结技/天极技伤害时额外获得1层"
-    registerHook(unit, PROPRIETARY_HOOKS.DAMAGE_TAKEN, (owner, payload, state) => {
-      if (!openedBy(state)) return false;
-      const target = payload?.target;
-      if (!target?.alive || target.team !== unit.team) return false;
-      if (!['attack', 'ultimate', 'tianji'].includes(payload?.actionType)) return false;
-      gainNamedLayers(state?.events, target, layerDef, Number(config.layers.damageTaken), 'domain-damage-taken');
-      return null;
-    }, {});
+    if (layerConfig) {
+      // "领域内所有友方冒险者每回合开始时额外获得1层【魔能】"
+      registerHook(unit, PROPRIETARY_HOOKS.ROUND_START, (owner, payload, state) => {
+        if (!openedBy(state)) return false;
+        for (const ally of livingAlliesOf(unit, state)) {
+          gainNamedLayers(state?.events, ally, layerDef, Number(layerConfig.roundStart), 'domain-round-start');
+        }
+        return null;
+      }, {});
+
+      // "每次普攻/绝招时额外获得1层" plus the extra layer on the round's first
+      // ultimate. 绝招 is the ultimate action in this catalog, which is also what
+      // makes "每回合首次释放终结技时额外获得1层" an additional layer.
+      registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+        if (!openedBy(state)) return false;
+        const acting = payload?.actor;
+        if (!acting || acting.team !== unit.team) return false;
+        if (payload.actionType !== 'attack' && payload.actionType !== 'ultimate') return false;
+        let count = Number(layerConfig.action) || 0;
+        if (payload.actionType === 'ultimate') {
+          const key = 'domain:' + config.name + ':first-ultimate';
+          const round = Number(state?.round);
+          if (Number(unit.proprietary.counters.get(key)) !== round) {
+            unit.proprietary.counters.set(key, round);
+            count += Number(layerConfig.firstUltimate) || 0;
+          }
+        }
+        for (const ally of livingAlliesOf(unit, state)) {
+          gainNamedLayers(state?.events, ally, layerDef, count, 'domain-action');
+        }
+        return null;
+      }, {});
+    }
+
+    // Domain-wide energy changes are action-triggered. They run after every
+    // normal/ultimate action by either team, while the opening cast does not
+    // trigger its own field because the domain is created at that cast's end.
+    if (Number(config.energyGain) > 0 || Number(config.energyLoss) > 0) {
+      registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+        if (!openedBy(state)) return false;
+        if (payload?.extra) return false;
+        if (payload?.actionType !== 'attack' && payload?.actionType !== 'ultimate') return false;
+        for (const ally of livingAlliesOf(unit, state)) {
+          adjustEnergyNamed(state?.events, ally, {
+            energyType: 'gain', magnitude: Number(config.energyGain),
+            sourceId: unit.id, actionId: state?.currentActionId ?? 0,
+            reason: 'domain-action-energy',
+          });
+        }
+        for (const enemy of livingEnemiesOf(unit, state)) {
+          adjustEnergyNamed(state?.events, enemy, {
+            energyType: 'loss', magnitude: Number(config.energyLoss),
+            sourceId: unit.id, actionId: state?.currentActionId ?? 0,
+            reason: 'domain-action-energy',
+          });
+        }
+        return null;
+      }, {});
+    }
+
+    if (config.guard?.healRatio > 0) {
+      registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+        if (payload?.extra) return false;
+        if (payload?.actionType !== 'attack' && payload?.actionType !== 'ultimate') return false;
+        const round = Number(state?.round) || 0;
+        // Expire stale entries for every ally, but only the ally that actually
+        // took this action receives the post-action 狐佑 heal.
+        for (const ally of livingAlliesOf(unit, state)) {
+          const guards = ally.proprietary.actionHeals ?? [];
+          ally.proprietary.actionHeals = guards.filter(entry => Number(entry.throughRound) >= round);
+        }
+        const actor = payload?.actor;
+        if (!actor || actor.team !== unit.team || !actor.alive) return false;
+        let healed = 0;
+        for (const guard of actor.proprietary?.actionHeals ?? []) {
+          healed += healNamedUnit(state?.events, actor, actor.maxHp * Number(guard.healRatio),
+            unit.id, payload.actionId ?? state?.currentActionId ?? 0);
+        }
+        return healed >= 0 ? null : false;
+      }, {});
+    }
+
+    if (layerConfig) {
+      // "每次受到普攻/绝招/终结技/天极技伤害时额外获得1层"
+      registerHook(unit, PROPRIETARY_HOOKS.DAMAGE_TAKEN, (owner, payload, state) => {
+        if (!openedBy(state)) return false;
+        const target = payload?.target;
+        if (!target?.alive || target.team !== unit.team) return false;
+        if (!['attack', 'ultimate', 'tianji'].includes(payload?.actionType)) return false;
+        gainNamedLayers(state?.events, target, layerDef, Number(layerConfig.damageTaken), 'domain-damage-taken');
+        return null;
+      }, {});
+    }
 
     return { name: config.name, rounds: Number(config.rounds) };
   },
@@ -676,7 +1142,9 @@ const HANDLERS = Object.freeze({
       before: config.destroyShieldRatio
         ? (owner, state, events) => {
           for (const enemy of livingEnemiesOf(owner, state)) {
-            destroyShield(enemy, config.destroyShieldRatio, { sourceId: owner.id, events });
+            destroyShield(enemy, config.destroyShieldRatio, {
+              sourceId: owner.id, events, actionId: state.currentActionId ?? 0,
+            });
           }
         }
         : null,
@@ -741,6 +1209,26 @@ export function proprietarySkillEffects(skill, definitions) {
   if (!active.length) return definitions;
   let output = definitions;
   for (const rule of active) {
+    if (rule.kind === 'damage-source') {
+      const match = rule.config ?? {};
+      output = output.map(definition => {
+        const effect = definition?.effect;
+        if (!effect || effect.type !== 'damage') return definition;
+        if (match.matchDamageType && effect.damageType !== match.matchDamageType) return definition;
+        return {
+          ...definition,
+          effect: {
+            ...effect,
+            damageBasis: rule.config.damageBasis,
+            magnitude: Number(rule.config.magnitude),
+            multiplier: undefined,
+            conditionalDamage: rule.config.conditionalDamage,
+            canCrit: rule.config.canCrit ?? effect.canCrit,
+            damageCap: rule.config.damageCap ?? effect.damageCap,
+          },
+        };
+      });
+    }
     if (rule.kind === 'damage-cap') {
       const match = rule.config.match ?? {};
       output = output.map(definition => {
