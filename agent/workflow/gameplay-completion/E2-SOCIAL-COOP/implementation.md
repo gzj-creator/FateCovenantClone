@@ -59,6 +59,8 @@ BOSS、联合探索、GVG 和远征的伤害使用当前真实阵容战力经 `b
 
 分支完整套件退出 0：tests 2550、pass 2548、fail 0、cancelled 0、skipped 2、todo 0，duration_ms 349260.9469。日志为 `analysis/test-runs/gameplay-20261106/e2-social-coop-branch-full.log`。全部新增/修改 JavaScript 文件通过 `node --check`，`git diff --check` 通过。
 
+rebase 到 main `2561103` 后，E2 定向回归发现 A2 合并带入的 `arena-contest`、`hunter-arena`、`overall-match` 与 `play-match` 建表 SQL 缺少右括号，登录会以 `incomplete input` 中断。修复提交 `7ada31d` 只补齐这些语句，并以 `guild-coop + gameplay-gateway + m5-command-matrix` 定向 `22/22` 验证；`120001` 与 `98900` 另做 SQLite 建表/执行烟测，输出为 `{"overallBytes":2,"overallType":1,"playTid":1}`。最终主线全量回归将在合并后补录。
+
 最终 rebase、合并提交、合并后定向/全量回归与日志路径在集成后补入本文档及 `execution-status.md`。
 
 本轮未启停实时服务、未读写 `runtime.local-only.data` 或运行数据库、未连接模拟器/ADB，也未生成或替换 APK。
