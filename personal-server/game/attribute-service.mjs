@@ -154,9 +154,12 @@ export function assembleHeroAttributes({ hero, heroTables, attributeTables = rea
   const tid = Number(hero.tid);
   const config = configuredHero(heroTables, tid);
   const level = clampInteger(overrides.level ?? hero.level, 1, HERO_LEVEL_LIMIT, 1);
-  // pb_single_hero documents 1 star as the default for every hero, so a stored
-  // 0 is treated as that default rather than as a separate tier.
-  const star = clampInteger(overrides.star ?? hero.star, 1, STAR_LIMIT, 1);
+  // StarAddAttr and HighStarAddAttr rows contain the total bonus at a star tier,
+  // not incremental bonuses. The client selects one row, so adding every lower
+  // row multiplies hero and NPC-derived battle attributes. A stored 0 is the
+  // first attribute tier while pb_single_hero still exposes it as at least 1.
+  const storedStar = clampInteger(overrides.star ?? hero.star, 0, STAR_LIMIT, 0);
+  const star = Math.max(1, storedStar);
   const breakLevel = clampInteger(overrides.breakLevel ?? hero.breakthrough_level, 0, 50, 0);
   // pb_single_hero does not persist a quality field; the configured Hero.quality
   // tier is used until a quality-upgrade system stores the current tier. An
@@ -183,24 +186,30 @@ export function assembleHeroAttributes({ hero, heroTables, attributeTables = rea
     ['crit', DISPLAY_ATTR.crit], ['crit_harm', DISPLAY_ATTR.crit_harm]
   ]);
 
-  for (let step = 0; step <= Math.min(star, 5); step++) {
-    const key = camp * 10000 + quality * 100 + step;
-    const row = attributeTables.StarAddAttr?.get(key);
-    if (!row) { notes.push('star-attr-missing:' + key); continue; }
-    eachDisplayStat(attributeTables, sources, flat, rate, 'star:' + step, row, [
+  const lowStar = Math.min(storedStar, 5);
+  const starKey = camp * 10000 + quality * 100 + lowStar;
+  const starRow = attributeTables.StarAddAttr?.get(starKey);
+  if (!starRow) {
+    notes.push('star-attr-missing:' + starKey);
+  } else {
+    eachDisplayStat(attributeTables, sources, flat, rate, 'star:' + lowStar, starRow, [
       ['hp', DISPLAY_ATTR.hp], ['attack', DISPLAY_ATTR.attack],
       ['physical_def', DISPLAY_ATTR.physical_def], ['magic_def', DISPLAY_ATTR.magic_def],
       ['hp_sum_add', DISPLAY_ATTR.hp_rate], ['attack_sum_add', DISPLAY_ATTR.attack_rate],
       ['physical_def_sum_add', DISPLAY_ATTR.physical_def_rate], ['magic_def_sum_add', DISPLAY_ATTR.magic_def_rate]
     ]);
   }
-  for (let step = 6; step <= star; step++) {
-    const row = attributeTables.HighStarAddAttr?.get(tid * 100 + step);
-    if (!row) { notes.push('high-star-attr-missing:' + (tid * 100 + step)); continue; }
-    eachDisplayStat(attributeTables, sources, flat, rate, 'high-star:' + step, row, [
-      ['hp', DISPLAY_ATTR.hp], ['attack', DISPLAY_ATTR.attack],
-      ['physical_def', DISPLAY_ATTR.physical_def], ['magic_def', DISPLAY_ATTR.magic_def]
-    ]);
+  if (storedStar >= 6) {
+    const highStarKey = tid * 100 + storedStar;
+    const highStarRow = attributeTables.HighStarAddAttr?.get(highStarKey);
+    if (!highStarRow) {
+      notes.push('high-star-attr-missing:' + highStarKey);
+    } else {
+      eachDisplayStat(attributeTables, sources, flat, rate, 'high-star:' + storedStar, highStarRow, [
+        ['hp', DISPLAY_ATTR.hp], ['attack', DISPLAY_ATTR.attack],
+        ['physical_def', DISPLAY_ATTR.physical_def], ['magic_def', DISPLAY_ATTR.magic_def]
+      ]);
+    }
   }
   eachDisplayStat(attributeTables, sources, flat, rate, 'break', attributeTables.BreakAddAttr?.get(breakLevel), [
     ['hp', DISPLAY_ATTR.hp], ['attack', DISPLAY_ATTR.attack],

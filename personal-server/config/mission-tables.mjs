@@ -4,13 +4,16 @@ import { tableAsset } from '../assets.mjs';
 const defaultPath = tableAsset('MissionTable.data.lua.json');
 let defaultCache;
 
-// These fight rows are not shipped in the client's lua project bundle. Missions 30204
-// and 40210 are still playable journey nodes, so keep their local battles deterministic
-// by reusing the immediately preceding section until the missing fight tables become
-// available. Fallbacks are exposed to the battle service for logging and must remain
-// labelled as local compatibility data, not as original server facts.
+// These fight rows are not shipped in the client's lua project bundle. Missions 30204,
+// 40203 and 40210 are still playable journey nodes, so keep their local battles
+// deterministic by reusing the immediately preceding section until the missing fight
+// tables become available. 40203 is the chapter-four mid-boss node (monster_type=1,
+// enemy=[]); its surrounding ordinary nodes use 9003300 x2. Fallbacks are exposed to
+// the battle service for logging and must remain labelled as local compatibility data,
+// not as original server facts.
 const LOCAL_ENEMY_FALLBACKS = new Map([
   [30204, { sourceMissionId: 30203 }],
+  [40203, { sourceMissionId: 40202 }],
   [40210, { sourceMissionId: 40209 }]
 ]);
 

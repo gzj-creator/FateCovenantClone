@@ -60,6 +60,36 @@ test('assembles configured level, star, break and quality attribute rows', () =>
   assert.throws(() => assembleHeroAttributes({ hero: hero({ tid: 1 }), heroTables, attributeTables }), error => error.code === 5);
 });
 
+test('Vell uses one cumulative row for low and high star attributes', () => {
+  const vell = hero({ tid: 4030801, level: 1, star: 0 });
+  const assembled = assembleHeroAttributes({ hero: vell, heroTables, attributeTables });
+  assert.equal(assembled.star, 1, 'stored star 0 is displayed as the default 1 star');
+  assert.deepEqual(assembled.stats, {
+    hp: 8874,
+    attack: 3321,
+    physicalDefense: 155,
+    magicDefense: 155,
+    critRate: 500,
+    critHarm: 15000,
+    speed: 113
+  });
+  assert.equal(assembled.power, 42704);
+  assert.deepEqual(
+    [...new Set(assembled.sources.filter(source => source.play.startsWith('star:')).map(source => source.play))],
+    ['star:0'],
+    'the first cumulative row is used without adding a synthetic star 1 row'
+  );
+
+  const highStar = assembleHeroAttributes({ hero: { ...vell, star: 8 }, heroTables, attributeTables });
+  assert.deepEqual(
+    [...new Set(highStar.sources
+      .filter(source => source.play.startsWith('star:') || source.play.startsWith('high-star:'))
+      .map(source => source.play))],
+    ['star:5', 'high-star:8'],
+    'high-star rows are also cumulative rather than incremental'
+  );
+});
+
 test('attribute query and mission battle use one authoritative lineup power', t => {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-attr-' });
   const model = fixture.store.read();

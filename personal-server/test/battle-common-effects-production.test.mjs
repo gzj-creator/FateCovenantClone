@@ -132,6 +132,7 @@ const missionId = store => codec.unpack('pb_mission',
 
 function setupService(t) {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-battle-a-', now: () => 1700000000 * 1000 });
+  promoteActionCoverageHeroes(fixture.store);
   let store = fixture.store;
   let service = createMissionFightService({ store, codec, playbackEnabled: true, now: () => 1700000000 * 1000 });
   return {
@@ -142,6 +143,14 @@ function setupService(t) {
       service = createMissionFightService({ store, codec, playbackEnabled: true, now: () => 1700000000 * 1000 });
     }
   };
+}
+
+function promoteActionCoverageHeroes(store) {
+  store.transaction(model => {
+    for (const hero of model.heroInfo.hero_list) {
+      if ([2010101, 2010201].includes(Number(hero.tid))) hero.star = 6;
+    }
+  });
 }
 
 test('the mission fight service applies the shared damage rules and commits once', t => {
@@ -247,6 +256,7 @@ test('the gateway serves the same rule-driven battle over a temporary TCP port',
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const databasePath = path.join(directory, 'game.sqlite');
   let session = await openGateway(databasePath, directory);
+  promoteActionCoverageHeroes(session.game.store);
   try {
     assert.equal(missionId(session.game.store), '20205');
     let response = await session.request(201, 2, fightRequest(30201));
