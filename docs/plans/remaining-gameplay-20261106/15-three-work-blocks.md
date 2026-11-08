@@ -133,7 +133,7 @@
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
 | 65 | ITEM-ITEM | 重复箱、手动兑换、碎片合成与抽奖箱分支 | 4 | 服务端完成（153/157 证据阻塞） |
-| 66 | ITEM-RESCOMPLETE | 资源补全领奖 | 1 | 待领取 |
+| 66 | ITEM-RESCOMPLETE | 资源补全领奖 | 1 | 证据阻塞（下载完成状态无服务端来源） |
 | 67 | ITEM-MISSION | 主线体力、补给、章节一键与 BOSS 奖励 | 6 | 服务端完成（509 common_task、512 boss 证据阻塞） |
 | 68 | ITEM-SHOP | 普通商店、快速购买、刷新、结算与历史商品 | 6 | 服务端完成 |
 | 69 | ITEM-GUIDE | 引导领奖与网络检查 | 2 | 服务端完成（奖励配置证据阻塞） |
@@ -142,18 +142,20 @@
 | 72 | ITEM-RANKACHIEVE | 排名成就奖励 | 1 | 服务端完成（多数成就事件源证据阻塞） |
 | 73 | ITEM-FIRSTWEEKGOAL | 首周目标与任务奖励 | 2 | 服务端完成（部分进度事件证据阻塞） |
 | 74 | ITEM-GROWTHROAD | 成长之路 | 2 | 服务端完成（1111–1113 任务进度证据阻塞） |
-| 75 | ITEM-GROWTHTARGET | 成长目标阶段与任务 | 2 | 待领取 |
-| 76 | ITEM-TASKAWARD | 任务活动进度与任务奖 | 2 | 待领取 |
-| 77 | ITEM-OPENSERVERBOX | 开服宝箱与进度 | 2 | 待领取 |
-| 78 | ITEM-HOOK | 挂机收益、快速收取与产物 | 5 | 待领取 |
-| 79 | ITEM-FUNCTIONMANUAL | 功能手册奖励 | 1 | 待领取 |
-| 80 | ITEM-TASKGROUP | 任务组任务与阶段领奖 | 2 | 待领取 |
-| 81 | ITEM-CAREERLIFE | 生涯剧情奖励 | 1 | 待领取 |
-| 82 | ITEM-RESROLLBACK | 资源回退预览与执行 | 2 | 待领取 |
-| 83 | ITEM-MYSTERYSHOP | 神秘商店自动刷新、手动刷新与购买 | 3 | 待领取 |
-| 84 | ITEM-LINEARLEVEL | 线性等级宝箱 | 1 | 待领取 |
-| 85 | ITEM-PERIODTASK | 周期任务、阶段与积分奖励 | 3 | 待领取 |
-| 86 | ITEM-TASKACTIVITY | 任务活动提交与数据 | 2 | 待领取 |
+| 75 | ITEM-GROWTHTARGET | 成长目标阶段与任务 | 2 | 证据阻塞（Task/Phase 表无法抽取） |
+| 76 | ITEM-TASKAWARD | 任务活动进度与任务奖 | 2 | 证据阻塞（本版本无活动入口/登录容器） |
+| 77 | ITEM-OPENSERVERBOX | 开服宝箱与进度 | 2 | 证据阻塞（表内无奖励配置） |
+| 78 | ITEM-HOOK | 挂机收益、快速收取与产物 | 5 | 证据阻塞（阶段来自各玩法数据） |
+| 79 | ITEM-FUNCTIONMANUAL | 功能手册奖励 | 1 | 服务端完成（手册 28 行中统计/主线章节源可领，其余 code 5） |
+| 80 | ITEM-TASKGROUP | 任务组任务与阶段领奖 | 2 | 证据阻塞（GroupFunc 0 行，功能绑定缺失） |
+| 81 | ITEM-CAREERLIFE | 生涯剧情奖励 | 1 | 证据阻塞（StoryChapter 无奖励列） |
+| 82 | ITEM-RESROLLBACK | 资源回退预览与执行 | 2 | 证据阻塞（无养成投入账本） |
+| 83 | ITEM-MYSTERYSHOP | 神秘商店自动刷新、手动刷新与购买 | 3 | 证据阻塞（商品池/价格档无法恢复） |
+| 84 | ITEM-LINEARLEVEL | 线性等级宝箱 | 1 | 证据阻塞（无线性关卡进度来源） |
+| 85 | ITEM-PERIODTASK | 周期任务、阶段与积分奖励 | 3 | 本版本不可达（Task/Version/Score/Stage 均 0 行） |
+| 86 | ITEM-TASKACTIVITY | 任务活动提交与数据 | 2 | 服务端部分完成（1/2：105701 已实现，105702 缺服务器活跃度） |
+
+D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有真实任务进度、领取位、发奖、登录同步与 SQLite 持久化；其余 25 条命令逐卡阻塞原因见 [BLOCK-D 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-D/implementation.md)。
 
 ## 块 E1：#87–#106（社交前半：好友、邮件、消息与聊天）
 
