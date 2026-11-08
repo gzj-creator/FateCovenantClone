@@ -66,6 +66,20 @@ import { createBonusDrawService } from './bonus-draw-service.mjs';
 import { createDrawActivityService, DRAW_ACTIVITY_ETF_COMMANDS } from './draw-activity-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
+import { createGuildBossService } from './guild-boss-service.mjs';
+import { createGuildJointService } from './guild-joint-service.mjs';
+import { createGuildRuneStoneService } from './guild-rune-stone-service.mjs';
+import { createGuildGvgService } from './guild-gvg-service.mjs';
+import { createGuildVoteService } from './guild-vote-service.mjs';
+import { createSlgMapService } from './guild-slg-map-service.mjs';
+import { createGuildNationService } from './guild-nation-service.mjs';
+import { createGuildBargainService } from './guild-bargain-service.mjs';
+import { createGuildExpeditionService } from './guild-expedition-service.mjs';
+import { createChannelEntryService } from './channel-entry-service.mjs';
+import { createGuildHuntService } from './guild-hunt-service.mjs';
+import { createGuildCrusadeService } from './guild-crusade-service.mjs';
+import { createGuildAuctionService } from './guild-auction-service.mjs';
+import { readGuildCoopTables } from '../config/guild-coop-tables.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createGroupBuyActService } from './group-buy-act-service.mjs';
@@ -657,6 +671,20 @@ export function createLocalGame({
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
   const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
+  const coopTables=readGuildCoopTables();
+  const guildBoss=createGuildBossService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildJoint=createGuildJointService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildRuneStone=createGuildRuneStoneService({store,codec,tables,coopTables,now:clock,logger});
+  const guildGvg=createGuildGvgService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildVote=createGuildVoteService({store,codec,tables,coopTables,now:clock,logger});
+  const slgMap=createSlgMapService({store,codec,coopTables,now:clock,logger});
+  const guildNation=createGuildNationService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildBargain=createGuildBargainService({store,codec,tables,coopTables,now:clock,logger});
+  const guildExpedition=createGuildExpeditionService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const channelEntry=createChannelEntryService({store,codec,coopTables,now:clock,logger});
+  const guildHunt=createGuildHuntService({store,codec,tables,coopTables,now:clock,logger});
+  const guildCrusade=createGuildCrusadeService({logger});
+  const guildAuction=createGuildAuctionService({store,codec,tables,coopTables,now:clock,logger});
   // Mission commands around the journey fight path (meal, stamina exchange and
   // purchase, one-key rewards, chapter pass, boss awards). Dispatch stays in the
   // mission block below and is guarded by supports().
@@ -3117,10 +3145,25 @@ export function createLocalGame({
         }
         return;
       }
-      if ([108, 102801].includes(type)) {
+      const guildCoopServices = [guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap,
+        guildNation, guildBargain, guildExpedition, channelEntry, guildHunt, guildCrusade, guildAuction];
+      const guildCoop = guildCoopServices.find(service => service.supports(type));
+      if (guildCoop) {
+        try {
+          const result = await guildCoop.execute(type, request.data ?? Buffer.alloc(0));
+          if (result.data?.length) send(seq, result.data); else send(seq);
+          log({ event: 'guild_coop_command', type, seq, value: result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guild_coop_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (type === 108) {
         // 108 (req_remove_operate_display) is a UI-only acknowledgement after a purchase.
         send(seq);
-        if (type === 108) log({ event: 'operate_display_removed', type, seq });
+        log({ event: 'operate_display_removed', type, seq });
         return;
       }
       log({ event: 'unsupported_command', type, seq, payloadHead: payloadBytes(request.data, 64) });
@@ -3137,8 +3180,9 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
-    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, message, hundredDraw,
-    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,
+    cms, guildNationAssist, guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap, guildNation,
+    guildBargain, guildExpedition, channelEntry, guildHunt, guildCrusade, guildAuction, groupBuyAct,
+    dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
