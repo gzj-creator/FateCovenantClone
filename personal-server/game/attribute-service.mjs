@@ -1,8 +1,6 @@
 import { GameError } from './hero-progression.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
-import { createGameCodec } from '../protocol/game-codec.mjs';
-import { collectEquipmentSources } from './hero-attribute-sources.mjs';
 
 // Attribute values are stored as fixed-point integers in HeroTable: growth rows
 // use 1/10000 steps (BaseAttrNew.hp_grow = 396000 means +39.6 HP per level) and
@@ -151,12 +149,7 @@ export function powerFromStats(stats) {
 
 // Assemble one persisted hero into final fight attributes. Every contribution is
 // recorded in sources so an operator can explain a single number end to end.
-// extraSources are configuration-driven contributions from persisted state
-// outside pb_single_hero (today: worn equipment, see hero-attribute-sources.mjs).
-// Each row is { play, displayAttr, value } with a display attribute id, so the
-// shared AttrType mapping still decides flat vs rate. Identical rows are only
-// counted once, which keeps a double-collected module from inflating a hero.
-export function assembleHeroAttributes({ hero, heroTables, attributeTables = readAttributeTables(), overrides = {}, extraSources = [] }) {
+export function assembleHeroAttributes({ hero, heroTables, attributeTables = readAttributeTables(), overrides = {} }) {
   if (!hero) fail(5, 'Hero state missing');
   const tid = Number(hero.tid);
   const config = configuredHero(heroTables, tid);
@@ -218,22 +211,6 @@ export function assembleHeroAttributes({ hero, heroTables, attributeTables = rea
   for (const pair of battleRow?.attr ?? []) {
     if (!Array.isArray(pair) || pair.length !== 2) continue;
     addSource(sources, flat, rate, attributeTables, 'battle', pair[0], pair[1]);
-  }
-
-  const seenExtra = new Set();
-  for (const entry of extraSources ?? []) {
-    if (!entry) continue;
-    const play = String(entry.play ?? 'extra');
-    const displayAttr = Number(entry.displayAttr ?? entry.attr ?? 0);
-    const value = Number(entry.value ?? 0);
-    if (!Number.isSafeInteger(displayAttr) || displayAttr <= 0 || !Number.isFinite(value) || value === 0) continue;
-    const signature = play + '|' + displayAttr + '|' + value;
-    if (seenExtra.has(signature)) {
-      notes.push('duplicate-attribute-source-skipped:' + play);
-      continue;
-    }
-    seenExtra.add(signature);
-    addSource(sources, flat, rate, attributeTables, play, displayAttr, value);
   }
 
   const fightAttrs = {
@@ -302,44 +279,24 @@ export function lineupFighters(model, lineup) {
   return result;
 }
 
-// Equipment is collected once per lineup and reused for every hero, mirroring
-// EquipAttrCollect.lua merging the cell attribute map into shared base_values.
-// Passing extraSources explicitly overrides the collection (used by callers
-// that already hold the rows); omitting it keeps attribute query, lineup power
-// and battle on the same persisted equipment state.
-let fallbackCodec = null;
-
-export function lineupExtraSources({ model, codec = null, notes = [] } = {}) {
-  if (!model) return { sources: [], notes };
-  try {
-    fallbackCodec ??= createGameCodec();
-    const collected = collectEquipmentSources({ model, codec: codec ?? fallbackCodec, notes });
-    return { sources: collected.sources, notes: collected.notes };
-  } catch (error) {
-    notes.push('equip-source-collection-failed');
-    return { sources: [], notes };
-  }
-}
-
-export function assembleLineup({ model, lineupType = 1, heroTables, attributeTables = readAttributeTables(), lineup = null, extraSources = null, codec = null }) {
+export function assembleLineup({ model, lineupType = 1, heroTables, attributeTables = readAttributeTables(), lineup = null }) {
   const target = lineup ?? primaryLineup(model, lineupType);
   if (!target) fail(5, 'Lineup state missing');
-  const collection = Array.isArray(extraSources) ? { sources: extraSources, notes: [] } : lineupExtraSources({ model, codec });
   const entries = lineupFighters(model, target).map(({ hero, teamId, loc }) => ({
-    ...assembleHeroAttributes({ hero, heroTables, attributeTables, extraSources: collection.sources }),
+    ...assembleHeroAttributes({ hero, heroTables, attributeTables }),
     hero, teamId, loc
   }));
   const totalPower = entries.reduce((sum, entry) => sum + entry.power, 0);
   const teamPowers = new Map();
   for (const entry of entries) teamPowers.set(entry.teamId, (teamPowers.get(entry.teamId) ?? 0) + entry.power);
-  return { lineupType: Number(target.type ?? lineupType), entries, totalPower, teamPowers, notes: ['power-formula-compatibility', ...collection.notes] };
+  return { lineupType: Number(target.type ?? lineupType), entries, totalPower, teamPowers, notes: ['power-formula-compatibility'] };
 }
 
 // pb_attr_lineup_all_info payload for req_role_attr_info (1316). The raw
 // pb_attr_obj list stays empty because the play_type taxonomy is not recovered;
 // the final per-entity attributes, skills and lineup power are authoritative.
-export function buildLineupAttrInfo({ model, lineupType = 1, heroTables, attributeTables = readAttributeTables(), extraSources = null, codec = null }) {
-  const assembled = assembleLineup({ model, lineupType, heroTables, attributeTables, extraSources, codec });
+export function buildLineupAttrInfo({ model, lineupType = 1, heroTables, attributeTables = readAttributeTables() }) {
+  const assembled = assembleLineup({ model, lineupType, heroTables, attributeTables });
   const attrList = assembled.entries.map(entry => {
     const loadout = buildHeroSkillLoadout({ hero: entry.hero, heroTables });
     return {
