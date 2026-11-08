@@ -113,3 +113,8 @@ node --test --test-concurrency=1 test/activity-read-service.test.mjs test/activi
 - 回归命令见上；全量 `npm test` 由总控执行。
 - APK 验收建议：把 1096001 排期或下发定制窗口后，登录应出现"助力升超凡"入口；界面显示的总助力次数 = `pb_help_up_get_times_rsp.times`，助力后应扣 834102 并获得信封奖励，任务/阶段红点随统计与总数变化。
 - 若客户端实际发送的不是 1096001（例如沿用 92144 之类的入口 id），服务会返回错误 1 并落 `activity_read_rejected` 日志，用该日志与真实包修正映射。
+
+## BLOCK-G2 回归（2026-11-08）
+
+本块未改动该活动实现；G2 网关派发只覆盖 minigame-act-service 注册的命令（102001-111015），既有命令仍由原实现处理，全量 npm test 通过。
+
