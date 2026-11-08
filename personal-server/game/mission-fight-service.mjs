@@ -3,7 +3,7 @@ import { GameError } from './hero-progression.mjs';
 import { missionBattleConfig, readMissionTables } from '../config/mission-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
-import { applyNpcScaling, assembleHeroAttributes, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
+import { applyNpcScaling, assembleHeroAttributes, lineupExtraSources, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
@@ -249,6 +249,9 @@ function captainFighter(attackers, selected) {
 export function reportBattle(codec, model, mission, request, attributeTables, encounter = null) {
   const config = encounter ?? missionBattleConfig(mission.missionId);
   if (!config) throw new GameError(5, 'Mission enemy configuration missing');
+  // Worn equipment is lineup-wide persisted state; collect it once so every
+  // attacker shares the same rows the 1316 attribute query reports.
+  const sharedSources = lineupExtraSources({ model, codec }).sources;
   const selected = requestedMembers(model, request);
   if (!selected.members.length || selected.members.length > 6) throw new GameError(5, 'Journey lineup size is invalid');
   if (selected.members.some(entry => !Number.isSafeInteger(entry.loc) || entry.loc < 1 || entry.loc > 7)) {
@@ -264,7 +267,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     const hero = model.heroInfo.hero_list.find(value => String(value.uid) === entry.heroId);
     if (!hero) throw new GameError(5, 'Journey lineup hero is missing');
     const role = Number(hero.tid), cfg = unitConfig(config.tables, role, 1);
-    const assembled = assembleHeroAttributes({ hero, heroTables: config.tables.heroes, attributeTables });
+    const assembled = assembleHeroAttributes({ hero, heroTables: config.tables.heroes, attributeTables, extraSources: sharedSources });
     const level = assembled.level, quality = assembled.quality, maxHp = assembled.stats.hp;
     const combat = {
       profession: assembled.profession,
