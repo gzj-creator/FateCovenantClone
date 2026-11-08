@@ -204,7 +204,7 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 | 118 | SOC-GUILDCRUSADE | 公会讨伐排名 | 1 | 响应 schema 缺失，明确拒绝 |
 | 119 | SOC-GUILDAUCTION | 公会拍卖、心愿与领取 | 3 | 服务端完成（证据缺口） |
 
-E2 覆盖 154/154 个缺失命令：153 条进入实际业务服务，`105805` 因 `pb_guild_crusade_rank_rsp` 定义缺失以错误码 5 明确拒绝。现有 `99229` 继续由国战助力服务持有。专项服务、真实临时 TCP、SQLite 重开与 154 条路由唯一性测试通过；不包含跨成员/跨服补证或 APK 验收，详见[交付记录](../../../agent/workflow/gameplay-completion/E2-SOCIAL-COOP/implementation.md)。
+E2 覆盖 154/154 个缺失命令：153 条进入实际业务服务，`105805` 因 `pb_guild_crusade_rank_rsp` 定义缺失以错误码 5 明确拒绝。现有 `99229` 继续由国战助力服务持有。专项服务、真实临时 TCP、SQLite 重开与 154 条路由唯一性测试通过，并已以 `--no-ff` 合入 main `85c39dd`；不包含跨成员/跨服补证或 APK 验收，详见[交付记录](../../../agent/workflow/gameplay-completion/E2-SOCIAL-COOP/implementation.md)。
 
 ## 块 F：#120–#150（招募、抽取、翻牌与转盘活动）
 

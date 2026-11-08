@@ -246,3 +246,9 @@
 ## 2026-11-08 G1 探索与家园前半（#151-#162）
 
 分支 task/G1-EXPLORATION-20261108（worktree .worktree/gameplay-20261108/g1-exploration）。98 条命令全部注册；真实状态迁移已覆盖 PLAY-EXPERIENCEACT（2）、PLAY-RADISHFARM（6）、PLAY-HOMEPUZZLEACT（9）、PLAY-MINIGAME（4）、PLAY-GRANDTOURER 每日令牌（1），共 22 条。其余 76 条以 err=5 显式 fail closed，不计作完成。11 张客户端活动表由 tools/extract-exploration-tables.mjs 恢复。专项 7/7 与 gateway 7/7 通过；无 APK 验收。详见 agent/workflow/gameplay-completion/G1-EXPLORATION/implementation.md。
+
+## 块 E2 交付记录（2026-11-08）
+
+- 分支 `task/BLOCK-E2-20261108` 完成 #107–#119 共 13 卡、154 条原缺失命令。153 条进入真实业务服务，`105805` 因响应 schema 缺失明确返回业务错误码 5；既有 `99229` 继续由 `guild-nation-assist-service` 单一持有。
+- E2 业务提交 `ff813e8`、A2 建表修复 `7ada31d` 和文档提交 `cad6a46` 已以 `--no-ff` 合入 main `85c39dd`。A2 修复只补齐 `arena-contest`、`hunter-arena`、`overall-match` 与 `play-match` 的建表 SQL 右括号，避免登录模块初始化时以 `incomplete input` 中断。
+- 合并前定向 `22/22`，合并后主线全量 2706 项、pass 2704、fail 0、skipped 2，日志 `analysis/test-runs/gameplay-20261106/main-after-e2-social-coop-full.log`。全部 13 卡仍为服务端完成/证据缺口，未做 APK 或多人跨服验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
