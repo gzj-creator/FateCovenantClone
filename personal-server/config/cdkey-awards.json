@@ -1,0 +1,4 @@
+﻿{
+  "codes": {},
+  "note": "Local cdkey configuration. Each code maps to { bag_id, awards: [{ tid, num }] } with resource ids that the item tables already handle."
+}

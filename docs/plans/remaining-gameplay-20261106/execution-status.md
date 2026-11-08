@@ -188,7 +188,7 @@
 - 分支 task/BLOCK-G2-20261108（基于 main 8ebd5a1）完成 #163–#179 共 17 卡、96 条命令的服务端接入：personal-server/game/minigame-act-service.mjs + config/minigame-act-tables.mjs + 15 个表资产 + 网关派发与模块 92 登录同步。
 - 状态：完整实现 6 卡（PUZZLEACT/TILESWAP/MUSHROOMMONSTER/GOPHERACT/MATCHINGGAMEACT/ALBUM）；服务端完成含明确拒绝 8 卡（TOWERACT/SPIRITCOURTYARD/TRIPLEMATCH/MONOPOLYACT/DREAMTRIALACT/DIAMONDVEINACT/HOMELAND/BAKINGACT）；仅明确拒绝 1 卡（SOURCEPOINT，源点实例未建模）；FISHINGACT 与 HELPUPACT 回归确认未改动。
 - 明确拒绝均为 GameError(5, 缺口说明)，无空包/固定值销项。逐卡记录见 agent/workflow/gameplay-completion/<CARD>/implementation.md，块记录见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md。
-- 测试：专项 17/17；分支内全量 2560 项 pass 2558 / fail 0 / skipped 2；合入 main（24f90e9）后在干净 worktree 复核 2632 项 pass 2630 / fail 0 / skipped 2，补跨块表格式兼容后 2633 项 pass 2631 / fail 0 / skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
+- 测试：专项 17/17；分支内全量 2560 项 pass 2558 / fail 0 / skipped 2；合入 main（24f90e9）后在干净 worktree 复核 2632 项 pass 2630 / fail 0 / skipped 2；补跨块表格式兼容（88219ca）后，main 最终全量 2674 项 pass 2672 / fail 0 / skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
 
 ## 块 D 交付记录（2026-11-08）
 
@@ -199,3 +199,11 @@
 - 其余 10 卡 / 24 条命令逐卡记录阻塞证据：表未导出或行数为 0、奖励配置缺失、没有权威进度来源。没有用空包、固定值或客户端自报完成来销项。
 - 新增 `tools/extract-lua-table-rows.mjs`（LuaJIT 字面量表行抽取）与 `FunctionManualTable.rows.json.gz`、`TaskActivityTable.rows.json.gz`。
 - 验证：分支全量 2646 项 / pass 2644 / fail 0 / skipped 2，日志 `analysis/test-runs/gameplay-20261106/block-d-merged3-full.log`。`8ac7a73` 以 `--no-ff` 合入 main `78b1a46`；合并后 main tree 与测试提交 tree 相同（`dbe81e8`）。未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未改动 APK。
+
+## 块 J（#265–#276）交付记录（2026-11-08）
+
+- 分支：feat/block-j-role-support（worktree .worktree/block-j-20261108），提交 fdffe0a，已合入 main。
+- 新增服务：role-service（RoleCmd 23 条 + gm_cmd + 红点/日志/推送/玩家数据）、story-service、cdkey-service、act-frame-service（53001–53006）、skin-service（76003–76009）。
+- 迁移：game-store v17 新增 role_profile_extra / role_stories / role_red_dots / role_channel_push / client_diagnostic_logs / cdkey_redemptions / role_figure_items / role_skins / hero_skin_wear / role_skin_state / role_skin_handbook / role_activity_stages / gm_audit_entries。
+- 验证：test/block-j-role-support.test.mjs 4 项通过；gameplay-gateway、login-business-reads、system-integration 回归通过；SQLite 重开后 user_version=17 且角色/奖励/皮肤/剧情/红点/兑换状态保留。
+- 证据缺口：FunctionCache 块 ID、RoleRank 与视频奖励行、皮肤/图鉴配置、开发登录回包字段、53001 双整数语义；均已在 agent/workflow/gameplay-completion/ROLE-*/implementation.md 记录，未以空包冒充完成。

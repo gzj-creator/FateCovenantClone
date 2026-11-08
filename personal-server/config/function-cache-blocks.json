@@ -1,0 +1,4 @@
+﻿{
+  "blocks": [],
+  "note": "FunctionCache block ids are server-side configuration missing from the client snapshot. Each entry is { id, schema, roleId } and only serves ids that resolve to authoritative local data."
+}

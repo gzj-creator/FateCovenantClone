@@ -140,7 +140,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   const clock = typeof now === 'function' ? now : () => now;
   const missionTables = readMissionTables();
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 16) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 17) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -603,6 +603,78 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         );
         db.exec('PRAGMA user_version=16; COMMIT');
         version = 16;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 17) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        // Block J (ROLE-*) authorities. Every table is keyed by role and holds
+        // only server-side state that the owning service mutates inside store
+        // transactions; role profile fields keep living in roles.profile_json so
+        // their login snapshot stays byte-identical to the client contract.
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS role_profile_extra (
+            role_id INTEGER PRIMARY KEY REFERENCES roles(role_id),
+            sundry_json TEXT NOT NULL DEFAULT '{}',
+            recommend_lv INTEGER NOT NULL DEFAULT 0,
+            veteran_json TEXT NOT NULL DEFAULT '{}',
+            pass_all_mission_at INTEGER NOT NULL DEFAULT 0,
+            watch_video_day TEXT,
+            updated_at TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS role_stories (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), story_id INTEGER NOT NULL,
+            status TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,story_id));
+          CREATE TABLE IF NOT EXISTS role_red_dots (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), path_key TEXT NOT NULL,
+            state INTEGER NOT NULL DEFAULT 0, show_count INTEGER NOT NULL DEFAULT 0,
+            extra_bin BLOB, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,path_key));
+          CREATE TABLE IF NOT EXISTS role_channel_push (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), message_id INTEGER NOT NULL,
+            is_open INTEGER NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,message_id));
+          CREATE TABLE IF NOT EXISTS client_diagnostic_logs (
+            log_id INTEGER PRIMARY KEY AUTOINCREMENT, role_id INTEGER NOT NULL REFERENCES roles(role_id),
+            day_count INTEGER NOT NULL DEFAULT 0, description TEXT NOT NULL,
+            payload_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS cdkey_redemptions (
+            code TEXT NOT NULL, role_id INTEGER NOT NULL REFERENCES roles(role_id), bag_id TEXT NOT NULL,
+            created_at TEXT NOT NULL, PRIMARY KEY(code,role_id));
+          CREATE TABLE IF NOT EXISTS role_figure_items (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), kind TEXT NOT NULL, tid INTEGER NOT NULL,
+            expire_time INTEGER NOT NULL DEFAULT 0, red INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(role_id,kind,tid));
+          CREATE TABLE IF NOT EXISTS role_skins (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), skin_tid INTEGER NOT NULL,
+            num INTEGER NOT NULL DEFAULT 1, increase_level INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+            PRIMARY KEY(role_id,skin_tid));
+          CREATE TABLE IF NOT EXISTS hero_skin_wear (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), hero_uid TEXT NOT NULL,
+            skin_tid INTEGER NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,hero_uid));
+          CREATE TABLE IF NOT EXISTS role_skin_state (
+            role_id INTEGER PRIMARY KEY REFERENCES roles(role_id),
+            pending_exchange_skin INTEGER NOT NULL DEFAULT 0,
+            ignore_fantasy_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS role_skin_handbook (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), handbook_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL, PRIMARY KEY(role_id,handbook_id));
+          CREATE TABLE IF NOT EXISTS role_activity_stages (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), act_id INTEGER NOT NULL,
+            stage_id INTEGER NOT NULL DEFAULT 0, state_id INTEGER NOT NULL DEFAULT 50,
+            enter_time INTEGER NOT NULL DEFAULT 0, loop_count INTEGER NOT NULL DEFAULT 0,
+            is_pause INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,act_id));
+          CREATE TABLE IF NOT EXISTS gm_audit_entries (
+            entry_id INTEGER PRIMARY KEY AUTOINCREMENT, role_id INTEGER NOT NULL REFERENCES roles(role_id),
+            command TEXT NOT NULL, detail_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
+          CREATE INDEX IF NOT EXISTS client_diagnostic_logs_role_idx ON client_diagnostic_logs(role_id,created_at);
+          CREATE INDEX IF NOT EXISTS role_red_dots_role_idx ON role_red_dots(role_id,state);
+        `);
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run(
+          'role-support-block-j-v17',
+          'role profile extras, stories, red dots, channel push, client logs, cdkeys, skins, activity stages, gm audit',
+          new Date(clock()).toISOString()
+        );
+        db.exec('PRAGMA user_version=17; COMMIT');
+        version = 17;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

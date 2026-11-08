@@ -147,6 +147,11 @@ import { createRechargeExtraAwardService } from './recharge-extra-award-service.
 import { createTimeTempleService } from './time-temple-service.mjs';
 import { createBenefitCommerceService } from './benefit-commerce-service.mjs';
 import { createGuideService } from './guide-service.mjs';
+import { createRoleService } from './role-service.mjs';
+import { createStoryService } from './story-service.mjs';
+import { createCdkeyService } from './cdkey-service.mjs';
+import { createActFrameService } from './act-frame-service.mjs';
+import { createSkinService } from './skin-service.mjs';
 import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
@@ -570,6 +575,14 @@ export function createLocalGame({
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
   const itemBox=createItemBoxService({store,codec,tables,heroTables,logger});
   const guide=createGuideService({store,codec,tables,awards:guideAwards,now:clock,logger});
+    // Block J role/support services. GM surfaces stay disabled unless the
+    // deployment opts in through the environment or role metadata.
+    const gmEnabled = () => process.env.FC_ALLOW_GM_COMMANDS === '1' || store.read().state.gmEnabled === true;
+    const roleService = createRoleService({ store, codec, tables, heroTables, attributeTables, now: clock, logger, gmEnabled });
+    const storyService = createStoryService({ store, now: clock, logger });
+    const cdkeyService = createCdkeyService({ store, codec, tables, now: clock, logger });
+    const actFrameService = createActFrameService({ store, codec, calendar, tables, now: clock, logger, gmEnabled });
+    const skinService = createSkinService({ store, codec, tables, now: clock, logger });
   const activityRead=createActivityReadService({codec,store,tables,calendar,logger,now:clock,random});
   const hundredDraw=createHundredDrawService({store,codec,tables,calendar,now:clock,random,logger});
   // BonusDrawCmd 101901/101902/101904. The reward pools come from the shipped
@@ -1172,6 +1185,37 @@ export function createLocalGame({
         }
         return;
       }
+      if (type === 909101 || type === 909102) {
+        // LoginCmd dev helpers create an explicit local session for the dev
+        // client. They stay disabled unless the deployment opts in, and they
+        // still require the local server id plus a matching channel uid/role.
+        try {
+          const dev = root.lookupType('login_dev').decode(request.data ?? Buffer.alloc(0));
+          const state = store.state();
+          const enabled = process.env.FC_ALLOW_DEV_LOGIN === '1' || state.devLoginEnabled === true;
+          if (!enabled) {
+            send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Local dev login is disabled' });
+            log({ event: 'login_dev_disabled', type, seq });
+            return;
+          }
+          const serverMatches = Number(dev.login?.server_id ?? 0) === state.serverId;
+          const roleMatches = type === 909102
+            ? String(dev.login?.role_id ?? dev.uid_base ?? '0') === String(state.roleId)
+            : Boolean(dev.login?.channel_uid);
+          if (!serverMatches || !roleMatches) {
+            send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Local dev login identity mismatch' });
+            log({ event: 'login_dev_mismatch', type, seq, serverMatches, roleMatches });
+            return;
+          }
+          const payload = await loginPayload();
+          send(seq, payload); phase = 'ready'; subscribers.add(push);
+          log({ event: 'login_dev_accepted', type, seq, roleId: state.roleId });
+        } catch (error) {
+          send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Invalid dev login payload' });
+          log({ event: 'login_dev_rejected', type, seq, message: error.message });
+        }
+        return;
+      }
       if (type === 909103) {
         const state = store.state();
         const login = root.lookupType('login').decode(request.data);
@@ -1184,6 +1228,35 @@ export function createLocalGame({
         send(seq, payload); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
+      if (roleService.supports(type) || storyService.supports(type) || cdkeyService.supports(type)
+        || actFrameService.supports(type) || skinService.supports(type)) {
+        const service = roleService.supports(type) ? roleService
+          : storyService.supports(type) ? storyService
+            : cdkeyService.supports(type) ? cdkeyService
+              : actFrameService.supports(type) ? actFrameService : skinService;
+        const protobufRequests = new Set([161, 39001, 98201, 76003, 76006]);
+        try {
+          let etf;
+          if (!protobufRequests.has(Number(type)) && request.data?.length) {
+            etf = await decodeEtf(request.data);
+          }
+          const parsed = Number(type) === 161 ? unpack('pb_function_cache_req', request.data ?? Buffer.alloc(0))
+            : Number(type) === 39001 ? unpack('red_change_info', request.data ?? Buffer.alloc(0))
+              : Number(type) === 98201 ? unpack('pb_channel_push_open', request.data ?? Buffer.alloc(0))
+                : Number(type) === 76003 ? unpack('pb_skin_wear_req', request.data ?? Buffer.alloc(0))
+                  : Number(type) === 76006 ? unpack('pb_toggle_ignore_fantasy_skin_req', request.data ?? Buffer.alloc(0))
+                    : undefined;
+          const result = await service.execute(type, { etf, request: parsed });
+          if (result?.etfTerm !== undefined) send(seq, await encodeEtf(result.etfTerm));
+          else if (result?.data) send(seq, result.data);
+          log({ event: 'role_support_command_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'role_support_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       // req_role_attr_info (1316) returns pb_attr_lineup_all_info. The request is
       // an optional ETF lineup type; all attribute numbers and lineup_power come
       // from the shared attribute service used by missions and the rank screen.
