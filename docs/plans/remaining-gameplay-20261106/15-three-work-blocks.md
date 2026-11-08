@@ -214,7 +214,7 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 | 121 | DRAW-PINBALL | 弹珠活动成就 | 1 | 待领取 |
 | 122 | DRAW-FANTASYEQUIPACT | 幻武活动管道小游戏、任务与试炼闭环 | 2 | 待领取 |
 | 123 | DRAW-PYRAMID | 金字塔抽取与任务 | 2 | 待领取 |
-| 124 | DRAW-THREEADMONITION | 三诫抽取、宝箱、次数与入场 | 4 | 待领取 |
+| 124 | DRAW-THREEADMONITION | 三诫抽取、宝箱、次数与入场 | 4 | 服务端部分完成（1/4：88965 次数已实现） |
 | 125 | DRAW-HUNDREDBONUS | 百倍奖励随机、领取与日志 | 3 | 待领取 |
 | 126 | DRAW-WISHTREE | 许愿树宝藏及已有抽取链路 | 1 | 待领取 |
 | 127 | DRAW-CHESS | 棋盘抽取、任务、自选、轮次与兑换 | 6 | 待领取 |
@@ -231,16 +231,18 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 | 138 | DRAW-ELVESACT | 精灵活动主精灵、果实抽取与奖励 | 3 | 待领取 |
 | 139 | DRAW-ARTIFACTDRAWACT | 圣器天池试炼统计接入 | 0 | 待领取 |
 | 140 | DRAW-BONUSDRAW | 奖励抽取、切换与选池 | 3 | 服务端完成（概率与折算语义证据待补） |
-| 141 | DRAW-CAPSULETOY | 扭蛋、兑换、收集与进度 | 4 | 待领取 |
+| 141 | DRAW-CAPSULETOY | 扭蛋、兑换、收集与进度 | 4 | 服务端部分完成（1/4：102301 抽取已实现） |
 | 142 | DRAW-CHESSREVERT | 棋盘翻转轮次、自选礼物与换轮 | 3 | 待领取 |
 | 143 | DRAW-CHILDPUZZLEACT | 拼图抽取、自选、任务与换轮 | 5 | 待领取 |
 | 144 | DRAW-HOARDWHEELACT | 囤积转盘奖池、任务与累计 | 3 | 待领取 |
 | 145 | DRAW-THOUSANDDRAW | 千抽与领奖 | 2 | 待领取 |
 | 146 | DRAW-PRAYACT | 祈愿自选与抽取 | 2 | 待领取 |
 | 147 | DRAW-CASHBACKDRAW | 返利抽奖、次数、全服奖励与进度 | 4 | 待领取 |
-| 148 | DRAW-TURNTABLEACT | 转盘活动 | 1 | 待领取 |
+| 148 | DRAW-TURNTABLEACT | 转盘活动 | 1 | 服务端完成（APK 未验收） |
 | 149 | DRAW-FLOPCARDACT | 翻牌、单次与累计奖励 | 3 | 待领取 |
 | 150 | DRAW-HUNDREDDRAWACT | 百抽、进度奖、自选、升星奖与跑马灯 | 5 | 服务端完成（保底选择与非英雄星级奖证据待补） |
+
+F 块首批交付（2026-11-08）：24 张活动配置表已可复现抽取，107901/102301/88965 三条命令有真实扣费、发奖、计数与持久化；其余 71 条仍为 `LOCAL_NOT_IMPLEMENTED`，逐族阻塞原因见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
 
 ## 块 G1：#151–#162（探索与家园前半）
 

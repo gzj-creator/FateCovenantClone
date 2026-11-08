@@ -131,3 +131,44 @@
 - 三项均未进入 APK 验收；本轮未启停实时服务、未读写 runtime.local-only.data 或运行数据库、未操作模拟器/ADB、未生成 APK。主工作树未跟踪 assets/ 保持未提交。
 
 2026-11-08 派发边界调整为三大块，见 [三大块](15-three-work-blocks.md)：块 A #1–#33（本 session）、块 B #34–#119、块 C #120–#276。
+
+## 集成与验收记录（2026-11-08 第九批：块 I）
+
+- 按 [15-three-work-blocks.md](15-three-work-blocks.md) 的块 I（#212–#264，53 卡 / 106 条缺失命令）实施，分支 `task/PAY-BLOCK-I-20261108`。先用真实网关逐条探测：114 条相关命令里 25 条已路由、89 条仍返回 `LOCAL_NOT_IMPLEMENTED`；派发文档的 106 条与之的差集来自 16001–16005、35001/35002/35005、37010、88201–88204、100601/100602、107701–107703、110201–110203、110601/110602、110801/110802、84601 等既有实现。
+- 新增 `personal-server/game/benefit-commerce-service.mjs` 接管全部 89 条未路由命令。真实结算 3 条：16006 并入 welfare 既有 `purchaseGift`（与 16005 同 schema，走 wallet 下单/余额/订单/1900/16003），87301 按 `PermanentCardTable.reward` 发每日奖励并写模块 62 `last_reward_day`，84602 按 `EnergyAward` 补领当日公主午/夜体力并前移模块 126 领取位，使 84601 当天再领返回 310。
+- 其余 86 条按任务卡分组 fail closed：返回 `err 5` 并附具体缺失证据（如“PAY-VIP: VipTable 未导出”），写 `benefit_command_refused` 审计日志。根因是这些玩法只有协议、没有随包导出的配置表（TriggerGift/UpStarGift/Vip/Fashion/WeekendBonus/Auction/ActShop 等 42 个族）；35003–35011 的 ETF 请求连参数 schema 都没有，77002 回包定义缺失。
+- 专项 `personal-server/test/benefit-commerce-gateway.test.mjs` 4 项：块 I 的 112 条命令逐条真实握手往返断言无 `LOCAL_NOT_IMPLEMENTED`；87301 发奖、重复 310、带参 1、SQLite 重开保持；84602 双档补领与当日重复拒绝；33001/102701/107301 拒绝码 5。逐卡缺口见 [PAY-BLOCK-I 实施记录](../../../agent/workflow/gameplay-completion/PAY-BLOCK-I/implementation.md)。
+- 本批无 APK 验收：未启停实时服务、未读写运行数据库、未操作模拟器/ADB，未连接原游戏服务器。
+
+## 集成与验收记录（2026-11-08 第八批：块 F 首批）
+
+- 按 [15-three-work-blocks.md](15-three-work-blocks.md) 的块 F（#120–#150，31 卡 / 74 条缺失命令）实施，分支 `task/BLOCK-F-20261108`。交付分两层：24 张活动配置表从客户端 LuaJIT 资产可复现抽取（`tools/extract-draw-activity-tables.mjs`，dump 落在 `personal-server/assets/tables`），并新增 `config/draw-activities-tables.mjs`；表解释器补 `UGET` 容错。
+- 真实业务只完成三条：DRAW-TURNTABLEACT 107901、DRAW-CAPSULETOY 102301、DRAW-THREEADMONITION 88965。三者按表内价格扣费、按权重或上限发奖、写 `draw_activity_state`/`draw_activity_logs`，网关在 bonusDraw 之后、activityRead 之前派发。专项 4/4，draw-activity + gameplay-gateway + m5-command-matrix + hundred-draw-gateway + bonus-draw-gateway 定向全通过（日志 `analysis/tmp/f-block/focused.log`）。
+- 其余 71 条仍是 `LOCAL_NOT_IMPLEMENTED`，不计完成：多数族卡在回包 `.db.proto` 数据消息未反解（`pb_capsule_toy_all`、`pb_chess`、`pb_thousand_draw_role_info` 等）或缺奖池表（`PuzzleVersion.draw_lib=5510`、`HeroBlazonDraw.draw_lib=3201`、`Lottery.Item.draw_lib=3901`）。逐族原因见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
+- 三条命令的 ETF 请求形态尚未与抓包比对，未做真实 TCP 端到端；未进入 APK 验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未连接原游戏服务器。
+
+合并：`1e93174` 以 `--no-ff` 合入 main `74060e6`；冲突只在状态表，块 I（第九批）与块 F（第八批）两段并存保留。合并后定向 24/24 通过（draw-activity + gameplay-gateway + m5-command-matrix + benefit-commerce-gateway），日志 `analysis/tmp/f-block/main-after-merge.log`。
+
+## 块 C 交付记录（2026-11-08）
+
+分支 `task/BLOCK-C-20261108`，worktree `.worktree/gameplay-20261108/block-c-20261108`。16 张卡中 EQUIP-ARTIFACT/EQUIP-RELIC 已是服务端完成状态，本轮只回归；EQUIP-MAGICCIRCLE 无新增命令。其余 14 张卡的 59 条命令全部接入网关：
+
+| 任务 ID | 状态 | 服务 / 证据 | 下一依赖或证据缺口 |
+| --- | --- | --- | --- |
+| EQUIP-EQUIP | 服务端完成（觉醒/批量精炼规则待证） | 1007 觉醒、1008 兑换、1009 批量精炼；消耗取 `EquipTable.Const.awaken_open`/`ResExchange.value`/`Refine.cost`；1001–1006 回归 11/11 | 觉醒是否等同“突破精炼上限”未取证；`ResExchange.value` 的比例语义需客户端对照 |
+| EQUIP-ARTIFACT | 服务端完成（4 条 fail closed 待补） | 37060–37075 已在 main（`artifact-service.mjs`），本轮未改 | 与上一轮记录相同 |
+| EQUIP-WARRUNE | 服务端完成（表生成阻塞） | 83001–83007；状态落 `develop_module_state`；消耗 ItemWarRuneChip | 登录槽位未恢复；WarRuneTable 为 LazyInit 生成器，等级/阶段消耗与属性池未取证 |
+| EQUIP-MUSEUM | 服务端完成（奖励清单待补） | 85701/85702；博物馆人气与领取位落库，收藏激活消耗 MuseumCollectionItem | 人气奖奖励物品未落地，只落领取位 |
+| EQUIP-FANTASYHANDBOOK | 服务端完成 | 89001；幻武图鉴星级落库，消耗 FantasyEquipChip | 幻武图鉴表与消耗比例待证 |
+| EQUIP-RELIC | 服务端完成（保底/depot 槽位待补） | 89701–89712 已在 main（`relic-service.mjs`），本轮未改 | 与上一轮记录相同 |
+| EQUIP-PET | 服务端完成（灵核容器与表生成阻塞） | 90731–90748 共 17 条；宠物本体走模块 158，灵核 uid 与灵祠槽位落库；消耗 PetChip/MutantItem | 灵核背包容器未对齐；PetTable 逐级消耗与灵核升星规则待证 |
+| EQUIP-PETPLAY | 服务端完成（奖励清单待补） | 90901/90902；按周周期落领取位与地图推进 | PetPlayTable 奖励与地图配置未取证 |
+| EQUIP-ENERGYBURST | 服务端完成（奖励清单待补） | 91001；领取位幂等落库 | EnergyBurstTable 奖励未落地 |
+| EQUIP-TREASURE | 服务端完成（抽卡阶段奖励待补） | 93301–93306；秘宝走模块 534，升星消耗 TreasureChip，阶段领奖按位图落库 | 自选抽卡与魔法罐的天数规则未取证 |
+| EQUIP-ELVES | 服务端完成（表生成阻塞） | 93701–93707；精灵走模块 538，消耗 ElvesChip/MutantItem | ElvesTable 天赋/破格消耗与皮肤校验未取证 |
+| EQUIP-ELVESBEAD | 服务端完成（穿脱槽位待对齐） | 93751–93755；灵珠走模块 539，穿脱槽位落库 | 灵珠分解放回物品未取证；穿脱未写回精灵本体槽位 |
+| EQUIP-LEADEREQUIP | 服务端完成（重铸 schema 缺失） | 98402–98407；团长装备走模块 175，98401 不变 | 98406 的 `pb_leader_equip_recast_back` 客户端 proto 缺失；98404 分解返还与 98402/98405 消耗未取证 |
+| EQUIP-DIVINEEMBRYO | 服务端完成 | 102201；自选编号落库并回 `pb_divine_embryo_data` | 保底计数与礼包限购记录未接 |
+| EQUIP-BADGE | 服务端完成（分页映射待补） | 104201；激活消耗徽章道具并回 `pb_badge_role` | BadgeTable 的分页归属未取证，当前统一落在 page 1 |
+
+验证：`node --test test/endgame-develop.test.mjs` 9/9；`test/equip-service.test.mjs`+`test/equip-tables.test.mjs` 11/11；网关可加载。未做真实 TCP 19090 联调、未做全量 `npm test` 复核、未进入 APK 验收；本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB。

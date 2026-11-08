@@ -16,6 +16,14 @@ import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
+import { createLeaderEquipDevelopService } from './leader-equip-develop-service.mjs';
+import { createWarRuneService } from './war-rune-service.mjs';
+import { createMuseumService } from './museum-service.mjs';
+import { createPetService } from './pet-service.mjs';
+import { createTreasureService } from './treasure-service.mjs';
+import { createElvesService } from './elves-service.mjs';
+import { createElvesBeadService } from './elves-bead-service.mjs';
+import { createDevelopExtraService } from './develop-extra-service.mjs';
 import { createRelicService } from './relic-service.mjs';
 import { readRelicTables } from '../config/relic-tables.mjs';
 import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
@@ -55,6 +63,7 @@ import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createHundredDrawService } from './hundred-draw-service.mjs';
 import { createBonusDrawService } from './bonus-draw-service.mjs';
+import { createDrawActivityService } from './draw-activity-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
@@ -129,6 +138,7 @@ import { createLineFirstRechargeService } from './line-first-recharge-service.mj
 import { createRechargeRebateResetService } from './recharge-rebate-reset-service.mjs';
 import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
 import { createTimeTempleService } from './time-temple-service.mjs';
+import { createBenefitCommerceService } from './benefit-commerce-service.mjs';
 import { createGuideService } from './guide-service.mjs';
 import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
@@ -421,6 +431,19 @@ export function createLocalGame({
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
+  // Block C endgame development: the leader-equipment develop commands share
+  // module 175 with the wear command; the remaining families keep their state in
+  // login modules 158/534/538/539 or in develop_module_state.
+  const endgameDevelopServices = [
+    createLeaderEquipDevelopService({ store, codec }),
+    createWarRuneService({ store, codec, now: clock, random }),
+    createMuseumService({ store, codec, now: clock }),
+    createPetService({ store, codec, now: clock }),
+    createTreasureService({ store, codec }),
+    createElvesService({ store, codec }),
+    createElvesBeadService({ store, codec, now: clock }),
+    createDevelopExtraService({ store, codec, now: clock })
+  ];
   // ArtifactCmd 37060-37075. The artifact login payload is module 50 slot 0, so
   // ensureLoginState only normalises rows that grantArtifact() stored as {tid,num}.
   const artifact = createArtifactService({ store, codec, logger });
@@ -519,6 +542,7 @@ export function createLocalGame({
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
+  const benefitCommerce=createBenefitCommerceService({store,codec,tables,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const everyTasks=createEveryTaskService({store,codec,tables,now:clock,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -531,6 +555,9 @@ export function createLocalGame({
   // There is no recovered login slot for BonusDrawMgr, so this service answers
   // commands only and keeps its state in its own tables.
   const bonusDraw=createBonusDrawService({store,codec,tables,now:clock,random,logger});
+  // F-block draw activities with recovered table evidence (DRAW-TURNTABLEACT,
+  // DRAW-CAPSULETOY draw, DRAW-THREEADMONITION extra draws).
+  const drawActivity=createDrawActivityService({store,codec,tables,now:clock,random,logger});
   // Fishing reads whose request body is an ETF integer argument (activity id).
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
@@ -1378,6 +1405,21 @@ export function createLocalGame({
         }
         return;
       }
+      if (drawActivity.supports(type)) {
+        try {
+          const argument = await etfArgument(request.data, 'Invalid draw activity payload', { optional: true });
+          const value = argument && typeof argument === 'object' ? argument.value ?? argument : argument;
+          const times = value != null && Number.isFinite(Number(value)) ? Number(value) : undefined;
+          const result = drawActivity.execute(type, { times });
+          send(seq, result.data);
+          log({ event: 'draw_activity_command_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'draw_activity_command_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
+        }
+        return;
+      }
       if (activityRead.supports(type)) {
         try {
           const etfValue = fishingEtfTypes.has(type)
@@ -1645,6 +1687,22 @@ export function createLocalGame({
           const code = error instanceof GameError ? (error.code === 307 ? 16016 : error.code) : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'welfare_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (benefitCommerce.supports(type)) {
+        // 块 I（PAY-*）的礼包/通行证/基金/拍卖命令入口。可结算的命令在这里真实
+        // 扣发并写回登录模块；配置表缺失的命令返回 5 与具体原因，避免用固定空包
+        // 冒充已实现。
+        try {
+          const input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
+          const result = benefitCommerce.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'benefit_command_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'benefit_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
@@ -2160,6 +2218,23 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'relic_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      const endgameDevelop = endgameDevelopServices.find(service => service.supports(type));
+      if (endgameDevelop) {
+        try {
+          const decoded = endgameDevelop.decode(type, request.data);
+          const input = decoded === undefined
+            ? await etfArgument(request.data, 'Invalid endgame develop payload')
+            : decoded;
+          const result = endgameDevelop.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'endgame_develop_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'endgame_develop_rejected', type, seq, code, message: error.message });
         }
         return;
       }
