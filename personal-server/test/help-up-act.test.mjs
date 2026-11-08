@@ -276,6 +276,8 @@ test('gateway answers the real help-up types on a temporary port', async t => {
     capturePath,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: SERVER_OPENED_AT,
+    activityMode: 'all-open',
+    currentFishingActivityId: 1074011,
     now: () => gameNow,
     random: () => 0.5
   });
@@ -307,6 +309,27 @@ test('gateway answers the real help-up types on a temporary port', async t => {
   assert.ok(helpUpEntry, 'login carries the help-up activity entry');
   const loginBlock = codec.unpack('pb_help_up_act_login_data', Buffer.from(helpUpEntry.module_login_data, 'base64'));
   assert.equal(loginBlock.act_data.act_id, String(ACT_ID));
+  const actFrameEntry = loginFlow[2].value.find(value => Number(value[0]) === 183);
+  assert.ok(actFrameEntry, 'login carries the activity-frame container');
+  const actFramePlayer = codec.unpack('pb_act_role_login', Buffer.from(actFrameEntry[1].value[0].value));
+  const actFrameServer = codec.unpack('pb_act_server_data', Buffer.from(actFrameEntry[1].value[1].value));
+  const playerStage = actFramePlayer.data_list.find(row => Number(row.act_stage?.act_id) === ACT_ID);
+  const serverStage = actFrameServer.act_stage_list.find(row => Number(row.act_id) === ACT_ID);
+  assert.ok(playerStage, 'login carries the help-up player stage');
+  assert.ok(serverStage, 'login carries the help-up server stage');
+  assert.equal(serverStage.type, 1096);
+  assert.equal(serverStage.cur_stage_id, 50);
+  // Proto3 omits a false bool on the wire; the client's decoded default is false.
+  assert.notEqual(serverStage.is_pause, true);
+  assert.ok(Number(serverStage.start_time) <= gameNow / 1000);
+  assert.ok(Number(serverStage.end_time) > gameNow / 1000);
+  assert.equal(playerStage.act_stage.cur_stage_id, 50);
+  assert.ok(Number(playerStage.act_stage.start_time) <= gameNow / 1000);
+  assert.ok(Number(playerStage.act_stage.end_time) > gameNow / 1000);
+  assert.deepEqual(playerStage.act_stage.history_time, [{
+    stage_id: 50,
+    enter_time: playerStage.act_stage.start_time
+  }]);
 
   const times = await request(116004, 2, codec.pack('pb_help_up_get_times_req', { act_id: ACT_ID }));
   assert.equal(errorCode(times), 0);
