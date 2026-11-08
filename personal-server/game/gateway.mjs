@@ -90,6 +90,16 @@ import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { createFameHallService } from './fame-hall-service.mjs';
 import { createWorldBossService } from './world-boss-service.mjs';
 import { createPitLordService } from './pit-lord-service.mjs';
+import { createRedCliffService } from './red-cliff-service.mjs';
+import { readRedCliffTables } from '../config/dungeon-activity-tables.mjs';
+import { createTowerDefenseService } from './tower-defense-service.mjs';
+import { readTowerDefenseTables } from '../config/dungeon-activity-tables.mjs';
+import { createSoulTrialService } from './soul-trial-service.mjs';
+import { createScarletTrialService } from './scarlet-trial-service.mjs';
+import { readSoulTrialTables, readScarletTrialTables } from '../config/dungeon-activity-tables.mjs';
+import { createCampTowerService } from './camp-tower-service.mjs';
+import { createDestinyPveService } from './destiny-pve-service.mjs';
+import { readCampTowerTables, readDestinyPveTables } from '../config/dungeon-activity-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -468,6 +478,14 @@ export function createLocalGame({
   const fameHall = createFameHallService({ store, codec, gameTables: tables, artifact, now: clock, logger });
   const worldBoss = createWorldBossService({ store, codec, gameTables: tables, now: clock, logger });
   const pitLord = createPitLordService({ store, codec, gameTables: tables, now: clock, logger });
+  // RedCliffCmd 55001-55004. ETF requests; state and claim bits live in the
+  // shared dungeon activity tables so a restart keeps progress.
+  const redCliff = createRedCliffService({ store, codec, tables: readRedCliffTables(), gameTables: tables, logger, now: clock, random });
+  const towerDefense = createTowerDefenseService({ store, codec, tables: readTowerDefenseTables(), gameTables: tables, logger, now: clock });
+  const soulTrial = createSoulTrialService({ store, codec, tables: readSoulTrialTables(), gameTables: tables, logger, now: clock });
+  const scarletTrial = createScarletTrialService({ store, codec, tables: readScarletTrialTables(), gameTables: tables, logger, now: clock });
+  const campTower = createCampTowerService({ store, codec, tables: readCampTowerTables(), gameTables: tables, logger, now: clock });
+  const destinyPve = createDestinyPveService({ store, codec, tables: readDestinyPveTables(), logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -1773,6 +1791,90 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'pit_lord_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (redCliff.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const input = decoded?.value ?? decoded;
+          const result = await redCliff.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'red_cliff_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'red_cliff_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (towerDefense.supports(type)) {
+        try {
+          let input;
+          if (type === 97601) input = unpack('pb_tower_defense_garrison_req', request.data);
+          else if (request.data?.length) { const decoded = await decodeEtf(request.data); input = decoded?.value ?? decoded; }
+          const result = await towerDefense.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'tower_defense_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'tower_defense_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (soulTrial.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = await soulTrial.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'soul_trial_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'soul_trial_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (scarletTrial.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = await scarletTrial.execute(type, decoded?.value ?? decoded);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'scarlet_trial_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'scarlet_trial_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (campTower.supports(type)) {
+        try {
+          let input;
+          if (type === 93601) input = unpack('pb_camp_tower_cross_award_req', request.data);
+          else if (type === 93602) input = unpack('pb_camp_tower_first_award_req', request.data);
+          else if (request.data?.length) { const decoded = await decodeEtf(request.data); input = decoded?.value ?? decoded; }
+          const result = await campTower.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'camp_tower_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'camp_tower_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (destinyPve.supports(type)) {
+        try {
+          const input = type === 104702 ? unpack('pb_destiny_pve_layer_info_req', request.data) : unpack('pb_destiny_pve_fight_req', request.data);
+          const result = await destinyPve.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'destiny_pve_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'destiny_pve_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
