@@ -51,11 +51,11 @@
 | 交付文件 | 大小 | SHA256 |
 | --- | ---: | --- |
 | `personal-server/assets/tables/FreePrivilegeActTable.data.lua.json.gz` | 283 | `70e8c993411c907fdd579c569b71924b2edfe2335f6928046c490d6443bdc548` |
-| `tools/extract-free-privilege-table.mjs` | 8,450 | `fe8e4b7b016b9d16a853c26ed0837de27ded0c6f4b89fd64a41e01e91f5e10cb` |
-| `personal-server/config/free-privilege-act-tables.mjs` | 2,231 | `1649c3dfc44ae2f841f301b413c92629857a1c45014569de10d51058433ab1f3` |
-| `personal-server/game/free-privilege-act-service.mjs` | 16,230 | `15eddd227bd036cd9b472671703f8051a8af2899f625145522c10830ca47d549` |
-| `personal-server/test/free-privilege-act-service.test.mjs` | 13,225 | `643a91ab19460eb1fc8cba12b5ceae5592ed5ab2ab5b3dd7ccea639ad70d4002` |
-| `personal-server/test/free-privilege-gateway.test.mjs` | 8,431 | `be760000f83094d354f2abe5bf657b46639cb9a5933b2fd247360141a0633974` |
+| `tools/extract-free-privilege-table.mjs` | 8,446 | `6ff59e0b1af68a7beefd2ba8057cecaf023a10ac005af4132cba50a14c14f32d` |
+| `personal-server/config/free-privilege-act-tables.mjs` | 2,229 | `3460584a997c331a219b1a2cb8da90763c9d2adae339b501b6a4835a72fe9c4c` |
+| `personal-server/game/free-privilege-act-service.mjs` | 16,228 | `6f1bfbc2e12cc7d91f9b60f2780435509f2cb0a5da8219a3e0681bd846e1dc3b` |
+| `personal-server/test/free-privilege-act-service.test.mjs` | 13,223 | `9b66e6c2339b19f91a692f9ebf37b13b70877790e93b10940bba3460ccc8fc81` |
+| `personal-server/test/free-privilege-gateway.test.mjs` | 8,429 | `8d4453079099a062e0cc1c37dac4e0b88887b3b146504ac7edaf88503d84b586` |
 
 ## 服务实现
 
