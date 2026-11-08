@@ -37,7 +37,9 @@
 - 合并最新 `main` 后全量 `npm test`：2756 项，2754 通过、0 失败、2 跳过；日志为 `analysis/test-runs/premium-act-20261108-full.log`。
 - 修改和新增的 `.mjs` 均通过 `node --check`，`git diff --check` 通过。
 
-## 待验收
+## 部署与实时登录证据
 
-- 服务端登录数据和购买链路已由测试覆盖；仍需用户在真实客户端打开白绫现世礼包页确认列表和价格显示。
-- 当前没有启动、重启或写入实时服务数据库；部署前应使用运行库一致性备份，再重启服务并检查登录日志中的 `premiumActivityIds` 包含 `1841010`。
+- 重启前使用 `VACUUM INTO` 生成一致备份：`analysis/experiments/private-server-20261025/p3/premium-act-20261108/game.before-deploy.local-only.sqlite`，1,417,216 字节，SHA256 `16BC950B4FA18D41D5364A159E96FA6CC8B0352E62AE601A1496BFEEFF0F9402`，schema v18，`PRAGMA integrity_check=ok`，角色 1、登录模块 145。
+- 新服务 PID `42156`，启动时间 `2026-11-08T13:48:51.878Z`，五个端口仍全部仅监听 loopback；stderr 为空。
+- 客户端自动重连并完成登录；实时事件 `premium_act_login_synced` 的 `actIds` 包含 `1841010`，其 `gifts` 为 `1270973..1270982` 的 10 个礼包。`activity_login_calendar_applied` 的 `premiumActivityIds` 也包含 `1841010`，随后 `login_sent` 返回 145 个模块。
+- 服务端登录数据、礼包购买和限购链路已由测试覆盖；仍待用户打开白绫现世礼包页确认列表、价格和点击后的视觉效果。
