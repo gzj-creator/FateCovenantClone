@@ -114,9 +114,9 @@ export function createBattleRecordService({ store, codec, logger = () => {}, now
   // protocol's success signal for this request.
   function shareReport(request) {
     const fightId = Number(request?.fight_id ?? 0);
-    if (!Number.isSafeInteger(fightId) || fightId < 0) throw new GameError(1, 'Invalid share report fight id');
+    if (!Number.isSafeInteger(fightId) || fightId <= 0) throw new GameError(1, 'Invalid share report fight id');
     const fightType = Number(request?.fight_type ?? 0);
-    if (!Number.isSafeInteger(fightType)) throw new GameError(1, 'Invalid share report fight type');
+    if (!Number.isSafeInteger(fightType) || fightType <= 0) throw new GameError(1, 'Invalid share report fight type');
     log({ event: 'battle_report_shared', fightId, fightType });
     return { value: { shared: true, fightId, fightType }, data: Buffer.alloc(0) };
   }

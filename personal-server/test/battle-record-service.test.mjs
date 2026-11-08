@@ -80,7 +80,9 @@ test('205 share_report acknowledges with an empty frame and 211 rejects malforme
   assert.equal(String(shared.value.fightId), '7700120201');
   assert.equal(shared.value.fightType, 1);
   assert.equal(shared.data.length, 0, '205 has no c2s_back schema: success is an empty frame');
+  assert.throws(() => service.execute(205, {}), /Invalid share report fight id/);
   assert.throws(() => service.execute(205, { fight_id: 'not-a-number', fight_type: 1 }), /Invalid share report fight id/);
+  assert.throws(() => service.execute(205, { fight_id: '1', fight_type: -1 }), /Invalid share report fight type/);
   assert.throws(() => service.execute(211, { pass_tid: -1, id: 1 }), /Invalid pass record tid/);
   assert.throws(() => service.execute(211, { pass_tid: 1, id: -5 }), /Invalid pass record business id/);
 });
