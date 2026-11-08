@@ -34,7 +34,7 @@
 - 新增 `personal-server/test/premium-act.test.mjs`，覆盖表内容、登录 `pb_premium_act` block、免费/资源/现金礼包、购买次数与限购、`schedule` 模式下活动关闭时拒绝。
 - 定向 `node --test test/premium-act.test.mjs`：3/3 通过。
 - 关联回归 `activity-calendar`、`wallet-service`、`welfare-service`、`pet-activity`、`benefit-commerce-gateway`、`gameplay-gateway`：56/56 通过。
-- 全量 `npm test`：2753 项，2751 通过、0 失败、2 跳过（日志为 2026-11-08 本轮 worktree 运行结果）。
+- 合并最新 `main` 后全量 `npm test`：2756 项，2754 通过、0 失败、2 跳过；日志为 `analysis/test-runs/premium-act-20261108-full.log`。
 - 修改和新增的 `.mjs` 均通过 `node --check`，`git diff --check` 通过。
 
 ## 待验收

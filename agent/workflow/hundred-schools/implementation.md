@@ -142,5 +142,5 @@
 
 - `1841010`（`ActFrame` 类型 `184`）的 player 行已由 all-open 批次补出，但缺少客户端需要的 `pb_premium_act` 登录 block，导致白绫现世礼包列表为空。
 - 新增 `premium-act-service.mjs` 在登录时为开放的 184 活动生成/更新 `pb_premium_act`，并从 `activity_purchases` 回填礼包购买次数；同时补上类型 128 礼包的免费、资源和现金购买链路与 `flag 114` 限购回包。
-- `PremiumActTable` 版本 `1002` 的 10 个礼包和购买路径已由 `test/premium-act.test.mjs` 覆盖；本轮全量测试 2753 项（2751 通过、0 失败、2 跳过）。
+- `PremiumActTable` 版本 `1002` 的 10 个礼包和购买路径已由 `test/premium-act.test.mjs` 覆盖；合并最新 `main` 后全量测试 2756 项（2754 通过、0 失败、2 跳过）。
 - 详细根因、配置边界和待做实时客户端视觉验收见 [`agent/workflow/premium-act/implementation.md`](../premium-act/implementation.md)。
