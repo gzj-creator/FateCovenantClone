@@ -6,7 +6,7 @@
 - Worktree：`F:\projects\FateCovenantClone\.worktree\premium-gift-shop-20261108`
 - 分支：`fix/premium-gift-shop-20261108`
 - 目标活动：`1841010`（`ActFrame` 类型 `184`，`PremiumActMgr` 付费商城）
-- 本轮只修改个人服务器代码、配置和测试；未操作实时服务、运行数据库、模拟器、ADB 或 APK。
+- 本轮修改个人服务器代码、配置、测试和实现记录，并对本机实时服务做了带一致性备份的重启；未操作模拟器、ADB 或 APK。
 
 ## 现象与根因
 
