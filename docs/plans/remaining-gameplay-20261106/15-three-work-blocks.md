@@ -406,3 +406,9 @@
 - “服务端完成”表示实现已合入 main，只剩证据补强、回归与 APK 验收；块内 agent 只补缺口，不重写玩法。
 - “待领取”表示仍有未路由或未实现命令，按 14 号文档的子卡粒度派发。
 
+
+## 块 G2 执行结果（2026-11-08）
+
+- 96 条命令全部接入 personal-server/game/minigame-act-service.mjs 并在网关派发；塔、打地鼠、三消、对对碰、大富翁、梦境、钻石矿脉、烘焙写入模块 92 登录负载。
+- 完成 6 卡、服务端完成含明确拒绝 8 卡、仅明确拒绝 1 卡（SOURCEPOINT）、回归 2 卡；明细见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md 与逐卡 implementation.md。
+- 全量 npm test 2560 项 pass 2558 / fail 0 / skipped 2。

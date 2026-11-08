@@ -129,3 +129,10 @@
 - 三项均未进入 APK 验收；本轮未启停实时服务、未读写 runtime.local-only.data 或运行数据库、未操作模拟器/ADB、未生成 APK。主工作树未跟踪 assets/ 保持未提交。
 
 2026-11-08 派发边界调整为三大块，见 [三大块](15-three-work-blocks.md)：块 A #1–#33（本 session）、块 B #34–#119、块 C #120–#276。
+
+## 块 G2 执行记录（2026-11-08）
+
+- 分支 task/BLOCK-G2-20261108（基于 main 8ebd5a1）完成 #163–#179 共 17 卡、96 条命令的服务端接入：personal-server/game/minigame-act-service.mjs + config/minigame-act-tables.mjs + 15 个表资产 + 网关派发与模块 92 登录同步。
+- 状态：完整实现 6 卡（PUZZLEACT/TILESWAP/MUSHROOMMONSTER/GOPHERACT/MATCHINGGAMEACT/ALBUM）；服务端完成含明确拒绝 8 卡（TOWERACT/SPIRITCOURTYARD/TRIPLEMATCH/MONOPOLYACT/DREAMTRIALACT/DIAMONDVEINACT/HOMELAND/BAKINGACT）；仅明确拒绝 1 卡（SOURCEPOINT，源点实例未建模）；FISHINGACT 与 HELPUPACT 回归确认未改动。
+- 明确拒绝均为 GameError(5, 缺口说明)，无空包/固定值销项。逐卡记录见 agent/workflow/gameplay-completion/<CARD>/implementation.md，块记录见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md。
+- 测试：专项 16/16；全量 npm test 2560 项，pass 2558，fail 0，skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
