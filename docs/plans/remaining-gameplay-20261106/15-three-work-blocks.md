@@ -40,23 +40,23 @@
 
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
-| 1 | BATTLE-FIGHT | 通用战斗与报告分享 | 1 | 待领取 |
-| 2 | BATTLE-REPORT | 通关记录与点赞 | 2 | 待领取 |
+| 1 | BATTLE-FIGHT | 通用战斗与报告分享 | 1 | fail closed（缺回包/分享语义证据） |
+| 2 | BATTLE-REPORT | 通关记录与点赞 | 2 | 服务端完成（APK 未验收） |
 | 3 | BATTLE-PEAKTOWER | 巅峰塔/爬塔 | 6 | 服务端完成（部分证据阻塞） |
 | 4 | BATTLE-RANK | 真实排行榜 | 11 | 服务端完成（部分榜单事件/赛季结算阻塞） |
-| 5 | BATTLE-REDCLIFF | RedCliff 副本 | 4 | 待领取 |
+| 5 | BATTLE-REDCLIFF | RedCliff 副本 | 4 | 服务端完成（部分轮次规则待证） |
 | 6 | BATTLE-GENERALDUNGEON | 通用地牢副本 | 7 | 服务端完成（事件规则部分证据阻塞） |
 | 7 | BATTLE-ELITEMISSION | 精英任务的战斗闭环 | 0 | 服务端完成（敌方阵容映射与难度证据待补） |
-| 8 | BATTLE-SOULTRIAL | 灵魂试炼抽奖 | 2 | 待领取 |
-| 9 | BATTLE-SCARLETTRIAL | 猩红试炼 | 2 | 待领取 |
-| 10 | BATTLE-STARMISSION | 星级关卡、章节奖励与技能 | 4 | 待领取 |
-| 11 | BATTLE-COMMONMAP | 通用地图节点与扫荡 | 3 | 待领取 |
-| 12 | BATTLE-FAMEHALL | 名人堂挑战与掉落选择 | 11 | 待领取 |
-| 13 | BATTLE-WORLDBOSS | 世界 BOSS | 5 | 待领取 |
-| 14 | BATTLE-PITLORD | PitLord 挑战、排名与补发 | 4 | 待领取 |
-| 15 | BATTLE-CAMPTOWER | 阵营塔 | 3 | 待领取 |
-| 16 | BATTLE-TOWERDEFENSE | 塔防驻守与轮次奖励 | 5 | 待领取 |
-| 17 | BATTLE-DESTINYPVE | 命运 PVE 分层挑战 | 2 | 待领取 |
+| 8 | BATTLE-SOULTRIAL | 灵魂试炼抽奖 | 2 | 服务端完成（付费语义待证） |
+| 9 | BATTLE-SCARLETTRIAL | 猩红试炼 | 2 | 服务端完成（活动窗口待证） |
+| 10 | BATTLE-STARMISSION | 星级关卡、章节奖励与技能 | 4 | 部分交付（89601 fail closed；真实表适配中） |
+| 11 | BATTLE-COMMONMAP | 通用地图节点与扫荡 | 3 | 部分交付（生产表适配中） |
+| 12 | BATTLE-FAMEHALL | 名人堂挑战与掉落选择 | 11 | 服务端完成（候选/阵容证据待补） |
+| 13 | BATTLE-WORLDBOSS | 世界 BOSS | 5 | 服务端完成（BOSS 调度待证） |
+| 14 | BATTLE-PITLORD | PitLord 挑战、排名与补发 | 4 | 服务端完成（RankTable 绑定待证） |
+| 15 | BATTLE-CAMPTOWER | 阵营塔 | 3 | 服务端完成（开放日待证） |
+| 16 | BATTLE-TOWERDEFENSE | 塔防驻守与轮次奖励 | 5 | 服务端完成（承伤结算待证） |
+| 17 | BATTLE-DESTINYPVE | 命运 PVE 分层挑战 | 2 | 部分交付（104701 fail closed） |
 
 ## 块 A2：#18–#33（战斗 PVP、竞技、锦标赛与三消）
 

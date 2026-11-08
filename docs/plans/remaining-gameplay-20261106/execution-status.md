@@ -6,7 +6,7 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 48 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 51 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；51/355 约 14.4% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。另有 1 个共享任务（CORE-TIME-TEMPLE）已用注册表全表证据闭合为“本版本不可达”，不计入上面的实现交付数，也不构成 APK 验收。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
+交付与整卡销项分开计数：当前 59 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 62 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；62/355 约 17.5% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。另有 1 个共享任务（CORE-TIME-TEMPLE）已用注册表全表证据闭合为“本版本不可达”，不计入上面的实现交付数，也不构成 APK 验收。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
 
 2026-11-07 第二轮：CORE-BATTLE-A 与 SOC-FRIEND 两个 checkpoint 已续接完成并合入 main，另完成 PLAY-FISHINGACT；三者均通过合并后的定向回归与一次主线全量，业务层为“服务端完成”，各自的证据缺口与 APK 验收边界见下表。
 
@@ -45,6 +45,19 @@
 | BATTLE-PEAKTOWER | 服务端完成（部分证据阻塞） | `task/BATTLE-PEAKTOWER-20261106` @ 83b784f | 12 专项测试 + 真实 TCP 1103/1112 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | 1104 跨日重置配置未恢复；1109 限购/折扣语义；1112 回包 schema 未恢复；塔战斗仍依赖缺失的 FightTable 与通用派发 |
 | BATTLE-RANK | 服务端完成（部分榜单事件/赛季结算阻塞） | `task/BATTLE-RANK-20261106` @ e1230b3 | 7 专项 + 真实 TCP、既有 rank 回归 41/41 + 重开 DB + 编码/SQLite 回滚；合并后全量 2171/2171 | 未安排 | 真实生产来源当前覆盖角色等级、主线、英雄星级、本地战力、尖塔；其余榜单缺所属模块事件；赛季冻结/邮件最终奖励与 2003/2004 部分数字绑定待证据 |
 | BATTLE-GENERALDUNGEON | 服务端完成（事件规则部分证据阻塞） | `task/BATTLE-GENERALDUNGEON-20261106` @ a9e5718 | 7 专项测试 + 真实 TCP 78101–78107 + 重开 DB + 编码/claim 故障回滚；独立复核 37/37；合并后全量 2178/2178 | 未安排 | 宝箱与道具事件已闭合；战斗、抽取、Buff、对话、条件/跨层事件和额外数据仍待证据，当前逐类型明确拒绝 |
+| BATTLE-FIGHT | fail closed | `task/BATTLE-CORE-20261108`，合入 main `c19e8dd` | 205 `share_report` 无回包与落库语义，网关明确返回 code 5；不计入实现交付 | 未安排 | 缺分享/奖励与回包证据；客户端证据审查中 |
+| BATTLE-REPORT | 服务端完成 | `task/BATTLE-CORE-20261108`，合入 main `c19e8dd` | 211 从真实战斗记录回调写 SQLite；212 校验记录、拒绝自赞、同向重复幂等、反向重复报错；临时 TCP/SQLite 重开/失败回滚通过 | 未安排 | 211 未下发 `lineup_info`；APK 未验收 |
+| BATTLE-REDCLIFF | 服务端完成（部分轮次规则待证） | `task/BATTLE-DUNGEON-20261108`，合入 main `bd650ba` | 55001–55004 真实状态、结算与领取；临时 TCP/SQLite/回滚通过 | 未安排 | 重置周期与 `buff_lib` 展开规则未取证；201/207 通用派发接缝未调用 |
+| BATTLE-SOULTRIAL | 服务端完成（付费翻牌语义待证） | `task/BATTLE-DUNGEON-20261108`，合入 main `bd650ba` | 87104/87105 抽取奖与每日免费次数，状态和领取落 SQLite | 未安排 | 超免费次数拒付，付费消耗语义未恢复；APK 未验收 |
+| BATTLE-SCARLETTRIAL | 服务端完成（活动窗口待证） | `task/BATTLE-DUNGEON-20261108`，合入 main `bd650ba` | 89101/89102 任务奖与石头选择，战斗进度来自 `simulateBattle` | 未安排 | 活动版本窗口与通用战斗派发接缝未接入 |
+| BATTLE-STARMISSION | 部分交付 | `task/BATTLE-CORE-20261108`，合入 main `c19e8dd` | 89602 章节奖、89603/89604 技能分配与重置，状态落 SQLite；专项/邻接回归通过 | 未安排 | 89601 缺参数/奖励证据 fail closed；生产 `StarMissionTable` 真实 schema 适配中 |
+| BATTLE-COMMONMAP | 部分交付 | `task/BATTLE-CORE-20261108`，合入 main `c19e8dd` | 90601–90603 节点、战斗、扫荡服务已接线，结算来自真实 `simulateBattle` | 未安排 | 生产 `CommonMapTable` 真实 schema 适配中；节点结构与奖励仍按已证字段解释 |
+| BATTLE-FAMEHALL | 服务端完成（候选/阵容证据待补） | `task/BATTLE-BOSS-20261108`，合入 main `7ab8b81` | 91101–91111 状态、进入/选择/跳过/终止、阶段奖/补发、重置/扫荡；模块 50 圣器状态复用；真实 TCP/SQLite/回滚通过 | 未安排 | 掉落候选和敌方阵容注入缺失时 code 5；扫荡冷却、重置费用未完全取证 |
+| BATTLE-WORLDBOSS | 服务端完成（BOSS 调度证据待补） | `task/BATTLE-BOSS-20261108`，合入 main `7ab8b81` | 91801–91805 地图进入离开、伤害/杀奖、历史榜与成就；状态落 SQLite | 未安排 | 无唯一 BOSS 调度或部署 `bossTid` 时 code 5；击杀档位选择待证 |
+| BATTLE-PITLORD | 服务端完成（RankTable 绑定待证） | `task/BATTLE-BOSS-20261108`，合入 main `7ab8b81` | 92801–92804 真实榜单、每日快照、排名奖/补发与免费奖幂等；真实 TCP/SQLite/回滚通过 | 未安排 | 正式 RankTable `rank_id` 未取证，当前使用隔离命名空间 |
+| BATTLE-CAMPTOWER | 服务端完成（开放日待证） | `task/BATTLE-DUNGEON-20261108`，合入 main `bd650ba` | 93601–93603 首通列表与战斗进度，状态来自真实 `simulateBattle` | 未安排 | `TypeOpenDays` 开启校验未接入；APK 未验收 |
+| BATTLE-TOWERDEFENSE | 服务端完成（承伤结算待证） | `task/BATTLE-DUNGEON-20261108`，合入 main `bd650ba` | 97601–97605 驻守、结算和奖励，状态落 SQLite；专项/邻接回归通过 | 未安排 | 承伤/血量结算规则尚未恢复；APK 未验收 |
+| BATTLE-DESTINYPVE | 部分交付 | `task/BATTLE-DUNGEON-20261108`，合入 main `bd650ba` | 104702 层信息可用；入口与持久化已接网关 | 未安排 | 104701 缺 `pb_destiny_pve_fight_rsq` 与 `FightTable.def_team`，明确 code 5；阵容快照未接 |
 | ITEM-COMMONTASK | 服务端完成（奖励/爬塔进度证据阻塞） | `task/ITEM-COMMONTASK-20261106` @ 321655f | 7 专项测试 + 同组列表事务 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | 四张组表 2774 行奖励列为空；progress_fun 12 无爬塔状态来源；module 90 线性槽位从 0 修正为 4，需 APK 联合验收 |
 | ITEM-GUIDE | 服务端完成（奖励配置证据阻塞） | `task/ITEM-GUIDE-20261106` @ 042be27 | 9 专项测试 + 真实 TCP 8000→8001→8002 + 重开 DB + 故障回滚；合并后全量 2164/2164 | 未安排 | GuideTable 无 JSON 导出，生产 8001 对所有 awardTid 返回 code 5；8001 参数位置与 8002 不回帧均待 APK 实测 |
 | ITEM-RANKACHIEVE | 服务端完成（多数成就事件源证据阻塞） | `task/ITEM-RANKACHIEVE-20261106` @ 9c1a880 | 7 专项测试 + 真实 TCP 43101→rsp/8601 + 模块 170 登录 + 重开 DB + 编码/SQLite 回滚；合并后全量 2190/2190 | 未安排 | 当前仅闭合巅峰塔 500/1000 层与可解析指定英雄拥有共 13 行；其余 71 行缺权威完成值来源并返回 code 5；`finish_award` 发放语义与跨服/公会完成信息待证据 |
