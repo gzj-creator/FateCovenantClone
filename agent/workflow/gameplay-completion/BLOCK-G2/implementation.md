@@ -57,4 +57,4 @@
 
 `personal-server/game/task-service.mjs` 另补了 `progress_fun=66`（英雄最高星级）和 `progress_fun=81`（英雄最高专精突破），供 SourcePoint/同类 TaskType 复用。大富翁 `task_type=0` 用本地累计 score 与 `target_count` 比较；custom_login 统计从 `guild_count_stats[1006]` 的维度 total 读取。单角色服把本地 score 当作公会总分，属于本地部署假设，仍需多角色原服样本对照。
 
-验证：`node --test test/minigame-act-service.test.mjs` 为 34/34 通过；全量 `npm test` 为 2702 项，pass 2692 / fail 8 / skipped 2。8 个失败全部是 `main@649a903` 已有的 schema 断言（测试期望 `user_version=16`，代码已是 17），与本轮小游戏文件无关；日志见 `analysis/test-runs/gameplay-20261106/g2-residual-20261108.log`。本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，未生成 APK 快照。
+合并 `main@05ec76c`（合并提交 `a5966e4`）后的最终验证：`node --test test/minigame-act-service.test.mjs` 为 35/35 通过；全量 `npm test` 为 2724 项，pass 2722 / fail 0 / skipped 2，日志见 `analysis/test-runs/gameplay-20261106/g2-residual-post-merge-20261108.log`。合并前的基线测试有 8 个 `user_version` 断言仍是旧值，main 已同步到 17 后不再失败；本轮未改那些迁移断言。本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，未生成 APK 快照。

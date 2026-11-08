@@ -231,7 +231,7 @@
 - 分支 `task/BLOCK-G2-RESIDUAL-20261108`，worktree `.worktree/gameplay-20261108/g2-residual`，基于 `main@649a903`。首轮 21 条明确拒绝中补齐 16 条：TOWERACT 104303；SPIRITCOURTYARD 105005；MONOPOLYACT 107802/107804；DIAMONDVEINACT 109005；SOURCEPOINT 110101/110102/110103；HOMELAND 110904；BAKINGACT 111002/111003/111004/111006/111011/111012/111013。
 - SOURCEPOINT 已新增 `source_point:1` 实例/领取位状态和英雄 `source_point_list` 迁移；BAKINGACT 补齐交换、合成、订单、事件和限时刷新，111001/111005 同步扩展棋盘/订单边界；MONOPOLYACT 登录回包补 `act_role_data`、`guild_data`、`guild_count_statics_send`，`task_type=0` 用本地累计 score 对 `target_count`，custom_login 统计读 `guild_count_stats[1006]`。
 - 仍明确拒绝 5 条：SPIRITCOURTYARD 105008/105009/105015（单角色公会社交数据）、TRIPLEMATCH 106005（棋盘通关自报未取证）、MONOPOLYACT 107806（补给由其他角色创建）。
-- 验证：专项 34/34；全量 2702 项 pass 2692 / fail 8 / skipped 2（日志 `analysis/test-runs/gameplay-20261106/g2-residual-20261108.log`）。8 个失败为 `main@649a903` 既有的 `user_version` 断言（测试期望 16、代码为 17），不涉及本轮小游戏改动。未做 APK 实测，未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
+- 已合并当前 `main@05ec76c`（合并提交 `a5966e4`）。最终验证：专项 35/35；全量 2724 项 pass 2722 / fail 0 / skipped 2（日志 `analysis/test-runs/gameplay-20261106/g2-residual-post-merge-20261108.log`）。未做 APK 实测，未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
 
 ## 块 D 交付记录（2026-11-08）
 
