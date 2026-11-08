@@ -88,6 +88,9 @@ import { createMartialClubActService } from './martial-club-act-service.mjs';
 import { TOURNAMENT_MODULE_ID, TOURNAMENT_PROTOBUF_COMMANDS, createTournamentService } from './tournament-service.mjs';
 import { readMartialClubActTables } from '../config/martial-club-act-tables.mjs';
 import { readMatchPvpTables } from '../config/match-pvp-tables.mjs';
+// Card BATTLE-TOPARENA: TopArenaCmd 98500 98505 98526-98532 98560-98565 98580-98583 98590 98601-98602.
+import { TOP_ARENA_PROTOBUF_COMMANDS, createTopArenaService } from './top-arena-service.mjs';
+import { readTopArenaTables } from '../config/top-arena-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
@@ -470,6 +473,8 @@ export function createLocalGame({
   const martialClubAct = createMartialClubActService({ store, codec, tables: readMartialClubActTables(), gameTables: tables, logger, now: clock });
   // Card BATTLE-TOURNAMENT: 88501-88511, MatchPvpTable type 1 (位面锦标赛).
   const tournament = createTournamentService({ store, codec, tables: readMatchPvpTables(), gameTables: tables, logger, now: clock, enemyRoster: tournamentRoster });
+  // Card BATTLE-TOPARENA: 98500-98602, TopArenaTable local season frame.
+  const topArena = createTopArenaService({ store, codec, tables: readTopArenaTables(), gameTables: tables, logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
@@ -1651,6 +1656,23 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'tournament_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-TOPARENA: TopArenaCmd 98500-98602.
+      if (topArena.supports(type)) {
+        try {
+          const schema = TOP_ARENA_PROTOBUF_COMMANDS[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await topArena.execute(type, input);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'top_arena_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'top_arena_rejected', type, seq, code, message: error.message });
         }
         return;
       }
