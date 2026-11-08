@@ -1,1 +1,28 @@
-﻿# ROLE-REDDOT 实现记录  日期：2026-11-08。分支：feat/block-j-role-support。范围：J 块（#265-#276）中的 ROLE-REDDOT。  ## 状态  服务端完成。  ## 实现  - 命令：39001 req_save_changed_red_dot。 - 权威状态：role_red_dots。 - 网关在登录通过后按数字 type 分发，ETF 请求解码、protobuf 请求解包与回包编码均走现有 codec；业务、状态与回包在同一 store.transaction 内提交。 - 所有失败路径返回 GameError 业务码（1 参数错误、301 资源不足、310 重复、403 GM 关闭、420 未拥有、430 等级不足），不再用固定空包销项。  ## 验证  - 迁移 v17 建表并写 migrations 记录；重开 SQLite 后 user_version=17 且状态保留（见 tmp-block-j-smoke.mjs 运行输出与 test/block-j-role-support.test.mjs）。 - 服务级回归通过后由总控执行 personal-server 全量 npm test。  ## 缺口  登录模块是否回传红点未恢复；当前仅持久化增删改。
+# ROLE-REDDOT 实现记录
+
+日期：2026-11-08。分支：`feat/block-j-role-support`。范围：J 块 #270。
+
+## 状态
+
+服务端完成，客户端无回包契约与登录投影已确认。未做 APK 验收。
+
+## 客户端证据
+
+- `RedDotCmd.lua`：39001 由 `Seq:New():Cast` 发送，没有回调，服务端无需回包。
+- 登录模块 4 对应 `all_saved_red`，客户端从 `saved_red_list` 恢复红点。
+
+## 实现
+
+- 39001 接收 protobuf `red_change_info`，按 `path_bin` 的 base64 形式落 SQLite。
+- 删除列表兼容客户端原始二进制路径和已编码 base64 文本。
+- 登录模块 4 从 `role_red_dots` 重建；命令成功时 `data: null`，网关不发送空响应。
+
+## 验证
+
+- 服务专项覆盖新增、更新、删除、原始/文本路径与 SQLite 重开。
+- 临时 loopback TCP 发送 39001 后立即发送 53006；53006 的 seq 连续，证明没有插入空帧；重开 SQLite 再登录后模块 4 恢复完整路径、状态、计数和 extra。
+
+## 缺口
+
+- 未逐个验证客户端所有红点路径的显示效果。
+- 未做 APK 实机验收。

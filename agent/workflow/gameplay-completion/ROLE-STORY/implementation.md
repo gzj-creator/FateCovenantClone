@@ -1,1 +1,28 @@
-﻿# ROLE-STORY 实现记录  日期：2026-11-08。分支：feat/block-j-role-support。范围：J 块（#265-#276）中的 ROLE-STORY。  ## 状态  服务端完成。  ## 实现  - 命令：304 finish_story、305 touch_story。 - 权威状态：role_stories。 - 网关在登录通过后按数字 type 分发，ETF 请求解码、protobuf 请求解包与回包编码均走现有 codec；业务、状态与回包在同一 store.transaction 内提交。 - 所有失败路径返回 GameError 业务码（1 参数错误、301 资源不足、310 重复、403 GM 关闭、420 未拥有、430 等级不足），不再用固定空包销项。  ## 验证  - 迁移 v17 建表并写 migrations 记录；重开 SQLite 后 user_version=17 且状态保留（见 tmp-block-j-smoke.mjs 运行输出与 test/block-j-role-support.test.mjs）。 - 服务级回归通过后由总控执行 personal-server 全量 npm test。  ## 缺口  无回包 schema，按 fire-and-forget 记录；剧情解锁对任务/地图的下游推送未见证据。
+# ROLE-STORY 实现记录
+
+日期：2026-11-08。分支：`feat/block-j-role-support`。范围：J 块 #269。
+
+## 状态
+
+服务端完成，登录模块 88 已按客户端结构回填。未做 APK 验收。
+
+## 客户端证据
+
+- `StoryCmd.lua`：304/305 是无回包命令。
+- 登录模块 88 是二元素结构 `[storyTid, binary(story_data)]`；304/305 的业务状态最终从 `story_data.finish_story_list` 投影。
+
+## 实现
+
+- 304 标记完成，305 只标记接触。305 不会把已完成的剧情降级。
+- 登录时读取模块 88 的 slot 1，合并旧 `finish_story_list` 与 SQLite `role_stories`，保留其他 protobuf 字段后重新编码。
+- 命令为 fire-and-forget；成功时不发送空 ETF/空 protobuf 帧。
+
+## 验证
+
+- 服务专项覆盖 slot 1、旧字段保留、304/305 状态合并和 SQLite 重开。
+- 临时 loopback TCP 连续发送 304、305，再发送 53006；53006 的 seq 未被无回包命令污染。重新登录后模块 88 包含完成项而不包含仅接触项。
+
+## 缺口
+
+- 剧情解锁对任务、地图和其他模块的下游推送没有恢复。
+- 未做 APK 实机验收。

@@ -1,6 +1,6 @@
 # PLAY-DIAMONDVEINACT 实现记录（BLOCK-G2，2026-11-08）
 
-状态：服务端完成（含明确拒绝）。服务端命令已路由到 personal-server/game/minigame-act-service.mjs，权威状态落在 SQLite 的 minigame_act_state / minigame_act_claims / minigame_act_records 三张表，资源消耗与发放走 game/resources.mjs。
+状态：服务端完成（109005 已补齐）。服务端命令已路由到 personal-server/game/minigame-act-service.mjs，权威状态落在 SQLite 的 minigame_act_state / minigame_act_claims / minigame_act_records 三张表，资源消耗与发放走 game/resources.mjs。
 
 ## 命令
 
@@ -12,11 +12,11 @@ diamond:<act_id>（minigame_act_state 主键中的 act_key）。
 
 ## 已实现规则
 
-get_map/enter_map（行动力校验）、award（按 energy_plaque_time/num/max 累积行动力）、buy_attack（101500 x100 换 5 攻击令，日限）、guild_focus、公会排行/战报/公会数据只读均实现。
+get_map/enter_map（行动力校验）、award（按 energy_plaque_time/num/max 累积行动力）、buy_attack（101500 x100 换 5 攻击令，日限）、guild_focus、公会排行/战报/公会数据只读均实现。109005 按 Const.energy_buy_basic_cost、energy_buy_min_cost、energy_max 计算行动力价格，按 energy_buy_item 扣费，超出 energy_max 返回 311。
 
 ## 证据缺口
 
-109005 购买行动力公式未取证，明确拒绝；地图建筑与公会归属未建模，map 数据只返回本人状态。
+109005 的公式来自 Const 字段重建，尚无原服购买回包对照；地图建筑与公会归属未建模，map 数据只返回本人状态。
 
 ## 验证
 

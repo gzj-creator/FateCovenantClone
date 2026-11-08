@@ -1,1 +1,29 @@
-﻿# ROLE-CLIENTLOG 实现记录  日期：2026-11-08。分支：feat/block-j-role-support。范围：J 块（#265-#276）中的 ROLE-CLIENTLOG。  ## 状态  服务端完成。  ## 实现  - 命令：78901 req_save_to_server_info_log。 - 权威状态：client_diagnostic_logs。 - 网关在登录通过后按数字 type 分发，ETF 请求解码、protobuf 请求解包与回包编码均走现有 codec；业务、状态与回包在同一 store.transaction 内提交。 - 所有失败路径返回 GameError 业务码（1 参数错误、301 资源不足、310 重复、403 GM 关闭、420 未拥有、430 等级不足），不再用固定空包销项。  ## 验证  - 迁移 v17 建表并写 migrations 记录；重开 SQLite 后 user_version=17 且状态保留（见 tmp-block-j-smoke.mjs 运行输出与 test/block-j-role-support.test.mjs）。 - 服务级回归通过后由总控执行 personal-server 全量 npm test。  ## 缺口  回包 schema 未恢复，按 fire-and-forget 落库。
+# ROLE-CLIENTLOG 实现记录
+
+日期：2026-11-08。分支：`feat/block-j-role-support`。范围：J 块 #275。
+
+## 状态
+
+服务端完成，客户端使用 ETF 发送诊断日志且没有可恢复的业务回包。未做 APK 实机验收。
+
+## 客户端证据
+
+- `ClientLogCmd.lua` 的命令名为 `req_save_to_server_info_log`，参数通过 `EncodeErl` 编码。
+- 客户端调用没有携带回调的响应消费者，因此服务端按 fire-and-forget 处理并落库。
+
+## 实现
+
+- 命令：78901。
+- 诊断内容写入 `client_diagnostic_logs`，同日计数、描述和原始载荷同事务保存。
+- 成功时返回 `data: null`，网关不注入空 ETF 或空 protobuf 帧。
+
+## 验证
+
+- `test/block-j-role-support.test.mjs`：13/13 通过。
+- `test/block-j-role-gateway.test.mjs`：1/1 通过，验证无回包命令不会污染后续请求的 seq。
+- 合并最新 main 后全量 `npm test`：2734 项，pass 2732、fail 0、skipped 2，日志为 `analysis/test-runs/gameplay-20261106/block-j-after-main-full.log`。
+
+## 缺口
+
+- 服务端响应 schema 尚未从客户端恢复，当前只保证 fire-and-forget 落库和无空包行为。
+- 本轮未启动或停止实时服务，未读写运行数据库，未操作模拟器、ADB 或 APK。

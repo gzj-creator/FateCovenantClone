@@ -1,1 +1,29 @@
-﻿# ROLE-CDKEY 实现记录  日期：2026-11-08。分支：feat/block-j-role-support。范围：J 块（#265-#276）中的 ROLE-CDKEY。  ## 状态  服务端完成（码表由本地配置提供）。  ## 实现  - 命令：40000 req_claim_prize。 - 权威状态：cdkey_redemptions、reward_claims 同事务。 - 网关在登录通过后按数字 type 分发，ETF 请求解码、protobuf 请求解包与回包编码均走现有 codec；业务、状态与回包在同一 store.transaction 内提交。 - 所有失败路径返回 GameError 业务码（1 参数错误、301 资源不足、310 重复、403 GM 关闭、420 未拥有、430 等级不足），不再用固定空包销项。  ## 验证  - 迁移 v17 建表并写 migrations 记录；重开 SQLite 后 user_version=17 且状态保留（见 tmp-block-j-smoke.mjs 运行输出与 test/block-j-role-support.test.mjs）。 - 服务级回归通过后由总控执行 personal-server 全量 npm test。  ## 缺口  原服兑换码表未取得，config/cdkey-awards.json 默认为空，需运营填入有效码。
+# ROLE-CDKEY 实现记录
+
+日期：2026-11-08。分支：`feat/block-j-role-support`。范围：J 块 #271。
+
+## 状态
+
+服务端完成。兑换码内容由本地运营配置提供，客户端请求编码已取证。未做 APK 实机验收。
+
+## 客户端证据
+
+- `CdkeyCmd.lua` 的命令名为 `req_claim_prize`，参数通过 `EncodeErl` 编码。
+- `Cmd.lua` 同时登记 `req_claim_prize` 的 C2S 路径。
+
+## 实现
+
+- 命令：40000。
+- `cdkey_redemptions` 与奖励领取状态在同一 SQLite 事务内提交，重复兑换返回 310。
+- 空码、未知码和未配置奖励失败关闭；不回送固定空包。
+
+## 验证
+
+- `test/block-j-role-support.test.mjs`：13/13 通过。
+- `test/block-j-role-gateway.test.mjs`：1/1 通过，使用临时 loopback TCP 与 SQLite 重开。
+- 合并最新 main 后全量 `npm test`：2734 项，pass 2732、fail 0、skipped 2，日志为 `analysis/test-runs/gameplay-20261106/block-j-after-main-full.log`。
+
+## 缺口
+
+- 原服兑换码表未取得，`config/cdkey-awards.json` 默认为空；需要运营填入有效码后才能进行实际兑换验收。
+- 本轮未启动或停止实时服务，未读写运行数据库，未操作模拟器、ADB 或 APK。

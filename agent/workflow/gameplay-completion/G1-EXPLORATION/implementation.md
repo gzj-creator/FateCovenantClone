@@ -61,4 +61,5 @@ module 92（module_login_data 为 wrapEtfBinary 包装的 protobuf）：
 
 - node --test test/exploration-act-service.test.mjs test/exploration-act-service-remaining.test.mjs：21/21 通过（注册表 98 条、93 条 implemented、运行时活动 id 映射、五类 module 92 登录、独立模块 136/145/155/168/519、梦境每日奖与跨日恢复、主题服务器任务奖、剑每日上限/跨天重置、萝卜农场/家园/小游戏/巡回者、临时 TCP 握手）。
 - node --test test/gameplay-gateway.test.mjs：7/7 通过（无回归）。
-- 全量 `npm test`：2703 项，pass 2701、fail 0、skipped 2，退出 0；日志 analysis/test-runs/gameplay-20261106/g1-remaining-full.log。
+- 合并 main 前全量 `npm test`：2703 项，pass 2701、fail 0、skipped 2，退出 0；日志 analysis/test-runs/gameplay-20261106/g1-remaining-full.log。
+- 合入当前 main（43b4769）后，G1 专项 21/21、gateway 7/7，全量 2748 项 pass 2746 / fail 0 / skipped 2，退出 0；日志 analysis/test-runs/gameplay-20261106/g1-remaining-post-merge-full.log。

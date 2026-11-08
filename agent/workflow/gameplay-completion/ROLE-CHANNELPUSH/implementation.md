@@ -1,1 +1,29 @@
-﻿# ROLE-CHANNELPUSH 实现记录  日期：2026-11-08。分支：feat/block-j-role-support。范围：J 块（#265-#276）中的 ROLE-CHANNELPUSH。  ## 状态  服务端完成。  ## 实现  - 命令：98201 rep_set_channel_push_open。 - 权威状态：role_channel_push。 - 网关在登录通过后按数字 type 分发，ETF 请求解码、protobuf 请求解包与回包编码均走现有 codec；业务、状态与回包在同一 store.transaction 内提交。 - 所有失败路径返回 GameError 业务码（1 参数错误、301 资源不足、310 重复、403 GM 关闭、420 未拥有、430 等级不足），不再用固定空包销项。  ## 验证  - 迁移 v17 建表并写 migrations 记录；重开 SQLite 后 user_version=17 且状态保留（见 tmp-block-j-smoke.mjs 运行输出与 test/block-j-role-support.test.mjs）。 - 服务级回归通过后由总控执行 personal-server 全量 npm test。  ## 缺口  登录 pb_channel_push_param.open_list 回填未见证据，当前只持久化开关。
+# ROLE-CHANNELPUSH 实现记录
+
+日期：2026-11-08。分支：`feat/block-j-role-support`。范围：J 块 #276。
+
+## 状态
+
+服务端完成，客户端无回包契约和登录模块 173 结构已确认。未做 APK 验收。
+
+## 客户端证据
+
+- `ChannelPushCmd.lua`：98201 使用 protobuf `pb_channel_push_open`。
+- `ChannelPushMgr.lua` 通过 `Seq:New():Send(rep_set_channel_push_open)` 发送，没有回调。
+- 登录模块 173 对应 `pb_channel_push_param`，其中 `open_list` 是每个推送消息的开关。
+
+## 实现
+
+- 98201 按 `message_id` upsert `role_channel_push`。
+- 登录模块 173 从 SQLite 重建 `open_list`，保留原模块中的其他 protobuf 字段。
+- 成功时 `data: null`，网关不发送空响应。
+
+## 验证
+
+- 服务专项覆盖写入、登录投影和 SQLite 重开。
+- 临时 loopback TCP 发送 98201 后，下一条 53006 的 seq 连续；重开 SQLite 再登录后模块 173 返回 `[[7,true]]`。
+
+## 缺口
+
+- 未验证安卓渠道通知权限、通知展示或系统推送投递。
+- 未做 APK 实机验收。

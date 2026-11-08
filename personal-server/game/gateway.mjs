@@ -63,9 +63,23 @@ import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createHundredDrawService } from './hundred-draw-service.mjs';
 import { createBonusDrawService } from './bonus-draw-service.mjs';
-import { createDrawActivityService } from './draw-activity-service.mjs';
+import { createDrawActivityService, DRAW_ACTIVITY_ETF_COMMANDS } from './draw-activity-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
+import { createGuildBossService } from './guild-boss-service.mjs';
+import { createGuildJointService } from './guild-joint-service.mjs';
+import { createGuildRuneStoneService } from './guild-rune-stone-service.mjs';
+import { createGuildGvgService } from './guild-gvg-service.mjs';
+import { createGuildVoteService } from './guild-vote-service.mjs';
+import { createSlgMapService } from './guild-slg-map-service.mjs';
+import { createGuildNationService } from './guild-nation-service.mjs';
+import { createGuildBargainService } from './guild-bargain-service.mjs';
+import { createGuildExpeditionService } from './guild-expedition-service.mjs';
+import { createChannelEntryService } from './channel-entry-service.mjs';
+import { createGuildHuntService } from './guild-hunt-service.mjs';
+import { createGuildCrusadeService } from './guild-crusade-service.mjs';
+import { createGuildAuctionService } from './guild-auction-service.mjs';
+import { readGuildCoopTables } from '../config/guild-coop-tables.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createGroupBuyActService } from './group-buy-act-service.mjs';
@@ -85,6 +99,8 @@ import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createMinigameActService } from './minigame-act-service.mjs';
 import { readMinigameActTables } from '../config/minigame-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
+import { createOverallPvpService } from './overall-pvp-service.mjs';
+import { readOverallPvpTables } from '../config/overall-pvp-tables.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createShopService } from './shop-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
@@ -106,6 +122,29 @@ import { createEliteMissionService } from './elite-mission-service.mjs';
 import { createEliteMissionBattle } from './elite-mission-battle.mjs';
 import { createPeakTowerService } from './peak-tower-service.mjs';
 import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
+import { createSwapArenaService } from './swap-arena-service.mjs';
+import { createHunterArenaService } from './hunter-arena-service.mjs';
+import { createArenaContestService } from './arena-contest-service.mjs';
+import { createPlayMatchService } from './play-match-service.mjs';
+import { createOverallMatchService } from './overall-match-service.mjs';
+import {
+  readSwapArenaTables,
+  readHunterArenaTables,
+  readArenaContestTables,
+  readPlayMatchTables,
+  readOverallMatchTables
+} from '../config/arena-tables.mjs';
+// Card BATTLE-MARTIALCLUB: MartialClubCmd 84401 / 84404-84426.
+import { MARTIAL_CLUB_MODULE_ID, MARTIAL_CLUB_REQUEST_SCHEMAS, createMartialClubService, isEtfRequest as isMartialClubEtfRequest } from './martial-club-service.mjs';
+import { readMartialClubTables } from '../config/martial-club-tables.mjs';
+// Card BATTLE-MARTIALCLUBACT: MartialClubActCmd 84431-84432.
+import { createMartialClubActService } from './martial-club-act-service.mjs';
+import { TOURNAMENT_MODULE_ID, TOURNAMENT_PROTOBUF_COMMANDS, createTournamentService } from './tournament-service.mjs';
+import { readMartialClubActTables } from '../config/martial-club-act-tables.mjs';
+import { readMatchPvpTables } from '../config/match-pvp-tables.mjs';
+// Card BATTLE-TOPARENA: TopArenaCmd 98500 98505 98526-98532 98560-98565 98580-98583 98590 98601-98602.
+import { TOP_ARENA_PROTOBUF_COMMANDS, createTopArenaService } from './top-arena-service.mjs';
+import { readTopArenaTables } from '../config/top-arena-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { createFameHallService } from './fame-hall-service.mjs';
@@ -121,6 +160,10 @@ import { readSoulTrialTables, readScarletTrialTables } from '../config/dungeon-a
 import { createCampTowerService } from './camp-tower-service.mjs';
 import { createDestinyPveService } from './destiny-pve-service.mjs';
 import { readCampTowerTables, readDestinyPveTables } from '../config/dungeon-activity-tables.mjs';
+import { createTriMatchFightService } from './trimatch-fight-service.mjs';
+import { createTriMatchTowerService } from './trimatch-tower-service.mjs';
+import { createTriMatchPvpService } from './trimatch-pvp-service.mjs';
+import { readTriMatchTables } from '../config/trimatch-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -176,6 +219,8 @@ export function createLocalGame({
   localWallet = false,
   missionFightPlayback = false,
   eliteEnemies = null,
+  martialClubRoster = null,
+  tournamentRoster = null,
   guideAwards = readGuideAwards(),
   now = Date.now,
   random = Math.random,
@@ -538,6 +583,22 @@ export function createLocalGame({
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
+  // A2-ARENA cards share the arena table bundle: BATTLE-SWAPARENA 4031-4040,
+  // BATTLE-HUNTERARENA 84001-84011, BATTLE-ARENACONTEST 83301-83315,
+  // BATTLE-PLAYMATCH 98900-98901 and BATTLE-OVERALLMATCH 120001.
+  const swapArena = createSwapArenaService({ store, codec, tables: readSwapArenaTables(), gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, logger, now: clock });
+  const hunterArena = createHunterArenaService({ store, codec, tables: readHunterArenaTables(), gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, logger, now: clock });
+  const arenaContest = createArenaContestService({ store, codec, tables: readArenaContestTables(), gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, logger, now: clock });
+  const playMatch = createPlayMatchService({ store, codec, tables: readPlayMatchTables(), logger, now: clock });
+  const overallMatch = createOverallMatchService({ store, codec, tables: readOverallMatchTables(), logger, now: clock });
+  // Card BATTLE-MARTIALCLUB: 84401 / 84404-84426, authoritative state in SQLite.
+  const martialClub = createMartialClubService({ store, codec, tables: readMartialClubTables(), gameTables: tables, logger, now: clock, enemyRoster: martialClubRoster });
+  // Card BATTLE-MARTIALCLUBACT: 84431-84432, awards driven by MartialClubActTable.
+  const martialClubAct = createMartialClubActService({ store, codec, tables: readMartialClubActTables(), gameTables: tables, logger, now: clock });
+  // Card BATTLE-TOURNAMENT: 88501-88511, MatchPvpTable type 1 (位面锦标赛).
+  const tournament = createTournamentService({ store, codec, tables: readMatchPvpTables(), gameTables: tables, logger, now: clock, enemyRoster: tournamentRoster });
+  // Card BATTLE-TOPARENA: 98500-98602, TopArenaTable local season frame.
+  const topArena = createTopArenaService({ store, codec, tables: readTopArenaTables(), gameTables: tables, logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   // BATTLE-FAMEHALL / WORLDBOSS / PITLORD. Fame hall command payload encodings are
   // recovered from FameHallCmd.lua; the boss groups keep their own SQLite state.
@@ -552,6 +613,17 @@ export function createLocalGame({
   const scarletTrial = createScarletTrialService({ store, codec, tables: readScarletTrialTables(), gameTables: tables, logger, now: clock });
   const campTower = createCampTowerService({ store, codec, tables: readCampTowerTables(), gameTables: tables, logger, now: clock });
   const destinyPve = createDestinyPveService({ store, codec, tables: readDestinyPveTables(), logger, now: clock });
+  // BATTLE-TRIPLEMATCHFIGHT (115001-115006), BATTLE-TRIMATCHTOWER
+  // (119001-119003) and BATTLE-TRIMATCHPVP (121001-121004) share the triple
+  // match tables. A won tower fight advances the tower through the fight
+  // settlement hook instead of a client claim.
+  const triMatchTables = readTriMatchTables();
+  const triMatchTower = createTriMatchTowerService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
+  const triMatchFight = createTriMatchFightService({
+    store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock,
+    hooks: { onFightSettled: (model, db, payload) => triMatchTower.settle(model, db, payload) }
+  });
+  const triMatchPvp = createTriMatchPvpService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -581,7 +653,7 @@ export function createLocalGame({
     // deployment opts in through the environment or role metadata.
     const gmEnabled = () => process.env.FC_ALLOW_GM_COMMANDS === '1' || store.read().state.gmEnabled === true;
     const roleService = createRoleService({ store, codec, tables, heroTables, attributeTables, now: clock, logger, gmEnabled });
-    const storyService = createStoryService({ store, now: clock, logger });
+    const storyService = createStoryService({ store, codec, now: clock, logger });
     const cdkeyService = createCdkeyService({ store, codec, tables, now: clock, logger });
     const actFrameService = createActFrameService({ store, codec, calendar, tables, now: clock, logger, gmEnabled });
     const skinService = createSkinService({ store, codec, tables, now: clock, logger });
@@ -599,6 +671,20 @@ export function createLocalGame({
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
   const guildNationAssist=createGuildNationAssistService({codec,store,now:clock});
+  const coopTables=readGuildCoopTables();
+  const guildBoss=createGuildBossService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildJoint=createGuildJointService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildRuneStone=createGuildRuneStoneService({store,codec,tables,coopTables,now:clock,logger});
+  const guildGvg=createGuildGvgService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildVote=createGuildVoteService({store,codec,tables,coopTables,now:clock,logger});
+  const slgMap=createSlgMapService({store,codec,coopTables,now:clock,logger});
+  const guildNation=createGuildNationService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const guildBargain=createGuildBargainService({store,codec,tables,coopTables,now:clock,logger});
+  const guildExpedition=createGuildExpeditionService({store,codec,tables,heroTables,coopTables,now:clock,logger});
+  const channelEntry=createChannelEntryService({store,codec,coopTables,now:clock,logger});
+  const guildHunt=createGuildHuntService({store,codec,tables,coopTables,now:clock,logger});
+  const guildCrusade=createGuildCrusadeService({logger});
+  const guildAuction=createGuildAuctionService({store,codec,tables,coopTables,now:clock,logger});
   // Mission commands around the journey fight path (meal, stamina exchange and
   // purchase, one-key rewards, chapter pass, boss awards). Dispatch stays in the
   // mission block below and is guarded by supports().
@@ -617,6 +703,13 @@ export function createLocalGame({
   // baking. Rules without shipped evidence fail closed inside the service.
   const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const explorationAct=createExplorationActService({store,codec,tables,explorationTables:readExplorationActTables(),calendar,now:clock,random,logger});
+  // A2-OVERALLPVP: OverallPvpCmd 101101-101130. The cross-server card reads the
+  // shipped OverallPvpTable and keeps its own rows; commands that need a real
+  // bracket fail closed inside the service.
+  const overallPvp=createOverallPvpService({store,codec,tables:readOverallPvpTables(),gameTables:tables,now:clock,logger});
+  // 101125/101126/101127 carry protobuf request bodies; the other 27 commands
+  // take an Erlang term argument that may be absent.
+  const OVERALL_PVP_PB_TYPES=new Set([101125,101126,101127]);
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
   // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
@@ -688,6 +781,10 @@ export function createLocalGame({
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary('Local Server'), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
+    modules.set(4, binary(roleService.loginRedDots()));
+    const storyLogin = storyService.loginPayload();
+    modules.set(88, [storyLogin.tid, binary(storyLogin.payload)]);
+    modules.set(173, binary(roleService.loginChannelPush()));
     const rankAchieveLogin = rankAchieve.loginPayload();
     modules.set(rankAchieve.moduleId, [
       binary(rankAchieveLogin.person),
@@ -699,13 +796,32 @@ export function createLocalGame({
     growthRoad.ensureLoginState(clock());
     modules.set(growthRoad.moduleId, binary(growthRoad.loginPayload(clock())));
     modules.set(functionManual.moduleId, binary(functionManual.loginPayload()));
+    // A2-OVERALLPVP has no recovered login module: the snapshot is requested
+    // through 101122, so login only makes sure the cycle row exists first.
+    overallPvp.ensureLoginState(loginSeconds);
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
+    // Card BATTLE-MARTIALCLUB: login module 123 carries pb_martial_club_role and
+    // pb_martial_club_employ_role, the two blocks MartialClubMgr.LoginParse decodes.
+    martialClub.ensureLoginState();
+    {
+      const martialClubLogin = martialClub.loginPayload();
+      modules.set(MARTIAL_CLUB_MODULE_ID, [binary(martialClubLogin.role), binary(martialClubLogin.employ)]);
+    // Card BATTLE-TOURNAMENT: login module 150 carries one pb_tournament_login block.
+    tournament.ensureLoginState();
+    modules.set(TOURNAMENT_MODULE_ID, binary(tournament.loginPayload().data));
+    }
     modules.set(CAMPSITE_MODULE_ID, binary(cabin.loginPayload()));
     modules.set(HOUSE_ASSISTANT_MODULE_ID, [binary(houseAssistant.loginPayload())]);
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
+    // A2-ARENA login blocks: module 109 SwapArenaMgr (pb_swap_arena_login),
+    // module 113 ArenaContestMgr (act, role and last match binaries) and
+    // module 121 HunterArenaReqMgr (pb_hunter_arena_login).
+    modules.set(109, binary(swapArena.loginPayload()));
+    modules.set(113, arenaContest.loginPayloads().map((entry) => binary(entry)));
+    modules.set(121, binary(hunterArena.loginPayload()));
     let activity;
     try {
       activity = storedModules.get(92)
@@ -943,6 +1059,19 @@ export function createLocalGame({
   });
   const noParameterEtfCommands = new Set([98301, 98302, 98307, 88922, 88927]);
   const scalarEtfActivityCommands = new Set([98306, 98308, 88924, 88931]);
+  // Triple match commands: the protobuf ones are unpacked, the rest (fight retry,
+  // giveup and record, pvp giveup) arrive as a bare Erlang term.
+  const triMatchSchemas = Object.freeze({
+    115001: 'pb_triple_match_fight_request',
+    115002: 'pb_triple_match_fight_swap_tile_req',
+    115004: 'pb_triple_match_fight_ready_req',
+    119001: 'pb_tri_match_tower_rec_process_award_req',
+    119002: 'pb_tri_match_tower_recover_stamina_req',
+    119003: 'pb_tri_match_tower_act_get_pass_req',
+    121001: 'pb_tri_match_pvp_rec_task_award_req',
+    121002: 'pb_tri_match_pvp_rec_grade_award_req',
+    121003: 'pb_tri_match_pvp_get_report_list_req'
+  });
   const storyMissionArgument = data => singleIdArgument(data, 'Invalid story mission payload');
   const sockets = new Set();
   const wireDumpDirectory = process.env.FATE_COVENANT_WIRE_DUMP_DIR;
@@ -1588,10 +1717,16 @@ export function createLocalGame({
       }
       if (drawActivity.supports(type)) {
         try {
-          const argument = await etfArgument(request.data, 'Invalid draw activity payload', { optional: true });
+          const argument = DRAW_ACTIVITY_ETF_COMMANDS.has(Number(type))
+            ? await etfArgument(request.data, 'Invalid draw activity payload', { optional: true })
+            : undefined;
           const value = argument && typeof argument === 'object' ? argument.value ?? argument : argument;
           const times = value != null && Number.isFinite(Number(value)) ? Number(value) : undefined;
-          const result = drawActivity.execute(type, { times });
+          const result = drawActivity.execute(type, {
+            etf: value,
+            bytes: request.data ?? Buffer.alloc(0),
+            times
+          });
           send(seq, result.data);
           log({ event: 'draw_activity_command_committed', type, seq, ...result.valueForLog });
         } catch (error) {
@@ -1703,6 +1838,24 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'dragon_land_rejected', type, seq, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }
+      if (overallPvp.supports(type)) {
+        try {
+          const etfValue = OVERALL_PVP_PB_TYPES.has(type)
+            ? null
+            : await etfArgument(request.data, 'Invalid overall PVP payload', { optional: true });
+          const result = await overallPvp.execute(type, null, { etf: etfValue });
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'overall_pvp_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'overall_pvp_rejected', type, seq, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
         }
@@ -2052,6 +2205,140 @@ export function createLocalGame({
         }
         return;
       }
+      // A2-ARENA BATTLE-SWAPARENA 4031-4040
+      if (swapArena.supports(type)) {
+        try {
+          const input = type === 4038 ? unpack('pb_swap_arena_rank_award_req', request.data ?? Buffer.alloc(0)) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await swapArena.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'swap_arena_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'swap_arena_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-HUNTERARENA 84001-84011
+      if (hunterArena.supports(type)) {
+        try {
+          const input = type === 84009 ? unpack('pb_hunter_arena_set_report_lock', request.data ?? Buffer.alloc(0)) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await hunterArena.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'hunter_arena_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hunter_arena_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-ARENACONTEST 83301-83315
+      if (arenaContest.supports(type)) {
+        try {
+          const input = (type === 83304 || type === 83314) ? unpack(type === 83304 ? 'pb_arena_contest_guess_req' : 'pb_arena_contest_guess_award_req', request.data ?? Buffer.alloc(0)) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await arenaContest.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'arena_contest_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'arena_contest_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-PLAYMATCH 98900-98901
+      if (playMatch.supports(type)) {
+        try {
+          const input = request.data?.length ? (await decodeEtf(request.data))?.value : undefined;
+          const result = await playMatch.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'play_match_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'play_match_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-OVERALLMATCH 120001
+      if (overallMatch.supports(type)) {
+        try {
+          const input = unpack('pb_overall_match_start_req', request.data ?? Buffer.alloc(0));
+          const result = await overallMatch.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'overall_match_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'overall_match_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-TOURNAMENT: TournamentCmd 88501-88511.
+      if (tournament.supports(type)) {
+        try {
+          const schema = TOURNAMENT_PROTOBUF_COMMANDS[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await tournament.execute(type, input);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'tournament_committed', type, seq, won: result.value?.won ?? null, stage: result.value?.stage ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'tournament_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-TOPARENA: TopArenaCmd 98500-98602.
+      if (topArena.supports(type)) {
+        try {
+          const schema = TOP_ARENA_PROTOBUF_COMMANDS[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await topArena.execute(type, input);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'top_arena_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'top_arena_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-MARTIALCLUBACT: MartialClubActCmd 84431-84432.
+      if (martialClubAct.supports(type)) {
+        try {
+          const input = request.data?.length ? (await decodeEtf(request.data))?.value : undefined;
+          const result = await martialClubAct.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'martial_club_act_committed', type, seq, changed: result.value?.changes ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'martial_club_act_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-MARTIALCLUB: MartialClubCmd 84401 + 84404-84426.
+      if (martialClub.supports(type)) {
+        try {
+          const input = isMartialClubEtfRequest(type)
+            ? (request.data?.length ? (await decodeEtf(request.data))?.value : undefined)
+            : unpack(MARTIAL_CLUB_REQUEST_SCHEMAS[type], request.data);
+          const result = await martialClub.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'martial_club_committed', type, seq, bossTid: result.value?.bossTid ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'martial_club_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (peakTower.supports(type)) {
         try {
           const input = type === 1103 ? unpack('peak_tower_sweeps_req', request.data) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
@@ -2224,6 +2511,25 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'rank_achieve_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // BATTLE-TRIPLEMATCHFIGHT (115001-115006), BATTLE-TRIMATCHTOWER
+      // (119001-119003) and BATTLE-TRIMATCHPVP (121001-121004).
+      if (triMatchFight.supports(type) || triMatchTower.supports(type) || triMatchPvp.supports(type)) {
+        try {
+          const service = triMatchFight.supports(type) ? triMatchFight : triMatchTower.supports(type) ? triMatchTower : triMatchPvp;
+          const schema = triMatchSchemas[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? await decodeEtf(request.data) : undefined);
+          const result = await service.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'trimatch_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'trimatch_rejected', type, seq, code, message: error.message });
         }
         return;
       }
@@ -2832,33 +3138,25 @@ export function createLocalGame({
       }
       const reads = new Map([[100601, ['pb_group_buy_act_server', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
-      if (type === 53001 || type === 53002) {
+      const guildCoopServices = [guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap,
+        guildNation, guildBargain, guildExpedition, channelEntry, guildHunt, guildCrusade, guildAuction];
+      const guildCoop = guildCoopServices.find(service => service.supports(type));
+      if (guildCoop) {
         try {
-          let input;
-          try {
-            input = await decodeEtf(request.data);
-          } catch {
-            throw new GameError(1, 'Invalid activity synchronization ETF');
-          }
-          // The three captured 53001 requests are proper ETF lists containing
-          // two integers. Their meanings and the 53002 argument contract are
-          // unrecovered, so neither command may assert a state transition.
-          if (type === 53001 && (
-            !(input instanceof E.OtpErlangList) || input.improper !== false ||
-            input.value.length !== 2 || !input.value.every(Number.isSafeInteger)
-          )) throw new GameError(1, 'Unsupported activity synchronization shape');
-          throw new GameError(5, 'Activity state transition contract is not recovered');
+          const result = await guildCoop.execute(type, request.data ?? Buffer.alloc(0));
+          if (result.data?.length) send(seq, result.data); else send(seq);
+          log({ event: 'guild_coop_command', type, seq, value: result.value });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'activity_stage_sync_rejected', type, seq, code, message: error.message });
+          log({ event: 'guild_coop_rejected', type, seq, code, message: error.message });
         }
         return;
       }
       if ([108, 102801].includes(type)) {
         // 108 (req_remove_operate_display) is a UI-only acknowledgement after a purchase.
         send(seq);
-        if (type === 108) log({ event: 'operate_display_removed', type, seq });
+        log({ event: 'operate_display_removed', type, seq });
         return;
       }
       log({ event: 'unsupported_command', type, seq, payloadHead: payloadBytes(request.data, 64) });
@@ -2875,8 +3173,9 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
-    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, message, hundredDraw,
-    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,
+    cms, guildNationAssist, guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap, guildNation,
+    guildBargain, guildExpedition, channelEntry, guildHunt, guildCrusade, guildAuction, groupBuyAct,
+    dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
