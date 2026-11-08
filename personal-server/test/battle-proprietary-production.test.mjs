@@ -78,6 +78,7 @@ const missionId = store => codec.unpack('pb_mission',
 
 function setupService(t) {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-battle-b-', now: () => 1700000000 * 1000 });
+  promoteRepeatHero(fixture.store);
   let store = fixture.store;
   let service = createMissionFightService({ store, codec, playbackEnabled: true, now: () => 1700000000 * 1000 });
   return {
@@ -88,6 +89,14 @@ function setupService(t) {
       service = createMissionFightService({ store, codec, playbackEnabled: true, now: () => 1700000000 * 1000 });
     }
   };
+}
+
+function promoteRepeatHero(store) {
+  store.transaction(model => {
+    for (const hero of model.heroInfo.hero_list) {
+      if (Number(hero.tid) === HERO_ROLE) hero.star = 6;
+    }
+  });
 }
 
 test('the served battle report carries the 双重攻击 repeat action', t => {
@@ -178,6 +187,7 @@ test('the gateway serves the repeat action over a temporary TCP port', async t =
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const databasePath = path.join(directory, 'game.sqlite');
   let session = await openGateway(databasePath, directory);
+  promoteRepeatHero(session.game.store);
   try {
     let response = await session.request(201, 2, fightRequest(30201));
     assert.equal(response.err, undefined);
