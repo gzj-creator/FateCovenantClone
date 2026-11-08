@@ -43,6 +43,11 @@ import { createEveryTaskService } from './every-task-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
+import { createBattleRecordService } from './battle-record-service.mjs';
+import { createCommonMapService } from './common-map-service.mjs';
+import { createStarMissionService } from './star-mission-service.mjs';
+import { readCommonMapTables } from '../config/common-map-tables.mjs';
+import { readStarMissionTables } from '../config/star-mission-tables.mjs';
 import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createHundredDrawService } from './hundred-draw-service.mjs';
@@ -501,6 +506,19 @@ export function createLocalGame({
   const freePrivilegeAct=createFreePrivilegeActService({store,codec,tables,freePrivilegeTables:readFreePrivilegeActTables(),calendar,monthlyCard,now:clock,logger});
   const slotGameAct=createSlotGameActService({store,codec,tables,slotGameTables:readSlotGameActTables(),calendar,now:clock,random,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
+  // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
+  // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
+  // battle and SQLite paths; the type ranges do not overlap any existing
+  // dispatch branch, so the ordering constraints of recruit/heroCommandServices
+  // and hundredDraw/activityRead stay untouched.
+  const battleRecords = createBattleRecordService({ store, codec, logger, now: clock });
+  const commonMap = createCommonMapService({
+    store, codec, tables: readCommonMapTables(), heroTables, gameTables: tables,
+    attributeTables, now: clock, logger
+  });
+  const starMission = createStarMissionService({
+    store, codec, tables: readStarMissionTables(), gameTables: tables, now: clock, logger
+  });
   async function loginPayload() {
     const repairedLineups = lineups.ensureLoginState();
     if (repairedLineups.length) logger({ event: 'shared_pre_lineups_repaired', types: repairedLineups });
@@ -809,7 +827,28 @@ export function createLocalGame({
       codec,
       logger: log,
       playbackEnabled: missionFightPlayback,
-      eliteBattle: createEliteMissionBattle({ store, codec, logger: log, now: clock, enemyProvider: eliteEnemies })
+      eliteBattle: createEliteMissionBattle({ store, codec, logger: log, now: clock, enemyProvider: eliteEnemies }),
+      // BATTLE-REPORT: every committed journey win becomes the pass record that
+      // ReportCmd 211 lists. pass_tid is the FightTable row the battle reported
+      // (pb_fight_report.tid) and id is the cleared mission id.
+      onSettlementCommitted: ({ missionId, fightTid, rounds }) => {
+        const passTid = Number(fightTid);
+        if (!Number.isSafeInteger(passTid) || passTid <= 0) {
+          log({ event: 'pass_record_skipped', missionId, reason: 'fight_tid_missing' });
+          return;
+        }
+        const model = store.read();
+        const fightId = passTid * 1000000 + (Number(missionId) % 1000000);
+        battleRecords.recordPass({
+          passTid,
+          businessId: Number(missionId),
+          passType: 1,
+          fightId,
+          passScore: Number(rounds) || 0,
+          show: { pass_time: Math.floor(clock() / 1000), level: Number(model.role?.level ?? 0) }
+        });
+        log({ event: 'pass_record_committed', missionId, passTid, fightId });
+      }
     });
     socket.setNoDelay(true); socket.setTimeout(180000);
     socket.on('timeout', () => socket.destroy());
@@ -1151,6 +1190,47 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'fight_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
+        }
+        return;
+      }
+      if (battleRecords.supports(type) || commonMap.supports(type) || starMission.supports(type)) {
+        try {
+          let input;
+          if (type === 205) {
+            input = request.data?.length ? unpack('pb_share_report', request.data) : {};
+          } else if (type === 211) {
+            input = unpack('pb_pass_record_req', request.data);
+          } else if (type === 212) {
+            input = unpack('pb_pass_record_vote_req', request.data);
+          } else if (type === 90601) {
+            // req_common_map_init carries no payload or one ETF map id.
+            let mapTid;
+            if (request.data?.length) {
+              const decoded = await decodeEtf(request.data);
+              const value = decoded?.value ?? decoded;
+              mapTid = Number(Array.isArray(value) ? value[0] : value);
+              if (!Number.isSafeInteger(mapTid) || mapTid <= 0) throw new GameError(1, 'Invalid common map id');
+            }
+            input = { map_tid: mapTid };
+          } else if (type === 90602) {
+            input = unpack('pb_common_map_node_trigger', request.data);
+          } else if (type === 90603) {
+            input = unpack('pb_common_map_sweep_trigger', request.data);
+          } else if (type === 89602) {
+            input = unpack('pb_star_mission_chapter_award_req', request.data);
+          } else if (type === 89603) {
+            input = unpack('pb_star_mission_skill_req', request.data);
+          } else if (type === 89604) {
+            input = unpack('pb_star_mission_skill_reset_req', request.data);
+          }
+          const service = battleRecords.supports(type) ? battleRecords : commonMap.supports(type) ? commonMap : starMission;
+          const result = await service.execute(type, input);
+          if (result?.data?.length) send(seq, result.data); else send(seq);
+          log({ event: 'battle_core_committed', type, seq, detail: result?.value ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'battle_core_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
