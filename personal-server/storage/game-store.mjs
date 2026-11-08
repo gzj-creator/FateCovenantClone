@@ -140,7 +140,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   const clock = typeof now === 'function' ? now : () => now;
   const missionTables = readMissionTables();
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 17) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 18) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
@@ -217,14 +217,22 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
       pass_tid INTEGER NOT NULL, business_id INTEGER NOT NULL, fight_id INTEGER NOT NULL,
       role_id INTEGER NOT NULL REFERENCES roles(role_id), up_vote INTEGER NOT NULL CHECK(up_vote IN (0,1)),
       created_at TEXT NOT NULL, PRIMARY KEY(role_id,pass_tid,business_id,fight_id));
+    -- Retained for schema continuity but unused: CommonMapCmd 90601-90603 fail
+    -- closed because the shipped CommonMapTable has no map instances.
     CREATE TABLE IF NOT EXISTS common_map_state (
       role_id INTEGER NOT NULL REFERENCES roles(role_id), map_tid INTEGER NOT NULL,
       map_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,map_tid));
-    CREATE TABLE IF NOT EXISTS star_mission_state (
-      role_id INTEGER NOT NULL REFERENCES roles(role_id), act_id INTEGER NOT NULL,
-      star_bits TEXT NOT NULL DEFAULT '', award_bits TEXT NOT NULL DEFAULT '',
+    -- StarMissionTable is keyed by activity version, and every chapter (and the
+    -- skill tree) keeps its own state, so both tables are keyed by version.
+    CREATE TABLE IF NOT EXISTS star_mission_chapter_state (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), version INTEGER NOT NULL,
+      chapter INTEGER NOT NULL, star_bits TEXT NOT NULL DEFAULT '',
+      award_bits TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL,
+      PRIMARY KEY(role_id,version,chapter));
+    CREATE TABLE IF NOT EXISTS star_mission_skill_state (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), version INTEGER NOT NULL,
       skills_json TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL,
-      PRIMARY KEY(role_id,act_id));
+      PRIMARY KEY(role_id,version));
     CREATE INDEX IF NOT EXISTS battle_pass_records_lookup_idx ON battle_pass_records(pass_tid,business_id,pass_score);
   `);
   const writeModel = model => {
@@ -675,6 +683,38 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         );
         db.exec('PRAGMA user_version=17; COMMIT');
         version = 17;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    if (version < 18) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        // v1 of the star mission state stored one row per activity id with a
+        // single star/award bit block. The shipped StarMissionTable is keyed by
+        // activity *version* and every chapter keeps its own star block, so the
+        // old column set cannot hold the real data. It only ever received
+        // fixture rows, never a claim a running client could make, so it is
+        // dropped rather than reinterpreted.
+        const legacy = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='star_mission_state'").get();
+        const dropped = legacy ? legacy.name : null;
+        if (dropped) db.exec('DROP TABLE star_mission_state');
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS star_mission_chapter_state (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), version INTEGER NOT NULL,
+            chapter INTEGER NOT NULL, star_bits TEXT NOT NULL DEFAULT '',
+            award_bits TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL,
+            PRIMARY KEY(role_id,version,chapter));
+          CREATE TABLE IF NOT EXISTS star_mission_skill_state (
+            role_id INTEGER NOT NULL REFERENCES roles(role_id), version INTEGER NOT NULL,
+            skills_json TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL,
+            PRIMARY KEY(role_id,version));
+        `);
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run(
+          'star-mission-version-key-v18',
+          dropped ? 'dropped-activity-keyed-star_mission_state' : 'created-version-keyed-star-mission-state',
+          new Date(clock()).toISOString()
+        );
+        db.exec('PRAGMA user_version=18; COMMIT');
+        version = 18;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
   } catch (error) { db.close(); throw error; }

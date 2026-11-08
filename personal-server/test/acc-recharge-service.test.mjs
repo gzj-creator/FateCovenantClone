@@ -363,7 +363,7 @@ test('648 tier grants supported inventory and retains feature-domain rewards', t
   assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM pending_rewards').get().n), 2);
 
   e.reopen();
-  assert.equal(e.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 16);
+  assert.equal(e.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 18);
   assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM pending_rewards').get().n), 2);
   result = claim(e.service, 37001105, 106037);
   assert.deepEqual(codec.unpack('pb_res_to_client', result.data).changes, []);

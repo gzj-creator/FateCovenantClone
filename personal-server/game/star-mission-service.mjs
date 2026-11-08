@@ -1,22 +1,39 @@
 import { encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 import { GameError } from './hero-progression.mjs';
-import { grantResources } from './resources.mjs';
-import { starMissionActivity } from '../config/star-mission-tables.mjs';
+import { consumeResources, grantResources } from './resources.mjs';
+import {
+  starMissionActivity,
+  starMissionActivityVersion,
+  starMissionTier
+} from '../config/star-mission-tables.mjs';
 
-// StarMissionCmd 89601-89604.
+// StarMissionCmd 89601-89604 for the "SP new hero activity dungeon" family
+// (ActivityTable rows with func 81).
 //
 // Evidence: pb_star_mission_chapter_award_req {activity_id, award_tid} ->
 // pb_star_mission_chapter_award_rsp {chapter, res_change}; pb_star_mission_skill_req
 // {activity_id, skill_tid} and pb_star_mission_skill_reset_req {activity_id} both
-// reply pb_res_to_client (star_mission.net.proto.bin). Chapter progress is
-// pb_star_mission_chapter {chapter, mission_star, chapter_star_award} where both
-// payloads are ETF-encoded BitBlocks (star_mission.db.proto.bin + client BitBlock
-// indexing shared with the mission box claims).
+// answer pb_res_to_client (assets/protobuf/star_mission.net.proto.bin). Chapter
+// progress is pb_star_mission_chapter {chapter, mission_star, chapter_star_award}
+// whose star payloads are ETF-encoded BitBlocks (star_mission.db.proto.bin plus
+// the shared client BitBlock indexing).
 //
-// 89601 req_star_mission_award has neither a response schema nor evidenced
-// arguments, so it is rejected instead of guessed.
+// The rows live in StarMissionTable and are keyed by "version", not by activity
+// id: StarMissionMgr.GetVision(actTid) returns actData[actTid]:Version() and the
+// chapter/skill/award indexes are built per version. All rewards, thresholds and
+// skill costs below come from the shipped table; nothing is synthesised.
+//
+// Still unevidenced and therefore rejected:
+// - 89601 req_star_mission_award has no response schema and no arguments.
+// - Star gains arrive through the generic fight pipeline
+//   (pb_star_mission_fight_req {chapter, mission, act_id}), which is not
+//   implemented here, so mission_star bit blocks are only ever read, never
+//   written by this service.
 const AWARD_REFUSAL = 'Star mission award is rejected: request arguments and reward mapping are not evidenced';
-// Bit blocks are persisted as raw hex so every database transaction stays
+
+export const STAR_MISSION_AWARD_REFUSAL = AWARD_REFUSAL;
+
+// Bit blocks are stored as raw hex so every database transaction stays
 // synchronous; the ETF wrapping happens at the protobuf boundary.
 
 function countBits(bits) {
@@ -28,129 +45,172 @@ function countBits(bits) {
   return total;
 }
 
-function spentPoints(activity, skills) {
-  let total = 0;
-  for (const [skillTid, level] of Object.entries(skills)) {
-    const row = activity.skills.get(Number(skillTid));
-    if (!row) continue;
-    total += Number(level) * row.cost;
-  }
-  return total;
+function emptyRes() {
+  return { changes: [], is_overflow: false };
 }
 
-export function createStarMissionService({ store, codec, tables, gameTables, now = Date.now, logger = () => {} }) {
+export function createStarMissionService({
+  store, codec, tables, activityTables, gameTables, now = Date.now, logger = () => {}
+}) {
   const log = event => { try { logger(event); } catch {} };
 
-  function activityRow(actId) {
-    const activity = starMissionActivity(tables, actId);
-    if (!activity) throw new GameError(5, 'Star mission configuration missing: ' + actId);
+  function versionOf(actId) {
+    if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, 'Invalid star mission activity id');
+    if (!tables?.available) throw new GameError(5, 'Star mission configuration is unavailable');
+    const version = starMissionActivityVersion(activityTables, actId);
+    if (version === null) throw new GameError(5, 'Star mission activity is missing: ' + actId);
+    const activity = starMissionActivity(tables, version);
+    if (!activity) throw new GameError(5, 'Star mission configuration is missing for version ' + version);
     return activity;
   }
 
-  function loadState(db, roleId, actId) {
-    const row = db.prepare('SELECT * FROM star_mission_state WHERE role_id=? AND act_id=?').get(roleId, actId);
-    if (!row) return { star_bits: Buffer.alloc(0), award_bits: Buffer.alloc(0), skills: {} };
+  function loadChapter(db, roleId, activity, chapter) {
+    const row = db.prepare('SELECT star_bits,award_bits FROM star_mission_chapter_state WHERE role_id=? AND version=? AND chapter=?')
+      .get(roleId, activity.version, chapter);
     return {
-      star_bits: Buffer.from(row.star_bits, 'hex'),
-      award_bits: Buffer.from(row.award_bits, 'hex'),
-      skills: JSON.parse(row.skills_json ?? '{}')
+      starBits: row ? Buffer.from(row.star_bits, 'hex') : Buffer.alloc(0),
+      awardBits: row ? Buffer.from(row.award_bits, 'hex') : Buffer.alloc(0)
     };
   }
 
-  function saveState(db, roleId, actId, state) {
-    db.prepare('INSERT INTO star_mission_state VALUES (?,?,?,?,?,?) ON CONFLICT(role_id,act_id) DO UPDATE SET star_bits=excluded.star_bits, award_bits=excluded.award_bits, skills_json=excluded.skills_json, updated_at=excluded.updated_at')
+  function saveChapter(db, roleId, activity, chapter, state) {
+    db.prepare(`INSERT INTO star_mission_chapter_state VALUES (?,?,?,?,?,?)
+      ON CONFLICT(role_id,version,chapter) DO UPDATE SET
+        star_bits=excluded.star_bits, award_bits=excluded.award_bits, updated_at=excluded.updated_at`)
       .run(
-        roleId, actId,
-        state.star_bits.toString('hex'),
-        state.award_bits.toString('hex'),
-        JSON.stringify(state.skills), new Date(now()).toISOString()
+        roleId, activity.version, chapter,
+        state.starBits.toString('hex'), state.awardBits.toString('hex'),
+        new Date(now()).toISOString()
       );
   }
 
-  async function chapterValue(chapter, state) {
-    return { chapter, mission_star: await encodeBitBlock(state.star_bits), chapter_star_award: await encodeBitBlock(state.award_bits) };
+  function loadSkills(db, roleId, activity) {
+    const row = db.prepare('SELECT skills_json FROM star_mission_skill_state WHERE role_id=? AND version=?')
+      .get(roleId, activity.version);
+    return row ? JSON.parse(row.skills_json) : {};
+  }
+
+  function saveSkills(db, roleId, activity, skills) {
+    db.prepare(`INSERT INTO star_mission_skill_state VALUES (?,?,?,?)
+      ON CONFLICT(role_id,version) DO UPDATE SET
+        skills_json=excluded.skills_json, updated_at=excluded.updated_at`)
+      .run(roleId, activity.version, JSON.stringify(skills), new Date(now()).toISOString());
   }
 
   async function chapterAward(request) {
     const actId = Number(request?.activity_id ?? 0);
-    if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, 'Invalid star mission activity id');
+    const activity = versionOf(actId);
     const awardTid = Number(request?.award_tid ?? 0);
     if (!Number.isSafeInteger(awardTid) || awardTid <= 0) throw new GameError(1, 'Invalid star mission award id');
-    const activity = activityRow(actId);
-    const chapter = activity.chapters.find(row => row.awardTid === awardTid);
-    if (!chapter) throw new GameError(5, 'Star mission chapter award configuration missing');
+    const tier = starMissionTier(activity, awardTid);
+    if (!tier) throw new GameError(5, 'Star mission chapter award configuration is missing: ' + awardTid);
+    // ChapterAward bits are indexed by the tier position inside the chapter
+    // (9/15/24 stars -> bits 0/1/2), which is the index the client rebuilds from
+    // the same ordered list before it asks for award_tid.
+    const bit = tier.boxIndex - 1;
     const roleId = store.read().state.roleId;
-    const snapshot = store.inspect(db => loadState(db, roleId, actId));
-    if (countBits(snapshot.star_bits) < chapter.needStar) throw new GameError(5, 'Star mission chapter is not unlocked');
-    const alreadyClaimed = hasBit(snapshot.award_bits, chapter.chapter);
-    const nextAwardBits = alreadyClaimed ? snapshot.award_bits : setBit(snapshot.award_bits, chapter.chapter);
-    // Encode and pack before the transaction so a protobuf failure cannot leave
-    // a claimed reward behind.
+    const snapshot = store.inspect(db => loadChapter(db, roleId, activity, tier.chapter));
+    const stars = countBits(snapshot.starBits);
+    if (stars < tier.star) {
+      throw new GameError(5, `Star mission chapter award needs ${tier.star} stars, chapter has ${stars}`);
+    }
+    // Validate the reply schema before any write: BitBlock encoding is async, so
+    // the real payload is assembled after the commit, and a schema failure here
+    // must not leave a claimed reward behind.
+    codec.pack('pb_star_mission_chapter_award_rsp', {
+      chapter: { chapter: tier.chapter, mission_star: Buffer.alloc(0), chapter_star_award: Buffer.alloc(0) },
+      res_change: emptyRes()
+    });
+    const committed = store.transaction((model, db) => {
+      const state = loadChapter(db, model.state.roleId, activity, tier.chapter);
+      if (hasBit(state.awardBits, bit)) return { claimed: false, changes: [], state };
+      state.awardBits = setBit(state.awardBits, bit);
+      const changes = tier.award.length
+        ? grantResources(model, tier.award, gameTables, { codec }).changes
+        : [];
+      saveChapter(db, model.state.roleId, activity, tier.chapter, state);
+      return { claimed: true, changes, state };
+    });
     const value = {
-      chapter: await chapterValue(chapter.chapter, { star_bits: snapshot.star_bits, award_bits: nextAwardBits }),
-      res_change: { changes: [], is_overflow: false }
+      chapter: {
+        chapter: tier.chapter,
+        mission_star: await encodeBitBlock(committed.state.starBits),
+        chapter_star_award: await encodeBitBlock(committed.state.awardBits)
+      },
+      res_change: { changes: committed.changes, is_overflow: false }
     };
     const data = codec.pack('pb_star_mission_chapter_award_rsp', value);
-    store.transaction((model, db) => {
-      const state = loadState(db, model.state.roleId, actId);
-      if (hasBit(state.award_bits, chapter.chapter)) return;
-      state.award_bits = setBit(state.award_bits, chapter.chapter);
-      if (chapter.award.length) grantResources(model, chapter.award, gameTables);
-      saveState(db, model.state.roleId, actId, state);
+    log({
+      event: 'star_mission_chapter_award_committed',
+      actId, version: activity.version, awardTid, chapter: tier.chapter,
+      star: tier.star, claimed: committed.claimed
     });
-    log({ event: 'star_mission_chapter_award_committed', actId, awardTid, chapter: chapter.chapter, alreadyClaimed });
     return { value, data };
   }
 
-  async function skill(request) {
+  function skill(request) {
     const actId = Number(request?.activity_id ?? 0);
-    if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, 'Invalid star mission activity id');
+    const activity = versionOf(actId);
     const skillTid = Number(request?.skill_tid ?? 0);
     if (!Number.isSafeInteger(skillTid) || skillTid <= 0) throw new GameError(1, 'Invalid star mission skill id');
-    const activity = activityRow(actId);
-    const row = activity.skills.get(skillTid);
-    if (!row) throw new GameError(5, 'Star mission skill configuration missing');
-    const roleId = store.read().state.roleId;
-    const snapshot = store.inspect(db => loadState(db, roleId, actId));
-    const level = Number(snapshot.skills[String(skillTid)] ?? 0);
-    if (row.maxLevel > 0 && level >= row.maxLevel) throw new GameError(5, 'Star mission skill is at max level');
-    if (countBits(snapshot.star_bits) - spentPoints(activity, snapshot.skills) < row.cost) {
-      throw new GameError(301, 'Insufficient star mission skill points');
-    }
-    const value = { changes: [], is_overflow: false };
-    // Pack before the write so an encoding failure leaves no point spent.
-    const data = codec.pack('pb_res_to_client', value);
-    const committed = store.transaction((model, db) => {
-      const state = loadState(db, model.state.roleId, actId);
-      const current = Number(state.skills[String(skillTid)] ?? 0);
-      if (row.maxLevel > 0 && current >= row.maxLevel) throw new GameError(5, 'Star mission skill is at max level');
-      if (countBits(state.star_bits) - spentPoints(activity, state.skills) < row.cost) {
-        throw new GameError(301, 'Insufficient star mission skill points');
+    const config = activity.skills.get(skillTid);
+    if (!config) throw new GameError(5, 'Star mission skill configuration is missing: ' + skillTid);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const skills = loadSkills(db, roleId, activity);
+      const level = Number(skills[String(skillTid)] ?? 0);
+      if (level >= config.maxLevel) throw new GameError(5, 'Star mission skill is at max level');
+      // StarMissionMgr.CheckSkillParentActive: every parent skill must reach its
+      // own level cap before the child can be upgraded.
+      for (const parentTid of config.parents) {
+        const parent = activity.skills.get(parentTid);
+        if (!parent) throw new GameError(5, 'Star mission skill configuration is missing: ' + parentTid);
+        if (Number(skills[String(parentTid)] ?? 0) < parent.maxLevel) {
+          throw new GameError(5, 'Star mission skill prerequisite is not active: ' + parentTid);
+        }
       }
-      state.skills[String(skillTid)] = current + 1;
-      saveState(db, model.state.roleId, actId, state);
-      return { level: current + 1 };
+      const { changes } = consumeResources(model, [[config.costId, config.costNum]], 301, { codec });
+      skills[String(skillTid)] = level + 1;
+      saveSkills(db, roleId, activity, skills);
+      const value = { changes, is_overflow: false };
+      return {
+        value,
+        data: codec.pack('pb_res_to_client', value),
+        level: level + 1
+      };
     });
-    log({ event: 'star_mission_skill_committed', actId, skillTid, level: committed.level });
-    return { value: { ...value, actId, skillTid, level: committed.level }, data };
+    log({
+      event: 'star_mission_skill_committed',
+      actId, version: activity.version, skillTid, level: result.level, costId: config.costId, costNum: config.costNum
+    });
+    return { value: result.value, data: result.data };
   }
 
-  async function skillReset(request) {
+  function skillReset(request) {
     const actId = Number(request?.activity_id ?? 0);
-    if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, 'Invalid star mission activity id');
-    const activity = activityRow(actId);
-    const roleId = store.read().state.roleId;
-    const value = { changes: [], is_overflow: false };
-    const data = codec.pack('pb_res_to_client', value);
-    const committed = store.transaction((model, db) => {
-      const state = loadState(db, model.state.roleId, actId);
-      const reset = Object.keys(state.skills).length;
-      state.skills = {};
-      saveState(db, model.state.roleId, actId, state);
-      return { reset };
+    const activity = versionOf(actId);
+    const result = store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const skills = loadSkills(db, roleId, activity);
+      const refund = new Map();
+      let levels = 0;
+      for (const [skillTid, rawLevel] of Object.entries(skills)) {
+        const config = activity.skills.get(Number(skillTid));
+        const level = Number(rawLevel);
+        if (!config || !Number.isSafeInteger(level) || level <= 0) continue;
+        levels += level;
+        const spent = level * config.costNum;
+        refund.set(config.costId, (refund.get(config.costId) ?? 0) + spent);
+      }
+      const changes = [];
+      const awards = [...refund].filter(([, amount]) => amount > 0);
+      if (awards.length) changes.push(...grantResources(model, awards, gameTables, { codec }).changes);
+      saveSkills(db, roleId, activity, {});
+      const value = { changes, is_overflow: false };
+      return { value, data: codec.pack('pb_res_to_client', value), levels };
     });
-    log({ event: 'star_mission_skill_reset', actId, reset: committed.reset });
-    return { value: { ...value, actId, activity: activity.tid, reset: committed.reset }, data };
+    log({ event: 'star_mission_skill_reset', actId, version: activity.version, levels: result.levels });
+    return { value: result.value, data: result.data };
   }
 
   return {
@@ -164,5 +224,3 @@ export function createStarMissionService({ store, codec, tables, gameTables, now
     }
   };
 }
-
-export const STAR_MISSION_AWARD_REFUSAL = AWARD_REFUSAL;

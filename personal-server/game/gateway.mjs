@@ -621,12 +621,15 @@ export function createLocalGame({
   // dispatch branch, so the ordering constraints of recruit/heroCommandServices
   // and hundredDraw/activityRead stay untouched.
   const battleRecords = createBattleRecordService({ store, codec, logger, now: clock });
-  const commonMap = createCommonMapService({
-    store, codec, tables: readCommonMapTables(), heroTables, gameTables: tables,
-    attributeTables, now: clock, logger
-  });
+  // CommonMap keeps no layout: the shipped table has system definitions only,
+  // so 90601-90603 fail closed inside the service.
+  const commonMap = createCommonMapService({ tables: readCommonMapTables(), logger });
+  // StarMission resolves an activity id to its version through ActivityTable
+  // (func 81 family) and then reads chapters, thresholds, awards and skill costs
+  // from the shipped StarMissionTable.
   const starMission = createStarMissionService({
-    store, codec, tables: readStarMissionTables(), gameTables: tables, now: clock, logger
+    store, codec, tables: readStarMissionTables(), activityTables: tables.Activity,
+    gameTables: tables, now: clock, logger
   });
   async function loginPayload() {
     const repairedLineups = lineups.ensureLoginState();
