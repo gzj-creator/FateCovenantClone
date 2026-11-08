@@ -85,7 +85,9 @@ import { MARTIAL_CLUB_MODULE_ID, MARTIAL_CLUB_REQUEST_SCHEMAS, createMartialClub
 import { readMartialClubTables } from '../config/martial-club-tables.mjs';
 // Card BATTLE-MARTIALCLUBACT: MartialClubActCmd 84431-84432.
 import { createMartialClubActService } from './martial-club-act-service.mjs';
+import { TOURNAMENT_MODULE_ID, TOURNAMENT_PROTOBUF_COMMANDS, createTournamentService } from './tournament-service.mjs';
 import { readMartialClubActTables } from '../config/martial-club-act-tables.mjs';
+import { readMatchPvpTables } from '../config/match-pvp-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
@@ -138,6 +140,7 @@ export function createLocalGame({
   missionFightPlayback = false,
   eliteEnemies = null,
   martialClubRoster = null,
+  tournamentRoster = null,
   guideAwards = readGuideAwards(),
   now = Date.now,
   random = Math.random,
@@ -465,6 +468,8 @@ export function createLocalGame({
   const martialClub = createMartialClubService({ store, codec, tables: readMartialClubTables(), gameTables: tables, logger, now: clock, enemyRoster: martialClubRoster });
   // Card BATTLE-MARTIALCLUBACT: 84431-84432, awards driven by MartialClubActTable.
   const martialClubAct = createMartialClubActService({ store, codec, tables: readMartialClubActTables(), gameTables: tables, logger, now: clock });
+  // Card BATTLE-TOURNAMENT: 88501-88511, MatchPvpTable type 1 (位面锦标赛).
+  const tournament = createTournamentService({ store, codec, tables: readMatchPvpTables(), gameTables: tables, logger, now: clock, enemyRoster: tournamentRoster });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
@@ -586,6 +591,9 @@ export function createLocalGame({
     {
       const martialClubLogin = martialClub.loginPayload();
       modules.set(MARTIAL_CLUB_MODULE_ID, [binary(martialClubLogin.role), binary(martialClubLogin.employ)]);
+    // Card BATTLE-TOURNAMENT: login module 150 carries one pb_tournament_login block.
+    tournament.ensureLoginState();
+    modules.set(TOURNAMENT_MODULE_ID, binary(tournament.loginPayload().data));
     }
     modules.set(CAMPSITE_MODULE_ID, binary(cabin.loginPayload()));
     modules.set(HOUSE_ASSISTANT_MODULE_ID, [binary(houseAssistant.loginPayload())]);
@@ -1626,6 +1634,23 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code }); log({ event: 'feature_rejected', type, seq, code });
+        }
+        return;
+      }
+      // Card BATTLE-TOURNAMENT: TournamentCmd 88501-88511.
+      if (tournament.supports(type)) {
+        try {
+          const schema = TOURNAMENT_PROTOBUF_COMMANDS[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await tournament.execute(type, input);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'tournament_committed', type, seq, won: result.value?.won ?? null, stage: result.value?.stage ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'tournament_rejected', type, seq, code, message: error.message });
         }
         return;
       }
