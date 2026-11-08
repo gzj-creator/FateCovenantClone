@@ -6,7 +6,7 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 31 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 34 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；34/355 约 9.6% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。另有 1 个共享任务（CORE-TIME-TEMPLE）已用注册表全表证据闭合为“本版本不可达”，不计入上面的实现交付数，也不构成 APK 验收。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
+交付与整卡销项分开计数：当前 48 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 51 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；51/355 约 14.4% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。另有 1 个共享任务（CORE-TIME-TEMPLE）已用注册表全表证据闭合为“本版本不可达”，不计入上面的实现交付数，也不构成 APK 验收。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
 
 2026-11-07 第二轮：CORE-BATTLE-A 与 SOC-FRIEND 两个 checkpoint 已续接完成并合入 main，另完成 PLAY-FISHINGACT；三者均通过合并后的定向回归与一次主线全量，业务层为“服务端完成”，各自的证据缺口与 APK 验收边界见下表。
 
@@ -53,6 +53,7 @@
 | ITEM-FUNCTIONMANUAL | 服务端完成（仅统计源/主线章节源可领，其余进度源 code 5） | `task/BLOCK-D-20261108` | 82301 按 `FunctionManualTable.Task` 28 行的 `task_list` 复核进度、领取位落 SQLite、`award` 真实发放、模块 106 登录同步；专项 6 项 + 真实 TCP 登录/82301/重复 310 失败行 5 + SQLite 重开 + 编码回滚；`FunctionManualTable.rows.json.gz` 由新增 `tools/extract-lua-table-rows.mjs` 可复现抽取 | 未安排 | `progress_fun=180/182/185/...` 无服务端事件来源，28 行中仅统计源与 `fun 2/10` 行可领；`got_award` 位序沿用项目既有按 tid 置位约定，未逐位反汇编；`func_open` 未参与服务端校验；APK 未验收；见 [交付记录](../../../agent/workflow/gameplay-completion/ITEM-FUNCTIONMANUAL/implementation.md) |
 | ITEM-TASKACTIVITY | 服务端部分完成（1/2：105702 缺服务器活跃度） | `task/BLOCK-D-20261108` | 105701 按 `ActFrameTable` 类型 1003 窗口 + `TaskActivityTable.Lib` 版本任务 + 模块 21 统计复核，完成列表落 SQLite，登录把 `pb_task_activity_role_info` ETF 包进模块 92 条目；专项 7 项 + 真实 TCP 登录/105701/重复 310/105702 返回 5 + SQLite 重开 + 编码回滚 | 未安排 | `105702` 的 `server_vitality` 是全服活跃度，本服无权威生产方，按 5 拒绝；`task_param`/`Common.task_param`/`Tag.desc` 属展示配置未使用；APK 未验收；见 [交付记录](../../../agent/workflow/gameplay-completion/ITEM-TASKACTIVITY/implementation.md) |
 
+| BLOCK-E1（#87、#91–#106） | 服务端完成（82 条真实路径 + 46 条 fail closed；#88–#90 为此前批次） | `task/BLOCK-E1-20261108` | 171、21001–21031、85501–85505 公会，46001–84701 社交社区，83101–91209 公会活动全部网关派发；服务专项 26 项 + 真实临时 TCP 1 项；合并 main `24f90e9` 后全量 2659（pass 2657 / fail 0 / skipped 2）；SQLite 重开与 PB 编码失败回滚通过；未改 game-store | 未安排 | Guild*Table 数值行、171 block 映射、21017/83105 回包、46002/77601/79201 ETF 元素形状未取证；[交付记录](../../../agent/workflow/gameplay-completion/BLOCK-E1/implementation.md) |
 ## 集成与验收记录（2026-11-07 第一轮）
 
 - 集成分支：`gameplay/integration-20261107b`（基于含 207 体力、邮件推送和活动登录期限修复的 main `7b5af58`），已以 `--no-ff` 合入 main `7750864`。

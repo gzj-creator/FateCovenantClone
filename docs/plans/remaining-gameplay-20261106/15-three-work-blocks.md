@@ -159,30 +159,30 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 
 ## 块 E1：#87–#106（社交前半：好友、邮件、消息与聊天）
 
-- 归属：新 agent；卡数 20，缺失命令 162。
+- 归属：新 agent；卡数 20，缺失命令 162。状态：2026-11-08 由 BLOCK-E1 服务端完成，见 [BLOCK-E1 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-E1/implementation.md)。
 
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
-| 87 | SOC-GUILDDATA | 公会数据查询 | 1 | 待领取 |
+| 87 | SOC-GUILDDATA | 公会数据查询 | 1 | 服务端完成（171 fail closed：GuildDataTable block 映射待补） |
 | 88 | SOC-MSG | 频道加入、发言、历史、跨服消息与玩家信息 | 11 | 服务端完成（10508 登录槽与部分二进制载荷待补） |
 | 89 | SOC-CHAT | 世界、公会、私聊、跨服聊天与设置 | 10 | 服务端完成（公会/跨服/封禁/点赞 fail closed） |
 | 90 | SOC-FRIEND | 好友、申请、黑名单、友情赠送与领取 | 13 | 服务端完成（20012/20013 语义与友情点结算证据待补） |
-| 91 | SOC-GUILD | 公会创建、申请、推荐、捐献、日志与奖励 | 24 | 待领取 |
-| 92 | SOC-GUILDACTIVE | 公会活跃任务、积分与解散状态 | 6 | 待领取 |
-| 93 | SOC-SUPPORT | 玩家助力与被助力记录 | 2 | 待领取 |
-| 94 | SOC-REALTIMEMAP | 实时地图进出、移动、复活与传送 | 5 | 待领取 |
-| 95 | SOC-COMMENT | 英雄评论、点赞与评分 | 5 | 待领取 |
-| 96 | SOC-RELATIONSHIP | 关系标记与通知 | 3 | 待领取 |
-| 97 | SOC-ADVENTURE | 冒险玩家列表 | 1 | 待领取 |
-| 98 | SOC-STRATEGY | 英雄攻略排行 | 1 | 待领取 |
-| 99 | SOC-GUILDREDENVELOPE | 公会红包 | 8 | 待领取 |
-| 100 | SOC-GUILDTRIAL | 公会试炼、求助、助战与奖励 | 11 | 待领取 |
-| 101 | SOC-DANMAKU | 弹幕点赞 | 1 | 待领取 |
-| 102 | SOC-GUILDEXPLORE | 公会探索、地图、BOSS、任务与图鉴 | 28 | 待领取 |
-| 103 | SOC-GUILDEXPLORETRIAL | 公会探索试炼 | 2 | 待领取 |
-| 104 | SOC-GUILDWAR | 公会战、集结、竞猜与排行奖励 | 14 | 待领取 |
-| 105 | SOC-GUILDDUEL | 公会对决、匹配与轮次奖励 | 7 | 待领取 |
-| 106 | SOC-GUILDRACING | 公会竞速、支援、BUFF 投票与积分 | 9 | 待领取 |
+| 91 | SOC-GUILD | 公会创建、申请、推荐、捐献、日志与奖励 | 24 | 服务端完成（21/24；21017/21020/21027 fail closed） |
+| 92 | SOC-GUILDACTIVE | 公会活跃任务、积分与解散状态 | 6 | 服务端完成（85501/85503 fail closed；接口目录实际 5 条） |
+| 93 | SOC-SUPPORT | 玩家助力与被助力记录 | 2 | 服务端完成（46002 回包形状待补） |
+| 94 | SOC-REALTIMEMAP | 实时地图进出、移动、复活与传送 | 5 | 服务端完成 |
+| 95 | SOC-COMMENT | 英雄评论、点赞与评分 | 5 | 服务端完成 |
+| 96 | SOC-RELATIONSHIP | 关系标记与通知 | 3 | 服务端完成 |
+| 97 | SOC-ADVENTURE | 冒险玩家列表 | 1 | 服务端完成（ETF 元素形状待补） |
+| 98 | SOC-STRATEGY | 英雄攻略排行 | 1 | 服务端完成（ETF 元素形状待补） |
+| 99 | SOC-GUILDREDENVELOPE | 公会红包 | 8 | 服务端完成（83101/83102/83104/83105 fail closed） |
+| 100 | SOC-GUILDTRIAL | 公会试炼、求助、助战与奖励 | 11 | 服务端完成（83405/83406/83409 fail closed） |
+| 101 | SOC-DANMAKU | 弹幕点赞 | 1 | 服务端完成 |
+| 102 | SOC-GUILDEXPLORE | 公会探索、地图、BOSS、任务与图鉴 | 28 | 服务端完成（8 条读；20 条 fail closed） |
+| 103 | SOC-GUILDEXPLORETRIAL | 公会探索试炼 | 2 | 服务端完成（89351 fail closed） |
+| 104 | SOC-GUILDWAR | 公会战、集结、竞猜与排行奖励 | 14 | 服务端完成（9/14；5 条 fail closed） |
+| 105 | SOC-GUILDDUEL | 公会对决、匹配与轮次奖励 | 7 | 服务端完成（4/7；3 条 fail closed） |
+| 106 | SOC-GUILDRACING | 公会竞速、支援、BUFF 投票与积分 | 9 | 服务端完成（5/9；4 条 fail closed） |
 
 ## 块 E2：#107–#119（社交后半：公会、跨服与协作）
 
