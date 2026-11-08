@@ -40,7 +40,7 @@
 
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
-| 1 | BATTLE-FIGHT | 通用战斗与报告分享 | 1 | fail closed（缺回包/分享语义证据） |
+| 1 | BATTLE-FIGHT | 通用战斗与报告分享 | 1 | 服务端完成空回执（不发奖、不落库；APK 未验收） |
 | 2 | BATTLE-REPORT | 通关记录与点赞 | 2 | 服务端完成（APK 未验收） |
 | 3 | BATTLE-PEAKTOWER | 巅峰塔/爬塔 | 6 | 服务端完成（部分证据阻塞） |
 | 4 | BATTLE-RANK | 真实排行榜 | 11 | 服务端完成（部分榜单事件/赛季结算阻塞） |
@@ -49,8 +49,8 @@
 | 7 | BATTLE-ELITEMISSION | 精英任务的战斗闭环 | 0 | 服务端完成（敌方阵容映射与难度证据待补） |
 | 8 | BATTLE-SOULTRIAL | 灵魂试炼抽奖 | 2 | 服务端完成（付费语义待证） |
 | 9 | BATTLE-SCARLETTRIAL | 猩红试炼 | 2 | 服务端完成（活动窗口待证） |
-| 10 | BATTLE-STARMISSION | 星级关卡、章节奖励与技能 | 4 | 部分交付（89601 fail closed；真实表适配中） |
-| 11 | BATTLE-COMMONMAP | 通用地图节点与扫荡 | 3 | 部分交付（生产表适配中） |
+| 10 | BATTLE-STARMISSION | 星级关卡、章节奖励与技能 | 4 | 部分交付（真实 34 版表已接；89601 与星级生产写入待补） |
+| 11 | BATTLE-COMMONMAP | 通用地图节点与扫荡 | 3 | fail closed（真实表无地图实例/坐标） |
 | 12 | BATTLE-FAMEHALL | 名人堂挑战与掉落选择 | 11 | 服务端完成（候选/阵容证据待补） |
 | 13 | BATTLE-WORLDBOSS | 世界 BOSS | 5 | 服务端完成（BOSS 调度待证） |
 | 14 | BATTLE-PITLORD | PitLord 挑战、排名与补发 | 4 | 服务端完成（RankTable 绑定待证） |
