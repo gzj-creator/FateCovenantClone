@@ -11,7 +11,10 @@ import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
-import { assembleHeroAttributes, assembleLineup, buildLineupAttrInfo, FIGHT_ATTR } from '../game/attribute-service.mjs';
+import {
+  ACTOR_ATTR, assembleHeroAttributes, assembleLineup, attrValue, buildLineupAttrInfo,
+  calcAttrPower, calcAttrValues, FIGHT_ATTR
+} from '../game/attribute-service.mjs';
 import { createMissionFightService } from '../game/mission-fight-service.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 
@@ -21,6 +24,38 @@ const attributeTables = readAttributeTables();
 const SERVER_OPENED_AT = 1792789200;
 
 const hero = (overrides = {}) => ({ uid: '1', tid: 1040101, level: 1, star: 1, breakthrough_level: 0, ...overrides });
+
+test('AttrCalculator.CalcValues and AttributeKit.GetAttrValue preserve fixed-point semantics', () => {
+  assert.equal(attributeTables.NpcAttr.size, 10571);
+  assert.equal(attrValue(ACTOR_ATTR.HP, new Map([[ACTOR_ATTR.HP, 1234]]), 0, attributeTables), 1234);
+  assert.equal(attrValue(ACTOR_ATTR.LIFE_PERCENT, new Map([[ACTOR_ATTR.LIFE_PERCENT, 2500]]), 0, attributeTables), 0.25);
+  assert.equal(attrValue(ACTOR_ATTR.HIT, new Map(), 1250, attributeTables), 0.125);
+
+  const values = calcAttrValues(new Map([
+    [ACTOR_ATTR.HP, 1000], [ACTOR_ATTR.LIFE_PERCENT, 2500],
+    [ACTOR_ATTR.ATTACK, 100], [ACTOR_ATTR.ATTACK_PERCENT, 5000],
+    [ACTOR_ATTR.PHYSICAL_DEFENSE, 10], [ACTOR_ATTR.PHYSICAL_DEFENSE_PERCENT, 3000],
+    [ACTOR_ATTR.MAGIC_DEFENSE, 20], [ACTOR_ATTR.MAGIC_DEFENSE_PERCENT, 4000]
+  ]), attributeTables);
+  assert.deepEqual(Object.fromEntries(values), {
+    [ACTOR_ATTR.HP]: 1250,
+    [ACTOR_ATTR.ATTACK]: 150,
+    [ACTOR_ATTR.PHYSICAL_DEFENSE]: 13,
+    [ACTOR_ATTR.MAGIC_DEFENSE]: 28
+  });
+});
+
+test('PowerCalculator.CalcAttrPower applies the recovered weights and final ceil', () => {
+  const power = calcAttrPower(new Map([
+    [ACTOR_ATTR.HP, 1000], [ACTOR_ATTR.ATTACK, 100],
+    [ACTOR_ATTR.PHYSICAL_DEFENSE, 40], [ACTOR_ATTR.MAGIC_DEFENSE, 60],
+    [ACTOR_ATTR.CRIT, 500], [ACTOR_ATTR.HIT, 1000], [ACTOR_ATTR.HIT_FINAL, 500],
+    [ACTOR_ATTR.POWER_BONUS_FACTOR, 1000], [ACTOR_ATTR.POWER_FINAL_BONUS_FACTOR, 1000]
+  ]), attributeTables);
+  // base=210; hit=.015; crit=.005625; own bonus=.01;
+  // ceil(210 * 1.030625 * 1.1) = 239.
+  assert.equal(power, 239);
+});
 
 test('assembles configured level, star, break and quality attribute rows', () => {
   const base = assembleHeroAttributes({ hero: hero(), heroTables, attributeTables });
@@ -76,7 +111,8 @@ test('Vell uses one cumulative row for low and high star attributes', () => {
     critHarm: 15000,
     speed: 113
   });
-  assert.equal(assembled.power, 42704);
+  assert.equal(assembled.power, 3053);
+  assert.equal(assembled.powerSource, 'PowerCalculator.CalcAttrPower');
   assert.deepEqual(
     [...new Set(assembled.sources.filter(source => source.play.startsWith('star:')).map(source => source.play))],
     ['star:0'],

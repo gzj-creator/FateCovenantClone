@@ -193,3 +193,30 @@ test('不屈 mastery registers damage-reduction stat modifier', () => {
   assert.equal(effects[0].effect.magnitude, 0.05);
   assert.equal(effects[0].target.targetType, TARGET_TYPES.SELF);
 });
+
+test('健壮 exposes its 5% max-HP mastery modifier', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '312010172');
+  const effects = skillToEffects(skill, db);
+  assert.deepEqual(effects.map(entry => ({
+    type: entry.effect.type, statType: entry.effect.statType, magnitude: entry.effect.magnitude,
+  })), [{ type: 'stat-modifier', statType: 'max-hp-percent', magnitude: 0.05 }]);
+});
+
+test('超群技艺 exposes both 10% status hit and status resistance modifiers', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '312010173');
+  const effects = skillToEffects(skill, db);
+  assert.deepEqual(effects.map(entry => [entry.effect.statType, entry.effect.magnitude]), [
+    ['status-hit', 0.1],
+    ['status-resist', 0.1],
+  ]);
+});
+
+test('6910001009 remains an explicit metadata fallback with executable damage', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '6910001009');
+  assert.equal(skill.category, 'metadata fallback');
+  assert.equal(skillToEffects(skill, db)[0].effect.type, 'damage');
+  assert.equal(skillToEffects(skill, db)[0].effect.multiplier, 2);
+});

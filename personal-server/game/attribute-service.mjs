@@ -34,13 +34,31 @@ const DISPLAY_ATTR = Object.freeze({
   hp_rate: 5, attack_rate: 6, physical_def_rate: 26, magic_def_rate: 27
 });
 
-// Power is NOT recovered. HeroTable.BaseAttrNew.power is 0 for every shipped
-// row and no weight table was found, so this local coefficient set is an
-// explicit compatibility rule shared by the attribute query, the rank screen
-// and the battle report. Keeping it in one place means a later evidence-backed
-// formula only has to change here. Crit values are percentages (500 = 5%) and
-// are deliberately excluded from the weight sum until a source is recovered.
-export const POWER_WEIGHTS = Object.freeze({ hp: 1, attack: 10, physicalDefense: 2, magicDefense: 2 });
+// AttrCalculator/PowerCalculator are recovered from the shipped LuaJIT. The
+// formulas below retain their original fixed-point semantics: AttrType rows
+// whose value_type is VT_PTT (1) are divided by 10000 before use, while flat
+// attributes are consumed directly.
+export const ACTOR_ATTR = Object.freeze({
+  HP: 1, ATTACK: 2, LIFE_PERCENT: 5, ATTACK_PERCENT: 6,
+  CRIT: 11, CRIT_HARM: 12, ATTACK_ADD: 13, RESIST_CRIT: 15,
+  HIT: 17, DODGE: 18, CASTER_RECOVER_INCR: 21, TARGET_RECOVER_INCR: 22,
+  REDUCE: 23, PHYSICAL_DEFENSE: 24, MAGIC_DEFENSE: 25,
+  PHYSICAL_DEFENSE_PERCENT: 26, MAGIC_DEFENSE_PERCENT: 27,
+  SUCK: 33, BOUNCE: 34,
+  CAMP_1_DEF: 35, CAMP_2_DEF: 36, CAMP_3_DEF: 37, CAMP_4_DEF: 38,
+  CAMP_1_ATK: 39, CAMP_2_ATK: 40, CAMP_3_ATK: 41, CAMP_4_ATK: 42,
+  ANGER: 47, HIT_FINAL: 48, DODGE_FINAL: 49, CRITICAL_FINAL: 50,
+  CRITICAL_DODGE_FINAL: 51, CRITICAL_ADD: 52, CRITICAL_DEFENSE: 53,
+  DEEPEN_FINAL: 54, REDUCE_FINAL: 55, BOUNCE_REDUCE: 56,
+  IGNORE_DEFENSE: 57, IGNORE_DEFENSE_RESIST: 58,
+  BAD_STATE_HIT: 59, BAD_STATE_RESIST: 60,
+  ANGER_REDUCE_HIT: 61, ANGER_REDUCE_RESIST: 62, ANGER_RESTORE_INCR: 63,
+  COMMON_AB_DEEPEN: 65, ANGER_AB_DEEPEN: 66,
+  COMMON_AB_REDUCE: 67, ANGER_AB_REDUCE: 68,
+  BROKEN: 86, YUSHOU: 87, POWER_BONUS_FACTOR: 89,
+  POWER_FINAL_BONUS_FACTOR: 100,
+  RESULT_HARM_INCR: 186, RESULT_HARM_REDUCE: 187
+});
 
 const HERO_LEVEL_LIMIT = 300;
 const STAR_LIMIT = 10;
@@ -138,13 +156,95 @@ export function statsFromFightAttrs(fightAttrs, { speed = 0 } = {}) {
   };
 }
 
-// Compatibility power rule. See POWER_WEIGHTS above: not an original formula.
-export function powerFromStats(stats) {
-  const value = Number(stats?.hp ?? 0) * POWER_WEIGHTS.hp
-    + Number(stats?.attack ?? 0) * POWER_WEIGHTS.attack
-    + Number(stats?.physicalDefense ?? 0) * POWER_WEIGHTS.physicalDefense
-    + Number(stats?.magicDefense ?? 0) * POWER_WEIGHTS.magicDefense;
-  return Math.max(0, Math.round(value));
+function rawAttr(attrs, attrId) {
+  if (attrs instanceof Map) return attrs.get(Number(attrId));
+  return attrs?.[attrId];
+}
+
+// AttributeKit.GetAttrValue. A missing value uses the caller's fallback; the
+// configured value_type decides whether the stored integer is fixed-point.
+export function attrValue(attrId, attrs, fallback = 0, attributeTables = readAttributeTables()) {
+  const raw = rawAttr(attrs, attrId);
+  const value = raw === undefined || raw === null ? fallback : raw;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Number(attributeTables?.AttrType?.get(Number(attrId))?.value_type) === 1
+    ? numeric / ATTR_SCALE
+    : numeric;
+}
+
+// AttrCalculator.CalcValues. The four percentage attributes are folded into
+// their corresponding flat attributes and removed from the resulting map.
+export function calcAttrValues(attrs, attributeTables = readAttributeTables()) {
+  const values = new Map(attrs instanceof Map ? attrs : Object.entries(attrs ?? {}).map(([key, value]) => [Number(key), value]));
+  const percentage = new Map([
+    [ACTOR_ATTR.HP, ACTOR_ATTR.LIFE_PERCENT],
+    [ACTOR_ATTR.ATTACK, ACTOR_ATTR.ATTACK_PERCENT],
+    [ACTOR_ATTR.PHYSICAL_DEFENSE, ACTOR_ATTR.PHYSICAL_DEFENSE_PERCENT],
+    [ACTOR_ATTR.MAGIC_DEFENSE, ACTOR_ATTR.MAGIC_DEFENSE_PERCENT]
+  ]);
+  for (const [flatId, percentId] of percentage) {
+    values.set(flatId, Math.floor(attrValue(flatId, values, 0, attributeTables)
+      * (1 + attrValue(percentId, values, 0, attributeTables))));
+  }
+  for (const percentId of percentage.values()) values.delete(percentId);
+  return values;
+}
+
+// PowerCalculator.CalcAttrPower, including every term emitted by its LuaJIT
+// prototype and the single final ceil.
+export function calcAttrPower(attrs, attributeTables = readAttributeTables()) {
+  const value = attrId => attrValue(attrId, attrs, 0, attributeTables);
+  const base = value(ACTOR_ATTR.ATTACK) * 0.6
+    + value(ACTOR_ATTR.PHYSICAL_DEFENSE) * 0.5
+    + value(ACTOR_ATTR.MAGIC_DEFENSE) * 0.5
+    + value(ACTOR_ATTR.HP) * 0.1;
+  const hitBonus = (
+    value(ACTOR_ATTR.HIT) + value(ACTOR_ATTR.DODGE)
+    + 2 * value(ACTOR_ATTR.HIT_FINAL) + 2 * value(ACTOR_ATTR.DODGE_FINAL)
+  ) * 0.075;
+  const critBonus = (
+    value(ACTOR_ATTR.CRIT) + value(ACTOR_ATTR.RESIST_CRIT)
+    + 2 * value(ACTOR_ATTR.CRITICAL_FINAL) + 2 * value(ACTOR_ATTR.CRITICAL_DODGE_FINAL)
+  ) * (1.5 + value(ACTOR_ATTR.CRITICAL_ADD) + value(ACTOR_ATTR.CRITICAL_DEFENSE)) * 0.075;
+  const campBonus = [
+    ACTOR_ATTR.CAMP_1_ATK, ACTOR_ATTR.CAMP_2_ATK,
+    ACTOR_ATTR.CAMP_3_ATK, ACTOR_ATTR.CAMP_4_ATK,
+    ACTOR_ATTR.CAMP_1_DEF, ACTOR_ATTR.CAMP_2_DEF,
+    ACTOR_ATTR.CAMP_3_DEF, ACTOR_ATTR.CAMP_4_DEF
+  ].reduce((sum, attrId) => sum + value(attrId), 0) * 0.05;
+  const bonus = hitBonus + critBonus
+    + (value(ACTOR_ATTR.ATTACK_ADD) + value(ACTOR_ATTR.REDUCE)) * 0.2
+    + campBonus
+    + (value(ACTOR_ATTR.DEEPEN_FINAL) + value(ACTOR_ATTR.REDUCE_FINAL)) * 0.4
+    + value(ACTOR_ATTR.SUCK) * 0.2
+    + value(ACTOR_ATTR.BOUNCE) * 0.1 * (1 + value(ACTOR_ATTR.BOUNCE_REDUCE))
+    + value(ACTOR_ATTR.IGNORE_DEFENSE) * 0.3
+    + value(ACTOR_ATTR.ANGER) * 0.0001
+    + (value(ACTOR_ATTR.BAD_STATE_HIT) + value(ACTOR_ATTR.BAD_STATE_RESIST)) * 0.1
+    + (value(ACTOR_ATTR.ANGER_REDUCE_HIT) + value(ACTOR_ATTR.ANGER_REDUCE_RESIST)) * 0.05
+    + value(ACTOR_ATTR.ANGER_RESTORE_INCR) * 0.21
+    + (value(ACTOR_ATTR.COMMON_AB_DEEPEN) + value(ACTOR_ATTR.COMMON_AB_REDUCE)) * 0.1
+    + (value(ACTOR_ATTR.ANGER_AB_DEEPEN) + value(ACTOR_ATTR.ANGER_AB_REDUCE)) * 0.1
+    + value(ACTOR_ATTR.TARGET_RECOVER_INCR) * 0.1
+    + value(ACTOR_ATTR.CASTER_RECOVER_INCR) * 0.1
+    + value(ACTOR_ATTR.IGNORE_DEFENSE_RESIST) * 0.3
+    + (value(ACTOR_ATTR.BROKEN) + value(ACTOR_ATTR.YUSHOU)) * 0.001
+    + value(ACTOR_ATTR.POWER_BONUS_FACTOR) * 0.1
+    + value(ACTOR_ATTR.RESULT_HARM_INCR) * 0.6
+    + value(ACTOR_ATTR.RESULT_HARM_REDUCE) * 0.6;
+  return Math.ceil(base * (1 + bonus) * (1 + value(ACTOR_ATTR.POWER_FINAL_BONUS_FACTOR)));
+}
+
+export function powerFromStats(stats, attributeTables = readAttributeTables()) {
+  return calcAttrPower({
+    [ACTOR_ATTR.HP]: Number(stats?.hp ?? 0),
+    [ACTOR_ATTR.ATTACK]: Number(stats?.attack ?? 0),
+    [ACTOR_ATTR.PHYSICAL_DEFENSE]: Number(stats?.physicalDefense ?? 0),
+    [ACTOR_ATTR.MAGIC_DEFENSE]: Number(stats?.magicDefense ?? 0),
+    [ACTOR_ATTR.CRIT]: Number(stats?.critRate ?? 0),
+    [ACTOR_ATTR.CRIT_HARM]: Number(stats?.critHarm ?? 0)
+  }, attributeTables);
 }
 
 // Assemble one persisted hero into final fight attributes. Every contribution is
@@ -231,19 +331,25 @@ export function assembleHeroAttributes({ hero, heroTables, attributeTables = rea
     [FIGHT_ATTR.CRIT_HARM]: Math.max(0, Math.round(rate.get(FIGHT_ATTR.CRIT_HARM) ?? 0))
   };
   const stats = statsFromFightAttrs(fightAttrs, { speed: compatibilitySpeed(config) });
+  const powerAttrs = new Map();
+  for (const source of sources) {
+    powerAttrs.set(source.displayAttr, (powerAttrs.get(source.displayAttr) ?? 0) + Number(source.value));
+  }
   return {
     uid: hero.uid === undefined ? null : String(hero.uid),
     tid, level, star, breakLevel, quality: base.quality, configuredQuality: quality, camp,
     profession: Number(config.profession ?? 0),
     fightAttrs, stats, sources, notes,
-    power: powerFromStats(stats)
+    power: calcAttrPower(calcAttrValues(powerAttrs, attributeTables), attributeTables),
+    powerSource: 'PowerCalculator.CalcAttrPower'
   };
 }
 
-// NPC rows reuse the same fight-attribute mapping. NpcAttr itself only stores
-// references to HeroTable.NpcAttr.<n>.data.lua, which are not shipped, so the
-// base numbers still come from the compatible caller baseline. The shipped
-// NpcAttrRatio and NpcFightCustom.elite_scale are applied here.
+// NPC rows reuse the same fight-attribute mapping. HeroTable.NpcAttr is now
+// recovered from its LuaJIT shards and the exact Fight -> Team -> NpcAttr chain
+// lives in fight-team-resolver.mjs. This compatibility helper remains for
+// callers without that chain; it applies only the shipped NpcAttrRatio and
+// NpcFightCustom.elite_scale values to a caller-provided baseline.
 export function npcAttributeScale(attributeTables, tid, { elite = false } = {}) {
   const ratios = new Map();
   for (const pair of attributeTables.NpcAttrRatio?.get(Number(tid))?.attr_list ?? []) {
@@ -298,7 +404,7 @@ export function assembleLineup({ model, lineupType = 1, heroTables, attributeTab
   const totalPower = entries.reduce((sum, entry) => sum + entry.power, 0);
   const teamPowers = new Map();
   for (const entry of entries) teamPowers.set(entry.teamId, (teamPowers.get(entry.teamId) ?? 0) + entry.power);
-  return { lineupType: Number(target.type ?? lineupType), entries, totalPower, teamPowers, notes: ['power-formula-compatibility'] };
+  return { lineupType: Number(target.type ?? lineupType), entries, totalPower, teamPowers, notes: ['power-formula:PowerCalculator.CalcAttrPower'] };
 }
 
 // pb_attr_lineup_all_info payload for req_role_attr_info (1316). The raw

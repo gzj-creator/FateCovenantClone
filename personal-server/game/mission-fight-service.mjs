@@ -110,6 +110,33 @@ export function actionList(codec, simulation) {
         aim_id: event.aimId,
         shield: event.shield
       }));
+    } else if (event.kind === 'proprietary-shield-destroyed') {
+      // A proportional shield removal changes the same client-visible shield
+      // value as an ordinary pb_fat_shield event. The client schema has no
+      // separate destroy-shield packet, so the post-removal total is encoded.
+      events.push(action(codec, ACTION_SHIELD, 'pb_fat_shield', {
+        id: event.id ?? 0,
+        aim_id: event.aimId,
+        shield: event.shield
+      }));
+    } else if (event.kind === 'effect' && event.type === 'heal'
+      && Number(event.actualHeal ?? event.value) > 0) {
+      // Proprietary domain/passive handlers write the same recover shape as the
+      // generic executor; this branch keeps those heals replayable too.
+      events.push(action(codec, ACTION_FIGHT_HARM, 'pb_fat_harm', {
+        id: event.id ?? 0,
+        harm_list: [{
+          aim_id: event.target,
+          src_id: event.actor,
+          type: PROMPT_HEAL,
+          is_ab_aim: true,
+          value: event.actualHeal ?? event.value,
+          old_hp: event.oldHp,
+          hp: event.newHp,
+          old_shield: event.oldShield ?? 0,
+          shield: event.shield ?? 0
+        }]
+      }));
     } else if (event.kind === 'buff-change') {
       // pb_fat_buff_change (103). sign is the add/remove flag: false -> AddBuff,
       // true -> RemoveBuff(change_reason), per BuffChangeStep._OnStart.
@@ -302,12 +329,15 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
       speed: combat.speed, initialEnergy: combat.initialEnergy, abilityId: abilities[0] ?? 1,
       activeAbilityId: activeAbilityId(abilities),
-      skills: skillLoadout.skills
+      skills: skillLoadout.skills,
+      power: assembled.power
     };
   });
   const attackerLevel = Math.max(...attackers.map(unit => unit.level));
-  // The FightTable.NpcAttr growth mapping is not recovered. Until it is, combat
-  // NPCs use a balanced whole-lineup template and then apply the shipped
+  // The NpcAttr table and Fight -> Team -> NpcAttr resolver are recovered, but
+  // Mission Fight 403 ships def_team=null (and its referenced Team row is also
+  // absent). Without that authoritative selector, ordinary Mission NPCs keep a
+  // balanced whole-lineup compatibility baseline, then apply the shipped
   // NpcAttrRatio / NpcFightCustom.elite_scale values.
   const reference = lineupReferenceStats(attackers);
   const defenders = config.enemies.map((role, index) => {
@@ -384,14 +414,11 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     is_add_battle: false,
     // Power is the shared attribute-service compatibility rule; the same value
     // is returned by the 1316 attribute query and the rank screen.
-    atk_power: String(attackers.reduce((sum, unit) => sum + powerFromStats({
-      hp: unit.max_hp, attack: unit.attack,
-      physicalDefense: unit.defense, magicDefense: unit.defense
-    }), 0)),
+    atk_power: String(attackers.reduce((sum, unit) => sum + unit.power, 0)),
     def_power: String(defenders.reduce((sum, unit) => sum + powerFromStats({
       hp: unit.max_hp, attack: unit.attack,
       physicalDefense: unit.defense, magicDefense: unit.defense
-    }), 0)),
+    }, attributeTables), 0)),
     atk_brief_lineup: brief(selected.teamIndex, attackers),
     def_brief_lineup: brief(1, defenders)
   };

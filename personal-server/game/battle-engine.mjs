@@ -271,8 +271,9 @@ function statusLayers(status) {
   return Math.max(1, Math.floor(Number(status?.stacks) || 1));
 }
 
-// dead_rm=true rows are proven for the three statuses this engine can map to a
-// FightTable.Buff tid (stun 10001, poison 11003, burning 11004), so a death
+// dead_rm=true rows are proven for the five statuses this engine can map to a
+// FightTable.Buff tid (stun 10001, freeze 10002, silence 10003, poison 11003,
+// burning 11004), so a death
 // removes exactly those layers and reports change_reason=DEAD. Unproven
 // statuses keep their previous behaviour and stay unreported.
 function collectDeathBuffChanges(buffChanges, unit) {
@@ -372,6 +373,11 @@ function appendEffectResults(events, actionId, results, actor, state) {
       damageForTriggers.push(harm);
     } else if (result.type === 'shield') {
       events.push({ kind: 'shield', id: actionId, aimId: result.target, shield: result.newShield });
+    } else if (result.type === 'destroy-shield') {
+      // destroyShield writes the authoritative post-removal shield value into
+      // the same event stream while it mutates the unit. Do not emit a second
+      // projection for the returned summary.
+      continue;
     } else if (result.type === 'heal') {
       // TID_PROMPT_HEAL=107 is the positive-number prompt the client renders as
       // a recover value; a heal never changes shield, so both shield fields
@@ -409,6 +415,17 @@ function appendEffectResults(events, actionId, results, actor, state) {
           changeReason: BUFF_CHANGE_REASON.NONE,
           abilityId: Number(state.currentAbilityId) || 0,
         });
+      }
+      const target = units.get(result.target);
+      if (target) {
+        runProprietary(state, PROPRIETARY_HOOKS.STATUS_APPLIED, {
+          actor: units.get(result.actor) ?? null,
+          target,
+          statusType: result.statusType,
+          actionId,
+          sourceSkill: Number(state.currentAbilityId) || null,
+          result,
+        }, events);
       }
     } else {
       events.push({ ...result, kind: 'effect', id: actionId });

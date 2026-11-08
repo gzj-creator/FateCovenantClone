@@ -37,6 +37,7 @@ export const PROPRIETARY_HOOKS = Object.freeze({
   ROUND_START: 'round-start',
   ACTION_START: 'action-start',
   BEFORE_ACTION: 'before-action',
+  STATUS_APPLIED: 'status-applied',
   ULTIMATE_USE: 'ultimate-use',
   DAMAGE_DEALT: 'damage-dealt',
   DAMAGE_TAKEN: 'damage-taken',
@@ -403,14 +404,15 @@ export function capDamage(damage, cap, basis = {}) {
 }
 
 /** Destroy a percentage of the unit's current shield. Returns the amount removed. */
-export function destroyShield(unit, ratio, { events = null, sourceId = null } = {}) {
+export function destroyShield(unit, ratio, { events = null, sourceId = null, actionId = 0 } = {}) {
   const current = nonNegative(unit?.shield);
   const fraction = Math.min(1, Math.max(0, finite(ratio)));
   const removed = Math.min(current, Math.floor(current * fraction));
   if (removed > 0) {
     unit.shield = current - removed;
     emit(events, PROPRIETARY_EVENT_KINDS.SHIELD_DESTROYED, {
-      aimId: unit.id, srcId: sourceId, ratio: fraction, removed, shield: unit.shield
+      id: actionId, aimId: unit.id, srcId: sourceId,
+      ratio: fraction, removed, shield: unit.shield
     });
   }
   return removed;

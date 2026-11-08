@@ -102,6 +102,14 @@ const PROVEN_STATUS_BUFFS = new Map([
     tid: 10001, constant: 'TID_BUFF_STUN', buffType: 3, effect: 1001,
     dispel: true, deadRemove: true, overlayLimit: 2
   })],
+  ['freeze', Object.freeze({
+    tid: 10002, constant: 'TID_BUFF_ICE', buffType: 3, effect: 1002,
+    dispel: true, deadRemove: true, overlayLimit: 2
+  })],
+  ['silence', Object.freeze({
+    tid: 10003, constant: 'TID_BUFF_SILENCE', buffType: 3, effect: 1003,
+    dispel: true, deadRemove: true, overlayLimit: 2
+  })],
   ['poison', Object.freeze({
     tid: 11003, constant: 'TID_BUFF_POISON', buffType: 2, effect: 1013,
     dispel: true, deadRemove: true, overlayLimit: 2

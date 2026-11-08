@@ -66,6 +66,31 @@ function targetCampMultiplier(effect, target) {
   return 1;
 }
 
+function conditionalDamageMultiplier(conditional, actor, target, state) {
+  if (!conditional) return 1;
+  if (conditional.condition === 'target-no-shield') {
+    return Math.max(0, Number(target?.shield) || 0) === 0
+      ? 1 + Math.max(0, finiteNumber(conditional.multiplier))
+      : 1;
+  }
+  if (conditional.condition === 'hp-below-50') {
+    return target?.maxHp > 0 && target.hp / target.maxHp < 0.5
+      ? 1 + Math.max(0, finiteNumber(conditional.multiplier))
+      : 1;
+  }
+  if (conditional.condition === 'hp-above-50') {
+    return target?.maxHp > 0 && target.hp / target.maxHp >= 0.5
+      ? 1 + Math.max(0, finiteNumber(conditional.multiplier))
+      : 1;
+  }
+  if (conditional.condition === 'actor-hp-below-50') {
+    return actor?.maxHp > 0 && actor.hp / actor.maxHp < 0.5
+      ? 1 + Math.max(0, finiteNumber(conditional.multiplier))
+      : 1;
+  }
+  return 1;
+}
+
 function modifierStacks(modifier) {
   return Math.max(1, Math.floor(finiteNumber(modifier?.stacks, 1)));
 }
@@ -304,13 +329,24 @@ export class EffectExecutor {
       baseDamage = effectiveMaxHp(target) * (effect.magnitude || 0);
     } else if (effect.damageType === 'percent-current-hp') {
       baseDamage = (target.hp || 0) * (effect.magnitude || 0);
+    } else if (effect.damageBasis === 'target-lost-hp') {
+      baseDamage = Math.max(0, effectiveMaxHp(target) - (target.hp || 0))
+        * (effect.magnitude || 0);
+    } else if (effect.damageBasis === 'actor-max-hp') {
+      baseDamage = effectiveMaxHp(actor) * (effect.magnitude || 0);
+    } else if (effect.damageBasis === 'actor-current-hp') {
+      baseDamage = (actor.hp || 0) * (effect.magnitude || 0);
     } else if (effect.multiplier) {
       baseDamage = effectiveAttack(actor) * effect.multiplier;
     }
 
     // Apply conditional bonus
     if (effect.conditionalDamage) {
-      baseDamage += effect.conditionalDamage(actor, target, this.state);
+      if (typeof effect.conditionalDamage === 'function') {
+        baseDamage += effect.conditionalDamage(actor, target, this.state);
+      } else {
+        baseDamage *= conditionalDamageMultiplier(effect.conditionalDamage, actor, target, this.state);
+      }
     }
 
     const isTrueDamage = effect.damageType === DAMAGE_TYPES.TRUE;
@@ -382,7 +418,11 @@ export class EffectExecutor {
   executeDestroyShield(effect, actor, target) {
     if (!target?.alive) return null;
     const ratio = Number(effect.ratio ?? effect.multiplier ?? 0);
-    const removed = destroyShield(target, ratio, { sourceId: actor?.id ?? null, events: this.state?.events });
+    const removed = destroyShield(target, ratio, {
+      sourceId: actor?.id ?? null,
+      events: this.state?.events,
+      actionId: this.state?.currentActionId ?? 0,
+    });
     return {
       type: 'destroy-shield',
       actor: actor?.id ?? 0,
