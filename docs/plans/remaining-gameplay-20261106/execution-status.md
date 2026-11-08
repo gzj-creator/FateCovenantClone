@@ -188,7 +188,7 @@
 - 分支 task/BLOCK-G2-20261108（基于 main 8ebd5a1）完成 #163–#179 共 17 卡、96 条命令的服务端接入：personal-server/game/minigame-act-service.mjs + config/minigame-act-tables.mjs + 15 个表资产 + 网关派发与模块 92 登录同步。
 - 状态：完整实现 6 卡（PUZZLEACT/TILESWAP/MUSHROOMMONSTER/GOPHERACT/MATCHINGGAMEACT/ALBUM）；服务端完成含明确拒绝 8 卡（TOWERACT/SPIRITCOURTYARD/TRIPLEMATCH/MONOPOLYACT/DREAMTRIALACT/DIAMONDVEINACT/HOMELAND/BAKINGACT）；仅明确拒绝 1 卡（SOURCEPOINT，源点实例未建模）；FISHINGACT 与 HELPUPACT 回归确认未改动。
 - 明确拒绝均为 GameError(5, 缺口说明)，无空包/固定值销项。逐卡记录见 agent/workflow/gameplay-completion/<CARD>/implementation.md，块记录见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md。
-- 测试：专项 16/16；全量 npm test 2560 项，pass 2558，fail 0，skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
+- 测试：专项 17/17；分支内全量 2560 项 pass 2558 / fail 0 / skipped 2；合入 main（24f90e9）后在干净 worktree 复核 2632 项 pass 2630 / fail 0 / skipped 2，补跨块表格式兼容后 2633 项 pass 2631 / fail 0 / skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
 
 ## 块 D 交付记录（2026-11-08）
 

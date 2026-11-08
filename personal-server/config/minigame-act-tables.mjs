@@ -1,4 +1,5 @@
 import { readJsonAsset, tableAsset } from '../assets.mjs';
+import { readGeneratedDump } from './hero-tables.mjs';
 
 // Tables for the G2 exploration / mini-game block. Every file is rebuilt from
 // the shipped client bundles with tools/extract-lua-table-rows.mjs and stored
@@ -52,14 +53,20 @@ const SOURCES = Object.freeze({
 
 function readFamily(file, name, expected) {
   const parsed = readJsonAsset(tableAsset(file + '.data.lua.json.gz'));
-  const tables = parsed?.tables;
-  if (!tables || typeof tables !== 'object') throw new Error(file + ' dump has no table map');
-  const rows = tables[name];
+  const rows = parsed?.tables?.[name] ?? readPrototypeFamily(parsed, name);
   if (!Array.isArray(rows)) throw new Error('Missing ' + file + '.' + name);
   if (rows.length !== expected) {
     throw new Error(file + '.' + name + ' has ' + rows.length + ' rows, expected ' + expected);
   }
   return { rows, byTid: new Map(rows.map(row => [Number(row.tid), row])) };
+}
+
+// The same client table can also be stored as compiled Lua prototypes, which
+// the shared interpreter turns into the same {tid, ...} rows.
+function readPrototypeFamily(parsed, name) {
+  if (!parsed?.prototypes) return undefined;
+  const family = readGeneratedDump(parsed, [name])[name];
+  return [...family].map(([key, row]) => (row && row.tid === undefined ? { tid: Number(key), ...row } : row));
 }
 
 let cached;

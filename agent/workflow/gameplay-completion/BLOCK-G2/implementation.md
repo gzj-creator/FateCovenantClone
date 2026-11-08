@@ -22,9 +22,16 @@
 
 ## 验证
 
-- 专项：node --test test/minigame-act-service.test.mjs → 16/16 通过（含资源不足、阈值未达、重复领取、坏负载回滚、SQLite 重开）。
-- 全量：npm test → 2560 项，pass 2558，fail 0，skipped 2（日志 analysis/tmp/g2-tables/g2-full-test.log）。
+- 专项：node --test test/minigame-act-service.test.mjs → 17/17 通过（含资源不足、阈值未达、重复领取、坏负载回滚、SQLite 重开、行级表 dump 互通）。
+- 分支内全量：npm test → 2560 项，pass 2558，fail 0，skipped 2（日志 analysis/tmp/g2-tables/g2-full-test.log）。
 - 未做 APK 实测；本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
+
+## 合入 main 与跨块兼容
+
+- 合并提交 24f90e9（父 70de346），冲突 personal-server/game/gateway.mjs 与 docs/plans/remaining-gameplay-20261106/execution-status.md 按双方内容并存解决，node --check 通过。
+- 合并后在 main@24f90e9 的干净 worktree 复核全量 npm test → 2632 项，pass 2630，fail 0，skipped 2（日志 analysis/tmp/g2-tables/main-verify-24f90e9.log）。
+- HomelandActTable 由本块以行级 dump（tools/extract-lua-table-rows.mjs，含 Task/Furniture/Const/Version/Happiness/RankUpAward/Module 等族）提交，而块 G1 的 config/exploration-act-tables.mjs 按原型 dump 读取同一文件。已让两种格式互通：config/hero-tables.mjs 的 readGeneratedDump 接受行级 dump，config/minigame-act-tables.mjs 的 readFamily 在缺行级 dump 时回退原型解释器，并新增专项断言。修正后全量 npm test → 2633 项，pass 2631，fail 0，skipped 2（日志 analysis/tmp/g2-tables/main-verify-compat.log）。
+- 合并前主工作区存在 G1 未跟踪的旧 HomelandActTable 资产（原型 dump，SHA256 6A3D6C08…C2E07），已备份到 analysis/tmp/g2-tables/homeland-act-main-untracked-backup.gz 并原路径改名为 HomelandActTable.data.lua.json.gz.g1-untracked-backup；如 G1 需要原文件可用该备份覆盖，两种格式现已都能读取。
 
 ## 未完成与风险
 

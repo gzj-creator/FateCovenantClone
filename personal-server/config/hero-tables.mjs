@@ -66,6 +66,18 @@ export function readGeneratedTables(file, names) {
 // interpreter reusable so callers can parse a dump in memory instead of
 // requiring a generated JSON copy beside it.
 export function readGeneratedDump(parsed, names) {
+  // Row-level dumps written by tools/extract-lua-table-rows.mjs hold decoded
+  // rows instead of Lua prototypes. Serve them through the same map shape so
+  // one table file works for readers built around either dump format.
+  if (parsed && !parsed.prototypes && parsed.tables && typeof parsed.tables === 'object') {
+    const tables = {};
+    for (const name of names) {
+      const rows = parsed.tables[name];
+      if (!Array.isArray(rows)) throw new Error('Missing generated configuration: ' + name);
+      tables[name] = new Map(rows.map((row, index) => [Number(row?.tid ?? index + 1), row]));
+    }
+    return tables;
+  }
   const root = parsed.prototypes[parsed.rootPrototype];
   const constructors = new Map();
   for (let n = 0; n < root.instructions.length - 1; n++) {

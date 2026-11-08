@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createGameCodec } from '../protocol/game-codec.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readMinigameActTables } from '../config/minigame-act-tables.mjs';
+import { readGeneratedTables } from '../config/hero-tables.mjs';
+import { tableAsset } from '../assets.mjs';
 import { createMinigameActService } from '../game/minigame-act-service.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { GameError } from '../game/hero-progression.mjs';
@@ -11,6 +13,16 @@ import { createGameFixture } from './helpers/game-fixture.mjs';
 const codec = createGameCodec();
 const baseTables = readGameTables();
 const minigameTables = readMinigameActTables();
+
+// The exploration block reads the same HomelandActTable dump through the
+// prototype reader, so a row-level dump has to stay readable for both.
+test('row-level table dumps feed the prototype reader used by other blocks', () => {
+  const families = ['Task', 'Furniture', 'Const', 'Version', 'Happiness', 'RankUpAward', 'Module'];
+  const tables = readGeneratedTables(tableAsset('HomelandActTable.data.lua.json.gz'), families);
+  assert.equal(tables.Task.size, 72);
+  assert.deepEqual(tables.Furniture.get(2).suit.slice(0, 3), [1, 2, 3]);
+  assert.equal(tables.Version.size, 9);
+});
 const SERVER_OPENED_AT = 1792789200;
 const NOW = SERVER_OPENED_AT + 4000;
 const DIAMOND = 101500;
