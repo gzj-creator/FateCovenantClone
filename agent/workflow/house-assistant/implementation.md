@@ -85,7 +85,7 @@ node --test --test-concurrency=1 test/house-assistant.test.mjs test/house-assist
 
 结果：9 项全部通过。新增用例覆盖实时库同形态的单场景选择 payload、88201/88202 的零值场景请求，以及旧 `pb_house_assistant_info_old` payload 的迁移；真实 TCP 网关用例确认两个类型均未进入 `LOCAL_NOT_IMPLEMENTED`。
 
-全量测试：在 worktree 的 `personal-server` 执行 `npm test`，共 2752 项，pass 2750、fail 0、skipped 2，日志 `analysis/test-runs/house-assistant-zero-20261108/full.log`。
+全量测试：在 worktree 的 `personal-server` 执行 `npm test`，共 2752 项，pass 2750、fail 0、skipped 2，日志 `analysis/test-runs/house-assistant-zero-20261108/full.log`。合入 `main`（含同期 helpup 修复 `9ada445`）后再次执行 `npm test`，共 2753 项，pass 2751、fail 0、skipped 2，日志 `analysis/test-runs/house-assistant-zero-20261108/main-full.log`。
 
 ### 验收边界
 
