@@ -93,19 +93,45 @@ test('ReportCmd/CommonMapCmd/StarMissionCmd answer over the temporary handshake 
   assert.equal(client.errorCode(empty), 0);
   assert.deepEqual(codec.unpack('pb_pass_record', client.payloadOf(empty)).pass_info_list, []);
 
-  // Fail-closed branches answer with an explicit error code, never an empty body.
+  // Null-schema commands answer with an empty success frame; fail-closed
+  // branches answer with an explicit error code, never an empty body.
   const vote = await client.request(212, 3, codec.pack('pb_pass_record_vote_req', {
     pass_tid: PASS_TID, id: BUSINESS_ID, fight_id: '999', type: 1, is_up_vote: true
   }));
   assert.equal(client.errorCode(vote), 5);
   const share = await client.request(205, 4, codec.pack('pb_share_report', { fight_id: '1', fight_type: 1 }));
-  assert.equal(client.errorCode(share), 5);
+  assert.equal(client.errorCode(share), 0);
+  assert.equal(client.payloadOf(share).length, 0, '205 has no c2s_back schema: success is an empty frame');
   const mapInit = await client.request(90601, 5, Buffer.alloc(0));
   assert.equal(client.errorCode(mapInit), 5);
   const mapTrigger = await client.request(90602, 6, codec.pack('pb_common_map_node_trigger', { map_tid: 9001, sub_id: 0, x: 0, y: 0 }));
   assert.equal(client.errorCode(mapTrigger), 5);
-  const chapterAward = await client.request(89602, 7, codec.pack('pb_star_mission_chapter_award_req', { activity_id: '94001', award_tid: '940011' }));
-  assert.equal(client.errorCode(chapterAward), 5);
+  const mapSweep = await client.request(90603, 10, codec.pack('pb_common_map_sweep_trigger', { map_tid: 9001, sub_id: 0 }));
+  assert.equal(client.errorCode(mapSweep), 5);
+
+  // 89602 resolves the activity through ActivityTable (func 81 family) and reads
+  // the shipped StarMissionTable: version 1 / activity 81001, chapter 1, 9-star
+  // award 10101 -> 175002 x150. Stars arrive through the generic fight pipeline,
+  // which is not implemented, so the chapter star block is seeded here the same
+  // way the client would report nine cleared stars.
+  game.store.inspect(db => db.prepare('INSERT INTO star_mission_chapter_state VALUES (?,?,?,?,?,?)').run(
+    game.store.read().state.roleId, 1, 1, 'ff80', '', new Date(NOW_MS).toISOString()
+  ));
+  const chapterAward = await client.request(89602, 7, codec.pack('pb_star_mission_chapter_award_req', {
+    activity_id: '81001', award_tid: '10101'
+  }));
+  assert.equal(client.errorCode(chapterAward), 0);
+  const awardValue = codec.unpack('pb_star_mission_chapter_award_rsp', client.payloadOf(chapterAward));
+  assert.equal(Number(awardValue.chapter.chapter), 1);
+  assert.equal(awardValue.res_change.changes.length, 1);
+  assert.equal(String(awardValue.res_change.changes[0].tid), '175002');
+  assert.equal(String(awardValue.res_change.changes[0].diff_num), '150');
+  assert.equal(String(game.store.read().resources.get('175002').num), '150');
+  // An activity outside the func-81 family has no star mission configuration.
+  const unknownStar = await client.request(89602, 11, codec.pack('pb_star_mission_chapter_award_req', {
+    activity_id: '100601', award_tid: '10101'
+  }));
+  assert.equal(client.errorCode(unknownStar), 5);
 
   // A recorded clear is listed by 211 and still listed after a gateway reopen.
   game.store.inspect(db => db.prepare('INSERT INTO battle_pass_records VALUES (?,?,?,?,?,?,?,?,?,?)').run(
@@ -122,4 +148,11 @@ test('ReportCmd/CommonMapCmd/StarMissionCmd answer over the temporary handshake 
   client = await connectClient(t, game);
   const reopened = await client.request(211, 9, codec.pack('pb_pass_record_req', { pass_tid: PASS_TID, id: BUSINESS_ID }));
   assert.equal(codec.unpack('pb_pass_record', client.payloadOf(reopened)).pass_info_list.length, 1);
+  // The chapter award claim survives the reopen and is not paid twice.
+  const replayed = await client.request(89602, 12, codec.pack('pb_star_mission_chapter_award_req', {
+    activity_id: '81001', award_tid: '10101'
+  }));
+  assert.equal(client.errorCode(replayed), 0);
+  assert.equal(codec.unpack('pb_star_mission_chapter_award_rsp', client.payloadOf(replayed)).res_change.changes.length, 0);
+  assert.equal(String(game.store.read().resources.get('175002').num), '150');
 });

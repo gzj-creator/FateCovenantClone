@@ -432,333 +432,359 @@
 
 ## SOC-GUILDBOSS：公会 BOSS、伤害奖励与技能物品
 
-协议模块：`GuildBossCmd`。未路由 12；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildBossCmd`。服务端完成（12/12 已派发）：加入、技能伤害、阶段/排行、伤害与技能次数奖励、每日技能物、Boss 箱、在线奖励、购买及公会信息均使用 SQLite 权威状态。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会 BOSS、伤害奖励与技能物品”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-boss-service.mjs](../../../personal-server/game/guild-boss-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 91301 | `req_guild_boss_enter_map` | 未路由 | etf / `—` | `pb_guild_boss_guild` |
-| 91302 | `req_guild_boss_leave_map` | 未路由 | etf / `—` | `—` |
-| 91303 | `req_guild_boss_use_skill` | 未路由 | protobuf / `pb_guild_boss_use_skill_req` | `pb_guild_boss_use_skill_back` |
-| 91304 | `req_claim_boss_dmg_award` | 未路由 | protobuf / `pb_req_claim_boss_dmg_award` | `pb_res_to_client` |
-| 91305 | `req_batch_claim_boss_award` | 未路由 | protobuf / `pb_req_batch_claim_boss_award` | `pb_res_to_client` |
-| 91306 | `req_claim_boss_use_skill_award` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 91307 | `req_claim_daily_free_skill_item` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 91308 | `req_claim_guild_boss_box` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 91309 | `req_join_guild_boss` | 未路由 | etf / `—` | `pb_res_join_guild_boss` |
-| 91310 | `req_claim_guild_boss_online_award` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 91311 | `req_buy_guild_boss_item` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 91312 | `req_guild_boss_guild_info` | 未路由 | etf / `—` | `—` |
+| 91301 | `req_guild_boss_enter_map` | 已派发 | etf / `—` | `pb_guild_boss_guild` |
+| 91302 | `req_guild_boss_leave_map` | 已派发 | etf / `—` | `—` |
+| 91303 | `req_guild_boss_use_skill` | 已派发 | protobuf / `pb_guild_boss_use_skill_req` | `pb_guild_boss_use_skill_back` |
+| 91304 | `req_claim_boss_dmg_award` | 已派发 | protobuf / `pb_req_claim_boss_dmg_award` | `pb_res_to_client` |
+| 91305 | `req_batch_claim_boss_award` | 已派发 | protobuf / `pb_req_batch_claim_boss_award` | `pb_res_to_client` |
+| 91306 | `req_claim_boss_use_skill_award` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 91307 | `req_claim_daily_free_skill_item` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 91308 | `req_claim_guild_boss_box` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 91309 | `req_join_guild_boss` | 已派发 | etf / `—` | `pb_res_join_guild_boss` |
+| 91310 | `req_claim_guild_boss_online_award` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 91311 | `req_buy_guild_boss_item` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 91312 | `req_guild_boss_guild_info` | 已派发 | etf / `—` | `—` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。角色伤害并非原服技能公式，Boss HP、奖励门槛、物品价格、冷却和排行榜口径均为本地策略；阶段推进、资源/领取故障回滚与数据库重开已由专项覆盖，未进入 APK 验收。
 
 ## SOC-GUILDJOINT：公会联合探索与资源争夺
 
-协议模块：`GuildJointCmd`。未路由 25；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildJointCmd`。服务端完成（25/25 已派发）：地图/门、怪物、箱子、矿脉、任务、先锋/焦点、单体战斗/取消、自动、排行与结算均有权威状态和幂等领取。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会联合探索与资源争夺”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-joint-service.mjs](../../../personal-server/game/guild-joint-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 91601 | `req_guild_joint_pick_box` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 91602 | `req_guild_joint_pick_monster` | 未路由 | etf / `—` | `pb_guild_joint_atk_monster` |
-| 91603 | `req_guild_joint_pick_door` | 未路由 | etf / `—` | `—` |
-| 91604 | `req_guild_joint_pick_lode` | 未路由 | etf / `—` | `pb_guild_joint_pick_lode_rsp` |
-| 91605 | `req_guild_joint_task` | 未路由 | etf / `—` | `pb_guild_joint_rev_task_rsp` |
-| 91606 | `req_guild_joint_rev_lode` | 未路由 | etf / `—` | `pb_guild_joint_rev_lode_rsp` |
-| 91607 | `req_get_role_rank` | 未路由 | etf / `—` | `pb_guild_role_rank_show_list` |
-| 91608 | `req_guild_joint_set_pioneer` | 未路由 | protobuf / `pb_guild_j_set_pioneer_req` | `pb_guild_j_pioneer_rsp` |
-| 91609 | `req_guild_joint_cancel_door` | 未路由 | etf / `—` | `—` |
-| 91610 | `req_guild_joint_set_focus` | 未路由 | etf / `—` | `—` |
-| 91611 | `req_guild_joint_fight_report` | 未路由 | etf / `—` | `pb_guild_j_report_rsp` |
-| 91612 | `req_guild_joint_get_info` | 未路由 | etf / `—` | `pb_guild_joint_enter_map_back` |
-| 91613 | `req_guild_joint_single_monster` | 未路由 | etf / `—` | `pb_guild_joint_role_map` |
-| 91614 | `req_guild_joint_single_box` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 91615 | `req_guild_joint_single_door` | 未路由 | etf / `—` | `pb_guild_joint_role_map` |
-| 91616 | `req_guild_joint_calc_door` | 未路由 | etf / `—` | `—` |
-| 91617 | `req_guild_joint_settle_rank` | 未路由 | etf / `—` | `—` |
-| 91618 | `req_guild_joint_enter_single` | 未路由 | etf / `—` | `pb_guild_joint_enter_map_back` |
-| 91619 | `req_guild_joint_single_settle` | 未路由 | etf / `—` | `pb_guild_joint_role_map` |
-| 91620 | `req_guild_joint_single_cancel` | 未路由 | etf / `—` | `pb_guild_joint_role_map` |
-| 91621 | `req_guild_joint_share` | 未路由 | etf / `—` | `—` |
-| 91622 | `req_guild_joint_cancel_monster` | 未路由 | etf / `—` | `—` |
-| 91623 | `req_guild_joint_calc_monster` | 未路由 | etf / `—` | `—` |
-| 91624 | `req_guild_joint_set_auto` | 未路由 | etf / `—` | `pb_guild_joint_guild` |
-| 91625 | `req_guild_joint_one_get` | 未路由 | protobuf / `pb_guild_joint_rev_one_get_req` | `pb_guild_joint_rev_task_rsp` |
+| 91601 | `req_guild_joint_pick_box` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 91602 | `req_guild_joint_pick_monster` | 已派发 | etf / `—` | `pb_guild_joint_atk_monster` |
+| 91603 | `req_guild_joint_pick_door` | 已派发 | etf / `—` | `—` |
+| 91604 | `req_guild_joint_pick_lode` | 已派发 | etf / `—` | `pb_guild_joint_pick_lode_rsp` |
+| 91605 | `req_guild_joint_task` | 已派发 | etf / `—` | `pb_guild_joint_rev_task_rsp` |
+| 91606 | `req_guild_joint_rev_lode` | 已派发 | etf / `—` | `pb_guild_joint_rev_lode_rsp` |
+| 91607 | `req_get_role_rank` | 已派发 | etf / `—` | `pb_guild_role_rank_show_list` |
+| 91608 | `req_guild_joint_set_pioneer` | 已派发 | protobuf / `pb_guild_j_set_pioneer_req` | `pb_guild_j_pioneer_rsp` |
+| 91609 | `req_guild_joint_cancel_door` | 已派发 | etf / `—` | `—` |
+| 91610 | `req_guild_joint_set_focus` | 已派发 | etf / `—` | `—` |
+| 91611 | `req_guild_joint_fight_report` | 已派发 | etf / `—` | `pb_guild_j_report_rsp` |
+| 91612 | `req_guild_joint_get_info` | 已派发 | etf / `—` | `pb_guild_joint_enter_map_back` |
+| 91613 | `req_guild_joint_single_monster` | 已派发 | etf / `—` | `pb_guild_joint_role_map` |
+| 91614 | `req_guild_joint_single_box` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 91615 | `req_guild_joint_single_door` | 已派发 | etf / `—` | `pb_guild_joint_role_map` |
+| 91616 | `req_guild_joint_calc_door` | 已派发 | etf / `—` | `—` |
+| 91617 | `req_guild_joint_settle_rank` | 已派发 | etf / `—` | `—` |
+| 91618 | `req_guild_joint_enter_single` | 已派发 | etf / `—` | `pb_guild_joint_enter_map_back` |
+| 91619 | `req_guild_joint_single_settle` | 已派发 | etf / `—` | `pb_guild_joint_role_map` |
+| 91620 | `req_guild_joint_single_cancel` | 已派发 | etf / `—` | `pb_guild_joint_role_map` |
+| 91621 | `req_guild_joint_share` | 已派发 | etf / `—` | `—` |
+| 91622 | `req_guild_joint_cancel_monster` | 已派发 | etf / `—` | `—` |
+| 91623 | `req_guild_joint_calc_monster` | 已派发 | etf / `—` | `—` |
+| 91624 | `req_guild_joint_set_auto` | 已派发 | etf / `—` | `pb_guild_joint_guild` |
+| 91625 | `req_guild_joint_one_get` | 已派发 | protobuf / `pb_guild_joint_rev_one_get_req` | `pb_guild_joint_rev_task_rsp` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。怪物/门 HP、周期、箱子与排名奖励为本地策略；当前以阵容力量缩放伤害并维护公会/角色 JSON 状态，原服多人并发分配和跨服争夺规则未取得，未进入 APK 验收。
 
 ## SOC-GUILDRUNESTONE：公会符石穿脱与合成
 
-协议模块：`GuildRuneStoneCmd`。未路由 3；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildRuneStoneCmd`。服务端完成（3/3 已派发）：穿戴、卸下和合成直接消费/产出真实符石道具，并持久化槽位。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会符石穿脱与合成”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-rune-stone-service.mjs](../../../personal-server/game/guild-rune-stone-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 92701 | `req_guild_rune_stone_take_on` | 未路由 | protobuf / `pb_guild_rune_stone_take_on_req` | `pb_res_to_client` |
-| 92702 | `req_guild_rune_stone_take_off` | 未路由 | protobuf / `pb_guild_rune_stone_take_off_req` | `pb_res_to_client` |
-| 92703 | `req_guild_rune_stone_compose` | 未路由 | protobuf / `pb_guild_rune_stone_compose_req` | `pb_res_to_client` |
+| 92701 | `req_guild_rune_stone_take_on` | 已派发 | protobuf / `pb_guild_rune_stone_take_on_req` | `pb_res_to_client` |
+| 92702 | `req_guild_rune_stone_take_off` | 已派发 | protobuf / `pb_guild_rune_stone_take_off_req` | `pb_res_to_client` |
+| 92703 | `req_guild_rune_stone_compose` | 已派发 | protobuf / `pb_guild_rune_stone_compose_req` | `pb_res_to_client` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。合成比例、槽位上限和错误码为本地策略；真实公会符石行按来源/目标 tid 校验，未取得原服组合表和 APK 操作证据。
 
 ## SOC-GUILDGVG：公会 GVG 地图、矿点与据点争夺
 
-协议模块：`GuildGVGCmd`。未路由 18；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildGVGCmd`。服务端完成（18/18 已派发）：箱子、矿脉、怪物、区块、据点/PVP、防守、焦点、任务、传送门及取消/撤离均进入地图状态机。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会 GVG 地图、矿点与据点争夺”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-gvg-service.mjs](../../../personal-server/game/guild-gvg-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 97001 | `req_guild_gvg_pick_box` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 97002 | `req_guild_gvg_pick_lode` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97003 | `req_guild_gvg_attack_lode` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97004 | `req_guild_gvg_rev_lode` | 未路由 | etf / `—` | `—` |
-| 97005 | `req_guild_gvg_pick_monster` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97006 | `req_guild_gvg_rev_monster` | 未路由 | etf / `—` | `—` |
-| 97007 | `req_guild_gvg_pick_block` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97008 | `req_guild_gvg_pick_hold` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97009 | `req_guild_gvg_pvp` | 未路由 | etf / `—` | `—` |
-| 97010 | `req_guild_gvg_defense_hold` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97011 | `req_guild_gvg_focus` | 未路由 | etf / `—` | `—` |
-| 97012 | `req_guild_gvg_task` | 未路由 | etf / `—` | `—` |
-| 97013 | `req_guild_gvg_unlock_portal` | 未路由 | etf / `—` | `—` |
-| 97014 | `req_guild_gvg_portal` | 未路由 | protobuf / `pb_guild_gvg_portal_req` | `—` |
-| 97015 | `req_guild_gvg_cancel_block` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97016 | `req_guild_gvg_leave_hold` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97017 | `req_guild_gvg_cancel_monster` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
-| 97018 | `req_guild_gvg_leave_hold_fight` | 未路由 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97001 | `req_guild_gvg_pick_box` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 97002 | `req_guild_gvg_pick_lode` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97003 | `req_guild_gvg_attack_lode` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97004 | `req_guild_gvg_rev_lode` | 已派发 | etf / `—` | `—` |
+| 97005 | `req_guild_gvg_pick_monster` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97006 | `req_guild_gvg_rev_monster` | 已派发 | etf / `—` | `—` |
+| 97007 | `req_guild_gvg_pick_block` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97008 | `req_guild_gvg_pick_hold` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97009 | `req_guild_gvg_pvp` | 已派发 | etf / `—` | `—` |
+| 97010 | `req_guild_gvg_defense_hold` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97011 | `req_guild_gvg_focus` | 已派发 | etf / `—` | `—` |
+| 97012 | `req_guild_gvg_task` | 已派发 | etf / `—` | `—` |
+| 97013 | `req_guild_gvg_unlock_portal` | 已派发 | etf / `—` | `—` |
+| 97014 | `req_guild_gvg_portal` | 已派发 | protobuf / `pb_guild_gvg_portal_req` | `—` |
+| 97015 | `req_guild_gvg_cancel_block` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97016 | `req_guild_gvg_leave_hold` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97017 | `req_guild_gvg_cancel_monster` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
+| 97018 | `req_guild_gvg_leave_hold_fight` | 已派发 | protobuf / `pb_guild_gvg_req` | `—` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。地图节点、HP、占领时限、战力和奖励均按本地策略；开放周期、跨服匹配、真实公会对手和并发战斗未复现，未进入 APK 验收。
 
 ## SOC-GUILDVOTE：公会投票
 
-协议模块：`GuildVoteCmd`。未路由 2；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildVoteCmd`。服务端完成（2/2 已派发）：发起投票、候选人状态、单次投票、结果回包和周期奖励均持久化。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会投票”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-vote-service.mjs](../../../personal-server/game/guild-vote-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 98702 | `req_guild_vote_vote` | 未路由 | protobuf / `pb_guild_vote_req` | `pb_guild_vote_info` |
-| 99701 | `req_guild_vote_start` | 未路由 | etf / `—` | `pb_guild_vote_info` |
+| 98702 | `req_guild_vote_vote` | 已派发 | protobuf / `pb_guild_vote_req` | `pb_guild_vote_info` |
+| 99701 | `req_guild_vote_start` | 已派发 | etf / `—` | `pb_guild_vote_info` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。候选来源、投票限额、持续时间和奖励为本地策略；请求的 ETF 参数次序和原服多成员结算语义未取得，未进入 APK 验收。
 
 ## SOC-SLGMAP：SLG 地图视野与进出
 
-协议模块：`SlgMapCmd`。未路由 3；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`SlgMapCmd`。服务端完成（3/3 已派发）：区块视野、进入和离开写入角色地图会话，并对单次区块数量设限。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“SLG 地图视野与进出”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-slg-map-service.mjs](../../../personal-server/game/guild-slg-map-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 99100 | `req_slg_map_add_block_view` | 未路由 | protobuf / `pb_slg_map_view_req` | `—` |
-| 99101 | `req_slg_map_enter` | 未路由 | etf / `—` | `—` |
-| 99102 | `req_slg_map_leave` | 未路由 | etf / `—` | `—` |
+| 99100 | `req_slg_map_add_block_view` | 已派发 | protobuf / `pb_slg_map_view_req` | `—` |
+| 99101 | `req_slg_map_enter` | 已派发 | etf / `—` | `—` |
+| 99102 | `req_slg_map_leave` | 已派发 | etf / `—` | `—` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
 
+交付状态：服务端完成，证据缺口保留。视野上限和会话生命周期为本地策略；SLG 大地图权威坐标、推送和跨服可见性未取得，未进入 APK 验收。
+
 ## SOC-GUILDNATION：公会国战、建造、兵种、科技、行军与据点
 
-协议模块：`GuildNationCmd`。未路由 64；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 1。
+协议模块：`GuildNationCmd`。服务端完成（64/64 已派发）：建造、兵种、科技、城防、据点、任务、行军加速、集结、旗标、援助、报告与奖励均进入国战状态机；现有 `99229` 继续归原助力列表服务。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会国战、建造、兵种、科技、行军与据点”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[guild-nation-assist-service.mjs](../../../personal-server/game/guild-nation-assist-service.mjs)。
+代码起点：[guild-nation-service.mjs](../../../personal-server/game/guild-nation-service.mjs)；`99229` 仍为 [guild-nation-assist-service.mjs](../../../personal-server/game/guild-nation-assist-service.mjs)。
 
 已确认的附加缺口：
 
-- 99229 可读 SQLite 助力列表，不是国战已实现；其余 64 条命令未路由，建造/兵种/科技/行军/城防/据点/集结及周期结算均需实现。
+- 本次 64 条缺失国战命令已统一派发；99229 不迁入新服务，避免出现两个所有者。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 99200 | `req_guild_nation_go_attack` | 未路由 | protobuf / `pb_guild_nation_go_attack_req` | `pb_guild_nation_go_attack_back` |
-| 99201 | `req_guild_nation_role_build` | 未路由 | protobuf / `pb_guild_nation_up_level_req` | `pb_guild_nation_build_change_back` |
-| 99202 | `req_guild_nation_spawn_soldier` | 未路由 | protobuf / `pb_guild_nation_spawn_soldier_req` | `pb_guild_nation_up_soldier_back` |
-| 99203 | `req_guild_nation_soldier_up` | 未路由 | protobuf / `pb_guild_nation_up_soldier_req` | `pb_guild_nation_up_soldier_back` |
-| 99204 | `req_guild_nation_queue_unlock` | 未路由 | etf / `—` | `pb_guild_nation_build_queue_change_back` |
-| 99205 | `req_guild_nation_build_cancel` | 未路由 | etf / `—` | `pb_guild_nation_build_change_back` |
-| 99206 | `req_guild_nation_gem_acc` | 未路由 | etf / `—` | `pb_guild_nation_build_change_back` |
-| 99207 | `req_guild_nation_item_acc` | 未路由 | protobuf / `pb_guild_nation_build_item_acc_req` | `pb_guild_nation_build_change_back` |
-| 99208 | `req_guild_nation_read_report` | 未路由 | protobuf / `pb_guild_nation_read_report_req` | `pb_guild_nation_report_back` |
-| 99209 | `req_guild_nation_delete_report` | 未路由 | etf / `—` | `—` |
-| 99210 | `req_guild_nation_recv_report` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 99211 | `req_guild_nation_report_list` | 未路由 | etf / `—` | `pb_guild_nation_report_list` |
-| 99212 | `req_guild_nation_technology_study` | 未路由 | protobuf / `pb_guild_nation_study_req` | `pb_guild_nation_study_change_back` |
-| 99213 | `req_guild_nation_cancel_study` | 未路由 | etf / `—` | `pb_guild_nation_study_change_back` |
-| 99214 | `req_guild_nation_study_gem_acc` | 未路由 | etf / `—` | `pb_guild_nation_study_change_back` |
-| 99215 | `req_guild_nation_study_item_acc` | 未路由 | protobuf / `pb_guild_nation_study_speed_req` | `pb_guild_nation_study_change_back` |
-| 99216 | `req_guild_nation_finish_study` | 未路由 | etf / `—` | `pb_guild_nation_finish_study_back` |
-| 99217 | `req_guild_nation_update_red_dot` | 未路由 | etf / `—` | `—` |
-| 99218 | `req_guild_nation_team_recall` | 未路由 | etf / `—` | `—` |
-| 99219 | `req_guild_nation_soldier_cancel` | 未路由 | etf / `—` | `pb_guild_nation_up_soldier_back` |
-| 99220 | `req_guild_nation_defense_use_protect` | 未路由 | etf / `—` | `pb_guild_nation_use_protect_back` |
-| 99221 | `req_guild_nation_defense_extinguish` | 未路由 | etf / `—` | `pb_guild_nation_extinguish_back` |
-| 99222 | `req_guild_nation_defense_repair_city` | 未路由 | etf / `—` | `pb_guild_nation_repair_city_back` |
-| 99223 | `req_guild_nation_build_free_acc` | 未路由 | etf / `—` | `pb_guild_nation_build_list` |
-| 99224 | `req_guild_nation_assign_soldier` | 未路由 | protobuf / `pb_guild_nation_soldier_line_up_req` | `pb_guild_nation_soldier_line_up_back` |
-| 99225 | `req_guild_nation_soldier_gem_acc` | 未路由 | etf / `—` | `pb_guild_nation_up_soldier_back` |
-| 99226 | `req_guild_nation_soldier_item_acc` | 未路由 | protobuf / `pb_guild_nation_build_item_acc_req` | `pb_guild_nation_up_soldier_back` |
-| 99227 | `req_guild_nation_donate_guild_tech` | 未路由 | protobuf / `pb_guild_nation_team_tech_donation_req` | `pb_guild_nation_team_tech_donation_back` |
-| 99228 | `req_guild_nation_power` | 未路由 | etf / `—` | `pb_guild_nation_power_info_rsp` |
-| 99230 | `req_guild_nation_send_assist` | 未路由 | protobuf / `pb_guild_nation_assist_rsp` | `—` |
-| 99231 | `req_guild_nation_assist` | 未路由 | protobuf / `pb_guild_nation_assist_list` | `pb_guild_nation_assist_list_back` |
-| 99232 | `req_guild_nation_soldier_item_raise_num` | 未路由 | protobuf / `pb_res_obj` | `pb_guild_nation_soldier_item_raise_num_back` |
-| 99233 | `req_guild_nation_recommend_guild_tech` | 未路由 | etf / `—` | `pb_guild_nation_team_tech_recommend_back` |
-| 99234 | `req_guild_nation_move_guild_base` | 未路由 | etf / `—` | `pb_guild_nation_guild` |
-| 99235 | `req_guild_nation_move_role_base` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 99236 | `req_guild_nation_defense_defense_return` | 未路由 | protobuf / `pb_guild_nation_help_defense_return_req` | `—` |
-| 99237 | `req_guild_nation_repair_city_acc_item` | 未路由 | protobuf / `pb_guild_nation_repair_city_acc_item_req` | `pb_guild_nation_repair_city_back` |
-| 99238 | `req_guild_nation_repair_city_acc_gem` | 未路由 | etf / `—` | `pb_guild_nation_repair_city_back` |
-| 99239 | `req_guild_nation_repair_cancel` | 未路由 | etf / `—` | `pb_guild_nation_repair_city_back` |
-| 99240 | `req_guild_nation_finish_task` | 未路由 | etf / `—` | `pb_guild_nation_task_finish_back` |
-| 99241 | `req_guild_nation_finish_phase_task` | 未路由 | etf / `—` | `pb_guild_nation_task_finish_back` |
-| 99242 | `req_guild_nation_other_role_info` | 未路由 | etf / `—` | `pb_guild_nation_role` |
-| 99243 | `req_guild_nation_march_acc` | 未路由 | protobuf / `pb_guild_nation_march_acc_req` | `pb_guild_nation_march_acc_back` |
-| 99244 | `req_guild_nation_repair_map_core` | 未路由 | etf / `—` | `pb_guild_nation_repair_map_back` |
-| 99245 | `req_guild_nation_map_obj_search` | 未路由 | protobuf / `pb_guild_nation_search_req` | `pb_guild_nation_search_back` |
-| 99246 | `req_guild_nation_call_muster` | 未路由 | protobuf / `pb_guild_nation_call_muster_req` | `pb_guild_nation_call_muster_back` |
-| 99247 | `req_guild_nation_answer_muster` | 未路由 | protobuf / `pb_guild_nation_answer_muster_req` | `pb_guild_nation_answer_muster_back` |
-| 99248 | `req_guild_nation_set_flag` | 未路由 | etf / `—` | `pb_guild_nation_guild_res_to_client` |
-| 99249 | `req_guild_nation_move_flag` | 未路由 | protobuf / `pb_guild_nation_move_flag_req` | `pb_guild_nation_guild_res_to_client` |
-| 99250 | `req_guild_nation_stronghold_award` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 99251 | `req_guild_nation_stronghold_honor_award` | 未路由 | protobuf / `pb_guild_nation_stronghold_honor_req` | `pb_res_to_client` |
-| 99252 | `req_guild_nation_stronghold_capture_award` | 未路由 | protobuf / `pb_guild_nation_stronghold_capture_record` | `pb_guild_nation_stronghold_capture_record` |
-| 99253 | `req_guild_nation_muster_info_list` | 未路由 | etf / `—` | `pb_guild_nation_muster_info_list_back` |
-| 99254 | `req_guild_nation_stronghold_sign` | 未路由 | etf / `—` | `pb_guild_nation_stronghold_sign_ret` |
-| 99255 | `req_guild_nation_cancle_muster` | 未路由 | protobuf / `pb_guild_nation_cancel_muster_req` | `pb_guild_nation_cancel_muster_back` |
-| 99256 | `req_guild_nation_up_lv_guild_tech` | 未路由 | etf / `—` | `pb_guild_nation_guild_tech_up_back` |
-| 99257 | `req_guild_nation_study_gem_finish` | 未路由 | etf / `—` | `pb_guild_nation_finish_study_back` |
-| 99258 | `req_guild_nation_stronghold_battle_award` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 99259 | `req_guild_nation_map_obj_info` | 未路由 | etf / `—` | `—` |
-| 99260 | `req_guild_nation_free_finish_study` | 未路由 | etf / `—` | `pb_guild_nation_finish_study_back` |
-| 99261 | `req_guild_nation_guild_battle_list` | 未路由 | etf / `—` | `pb_guild_nation_battle_guild` |
-| 99262 | `req_guild_nation_hold_map_obj_info` | 未路由 | etf / `—` | `pb_guild_nation_stronghold` |
-| 99263 | `req_guild_nation_hold_sign_num_info` | 未路由 | etf / `—` | `pb_guild_nation_stronghold_sign_num` |
-| 99264 | `req_guild_nation_guild_base_return` | 未路由 | protobuf / `pb_guild_nation_help_defense_return_req` | `—` |
+| 99200 | `req_guild_nation_go_attack` | 已派发 | protobuf / `pb_guild_nation_go_attack_req` | `pb_guild_nation_go_attack_back` |
+| 99201 | `req_guild_nation_role_build` | 已派发 | protobuf / `pb_guild_nation_up_level_req` | `pb_guild_nation_build_change_back` |
+| 99202 | `req_guild_nation_spawn_soldier` | 已派发 | protobuf / `pb_guild_nation_spawn_soldier_req` | `pb_guild_nation_up_soldier_back` |
+| 99203 | `req_guild_nation_soldier_up` | 已派发 | protobuf / `pb_guild_nation_up_soldier_req` | `pb_guild_nation_up_soldier_back` |
+| 99204 | `req_guild_nation_queue_unlock` | 已派发 | etf / `—` | `pb_guild_nation_build_queue_change_back` |
+| 99205 | `req_guild_nation_build_cancel` | 已派发 | etf / `—` | `pb_guild_nation_build_change_back` |
+| 99206 | `req_guild_nation_gem_acc` | 已派发 | etf / `—` | `pb_guild_nation_build_change_back` |
+| 99207 | `req_guild_nation_item_acc` | 已派发 | protobuf / `pb_guild_nation_build_item_acc_req` | `pb_guild_nation_build_change_back` |
+| 99208 | `req_guild_nation_read_report` | 已派发 | protobuf / `pb_guild_nation_read_report_req` | `pb_guild_nation_report_back` |
+| 99209 | `req_guild_nation_delete_report` | 已派发 | etf / `—` | `—` |
+| 99210 | `req_guild_nation_recv_report` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 99211 | `req_guild_nation_report_list` | 已派发 | etf / `—` | `pb_guild_nation_report_list` |
+| 99212 | `req_guild_nation_technology_study` | 已派发 | protobuf / `pb_guild_nation_study_req` | `pb_guild_nation_study_change_back` |
+| 99213 | `req_guild_nation_cancel_study` | 已派发 | etf / `—` | `pb_guild_nation_study_change_back` |
+| 99214 | `req_guild_nation_study_gem_acc` | 已派发 | etf / `—` | `pb_guild_nation_study_change_back` |
+| 99215 | `req_guild_nation_study_item_acc` | 已派发 | protobuf / `pb_guild_nation_study_speed_req` | `pb_guild_nation_study_change_back` |
+| 99216 | `req_guild_nation_finish_study` | 已派发 | etf / `—` | `pb_guild_nation_finish_study_back` |
+| 99217 | `req_guild_nation_update_red_dot` | 已派发 | etf / `—` | `—` |
+| 99218 | `req_guild_nation_team_recall` | 已派发 | etf / `—` | `—` |
+| 99219 | `req_guild_nation_soldier_cancel` | 已派发 | etf / `—` | `pb_guild_nation_up_soldier_back` |
+| 99220 | `req_guild_nation_defense_use_protect` | 已派发 | etf / `—` | `pb_guild_nation_use_protect_back` |
+| 99221 | `req_guild_nation_defense_extinguish` | 已派发 | etf / `—` | `pb_guild_nation_extinguish_back` |
+| 99222 | `req_guild_nation_defense_repair_city` | 已派发 | etf / `—` | `pb_guild_nation_repair_city_back` |
+| 99223 | `req_guild_nation_build_free_acc` | 已派发 | etf / `—` | `pb_guild_nation_build_list` |
+| 99224 | `req_guild_nation_assign_soldier` | 已派发 | protobuf / `pb_guild_nation_soldier_line_up_req` | `pb_guild_nation_soldier_line_up_back` |
+| 99225 | `req_guild_nation_soldier_gem_acc` | 已派发 | etf / `—` | `pb_guild_nation_up_soldier_back` |
+| 99226 | `req_guild_nation_soldier_item_acc` | 已派发 | protobuf / `pb_guild_nation_build_item_acc_req` | `pb_guild_nation_up_soldier_back` |
+| 99227 | `req_guild_nation_donate_guild_tech` | 已派发 | protobuf / `pb_guild_nation_team_tech_donation_req` | `pb_guild_nation_team_tech_donation_back` |
+| 99228 | `req_guild_nation_power` | 已派发 | etf / `—` | `pb_guild_nation_power_info_rsp` |
+| 99230 | `req_guild_nation_send_assist` | 已派发 | protobuf / `pb_guild_nation_assist_rsp` | `—` |
+| 99231 | `req_guild_nation_assist` | 已派发 | protobuf / `pb_guild_nation_assist_list` | `pb_guild_nation_assist_list_back` |
+| 99232 | `req_guild_nation_soldier_item_raise_num` | 已派发 | protobuf / `pb_res_obj` | `pb_guild_nation_soldier_item_raise_num_back` |
+| 99233 | `req_guild_nation_recommend_guild_tech` | 已派发 | etf / `—` | `pb_guild_nation_team_tech_recommend_back` |
+| 99234 | `req_guild_nation_move_guild_base` | 已派发 | etf / `—` | `pb_guild_nation_guild` |
+| 99235 | `req_guild_nation_move_role_base` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 99236 | `req_guild_nation_defense_defense_return` | 已派发 | protobuf / `pb_guild_nation_help_defense_return_req` | `—` |
+| 99237 | `req_guild_nation_repair_city_acc_item` | 已派发 | protobuf / `pb_guild_nation_repair_city_acc_item_req` | `pb_guild_nation_repair_city_back` |
+| 99238 | `req_guild_nation_repair_city_acc_gem` | 已派发 | etf / `—` | `pb_guild_nation_repair_city_back` |
+| 99239 | `req_guild_nation_repair_cancel` | 已派发 | etf / `—` | `pb_guild_nation_repair_city_back` |
+| 99240 | `req_guild_nation_finish_task` | 已派发 | etf / `—` | `pb_guild_nation_task_finish_back` |
+| 99241 | `req_guild_nation_finish_phase_task` | 已派发 | etf / `—` | `pb_guild_nation_task_finish_back` |
+| 99242 | `req_guild_nation_other_role_info` | 已派发 | etf / `—` | `pb_guild_nation_role` |
+| 99243 | `req_guild_nation_march_acc` | 已派发 | protobuf / `pb_guild_nation_march_acc_req` | `pb_guild_nation_march_acc_back` |
+| 99244 | `req_guild_nation_repair_map_core` | 已派发 | etf / `—` | `pb_guild_nation_repair_map_back` |
+| 99245 | `req_guild_nation_map_obj_search` | 已派发 | protobuf / `pb_guild_nation_search_req` | `pb_guild_nation_search_back` |
+| 99246 | `req_guild_nation_call_muster` | 已派发 | protobuf / `pb_guild_nation_call_muster_req` | `pb_guild_nation_call_muster_back` |
+| 99247 | `req_guild_nation_answer_muster` | 已派发 | protobuf / `pb_guild_nation_answer_muster_req` | `pb_guild_nation_answer_muster_back` |
+| 99248 | `req_guild_nation_set_flag` | 已派发 | etf / `—` | `pb_guild_nation_guild_res_to_client` |
+| 99249 | `req_guild_nation_move_flag` | 已派发 | protobuf / `pb_guild_nation_move_flag_req` | `pb_guild_nation_guild_res_to_client` |
+| 99250 | `req_guild_nation_stronghold_award` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 99251 | `req_guild_nation_stronghold_honor_award` | 已派发 | protobuf / `pb_guild_nation_stronghold_honor_req` | `pb_res_to_client` |
+| 99252 | `req_guild_nation_stronghold_capture_award` | 已派发 | protobuf / `pb_guild_nation_stronghold_capture_record` | `pb_guild_nation_stronghold_capture_record` |
+| 99253 | `req_guild_nation_muster_info_list` | 已派发 | etf / `—` | `pb_guild_nation_muster_info_list_back` |
+| 99254 | `req_guild_nation_stronghold_sign` | 已派发 | etf / `—` | `pb_guild_nation_stronghold_sign_ret` |
+| 99255 | `req_guild_nation_cancle_muster` | 已派发 | protobuf / `pb_guild_nation_cancel_muster_req` | `pb_guild_nation_cancel_muster_back` |
+| 99256 | `req_guild_nation_up_lv_guild_tech` | 已派发 | etf / `—` | `pb_guild_nation_guild_tech_up_back` |
+| 99257 | `req_guild_nation_study_gem_finish` | 已派发 | etf / `—` | `pb_guild_nation_finish_study_back` |
+| 99258 | `req_guild_nation_stronghold_battle_award` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 99259 | `req_guild_nation_map_obj_info` | 已派发 | etf / `—` | `—` |
+| 99260 | `req_guild_nation_free_finish_study` | 已派发 | etf / `—` | `pb_guild_nation_finish_study_back` |
+| 99261 | `req_guild_nation_guild_battle_list` | 已派发 | etf / `—` | `pb_guild_nation_battle_guild` |
+| 99262 | `req_guild_nation_hold_map_obj_info` | 已派发 | etf / `—` | `pb_guild_nation_stronghold` |
+| 99263 | `req_guild_nation_hold_sign_num_info` | 已派发 | etf / `—` | `pb_guild_nation_stronghold_sign_num` |
+| 99264 | `req_guild_nation_guild_base_return` | 已派发 | protobuf / `pb_guild_nation_help_defense_return_req` | `—` |
 
 已有处理路径（必须回归）：`99229 req_guild_nation_get_assist_list`。
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
 
+交付状态：服务端完成，证据缺口保留。建造/科技/行军时间、成本、HP、兵种和奖励为本地策略；原服国战赛季地图、联盟关系和跨服集结没有录制证据，当前为服务端状态机与真实资源事务，未进入 APK 验收。
+
 ## SOC-GUILDBARGAIN：公会砍价
 
-协议模块：`GuildBargainCmd`。未路由 4；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildBargainCmd`。服务端完成（4/4 已派发）：活动信息、砍价次数/价格、购买与未砍价名单均持久化，购买走真实资源事务。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会砍价”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-bargain-service.mjs](../../../personal-server/game/guild-bargain-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 101401 | `req_guild_bargain_info` | 未路由 | etf / `—` | `pb_guild_bargain_get_info_rsp` |
-| 101402 | `req_guild_bargain` | 未路由 | protobuf / `pb_guild_bargain_req` | `pb_guild_bargain_rsp` |
-| 101403 | `req_guild_bargain_buy` | 未路由 | protobuf / `pb_guild_bargain_buy_req` | `pb_guild_bargain_buy_rsp` |
-| 101404 | `req_guild_not_bargain_list` | 未路由 | protobuf / `pb_guild_not_bargain_list_req` | `pb_guild_not_bargain_list_rsp` |
+| 101401 | `req_guild_bargain_info` | 已派发 | etf / `—` | `pb_guild_bargain_get_info_rsp` |
+| 101402 | `req_guild_bargain` | 已派发 | protobuf / `pb_guild_bargain_req` | `pb_guild_bargain_rsp` |
+| 101403 | `req_guild_bargain_buy` | 已派发 | protobuf / `pb_guild_bargain_buy_req` | `pb_guild_bargain_buy_rsp` |
+| 101404 | `req_guild_not_bargain_list` | 已派发 | protobuf / `pb_guild_not_bargain_list_req` | `pb_guild_not_bargain_list_rsp` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。起价、步长、底价、人数上限和商品为本地策略；活动排期、跨成员实时价格推送与购买限次未取得，未进入 APK 验收。
 
 ## SOC-GUILDEXPEDITION：公会远征、宣战、鼓舞、竞猜与地图排名
 
-协议模块：`GuildExpeditionCmd`。未路由 15；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildExpeditionCmd`。服务端完成（15/15 已派发）：服务器信息、宣战、鼓舞、战报、三类排名、竞猜、城市/建筑位置、点赞、公会信息、战斗与城市列表均有真实状态。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会远征、宣战、鼓舞、竞猜与地图排名”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-expedition-service.mjs](../../../personal-server/game/guild-expedition-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 101601 | `req_guild_expedition_server_info` | 未路由 | etf / `—` | `pb_guild_expedition_info` |
-| 101602 | `req_guild_expedition_declare` | 未路由 | etf / `—` | `—` |
-| 101603 | `req_guild_expedition_inspire` | 未路由 | etf / `—` | `pb_guild_expedition_inspire_back` |
-| 101604 | `req_guild_expedition_fight_report` | 未路由 | etf / `—` | `pb_guild_expedition_req_report_back` |
-| 101605 | `req_guild_expedition_city_rank` | 未路由 | etf / `—` | `pb_guild_expedition_city_guild_rank` |
-| 101606 | `req_guild_expedition_guild_inner_rank` | 未路由 | etf / `—` | `pb_guild_expedition_city_role_rank` |
-| 101607 | `req_guild_expedition_build_rank` | 未路由 | etf / `—` | `pb_guild_expedition_build_guild_rank` |
-| 101608 | `req_guild_expedition_guess_info` | 未路由 | etf / `—` | `pb_guild_expedition_guess_info_back` |
-| 101609 | `req_guild_expedition_guess` | 未路由 | protobuf / `pb_guild_expedition_guess_req` | `pb_guild_expedition_guess_back` |
-| 101610 | `req_guild_expedition_city_pos_list` | 未路由 | etf / `—` | `pb_guild_expedition_pos_list` |
-| 101611 | `req_guild_expedition_build_pos_list` | 未路由 | etf / `—` | `pb_guild_expedition_pos_list` |
-| 101612 | `req_guild_expedition_like` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 101613 | `req_guild_expedition_guild_info` | 未路由 | etf / `—` | `pb_guild_expedition_guild` |
-| 101614 | `req_guild_expedition_grass` | 未路由 | protobuf / `pb_guild_expedition_pos_fight_req` | `pb_guild_expedition_pos_fight_back` |
-| 101615 | `req_guild_expedition_city_info_list` | 未路由 | etf / `—` | `pb_guild_expedition_city_info_list` |
+| 101601 | `req_guild_expedition_server_info` | 已派发 | etf / `—` | `pb_guild_expedition_info` |
+| 101602 | `req_guild_expedition_declare` | 已派发 | etf / `—` | `—` |
+| 101603 | `req_guild_expedition_inspire` | 已派发 | etf / `—` | `pb_guild_expedition_inspire_back` |
+| 101604 | `req_guild_expedition_fight_report` | 已派发 | etf / `—` | `pb_guild_expedition_req_report_back` |
+| 101605 | `req_guild_expedition_city_rank` | 已派发 | etf / `—` | `pb_guild_expedition_city_guild_rank` |
+| 101606 | `req_guild_expedition_guild_inner_rank` | 已派发 | etf / `—` | `pb_guild_expedition_city_role_rank` |
+| 101607 | `req_guild_expedition_build_rank` | 已派发 | etf / `—` | `pb_guild_expedition_build_guild_rank` |
+| 101608 | `req_guild_expedition_guess_info` | 已派发 | etf / `—` | `pb_guild_expedition_guess_info_back` |
+| 101609 | `req_guild_expedition_guess` | 已派发 | protobuf / `pb_guild_expedition_guess_req` | `pb_guild_expedition_guess_back` |
+| 101610 | `req_guild_expedition_city_pos_list` | 已派发 | etf / `—` | `pb_guild_expedition_pos_list` |
+| 101611 | `req_guild_expedition_build_pos_list` | 已派发 | etf / `—` | `pb_guild_expedition_pos_list` |
+| 101612 | `req_guild_expedition_like` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 101613 | `req_guild_expedition_guild_info` | 已派发 | etf / `—` | `pb_guild_expedition_guild` |
+| 101614 | `req_guild_expedition_grass` | 已派发 | protobuf / `pb_guild_expedition_pos_fight_req` | `pb_guild_expedition_pos_fight_back` |
+| 101615 | `req_guild_expedition_city_info_list` | 已派发 | etf / `—` | `pb_guild_expedition_city_info_list` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。城市、轮次、竞猜赔率、消耗和排名为本地策略；跨服公会匹配、战报来源与最终赛季结算没有原服证据，未进入 APK 验收。
 
 ## SOC-CHANNELENTRY：频道入口业务
 
-协议模块：`ChannelEntryCmd`。未路由 0；明确拒绝 0；空结构/固定值/仅应答 1；有处理路径，需保持回归 0。
+协议模块：`ChannelEntryCmd`。服务端完成（1/1 已派发）：入口返回配置化开放状态、链接和时间窗，不再走通用空应答。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“频道入口业务”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)。
+代码起点：[channel-entry-service.mjs](../../../personal-server/game/channel-entry-service.mjs)。
 
 已确认的附加缺口：
 
-- 102801 只有入口确认，未建立频道会话/成员/消息；与 SOC-MSG 和 SOC-CHAT 联合交付。
+- 102801 已建立独立业务回包；频道成员与消息仍由 SOC-MSG/SOC-CHAT 负责。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 102801 | `req_channel_entry` | 空结构/固定值/仅应答：频道入口只应答 | etf / `—` | `pb_channel_entry` |
+| 102801 | `req_channel_entry` | 已派发 | etf / `—` | `pb_channel_entry` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。入口配置为本地策略；客户端路由到 SOC-MSG/SOC-CHAT 后的联合行为尚未 APK 验收。
 
 ## SOC-GUILDHUNT：公会狩猎参与与支援
 
-协议模块：`GuildHuntCmd`。未路由 3；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildHuntCmd`。服务端完成（3/3 已派发）：参与、支援消耗/奖励和服务器猎物状态均持久化。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会狩猎参与与支援”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-hunt-service.mjs](../../../personal-server/game/guild-hunt-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 103401 | `req_guild_hunt_attend` | 未路由 | etf / `—` | `—` |
-| 103402 | `req_guild_hunt_support` | 未路由 | etf / `—` | `pb_res_to_client` |
-| 103403 | `req_guild_hunt_server_info` | 未路由 | etf / `—` | `pb_guild_hunt_server` |
+| 103401 | `req_guild_hunt_attend` | 已派发 | etf / `—` | `—` |
+| 103402 | `req_guild_hunt_support` | 已派发 | etf / `—` | `pb_res_to_client` |
+| 103403 | `req_guild_hunt_server_info` | 已派发 | etf / `—` | `pb_guild_hunt_server` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。怪物 HP、轮次、支援价格与奖励为本地策略；原服开猎时间、成员并发伤害和推送未取得，未进入 APK 验收。
 
 ## SOC-GUILDCRUSADE：公会讨伐排名
 
-协议模块：`GuildCrusadeCmd`。未路由 1；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildCrusadeCmd`。`105805` 已显式派发；由于出货 protobuf 不存在回包定义 `pb_guild_crusade_rank_rsp`，服务返回业务错误码 5，不伪造排名。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会讨伐排名”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-crusade-service.mjs](../../../personal-server/game/guild-crusade-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 105805 | `req_guild_crusade_get_rank` | 未路由 | etf / `—` | `pb_guild_crusade_rank_rsp`（定义缺失） |
+| 105805 | `req_guild_crusade_get_rank` | 已派发 | etf / `—` | `pb_guild_crusade_rank_rsp`（定义缺失） |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：明确证据阻塞。请求只有 ETF 且无 schema，响应 schema 同时缺失；当前可保证命令不再落入通用“未实现”分支，但必须以 code 5 失败。取得回包描述、排名来源和真实帧后才可转为业务完成。
 
 ## SOC-GUILDAUCTION：公会拍卖、心愿与领取
 
-协议模块：`GuildAuctionCmd`。未路由 3；明确拒绝 0；空结构/固定值/仅应答 0；有处理路径，需保持回归 0。
+协议模块：`GuildAuctionCmd`。服务端完成（3/3 已派发）：竞价、心愿和领取/结算均持久化；竞价原子扣钻、回退前手、防止结算重复发奖。
 
 实施目标：补齐下表所列命令的真实业务、权威状态、资源/奖励和登录/推送同步，形成“公会拍卖、心愿与领取”可重登恢复的操作闭环。保留现有可用分支。
 
-代码起点：[gateway.mjs](../../../personal-server/game/gateway.mjs)（目前没有对应业务路由）。
+代码起点：[guild-auction-service.mjs](../../../personal-server/game/guild-auction-service.mjs)。
 
 | type | 命令 | 当前行为 | 请求编码 / schema | 响应 schema |
 | ---: | --- | --- | --- | --- |
-| 107601 | `req_guild_auction_bid` | 未路由 | protobuf / `req_guild_auction_bid` | `rsp_guild_auction_bid` |
-| 107602 | `req_guild_auction_wish` | 未路由 | protobuf / `pb_guild_auction_wish_req` | `rsp_guild_auction_wish` |
-| 107603 | `req_guild_auction_get` | 未路由 | etf / `—` | `guild_auction_get_req` |
+| 107601 | `req_guild_auction_bid` | 已派发 | protobuf / `req_guild_auction_bid` | `rsp_guild_auction_bid` |
+| 107602 | `req_guild_auction_wish` | 已派发 | protobuf / `pb_guild_auction_wish_req` | `rsp_guild_auction_wish` |
+| 107603 | `req_guild_auction_get` | 已派发 | etf / `—` | `guild_auction_get_req` |
 
 完成条件：本任务全部缺失分支有业务证据和真实状态转移；资源、状态、领取位与回包原子提交；通过专项服务、临时 TCP、SQLite 重开验证。单独记录未取得的规则/客户端验收，不以空包或固定结果销项。
+
+交付状态：服务端完成，证据缺口保留。拍卖商品、时长、起价、加价与分红为本地策略；原服结算时刻、多人并发竞拍和跨服聚合未取得，未进入 APK 验收。

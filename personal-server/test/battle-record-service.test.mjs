@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameCodec } from '../protocol/game-codec.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
-import { createBattleRecordService, REPORT_SHARE_REFUSAL } from '../game/battle-record-service.mjs';
+import { createBattleRecordService } from '../game/battle-record-service.mjs';
 
 const codec = createGameCodec();
 const FIXED_NOW = 1794000000000;
@@ -71,10 +71,18 @@ test('207-style recordPass is listed by 211, voted over 212 and persists across 
   assert.equal(Number(reopened.pass_info_list[0].vote_info.down_vote ?? 0), 0);
 });
 
-test('205 share_report fails closed and 211 rejects malformed ids', t => {
+test('205 share_report acknowledges with an empty frame and 211 rejects malformed ids', t => {
   const env = setup(t);
   const service = env.open();
-  assert.throws(() => service.execute(205, { fight_id: '1', fight_type: 1 }), new RegExp(REPORT_SHARE_REFUSAL.slice(0, 24)));
+  const request = codec.unpack('pb_share_report', codec.pack('pb_share_report', { fight_id: '7700120201', fight_type: 1 }));
+  const shared = service.execute(205, request);
+  assert.equal(shared.value.shared, true);
+  assert.equal(String(shared.value.fightId), '7700120201');
+  assert.equal(shared.value.fightType, 1);
+  assert.equal(shared.data.length, 0, '205 has no c2s_back schema: success is an empty frame');
+  assert.throws(() => service.execute(205, {}), /Invalid share report fight id/);
+  assert.throws(() => service.execute(205, { fight_id: 'not-a-number', fight_type: 1 }), /Invalid share report fight id/);
+  assert.throws(() => service.execute(205, { fight_id: '1', fight_type: -1 }), /Invalid share report fight type/);
   assert.throws(() => service.execute(211, { pass_tid: -1, id: 1 }), /Invalid pass record tid/);
   assert.throws(() => service.execute(211, { pass_tid: 1, id: -5 }), /Invalid pass record business id/);
 });
