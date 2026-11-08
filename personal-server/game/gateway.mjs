@@ -102,6 +102,8 @@ import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createOverallPvpService } from './overall-pvp-service.mjs';
 import { readOverallPvpTables } from '../config/overall-pvp-tables.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
+import { createPremiumActService } from './premium-act-service.mjs';
+import { readPremiumActTables } from '../config/premium-act-tables.mjs';
 import { createShopService } from './shop-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createPermitService } from './permit-service.mjs';
@@ -457,6 +459,9 @@ export function createLocalGame({
     }
   });
   const petActivity = createPetActivityService({ store, codec, tables, calendar, now: clock, logger });
+  const premiumAct = createPremiumActService({
+    store, codec, tables, premiumTables: readPremiumActTables(), calendar, now: clock, logger
+  });
   const shop = createShopService({
     store,
     codec,
@@ -639,7 +644,7 @@ export function createLocalGame({
   const monthlyCardRepair=store.transaction(model=>monthlyCard.repairLegacyClaimBits({model}));
   if(monthlyCardRepair.changed) logger({event:'monthly_card_claim_bits_repaired',cards:monthlyCardRepair.repaired});
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,heroDrawActivity,wishTreasure,wishTree,weekHunt,
+    store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,premiumActivity:premiumAct,heroDrawActivity,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -928,16 +933,23 @@ export function createLocalGame({
       loginActivities.push({ actTid, startTime: window.start, endTime: window.end, blocks: payload.blocks });
     }
     let actFrameNormalization = null;
-    if (loginActivities.length || calendar.mode === 'all-open') {
+    let premiumLogin = null;
+    const premiumLoginPreview = premiumAct.openActivityIds(loginSeconds);
+    if (loginActivities.length || calendar.mode === 'all-open' || premiumLoginPreview.length) {
       const merged = mergeRelicLoginContainer({
         codec,
         entry: storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null,
         activities: loginActivities,
-        normalize: calendar.mode === 'all-open'
-          ? ({ player, server }) => calendar.normalizeActFrameLogin(player, server, loginSeconds, {
-            activityIds: [...afterActivityIds]
-          })
-          : null
+        normalize: ({ player, server }) => {
+          const normalization = calendar.mode === 'all-open'
+            ? calendar.normalizeActFrameLogin(player, server, loginSeconds, {
+              activityIds: [...afterActivityIds]
+            })
+            : { mode: calendar.mode, adjusted: 0, activityIds: [] };
+          premiumLogin = premiumAct.synchronizeLogin({ player, server }, loginSeconds);
+          normalization.premiumActivityIds = premiumLogin.activityIds;
+          return normalization;
+        }
       });
       actFrameNormalization = merged.normalization;
       modules.set(RELIC_ACTIVITY_LOGIN_MODULE_ID, revive({ value: merged.values, improper: false }));
@@ -951,6 +963,7 @@ export function createLocalGame({
       fishingBenefitActivityId: fishingBenefits.actId,
       petActivityId: petLogin?.actId ?? null,
       petShopId: petLogin?.shopId ?? null,
+      premiumActivityIds: premiumLogin?.activityIds ?? [],
       heroDrawActivityId: heroDrawLogin?.actId ?? null,
       artifactActivityIds: artifactIds,
       demigodActivityId: currentDemigodId,
@@ -3172,7 +3185,7 @@ export function createLocalGame({
     log({ event: 'game_connected' });
   });
   return {
-    root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
+    root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, premiumAct, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
     cms, guildNationAssist, guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap, guildNation,
