@@ -57,10 +57,32 @@ function hpPath(actions, fighterId) {
     if (action.proto !== 106) continue;
     for (const harm of action.value.harm_list) {
       if (harm.aim_id !== fighterId) continue;
+      // A recovery packet (TID_PROMPT_HEAL) carries its own old_hp/hp pair and
+      // is asserted separately; mixing it into the damage path would double
+      // count the same HP rise.
+      if (Number(harm.type) === 107) continue;
       hits.push({ id: action.value.id, oldHp: Number(harm.old_hp ?? 0), hp: Number(harm.hp ?? 0) });
     }
   }
   return hits;
+}
+
+/** Recovery packets the server now projects as pb_fat_harm with type 107. */
+function healPackets(actions, fighterId) {
+  const heals = [];
+  for (const action of actions) {
+    if (action.proto !== 106) continue;
+    for (const harm of action.value.harm_list) {
+      if (harm.aim_id !== fighterId || Number(harm.type) !== 107) continue;
+      heals.push({
+        id: action.value.id,
+        value: Number(harm.value ?? 0),
+        oldHp: Number(harm.old_hp ?? 0),
+        hp: Number(harm.hp ?? 0)
+      });
+    }
+  }
+  return heals;
 }
 
 function ultimateDamageOf(actions, actorId) {
@@ -72,6 +94,9 @@ function ultimateDamageOf(actions, actorId) {
     if (action.proto !== 106 || !ultimateActions.has(action.value.id)) continue;
     for (const harm of action.value.harm_list) {
       if (harm.src_id !== actorId) continue;
+      // The life-steal recovery is a 107 prompt inside the same action; its
+      // old_hp/hp pair would otherwise subtract from the damaging total.
+      if (Number(harm.type) === 107) continue;
       total += Number(harm.old_hp ?? 0) - Number(harm.hp ?? 0);
     }
   }
@@ -93,6 +118,10 @@ function assertLifestealFromReport(report) {
   }
   assert.equal(recoveries.length, 1, 'only the ultimate life-steal may raise this fighter HP');
   assert.equal(recoveries[0].gap, Math.floor(ultimateDamage * 0.1));
+  const heals = healPackets(actions, LIFESTEAL_FIGHTER);
+  assert.equal(heals.length, 1, 'the life-steal is reported as one TID_PROMPT_HEAL packet');
+  assert.equal(heals[0].value, Math.floor(ultimateDamage * 0.1));
+  assert.equal(heals[0].hp - heals[0].oldHp, heals[0].value);
   return actions;
 }
 
