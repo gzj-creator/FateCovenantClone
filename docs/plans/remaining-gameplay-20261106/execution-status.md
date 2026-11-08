@@ -129,3 +129,11 @@
 - 三项均未进入 APK 验收；本轮未启停实时服务、未读写 runtime.local-only.data 或运行数据库、未操作模拟器/ADB、未生成 APK。主工作树未跟踪 assets/ 保持未提交。
 
 2026-11-08 派发边界调整为三大块，见 [三大块](15-three-work-blocks.md)：块 A #1–#33（本 session）、块 B #34–#119、块 C #120–#276。
+
+## 集成与验收记录（2026-11-08 第九批：块 I）
+
+- 按 [15-three-work-blocks.md](15-three-work-blocks.md) 的块 I（#212–#264，53 卡 / 106 条缺失命令）实施，分支 `task/PAY-BLOCK-I-20261108`。先用真实网关逐条探测：114 条相关命令里 25 条已路由、89 条仍返回 `LOCAL_NOT_IMPLEMENTED`；派发文档的 106 条与之的差集来自 16001–16005、35001/35002/35005、37010、88201–88204、100601/100602、107701–107703、110201–110203、110601/110602、110801/110802、84601 等既有实现。
+- 新增 `personal-server/game/benefit-commerce-service.mjs` 接管全部 89 条未路由命令。真实结算 3 条：16006 并入 welfare 既有 `purchaseGift`（与 16005 同 schema，走 wallet 下单/余额/订单/1900/16003），87301 按 `PermanentCardTable.reward` 发每日奖励并写模块 62 `last_reward_day`，84602 按 `EnergyAward` 补领当日公主午/夜体力并前移模块 126 领取位，使 84601 当天再领返回 310。
+- 其余 86 条按任务卡分组 fail closed：返回 `err 5` 并附具体缺失证据（如“PAY-VIP: VipTable 未导出”），写 `benefit_command_refused` 审计日志。根因是这些玩法只有协议、没有随包导出的配置表（TriggerGift/UpStarGift/Vip/Fashion/WeekendBonus/Auction/ActShop 等 42 个族）；35003–35011 的 ETF 请求连参数 schema 都没有，77002 回包定义缺失。
+- 专项 `personal-server/test/benefit-commerce-gateway.test.mjs` 4 项：块 I 的 112 条命令逐条真实握手往返断言无 `LOCAL_NOT_IMPLEMENTED`；87301 发奖、重复 310、带参 1、SQLite 重开保持；84602 双档补领与当日重复拒绝；33001/102701/107301 拒绝码 5。逐卡缺口见 [PAY-BLOCK-I 实施记录](../../../agent/workflow/gameplay-completion/PAY-BLOCK-I/implementation.md)。
+- 本批无 APK 验收：未启停实时服务、未读写运行数据库、未操作模拟器/ADB，未连接原游戏服务器。
