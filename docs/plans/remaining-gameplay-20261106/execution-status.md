@@ -171,11 +171,12 @@
 
 验证：`node --test test/endgame-develop.test.mjs` 9/9；`test/equip-service.test.mjs`+`test/equip-tables.test.mjs` 11/11；网关可加载。未做真实 TCP 19090 联调、未做全量 `npm test` 复核、未进入 APK 验收；本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB。
 
-## ���������ռ�¼��2026-11-08 ��ʮ������ H��
 
-- �� [15-three-work-blocks.md](15-three-work-blocks.md) �Ŀ� H��#180�C#211��32 �� / 94 ��ȱʧ���ʵʩ����֧ `task/ACT-REWARD-H-20261108`�������� `.worktree/gameplay-20261108/act-reward-h`��
-- ���ʲ���`tools/extract-act-tables.mjs` �ӿͻ��� Lua ��Ŀ����`analysis/tmp/lua-bundles/64_lua_project.bundle`���ؽ� 27 ��������ԭ�� dump������ `personal-server/assets/tables/*.data.lua.json.gz`��`config/act-activity-tables.mjs` �ṩ 29 ��������ȡ����
-- �������� `personal-server/game/act-reward-service.mjs`��94 ������ȫ����·�ɣ����� 92 ������ʵҵ�񣨿ͻ��˱�������`activity_claims` ��ȡλ��`act_reward_state` ���ȣ����ظ���ȡ 310��δ��ʼ 309������ 301����������ع���
-- 41 �������񿨷��� fail closed��`err 5` ��ȱʧ֤�ݣ���79103��99401/99402��100101��102906��104601/104602��106203/106205��118001��������ع�� 105201/105202/105250/105251/105303/105305/105307���Լ����� PVE/PVP/����/����� 1037xx/1038xx/1039xx/1041xx һ�塣����ԭ��� [ACT-REWARD-H ʵʩ��¼](../../../agent/workflow/gameplay-completion/ACT-REWARD-H/implementation.md)��
-- ��֤��ר�� `test/act-reward-service.test.mjs` 9/9��`gameplay-gateway` �� `m5-command-matrix` �ع�ͨ����������ȫ�� `npm test` ��־ `analysis/test-runs/gameplay-20261106/main-after-block-h-full.log`��
-- ֤��ȱ�ڣ�`*_bin` ��ȡλ�� proto3 ��� repeated uint32 �ƶϣ�Ԥ�ȱ��� `act_id % 1000` ȡ board��`<version><1000><index>` �� Award��`available_sec` ��Ϊ�Ի��ʼ��������������δ��ץ�����գ�δ�ӵ�¼ģ�� 92���� APK ���ա�����δ��ͣʵʱ����δ��д�������ݿ⡢δ����ģ����/ADB/APK��
+## 集成与验收记录（2026-11-08 第十批：块 H）
+
+- 按 [15-three-work-blocks.md](15-three-work-blocks.md) 的块 H（#180–#211，32 卡 / 94 条缺失命令）实施，分支 `task/ACT-REWARD-H-20261108`，工作树 `.worktree/gameplay-20261108/act-reward-h`。
+- 表资产：`tools/extract-act-tables.mjs` 从客户端 Lua 项目包（`analysis/tmp/lua-bundles/64_lua_project.bundle`）重建 27 个活动表族的原型 dump，落在 `personal-server/assets/tables/*.data.lua.json.gz`；`config/act-activity-tables.mjs` 提供 29 个表键读取器。
+- 服务：新增 `personal-server/game/act-reward-service.mjs`，94 条命令全部有路由，其中 92 条走真实业务（客户端表奖励、`activity_claims` 领取位、`act_reward_state` 进度），重复领取 310、未开始 309、余额不足 301，整笔事务回滚。
+- 41 条按任务卡分组 fail closed（`err 5` 附缺失证据）：79103、99401/99402、100101、102906、104601/104602、106203/106205、118001，邀请与回归的 105201/105202/105250/105251/105303/105305/105307，以及夏日 PVE/PVP/养成/结算的 1037xx/1038xx/1039xx/1041xx 一族。逐条原因见 [ACT-REWARD-H 实施记录](../../../agent/workflow/gameplay-completion/ACT-REWARD-H/implementation.md)。
+- 验证：专项 `test/act-reward-service.test.mjs` 9/9；合并后在工作树复核 `act-reward` + `gameplay-gateway` + `m5-command-matrix` 25/25；分支全量 `npm test` 2603 项、pass 2601、fail 0、skipped 2（日志 `analysis/test-runs/gameplay-20261106/main-after-block-h-full.log`）。
+- 证据缺口：`*_bin` 领取位按 proto3 打包 repeated uint32 推断；预热表按 `act_id % 1000` 取 board、`<version><1000><index>` 编 Award、`available_sec` 视为自活动开始经过秒数，三处未与抓包对照；未接登录模块 92；无 APK 验收。本批未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
