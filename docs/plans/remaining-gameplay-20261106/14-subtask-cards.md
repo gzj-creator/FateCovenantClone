@@ -38,9 +38,9 @@
 
 | 归属 | 范围 | 说明 |
 | --- | --- | --- |
-| 块 A（本 session，#1–#33） | 01-battle.md 全部子卡；12-shared-gaps.md 的 CORE-* 收尾（CORE-BATTLE-C、CORE-ATTR、CORE-SKILL-GATES、CORE-CABIN）；全部分支的合并门禁与看板 | 战斗与战报是主线热点，需要单一口径；main 只由总控写入 |
-| 块 B（新 agent B，#34–#119） | 02-heroes-lineups.md、03-equipment-development.md、04-items-tasks-shops.md、05-social-guild.md | 按子卡独立 worktree 派发，交付分支后进合并队列 |
-| 块 C（新 agent C，#120–#276） | 06-draw-activities.md、07-exploration-minigames.md、08-festivals-tasks.md、09-commerce-benefits.md、10-role-and-supporting.md；13-special-skills.md 的 E1–E72 延后队列 | 按子卡独立 worktree 派发，交付分支后进合并队列 |
+| 块 A1（本 session，#1–#17） | 01-battle.md 的 PVE/战报卡；12-shared-gaps.md 的 CORE-* 收尾；全部分支的合并门禁与看板 | 战斗与战报是主线热点，需要单一口径；main 只由总控写入 |
+| 块 A2（#18–#33） | 01-battle.md 的 PVP/竞技/锦标赛/三消卡 | 按子卡独立 worktree 派发，交付分支后进合并队列 |
+| 块 B–J（#34–#276） | 02–10 分区按 11 个工作块切分（英雄、装备、物品、社交前后、抽取、探索前后、节日、商业化、团长辅助） | 按子卡独立 worktree 派发，交付分支后进合并队列 |
 
 范围定义与编号见 [三大块](15-three-work-blocks.md)；本文件的子卡落在哪一块由所属分区决定。
 
@@ -2251,7 +2251,7 @@
 
 ### PAY-SLOTGAMEACT：老虎机活动游玩与领取
 
-- 协议模块 `SlotGameActCmd`；未路由 2 条；子卡 1 个；看板状态：待领取
+- 协议模块 `SlotGameActCmd`；未路由 2 条；子卡 1 个；看板状态：服务端完成（倍率口径与日重置证据待补）
 
 | 子卡 | type 区间 | 命令 | 条数 | etf/pb | 读接口 |
 | --- | --- | --- | ---: | --- | ---: |
