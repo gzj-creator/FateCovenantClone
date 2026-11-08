@@ -8,6 +8,12 @@
 - 证据只取项目内 APK/LuaJIT、表数据、协议定义、既有战报和本地测试。
 - 本轮未操作 ADB、模拟器、APK、实时服务或实时数据库；未触碰根工作树中用户未提交的 `.gitignore`。
 
+## 提交与复核
+
+- 实现提交：`1a4049aebda5e81ad1ca48b0a2722fa4e4054b62`（`fix: align battle numbers and skill backend rules`）。
+- `main` 合并提交：`b32d2d37057c77f8e2f288877d5d17599f67b9ef`，使用 `--no-ff` 合入。
+- 实现分支全量测试 2,780 项通过；合并后的 `main` 再次运行 9 个受影响核心测试文件，89/89 通过；`verify-hero-skills.mjs` 为 76/76 clean，运行态审计计数不变。
+
 ## 审计结果
 
 审计命令：
@@ -121,7 +127,7 @@ FightTable.Buff TID。
 - `verify-hero-skills.mjs`：76/76 clean。
 - 原无测试引用的 3 个技能已增加明确断言，审计现为 522/522 skill rows 有测试引用。
 - 全量 `npm test`：2,780 项，pass 2,778 / fail 0 / skipped 2，duration 435,492.1503 ms。两个跳过项仍是依赖 v9 客户端资源条件的仓库既存测试；日志 `analysis/test-runs/battle-number-alignment-20261109/full.log`，422,572 字节，SHA256 `FA5211C9E5C2E3226D30D007CFF083F1162483B795B25366406AB639E65BCE99`。
-- 运行态审计报告 `analysis/reports/skill-description-audit-20261109-runtime-aware.json` 为 1,436,739 字节，SHA256 `D8C066F86269F2C69D5B157CBD8D3E5A5EBE2B6C15A1E4A351E536347A00F7A4`；522 个唯一技能均有测试引用和战报 schema，明确保留 11 条错误、289 条证据缺口及 0 条 `exact`。
+- 最终运行态审计报告 `analysis/reports/skill-description-audit-20261109-runtime-aware.json` 为 1,436,746 字节，SHA256 `B0C4A4BC625E68E621D5CCE5B86F47A520DA45478D806D2372276C9C00B6FE40`；522 个唯一技能均有测试引用和战报 schema，明确保留 11 条错误、289 条证据缺口及 0 条 `exact`。报告包含 `generatedAt`，每轮重新生成时该哈希会变化。
 
 ## 分级结论
 
