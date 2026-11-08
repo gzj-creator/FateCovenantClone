@@ -2,6 +2,8 @@ import { decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.m
 import { awardPairs, readMinigameActTables, rowsOfVersion, weightedPick } from '../config/minigame-act-tables.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
+import { currentTaskProgress } from './task-service.mjs';
+import { setBit } from './bit-block.mjs';
 
 // G2 exploration / mini-game block. Commands keep authoritative state in
 // SQLite, spend and grant through resources.mjs, and answer with the response
@@ -56,6 +58,12 @@ export function createMinigameActService({
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(typeof now === 'function' ? now() : now);
   const iso = at => new Date(at * 1000).toISOString();
+
+  function taskProgress(ctx, config) {
+    const typeConfig = tables.TaskType?.get(Number(config.task_type));
+    if (typeConfig?.progress_type === 0) return 1;
+    return currentTaskProgress(ctx.model, config, codec, tables);
+  }
 
   store.inspect(db => {
     db.exec('CREATE TABLE IF NOT EXISTS minigame_act_state (' +
@@ -503,6 +511,7 @@ export function createMinigameActService({
     state.step = Number(state.step ?? 0);
     state.award_group = Number(state.award_group ?? 1);
     state.turn = Number(state.turn ?? 1);
+    state.task_claims = Array.isArray(state.task_claims) ? state.task_claims.map(Number) : [];
     return { key, state };
   }
   function towerRole(state, actId) {
@@ -510,10 +519,15 @@ export function createMinigameActService({
       act_tid: actId,
       step: Number(state.step ?? 0),
       award_list: [],
-      got_task_award: Buffer.alloc(0),
+      got_task_award: towerTaskBits(state),
       award_group: Number(state.award_group ?? 1),
       turn: Number(state.turn ?? 1)
     };
+  }
+  function towerTaskBits(state) {
+    let bits = Buffer.alloc(0);
+    for (const tid of state.task_claims ?? []) bits = setBit(bits, Number(tid) % 100);
+    return bits;
   }
   function towerRatio(stepRatio, index) {
     let start = 0;
@@ -595,9 +609,29 @@ export function createMinigameActService({
   register(104303, {
     card: 'PLAY-TOWERACT', encoding: 'pb', request: 'pb_tower_act_task_req',
     handler: request => run('tower', ctx => {
-      const { actId } = towerConfig(request.act_tid);
+      const { actId, version } = towerConfig(request.act_tid);
       assertRunning(actId, ctx.at, 'Tower');
-      throw new GameError(5, 'Tower act tasks read shared task-system counters that this server does not track yet');
+      const ids = (request.task_id ?? []).map(Number);
+      if (!ids.length) throw new GameError(1, 'Tower task list is empty');
+      if (new Set(ids).size !== ids.length) throw new GameError(1, 'Tower task list contains duplicates');
+      const { key, state } = towerStateFor(ctx, actId);
+      const awards = [];
+      for (const tid of ids) {
+        const row = requireRow(t.tower.Task, tid, 'Tower task');
+        if (Number(row.version) !== version) throw new GameError(1, 'Tower task does not belong to this version');
+        if (state.task_claims.includes(Number(row.tid))) throw new GameError(311, 'Tower task is already claimed');
+        const progress = taskProgress(ctx, row);
+        if (progress < Number(row.task_count)) throw new GameError(311, 'Tower task is not complete');
+        awards.push(...awardsOf(row.award, 'Tower task award'));
+        state.task_claims.push(Number(row.tid));
+      }
+      const granted = grant(ctx, awards, 'Tower task');
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      refreshStoredLogin(ctx, actId, () => codec.pack('pb_tower_act_role', towerRole(state, actId)));
+      return {
+        schema: 'pb_tower_act_task_rsp', actKey: key,
+        value: { act_data: towerRole(state, actId), res_change: resOf(granted) }
+      };
     })
   });
 
@@ -730,8 +764,29 @@ export function createMinigameActService({
 
   register(105005, {
     card: 'PLAY-SPIRITCOURTYARD', encoding: 'pb', request: 'pb_req_spirit_courtyard_submit_entrust',
-    handler: () => run('spirit', () => {
-      throw new GameError(5, 'Spirit courtyard task rewards depend on shared task counters that are not recovered');
+    handler: request => run('spirit', ctx => {
+      const state = spiritState(ctx);
+      const entrust = state.entrusts.find(candidate => Number(candidate.uid) === Number(request.uid));
+      if (!entrust) throw new GameError(1, 'Unknown spirit courtyard entrust');
+      if (entrust.is_finish) throw new GameError(311, 'Spirit courtyard entrust is already finished');
+      const order = requireRow(t.spirit.EntrustOrder, entrust.tid, 'Spirit courtyard entrust order');
+      const costs = new Map();
+      for (const libTid of entrust.lib ?? []) {
+        const lib = requireRow(t.spirit.EntrustOrderLib, libTid, 'Spirit courtyard entrust item');
+        costs.set(Number(lib.fruit), (costs.get(Number(lib.fruit)) ?? 0) + Number(lib.fruit_num));
+      }
+      const spent = spend(ctx, [...costs], 'Spirit courtyard entrust');
+      const granted = grant(ctx, awardsOf(order.award, 'Spirit courtyard entrust award'), 'Spirit courtyard entrust');
+      entrust.is_finish = true;
+      state.entrust_count = Number(state.entrust_count ?? 0) + 1;
+      saveState(ctx.db, ctx.roleId, SPIRIT_KEY, state, ctx.at);
+      return {
+        schema: 'pb_res_spirit_courtyard_submit_entrust', actKey: SPIRIT_KEY,
+        value: {
+          role_info: spiritRole(state), guild_info: spiritGuild(),
+          res: resOf({ changes: [...(spent.changes ?? []), ...(granted.changes ?? [])] })
+        }
+      };
     })
   });
 
@@ -1150,17 +1205,97 @@ export function createMinigameActService({
     state.day_free_used = Number(state.day_free_used ?? 0);
     state.role_total_award_gets = Array.isArray(state.role_total_award_gets) ? state.role_total_award_gets : [];
     state.role_live_award_gets = Array.isArray(state.role_live_award_gets) ? state.role_live_award_gets : [];
+    state.role_guild_task_award_gets = Array.isArray(state.role_guild_task_award_gets) ? state.role_guild_task_award_gets : [];
+    state.guild_count_stats = state.guild_count_stats && typeof state.guild_count_stats === 'object'
+      ? state.guild_count_stats : {};
+    state.next_multiple = Number(state.next_multiple ?? 1) || 1;
     state.firm_money = Number(state.firm_money ?? 0);
     state.firm_save_num = Number(state.firm_save_num ?? 0);
     return { key, state, ver, version };
+  }
+  function monopolyGuildStatistic(state, typeConfig, statistic) {
+    const all = state.guild_count_stats;
+    let send = all[String(statistic.tid)] ?? all[statistic.tid];
+    if (!send && Array.isArray(all)) send = all.find(row => Number(row.stat_tid) === Number(statistic.tid));
+    if (!send) throw new GameError(5, 'Monopoly guild statistics are unavailable');
+    if (Number(send.stat_tid ?? statistic.tid) !== Number(statistic.tid)) {
+      throw new GameError(5, 'Monopoly guild statistics do not match the task type');
+    }
+    const ids = new Set((typeConfig.stat_expand ?? []).map(String));
+    if (!ids.size) throw new GameError(5, 'Monopoly guild task statistics are not configured');
+    const rows = send.data?.list;
+    if (!Array.isArray(rows)) throw new GameError(5, 'Monopoly guild statistics are invalid');
+    let total = 0n;
+    for (const entry of rows) {
+      if (!entry || typeof entry !== 'object') throw new GameError(5, 'Monopoly guild statistics are invalid');
+      if (!ids.has(String(entry.id))) continue;
+      const raw = entry.total ?? 0;
+      let value;
+      try {
+        if (typeof raw === 'number' && !Number.isSafeInteger(raw)) throw new RangeError();
+        const text = typeof raw === 'number' ? String(raw) : raw;
+        if (typeof text !== 'string' || !/^[0-9]+$/.test(text)) throw new RangeError();
+        value = BigInt(text);
+      } catch {
+        throw new GameError(5, 'Monopoly guild statistics are invalid');
+      }
+      total += value;
+    }
+    if (total > BigInt(Number.MAX_SAFE_INTEGER)) throw new GameError(5, 'Monopoly guild statistics are invalid');
+    return Number(total);
+  }
+  // GuildTask.task_type=0 compares the guild's accumulated score with
+  // target_count. Other guild tasks use task_count and either a custom guild
+  // statistics slot or the normal task counter. This single-role server treats
+  // its local score as the guild total because no other guild members exist.
+  function monopolyGuildTaskProgress(ctx, state, row) {
+    const taskType = Number(row.task_type);
+    if (taskType === 0) {
+      return { progress: Number(state.score ?? 0), target: Number(row.target_count) };
+    }
+    const typeConfig = tables.TaskType?.get(taskType);
+    if (!typeConfig) throw new GameError(5, 'Monopoly guild task type is not configured');
+    if (typeConfig.progress_type === 2) {
+      const statistic = tables.CountStatistics?.get(Number(typeConfig.data));
+      if (statistic?.custom_login) {
+        return {
+          progress: monopolyGuildStatistic(state, typeConfig, statistic),
+          target: Number(row.task_count)
+        };
+      }
+    }
+    return { progress: taskProgress(ctx, row), target: Number(row.task_count) };
+  }
+  function monopolyGuildStatisticsSend(state) {
+    const send = state.guild_count_stats['1006'];
+    if (!send) return {};
+    return {
+      stat_tid: Number(send.stat_tid ?? 1006),
+      expand_id_list: (send.expand_id_list ?? []).map(String),
+      data: {
+        list: (send.data?.list ?? []).map(row => ({ id: String(row.id), total: String(row.total ?? 0) }))
+      }
+    };
+  }
+  function monopolyGuildData(state, version, roleId) {
+    return {
+      version,
+      score: state.score,
+      supply_list: [],
+      order_list: [],
+      day_record_list: [],
+      last_record_list: [],
+      score_record_list: [],
+      role_score_list: [{ role_id: String(roleId), score: state.score }]
+    };
   }
   function monopolyRole(state, version) {
     return {
       cur_index: state.cur_index,
       event_list: state.events.map(event => ({ tid: event.tid, uid: String(event.uid), finish_stage: event.finish_stage, param: String(event.param ?? 0) })),
-      next_multiple: 1,
+      next_multiple: state.next_multiple,
       role_total_award_gets: state.role_total_award_gets.map(Number),
-      guild_total_award_gets: [],
+      guild_total_award_gets: state.role_guild_task_award_gets.map(Number),
       role_live_award_gets: state.role_live_award_gets.map(Number),
       version,
       score: state.score,
@@ -1220,8 +1355,35 @@ export function createMinigameActService({
     handler: request => run('monopoly', ctx => {
       const actId = Number(request.act_tid);
       assertRunning(actId, ctx.at, 'Monopoly');
-      monopolyCtx(ctx, actId);
-      throw new GameError(5, 'Monopoly event resolution needs the Event-vs-square mapping that the shipped tables do not expose');
+      const { key, state, version } = monopolyCtx(ctx, actId);
+      const id = Number(request.tid);
+      let event = state.events.find(candidate => Number(candidate.uid) === id);
+      if (!event) event = state.events.find(candidate => Number(candidate.tid) === id);
+      if (!event) event = state.events.find(candidate => Number(candidate.param) === id);
+      if (!event) throw new GameError(1, 'Monopoly event is not present');
+      if (Number(event.finish_stage) !== 0) throw new GameError(311, 'Monopoly event is already finished');
+      const eventRow = requireRow(t.monopoly.Event, event.param, 'Monopoly event');
+      const eventType = requireRow(t.monopoly.EventType, eventRow.type, 'Monopoly event type');
+      if (!eventType.must_finish) throw new GameError(1, 'Monopoly event is not a fight event');
+      const awards = Array.isArray(eventRow.award) ? awardsOf(eventRow.award, 'Monopoly event award') : [];
+      if (eventRow.item_double) {
+        for (const award of awards) award[1] *= 2;
+      }
+      const granted = grant(ctx, awards, 'Monopoly event');
+      const multiplier = Number(eventRow.score_double) ? 2 : 1;
+      state.score += Number(eventRow.score ?? 0) * multiplier * Number(state.next_multiple);
+      state.next_multiple = 1;
+      event.finish_stage = 2;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      refreshStoredLogin(ctx, actId, () => codec.pack('pb_monopoly_act_role_info', { act_data_list: [monopolyRole(state, version)] }));
+      return {
+        schema: 'pb_monopoly_act_base_back', actKey: key,
+        value: {
+          res: resOf(granted), act_role_data: monopolyRole(state, version),
+          guild_data: monopolyGuildData(state, version, ctx.roleId),
+          act_tid: String(actId), event_uid: String(event.uid), ower_event_role: '0'
+        }
+      };
     })
   });
 
@@ -1257,8 +1419,27 @@ export function createMinigameActService({
 
   register(107804, {
     card: 'PLAY-MONOPOLYACT', encoding: 'pb', request: 'pb_monopoly_act_get_reward_req',
-    handler: () => run('monopoly', () => {
-      throw new GameError(5, 'Monopoly guild tasks need guild membership counters that are not modeled');
+    handler: request => run('monopoly', ctx => {
+      const actId = Number(request.act_tid);
+      assertRunning(actId, ctx.at, 'Monopoly');
+      const { key, state, version } = monopolyCtx(ctx, actId);
+      const ids = (request.tid_list ?? []).map(Number);
+      if (!ids.length) throw new GameError(1, 'Monopoly guild task list is empty');
+      if (new Set(ids).size !== ids.length) throw new GameError(1, 'Monopoly guild task list contains duplicates');
+      const awards = [];
+      for (const tid of ids) {
+        const row = requireRow(t.monopoly.GuildTask, tid, 'Monopoly guild task');
+        if (Number(row.ver) !== version) throw new GameError(1, 'Monopoly guild task does not belong to this version');
+        if (state.role_guild_task_award_gets.includes(Number(row.tid))) throw new GameError(311, 'Monopoly guild task is already claimed');
+        const condition = monopolyGuildTaskProgress(ctx, state, row);
+        if (condition.progress < condition.target) throw new GameError(311, 'Monopoly guild task is not complete');
+        awards.push(...awardsOf(row.award, 'Monopoly guild task award'));
+        state.role_guild_task_award_gets.push(Number(row.tid));
+      }
+      const granted = grant(ctx, awards, 'Monopoly guild task');
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      refreshStoredLogin(ctx, actId, () => codec.pack('pb_monopoly_act_role_info', { act_data_list: [monopolyRole(state, version)] }));
+      return { schema: 'pb_res_to_client', actKey: key, value: resOf(granted) };
     })
   });
 
@@ -1504,8 +1685,29 @@ export function createMinigameActService({
 
   register(109005, {
     card: 'PLAY-DIAMONDVEINACT', encoding: 'pb', request: 'pb_diamond_vein_act_base_req',
-    handler: () => run('diamond_vein', () => {
-      throw new GameError(5, 'Diamond vein action-point purchase formula is not recovered from the shipped tables');
+    handler: request => run('diamond_vein', ctx => {
+      const actId = Number(request.act_id);
+      assertRunning(actId, ctx.at, 'Diamond vein');
+      const { key, state, consts } = diamondCtx(ctx, actId);
+      const points = Number(request.value);
+      if (!Number.isSafeInteger(points) || points <= 0) throw new GameError(1, 'Invalid diamond vein action-point amount');
+      if (state.action_point + points > Number(consts.energy_max)) throw new GameError(311, 'Diamond vein action point is already full');
+      const cost = Math.max(
+        Number(consts.energy_buy_min_cost),
+        Math.floor(Number(consts.energy_buy_basic_cost) * points / Number(consts.energy_max))
+      );
+      const spent = spend(ctx, [[Number(consts.energy_buy_item), cost]], 'Diamond vein action point');
+      state.action_point += points;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      refreshStoredLogin(ctx, actId, () => codec.pack('pb_diamond_vein_act_login', {
+        role_data: diamondRole(state, actId),
+        server_data: { act_tid: actId, map_list: [], handle_high_day_index: 0, is_settle: false },
+        guild_data: { act_tid: actId, focus_map_id: state.focus_map_id, merit_total: state.merit, merit_list: [] }
+      }));
+      return {
+        schema: 'pb_diamond_vein_act_role_res_rsp', actKey: key,
+        value: { res: resOf(spent), role_data: diamondRole(state, actId) }
+      };
     })
   });
 
@@ -1552,22 +1754,147 @@ export function createMinigameActService({
   });
 
   // ---- PLAY-SOURCEPOINT (110101-110103) ----------------------------------
+  const SOURCE_POINT_KEY = 'source_point:1';
+  function sourcePointState(ctx) {
+    const state = loadState(ctx.db, ctx.roleId, SOURCE_POINT_KEY);
+    state.source_point_list = (Array.isArray(state.source_point_list) ? state.source_point_list : [])
+      .map(entry => ({ tid: Number(entry.tid), uid: Number(entry.uid) }))
+      .filter(entry => Number.isSafeInteger(entry.tid) && entry.tid > 0 && Number.isSafeInteger(entry.uid) && entry.uid > 0);
+    state.max_uid = Math.max(Number(state.max_uid ?? 0), ...state.source_point_list.map(entry => entry.uid), 0);
+    state.hero_task_claims = Array.isArray(state.hero_task_claims) ? state.hero_task_claims.map(Number) : [];
+    return state;
+  }
+  function sourcePointHero(ctx, uid) {
+    return (ctx.model.heroInfo?.hero_list ?? []).find(hero => String(hero.uid) === String(uid));
+  }
+  function sourcePointHeroByTid(ctx, tid) {
+    return (ctx.model.heroInfo?.hero_list ?? []).find(hero => String(hero.tid) === String(tid));
+  }
+  function sourcePointInstance(state, uid) {
+    return state.source_point_list.find(entry => Number(entry.uid) === Number(uid));
+  }
+  function sourcePointAdd(state, tid, count) {
+    for (let index = 0; index < Number(count); index += 1) {
+      state.max_uid += 1;
+      state.source_point_list.push({ tid: Number(tid), uid: state.max_uid });
+    }
+  }
+  function sourcePointTaskBytes(state) {
+    let bits = Buffer.alloc(0);
+    for (const tid of state.hero_task_claims) bits = setBit(bits, Number(tid));
+    // The protobuf field carries an ETF binary and encoding must stay inside
+    // the synchronous command transaction. encodeBitBlock is async.
+    return wrapEtfBinary(bits);
+  }
+  function sourcePointChangeList(heroes) {
+    return heroes.map(hero => ({
+      hero_uid: String(hero.uid),
+      changes: (hero.source_point_list ?? []).map(Number)
+    }));
+  }
+  function sourcePointRemoveFromHeroes(ctx, ids) {
+    const removed = new Set(ids.map(Number));
+    const changed = new Set();
+    for (const hero of ctx.model.heroInfo?.hero_list ?? []) {
+      const current = (hero.source_point_list ?? []).map(String);
+      const next = current.filter(uid => !removed.has(Number(uid)));
+      if (next.length === current.length) continue;
+      hero.source_point_list = next;
+      changed.add(hero);
+    }
+    return [...changed];
+  }
+
   register(110101, {
     card: 'PLAY-SOURCEPOINT', encoding: 'pb', request: 'pb_source_point_change_req',
-    handler: () => run('source_point', () => {
-      throw new GameError(5, 'Source point change needs hero source-point instances that this server does not model yet');
+    handler: request => run('source_point', ctx => {
+      const state = sourcePointState(ctx);
+      const changes = Array.isArray(request.change_list) ? request.change_list : [];
+      if (!changes.length) throw new GameError(1, 'Source point change list is empty');
+      const seen = new Set();
+      const targets = new Map();
+      for (const entry of changes) {
+        const hero = sourcePointHero(ctx, entry.hero_uid);
+        if (!hero) throw new GameError(1, 'Source point hero is not owned');
+        const ids = (entry.changes ?? []).map(Number);
+        for (const uid of ids) {
+          if (!sourcePointInstance(state, uid)) throw new GameError(1, 'Source point instance is not owned: ' + uid);
+          if (seen.has(uid)) throw new GameError(1, 'Source point instance is assigned twice: ' + uid);
+          seen.add(uid);
+        }
+        targets.set(String(hero.uid), ids.map(String));
+      }
+      const changed = new Set(sourcePointRemoveFromHeroes(ctx, [...seen]));
+      for (const [uid, ids] of targets) {
+        const hero = sourcePointHero(ctx, uid);
+        hero.source_point_list = ids;
+        changed.add(hero);
+      }
+      saveState(ctx.db, ctx.roleId, SOURCE_POINT_KEY, state, ctx.at);
+      return {
+        schema: 'pb_source_point_change_rsp', actKey: SOURCE_POINT_KEY,
+        value: {
+          hero_list: [...changed], lineup_list: ctx.model.playLineups ?? [],
+          role_lineup: ctx.model.lineups ?? {}
+        }
+      };
     })
   });
   register(110102, {
     card: 'PLAY-SOURCEPOINT', encoding: 'pb', request: 'pb_source_point_combine_req',
-    handler: () => run('source_point', () => {
-      throw new GameError(5, 'Source point combine needs hero source-point instances and their upgrade chain that this server does not model yet');
+    handler: request => run('source_point', ctx => {
+      const target = requireRow(t.sourcePoint.Elevate, request.tid, 'Source point elevate');
+      const state = sourcePointState(ctx);
+      const ids = (request.source_point_list ?? []).map(Number);
+      if (new Set(ids).size !== ids.length) throw new GameError(1, 'Source point combine list contains duplicates');
+      const instances = ids.map(uid => sourcePointInstance(state, uid));
+      if (instances.some(instance => !instance)) throw new GameError(1, 'Source point instance is not owned');
+      const required = new Map();
+      const costs = new Map();
+      for (const entry of target.cost_list ?? []) {
+        const type = Number(entry[0]), tid = Number(entry[1]), count = Number(entry[2]);
+        if (type === 2) required.set(tid, (required.get(tid) ?? 0) + count);
+        else if (type === 1) costs.set(tid, (costs.get(tid) ?? 0) + count);
+        else throw new GameError(5, 'Source point elevate cost type is not supported: ' + type);
+      }
+      const actual = new Map();
+      for (const instance of instances) actual.set(instance.tid, (actual.get(instance.tid) ?? 0) + 1);
+      if (actual.size !== required.size || [...required].some(([tid, count]) => actual.get(tid) !== count)) {
+        throw new GameError(311, 'Source point combine materials do not match the configuration');
+      }
+      const spent = spend(ctx, [...costs], 'Source point combine');
+      const changed = new Set(sourcePointRemoveFromHeroes(ctx, ids));
+      state.source_point_list = state.source_point_list.filter(entry => !ids.includes(Number(entry.uid)));
+      sourcePointAdd(state, target.tid, 1);
+      saveState(ctx.db, ctx.roleId, SOURCE_POINT_KEY, state, ctx.at);
+      return {
+        schema: 'pb_source_point_combine_rsp', actKey: SOURCE_POINT_KEY,
+        value: { res: resOf(spent), change_list: sourcePointChangeList([...changed]) }
+      };
     })
   });
   register(110103, {
     card: 'PLAY-SOURCEPOINT', encoding: 'pb', request: 'pb_source_point_task_req',
-    handler: () => run('source_point', () => {
-      throw new GameError(5, 'Source point trials read shared task counters that are not recovered');
+    handler: request => run('source_point', ctx => {
+      const trial = requireRow(t.sourcePoint.Trial, request.tid, 'Source point trial');
+      const state = sourcePointState(ctx);
+      if (state.hero_task_claims.includes(Number(trial.tid))) throw new GameError(311, 'Source point trial is already claimed');
+      if (!sourcePointHeroByTid(ctx, trial.hero)) throw new GameError(311, 'Source point trial hero is not owned');
+      const progress = taskProgress(ctx, { task_type: trial.type, task_param: trial.task_param, target_count: trial.target_count });
+      if (progress < Number(trial.target_count)) throw new GameError(311, 'Source point trial is not complete');
+      const awards = awardsOf(trial.award, 'Source point trial award');
+      const normal = [];
+      for (const [tid, count] of awards) {
+        if (t.sourcePoint.SourcePoint.byTid.has(Number(tid))) sourcePointAdd(state, tid, count);
+        else normal.push([tid, count]);
+      }
+      const granted = grant(ctx, normal, 'Source point trial');
+      state.hero_task_claims.push(Number(trial.tid));
+      saveState(ctx.db, ctx.roleId, SOURCE_POINT_KEY, state, ctx.at);
+      return {
+        schema: 'pb_source_point_task_rsp', actKey: SOURCE_POINT_KEY,
+        value: { res: resOf(granted), hero_tasks: sourcePointTaskBytes(state) }
+      };
     })
   });
 
@@ -1657,6 +1984,7 @@ export function createMinigameActService({
     state.rooms = state.rooms && typeof state.rooms === 'object' ? state.rooms : {};
     state.furniture = state.furniture && typeof state.furniture === 'object' ? state.furniture : {};
     state.total_like_count = Number(state.total_like_count ?? 0);
+    state.finish_tasks = Array.isArray(state.finish_tasks) ? state.finish_tasks.map(Number) : [];
     return state;
   }
   function homelandDepot(state) {
@@ -1668,7 +1996,7 @@ export function createMinigameActService({
       level: state.level,
       prosperity: state.prosperity,
       house_list: [],
-      finish_tasks: [],
+      finish_tasks: state.finish_tasks.map(Number),
       today_like_role_ids: state.today_likes.map(Number),
       today_visit_role_ids: state.today_visits.map(Number),
       today_visit_record_list: [],
@@ -1680,8 +2008,24 @@ export function createMinigameActService({
 
   register(110904, {
     card: 'PLAY-HOMELAND', encoding: 'etf',
-    handler: () => run('homeland', () => {
-      throw new GameError(5, 'Homeland daily tasks read shared task counters that are not recovered');
+    handler: () => run('homeland', ctx => {
+      const state = homelandState(ctx);
+      const finished = [];
+      const awards = [];
+      for (const row of t.homeland.Task.rows) {
+        if (state.finish_tasks.includes(Number(row.tid))) continue;
+        const progress = taskProgress(ctx, row);
+        if (progress < Number(row.task_count)) continue;
+        awards.push(...awardsOf(row.award, 'Homeland task award'));
+        state.finish_tasks.push(Number(row.tid));
+        finished.push(Number(row.tid));
+      }
+      const granted = grant(ctx, awards, 'Homeland task');
+      saveState(ctx.db, ctx.roleId, HOMELAND_KEY, state, ctx.at);
+      return {
+        schema: 'pb_homeland_task_finish_rsp', actKey: HOMELAND_KEY,
+        value: { task_tid_list: finished, res: resOf(granted) }
+      };
     })
   });
 
@@ -1802,27 +2146,42 @@ export function createMinigameActService({
     state.grid = Array.isArray(state.grid) ? state.grid : [];
     state.received_lv = Array.isArray(state.received_lv) ? state.received_lv : [];
     state.batch_model = Number(state.batch_model ?? 0);
+    state.updated = Number(state.updated ?? ctx.at);
+    state.order_tid = Number(state.order_tid ?? 0);
+    state.order_time = Number(state.order_time ?? 0);
+    state.order_end = Number(state.order_end ?? 0);
+    state.finish_times = Number(state.finish_times ?? 0);
+    state.continuous = Number(state.continuous ?? 0);
+    state.give_up_list = Array.isArray(state.give_up_list) ? state.give_up_list : [];
     const interval = Number(config.recover_time);
     if (interval > 0 && ctx.at - state.stamina_time >= interval) {
       const ticks = Math.floor((ctx.at - state.stamina_time) / interval);
       state.stamina = Math.min(Number(config.max_stamina), state.stamina + ticks * Number(config.recover_num));
       state.stamina_time += ticks * interval;
     }
+    if (!state.order_tid) bakingGenerateOrder(state, version, ctx.at);
     return { key, state, config, version };
+  }
+  function bakingGrids(state) {
+    return state.grid.map(cell => ({
+      x: Number(cell.x), y: Number(cell.y), grid_type: Number(cell.type ?? 1),
+      cake_type_tid: Number(cell.cake_type ?? 0), cake_lv: Number(cell.lv ?? 0),
+      can_click_times: Number(cell.clicks ?? 0)
+    }));
   }
   function bakingData(state) {
     return {
       act_id: state.act_id,
       lv: state.lv,
       received_lv_tid_list: state.received_lv.map(Number),
-      grids: state.grid.map(cell => ({
-        x: Number(cell.x), y: Number(cell.y), grid_type: Number(cell.type ?? 1),
-        cake_type_tid: Number(cell.cake_type ?? 0), cake_lv: Number(cell.lv ?? 0), can_click_times: Number(cell.clicks ?? 0)
-      })),
+      grids: bakingGrids(state),
       order: {
         cur_order_tid: Number(state.order_tid ?? 0), order_gen_time: String(Number(state.order_time ?? 0)),
         order_end_time: String(Number(state.order_end ?? 0)), finish_order_times: Number(state.finish_times ?? 0),
-        continuous_common_order_times: Number(state.continuous ?? 0), give_up_order_list: []
+        continuous_common_order_times: Number(state.continuous ?? 0),
+        give_up_order_list: (state.give_up_list ?? []).map(entry => ({
+          order_tid: Number(entry.order_tid ?? 0), remain_times: Number(entry.remain_times ?? 0)
+        }))
       },
       res: {
         score: state.score, stamina: state.stamina, stamina_last_update_time: String(state.stamina_time),
@@ -1836,6 +2195,53 @@ export function createMinigameActService({
   function bakingLv(state, version) {
     return t.baking.Lv.rows.find(row => Number(row.belonging_version) === Number(version) && Number(row.level) === Number(state.lv))
       ?? t.baking.Lv.rows.find(row => Number(row.level) === Number(state.lv));
+  }
+  function bakingSize(config) {
+    const [width, height] = config.grid_size ?? [7, 8];
+    return { width: Number(width), height: Number(height) };
+  }
+  function bakingKey(x, y) { return Number(x) + ',' + Number(y); }
+  function bakingCell(state, x, y) {
+    return state.grid.find(cell => Number(cell.x) === Number(x) && Number(cell.y) === Number(y));
+  }
+  function bakingOpenCells(state, config) {
+    const { width, height } = bakingSize(config);
+    const cakeCount = state.grid.filter(cell => Number(cell.type) === 1).length;
+    const open = new Set();
+    for (const area of t.baking.Area.rows.filter(row => Number(row.belonging_version) === Number(state.version))) {
+      if (cakeCount < Number(area.need_cake_num)) continue;
+      const [sx, sy] = area.grid_start_range ?? [0, 0];
+      const [ex, ey] = area.grid_end_range ?? [width - 1, height - 1];
+      for (let x = Math.max(0, Number(sx)); x <= Math.min(width - 1, Number(ex)); x += 1) {
+        for (let y = Math.max(0, Number(sy)); y <= Math.min(height - 1, Number(ey)); y += 1) open.add(bakingKey(x, y));
+      }
+    }
+    return open;
+  }
+  function bakingOrderRow(tid) { return t.baking.Order.byTid.get(Number(tid)); }
+  function bakingGenerateOrder(state, version, at, { forceTimed = false } = {}) {
+    const level = bakingLv(state, version);
+    const entries = (level?.order_weight_list ?? []).map(entry => ({ weight: Number(entry[0]), group: Number(entry[1]) }));
+    const timed = entries.filter(entry => t.baking.Order.rows.some(row => Number(row.group) === entry.group && Number(row.expire_time) > 0));
+    const pool = forceTimed && timed.length ? timed : entries;
+    if (!pool.length) throw new GameError(5, 'Baking order weights are not configured');
+    const group = Number(weightedPick(pool.map(entry => ({ weight: entry.weight, group: entry.group })), { label: 'Baking order group' }).group);
+    const rows = t.baking.Order.rows.filter(row => Number(row.group) === group);
+    if (!rows.length) throw new GameError(5, 'Baking order group is empty: ' + group);
+    const order = weightedPick(rows, { label: 'Baking order' });
+    state.order_tid = Number(order.tid);
+    state.order_time = Number(at);
+    state.order_end = Number(order.expire_time) > 0 ? Number(at) + Number(order.expire_time) : 0;
+    return order;
+  }
+  function bakingCellAtRequest(request, state, config) {
+    const { width, height } = bakingSize(config);
+    const x = Number(request.x ?? request.x1), y = Number(request.y ?? request.y1);
+    if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+      throw new GameError(1, 'Baking position is outside the board');
+    }
+    if (!bakingOpenCells(state, config).has(bakingKey(x, y))) throw new GameError(311, 'Baking position is not unlocked');
+    return { x, y, cell: bakingCell(state, x, y) };
   }
 
   register(111010, {
@@ -1851,14 +2257,20 @@ export function createMinigameActService({
   register(111001, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_rec_lv_award_req',
     handler: request => run('baking', ctx => {
-      const { key, state } = bakingCtx(ctx, request.act_id);
-      const row = requireRow(t.baking.Lv, request.tid, 'Baking level');
-      if (Number(row.level) > Number(state.lv)) throw new GameError(311, 'Baking level is not reached');
-      if (state.received_lv.includes(Number(row.tid))) throw new GameError(311, 'Baking level award is already claimed');
-      const awards = awardsOf(row.award, 'Baking level award');
-      if (!awards.length) throw new GameError(5, 'Baking level has no award configured');
+      const { key, state, version } = bakingCtx(ctx, request.act_id);
+      const ids = (request.lv_tid_list ?? (request.tid ? [request.tid] : [])).map(Number);
+      if (!ids.length) throw new GameError(1, 'Baking level award list is empty');
+      if (new Set(ids).size !== ids.length) throw new GameError(1, 'Baking level award list contains duplicates');
+      const awards = [];
+      for (const tid of ids) {
+        const row = requireRow(t.baking.Lv, tid, 'Baking level');
+        if (Number(row.belonging_version) !== version) throw new GameError(1, 'Baking level does not belong to this version');
+        if (Number(row.level) > Number(state.lv)) throw new GameError(311, 'Baking level is not reached');
+        if (state.received_lv.includes(Number(row.tid))) throw new GameError(311, 'Baking level award is already claimed');
+        awards.push(...awardsOf(row.award, 'Baking level award'));
+        state.received_lv.push(Number(row.tid));
+      }
       const granted = grant(ctx, awards, 'Baking');
-      state.received_lv.push(Number(row.tid));
       saveState(ctx.db, ctx.roleId, key, state, ctx.at);
       return { schema: 'pb_baking_rec_lv_award_rsp', actKey: key, value: { act_data: bakingData(state), res: resOf(granted) } };
     })
@@ -1866,22 +2278,83 @@ export function createMinigameActService({
 
   register(111002, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_swap_req',
-    handler: () => run('baking', () => {
-      throw new GameError(5, 'Baking swap needs the client board-swap rule, which the shipped tables do not expose');
+    handler: request => run('baking', ctx => {
+      const { key, state, config } = bakingCtx(ctx, request.act_id);
+      const first = bakingCellAtRequest({ x: request.x1, y: request.y1 }, state, config);
+      const second = bakingCellAtRequest({ x: request.x2, y: request.y2 }, state, config);
+      if (first.x === second.x && first.y === second.y) throw new GameError(1, 'Baking swap positions are identical');
+      if (!first.cell) throw new GameError(1, 'Baking swap source is empty');
+      const firstX = first.x, firstY = first.y, secondX = second.x, secondY = second.y;
+      if (second.cell) {
+        first.cell.x = secondX; first.cell.y = secondY;
+        second.cell.x = firstX; second.cell.y = firstY;
+      } else {
+        first.cell.x = secondX; first.cell.y = secondY;
+      }
+      state.updated = ctx.at;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      return { schema: 'pb_baking_swap_rsp', actKey: key, value: { act_data: bakingData(state) } };
     })
   });
 
   register(111003, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_synthesize_req',
-    handler: () => run('baking', () => {
-      throw new GameError(5, 'Baking cake synthesis needs the cake merge chain, which the shipped tables do not expose');
+    handler: request => run('baking', ctx => {
+      const { key, state, config } = bakingCtx(ctx, request.act_id);
+      const first = bakingCellAtRequest({ x: request.x1, y: request.y1 }, state, config);
+      const second = bakingCellAtRequest({ x: request.x2, y: request.y2 }, state, config);
+      if (Math.abs(first.x - second.x) + Math.abs(first.y - second.y) !== 1) throw new GameError(1, 'Baking synthesis positions are not adjacent');
+      if (!first.cell || !second.cell) throw new GameError(311, 'Baking synthesis needs two cakes');
+      if (Number(first.cell.type) !== 1 || Number(second.cell.type) !== 1) throw new GameError(311, 'Baking synthesis needs two cakes');
+      if (Number(first.cell.cake_type) !== Number(second.cell.cake_type) || Number(first.cell.lv) !== Number(second.cell.lv)) {
+        throw new GameError(311, 'Baking synthesis cakes do not match');
+      }
+      const maxLevel = Number(t.baking.Global.rows[0]?.level_max ?? 8);
+      if (Number(first.cell.lv) >= maxLevel) throw new GameError(311, 'Baking cake is already at max level');
+      const type = Number(first.cell.cake_type), level = Number(first.cell.lv);
+      state.grid = state.grid.filter(cell => cell !== first.cell && cell !== second.cell);
+      state.grid.push({ x: second.x, y: second.y, type: 1, cake_type: type, lv: level + 1, clicks: 0 });
+      state.updated = ctx.at;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      return { schema: 'pb_baking_synthesize_rsp', actKey: key, value: { act_data: bakingData(state) } };
     })
   });
 
   register(111004, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_batch_synthesize_req',
-    handler: () => run('baking', () => {
-      throw new GameError(5, 'Baking batch synthesis needs the cake merge chain, which the shipped tables do not expose');
+    handler: request => run('baking', ctx => {
+      const { key, state, config } = bakingCtx(ctx, request.act_id);
+      const maxLevel = Number(t.baking.Global.rows[0]?.level_max ?? 8);
+      const synthesizes = [];
+      let minLv = 0;
+      for (let guard = 0; guard < 1000; guard += 1) {
+        const pairs = [];
+        for (const cell of state.grid) {
+          if (Number(cell.type) !== 1) continue;
+          for (const [dx, dy] of [[1, 0], [0, 1]]) {
+            const other = bakingCell(state, Number(cell.x) + dx, Number(cell.y) + dy);
+            if (!other || Number(other.type) !== 1) continue;
+            if (Number(other.cake_type) !== Number(cell.cake_type) || Number(other.lv) !== Number(cell.lv)) continue;
+            if (Number(cell.lv) >= maxLevel) continue;
+            pairs.push([cell, other]);
+          }
+        }
+        if (!pairs.length) break;
+        pairs.sort((left, right) => (Number(left[0].lv) - Number(right[0].lv))
+          || (Number(left[1].y) - Number(right[1].y)) || (Number(left[1].x) - Number(right[1].x)));
+        const [first, second] = pairs[0];
+        const type = Number(first.cake_type), level = Number(first.lv);
+        state.grid = state.grid.filter(cell => cell !== first && cell !== second);
+        state.grid.push({ x: Number(second.x), y: Number(second.y), type: 1, cake_type: type, lv: level + 1, clicks: 0 });
+        minLv = minLv === 0 ? level : Math.min(minLv, level);
+        synthesizes.push({ grid: bakingGrids(state), sort: synthesizes.length });
+      }
+      state.updated = ctx.at;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      return {
+        schema: 'pb_baking_batch_synthesize_rsp', actKey: key,
+        value: { act_data: bakingData(state), synthesizes, min_lv: minLv }
+      };
     })
   });
 
@@ -1892,10 +2365,29 @@ export function createMinigameActService({
       const cost = Number(config.make_cost_stamina) || 1;
       if (state.stamina < cost) throw new GameError(311, 'Baking stamina is exhausted');
       const level = bakingLv(state, version);
-      const weights = level?.cake_weight_list ?? [];
-      const cake = weights.length ? Number(weightedPick(weights.map(entry => ({ weight: entry[0], value: entry[1] })), { label: 'Baking cake' }).value) : 1;
-      state.stamina -= cost;
-      state.grid.push({ x: state.grid.length % 7, y: Math.floor(state.grid.length / 7), type: 1, cake_type: cake, lv: 1, clicks: 0 });
+      const open = bakingOpenCells(state, config);
+      const occupied = state.grid.filter(cell => open.has(bakingKey(cell.x, cell.y))).length;
+      const free = Math.max(0, open.size - occupied);
+      const maxMake = Number(t.baking.Global.rows[0]?.make_num ?? 10);
+      const requested = request.num === undefined ? 1 : Number(request.num);
+      if (!Number.isSafeInteger(requested) || requested <= 0) throw new GameError(1, 'Invalid baking make count');
+      const count = Math.min(requested, Math.floor(state.stamina / cost), free, maxMake);
+      if (count <= 0) throw new GameError(311, 'Baking board or stamina cannot fit another cake');
+      const weights = (level?.cake_weight_list ?? []).map(entry => ({ weight: Number(entry[0]), value: Number(entry[1]) }));
+      const levels = (level?.cake_lv_list ?? []).map((value, index) => ({
+        weight: Number((level?.cake_lv_weight_list ?? [])[index] ?? 0), value: Number(value)
+      })).filter(entry => entry.weight > 0);
+      const slots = [...open].map(key => key.split(',').map(Number))
+        .filter(([x, y]) => !state.grid.some(cell => Number(cell.x) === x && Number(cell.y) === y))
+        .sort((left, right) => (left[1] - right[1]) || (left[0] - right[0]));
+      for (let index = 0; index < count; index += 1) {
+        const cake = weights.length ? Number(weightedPick(weights, { label: 'Baking cake' }).value) : 1;
+        const cakeLv = levels.length ? Number(weightedPick(levels, { label: 'Baking cake level' }).value) : 1;
+        const [x, y] = slots[index];
+        state.grid.push({ x, y, type: 1, cake_type: cake, lv: cakeLv, clicks: 0 });
+      }
+      state.stamina -= cost * count;
+      state.updated = ctx.at;
       saveState(ctx.db, ctx.roleId, key, state, ctx.at);
       return { schema: 'pb_baking_make_cake_rsp', actKey: key, value: { act_data: bakingData(state) } };
     })
@@ -1903,8 +2395,20 @@ export function createMinigameActService({
 
   register(111006, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_give_up_order_req',
-    handler: () => run('baking', () => {
-      throw new GameError(5, 'Baking order generation needs the order weighting chain, which the shipped tables do not expose');
+    handler: request => run('baking', ctx => {
+      const { key, state, config, version } = bakingCtx(ctx, request.act_id);
+      const order = bakingOrderRow(state.order_tid);
+      if (!order) throw new GameError(311, 'Baking has no current order');
+      const spent = spend(ctx, [[Number(config.abandon_item), Number(config.abandon_item_num)]], 'Baking give up order');
+      state.give_up_list.push({
+        order_tid: Number(state.order_tid),
+        remain_times: Number(order.expire_time) > 0 ? Math.max(0, Number(state.order_end) - ctx.at) : 0
+      });
+      state.continuous = 0;
+      bakingGenerateOrder(state, version, ctx.at);
+      state.updated = ctx.at;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      return { schema: 'pb_baking_give_up_order_rsp', actKey: key, value: { act_data: bakingData(state), res: resOf(spent) } };
     })
   });
 
@@ -1950,22 +2454,88 @@ export function createMinigameActService({
 
   register(111011, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_handle_event_req',
-    handler: () => run('baking', () => {
-      throw new GameError(5, 'Baking board events need the client event chain, which the shipped tables do not expose');
+    handler: request => run('baking', ctx => {
+      const { key, state, config } = bakingCtx(ctx, request.act_id);
+      const position = bakingCellAtRequest({ x: request.x, y: request.y }, state, config);
+      if (!position.cell || Number(position.cell.type) !== 4) throw new GameError(311, 'Baking event cell is not present');
+      const events = t.baking.SpecialEvent.rows.filter(row => Number(row.item) === Number(position.cell.cake_type));
+      const event = events.find(row => Number(row.reward_version) === Number(position.cell.lv)) ?? events[0];
+      if (!event) throw new GameError(5, 'Baking event is not configured');
+      const param = Number(request.param1);
+      const award = param === 1 ? event.award1 : param === 2 ? event.award2 : null;
+      if (award === null) throw new GameError(1, 'Invalid baking event choice');
+      const awards = Array.isArray(award) ? awardsOf(award, 'Baking event award') : [];
+      const granted = grant(ctx, awards, 'Baking event');
+      state.grid = state.grid.filter(cell => cell !== position.cell);
+      state.updated = ctx.at;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      return { schema: 'pb_baking_handle_event_rsp', actKey: key, value: { act_data: bakingData(state), res: resOf(granted) } };
     })
   });
 
   register(111012, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_submit_order_req',
-    handler: () => run('baking', () => {
-      throw new GameError(5, 'Baking order submission needs the cake matching chain, which the shipped tables do not expose');
+    handler: request => run('baking', ctx => {
+      const { key, state, config, version } = bakingCtx(ctx, request.act_id);
+      const order = bakingOrderRow(state.order_tid);
+      if (!order) throw new GameError(311, 'Baking has no current order');
+      if (Number(state.order_end) > 0 && ctx.at > Number(state.order_end)) throw new GameError(311, 'Baking order has expired');
+      const positions = Array.isArray(request.pos) ? request.pos : [];
+      if (!positions.length) throw new GameError(1, 'Baking order submit list is empty');
+      const open = bakingOpenCells(state, config);
+      const seen = new Set();
+      const cells = [];
+      for (const position of positions) {
+        const x = Number(position.x), y = Number(position.y);
+        const keyPos = bakingKey(x, y);
+        if (seen.has(keyPos)) throw new GameError(1, 'Baking order submit contains duplicate positions');
+        seen.add(keyPos);
+        if (!open.has(keyPos)) throw new GameError(311, 'Baking order position is not unlocked');
+        const cell = bakingCell(state, x, y);
+        if (!cell || Number(cell.type) !== 1) throw new GameError(311, 'Baking order position has no cake');
+        cells.push(cell);
+      }
+      const required = new Map();
+      for (const entry of order.cake_list ?? []) {
+        const cakeType = Number(entry[0]), cakeLv = Number(entry[1]), num = Number(entry[2]);
+        const keyCake = cakeType + ':' + cakeLv;
+        required.set(keyCake, (required.get(keyCake) ?? 0) + num);
+      }
+      for (const cell of cells) {
+        const keyCake = Number(cell.cake_type) + ':' + Number(cell.lv);
+        if (!required.has(keyCake)) throw new GameError(311, 'Baking order contains an unexpected cake');
+        required.set(keyCake, required.get(keyCake) - 1);
+        if (required.get(keyCake) < 0) throw new GameError(311, 'Baking order contains too many cakes');
+      }
+      if ([...required.values()].some(value => value !== 0)) throw new GameError(311, 'Baking order is not complete');
+      state.grid = state.grid.filter(cell => !cells.includes(cell));
+      const scoreRate = Number(t.baking.Global.rows[0]?.score_rate ?? 1) || 1;
+      const addScore = Number(order.add_score ?? 0) * scoreRate;
+      state.score += addScore;
+      state.daily_score += addScore;
+      state.finish_times += 1;
+      if (Number(order.expire_time) > 0) state.continuous = 0;
+      else state.continuous += 1;
+      const awards = Array.isArray(order.award) ? awardsOf(order.award, 'Baking order award') : [];
+      const granted = grant(ctx, awards, 'Baking order');
+      bakingGenerateOrder(state, version, ctx.at);
+      state.updated = ctx.at;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      return { schema: 'pb_baking_submit_order_rsp', actKey: key, value: { act_data: bakingData(state), res: resOf(granted) } };
     })
   });
 
   register(111013, {
     card: 'PLAY-BAKINGACT', encoding: 'pb', request: 'pb_baking_refresh_time_limit_order_req',
-    handler: () => run('baking', () => {
-      throw new GameError(5, 'Baking timed order refresh needs the order weighting chain, which the shipped tables do not expose');
+    handler: request => run('baking', ctx => {
+      const { key, state, version } = bakingCtx(ctx, request.act_id);
+      const order = bakingOrderRow(state.order_tid);
+      if (!order) throw new GameError(311, 'Baking has no current order');
+      if (Number(order.expire_time) <= 0) throw new GameError(311, 'Baking current order is not timed');
+      bakingGenerateOrder(state, version, ctx.at, { forceTimed: true });
+      state.updated = ctx.at;
+      saveState(ctx.db, ctx.roleId, key, state, ctx.at);
+      return { schema: 'pb_baking_refresh_time_limit_order_rsp', actKey: key, value: { act_data: bakingData(state) } };
     })
   });
 
@@ -2049,7 +2619,13 @@ export function createMinigameActService({
       login: (ctx, actId) => {
         const { key, state } = monopolyCtx(ctx, actId);
         saveState(ctx.db, ctx.roleId, key, state, ctx.at);
-        return codec.pack('pb_monopoly_act_login', { res: resOf({ changes: [] }), guild_count_statics_send: {} });
+        const version = Number(tables.ActFrameAct.get(actId)?.version ?? 1);
+        return codec.pack('pb_monopoly_act_login', {
+          act_role_data: monopolyRole(state, version),
+          guild_data: monopolyGuildData(state, version, ctx.roleId),
+          res: resOf({ changes: [] }),
+          guild_count_statics_send: monopolyGuildStatisticsSend(state)
+        });
       }
     },
     {
