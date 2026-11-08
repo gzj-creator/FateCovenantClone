@@ -1,6 +1,6 @@
 # F 块（#120–#150 招募、抽取、翻牌与转盘活动）实施记录
 
-2026-11-08。续做分支 `task/BLOCK-F2-20261108`，worktree `.worktree/gameplay-20261108/block-f2`，起点 main `1616438`。本记录接续首批 107901、102301、88965 和既有百抽/奖励抽取/许愿树实现，记录 F 块 31 张任务卡、74 条原缺失命令的最终覆盖状态。
+2026-11-08。续做分支 `task/BLOCK-F2-20261108`，worktree `.worktree/gameplay-20261108/block-f2`，起点 main `1616438`，交付提交 `aa3f35b`，以 `--no-ff` 合入 main `0cefbbd`。本记录接续首批 107901、102301、88965 和既有百抽/奖励抽取/许愿树实现，记录 F 块 31 张任务卡、74 条原缺失命令的最终覆盖状态。
 
 ## 状态口径
 
@@ -82,7 +82,7 @@ npm test
 - 服务专项 `14/14`：轮盘、扭蛋、三诫、胶囊兑换/收集、棋盘 15 格结束与新轮、抽奖活动日志、拼图抽取、千抽 pending/领取、祈愿阈值、翻牌 pending/领取、PB 编码失败回滚、SQLite ABORT 回滚。
 - 临时端口真实握手/TCP：104501→104502、109101→109102 成功，105502 以 `err 5` 拒绝；SQLite 中对应状态可读取。
 - 分支全量：`npm test` 结果见下方与总执行状态；未使用实时服务、设备、ADB 或运行数据库。
-- 合并后在 main 重跑 draw-activity、draw-activity-gateway、gameplay-gateway、m5-command-matrix 及既有百抽/奖励抽取/许愿树回归。
+- 合并后在 main 重跑 draw-activity、draw-activity-gateway、gameplay-gateway、m5-command-matrix 及既有百抽/奖励抽取/许愿树回归：`59/59`。含后续 A2/E2 合并的收尾前 main `d99dae4` 全量为 `2706` 项、pass `2704`、fail `0`、skip `2`，日志为 `analysis/test-runs/gameplay-20261106/block-f-final-full-r2.log`。
 
 ## 未做与后续证据
 

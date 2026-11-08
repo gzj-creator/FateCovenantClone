@@ -174,6 +174,7 @@
 - 统一服务按 `(role,module,version)` 持久化计数器、领取位和选择项，新增真实角色日志；所有成功路径在同一 SQLite 事务中完成扣费、发奖、状态和 PB 编码。网关只对 34 条声明的 ETF 请求执行 ETF 解码，其余 protobuf 命令直接传原始 bytes，修复了把 PB 数据误送 ETF 的早期问题。
 - 详细实现覆盖轮盘、三诫、金字塔、百倍奖励、棋盘、奖券成就、抽奖活动、神秘心愿、水果大奖选择、精灵选择、胶囊四命令、拼图、千抽、祈愿和翻牌累计奖等；棋盘 `is_special` 已纠正为展示标志，使用 `Param.max_turn` 结束回合。象棋翻转领奖在缺 `ActActive → ActTurn` 映射时明确拒绝。逐族规则及 21 条 fail closed 清单见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
 - 服务专项 14/14：真实资源变化、领取位/重开、棋盘 15 格、抽奖活动日志、千抽 pending/领取、祈愿阈值、翻牌 pending/claim、PB 编码失败回滚和 SQLite ABORT 回滚。临时端口真实握手/TCP 覆盖 104501→104502、109101→109102 成功及 105502 `err 5` 拒绝。分支全量 `npm test`：2609 项、pass 2607、fail 0、skip 2。
+- 交付提交 `aa3f35b` 已 rebase 到当时最新 main `985720a` 并以 `--no-ff` 合入 `0cefbbd`；收尾前含后续 A2/E2 合并的 main `d99dae4` 上 F 相关 59/59、主线全量 2706（pass 2704 / fail 0 / skip 2），日志为 `analysis/test-runs/gameplay-20261106/block-f-final-full-r2.log`。
 - 未做 APK/真实客户端验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未连接原游戏服务器。`102401`、`103502/103503` 等虽具有限制路径，但生产进度来源未接入时仍会明确拒绝，不能按“服务端完成”销项。
 
 ## 集成与验收记录（2026-11-08 第八批：块 F 首批）

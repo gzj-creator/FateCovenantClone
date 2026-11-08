@@ -244,7 +244,7 @@ E2 覆盖 154/154 个缺失命令：153 条进入实际业务服务，`105805` �
 | 149 | DRAW-FLOPCARDACT | 翻牌、单次与累计奖励 | 3 | 服务端完成（APK 未验收） |
 | 150 | DRAW-HUNDREDDRAWACT | 百抽、进度奖、自选、升星奖与跑马灯 | 5 | 服务端完成（保底选择与非英雄星级奖证据待补） |
 
-F 块续做（2026-11-08）：74 条原缺失命令现均有明确路径，其中本 worktree 的统一服务新增覆盖 65 条（44 条表驱动成功路径、21 条无条件 fail closed），其余 9 条由既有百抽、奖励抽取和许愿树服务承担。路径覆盖不等于玩法完成；全部证据缺口、运行规则与未验收边界见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
+F 块续做（2026-11-08）：74 条原缺失命令现均有明确路径，其中本 worktree 的统一服务新增覆盖 65 条（44 条表驱动成功路径、21 条无条件 fail closed），其余 9 条由既有百抽、奖励抽取和许愿树服务承担。路径覆盖不等于玩法完成；交付提交 `aa3f35b` 已合入 main `0cefbbd`，收尾前含后续 A2/E2 合并的 main `d99dae4` 全量回归为 2706 项、fail 0、skip 2。全部证据缺口、运行规则与未验收边界见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
 
 ## 块 G1：#151–#162（探索与家园前半）
 
