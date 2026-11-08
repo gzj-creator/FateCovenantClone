@@ -415,5 +415,5 @@ F 块首批交付（2026-11-08）：24 张活动配置表已可复现抽取，10
 
 - 96 条命令全部接入 personal-server/game/minigame-act-service.mjs 并在网关派发；塔、打地鼠、三消、对对碰、大富翁、梦境、钻石矿脉、烘焙写入模块 92 登录负载。
 - 完成 6 卡、服务端完成含明确拒绝 8 卡、仅明确拒绝 1 卡（SOURCEPOINT）、回归 2 卡；明细见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md 与逐卡 implementation.md。
-- 分支内全量 npm test 2560 项 pass 2558 / fail 0 / skipped 2；合入 main（24f90e9）后在干净 worktree 复核 2632 项 pass 2630 / fail 0 / skipped 2，补跨块表格式兼容后 2633 项 pass 2631 / fail 0 / skipped 2。
+- 分支内全量 npm test 2560 项 pass 2558 / fail 0 / skipped 2；合入 main（24f90e9）后在干净 worktree 复核 2632 项 pass 2630 / fail 0 / skipped 2；补跨块表格式兼容（88219ca）后 main 最终全量 2674 项 pass 2672 / fail 0 / skipped 2。
 - 未做 APK 实测：本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，无 APK 快照。

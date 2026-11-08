@@ -32,6 +32,7 @@
 - 合并后在 main@24f90e9 的干净 worktree 复核全量 npm test → 2632 项，pass 2630，fail 0，skipped 2（日志 analysis/tmp/g2-tables/main-verify-24f90e9.log）。
 - HomelandActTable 由本块以行级 dump（tools/extract-lua-table-rows.mjs，含 Task/Furniture/Const/Version/Happiness/RankUpAward/Module 等族）提交，而块 G1 的 config/exploration-act-tables.mjs 按原型 dump 读取同一文件。已让两种格式互通：config/hero-tables.mjs 的 readGeneratedDump 接受行级 dump，config/minigame-act-tables.mjs 的 readFamily 在缺行级 dump 时回退原型解释器，并新增专项断言。修正后全量 npm test → 2633 项，pass 2631，fail 0，skipped 2（日志 analysis/tmp/g2-tables/main-verify-compat.log）。
 - 合并前主工作区存在 G1 未跟踪的旧 HomelandActTable 资产（原型 dump，SHA256 6A3D6C08…C2E07），已备份到 analysis/tmp/g2-tables/homeland-act-main-untracked-backup.gz 并原路径改名为 HomelandActTable.data.lua.json.gz.g1-untracked-backup；如 G1 需要原文件可用该备份覆盖，两种格式现已都能读取。
+- 最终合入状态：main 88219ca（含本块 24f90e9 合并与并行块 E1 提交）在干净 worktree 全量 npm test → 2674 项，pass 2672，fail 0，skipped 2（日志 analysis/tmp/g2-tables/main-88219ca-final.log）。
 
 ## 未完成与风险
 
