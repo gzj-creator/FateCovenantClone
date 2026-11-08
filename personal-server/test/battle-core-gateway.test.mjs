@@ -93,13 +93,15 @@ test('ReportCmd/CommonMapCmd/StarMissionCmd answer over the temporary handshake 
   assert.equal(client.errorCode(empty), 0);
   assert.deepEqual(codec.unpack('pb_pass_record', client.payloadOf(empty)).pass_info_list, []);
 
-  // Fail-closed branches answer with an explicit error code, never an empty body.
+  // Null-schema commands answer with an empty success frame; fail-closed
+  // branches answer with an explicit error code, never an empty body.
   const vote = await client.request(212, 3, codec.pack('pb_pass_record_vote_req', {
     pass_tid: PASS_TID, id: BUSINESS_ID, fight_id: '999', type: 1, is_up_vote: true
   }));
   assert.equal(client.errorCode(vote), 5);
   const share = await client.request(205, 4, codec.pack('pb_share_report', { fight_id: '1', fight_type: 1 }));
-  assert.equal(client.errorCode(share), 5);
+  assert.equal(client.errorCode(share), 0);
+  assert.equal(client.payloadOf(share).length, 0, '205 has no c2s_back schema: success is an empty frame');
   const mapInit = await client.request(90601, 5, Buffer.alloc(0));
   assert.equal(client.errorCode(mapInit), 5);
   const mapTrigger = await client.request(90602, 6, codec.pack('pb_common_map_node_trigger', { map_tid: 9001, sub_id: 0, x: 0, y: 0 }));
