@@ -581,7 +581,7 @@ export function createLocalGame({
     // deployment opts in through the environment or role metadata.
     const gmEnabled = () => process.env.FC_ALLOW_GM_COMMANDS === '1' || store.read().state.gmEnabled === true;
     const roleService = createRoleService({ store, codec, tables, heroTables, attributeTables, now: clock, logger, gmEnabled });
-    const storyService = createStoryService({ store, now: clock, logger });
+    const storyService = createStoryService({ store, codec, now: clock, logger });
     const cdkeyService = createCdkeyService({ store, codec, tables, now: clock, logger });
     const actFrameService = createActFrameService({ store, codec, calendar, tables, now: clock, logger, gmEnabled });
     const skinService = createSkinService({ store, codec, tables, now: clock, logger });
@@ -688,6 +688,10 @@ export function createLocalGame({
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary('Local Server'), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
+    modules.set(4, binary(roleService.loginRedDots()));
+    const storyLogin = storyService.loginPayload();
+    modules.set(88, [storyLogin.tid, binary(storyLogin.payload)]);
+    modules.set(173, binary(roleService.loginChannelPush()));
     const rankAchieveLogin = rankAchieve.loginPayload();
     modules.set(rankAchieve.moduleId, [
       binary(rankAchieveLogin.person),
@@ -2826,29 +2830,6 @@ export function createLocalGame({
       }
       const reads = new Map([[100601, ['pb_group_buy_act_server', {}]]]);
       if (reads.has(type)) { const [schema, object] = reads.get(type); send(seq, pack(schema, object)); return; }
-      if (type === 53001 || type === 53002) {
-        try {
-          let input;
-          try {
-            input = await decodeEtf(request.data);
-          } catch {
-            throw new GameError(1, 'Invalid activity synchronization ETF');
-          }
-          // The three captured 53001 requests are proper ETF lists containing
-          // two integers. Their meanings and the 53002 argument contract are
-          // unrecovered, so neither command may assert a state transition.
-          if (type === 53001 && (
-            !(input instanceof E.OtpErlangList) || input.improper !== false ||
-            input.value.length !== 2 || !input.value.every(Number.isSafeInteger)
-          )) throw new GameError(1, 'Unsupported activity synchronization shape');
-          throw new GameError(5, 'Activity state transition contract is not recovered');
-        } catch (error) {
-          const code = error instanceof GameError ? error.code : 2;
-          send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'activity_stage_sync_rejected', type, seq, code, message: error.message });
-        }
-        return;
-      }
       if ([108, 102801].includes(type)) {
         // 108 (req_remove_operate_display) is a UI-only acknowledgement after a purchase.
         send(seq);

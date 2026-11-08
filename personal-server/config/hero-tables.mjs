@@ -72,9 +72,16 @@ export function readGeneratedDump(parsed, names) {
   if (parsed && !parsed.prototypes && parsed.tables && typeof parsed.tables === 'object') {
     const tables = {};
     for (const name of names) {
-      const rows = parsed.tables[name];
+      const source = parsed.tables[name];
+      const rows = Array.isArray(source) ? source : source?.rows;
       if (!Array.isArray(rows)) throw new Error('Missing generated configuration: ' + name);
-      tables[name] = new Map(rows.map((row, index) => [Number(row?.tid ?? index + 1), row]));
+      const fields = Array.isArray(source?.fields) ? source.fields : null;
+      tables[name] = new Map(rows.map((row, index) => {
+        const value = fields && Array.isArray(row)
+          ? Object.fromEntries(fields.map((field, position) => [field, row[position]]))
+          : row;
+        return [Number(value?.tid ?? index + 1), value];
+      }));
     }
     return tables;
   }

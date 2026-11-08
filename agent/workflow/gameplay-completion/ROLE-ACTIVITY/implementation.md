@@ -1,1 +1,30 @@
-﻿# ROLE-ACTIVITY 实现记录  日期：2026-11-08。分支：feat/block-j-role-support。范围：J 块（#265-#276）中的 ROLE-ACTIVITY。  ## 状态  服务端完成（日历驱动的真实状态推进）。  ## 实现  - 命令：53001 req_activity_state_change。 - 权威状态：role_activity_stages + 登录模块 92。 - 网关在登录通过后按数字 type 分发，ETF 请求解码、protobuf 请求解包与回包编码均走现有 codec；业务、状态与回包在同一 store.transaction 内提交。 - 所有失败路径返回 GameError 业务码（1 参数错误、301 资源不足、310 重复、403 GM 关闭、420 未拥有、430 等级不足），不再用固定空包销项。  ## 验证  - 迁移 v17 建表并写 migrations 记录；重开 SQLite 后 user_version=17 且状态保留（见 tmp-block-j-smoke.mjs 运行输出与 test/block-j-role-support.test.mjs）。 - 服务级回归通过后由总控执行 personal-server 全量 npm test。  ## 缺口  53001 两个 ETF 整数语义未恢复，当前作为 act_id 提示使用；失败返回业务错误码而非固定空包。
+# ROLE-ACTIVITY 实现记录
+
+日期：2026-11-08。分支：`feat/block-j-role-support`。范围：J 块 #272。
+
+## 状态
+
+服务端完成，53001 按 proper ETF 推进登录模块 92 中的已知活动状态。未做 APK 验收。
+
+## 客户端证据
+
+- `ActivityCmd.lua` 显示 53001 使用 ETF。
+- `ActMgr.lua` / `DreamSummerActMainForm.lua` 的证据同时确认：活动管理器和具体活动界面都以 proper ETF 活动 ID 列表请求活动数据，`ActLogin.RevActFrameState` 消费 `act_stage_list`。服务端不能返回调用方未请求的活动。
+- LuaJIT 字节码确认 `ActMgr:SendActivityStateChange` 遍历 `serverActList`，把每个活动的 `id` 写入 proper ETF 列表；捕获请求是活动 ID 列表，服务端只应处理请求中明确列出的活动，不能借列表长度或全局顺序推进其他活动。
+
+## 实现
+
+- 53001 对所有请求 ID 去重，并逐一确认 ID 存在于当前活动登录状态。
+- 只对请求中的活动比较日历目标状态与 SQLite 已存阶段；未请求活动保持不变。
+- 53006 与 53001 使用相同的请求解析和已知 ID 校验，只生成请求集合内的 `act_stage_list`；未知、空、非整数和 improper ETF 均 fail closed。
+- 成功返回 `pb_act_state_change_back`，失败返回业务错误码，不发送固定空包。
+
+## 验证
+
+- 服务专项覆盖重复 ID、未知 ID、空列表、负数、improper list、重复推进和可解码回包。
+- 临时 loopback TCP 发送 proper ETF 53001 和 53006，回包只含请求活动 ID，且下一请求 seq 正常。
+
+## 缺口
+
+- 53001 请求元素的“活动 ID”语义已由字节码确认；各活动族完整阶段配置和状态推进规则仍需按活动类型恢复。
+- 未做 APK 实机验收；未启停实时服务、未读写运行数据库。

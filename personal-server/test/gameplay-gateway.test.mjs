@@ -109,6 +109,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
   const scheduledActivity = await loginActivities(Buffer.from(login.data, 'base64'));
   assert.equal(scheduledActivity.act_list.some(entry => Number(entry.state_data?.act_id) === 1074003), true);
+  const scheduledActivityIds = [...new Set([
+    ...scheduledActivity.act_list.map(entry => Number(entry.state_data?.act_id)),
+    ...scheduledActivity.act_parallel_list.flatMap(group => group.states_data.map(entry => Number(entry.act_id)))
+  ])];
+  assert.ok(scheduledActivityIds.length >= 3);
   assert.equal(BigInt(game.store.read().resources.get('821202')?.num ?? 0), 25n);
 
   // Heartbeat is one-way. If it receives an empty frame, the client's receive
@@ -327,13 +332,15 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
 
   // Activity state synchronization now reconciles the stored per-role stage
   // rows against the calendar authority (ROLE-ACTIVITY / ROLE-ACTFRAME), so a
-  // well-formed request returns a real transition reply instead of err 5.
+  // well-formed request returns a real transition reply instead of err 5. Use
+  // ids actually present in this login snapshot; historical captures can name
+  // different scheduled activities after the server-day gates move.
   const activityModulesBefore = JSON.stringify(game.store.state().modules.value.filter(([id]) => [92, 183].includes(Number(id))));
-  response = await request(53002, 10, await encodeEtf([1004012]));
+  response = await request(53002, 10, await encodeEtf([scheduledActivityIds[0]]));
   assert.equal(response.err, undefined);
-  response = await request(53001, 101, await encodeEtf(new E.OtpErlangList([1, 2], false)));
+  response = await request(53001, 101, await encodeEtf(new E.OtpErlangList(scheduledActivityIds.slice(0, 2), false)));
   assert.equal(response.err, undefined);
-  response = await request(53001, 102, await encodeEtf([1, 2]));
+  response = await request(53001, 102, await encodeEtf(scheduledActivityIds.slice(1, 3)));
   assert.equal(response.err, undefined);
   response = await request(53001, 103, Buffer.from([131, 108]));
   assert.equal(response.err.err, 2);

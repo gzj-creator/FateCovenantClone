@@ -1,1 +1,30 @@
-﻿# ROLE-UNKNOWN 实现记录  日期：2026-11-08。分支：feat/block-j-role-support。范围：J 块（#265-#276）中的 ROLE-UNKNOWN。  ## 状态  服务端完成（命令词表为本地 GM 设计，客户端 ETF 契约未恢复）。  ## 实现  - 命令：10 gm_cmd。 - 权威状态：gm_audit_entries。 - 网关在登录通过后按数字 type 分发，ETF 请求解码、protobuf 请求解包与回包编码均走现有 codec；业务、状态与回包在同一 store.transaction 内提交。 - 所有失败路径返回 GameError 业务码（1 参数错误、301 资源不足、310 重复、403 GM 关闭、420 未拥有、430 等级不足），不再用固定空包销项。  ## 验证  - 迁移 v17 建表并写 migrations 记录；重开 SQLite 后 user_version=17 且状态保留（见 tmp-block-j-smoke.mjs 运行输出与 test/block-j-role-support.test.mjs）。 - 服务级回归通过后由总控执行 personal-server 全量 npm test。  ## 缺口  gm_cmd 请求编码在静态目录中为 unknown；当前接受 ETF map（command/args）并提供 status/grant/set_level/grant_figure 四个受审计操作，需真实客户端契约后再校正。
+# ROLE-UNKNOWN 实现记录
+
+日期：2026-11-08。分支：`feat/block-j-role-support`。范围：J 块 #265。
+
+## 状态
+
+服务端完成，命令词表是本地受审计的 GM 设计；客户端 ETF 请求契约未恢复。未做 APK 实机验收。
+
+## 客户端证据
+
+- `Cmd.lua` 只登记了 C2S `gm_cmd` 和 S2C `rev_gm_cmd` 名称通道。
+- 已提取的项目脚本没有找到发送 `gm_cmd` 的专用 Cmd 模块或完整 ETF 参数构造；因此不能把本地 map 形状声称为原服契约。
+
+## 实现
+
+- 命令：10。
+- 默认关闭，只有显式开启 GM 后才允许执行。
+- 支持 status、grant、set_level、grant_figure 四个操作，写入 `gm_audit_entries`；业务、状态和回包同事务提交。
+- 参数错误、GM 关闭、资源不足、重复操作和未拥有对象使用明确业务错误码，不回送固定空包。
+
+## 验证
+
+- `test/block-j-role-support.test.mjs`：13/13 通过，覆盖 GM 审计和 SQLite 重开。
+- `test/block-j-role-gateway.test.mjs`：1/1 通过，覆盖真实 loopback framing。
+- 最终分支全量 `npm test`：2710 项，pass 2708、fail 0、skipped 2，日志为 `analysis/test-runs/gameplay-20261106/block-j-final-full-4.log`。
+
+## 缺口
+
+- `gm_cmd` 的客户端 ETF 请求契约仍未恢复；当前实现只接受明确的本地 map，需要拿到真实请求后再校正。
+- 本轮未启动或停止实时服务，未读写运行数据库，未操作模拟器、ADB 或 APK。
