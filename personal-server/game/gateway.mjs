@@ -126,6 +126,7 @@ import { createLineFirstRechargeService } from './line-first-recharge-service.mj
 import { createRechargeRebateResetService } from './recharge-rebate-reset-service.mjs';
 import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
 import { createTimeTempleService } from './time-temple-service.mjs';
+import { createBenefitCommerceService } from './benefit-commerce-service.mjs';
 import { createGuideService } from './guide-service.mjs';
 import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
@@ -505,6 +506,7 @@ export function createLocalGame({
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
+  const benefitCommerce=createBenefitCommerceService({store,codec,tables,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const everyTasks=createEveryTaskService({store,codec,tables,now:clock,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -1596,6 +1598,22 @@ export function createLocalGame({
           const code = error instanceof GameError ? (error.code === 307 ? 16016 : error.code) : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'welfare_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (benefitCommerce.supports(type)) {
+        // 块 I（PAY-*）的礼包/通行证/基金/拍卖命令入口。可结算的命令在这里真实
+        // 扣发并写回登录模块；配置表缺失的命令返回 5 与具体原因，避免用固定空包
+        // 冒充已实现。
+        try {
+          const input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
+          const result = benefitCommerce.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'benefit_command_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'benefit_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
