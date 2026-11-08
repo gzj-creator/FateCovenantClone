@@ -65,6 +65,8 @@ import { readDiamondBankActTables } from '../config/diamond-bank-act-tables.mjs'
 import { createFreePrivilegeActService } from './free-privilege-act-service.mjs';
 import { readFreePrivilegeActTables } from '../config/free-privilege-act-tables.mjs';
 import { createSlotGameActService } from './slot-game-act-service.mjs';
+import { createExplorationActService } from './exploration-act-service.mjs';
+import { readExplorationActTables } from '../config/exploration-act-tables.mjs';
 import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
@@ -533,6 +535,7 @@ export function createLocalGame({
   const diamondBankAct=createDiamondBankActService({store,codec,tables,diamondBankTables:readDiamondBankActTables(),calendar,now:clock,logger});
   const freePrivilegeAct=createFreePrivilegeActService({store,codec,tables,freePrivilegeTables:readFreePrivilegeActTables(),calendar,monthlyCard,now:clock,logger});
   const slotGameAct=createSlotGameActService({store,codec,tables,slotGameTables:readSlotGameActTables(),calendar,now:clock,random,logger});
+  const explorationAct=createExplorationActService({store,codec,tables,explorationTables:readExplorationActTables(),now:clock,random,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
   // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
@@ -1478,7 +1481,21 @@ export function createLocalGame({
         }
         return;
       }
-      if (slotGameAct.supports(type)) {
+      if (explorationAct.supports(type)) {
+        try {
+          const result = await explorationAct.execute(type, request.data ?? Buffer.alloc(0));
+          send(seq, result.data);
+          log({ event: 'exploration_command_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'exploration_command_rejected', type, seq, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }      if (slotGameAct.supports(type)) {
         try {
           const input = slotGameAct.decode(type, request.data ?? Buffer.alloc(0));
           const result = slotGameAct.execute(type, input);

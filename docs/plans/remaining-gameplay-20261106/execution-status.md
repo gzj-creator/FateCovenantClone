@@ -137,3 +137,7 @@
 - 其余 86 条按任务卡分组 fail closed：返回 `err 5` 并附具体缺失证据（如“PAY-VIP: VipTable 未导出”），写 `benefit_command_refused` 审计日志。根因是这些玩法只有协议、没有随包导出的配置表（TriggerGift/UpStarGift/Vip/Fashion/WeekendBonus/Auction/ActShop 等 42 个族）；35003–35011 的 ETF 请求连参数 schema 都没有，77002 回包定义缺失。
 - 专项 `personal-server/test/benefit-commerce-gateway.test.mjs` 4 项：块 I 的 112 条命令逐条真实握手往返断言无 `LOCAL_NOT_IMPLEMENTED`；87301 发奖、重复 310、带参 1、SQLite 重开保持；84602 双档补领与当日重复拒绝；33001/102701/107301 拒绝码 5。逐卡缺口见 [PAY-BLOCK-I 实施记录](../../../agent/workflow/gameplay-completion/PAY-BLOCK-I/implementation.md)。
 - 本批无 APK 验收：未启停实时服务、未读写运行数据库、未操作模拟器/ADB，未连接原游戏服务器。
+
+## 2026-11-08 G1 探索与家园前半（#151-#162）
+
+分支 task/G1-EXPLORATION-20261108（worktree .worktree/gameplay-20261108/g1-exploration）。98 条命令全部注册；真实状态迁移已覆盖 PLAY-EXPERIENCEACT（2）、PLAY-RADISHFARM（6）、PLAY-HOMEPUZZLEACT（9）、PLAY-MINIGAME（4）、PLAY-GRANDTOURER 每日令牌（1），共 22 条。其余 76 条以 err=5 显式 fail closed，不计作完成。11 张客户端活动表由 tools/extract-exploration-tables.mjs 恢复。专项 7/7 与 gateway 7/7 通过；无 APK 验收。详见 agent/workflow/gameplay-completion/G1-EXPLORATION/implementation.md。
