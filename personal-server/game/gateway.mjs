@@ -144,6 +144,10 @@ import { readSoulTrialTables, readScarletTrialTables } from '../config/dungeon-a
 import { createCampTowerService } from './camp-tower-service.mjs';
 import { createDestinyPveService } from './destiny-pve-service.mjs';
 import { readCampTowerTables, readDestinyPveTables } from '../config/dungeon-activity-tables.mjs';
+import { createTriMatchFightService } from './trimatch-fight-service.mjs';
+import { createTriMatchTowerService } from './trimatch-tower-service.mjs';
+import { createTriMatchPvpService } from './trimatch-pvp-service.mjs';
+import { readTriMatchTables } from '../config/trimatch-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -593,6 +597,17 @@ export function createLocalGame({
   const scarletTrial = createScarletTrialService({ store, codec, tables: readScarletTrialTables(), gameTables: tables, logger, now: clock });
   const campTower = createCampTowerService({ store, codec, tables: readCampTowerTables(), gameTables: tables, logger, now: clock });
   const destinyPve = createDestinyPveService({ store, codec, tables: readDestinyPveTables(), logger, now: clock });
+  // BATTLE-TRIPLEMATCHFIGHT (115001-115006), BATTLE-TRIMATCHTOWER
+  // (119001-119003) and BATTLE-TRIMATCHPVP (121001-121004) share the triple
+  // match tables. A won tower fight advances the tower through the fight
+  // settlement hook instead of a client claim.
+  const triMatchTables = readTriMatchTables();
+  const triMatchTower = createTriMatchTowerService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
+  const triMatchFight = createTriMatchFightService({
+    store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock,
+    hooks: { onFightSettled: (model, db, payload) => triMatchTower.settle(model, db, payload) }
+  });
+  const triMatchPvp = createTriMatchPvpService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -988,6 +1003,19 @@ export function createLocalGame({
   });
   const noParameterEtfCommands = new Set([98301, 98302, 98307, 88922, 88927]);
   const scalarEtfActivityCommands = new Set([98306, 98308, 88924, 88931]);
+  // Triple match commands: the protobuf ones are unpacked, the rest (fight retry,
+  // giveup and record, pvp giveup) arrive as a bare Erlang term.
+  const triMatchSchemas = Object.freeze({
+    115001: 'pb_triple_match_fight_request',
+    115002: 'pb_triple_match_fight_swap_tile_req',
+    115004: 'pb_triple_match_fight_ready_req',
+    119001: 'pb_tri_match_tower_rec_process_award_req',
+    119002: 'pb_tri_match_tower_recover_stamina_req',
+    119003: 'pb_tri_match_tower_act_get_pass_req',
+    121001: 'pb_tri_match_pvp_rec_task_award_req',
+    121002: 'pb_tri_match_pvp_rec_grade_award_req',
+    121003: 'pb_tri_match_pvp_get_report_list_req'
+  });
   const storyMissionArgument = data => singleIdArgument(data, 'Invalid story mission payload');
   const sockets = new Set();
   const wireDumpDirectory = process.env.FATE_COVENANT_WIRE_DUMP_DIR;
@@ -2409,6 +2437,25 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'rank_achieve_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // BATTLE-TRIPLEMATCHFIGHT (115001-115006), BATTLE-TRIMATCHTOWER
+      // (119001-119003) and BATTLE-TRIMATCHPVP (121001-121004).
+      if (triMatchFight.supports(type) || triMatchTower.supports(type) || triMatchPvp.supports(type)) {
+        try {
+          const service = triMatchFight.supports(type) ? triMatchFight : triMatchTower.supports(type) ? triMatchTower : triMatchPvp;
+          const schema = triMatchSchemas[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? await decodeEtf(request.data) : undefined);
+          const result = await service.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'trimatch_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'trimatch_rejected', type, seq, code, message: error.message });
         }
         return;
       }
