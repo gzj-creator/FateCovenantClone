@@ -52,6 +52,7 @@ import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createHundredDrawService } from './hundred-draw-service.mjs';
 import { createBonusDrawService } from './bonus-draw-service.mjs';
+import { createDrawActivityService } from './draw-activity-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
@@ -519,6 +520,9 @@ export function createLocalGame({
   // There is no recovered login slot for BonusDrawMgr, so this service answers
   // commands only and keeps its state in its own tables.
   const bonusDraw=createBonusDrawService({store,codec,tables,now:clock,random,logger});
+  // F-block draw activities with recovered table evidence (DRAW-TURNTABLEACT,
+  // DRAW-CAPSULETOY draw, DRAW-THREEADMONITION extra draws).
+  const drawActivity=createDrawActivityService({store,codec,tables,now:clock,random,logger});
   // Fishing reads whose request body is an ETF integer argument (activity id).
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
@@ -1328,6 +1332,21 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'bonus_draw_command_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
+        }
+        return;
+      }
+      if (drawActivity.supports(type)) {
+        try {
+          const argument = await etfArgument(request.data, 'Invalid draw activity payload', { optional: true });
+          const value = argument && typeof argument === 'object' ? argument.value ?? argument : argument;
+          const times = value != null && Number.isFinite(Number(value)) ? Number(value) : undefined;
+          const result = drawActivity.execute(type, { times });
+          send(seq, result.data);
+          log({ event: 'draw_activity_command_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'draw_activity_command_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }

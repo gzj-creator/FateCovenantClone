@@ -92,6 +92,10 @@ export function readGeneratedDump(parsed, names) {
           else r[a] = { reference: global };
           break;
         }
+      // Draw/lottery activity tables read a few engine values through upvalues.
+      // Those values never carry server rules, so keep them as inert references,
+      // matching the GGET fallback above.
+        case 'UGET': r[a] = { reference: 'upvalue' + d }; break;
         case 'FNEW': r[a] = { fieldIndices: r[0] }; break;
         case 'TSETS':
           if (p.constants[c].value !== '__index') throw new Error('Unsupported configuration member');

@@ -137,3 +137,10 @@
 - 其余 86 条按任务卡分组 fail closed：返回 `err 5` 并附具体缺失证据（如“PAY-VIP: VipTable 未导出”），写 `benefit_command_refused` 审计日志。根因是这些玩法只有协议、没有随包导出的配置表（TriggerGift/UpStarGift/Vip/Fashion/WeekendBonus/Auction/ActShop 等 42 个族）；35003–35011 的 ETF 请求连参数 schema 都没有，77002 回包定义缺失。
 - 专项 `personal-server/test/benefit-commerce-gateway.test.mjs` 4 项：块 I 的 112 条命令逐条真实握手往返断言无 `LOCAL_NOT_IMPLEMENTED`；87301 发奖、重复 310、带参 1、SQLite 重开保持；84602 双档补领与当日重复拒绝；33001/102701/107301 拒绝码 5。逐卡缺口见 [PAY-BLOCK-I 实施记录](../../../agent/workflow/gameplay-completion/PAY-BLOCK-I/implementation.md)。
 - 本批无 APK 验收：未启停实时服务、未读写运行数据库、未操作模拟器/ADB，未连接原游戏服务器。
+
+## 集成与验收记录（2026-11-08 第八批：块 F 首批）
+
+- 按 [15-three-work-blocks.md](15-three-work-blocks.md) 的块 F（#120–#150，31 卡 / 74 条缺失命令）实施，分支 `task/BLOCK-F-20261108`。交付分两层：24 张活动配置表从客户端 LuaJIT 资产可复现抽取（`tools/extract-draw-activity-tables.mjs`，dump 落在 `personal-server/assets/tables`），并新增 `config/draw-activities-tables.mjs`；表解释器补 `UGET` 容错。
+- 真实业务只完成三条：DRAW-TURNTABLEACT 107901、DRAW-CAPSULETOY 102301、DRAW-THREEADMONITION 88965。三者按表内价格扣费、按权重或上限发奖、写 `draw_activity_state`/`draw_activity_logs`，网关在 bonusDraw 之后、activityRead 之前派发。专项 4/4，draw-activity + gameplay-gateway + m5-command-matrix + hundred-draw-gateway + bonus-draw-gateway 定向全通过（日志 `analysis/tmp/f-block/focused.log`）。
+- 其余 71 条仍是 `LOCAL_NOT_IMPLEMENTED`，不计完成：多数族卡在回包 `.db.proto` 数据消息未反解（`pb_capsule_toy_all`、`pb_chess`、`pb_thousand_draw_role_info` 等）或缺奖池表（`PuzzleVersion.draw_lib=5510`、`HeroBlazonDraw.draw_lib=3201`、`Lottery.Item.draw_lib=3901`）。逐族原因见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
+- 三条命令的 ETF 请求形态尚未与抓包比对，未做真实 TCP 端到端；未进入 APK 验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未连接原游戏服务器。
