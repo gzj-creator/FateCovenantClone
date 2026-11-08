@@ -80,6 +80,9 @@ import { createEliteMissionService } from './elite-mission-service.mjs';
 import { createEliteMissionBattle } from './elite-mission-battle.mjs';
 import { createPeakTowerService } from './peak-tower-service.mjs';
 import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
+// Card BATTLE-MARTIALCLUB: MartialClubCmd 84401 / 84404-84426.
+import { MARTIAL_CLUB_MODULE_ID, MARTIAL_CLUB_REQUEST_SCHEMAS, createMartialClubService, isEtfRequest as isMartialClubEtfRequest } from './martial-club-service.mjs';
+import { readMartialClubTables } from '../config/martial-club-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
@@ -131,6 +134,7 @@ export function createLocalGame({
   localWallet = false,
   missionFightPlayback = false,
   eliteEnemies = null,
+  martialClubRoster = null,
   guideAwards = readGuideAwards(),
   now = Date.now,
   random = Math.random,
@@ -454,6 +458,8 @@ export function createLocalGame({
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
+  // Card BATTLE-MARTIALCLUB: 84401 / 84404-84426, authoritative state in SQLite.
+  const martialClub = createMartialClubService({ store, codec, tables: readMartialClubTables(), gameTables: tables, logger, now: clock, enemyRoster: martialClubRoster });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
@@ -569,6 +575,13 @@ export function createLocalGame({
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
+    // Card BATTLE-MARTIALCLUB: login module 123 carries pb_martial_club_role and
+    // pb_martial_club_employ_role, the two blocks MartialClubMgr.LoginParse decodes.
+    martialClub.ensureLoginState();
+    {
+      const martialClubLogin = martialClub.loginPayload();
+      modules.set(MARTIAL_CLUB_MODULE_ID, [binary(martialClubLogin.role), binary(martialClubLogin.employ)]);
+    }
     modules.set(CAMPSITE_MODULE_ID, binary(cabin.loginPayload()));
     modules.set(HOUSE_ASSISTANT_MODULE_ID, [binary(houseAssistant.loginPayload())]);
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
@@ -1608,6 +1621,22 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code }); log({ event: 'feature_rejected', type, seq, code });
+        }
+        return;
+      }
+      // Card BATTLE-MARTIALCLUB: MartialClubCmd 84401 + 84404-84426.
+      if (martialClub.supports(type)) {
+        try {
+          const input = isMartialClubEtfRequest(type)
+            ? (request.data?.length ? (await decodeEtf(request.data))?.value : undefined)
+            : unpack(MARTIAL_CLUB_REQUEST_SCHEMAS[type], request.data);
+          const result = await martialClub.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'martial_club_committed', type, seq, bossTid: result.value?.bossTid ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'martial_club_rejected', type, seq, code, message: error.message });
         }
         return;
       }
