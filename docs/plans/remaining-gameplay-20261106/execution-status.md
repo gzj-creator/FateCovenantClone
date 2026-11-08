@@ -137,3 +137,12 @@
 - å…¶ä½™ 86 æ¡æŒ‰ä»»åŠ¡å¡åˆ†ç»„ fail closedï¼šè¿”å› `err 5` å¹¶é™„å…·ä½“ç¼ºå¤±è¯æ®ï¼ˆå¦‚â€œPAY-VIP: VipTable æœªå¯¼å‡ºâ€ï¼‰ï¼Œå†™ `benefit_command_refused` å®¡è®¡æ—¥å¿—ã€‚æ ¹å› æ˜¯è¿™äº›ç©æ³•åªæœ‰åè®®ã€æ²¡æœ‰éšåŒ…å¯¼å‡ºçš„é…ç½®è¡¨ï¼ˆTriggerGift/UpStarGift/Vip/Fashion/WeekendBonus/Auction/ActShop ç­‰ 42 ä¸ªæ—ï¼‰ï¼›35003â€“35011 çš„ ETF è¯·æ±‚è¿å‚æ•° schema éƒ½æ²¡æœ‰ï¼Œ77002 å›åŒ…å®šä¹‰ç¼ºå¤±ã€‚
 - ä¸“é¡¹ `personal-server/test/benefit-commerce-gateway.test.mjs` 4 é¡¹ï¼šå— I çš„ 112 æ¡å‘½ä»¤é€æ¡çœŸå®æ¡æ‰‹å¾€è¿”æ–­è¨€æ—  `LOCAL_NOT_IMPLEMENTED`ï¼›87301 å‘å¥–ã€é‡å¤ 310ã€å¸¦å‚ 1ã€SQLite é‡å¼€ä¿æŒï¼›84602 åŒæ¡£è¡¥é¢†ä¸å½“æ—¥é‡å¤æ‹’ç»ï¼›33001/102701/107301 æ‹’ç»ç  5ã€‚é€å¡ç¼ºå£è§ [PAY-BLOCK-I å®æ–½è®°å½•](../../../agent/workflow/gameplay-completion/PAY-BLOCK-I/implementation.md)ã€‚
 - æœ¬æ‰¹æ—  APK éªŒæ”¶ï¼šæœªå¯åœå®æ—¶æœåŠ¡ã€æœªè¯»å†™è¿è¡Œæ•°æ®åº“ã€æœªæ“ä½œæ¨¡æ‹Ÿå™¨/ADBï¼Œæœªè¿æ¥åŸæ¸¸æˆæœåŠ¡å™¨ã€‚
+
+## ¼¯³ÉÓëÑéÊÕ¼ÇÂ¼£¨2026-11-08 µÚÊ®Åú£º¿é H£©
+
+- °´ [15-three-work-blocks.md](15-three-work-blocks.md) µÄ¿é H£¨#180¨C#211£¬32 ¿¨ / 94 ÌõÈ±Ê§ÃüÁî£©ÊµÊ©£¬·ÖÖ§ `task/ACT-REWARD-H-20261108`£¬¹¤×÷Ê÷ `.worktree/gameplay-20261108/act-reward-h`¡£
+- ±í×Ê²ú£º`tools/extract-act-tables.mjs` ´Ó¿Í»§¶Ë Lua ÏîÄ¿°ü£¨`analysis/tmp/lua-bundles/64_lua_project.bundle`£©ÖØ½¨ 27 ¸ö»î¶¯±í×åµÄÔ­ĞÍ dump£¬ÂäÔÚ `personal-server/assets/tables/*.data.lua.json.gz`£»`config/act-activity-tables.mjs` Ìá¹© 29 ¸ö±í¼ü¶ÁÈ¡Æ÷¡£
+- ·şÎñ£ºĞÂÔö `personal-server/game/act-reward-service.mjs`£¬94 ÌõÃüÁîÈ«²¿ÓĞÂ·ÓÉ£¬ÆäÖĞ 92 Ìõ×ßÕæÊµÒµÎñ£¨¿Í»§¶Ë±í½±Àø¡¢`activity_claims` ÁìÈ¡Î»¡¢`act_reward_state` ½ø¶È£©£¬ÖØ¸´ÁìÈ¡ 310¡¢Î´¿ªÊ¼ 309¡¢Óà¶î²»×ã 301£¬Õû±ÊÊÂÎñ»Ø¹ö¡£
+- 41 Ìõ°´ÈÎÎñ¿¨·Ö×é fail closed£¨`err 5` ¸½È±Ê§Ö¤¾İ£©£º79103¡¢99401/99402¡¢100101¡¢102906¡¢104601/104602¡¢106203/106205¡¢118001£¬ÑûÇëÓë»Ø¹éµÄ 105201/105202/105250/105251/105303/105305/105307£¬ÒÔ¼°ÏÄÈÕ PVE/PVP/Ñø³É/½áËãµÄ 1037xx/1038xx/1039xx/1041xx Ò»×å¡£ÖğÌõÔ­Òò¼û [ACT-REWARD-H ÊµÊ©¼ÇÂ¼](../../../agent/workflow/gameplay-completion/ACT-REWARD-H/implementation.md)¡£
+- ÑéÖ¤£º×¨Ïî `test/act-reward-service.test.mjs` 9/9£»`gameplay-gateway` Óë `m5-command-matrix` »Ø¹éÍ¨¹ı£»¹¤×÷Ê÷È«Á¿ `npm test` ÈÕÖ¾ `analysis/test-runs/gameplay-20261106/main-after-block-h-full.log`¡£
+- Ö¤¾İÈ±¿Ú£º`*_bin` ÁìÈ¡Î»°´ proto3 ´ò°ü repeated uint32 ÍÆ¶Ï£»Ô¤ÈÈ±í°´ `act_id % 1000` È¡ board¡¢`<version><1000><index>` ±à Award¡¢`available_sec` ÊÓÎª×Ô»î¶¯¿ªÊ¼¾­¹ıÃëÊı£¬Èı´¦Î´Óë×¥°ü¶ÔÕÕ£»Î´½ÓµÇÂ¼Ä£¿é 92£»ÎŞ APK ÑéÊÕ¡£±¾ÅúÎ´ÆôÍ£ÊµÊ±·şÎñ¡¢Î´¶ÁĞ´ÔËĞĞÊı¾İ¿â¡¢Î´²Ù×÷Ä£ÄâÆ÷/ADB/APK¡£
