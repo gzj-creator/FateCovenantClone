@@ -137,3 +137,10 @@
 服务器侧完整协议、事务与页面所需数据已通过组件和临时 TCP 测试。集成版重启后，隔离客户端进程 PID `24933` 已完成一次真实重连和登录：服务端在 `2026-10-31T06:54:28.520Z` 记录 `hero_draw_activity_login_synchronized`（`actId=117001`），随后记录 `login_sent`，返回 `146` 个模块。部署后的 `64` 条日志中 `handler_error=0`、`hero_draw_activity_rejected=0`、`unsupported_command 100301/100302=0`；客户端 logcat 也未命中 `PetActivityMgr`、protobuf `type mismatch` 或 `handler_error`。唯一未支持命令是 CMS `89501`，不属于本活动。
 
 真实 APK 的逐页视觉验收仍需在用户操作后按顺序检查流派选择/命格、任务、限时招募礼包、推荐礼包和四个榜单；本次未代替用户点击活动页面，因此不能把组件、真实 TCP 和登录成功扩大表述为逐页人工验收完成。
+
+## 2026-11-08 白绫现世礼包商店补全
+
+- `1841010`（`ActFrame` 类型 `184`）的 player 行已由 all-open 批次补出，但缺少客户端需要的 `pb_premium_act` 登录 block，导致白绫现世礼包列表为空。
+- 新增 `premium-act-service.mjs` 在登录时为开放的 184 活动生成/更新 `pb_premium_act`，并从 `activity_purchases` 回填礼包购买次数；同时补上类型 128 礼包的免费、资源和现金购买链路与 `flag 114` 限购回包。
+- `PremiumActTable` 版本 `1002` 的 10 个礼包和购买路径已由 `test/premium-act.test.mjs` 覆盖；本轮全量测试 2753 项（2751 通过、0 失败、2 跳过）。
+- 详细根因、配置边界和待做实时客户端视觉验收见 [`agent/workflow/premium-act/implementation.md`](../premium-act/implementation.md)。
