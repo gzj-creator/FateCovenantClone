@@ -56,3 +56,9 @@
 
 execution-status.md 当前被另一 session 修改中，本记录先独立保存；待其提交后由总控把 A1 行状态并入看板并更新计数。
 
+
+## 2026-11-08 复核追加
+
+- 205 share_report 复核为可达（FightCmd 原型 4 构造 pb_share_report，FightReportForm -> FightReportMgr.ShareReport 调用），Cmd.c2s_back 为空、回调只判 err，已改为 code 0 空回执并补 PB 编解码与临时 TCP 测试。
+- 89601 req_star_mission_award 在本版客户端没有调用点（全项目仅 Cmd 与 StarMissionCmd 自身命中），保持 code 5。
+- 104701 req_destiny_pve_fight 顶层同样没有调用点；命运回廊实际经 201 携带 stm 子载荷开战，结算解 pb_destiny_pve_fight_rsp，但 FightTable.Fight def_team 为空导致敌阵不可恢复，保持 code 5。详见 evidence/a1-failclosed-evidence.md。

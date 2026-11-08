@@ -8,15 +8,17 @@ import { GameError } from './hero-progression.mjs';
 //   pb_pass_info / pb_pass_info_vote).
 // - 212 pb_pass_record_vote_req {pass_tid, id, fight_id, type, is_up_vote},
 //   no registered c2s_back: a successful vote writes no frame.
-// - 205 pb_share_report {fight_id, fight_type} has no reply schema either, but
-//   the sharing side effect (which record, which channel, which reward) is not
-//   evidenced anywhere in the shipped client or captures, so it stays rejected.
+// - 205 pb_share_report {fight_id, fight_type}: Cmd.lua registers the request
+//   with c2s_back = nil, so Connection._DecodeMsg falls back to ETF for the
+//   reply and FightReportMgr.ShareReport's callback only tests Err.NO_ERROR.
+//   The shipped client exposes the share entry (FightReportForm ->
+//   FightReportMgr.ShareReport) and defines no share record, share counter or
+//   share reward table, so the handler acknowledges with an empty frame and
+//   logs the request. It grants nothing and persists nothing.
 //
 // Records are written by the real 207 journey settlement (see gateway.mjs) and
 // stored in battle_pass_records; votes land in battle_pass_votes. Both tables
 // are additive and idempotent (CREATE TABLE IF NOT EXISTS + primary keys).
-const SHARE_REFUSAL = 'Report sharing is rejected: no evidenced share record or reward semantics';
-
 function positiveInteger(value, label, { allowZero = false } = {}) {
   const number = Number(value);
   if (!Number.isSafeInteger(number) || number < (allowZero ? 0 : 1)) throw new GameError(1, 'Invalid ' + label);
@@ -107,16 +109,26 @@ export function createBattleRecordService({ store, codec, logger = () => {}, now
     });
   }
 
+  // 205 pb_share_report. The client callback only checks Err.NO_ERROR and the
+  // command has no c2s_back schema, so an empty body with code 0 is the
+  // protocol's success signal for this request.
+  function shareReport(request) {
+    const fightId = Number(request?.fight_id ?? 0);
+    if (!Number.isSafeInteger(fightId) || fightId < 0) throw new GameError(1, 'Invalid share report fight id');
+    const fightType = Number(request?.fight_type ?? 0);
+    if (!Number.isSafeInteger(fightType)) throw new GameError(1, 'Invalid share report fight type');
+    log({ event: 'battle_report_shared', fightId, fightType });
+    return { value: { shared: true, fightId, fightType }, data: Buffer.alloc(0) };
+  }
+
   return {
     supports: type => [205, 211, 212].includes(type),
     recordPass,
     execute(type, input) {
-      if (type === 205) throw new GameError(5, SHARE_REFUSAL);
+      if (type === 205) return shareReport(input);
       if (type === 211) return passRecord(input);
       if (type === 212) return vote(input);
       throw new GameError(1, 'Unsupported report command');
     }
   };
 }
-
-export const REPORT_SHARE_REFUSAL = SHARE_REFUSAL;
