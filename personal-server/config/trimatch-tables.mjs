@@ -11,6 +11,9 @@ const equipPath = tableAsset('BattleTriMatchEquipTable.data.lua.json');
 const lineupPath = tableAsset('BattleTriMatchLineupTable.data.lua.json');
 const pvpPath = tableAsset('TriMatchPvpTable.data.lua.json');
 const towerPath = tableAsset('TriMatchTowerTable.data.lua.json');
+// TripleMatchFightTable.NpcAttr is shipped as 31 separate data shards; the
+// extractor merges them into one dump so Team.attr can be resolved.
+const npcAttrPath = tableAsset('TripleMatchFightNpcAttr.data.lua.json');
 let defaultCache;
 
 function rowsOf(dump, name) {
@@ -24,6 +27,19 @@ function byTid(rows) {
   for (const row of rows) {
     const tid = Number(row.tid);
     if (Number.isSafeInteger(tid) && tid > 0) map.set(tid, row);
+  }
+  return map;
+}
+
+// Rows that carry a lib column are grouped by it, matching the client table
+// access pattern <Table>.Tile_List[lib].
+function groupByLib(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const lib = Number(row.lib);
+    if (!Number.isSafeInteger(lib)) continue;
+    if (!map.has(lib)) map.set(lib, []);
+    map.get(lib).push(row);
   }
   return map;
 }
@@ -49,6 +65,7 @@ export function readTriMatchTables(file = defaultPath, paths = {}) {
   const lineup = readJsonAsset(paths.lineup ?? lineupPath);
   const pvp = readJsonAsset(paths.pvp ?? pvpPath);
   const tower = readJsonAsset(paths.tower ?? towerPath);
+  const npcAttr = readJsonAsset(paths.npcAttr ?? npcAttrPath);
 
   const tileRows = rowsOf(dump, 'Tile');
   const tilesByLib = new Map();
@@ -89,7 +106,7 @@ export function readTriMatchTables(file = defaultPath, paths = {}) {
 
   const result = {
     source: dump.source ?? null,
-    fields: { TripleMatchTable: dump.tables, TripleMatchFightTable: fight.tables, BattleTriMatchHeroTable: hero.tables, BattleTriMatchEquipTable: equip.tables, BattleTriMatchLineupTable: lineup.tables, TriMatchPvpTable: pvp.tables, TriMatchTowerTable: tower.tables },
+    fields: { TripleMatchTable: dump.tables, TripleMatchFightTable: fight.tables, BattleTriMatchHeroTable: hero.tables, BattleTriMatchEquipTable: equip.tables, BattleTriMatchLineupTable: lineup.tables, TriMatchPvpTable: pvp.tables, TriMatchTowerTable: tower.tables, TripleMatchFightNpcAttr: npcAttr.tables },
     gate: byTid(rowsOf(dump, 'Gate')),
     game: byTid(rowsOf(dump, 'Game')),
     tiles: byTid(tileRows),
@@ -101,6 +118,16 @@ export function readTriMatchTables(file = defaultPath, paths = {}) {
     fightConst: rowsOf(fight, 'Const')[0] ?? null,
     fightNpcs: byTid(rowsOf(fight, 'Npc')),
     fightAttrs: byTid(rowsOf(fight, 'Attr')),
+    fightRows: byTid(rowsOf(fight, 'TripleMatchFight')),
+    fightTeams: byTid(rowsOf(fight, 'Team')),
+    fightBoards: byTid(rowsOf(fight, 'Board')),
+    fightTiles: byTid(rowsOf(fight, 'Tile')),
+    fightTilesByLib: groupByLib(rowsOf(fight, 'Tile')),
+    fightNpcAbilities: byTid(rowsOf(fight, 'NpcAbility')),
+    fightActionTypes: byTid(rowsOf(fight, 'ActionType')),
+    fightSpeeds: byTid(rowsOf(fight, 'Speed')),
+    fightScenes: byTid(rowsOf(fight, 'Scene')),
+    npcAttrs: byTid(rowsOf(npcAttr, 'NpcAttr')),
     heroes: byTid(rowsOf(hero, 'Hero')),
     heroLevels,
     heroAttrByTemplateLevel: attrByTemplateLevel,
