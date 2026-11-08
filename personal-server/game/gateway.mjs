@@ -59,6 +59,8 @@ import { createDiamondBankActService } from './diamond-bank-act-service.mjs';
 import { readDiamondBankActTables } from '../config/diamond-bank-act-tables.mjs';
 import { createFreePrivilegeActService } from './free-privilege-act-service.mjs';
 import { readFreePrivilegeActTables } from '../config/free-privilege-act-tables.mjs';
+import { createSlotGameActService } from './slot-game-act-service.mjs';
+import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createShopService } from './shop-service.mjs';
@@ -497,6 +499,7 @@ export function createLocalGame({
   const dragonLandAct=createDragonLandActService({store,codec,tables,dragonLandTables:readDragonLandTables(),calendar,now:clock,logger});
   const diamondBankAct=createDiamondBankActService({store,codec,tables,diamondBankTables:readDiamondBankActTables(),calendar,now:clock,logger});
   const freePrivilegeAct=createFreePrivilegeActService({store,codec,tables,freePrivilegeTables:readFreePrivilegeActTables(),calendar,monthlyCard,now:clock,logger});
+  const slotGameAct=createSlotGameActService({store,codec,tables,slotGameTables:readSlotGameActTables(),calendar,now:clock,random,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     const repairedLineups = lineups.ensureLoginState();
@@ -607,6 +610,10 @@ export function createLocalGame({
     // FreePrivilegeActData parses pb_free_privilege_act_act_role_data from the
     // activity entry's module_login_data (ActFrameTable type 1072).
     const freePrivilegeLogin = freePrivilegeAct.synchronizeLogin(activity, loginSeconds);
+    // SlotGameActData parses pb_slot_game_act_role_data from the activity
+    // entry's module_login_data (ActFrameTable type 1095 / 1306).
+    const slotGameLoginIds = slotGameAct.synchronizeLogin(activity, loginSeconds);
+    if (slotGameLoginIds.length) logger({ event: 'slot_game_act_login_synced', actIds: slotGameLoginIds });
     // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
     // entry's module_login_data (ActFrameTable type 1102).
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
@@ -686,6 +693,7 @@ export function createLocalGame({
       dragonLandActId: dragonLandLogin.actId,
       diamondBankActId: diamondBankLogin.actId,
       freePrivilegeActId: freePrivilegeLogin.actId,
+      slotGameActIds: slotGameLoginIds,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -1357,6 +1365,26 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'free_privilege_rejected', type, seq, actId, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }
+      if (slotGameAct.supports(type)) {
+        try {
+          const input = slotGameAct.decode(type, request.data ?? Buffer.alloc(0));
+          const result = slotGameAct.execute(type, input);
+          send(seq, result.data);
+          log({
+            event: type === 110801 ? 'slot_game_go_committed' : 'slot_game_draw_committed',
+            type, seq, actId: result.actId, awardLibTid: result.awardLibTid,
+            drawIndex: result.drawIndex, multiplier: result.multiplier
+          });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'slot_game_rejected', type, seq, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
         }
@@ -2267,6 +2295,7 @@ export function createLocalGame({
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
     cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, message, hundredDraw,
+    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, message, hundredDraw,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
