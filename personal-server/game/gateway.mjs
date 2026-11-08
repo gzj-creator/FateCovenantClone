@@ -85,6 +85,8 @@ import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createMinigameActService } from './minigame-act-service.mjs';
 import { readMinigameActTables } from '../config/minigame-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
+import { createOverallPvpService } from './overall-pvp-service.mjs';
+import { readOverallPvpTables } from '../config/overall-pvp-tables.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createShopService } from './shop-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
@@ -673,6 +675,13 @@ export function createLocalGame({
   // baking. Rules without shipped evidence fail closed inside the service.
   const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const explorationAct=createExplorationActService({store,codec,tables,explorationTables:readExplorationActTables(),now:clock,random,logger});
+  // A2-OVERALLPVP: OverallPvpCmd 101101-101130. The cross-server card reads the
+  // shipped OverallPvpTable and keeps its own rows; commands that need a real
+  // bracket fail closed inside the service.
+  const overallPvp=createOverallPvpService({store,codec,tables:readOverallPvpTables(),gameTables:tables,now:clock,logger});
+  // 101125/101126/101127 carry protobuf request bodies; the other 27 commands
+  // take an Erlang term argument that may be absent.
+  const OVERALL_PVP_PB_TYPES=new Set([101125,101126,101127]);
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
   // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
@@ -755,6 +764,9 @@ export function createLocalGame({
     growthRoad.ensureLoginState(clock());
     modules.set(growthRoad.moduleId, binary(growthRoad.loginPayload(clock())));
     modules.set(functionManual.moduleId, binary(functionManual.loginPayload()));
+    // A2-OVERALLPVP has no recovered login module: the snapshot is requested
+    // through 101122, so login only makes sure the cycle row exists first.
+    overallPvp.ensureLoginState(loginSeconds);
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
@@ -1782,6 +1794,24 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'dragon_land_rejected', type, seq, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }
+      if (overallPvp.supports(type)) {
+        try {
+          const etfValue = OVERALL_PVP_PB_TYPES.has(type)
+            ? null
+            : await etfArgument(request.data, 'Invalid overall PVP payload', { optional: true });
+          const result = await overallPvp.execute(type, null, { etf: etfValue });
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'overall_pvp_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'overall_pvp_rejected', type, seq, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
         }
