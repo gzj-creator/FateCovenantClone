@@ -22,11 +22,11 @@ const missionTables = readMissionTables();
 const attributeTables = readAttributeTables();
 const FIXED_NOW = 1794000000000;
 // Real HeroTable.Npc ids. The shared attribute service scales combat NPCs from
-// the strongest player fighter, so 9000100 is beatable and the elite 5-star NPC
-// 5040201 wins against the fixture line-up; both results come from the real
+// the balanced player-lineup reference, so 9000100 is beatable. Six quality-70
+// 5040401 opponents win against the fixture line-up; both results come from the real
 // simulateBattle run rather than an injected result.
 const WINNING_ENEMIES = () => [9000100];
-const LOSING_ENEMIES = () => [5040201];
+const LOSING_ENEMIES = () => Array(6).fill(5040401);
 const STAMINA = '100012900';
 
 const heroes = [

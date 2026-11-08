@@ -72,15 +72,16 @@ test('气定神闲 (331020174) grants 100 energy on attack/skill with 0.3 chance
   }
 });
 
-test('伟大创造 (331020175) registers on-ultimate-use crit-damage 0.12 for all-allies (requiresInvestigation)', () => {
+test('星爆陨灭 (331020175) grants self crit-rate 0.10 and crit-damage 0.15', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '331020175');
-  const trig = skill.implementation.triggers[0];
-  assert.equal(trig.triggerType, 'on-ultimate-use');
-  assert.equal(trig.effect.effect.type, 'stat-modifier');
-  assert.equal(trig.effect.effect.statType, 'crit-damage');
-  assert.equal(trig.effect.effect.magnitude, 0.12);
+  assert.equal(skill.implementation.triggers.length, 2);
+  const byStat = Object.fromEntries(skill.implementation.triggers.map(trig =>
+    [trig.effect.effect.statType, trig.effect.effect.magnitude]));
+  assert.deepEqual(byStat, { 'crit-rate': 0.1, 'crit-damage': 0.15 });
+  assert.ok(skill.implementation.triggers.every(trig =>
+    trig.triggerType === 'on-ultimate-use' && trig.effect.target.targetType === 'self'));
   assert.equal(skill.implementation.requiresInvestigation, true);
 });
 

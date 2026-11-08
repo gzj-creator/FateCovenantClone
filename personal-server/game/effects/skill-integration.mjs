@@ -224,11 +224,18 @@ export function applySkillEffects(skill, actor, allUnits, state, events) {
   }
 
   const affectedTargets = new Map();
+  const targetGroups = new Map();
   const results = [];
 
   for (const effectDefinition of effectDefinitions) {
     if (!effectDefinition?.effect) continue;
-    const targets = selector.selectTargets(effectDefinition.target, actor, allUnits, state);
+    const targetGroup = typeof effectDefinition.targetGroup === 'string'
+      ? effectDefinition.targetGroup : null;
+    let targets = targetGroup ? targetGroups.get(targetGroup) : null;
+    if (!targets) {
+      targets = selector.selectTargets(effectDefinition.target, actor, allUnits, state);
+      if (targetGroup) targetGroups.set(targetGroup, targets);
+    }
 
     for (const target of targets) {
       affectedTargets.set(target.id, target);
@@ -257,9 +264,17 @@ export function collectSkillTargets(skill, actor, allUnits, state) {
   if (!skill) return [];
   const selector = new TargetSelector(state);
   const targets = new Map();
+  const targetGroups = new Map();
   for (const effectDefinition of skillToEffects(skill, state.skillDatabase)) {
     if (!effectDefinition?.effect) continue;
-    for (const target of selector.selectTargets(effectDefinition.target, actor, allUnits, state)) {
+    const targetGroup = typeof effectDefinition.targetGroup === 'string'
+      ? effectDefinition.targetGroup : null;
+    let selected = targetGroup ? targetGroups.get(targetGroup) : null;
+    if (!selected) {
+      selected = selector.selectTargets(effectDefinition.target, actor, allUnits, state);
+      if (targetGroup) targetGroups.set(targetGroup, selected);
+    }
+    for (const target of selected) {
       targets.set(target.id, target);
     }
   }

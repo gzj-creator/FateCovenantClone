@@ -4,6 +4,8 @@ import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-c
 import { simulateBattle, FIGHT_ENERGY_MAX } from '../game/battle-engine.mjs';
 import { createMissionFightService } from '../game/mission-fight-service.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
+import { buildHeroSkillLoadout } from '../game/hero-skill-loadout.mjs';
 
 const HERO_ROLE = 2010101;
 const codec = createGameCodec();
@@ -55,6 +57,61 @@ test('battle unit id 101 loads and executes role 2010101 round-start skills', ()
   assert.ok(damageBonus,
     '重击 must execute on round start and expose its visible damage-bonus status');
   assert.equal(damageBonus.magnitude, 0.05);
+});
+
+test('Vell ultimate heals its lowest-HP ally and does not attack the enemy team', () => {
+  const heroTables = readHeroTables();
+  const loadout = buildHeroSkillLoadout({
+    hero: { uid: '4030801', tid: 4030801, level: 1, star: 0, breakthrough_level: 0 },
+    heroTables
+  });
+  const battle = simulateBattle({
+    attackers: [
+      unit(101, 4030801, 3, {
+        loc: 3, camp: 4, abilityId: 1403080101, activeAbilityId: 2403080113,
+        maxHp: 10000, attack: 1000, speed: 300, initialEnergy: FIGHT_ENERGY_MAX,
+        skills: loadout.skills
+      }),
+      unit(102, 2010101, 1, {
+        loc: 2, camp: 4, hp: 3000, maxHp: 6000, attack: 100, speed: 1,
+        initialEnergy: 100, skills: []
+      })
+    ],
+    defenders: [unit(201, 9002100, 2, {
+      loc: 1, maxHp: 100000, attack: 1, speed: 1, skills: []
+    })],
+    seed: 91,
+    maxRounds: 1
+  });
+
+  const action = battle.events.find(event => event.kind === 'action-start'
+    && event.srcId === 101 && event.actionType === 2);
+  assert.ok(action);
+  assert.deepEqual(action.aimList, [102]);
+  assert.ok(battle.events.some(event => event.kind === 'heal'
+    && event.srcId === 101 && event.aimId === 102));
+  const vellDamage = battle.events.filter(event => event.kind === 'damage')
+    .flatMap(event => event.harms).filter(harm => harm.srcId === 101);
+  assert.deepEqual(vellDamage, []);
+  const energySync = battle.events.find(event => event.kind === 'anger-sync' && event.id === action.id);
+  assert.equal(energySync.attrList.find(attr => attr.aimId === 102).attrValue, 220);
+});
+
+test('a low-attack hit against high defense is reduced without collapsing to 1', () => {
+  const battle = simulateBattle({
+    attackers: [
+      unit(101, 2010101, 1, { loc: 1, attack: 100, defense: 20, speed: 120, skills: [] })
+    ],
+    defenders: [
+      unit(201, 9002100, 2, { loc: 1, attack: 1, defense: 1000, maxHp: 100000, speed: 1, skills: [] })
+    ],
+    seed: 17,
+    maxRounds: 1
+  });
+  const firstHit = battle.events.filter(event => event.kind === 'damage')
+    .flatMap(event => event.harms).find(harm => harm.srcId === 101);
+  assert.ok(firstHit);
+  assert.ok(firstHit.value > 1, `expected substantive compatibility damage, got ${firstHit.value}`);
 });
 
 test('real normal and active actions fire their matching skill trigger types', () => {

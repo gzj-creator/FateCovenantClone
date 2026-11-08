@@ -51,11 +51,14 @@ test('assembles configured level, star, break and quality attribute rows', () =>
   // Quality changes the authoritative BaseAttrNew row (q50 -> q60 doubles 3040201).
   const quality50 = assembleHeroAttributes({ hero: hero({ tid: 3040201 }), heroTables, attributeTables, overrides: { quality: 50 } });
   const quality60 = assembleHeroAttributes({ hero: hero({ tid: 3040201 }), heroTables, attributeTables, overrides: { quality: 60 } });
+  const persistedQuality60 = assembleHeroAttributes({ hero: hero({ tid: 3040201, quality: 60 }), heroTables, attributeTables });
   assert.equal(quality50.quality, 50);
   assert.equal(quality60.quality, 60);
   const baseHp = assembled => assembled.sources.find(source => source.play === 'base' && source.displayAttr === 1).value;
   assert.equal(baseHp(quality50), 3000);
   assert.equal(baseHp(quality60), 6000);
+  assert.equal(persistedQuality60.quality, 60, 'persisted quality must override the static Hero.quality tier');
+  assert.equal(baseHp(persistedQuality60), 6000);
 
   assert.throws(() => assembleHeroAttributes({ hero: hero({ tid: 1 }), heroTables, attributeTables }), error => error.code === 5);
 });

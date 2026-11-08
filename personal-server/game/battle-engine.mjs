@@ -15,11 +15,11 @@ import {
   effectiveCritMultiplier,
   effectiveDamageBonus,
   effectiveDamageReduction,
-  effectiveDefense,
   effectiveEnergyBonus,
   effectiveIgnoreDefense,
   effectiveShieldBonus,
   effectiveSpeed,
+  mitigateDamageByDefense,
   consumeTriggerCount,
   recordActionDamage,
   actionScopedType,
@@ -118,6 +118,7 @@ function normalizeUnit(unit, skillDatabase) {
     team: unit.team,
     role: Number(unit.role ?? 0),
     profession: Number(unit.profession ?? 0),
+    camp: Number(unit.camp ?? 0),
     loc: Number(unit.loc ?? unit.id),
     abilityId: Number(unit.abilityId ?? 0),
     activeAbilityId: Number(unit.activeAbilityId ?? unit.abilityId ?? 0),
@@ -208,10 +209,12 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
   }, target, actionType);
   const critical = nextRandom(state) < critChance;
   const ignoreDefense = effectiveIgnoreDefense(actor);
-  const raw = Math.max(1,
-    effectiveAttack(actor) * multiplier
-    - effectiveDefense(target) * 0.45 * (1 - ignoreDefense)
-    + bonus);
+  const raw = mitigateDamageByDefense(
+    effectiveAttack(actor) * multiplier + bonus,
+    actor,
+    target,
+    { ignoreDefense }
+  );
   const critMultiplier = critical ? effectiveCritMultiplier(actor, target) : 1;
   let damage = Math.max(1, Math.floor(
     raw * variance * (1 + effectiveDamageBonus(actor, actionType)) * critMultiplier

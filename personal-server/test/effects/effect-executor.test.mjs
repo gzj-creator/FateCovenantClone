@@ -27,8 +27,8 @@ describe('EffectExecutor', () => {
       assert.strictEqual(result.type, 'damage');
       assert.strictEqual(result.actor, 1);
       assert.strictEqual(result.target, 2);
-      // Expected: 100 * 2.0 - 20 * 0.45 = 200 - 9 = 191
-      assert.strictEqual(result.value, 191);
+      // Expected: 200 * 100 / (100 + 20 * 0.45) = 183.49 -> 183
+      assert.strictEqual(result.value, 183);
       assert.strictEqual(result.crit, false);
     });
 
@@ -49,7 +49,7 @@ describe('EffectExecutor', () => {
 
       assert.strictEqual(result.absorbed, 50);
       assert.strictEqual(result.newShield, 0);
-      assert.strictEqual(result.newHp, 0); // 100 - (191 - 50) = 100 - 141 = -41 -> 0
+      assert.strictEqual(result.newHp, 0); // 183 damage, 50 shield points, then a lethal HP hit.
     });
 
     it('should calculate crit damage', () => {
@@ -69,8 +69,22 @@ describe('EffectExecutor', () => {
       const result = executor.executeDamage(effect, actor, target);
 
       assert.strictEqual(result.crit, true);
-      // Expected: (100 * 2.0 - 20 * 0.45) * 1.5 = 191 * 1.5 = 286.5 -> 286
-      assert.strictEqual(result.value, 286);
+      // Expected: 183.49 * 1.5 = 275.23 -> 275
+      assert.strictEqual(result.value, 275);
+    });
+
+    it('keeps high-defense hits above the final 1-point clamp', () => {
+      const executor = new EffectExecutor({ seed: 1 });
+      const actor = { id: 1, attack: 100, critChance: 0 };
+      const target = { id: 2, hp: 1000, maxHp: 1000, defense: 1000, shield: 0, alive: true };
+      const result = executor.executeDamage({
+        type: 'damage',
+        damageType: DAMAGE_TYPES.PHYSICAL,
+        multiplier: 1,
+        variance: 1,
+        canCrit: false,
+      }, actor, target);
+      assert.equal(result.value, 18, '100 / (100 + 1000 * 0.45) remains 18 damage');
     });
 
     it('should not damage dead targets', () => {

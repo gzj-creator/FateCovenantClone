@@ -71,14 +71,16 @@ test('炽星魔焰 (333030174) registers on-attack/on-skill-use burn status with
   assert.equal(skill.implementation.requiresInvestigation, true);
 });
 
-test('燃魔咒刃 (333030175) registers on-ultimate-use crit-rate/crit-damage', () => {
+test('蚀骨之痛 (333030175) registers on-ultimate-use 3% target-max-HP damage', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '333030175');
-  assert.ok(skill.implementation.triggers.length >= 1);
-  const statTypes = skill.implementation.triggers.map(t => t.effect.effect.statType);
-  assert.ok(statTypes.includes('crit-rate'));
-  assert.ok(statTypes.includes('crit-damage'));
+  assert.equal(skill.implementation.triggers.length, 1);
+  const trigger = skill.implementation.triggers[0];
+  assert.equal(trigger.triggerType, 'on-ultimate-use');
+  assert.equal(trigger.effect.effect.type, 'damage');
+  assert.equal(trigger.effect.effect.damageType, 'percent-max-hp');
+  assert.equal(trigger.effect.effect.magnitude, 0.03);
 });
 
 test('突破9 (120001031) grants 200 energy on normal/skill', () => {

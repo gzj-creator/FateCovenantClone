@@ -36,6 +36,17 @@ test('ability level uses persisted quality and star instead of catalog literals'
   assert.equal(abilityLevelRow(hero(2020601), heroTables).key, 4001);
 });
 
+test('persisted zero star uses the 5000 skill-level row', () => {
+  const vell = hero(4030801, { quality: 50, star: 0 });
+  const levels = abilityLevelRow(vell, heroTables);
+  assert.equal(levels.key, 5000);
+  assert.equal(levels.star, 0);
+  const loadout = buildHeroSkillLoadout({ hero: vell, heroTables });
+  assert.equal(loadout.abilityLevelKey, 5000);
+  assert.ok(loadout.abilityIds.includes(2403080113));
+  assert.ok(loadout.catalogSkillIds.includes('2403080113'));
+});
+
 test('breakthrough passives are selected only through the reached milestone', () => {
   const locked = breakthroughPassiveIds(hero(2010101), heroTables);
   const opened = breakthroughPassiveIds(hero(2010101, { breakthrough_level: 5 }), heroTables);

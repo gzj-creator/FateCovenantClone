@@ -9,6 +9,11 @@ function positiveInteger(value, fallback) {
   return Number.isSafeInteger(number) && number > 0 ? number : fallback;
 }
 
+function nonNegativeInteger(value, fallback) {
+  const number = Number(value ?? fallback);
+  return Number.isSafeInteger(number) && number >= 0 ? number : fallback;
+}
+
 function cloneWithGate(skill, { level, source, levelKnown = true }) {
   return { ...skill, level, levelKnown, skillSource: source };
 }
@@ -39,7 +44,10 @@ export function abilityLevelRow(hero, heroTables) {
   const config = heroTables?.Hero?.get(tid);
   if (!config) fail(5, 'Hero skill configuration missing');
   const quality = positiveInteger(hero?.quality, positiveInteger(config.quality, 0));
-  const star = positiveInteger(hero?.star, 1);
+  // Star 0 is the persisted first attribute tier. The UI presents it as one
+  // star, but AbilityLevel keeps a distinct 5000 row for it; coercing it to 1
+  // silently unlocks the 5001 skill-level row.
+  const star = nonNegativeInteger(hero?.star, nonNegativeInteger(config.star, 0));
   const key = quality * 100 + star;
   const row = heroTables?.AbilityLevel?.get(key);
   if (!row || !Array.isArray(row.level)) fail(5, 'Hero ability level configuration missing: ' + key);

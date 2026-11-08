@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
+import {
+  applySkillEffects,
+  loadSkillDatabase,
+  getHeroSkills,
+  registerPassiveTriggers,
+} from '../game/effects/skill-integration.mjs';
 import { EffectExecutor } from '../game/effects/effect-executor.mjs';
 
 const HERO_ID = 4030801;
@@ -165,13 +170,76 @@ test('战斗续航 (120001005) registers on-round-start heal 0.3 ATK when HP < 3
   assert.equal(trig.effect.effect.multiplier, 0.3);
 });
 
-test('6910001050 ultimate has a damage effect (requiresInvestigation)', () => {
+test('2403080113 公主驾到 heals and restores the same lowest-HP ally', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '6910001050');
-  assert.ok(skill.implementation.effects.length > 0);
-  assert.equal(skill.implementation.effects[0].effect.type, 'damage');
-  assert.equal(skill.implementation.requiresInvestigation, true);
+  assert.ok(!skills.some(skill => skill.id === '6910001050'));
+  const skill = skills.find(s => s.id === '2403080113');
+  assert.ok(skill);
+  assert.equal(skill.name, '公主驾到');
+  assert.deepEqual(skill.implementation.effects.map(effect => effect.effect.type), ['heal', 'energy']);
+  assert.ok(skill.implementation.effects.every(effect =>
+    effect.target.targetType === 'lowest-hp-ally'
+    && effect.targetGroup === 'princess-arrives-target'));
+
+  const vell = {
+    id: 101, team: 1, role: HERO_ID, loc: 1, camp: 4,
+    hp: 10000, maxHp: 10000, attack: 1000, defense: 100,
+    critChance: 0, energy: 1000, shield: 0, alive: true,
+    buffs: [], debuffs: [], triggers: []
+  };
+  const lowestAlly = {
+    id: 102, team: 1, loc: 2, camp: 4,
+    hp: 3000, maxHp: 6000, attack: 100, defense: 50,
+    energy: 100, shield: 0, alive: true, buffs: [], debuffs: [], triggers: []
+  };
+  const otherAlly = {
+    id: 103, team: 1, loc: 3, camp: 5,
+    hp: 5000, maxHp: 5000, attack: 100, defense: 50,
+    energy: 0, shield: 0, alive: true, buffs: [], debuffs: [], triggers: []
+  };
+  const enemy = {
+    id: 201, team: 2, loc: 1, camp: 1,
+    hp: 6000, maxHp: 6000, attack: 100, defense: 100,
+    energy: 0, shield: 0, alive: true, buffs: [], debuffs: [], triggers: []
+  };
+  const events = [];
+  applySkillEffects(skill, vell, [vell, lowestAlly, otherAlly, enemy], {
+    skillDatabase: db, random: () => 0.5
+  }, events);
+
+  assert.deepEqual(events.map(event => event.type), ['heal', 'energy']);
+  assert.ok(events.every(event => event.target === lowestAlly.id));
+  const heal = events.find(event => event.type === 'heal');
+  assert.equal(heal.value, 1800);
+  assert.equal(heal.targetCampMultiplier, 1.5);
+  assert.equal(heal.actorMaxHpCap, 9000);
+  assert.equal(lowestAlly.hp, 4800);
+  const energy = events.find(event => event.type === 'energy');
+  assert.equal(energy.targetCampMultiplier, 1.5);
+  assert.equal(lowestAlly.energy, 220);
+  assert.equal(enemy.hp, enemy.maxHp, 'the ultimate must not damage an enemy');
+});
+
+test('公主驾到 caps healing at 90% of the caster maximum HP', () => {
+  const db = loadSkillDatabase();
+  const skill = getHeroSkills(HERO_ID, db).find(value => value.id === '2403080113');
+  const actor = {
+    id: 101, team: 1, loc: 1, camp: 4,
+    hp: 1000, maxHp: 1000, attack: 10000, defense: 0,
+    energy: 1000, shield: 0, alive: true, buffs: [], debuffs: [], triggers: []
+  };
+  const target = {
+    id: 102, team: 1, loc: 2, camp: 5,
+    hp: 1, maxHp: 50000, attack: 1, defense: 0,
+    energy: 0, shield: 0, alive: true, buffs: [], debuffs: [], triggers: []
+  };
+  const events = [];
+  applySkillEffects(skill, actor, [actor, target], { skillDatabase: db, random: () => 0.5 }, events);
+  const heal = events.find(event => event.type === 'heal');
+  assert.equal(heal.value, 900);
+  assert.equal(heal.actualHeal, 900);
+  assert.equal(heal.actorMaxHpCap, 900);
 });
 
 test('normal attack has a damage effect', () => {
