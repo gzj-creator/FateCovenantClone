@@ -394,18 +394,20 @@ F 块续做（2026-11-08）：74 条原缺失命令现均有明确路径，其�
 
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
-| 265 | ROLE-UNKNOWN | GM 调试命令 | 1 | 待领取 |
-| 266 | ROLE-ROLE | 团长改名、头像、称号、形象、等级奖、属性与战力 | 23 | 待领取 |
-| 267 | ROLE-LOGIN | 网络检查与开发登录辅助 | 3 | 待领取 |
-| 268 | ROLE-PLAYERDATA | 玩家数据查询 | 1 | 待领取 |
-| 269 | ROLE-STORY | 剧情完成与触发 | 2 | 待领取 |
-| 270 | ROLE-REDDOT | 红点持久化 | 1 | 待领取 |
-| 271 | ROLE-CDKEY | 兑换码领奖 | 1 | 待领取 |
-| 272 | ROLE-ACTIVITY | 真实活动状态推进 | 1 | 待领取 |
-| 273 | ROLE-ACTFRAME | 活动列表数据及 GM 开期/跳阶段/清理辅助 | 5 | 待领取 |
-| 274 | ROLE-SKIN | 皮肤穿戴、兑换、图鉴与强化 | 7 | 待领取 |
-| 275 | ROLE-CLIENTLOG | 客户端诊断日志 | 1 | 待领取 |
-| 276 | ROLE-CHANNELPUSH | 渠道推送开关 | 1 | 待领取 |
+| 265 | ROLE-UNKNOWN | GM 调试命令 | 1 | 服务端完成（本地 GM 词表，客户端 ETF 契约未恢复） |
+| 266 | ROLE-ROLE | 团长改名、头像、称号、形象、等级奖、属性与战力 | 23 | 服务端完成（真实 RoleTable；111/112 资格规则仍为本地策略） |
+| 267 | ROLE-LOGIN | 网络检查与开发登录辅助 | 3 | 服务端完成（开发登录默认关闭，回包字段待补） |
+| 268 | ROLE-PLAYERDATA | 玩家数据查询 | 1 | 服务端完成（真实 Type/Block 表；已验证块按表返回，未知块 cache miss） |
+| 269 | ROLE-STORY | 剧情完成与触发 | 2 | 服务端完成（模块 88 登录回填与 SQLite 持久化） |
+| 270 | ROLE-REDDOT | 红点持久化 | 1 | 服务端完成（模块 4 登录回填；命令按客户端无回包方式处理） |
+| 271 | ROLE-CDKEY | 兑换码领奖 | 1 | 服务端完成（本地空码表，需运营配置） |
+| 272 | ROLE-ACTIVITY | 真实活动状态推进 | 1 | 服务端完成（53001 proper ETF，只推进请求中的已知活动 ID） |
+| 273 | ROLE-ACTFRAME | 活动列表数据及 GM 开期/跳阶段/清理辅助 | 5 | 服务端完成（53006 proper ETF 按请求过滤并使用活动窗口；GM 命令默认关闭） |
+| 274 | ROLE-SKIN | 皮肤穿戴、兑换、图鉴与强化 | 7 | 服务端完成，真实 UI 兑换契约待补（表驱动；空 76005 明确拒绝） |
+| 275 | ROLE-CLIENTLOG | 客户端诊断日志 | 1 | 服务端完成（fire-and-forget 落库） |
+| 276 | ROLE-CHANNELPUSH | 渠道推送开关 | 1 | 服务端完成（模块 173 登录回填；命令无回包） |
+
+J 块交付（2026-11-08）：分支 `feat/block-j-role-support`，已补齐 RoleTable / SkinTable / PlayerDataTable 客户端表证据、RoleCmd / RedDotCmd / ChannelPushMgr / SkinDrawMgr / PlayerDataMgr / ActMgr / DreamSummerActMainForm 客户端静态证据、13 项服务专项测试与 1 项临时 loopback TCP + SQLite 重开测试；合并最新 main 后全量 2734 项、pass 2732、fail 0、skipped 2。`RequestActListData(actIdList)` 证明 53006 必须按请求 ETF 过滤，53001/53002 的活动 ID 列表语义也由 LuaJIT 字节码确认，当前只推进或返回请求中的已知活动；PlayerData Type 5 的 block 24 已按 `fashion_id` 返回模块 110 的 `cur_id`；`76009` 同时持久化 SQLite 和登录模块 65，修复仅存在于模块 65 的皮肤无法强化及等级丢失的问题。皮肤真实 UI 发出空 76005 且不发 76004，当前明确返回参数错误，不能称为客户端兑换闭环；Veteran 资格门槛仍无客户端规则，当前只接受显式本地策略。未做 APK 验收，本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
 
 ## 看板说明
 

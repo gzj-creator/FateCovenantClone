@@ -177,7 +177,9 @@ export function readGameTables() {
     // RoleTable.Level is the authoritative role experience curve consumed by
     // RoleMgr.CalcLvAndExp and the post-battle RoleExpUpForm.
     ...pick(readGeneratedTables(table('RoleTable.data.lua.json'), [
-      'Level', 'LevelSetting', 'FigureHead', 'FigureFrame', 'FigureTitle', 'FigureChatBubble', 'Sundry'
+      'Level', 'LevelSetting', 'FigureHead', 'FigureFrame', 'FigureTitle', 'FigureChatBubble', 'Sundry',
+      'FigureConst', 'FigureRank', 'WatchVideoAward', 'ChangeName', 'NamePrefix', 'NameSuffix',
+      'VeteranConst'
     ]), {
       Level: 'RoleLevel',
       LevelSetting: 'RoleLevelSetting',
@@ -185,7 +187,22 @@ export function readGameTables() {
       FigureFrame: 'FigureFrame',
       FigureTitle: 'FigureTitle',
       FigureChatBubble: 'FigureChatBubble',
-      Sundry: 'RoleSundry'
+      Sundry: 'RoleSundry',
+      FigureConst: 'FigureConst', FigureRank: 'FigureRank',
+      WatchVideoAward: 'WatchVideoAward', ChangeName: 'ChangeName',
+      NamePrefix: 'NamePrefix', NameSuffix: 'NameSuffix', VeteranConst: 'VeteranConst'
+    }),
+    ...pick(readGeneratedTables(table('SkinTable.data.lua.json'), [
+      'ExchangeConst', 'ExchangeLib', 'Quality', 'HandbookAttr', 'HandbookShow',
+      'Increase', 'Show', 'AttrParam', 'Attr', 'Skin'
+    ]), {
+      ExchangeConst: 'SkinExchangeConst', ExchangeLib: 'SkinExchangeLib',
+      Quality: 'SkinQuality', HandbookAttr: 'SkinHandbookAttr',
+      HandbookShow: 'SkinHandbookShow', Increase: 'SkinIncrease',
+      Show: 'SkinShow', AttrParam: 'SkinAttrParam', Attr: 'SkinAttr', Skin: 'Skin'
+    }),
+    ...pick(readGeneratedTables(table('PlayerDataTable.data.lua.json'), ['Type', 'Block', 'Func']), {
+      Type: 'PlayerDataType', Block: 'PlayerDataBlock', Func: 'PlayerDataFunc'
     }),
     ...pick(readGeneratedTables(table('HeroTable.data.lua.json'), ['Hero']), { Hero: 'Hero' }),
     ...pick(readGeneratedTables(table('7289607387164353000-FirstRechargeTable.data.json'), ['FirstRecharge', 'Award']), {

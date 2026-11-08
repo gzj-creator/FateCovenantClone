@@ -1,5 +1,7 @@
 ﻿import { GameError } from './hero-progression.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { activityWindow } from './activity-calendar.mjs';
+import { properList } from './role-service.mjs';
 
 // ActivityCmd/ActFrameCmd runtime. Activity login state (module 92) stays the
 // single authority for which activities the role sees; migration v17 adds the
@@ -68,12 +70,30 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
     return calendar.isActivityRunning(actId, state, activity) ? STATES.RUNNING : STATES.ENDED;
   }
 
-  function reconcile(model, db) {
+  function requestIds(input) {
+    const list = properList(input);
+    if (!list?.length) throw new GameError(1, 'Activity synchronization requires a non-empty ETF list');
+    const ids = [];
+    for (const value of list) {
+      if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+        throw new GameError(1, 'Activity synchronization ids must be positive integers');
+      }
+      if (!ids.includes(value)) ids.push(value);
+    }
+    return ids;
+  }
+
+  function reconcile(model, db, requestedIds) {
     const roleId = model.state.roleId;
     const activity = readActivity(db, roleId);
     const changes = [];
+    const requested = new Set(requestedIds);
+    const known = new Set(activityRows(activity).map(row => Number(row.state.act_id)));
+    const unknown = requestedIds.filter(id => !known.has(id));
+    if (unknown.length) throw new GameError(1, `Unknown activity ids: ${unknown.join(',')}`);
     for (const row of activityRows(activity)) {
       const actId = Number(row.state.act_id);
+      if (!requested.has(actId)) continue;
       const stored = stageRow(db, roleId, actId);
       const target = desiredState(activity, row.state);
       const previous = stored ? Number(stored.state_id) : target;
@@ -86,13 +106,11 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
   }
 
   function activityStateChange(input) {
-    const list = Array.isArray(input?.value) ? input.value : null;
-    const hint = list && list.length >= 2 ? Number(list[0]) : null;
+    const ids = requestIds(input);
     return store.transaction((model, db) => {
-      const { changes } = reconcile(model, db);
-      const filtered = hint && Number.isSafeInteger(hint) ? changes.filter(change => change.act_id === hint) : changes;
+      const { changes: filtered } = reconcile(model, db, ids);
       return {
-        value: { changes: filtered.length, hint },
+        value: { changes: filtered.length, actIds: ids },
         data: codec.pack('pb_act_state_change_back', {
           change_back_data: filtered.map(change => ({
             id: change.act_id,
@@ -107,10 +125,11 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
     });
   }
 
-  function stageChange() {
+  function stageChange(input) {
+    const ids = requestIds(input);
     return store.transaction((model, db) => {
       const roleId = model.state.roleId;
-      const { activity, changes } = reconcile(model, db);
+      const { activity, changes } = reconcile(model, db, ids);
       const changeList = changes.map(change => {
         const row = activityRows(activity).find(entry => Number(entry.state.act_id) === change.act_id);
         const loginData = row?.entry?.module_login_data ? Buffer.from(String(row.entry.module_login_data), 'base64') : Buffer.alloc(0);
@@ -126,21 +145,26 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
           is_fail: false
         };
       });
-      return { value: { changes: changeList.length }, data: codec.pack('pb_act_role_stage_change_back', { change_list: changeList }) };
+      return { value: { changes: changeList.length, actIds: ids }, data: codec.pack('pb_act_role_stage_change_back', { change_list: changeList }) };
     });
   }
 
-  function actListData() {
+  function actListData(input) {
+    const ids = requestIds(input);
     return store.transaction((model, db) => {
       const roleId = model.state.roleId;
       const activity = readActivity(db, roleId);
       const pause = new Set((activity.act_pause_list ?? []).map(Number));
       const custom = new Map((activity.act_custom_list ?? []).map(row => [Number(row.act_id), row]));
-      const actStageList = activityRows(activity).map(row => {
-        const actId = Number(row.state.act_id);
+      const rows = activityRows(activity);
+      const known = new Set(rows.map(row => Number(row.state.act_id)));
+      const unknown = ids.filter(actId => !known.has(actId));
+      if (unknown.length) throw new GameError(1, `Unknown activity ids: ${unknown.join(',')}`);
+      const rowsById = new Map(rows.map(row => [Number(row.state.act_id), row]));
+      const actStageList = ids.map(actId => {
         const stored = stageRow(db, roleId, actId);
-        const config = tables?.ActFrameAct?.get?.(actId) ?? null;
-        const window = calendar.windowOf ? calendar.windowOf(actId) : null;
+        const config = tables?.ActFrameAct?.get?.(actId) ?? tables?.Activity?.get?.(actId) ?? null;
+        const window = activityWindow(config, calendar.serverOpenedAt);
         const customRow = custom.get(actId);
         const start = Number(customRow?.start_time ?? window?.start ?? 0);
         const end = Number(customRow?.end_time ?? window?.end ?? 0);
@@ -228,11 +252,11 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
   async function execute(type, context = {}) {
     switch (Number(type)) {
       case 53001: return activityStateChange(context.etf);
-      case 53002: return stageChange();
+      case 53002: return stageChange(context.etf);
       case 53003: return gmOpen(context.etf);
       case 53004: return gmJumpStage(context.etf);
       case 53005: return gmClear(context.etf);
-      case 53006: return actListData();
+      case 53006: return actListData(context.etf);
       default: throw new GameError(1, 'Unsupported activity frame command');
     }
   }

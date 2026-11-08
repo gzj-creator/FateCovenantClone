@@ -1,13 +1,13 @@
-﻿import fs from 'node:fs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources, consumeResources } from './resources.mjs';
 import { buildLineupAttrInfo } from './attribute-service.mjs';
-import { E, encodeEtf } from '../protocol/game-codec.mjs';
+import { hasBit, setBit } from './bit-block.mjs';
+import { E, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 
 // Block J role authority. RoleCmd stores everything that the client reads back
 // from to_client_role_info inside roles.profile_json so login module 2 stays
 // byte-identical; slow-changing ownership lives in the role_* tables created by
-// game-store migration v17.
+// game-store migrations through v18.
 export const ROLE_COMMAND_TYPES = Object.freeze([
   10, 104, 105, 106, 109, 110, 111, 112, 161,
   1301, 1302, 1303, 1304, 1305, 1306, 1307, 1308, 1309, 1310, 1311,
@@ -17,11 +17,6 @@ export const ROLE_COMMAND_TYPES = Object.freeze([
 
 const SUPPORTED = new Set(ROLE_COMMAND_TYPES);
 const DAY_SECONDS = 86400;
-
-function readConfig(name, fallback) {
-  try { return JSON.parse(fs.readFileSync(new URL('../config/' + name, import.meta.url), 'utf8')); }
-  catch { return fallback; }
-}
 
 export function termValue(value) {
   if (value === null || value === undefined) return value;
@@ -75,6 +70,24 @@ export function termText(value) {
   return null;
 }
 
+export function termBinary(value) {
+  const unwrapped = termValue(value);
+  if (Buffer.isBuffer(unwrapped)) return Buffer.from(unwrapped);
+  if (unwrapped instanceof Uint8Array) return Buffer.from(unwrapped);
+  if (typeof unwrapped === 'string') return Buffer.from(unwrapped, 'base64');
+  if (unwrapped && unwrapped.type === 'Buffer' && Array.isArray(unwrapped.data)) return Buffer.from(unwrapped.data);
+  return null;
+}
+
+export function properList(value) {
+  if (value && typeof value === 'object' && !Buffer.isBuffer(value) && 'value' in value) {
+    if (value.improper !== false || !Array.isArray(value.value)) return null;
+    return value.value.map(termValue);
+  }
+  if (Array.isArray(value)) return value.map(termValue);
+  return null;
+}
+
 function firstOf(value, pick) {
   const direct = pick(value);
   if (direct !== null && direct !== undefined) return direct;
@@ -115,8 +128,8 @@ function textList(value) {
 function roleName(role) {
   const raw = role?.nick_name;
   if (!raw) return '';
-  if (Buffer.isBuffer(raw)) return raw.toString('utf8');
-  try { return Buffer.from(String(raw), 'base64').toString('utf8'); } catch { return ''; }
+  const bytes = termBinary(raw);
+  return bytes ? bytes.toString('utf8') : '';
 }
 
 function setRoleName(role, name) { role.nick_name = Buffer.from(name, 'utf8'); }
@@ -135,35 +148,34 @@ function ensureFigure(role) {
   return figure;
 }
 
-export function validateRoleName(name) {
+export function validateRoleName(name, config = null) {
   const trimmed = String(name ?? '').trim();
-  const bytes = Buffer.from(trimmed, 'utf8');
-  if (bytes.length < 2 || bytes.length > 24) throw new GameError(1, 'Role name must be between 2 and 24 bytes');
+  const minimum = Math.max(1, Number(config?.min_length ?? 1));
+  const maximum = Math.max(minimum, Number(config?.max_length ?? 6));
+  const length = [...trimmed].length;
+  if (length < minimum || length > maximum) throw new GameError(1, `Role name must be between ${minimum} and ${maximum} characters`);
   if (/[\u0000-\u001f\u007f]/.test(trimmed)) throw new GameError(1, 'Role name contains control characters');
-  if (/\s{2,}/.test(trimmed)) throw new GameError(1, 'Role name contains repeated whitespace');
   return trimmed;
 }
 
 function profileName(profile) {
   const raw = profile?.nick_name;
   if (!raw) return '';
-  try { return Buffer.from(String(raw), 'base64').toString('utf8'); } catch { return ''; }
+  const bytes = termBinary(raw);
+  return bytes ? bytes.toString('utf8') : '';
 }
 
 export function createRoleService(options) {
   const {
     store, codec, tables, heroTables, attributeTables,
-    now = Date.now, logger = () => {}, gmEnabled = () => false
+    now = Date.now, logger = () => {}, gmEnabled = () => false,
+    veteranConfig = { min_level: 10, min_days: 7, skip_awards: [] }
   } = options;
   const log = event => { try { logger(event); } catch {} };
-  const rankConfig = options.rankConfig ?? readConfig('role-ranks.json', { ranks: [] });
-  const veteranConfig = options.veteranConfig ?? readConfig('role-veteran.json', { min_level: 10, min_days: 7, skip_awards: [] });
-  const videoConfig = options.videoAwardConfig ?? readConfig('role-video-awards.json', { awards: [] });
-  const namePool = options.namePoolConfig ?? readConfig('role-name-pool.json', { names: [] });
-  const blockConfig = options.functionCacheConfig ?? readConfig('function-cache-blocks.json', { blocks: [] });
   const stamp = () => new Date(now()).toISOString();
   const currentSeconds = () => Math.floor(now() / 1000);
   const maxRoleLevel = () => Number(tables?.RoleLevelSetting?.get?.(1)?.max_level ?? 300);
+  const changeNameConfig = () => tables?.ChangeName?.get?.(1) ?? { res: 101500, res_count: 200, min_length: 1, max_length: 6 };
 
   function audit(db, roleId, command, detail) {
     db.prepare('INSERT INTO gm_audit_entries (role_id,command,detail_json,created_at) VALUES (?,?,?,?)')
@@ -208,6 +220,37 @@ export function createRoleService(options) {
     return figureTable(kind)?.get?.(Number(tid)) ?? null;
   }
 
+  function stableField(kind) {
+    return kind === 'head' ? 'stable_head_info'
+      : kind === 'frame' ? 'stable_frame_info'
+        : kind === 'title' ? 'stable_title_info'
+          : 'stable_bubble_info';
+  }
+
+  function stableOffset(kind) {
+    return kind === 'head' ? 1000 : kind === 'frame' ? 2000 : 3000;
+  }
+
+  function stableBit(kind, tid) {
+    const id = Number(tid);
+    if (!Number.isSafeInteger(id) || id < 8) return -1;
+    return Math.floor((id - 8) / 100) - stableOffset(kind);
+  }
+
+  function stableBytes(role, kind) {
+    return termBinary(role?.figure_have_info?.[stableField(kind)]) ?? Buffer.alloc(0);
+  }
+
+  function stableEntries(role, kind) {
+    const rows = [];
+    const bits = stableBytes(role, kind);
+    for (const [tid, config] of figureTable(kind) ?? []) {
+      if (!hasBit(bits, stableBit(kind, tid))) continue;
+      rows.push({ tid: String(tid), expire_time: '0', is_red: config?.not_red !== true, level: 0 });
+    }
+    return rows;
+  }
+
   function ownedFigure(db, roleId, role, kind, tid) {
     if (!figureRow(kind, tid)) return null;
     if (kind === 'head') {
@@ -215,30 +258,34 @@ export function createRoleService(options) {
       if (needLevel <= Number(role.level ?? 1)) return { tid: String(tid), expire_time: '0', is_red: false, level: 0 };
       return null;
     }
+    const stable = stableEntries(role, kind).find(row => Number(row.tid) === Number(tid));
+    if (stable) return stable;
     const stored = db.prepare('SELECT * FROM role_figure_items WHERE role_id=? AND kind=? AND tid=?').get(roleId, kind, Number(tid));
     return stored ? { tid: String(tid), expire_time: String(stored.expire_time), is_red: stored.red === 1, level: 0 } : null;
   }
 
   function figureItems(db, roleId, role, kind) {
-    const rows = [];
+    const rows = new Map();
     if (kind === 'head') {
       for (const [tid, row] of figureTable('head') ?? []) {
         if (Number(row.need_level ?? 0) <= Number(role.level ?? 1)) {
-          rows.push({ tid: String(tid), expire_time: '0', is_red: row.not_red !== true, level: 0 });
+          rows.set(Number(tid), { tid: String(tid), expire_time: '0', is_red: row.not_red !== true, level: 0 });
         }
       }
+    } else {
+      for (const row of stableEntries(role, kind)) rows.set(Number(row.tid), row);
     }
     for (const stored of db.prepare('SELECT * FROM role_figure_items WHERE role_id=? AND kind=? ORDER BY tid').all(roleId, kind)) {
-      rows.push({ tid: String(stored.tid), expire_time: String(stored.expire_time), is_red: stored.red === 1, level: 0 });
+      rows.set(Number(stored.tid), { tid: String(stored.tid), expire_time: String(stored.expire_time), is_red: stored.red === 1, level: 0 });
     }
-    return rows;
+    return [...rows.values()].sort((left, right) => Number(left.tid) - Number(right.tid));
   }
 
   function haveInfo(db, roleId, role) {
     return {
-      stable_head_info: Buffer.alloc(0),
-      stable_frame_info: Buffer.alloc(0),
-      stable_title_info: Buffer.alloc(0),
+      stable_head_info: stableBytes(role, 'head'),
+      stable_frame_info: stableBytes(role, 'frame'),
+      stable_title_info: stableBytes(role, 'title'),
       limit_head_list: figureItems(db, roleId, role, 'head'),
       limit_frame_list: figureItems(db, roleId, role, 'frame'),
       limit_title_list: figureItems(db, roleId, role, 'title'),
@@ -247,7 +294,7 @@ export function createRoleService(options) {
       stable_frame_red: Buffer.alloc(0),
       stable_title_red: Buffer.alloc(0),
       stable_style_red: Buffer.alloc(0),
-      stable_bubble_info: Buffer.alloc(0),
+      stable_bubble_info: stableBytes(role, 'bubble'),
       limit_bubble_list: figureItems(db, roleId, role, 'bubble'),
       stable_bubble_red: Buffer.alloc(0)
     };
@@ -275,12 +322,21 @@ export function createRoleService(options) {
     });
   }
 
-  function recordPassAllMission() {
+  function recordPassAllMission(input) {
+    const list = properList(input);
+    if (!list || list.length !== 0) throw new GameError(1, 'record_pass_all_mission requires an empty ETF list');
     return store.transaction((model, db) => {
       const roleId = model.state.roleId;
+      const missionModule = new Map(model.state.modules.value).get(8);
+      const missionBytes = rawBinary(missionModule?.value?.[0]);
+      const mission = missionBytes.length ? codec.unpack('pb_mission', missionBytes) : null;
+      const safeMissionId = Number(mission?.mission_id ?? 0);
+      if (!Number.isSafeInteger(safeMissionId) || safeMissionId <= 0) {
+        throw new GameError(5, 'Authoritative mission cursor is unavailable');
+      }
       writeExtra(db, roleId, { pass_all_mission_at: currentSeconds() });
-      audit(db, roleId, 'record_pass_all_mission', { recordedAt: currentSeconds() });
-      return { value: { recorded: true }, data: null };
+      audit(db, roleId, 'record_pass_all_mission', { recordedAt: currentSeconds(), safeMissionId });
+      return { value: { recorded: true, safeMissionId }, data: null };
     });
   }
 
@@ -339,12 +395,15 @@ export function createRoleService(options) {
   }
 
   function setRoleNameCommand(input) {
-    const name = validateRoleName(firstText(input) ?? '');
+    const config = changeNameConfig();
+    const name = validateRoleName(firstText(input) ?? '', config);
     return store.transaction((model, db) => {
       const roleId = model.state.roleId;
       const taken = db.prepare('SELECT profile_json FROM roles WHERE role_id<>?').all(roleId)
         .some(row => profileName(JSON.parse(row.profile_json)) === name);
       if (taken) throw new GameError(420, 'Role name is already taken');
+      const cost = [[Number(config.res), Number(config.res_count)]];
+      const charged = consumeResources(model, cost, 301, { codec });
       setRoleName(model.role, name);
       model.role.set_name_times = Number(model.role.set_name_times ?? 0) + 1;
       return {
@@ -352,20 +411,23 @@ export function createRoleService(options) {
         data: codec.pack('res_set_role_name', {
           nick_name: Buffer.from(name, 'utf8'),
           set_name_times: model.role.set_name_times,
-          res: { changes: [], is_overflow: false }
+          res: { changes: charged.changes, is_overflow: false }
         })
       };
     });
   }
 
   function randomRoleName() {
-    const names = Array.isArray(namePool.names) ? namePool.names.filter(name => typeof name === 'string' && name.length > 0) : [];
+    const prefixes = [...(tables?.NamePrefix?.values?.() ?? [])].map(row => String(row?.text ?? '')).filter(Boolean);
+    const suffixes = [...(tables?.NameSuffix?.values?.() ?? [])].map(row => String(row?.text ?? '')).filter(Boolean);
+    const names = prefixes.flatMap(prefix => suffixes.map(suffix => prefix + suffix))
+      .filter(name => [...name].length >= 1 && [...name].length <= Number(changeNameConfig().max_length ?? 6));
     if (!names.length) throw new GameError(5, 'Role name pool is not configured');
     const roleId = store.inspect(db => Number(db.prepare('SELECT role_id FROM roles LIMIT 1').get().role_id));
     const figure = ensureFigure(store.read().role);
     const index = (roleId + Number(figure.set_sex_times ?? 0) + Math.floor(now() / 1000)) % names.length;
     const name = names[index];
-    return { value: { name }, etfTerm: new E.OtpErlangBinary(Buffer.from(name, 'utf8')) };
+    return { value: { name }, etfTerm: new E.OtpErlangList([new E.OtpErlangBinary(Buffer.from(name, 'utf8'))], false) };
   }
 
   function levelReward() {
@@ -412,11 +474,12 @@ export function createRoleService(options) {
     if (tid === null || tid <= 0) throw new GameError(1, 'Invalid title tid');
     return store.transaction((model, db) => {
       const roleId = model.state.roleId;
+      const entry = ownedFigure(db, roleId, model.role, 'title', tid);
+      if (!entry) throw new GameError(420, 'Title is not owned');
       const stored = db.prepare('SELECT * FROM role_figure_items WHERE role_id=? AND kind=? AND tid=?').get(roleId, 'title', tid);
-      if (!stored) throw new GameError(420, 'Title is not owned');
       const figure = ensureFigure(model.role);
-      figure.title_info = { tid: String(tid), expire_time: String(stored.expire_time), is_red: false, level: 0 };
-      if (stored.red) db.prepare('UPDATE role_figure_items SET red=0 WHERE role_id=? AND kind=? AND tid=?').run(roleId, 'title', tid);
+      figure.title_info = entry;
+      if (stored?.red) db.prepare('UPDATE role_figure_items SET red=0 WHERE role_id=? AND kind=? AND tid=?').run(roleId, 'title', tid);
       return {
         value: { tid },
         data: codec.pack('pb_active_title_req_back', { simple_info: figure, have_info: haveInfo(db, roleId, model.role) })
@@ -436,10 +499,10 @@ export function createRoleService(options) {
   }
 
   function checkSameName(input) {
-    const name = validateRoleName(firstText(input) ?? '');
+    const name = validateRoleName(firstText(input) ?? '', changeNameConfig());
     const exists = store.inspect(db => db.prepare('SELECT profile_json FROM roles').all()
       .some(row => profileName(JSON.parse(row.profile_json)) === name));
-    return { value: { name, exists }, etfTerm: exists };
+    return { value: { name, exists, available: !exists }, etfTerm: !exists };
   }
 
   function refreshFigureRed() {
@@ -477,7 +540,8 @@ export function createRoleService(options) {
 
   function setRoleNameSex(input) {
     const list = termArray(input) ?? [];
-    const name = validateRoleName(textList(list[0]).join('') || firstText(input) || '');
+    const config = changeNameConfig();
+    const name = validateRoleName(textList(list[0]).join('') || firstText(input) || '', config);
     const sex = termInt(list[1]);
     if (sex !== 1 && sex !== 2) throw new GameError(1, 'Invalid figure sex');
     return store.transaction((model, db) => {
@@ -485,6 +549,7 @@ export function createRoleService(options) {
       const taken = db.prepare('SELECT profile_json FROM roles WHERE role_id<>?').all(roleId)
         .some(row => profileName(JSON.parse(row.profile_json)) === name);
       if (taken) throw new GameError(420, 'Role name is already taken');
+      const charged = consumeResources(model, [[Number(config.res), Number(config.res_count)]], 301, { codec });
       setRoleName(model.role, name);
       model.role.set_name_times = Number(model.role.set_name_times ?? 0) + 1;
       const figure = ensureFigure(model.role);
@@ -495,7 +560,7 @@ export function createRoleService(options) {
         data: codec.pack('res_set_role_name_sex', {
           nick_name: Buffer.from(name, 'utf8'),
           set_name_times: model.role.set_name_times,
-          res: { changes: [], is_overflow: false },
+          res: { changes: charged.changes, is_overflow: false },
           simple_info: figure
         })
       };
@@ -503,8 +568,7 @@ export function createRoleService(options) {
   }
 
   function rankRow(rank) {
-    const rows = Array.isArray(rankConfig.ranks) ? rankConfig.ranks : [];
-    return rows.find(row => Number(row.rank) === Number(rank)) ?? null;
+    return tables?.FigureRank?.get?.(Number(rank)) ?? null;
   }
 
   function upRank() {
@@ -513,17 +577,27 @@ export function createRoleService(options) {
       const current = Number(figure.rank ?? 0);
       const next = rankRow(current + 1);
       if (!next) throw new GameError(5, 'Role rank configuration is missing');
-      if (Number(model.role.level ?? 0) < Number(next.need_level ?? 0)) {
+      if (Number(model.role.level ?? 0) < Number(next.level ?? 0)) {
         throw new GameError(430, 'Role level is too low for the next rank');
       }
-      const costs = Array.isArray(next.cost) ? next.cost : [];
-      if (costs.length) consumeResources(model, costs, 301);
+      const power = Number(model.state.rolePower?.power ?? 0);
+      if (!Number.isSafeInteger(power) || power < Number(next.power ?? 0)) {
+        throw new GameError(431, 'Role power is too low for the next rank');
+      }
+      const item = Number(next.item ?? 0);
+      const count = Number(next.item_count ?? 0);
+      let consumed = { changes: [] };
+      if (count > 0) {
+        const resource = model.resources.get(String(item));
+        if (!resource || Number(resource.num ?? 0) < count) throw new GameError(301, 'Insufficient role rank item');
+        consumed = consumeResources(model, [[item, count]], 301, { codec });
+      }
       figure.rank = current + 1;
       return {
-        value: { rank: figure.rank },
+        value: { rank: figure.rank, item, count, changes: consumed.changes },
         data: codec.pack('pb_role_figure_up_back', {
           leader_equips_forge_data: { lv: 0, exp: 0, wish: 0 },
-          res: { changes: [], is_overflow: false }
+          res: { changes: consumed.changes, is_overflow: false }
         })
       };
     });
@@ -531,22 +605,31 @@ export function createRoleService(options) {
 
   function rankAward() {
     return store.transaction((model, db) => {
-      const roleId = model.state.roleId;
       const figure = ensureFigure(model.role);
       const rank = Number(figure.rank ?? 0);
       const row = rankRow(rank);
       if (!row) throw new GameError(5, 'Role rank configuration is missing');
-      const claimKey = String(rank);
-      if (db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(roleId, 'role_rank_award', claimKey)) {
-        throw new GameError(310, 'Rank award was already claimed');
+      model.role.figure_have_info ??= {};
+      let bits = termBinary(model.role.figure_have_info.rank_award_bin) ?? Buffer.alloc(0);
+      const levelBit = (rank - 1) * 2 + 1;
+      const powerBit = (rank - 1) * 2 + 2;
+      const awards = [];
+      const levelAward = Number(row.level_award ?? 0), levelAwardNum = Number(row.level_award_num ?? 0);
+      const powerAward = Number(row.power_award ?? 0), powerAwardNum = Number(row.power_award_num ?? 0);
+      if (levelAward > 0 && levelAwardNum > 0 && Number(model.role.level ?? 0) >= Number(row.level ?? 0) && !hasBit(bits, levelBit)) {
+        awards.push([levelAward, levelAwardNum]);
+        bits = setBit(bits, levelBit);
       }
-      db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(roleId, 'role_rank_award', claimKey, stamp());
-      const awards = Array.isArray(row.award) ? row.award : [];
-      const granted = awards.length ? grantResources(model, awardPairs(awards), tables) : { changes: [] };
+      if (powerAward > 0 && powerAwardNum > 0 && Number(model.state.rolePower?.power ?? 0) >= Number(row.power ?? 0) && !hasBit(bits, powerBit)) {
+        awards.push([powerAward, powerAwardNum]);
+        bits = setBit(bits, powerBit);
+      }
+      model.role.figure_have_info.rank_award_bin = bits.toString('base64');
+      const granted = awards.length ? grantResources(model, awards, tables, { codec }) : { changes: [] };
       return {
         value: { rank, changes: granted.changes.length },
         data: codec.pack('pb_role_figure_rank_award_back', {
-          rank_award_bin: Buffer.from(claimKey, 'utf8'),
+          rank_award_bin: bits,
           res: { changes: granted.changes, is_overflow: false }
         })
       };
@@ -583,7 +666,7 @@ export function createRoleService(options) {
       const dayKey = stamp().slice(0, 10);
       const row = extra(db, roleId);
       if (row.watch_video_day === dayKey) throw new GameError(310, 'Video award was already claimed today');
-      const awards = Array.isArray(videoConfig.awards) ? videoConfig.awards : [];
+      const awards = Array.isArray(tables?.WatchVideoAward?.get?.(1)?.reward) ? tables.WatchVideoAward.get(1).reward : [];
       if (!awards.length) throw new GameError(5, 'Video award configuration is missing');
       const granted = grantResources(model, awardPairs(awards), tables);
       writeExtra(db, roleId, { watch_video_day: dayKey });
@@ -594,42 +677,122 @@ export function createRoleService(options) {
     });
   }
 
-  function playerData(request) {
+  function moduleBytes(model, moduleId, slot = null) {
+    const module = new Map(model.state.modules.value).get(Number(moduleId));
+    const target = slot === null ? module : module?.value?.[slot];
+    return target ? rawBinary(target) : null;
+  }
+
+  function decodeModule(model, moduleId, slot, schema, fallback) {
+    const bytes = moduleBytes(model, moduleId, slot);
+    if (bytes === null || bytes.length === 0) return structuredClone(fallback);
+    return codec.unpack(schema, bytes);
+  }
+
+  async function playerDataBlock(model, db, typeId, itemId, blockId) {
+    const block = tables?.PlayerDataBlock?.get?.(blockId);
+    if (!block) return null;
+    const type = tables?.PlayerDataType?.get?.(typeId);
+    if (type && !(type.block ?? []).map(Number).includes(Number(blockId))) return null;
+    if (!type) {
+      const func = tables?.PlayerDataFunc?.get?.(typeId);
+      const lineups = (block.line_up ?? []).map(Number);
+      if (!func || !lineups.some(lineup => (func.lineup ?? []).map(Number).includes(lineup))) return null;
+    }
+    if (String(itemId) !== String(model.state.roleId)) return null;
+
+    if (block.is_pb) {
+      switch (Number(blockId)) {
+        case 1:
+          return codec.pack('pb_player_info', {
+            id: String(model.state.roleId), server_id: Number(model.state.serverId),
+            name: Buffer.from(roleName(model.role), 'utf8'), level: Number(model.role.level ?? 1),
+            figure_simple_info: ensureFigure(model.role)
+          });
+        case 2: {
+          const guildLogin = decodeModule(model, 24, null, 'pb_res_guild_login', { guild_applies: [] });
+          return codec.pack('pb_player_guild', guildLogin.guild ?? {});
+        }
+        case 3: {
+          const allowedLineupTypes = new Set((block.line_up ?? []).map(Number));
+          const lineupList = (model.playLineups ?? []).filter(lineup => allowedLineupTypes.has(Number(lineup?.type)));
+          return codec.pack('pb_player_lineup', {
+            hero_list: model.heroInfo?.hero_list ?? [], lineup_list: lineupList
+          });
+        }
+        case 4: {
+          const loginTime = decodeModule(model, 1, 2, 'pb_login_time', {});
+          return codec.pack('pb_player_login', {
+            last_login_time: Number(loginTime.last_login ?? currentSeconds()),
+            last_logout_time: Number(loginTime.last_logout ?? currentSeconds() - 1),
+            maybe_online: true
+          });
+        }
+        case 7: {
+          const artifact = decodeModule(model, 50, 0, 'pb_artifact_info', { artifact_list: [], skill_list: [] });
+          return codec.pack('pb_player_artifact', {
+            artifact_list: artifact.artifact_list ?? [], tid_list: artifact.skill_list ?? []
+          });
+        }
+        case 12: {
+          const skin = decodeModule(model, 65, 0, 'pb_skin_info', { skin_list: [] });
+          return codec.pack('pb_skin_block', { skin_list: skin.skin_list ?? [] });
+        }
+        case 13: {
+          const info = haveInfo(db, model.state.roleId, model.role);
+          return codec.pack('pb_role_figure_block', {
+            stable_title_info: info.stable_title_info,
+            limit_title_list: info.limit_title_list
+          });
+        }
+        case 16: {
+          const lineupType = Number((block.line_up ?? [])[0] ?? 1);
+          return codec.pack('pb_attr_lineup_all_info', buildLineupAttrInfo({ model, lineupType, heroTables, attributeTables }));
+        }
+        case 21:
+          return moduleBytes(model, 10, 3) ?? codec.pack('pb_hero_all_handbook_record', { records: [], own_rev: Buffer.alloc(0) });
+        case 22:
+          return moduleBytes(model, 10, 4) ?? codec.pack('pb_role_hero_favour', {});
+        default:
+          return null;
+      }
+    }
+
+    if (block.pb_struct_type === 'binary') {
+      return moduleBytes(model, 35, null);
+    }
+    let value = null;
+    if (Number(blockId) === 5) {
+      const mission = decodeModule(model, 8, 0, 'pb_mission', {});
+      value = Number(mission.mission_id ?? 0);
+    }
+    if (Number(blockId) === 24) {
+      const fashion = decodeModule(model, 110, null, 'pb_fashion_data', { cur_id: 0, info_list: [] });
+      value = Number(fashion.cur_id ?? 0);
+    }
+    if (!Number.isSafeInteger(value) || value < 0) return null;
+    return encodeEtf(value);
+  }
+
+  async function playerData(request) {
     const typeId = Number(request?.type ?? 0);
     const items = Array.isArray(request?.item_list) ? request.item_list : [];
     if (!items.length) throw new GameError(1, 'Player data request has no items');
-    const blocks = new Map();
-    for (const block of Array.isArray(blockConfig.blocks) ? blockConfig.blocks : []) {
-      if (block && Number.isSafeInteger(Number(block.id))) blocks.set(Number(block.id), block);
-    }
-    const localRoleId = String(store.inspect(db => db.prepare('SELECT role_id FROM roles LIMIT 1').get().role_id));
-    const itemList = items.slice(0, 64).map(item => {
+    const model = store.read();
+    const db = store.inspect(value => value);
+    const localRoleId = String(model.state.roleId);
+    const itemList = [];
+    for (const item of items.slice(0, 64)) {
       const id = String(item?.id ?? '0');
-      const requested = (item?.block_id_list ?? []).map(Number).filter(value => Number.isSafeInteger(value));
+      const requested = [...new Set((item?.block_id_list ?? []).map(Number).filter(value => Number.isSafeInteger(value)))];
       const blockList = [];
       for (const blockId of requested) {
-        const block = blocks.get(blockId);
-        if (!block || String(block.roleId ?? localRoleId) !== id) continue;
-        if (block.schema === 'pb_player_info') {
-          const role = store.read().role;
-          blockList.push({
-            block_id: blockId,
-            block_bin: codec.pack('pb_player_info', {
-              id: id,
-              server_id: 1,
-              name: Buffer.from(roleName(role), 'utf8'),
-              level: Number(role.level ?? 1),
-              figure_simple_info: ensureFigure(role)
-            })
-          });
-        }
+        const bytes = await playerDataBlock(model, db, typeId, id, blockId);
+        if (bytes !== null) blockList.push({ block_id: blockId, block_bin: Buffer.from(bytes) });
       }
-      // Unrecovered block ids are cache misses. The shipped assets do not
-      // contain the server-side FunctionCache block table, so no block payload
-      // is invented for ids the local server cannot resolve.
-      return { id, block_list: blockList };
-    });
-    log({ event: 'player_data_requested', type: typeId, items: itemList.length, localRoleId, configuredBlocks: blocks.size });
+      itemList.push({ id, block_list: blockList });
+    }
+    log({ event: 'player_data_requested', type: typeId, items: itemList.length, localRoleId, blocks: itemList.reduce((sum, item) => sum + item.block_list.length, 0) });
     return { value: { type: typeId, items: itemList.length }, data: codec.pack('pb_function_cache_back', { item_list: itemList }) };
   }
 
@@ -640,15 +803,38 @@ export function createRoleService(options) {
       const upsert = db.prepare('INSERT OR REPLACE INTO role_red_dots (role_id,path_key,state,show_count,extra_bin,updated_at) VALUES (?,?,?,?,?,?)');
       const changes = Array.isArray(request?.to_add_or_change_list) ? request.to_add_or_change_list : [];
       for (const entry of changes) {
-        const key = String(entry?.path_bin ?? '');
-        if (!key) throw new GameError(1, 'Red dot path is required');
-        const extra = entry.extra ? Buffer.from(String(entry.extra), 'base64') : null;
+        const path = termBinary(entry?.path_bin);
+        if (!path?.length) throw new GameError(1, 'Red dot path is required');
+        const key = path.toString('base64');
+        const extra = termBinary(entry.extra) ?? Buffer.alloc(0);
         upsert.run(roleId, key, entry.state ? 1 : 0, Number(entry.show_count ?? 0), extra, nowStamp);
       }
       const deletions = Array.isArray(request?.to_del_list) ? request.to_del_list : [];
       const remove = db.prepare('DELETE FROM role_red_dots WHERE role_id=? AND path_key=?');
-      for (const key of deletions) remove.run(roleId, String(key));
+      for (const entry of deletions) {
+        const text = termText(entry);
+        if (!text) continue;
+        const keys = new Set([Buffer.from(text, 'utf8').toString('base64')]);
+        if (/^[A-Za-z0-9+/]+={0,2}$/.test(text) && text.length % 4 === 0) {
+          const decoded = Buffer.from(text, 'base64');
+          if (decoded.toString('base64') === text) keys.add(text);
+        }
+        for (const key of keys) remove.run(roleId, key);
+      }
       return { value: { saved: changes.length, deleted: deletions.length }, data: null };
+    });
+  }
+
+  function loginRedDots() {
+    const model = store.read();
+    const rows = store.inspect(db => db.prepare('SELECT * FROM role_red_dots WHERE role_id=? ORDER BY path_key').all(model.state.roleId));
+    return codec.pack('all_saved_red', {
+      saved_red_list: rows.map(row => ({
+        state: row.state === 1,
+        path_bin: Buffer.from(row.path_key, 'base64'),
+        show_count: Number(row.show_count ?? 0),
+        extra: termBinary(row.extra_bin) ?? Buffer.alloc(0)
+      }))
     });
   }
 
@@ -673,6 +859,16 @@ export function createRoleService(options) {
         .run(model.state.roleId, messageId, isOpen ? 1 : 0, stamp());
       return { value: { messageId, isOpen }, data: null };
     });
+  }
+
+  function loginChannelPush() {
+    const model = store.read();
+    const module = new Map(model.state.modules.value).get(173);
+    const bytes = module ? rawBinary(module) : Buffer.alloc(0);
+    const data = bytes.length ? codec.unpack('pb_channel_push_param', bytes) : {};
+    data.open_list = store.inspect(db => db.prepare('SELECT message_id,is_open FROM role_channel_push WHERE role_id=? ORDER BY message_id').all(model.state.roleId))
+      .map(row => ({ message_id: Number(row.message_id), is_open: row.is_open === 1 }));
+    return codec.pack('pb_channel_push_param', data);
   }
 
   async function gmCommand(input) {
@@ -731,7 +927,7 @@ export function createRoleService(options) {
     switch (command) {
       case 10: return gmCommand(context.etf);
       case 104: return recordSundry(context.etf);
-      case 105: return recordPassAllMission();
+      case 105: return recordPassAllMission(context.etf);
       case 106: return requestRoleList();
       case 109: log({ event: 'role_net_checked', type: command }); return { value: { ok: true }, data: null };
       case 110: return setRecommendLevel(context.etf);
@@ -764,6 +960,8 @@ export function createRoleService(options) {
   return {
     supports: type => SUPPORTED.has(Number(type)),
     execute,
+    loginRedDots,
+    loginChannelPush,
     recordSundry,
     levelReward,
     setRoleName: setRoleNameCommand
