@@ -103,6 +103,8 @@ cd personal-server
 node --test --test-concurrency=1 test/*.test.mjs
 ```
 
-全量结果见 `analysis/test-runs/gameplay-20261106/block-d-full.log`（合并后另记 `main-after-block-d-full.log`）。本块新增 `test/function-manual-service.test.mjs`（6 项）、`test/task-activity-service.test.mjs`（7 项）、`test/item-task-gateway.test.mjs`（1 项真实握手 + 登录 + 两条命令）。
+全量结果：分支基线 `analysis/test-runs/gameplay-20261106/block-d-full.log`（2604 项、pass 2602）；同步 main（含块 F/H/G2）后 `analysis/test-runs/gameplay-20261106/block-d-merged3-full.log`（2646 项、pass 2644、fail 0、skipped 2）。本块新增 `test/function-manual-service.test.mjs`（6 项）、`test/task-activity-service.test.mjs`（7 项）、`test/item-task-gateway.test.mjs`（1 项真实握手 + 登录 + 两条命令）。
+
+合并：`8ac7a73` 以 `--no-ff` 合入 main `78b1a46`；合并后 main 的 tree 与全量测试所在提交的 tree 相同（`dbe81e8`）。
 
 未执行：实时服务启停、模拟器/ADB、运行数据库读写、APK 改动或 UI 验收。
