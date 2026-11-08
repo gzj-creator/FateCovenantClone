@@ -23,6 +23,12 @@ function positiveInteger(value, message) {
   return number;
 }
 
+function nonNegativeInteger(value, message) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < 0) fail(1, message);
+  return number;
+}
+
 function nonNegativeIntegerString(value, message) {
   let number;
   try { number = BigInt(value); }
@@ -113,8 +119,19 @@ export function createHouseAssistantService({ store, codec, gameTables, tables, 
     catch { fail(5, 'House-assistant login module is invalid'); }
     let value = { res: [], use: [], trial: [], last_use: [] };
     if (bytes.length) {
-      try { value = codec.unpack('pb_house_assistant_info', bytes); }
-      catch { fail(5, 'House-assistant login payload cannot be decoded'); }
+      let legacy;
+      try { legacy = codec.unpack('pb_house_assistant_info_old', bytes); } catch { legacy = null; }
+      if (legacy && (Number(legacy.use_bg) > 0 || Number(legacy.use_assistant) > 0)) {
+        value = {
+          res: legacy.res,
+          use: [{ scene_tid: 1, use_bg: legacy.use_bg ?? 0, use_assistant: legacy.use_assistant ?? 0 }],
+          trial: [],
+          last_use: []
+        };
+      } else {
+        try { value = codec.unpack('pb_house_assistant_info', bytes); }
+        catch { fail(5, 'House-assistant login payload cannot be decoded'); }
+      }
     }
     return {
       res: normalizeResources(value.res),
@@ -171,7 +188,7 @@ export function createHouseAssistantService({ store, codec, gameTables, tables, 
     return { expired, restored };
   }
 
-  function parseRequests(value, { allowRepeatedScene = false } = {}) {
+  function parseRequests(value, { allowRepeatedScene = false, allowEmptyItem = false } = {}) {
     const requests = value?.req;
     if (!Array.isArray(requests) || requests.length === 0) fail(1, 'House-assistant selection list is empty');
     if (requests.length > tables.scenes.size * 2 + 8) fail(1, 'House-assistant selection list is too large');
@@ -181,7 +198,12 @@ export function createHouseAssistantService({ store, codec, gameTables, tables, 
       if (!tables.scenes.has(sceneTid)) fail(1, 'House-assistant scene does not exist');
       if (!allowRepeatedScene && seenScenes.has(sceneTid)) fail(1, 'House-assistant selection contains a duplicate scene');
       seenScenes.add(sceneTid);
-      const itemTid = positiveInteger(request?.assistant_tid, 'House-assistant item is invalid');
+      const rawItemTid = request?.assistant_tid;
+      const itemTid = allowEmptyItem && (rawItemTid == null || String(rawItemTid) === '')
+        ? 0
+        : allowEmptyItem
+          ? nonNegativeInteger(rawItemTid, 'House-assistant item is invalid')
+          : positiveInteger(rawItemTid, 'House-assistant item is invalid');
       result.push({ sceneTid, itemTid });
     }
     return result;
@@ -214,8 +236,9 @@ export function createHouseAssistantService({ store, codec, gameTables, tables, 
 
   function choose(state, value, kind) {
     if (state.trial.length) fail(1, 'House-assistant selection is locked during a trial');
-    const requests = parseRequests(value);
+    const requests = parseRequests(value, { allowEmptyItem: true });
     for (const request of requests) {
+      if (request.itemTid === 0) continue;
       const actual = itemKind(request.itemTid, gameTables);
       if (actual !== kind) fail(1, `House-assistant ${kind} selection has the wrong item type`);
       if (!owns(state, request.itemTid)) fail(1, `House-assistant ${kind} is not owned`);

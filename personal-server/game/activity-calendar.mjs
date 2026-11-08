@@ -276,7 +276,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     };
   }
 
-  function normalizeActFrameLogin(player, server, at = currentSeconds()) {
+  function normalizeActFrameLogin(player, server, at = currentSeconds(), options = {}) {
     const current = seconds(at);
     const result = { mode, adjusted: 0, activityIds: [] };
     if (mode !== 'all-open' || !player || !server || !Number.isSafeInteger(current) || current <= 0) return result;
@@ -288,6 +288,52 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     const serverByTid = new Map(server.act_stage_list
       .map(row => [Number(row?.act_id), row])
       .filter(([id]) => Number.isSafeInteger(id) && id > 0));
+
+    // Some activity families publish their state in module 92 while the
+    // reference act-frame snapshot has no matching module-183 stage row. In
+    // all-open mode materialize those rows as well; otherwise the client can
+    // list the activity but Activity:IsValid() rejects it before opening.
+    const materializeIds = new Set((options.activityIds ?? [])
+      .map(Number)
+      .filter(id => Number.isSafeInteger(id) && id > 0));
+    for (const id of materializeIds) {
+      if (serverByTid.has(id) && playerByTid.has(id)) continue;
+      const config = activityConfig(tables, id);
+      const type = Number(config?.type) || 0;
+      if (!config || type <= 0) continue;
+      const window = activityWindow(config, openedAt);
+      const start = Math.min(window?.start ?? openedAt, current);
+      const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
+      if (!serverByTid.has(id)) {
+        const serverRow = {
+          act_id: id,
+          type,
+          start_time: String(start),
+          end_time: String(end),
+          cur_stage_id: 50,
+          is_pause: false,
+          loop_count: 0,
+          stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+        };
+        server.act_stage_list.push(serverRow);
+        serverByTid.set(id, serverRow);
+      }
+      if (!playerByTid.has(id)) {
+        const playerRow = {
+          act_stage: {
+            act_id: id,
+            start_time: String(start),
+            end_time: String(end),
+            cur_stage_id: 50,
+            loop_count: 0,
+            history_time: [{ stage_id: 50, enter_time: String(start) }]
+          },
+          module_login_data: Buffer.alloc(0)
+        };
+        player.data_list.push(playerRow);
+        playerByTid.set(id, playerRow);
+      }
+    }
 
     // The login snapshot only contains the activities the reference account
     // happened to have. Paid-shop and exchange-shop activities are separate

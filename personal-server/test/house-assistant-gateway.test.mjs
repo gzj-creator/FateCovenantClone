@@ -100,10 +100,16 @@ test('gateway implements 88201-88204 over real framing without falling back to L
   assert.equal(Number(codec.unpack('pb_house_assistant_use_rsp', Buffer.from(response.data, 'base64')).use[0].use_assistant), 10063200);
 
   response = await request(88201, 3, codec.pack('pb_house_assistant_use_req_list', {
-    req: [{ scene_tid: 1, assistant_tid: 20013200 }]
+    req: [
+      { scene_tid: 1, assistant_tid: 20013200 },
+      { scene_tid: 2, assistant_tid: 0 }
+    ]
   }));
   assert.equal(response.err, undefined);
-  assert.equal(Number(codec.unpack('pb_house_assistant_use_rsp', Buffer.from(response.data, 'base64')).use[0].use_bg), 20013200);
+  const backgrounds = codec.unpack('pb_house_assistant_use_rsp', Buffer.from(response.data, 'base64')).use;
+  assert.equal(backgrounds.length, 2);
+  assert.equal(Number(backgrounds[0].use_bg), 20013200);
+  assert.equal(Number(backgrounds[1].use_bg ?? 0), 0);
 
   response = await request(88203, 4, codec.pack('pb_house_assistant_trial_req', {
     trial_id_list: [1, 2],

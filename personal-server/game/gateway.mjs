@@ -942,7 +942,9 @@ export function createLocalGame({
         activities: loginActivities,
         normalize: ({ player, server }) => {
           const normalization = calendar.mode === 'all-open'
-            ? calendar.normalizeActFrameLogin(player, server, loginSeconds)
+            ? calendar.normalizeActFrameLogin(player, server, loginSeconds, {
+              activityIds: [...afterActivityIds]
+            })
             : { mode: calendar.mode, adjusted: 0, activityIds: [] };
           premiumLogin = premiumAct.synchronizeLogin({ player, server }, loginSeconds);
           normalization.premiumActivityIds = premiumLogin.activityIds;
