@@ -72,6 +72,9 @@ import { createMailService } from './mail-service.mjs';
 import { createRecruitService } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createGuildRosterService } from './guild-roster-service.mjs';
+import { createGuildSocietyService } from './guild-society-service.mjs';
+import { createSocialCommunityService } from './social-community-service.mjs';
+import { createGuildActivityService } from './guild-activity-service.mjs';
 import { createHeroFavorService } from './hero-favor-service.mjs';
 import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createTeamGenreService } from './team-genre-service.mjs';
@@ -433,6 +436,21 @@ export function createLocalGame({
     store, codec, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
   });
   const chat = createChatService({ store, codec, now: clock, logger });
+  // Guild commands beyond the roster set: GuildCmd 21001-21031, GuildDataCmd
+  // 171 and GuildActiveCmd 85501-85505 share module 24 with guild-roster.
+  const guildSociety = createGuildSocietyService({
+    store, codec, tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
+  // Social/community family: SupportCmd 46001-46002, map 75001-75005,
+  // hero comments 76601-76605, relations 77501-77503, 77601, 79201, 84701.
+  const community = createSocialCommunityService({
+    store, codec, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
+  // Guild activity commands: red envelope 83101-83108, trial 83401-83411,
+  // explore 89301-89352, guild war 90001-90016, duel 90701-90707, racing 91201-91209.
+  const guildActivity = createGuildActivityService({
+    store, codec, tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
   const features = createFeatureService({ store, codec, sprintPreview });
   const recruit = createRecruitService({
     store,
@@ -745,6 +763,11 @@ export function createLocalGame({
       throw new GameError(1, 'Invalid protobuf request for ' + schema);
     }
   }
+  async function etfInput(data) {
+    if (!data?.length) return undefined;
+    const decoded = await decodeEtf(data);
+    return decoded?.value ?? decoded;
+  }
   async function etfArgument(data, message, { optional = false } = {}) {
     if (!data?.length) {
       if (optional) return null;
@@ -938,6 +961,57 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'chat_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (guildSociety.supports(type)) {
+        try {
+          const schema = guildSociety.requestSchema(type);
+          const input = schema
+            ? unpackRequest(schema, request.data)
+            : await etfInput(request.data);
+          const result = guildSociety.execute(type, input);
+          send(seq, result.data);
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          log({ event: 'guild_society_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guild_society_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (community.supports(type)) {
+        try {
+          const schema = community.requestSchema(type);
+          const input = schema
+            ? unpackRequest(schema, request.data)
+            : await etfInput(request.data);
+          const result = community.execute(type, input);
+          send(seq, result.data);
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          log({ event: 'community_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'community_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (guildActivity.supports(type)) {
+        try {
+          const schema = guildActivity.requestSchema(type);
+          const input = schema
+            ? unpackRequest(schema, request.data)
+            : await etfInput(request.data);
+          const result = guildActivity.execute(type, input);
+          send(seq, result.data);
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          log({ event: 'guild_activity_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guild_activity_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
