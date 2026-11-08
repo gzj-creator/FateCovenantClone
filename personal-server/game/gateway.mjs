@@ -79,6 +79,8 @@ import { readFreePrivilegeActTables } from '../config/free-privilege-act-tables.
 import { createSlotGameActService } from './slot-game-act-service.mjs';
 import { createActRewardService, ACT_REWARD_ETF_TYPES } from './act-reward-service.mjs';
 import { readActActivityTables } from '../config/act-activity-tables.mjs';
+import { createExplorationActService } from './exploration-act-service.mjs';
+import { readExplorationActTables } from '../config/exploration-act-tables.mjs';
 import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createMinigameActService } from './minigame-act-service.mjs';
 import { readMinigameActTables } from '../config/minigame-act-tables.mjs';
@@ -614,6 +616,7 @@ export function createLocalGame({
   // dream trial, diamond vein, source point, homeland album, homeland and
   // baking. Rules without shipped evidence fail closed inside the service.
   const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
+  const explorationAct=createExplorationActService({store,codec,tables,explorationTables:readExplorationActTables(),now:clock,random,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
   // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
@@ -1750,7 +1753,21 @@ export function createLocalGame({
         }
         return;
       }
-      if (slotGameAct.supports(type)) {
+      if (explorationAct.supports(type)) {
+        try {
+          const result = await explorationAct.execute(type, request.data ?? Buffer.alloc(0));
+          send(seq, result.data);
+          log({ event: 'exploration_command_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'exploration_command_rejected', type, seq, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }      if (slotGameAct.supports(type)) {
         try {
           const input = slotGameAct.decode(type, request.data ?? Buffer.alloc(0));
           const result = slotGameAct.execute(type, input);

@@ -207,3 +207,7 @@
 - 迁移：game-store v17 新增 role_profile_extra / role_stories / role_red_dots / role_channel_push / client_diagnostic_logs / cdkey_redemptions / role_figure_items / role_skins / hero_skin_wear / role_skin_state / role_skin_handbook / role_activity_stages / gm_audit_entries。
 - 验证：test/block-j-role-support.test.mjs 4 项通过；gameplay-gateway、login-business-reads、system-integration 回归通过；SQLite 重开后 user_version=17 且角色/奖励/皮肤/剧情/红点/兑换状态保留。
 - 证据缺口：FunctionCache 块 ID、RoleRank 与视频奖励行、皮肤/图鉴配置、开发登录回包字段、53001 双整数语义；均已在 agent/workflow/gameplay-completion/ROLE-*/implementation.md 记录，未以空包冒充完成。
+
+## 2026-11-08 G1 探索与家园前半（#151-#162）
+
+分支 task/G1-EXPLORATION-20261108（worktree .worktree/gameplay-20261108/g1-exploration）。98 条命令全部注册；真实状态迁移已覆盖 PLAY-EXPERIENCEACT（2）、PLAY-RADISHFARM（6）、PLAY-HOMEPUZZLEACT（9）、PLAY-MINIGAME（4）、PLAY-GRANDTOURER 每日令牌（1），共 22 条。其余 76 条以 err=5 显式 fail closed，不计作完成。11 张客户端活动表由 tools/extract-exploration-tables.mjs 恢复。专项 7/7 与 gateway 7/7 通过；无 APK 验收。详见 agent/workflow/gameplay-completion/G1-EXPLORATION/implementation.md。
