@@ -116,3 +116,13 @@ node tools/extract-free-privilege-table.mjs <FreePrivilegeActTable.data.lua.bin>
 - 两个版本都指向 1 号月卡是表事实；`month_card` 与 `MonthlyCardTable` 的绑定只由字段名与客户端 `ActiveMonthlyCardByCardInfo` 调用链支撑，未取得原服回包样本。
 - 时间基准沿用通用 `activityWindow`（05:00 日界）；`privilege_day` 的起算点是否就是 `active_time` 由客户端 `GetPermanentEndTime` 反推，未与原服对照。
 - 模块 92 条目在重复激活分支不会重写；登录同步每次都会重写，因此以数据库状态为准。
+
+## 合并前复核（2026-11-08）
+
+分支 `task/PAY-FREEPRIVILEGEACT-20261108` 已 rebase 到主线 `db0437e`（fix(activities): sync white-ribbon paid shop under all-open）。主线该段只改 `activity-calendar.mjs`、`welfare-service.mjs` 及其测试，与本分支改动文件无重叠，rebase 全自动完成、无冲突；本分支五个提交按序重放，rebase 后 HEAD `c6d15c2`，其后追加的本次复核记录构成当前分支 HEAD。
+
+重放未改变本分支内容：`git diff --numstat main..HEAD` 中 `gateway.mjs` 为 25/1、`monthly-card-service.mjs` 为 34/1，两处删除都是把原行替换成含 `freePrivilegeAct` / `activateFreeCard` 的超集行，其余文件全为纯新增。
+
+rebase 后重跑 9 个测试文件共 61 项，61 通过、0 失败、0 跳过，日志 `analysis/test-runs/gameplay-20261106/free-privilege-after-rebase-20261108.log`。
+
+合并前守卫：`git status --short` 为空；`git merge-base --is-ancestor main HEAD` 返回 0；`git diff --check main..HEAD` 无输出；`git diff --diff-filter=D --name-only main..HEAD` 为空。主线既有派发块（1316 属性、67004/67005、69001/69002、20001–20013、钓鱼、精英 201/207、100601/100602、207 结算体力、邮件推送、活动期限、module 8/90、10501–10511、11000–11014、117001–117005、37060–37075、89701–89712、107701–107703、101901+、110201–110203）逐项核对仍在；网关顺序保持 recruit 在 `heroCommandServices` 之前、hundredDraw/bonusDraw 在通用 `activityRead` 之前。
