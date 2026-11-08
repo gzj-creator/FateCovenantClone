@@ -30,7 +30,7 @@ function ensureTables(db) {
     'rank INTEGER NOT NULL,' +
     'power INTEGER NOT NULL,' +
     'matched_at INTEGER NOT NULL,' +
-    'updated_at TEXT NOT NULL'
+    'updated_at TEXT NOT NULL)'
   );
 }
 

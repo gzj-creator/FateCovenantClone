@@ -190,19 +190,21 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
-| 107 | SOC-GUILDBOSS | 公会 BOSS、伤害奖励与技能物品 | 12 | 待领取 |
-| 108 | SOC-GUILDJOINT | 公会联合探索与资源争夺 | 25 | 待领取 |
-| 109 | SOC-GUILDRUNESTONE | 公会符石穿脱与合成 | 3 | 待领取 |
-| 110 | SOC-GUILDGVG | 公会 GVG 地图、矿点与据点争夺 | 18 | 待领取 |
-| 111 | SOC-GUILDVOTE | 公会投票 | 2 | 待领取 |
-| 112 | SOC-SLGMAP | SLG 地图视野与进出 | 3 | 待领取 |
-| 113 | SOC-GUILDNATION | 公会国战、建造、兵种、科技、行军与据点 | 64 | 待领取 |
-| 114 | SOC-GUILDBARGAIN | 公会砍价 | 4 | 待领取 |
-| 115 | SOC-GUILDEXPEDITION | 公会远征、宣战、鼓舞、竞猜与地图排名 | 15 | 待领取 |
-| 116 | SOC-CHANNELENTRY | 频道入口业务 | 1 | 待领取 |
-| 117 | SOC-GUILDHUNT | 公会狩猎参与与支援 | 3 | 待领取 |
-| 118 | SOC-GUILDCRUSADE | 公会讨伐排名 | 1 | 待领取 |
-| 119 | SOC-GUILDAUCTION | 公会拍卖、心愿与领取 | 3 | 待领取 |
+| 107 | SOC-GUILDBOSS | 公会 BOSS、伤害奖励与技能物品 | 12 | 服务端完成（证据缺口） |
+| 108 | SOC-GUILDJOINT | 公会联合探索与资源争夺 | 25 | 服务端完成（证据缺口） |
+| 109 | SOC-GUILDRUNESTONE | 公会符石穿脱与合成 | 3 | 服务端完成（证据缺口） |
+| 110 | SOC-GUILDGVG | 公会 GVG 地图、矿点与据点争夺 | 18 | 服务端完成（证据缺口） |
+| 111 | SOC-GUILDVOTE | 公会投票 | 2 | 服务端完成（证据缺口） |
+| 112 | SOC-SLGMAP | SLG 地图视野与进出 | 3 | 服务端完成（证据缺口） |
+| 113 | SOC-GUILDNATION | 公会国战、建造、兵种、科技、行军与据点 | 64 | 服务端完成（证据缺口） |
+| 114 | SOC-GUILDBARGAIN | 公会砍价 | 4 | 服务端完成（证据缺口） |
+| 115 | SOC-GUILDEXPEDITION | 公会远征、宣战、鼓舞、竞猜与地图排名 | 15 | 服务端完成（证据缺口） |
+| 116 | SOC-CHANNELENTRY | 频道入口业务 | 1 | 服务端完成（证据缺口） |
+| 117 | SOC-GUILDHUNT | 公会狩猎参与与支援 | 3 | 服务端完成（证据缺口） |
+| 118 | SOC-GUILDCRUSADE | 公会讨伐排名 | 1 | 响应 schema 缺失，明确拒绝 |
+| 119 | SOC-GUILDAUCTION | 公会拍卖、心愿与领取 | 3 | 服务端完成（证据缺口） |
+
+E2 覆盖 154/154 个缺失命令：153 条进入实际业务服务，`105805` 因 `pb_guild_crusade_rank_rsp` 定义缺失以错误码 5 明确拒绝。现有 `99229` 继续由国战助力服务持有。专项服务、真实临时 TCP、SQLite 重开与 154 条路由唯一性测试通过；不包含跨成员/跨服补证或 APK 验收，详见[交付记录](../../../agent/workflow/gameplay-completion/E2-SOCIAL-COOP/implementation.md)。
 
 ## 块 F：#120–#150（招募、抽取、翻牌与转盘活动）
 

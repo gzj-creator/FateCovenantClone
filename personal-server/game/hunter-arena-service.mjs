@@ -99,7 +99,7 @@ function ensureTables(db) {
     'new_stage_fight_times INTEGER NOT NULL,' +
     'cross_open_day INTEGER NOT NULL,' +
     'last_cross_open_day INTEGER NOT NULL,' +
-    'updated_at TEXT NOT NULL'
+    'updated_at TEXT NOT NULL)'
   );
   db.exec('CREATE TABLE IF NOT EXISTS hunter_arena_reports (' +
     'role_id INTEGER NOT NULL,' +
@@ -112,14 +112,14 @@ function ensureTables(db) {
     'locked INTEGER NOT NULL,' +
     'old_score INTEGER NOT NULL,' +
     'new_score INTEGER NOT NULL,' +
-    'PRIMARY KEY(role_id, fight_uid)'
+    'PRIMARY KEY(role_id, fight_uid))'
   );
   db.exec('CREATE TABLE IF NOT EXISTS hunter_arena_claims (' +
     'role_id INTEGER NOT NULL,' +
     'claim_type TEXT NOT NULL,' +
     'claim_key TEXT NOT NULL,' +
     'created_at TEXT NOT NULL,' +
-    'PRIMARY KEY(role_id, claim_type, claim_key)'
+    'PRIMARY KEY(role_id, claim_type, claim_key))'
   );
 }
 
