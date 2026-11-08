@@ -22,7 +22,7 @@
 
 ## 未交付命令与阻塞证据
 
-以下 10 卡 25 条命令未实现。每条命令的请求/回包 schema 已确认（引自 `personal-server/assets/protobuf/**`、`docs/plans/remaining-gameplay-20261106/04-items-tasks-shops.md`），阻塞点都在“权威状态或奖励配置”上；没有用空包、固定值或客户端自报完成来销项。
+以下 10 卡 24 条命令未实现，再加上 ITEM-TASKACTIVITY 的 105702，本块 27 条命令中有 25 条未交付。每条命令的请求/回包 schema 已确认（引自 `personal-server/assets/protobuf/**`、`docs/plans/remaining-gameplay-20261106/04-items-tasks-shops.md`），阻塞点都在“权威状态或奖励配置”上；没有用空包、固定值或客户端自报完成来销项。
 
 ### ITEM-RESCOMPLETE（288 `req_res_complete_award`）
 
