@@ -210,39 +210,39 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
-| 120 | DRAW-MAGICDRAW | 魔法招募选人、成就与升星奖励 | 3 | 待领取 |
-| 121 | DRAW-PINBALL | 弹珠活动成就 | 1 | 待领取 |
-| 122 | DRAW-FANTASYEQUIPACT | 幻武活动管道小游戏、任务与试炼闭环 | 2 | 待领取 |
-| 123 | DRAW-PYRAMID | 金字塔抽取与任务 | 2 | 待领取 |
-| 124 | DRAW-THREEADMONITION | 三诫抽取、宝箱、次数与入场 | 4 | 服务端部分完成（1/4：88965 次数已实现） |
-| 125 | DRAW-HUNDREDBONUS | 百倍奖励随机、领取与日志 | 3 | 待领取 |
-| 126 | DRAW-WISHTREE | 许愿树宝藏及已有抽取链路 | 1 | 待领取 |
-| 127 | DRAW-CHESS | 棋盘抽取、任务、自选、轮次与兑换 | 6 | 待领取 |
-| 128 | DRAW-RAFFLETICKET | 奖券成就 | 1 | 待领取 |
-| 129 | DRAW-HEROBLAZONDRAW | 英雄纹章抽取 | 1 | 待领取 |
-| 130 | DRAW-LOTTERYACT | 抽奖活动与奖品日志 | 2 | 待领取 |
-| 131 | DRAW-MYSTERYWISH | 神秘心愿兑换 | 1 | 待领取 |
-| 132 | DRAW-LOTTERY | 彩票抽取与过期处理 | 2 | 待领取 |
-| 133 | DRAW-FLIPCARD | 翻牌与轮次 | 2 | 待领取 |
-| 134 | DRAW-TICKETDRAW | 票券抽奖领奖与历史 | 2 | 待领取 |
-| 135 | DRAW-FRUITDRAWACT | 水果抽奖 | 2 | 待领取 |
-| 136 | DRAW-DRAW | 通用抽取心愿选择 | 1 | 待领取 |
-| 137 | DRAW-DEMIGODACT | 神灵降世真实奖池与试炼闭环 | 0 | 待领取 |
-| 138 | DRAW-ELVESACT | 精灵活动主精灵、果实抽取与奖励 | 3 | 待领取 |
-| 139 | DRAW-ARTIFACTDRAWACT | 圣器天池试炼统计接入 | 0 | 待领取 |
+| 120 | DRAW-MAGICDRAW | 魔法招募选人、成就与升星奖励 | 3 | 服务端部分完成（60004 与抽数源证据阻塞） |
+| 121 | DRAW-PINBALL | 弹珠活动成就 | 1 | 明确拒绝（缺权威局状态/进度） |
+| 122 | DRAW-FANTASYEQUIPACT | 幻武活动管道小游戏、任务与试炼闭环 | 2 | 明确拒绝（缺棋盘/结算规则） |
+| 123 | DRAW-PYRAMID | 金字塔抽取与任务 | 2 | 服务端部分完成（88942 进度源阻塞） |
+| 124 | DRAW-THREEADMONITION | 三诫抽取、宝箱、次数与入场 | 4 | 服务端完成（回包字段待 APK 对照） |
+| 125 | DRAW-HUNDREDBONUS | 百倍奖励随机、领取与日志 | 3 | 服务端部分完成（额度/日重置证据待补） |
+| 126 | DRAW-WISHTREE | 许愿树宝藏及已有抽取链路 | 1 | 既有路径明确拒绝（奖池/结算证据阻塞） |
+| 127 | DRAW-CHESS | 棋盘抽取、任务、自选、轮次与兑换 | 6 | 服务端部分完成（91901/91904/91906；三张空表拒绝） |
+| 128 | DRAW-RAFFLETICKET | 奖券成就 | 1 | 服务端部分完成（依赖未接入的抽数生产源） |
+| 129 | DRAW-HEROBLAZONDRAW | 英雄纹章抽取 | 1 | 明确拒绝（3201–3204 奖池为空） |
+| 130 | DRAW-LOTTERYACT | 抽奖活动与奖品日志 | 2 | 服务端部分完成（BigLib/幸运值证据待补） |
+| 131 | DRAW-MYSTERYWISH | 神秘心愿兑换 | 1 | 服务端部分完成（Item.type 语义待补） |
+| 132 | DRAW-LOTTERY | 彩票抽取与过期处理 | 2 | 明确拒绝（3901 奖池与期次结算缺失） |
+| 133 | DRAW-FLIPCARD | 翻牌与轮次 | 2 | 服务端部分完成（97301 因棋盘奖池缺失拒绝） |
+| 134 | DRAW-TICKETDRAW | 票券抽奖领奖与历史 | 2 | 明确拒绝（缺全服排名结算） |
+| 135 | DRAW-FRUITDRAWACT | 水果抽奖 | 2 | 服务端部分完成（97902 概率表缺失） |
+| 136 | DRAW-DRAW | 通用抽取心愿选择 | 1 | 服务端部分完成（尚未接招募心愿状态） |
+| 137 | DRAW-DEMIGODACT | 神灵降世真实奖池与试炼闭环 | 0 | 本块无缺失命令差量，保留既有状态 |
+| 138 | DRAW-ELVESACT | 精灵活动主精灵、果实抽取与奖励 | 3 | 服务端部分完成（抽数生产与回包证据待补） |
+| 139 | DRAW-ARTIFACTDRAWACT | 圣器天池试炼统计接入 | 0 | 本块无缺失命令差量，保留既有状态 |
 | 140 | DRAW-BONUSDRAW | 奖励抽取、切换与选池 | 3 | 服务端完成（概率与折算语义证据待补） |
-| 141 | DRAW-CAPSULETOY | 扭蛋、兑换、收集与进度 | 4 | 服务端部分完成（1/4：102301 抽取已实现） |
-| 142 | DRAW-CHESSREVERT | 棋盘翻转轮次、自选礼物与换轮 | 3 | 待领取 |
-| 143 | DRAW-CHILDPUZZLEACT | 拼图抽取、自选、任务与换轮 | 5 | 待领取 |
-| 144 | DRAW-HOARDWHEELACT | 囤积转盘奖池、任务与累计 | 3 | 待领取 |
-| 145 | DRAW-THOUSANDDRAW | 千抽与领奖 | 2 | 待领取 |
-| 146 | DRAW-PRAYACT | 祈愿自选与抽取 | 2 | 待领取 |
-| 147 | DRAW-CASHBACKDRAW | 返利抽奖、次数、全服奖励与进度 | 4 | 待领取 |
+| 141 | DRAW-CAPSULETOY | 扭蛋、兑换、收集与进度 | 4 | 服务端完成（回包/进度来源证据待补） |
+| 142 | DRAW-CHESSREVERT | 棋盘翻转轮次、自选礼物与换轮 | 3 | 服务端部分完成（102401 进度映射缺失拒绝） |
+| 143 | DRAW-CHILDPUZZLEACT | 拼图抽取、自选、任务与换轮 | 5 | 服务端部分完成（103302 与任务事件源阻塞） |
+| 144 | DRAW-HOARDWHEELACT | 囤积转盘奖池、任务与累计 | 3 | 服务端部分完成（任务/累计生产源未接） |
+| 145 | DRAW-THOUSANDDRAW | 千抽与奖励领取 | 2 | 服务端完成（层/随机次数字段待 APK 对照） |
+| 146 | DRAW-PRAYACT | 祈愿自选与抽取 | 2 | 服务端部分完成（多奖池/概率规则待补） |
+| 147 | DRAW-CASHBACKDRAW | 返利抽奖、次数、全服奖励与进度 | 4 | 明确拒绝（缺权威充值/全服状态） |
 | 148 | DRAW-TURNTABLEACT | 转盘活动 | 1 | 服务端完成（APK 未验收） |
-| 149 | DRAW-FLOPCARDACT | 翻牌、单次与累计奖励 | 3 | 待领取 |
+| 149 | DRAW-FLOPCARDACT | 翻牌、单次与累计奖励 | 3 | 服务端完成（APK 未验收） |
 | 150 | DRAW-HUNDREDDRAWACT | 百抽、进度奖、自选、升星奖与跑马灯 | 5 | 服务端完成（保底选择与非英雄星级奖证据待补） |
 
-F 块首批交付（2026-11-08）：24 张活动配置表已可复现抽取，107901/102301/88965 三条命令有真实扣费、发奖、计数与持久化；其余 71 条仍为 `LOCAL_NOT_IMPLEMENTED`，逐族阻塞原因见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
+F 块续做（2026-11-08）：74 条原缺失命令现均有明确路径，其中本 worktree 的统一服务新增覆盖 65 条（44 条表驱动成功路径、21 条无条件 fail closed），其余 9 条由既有百抽、奖励抽取和许愿树服务承担。路径覆盖不等于玩法完成；全部证据缺口、运行规则与未验收边界见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
 
 ## 块 G1：#151–#162（探索与家园前半）
 
