@@ -38,7 +38,8 @@
 - [技能逐英雄任务](13-special-skills.md)：SKILL-<英雄 ID>，包含全部当前标记条目。
 - [统一实施、派发、依赖与验收](11-dispatch-and-acceptance.md)：领取任务、交付格式、并行边界与执行提示词。
 - [所有任务索引](task-index.md)：按 ID 查找任务；包含纯辅助项，不把它们计作玩法。
-- [子卡划分](14-subtask-cards.md)：把 01–10 的 272 张任务卡拆成 381 张可独立派发的子卡，含 type 区间、命令列表与归属分工；生成脚本 tools/plan-subcards.mjs。
+- [子卡划分](14-subtask-cards.md)：把 01–10 的 272 张有命令的任务卡拆成 381 张可独立派发的子卡，含 type 区间、命令列表与归属分工；生成脚本 tools/plan-subcards.mjs。
+- [三大块](15-three-work-blocks.md)：276 张任务卡连续编号后的派发边界——块 A #1–#33、块 B #34–#119、块 C #120–#276；生成脚本 tools/plan-work-blocks.mjs。
 - [完整 1407 命令机器清单](inventory.json)：含请求/响应 schema、当前状态、所属任务、源码及静态证据。
 
 ## 已经实现，不应重新排成“从零开发”
