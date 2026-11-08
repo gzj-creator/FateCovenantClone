@@ -167,7 +167,7 @@
 
 ## 验证结果
 
-全量 `npm test`（`node --test --test-concurrency=1 test/*.test.mjs`）：2571 项，pass 2569，fail 0，skipped 2。日志 `analysis/test-runs/gameplay-20261106/block-e1-full.log`（analysis 不入 Git）。合并 main `70de346`（含 H/C/F/I、BATTLE 等块）后再次全量：2643 项，pass 2641，fail 0，skipped 2；日志 `analysis/test-runs/gameplay-20261106/block-e1-after-merge-full.log`，gateway 合并无冲突且类型无重叠。
+全量 `npm test`（`node --test --test-concurrency=1 test/*.test.mjs`）：2571 项，pass 2569，fail 0，skipped 2。日志 `analysis/test-runs/gameplay-20261106/block-e1-full.log`（analysis 不入 Git）。合并 main `24f90e9`（含 H/C/F/I、BATTLE、G2 等块，期间在 `70de346` 上为 2643/2641/0/2）后最终全量：2659 项，pass 2657，fail 0，skipped 2；日志 `analysis/test-runs/gameplay-20261106/block-e1-final-full.log`，gateway 合并无冲突且类型无重叠。
 
 | 测试 | 用例数 | 结果 |
 | --- | ---: | --- |
