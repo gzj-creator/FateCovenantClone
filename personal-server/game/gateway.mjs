@@ -16,6 +16,14 @@ import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
+import { createLeaderEquipDevelopService } from './leader-equip-develop-service.mjs';
+import { createWarRuneService } from './war-rune-service.mjs';
+import { createMuseumService } from './museum-service.mjs';
+import { createPetService } from './pet-service.mjs';
+import { createTreasureService } from './treasure-service.mjs';
+import { createElvesService } from './elves-service.mjs';
+import { createElvesBeadService } from './elves-bead-service.mjs';
+import { createDevelopExtraService } from './develop-extra-service.mjs';
 import { createRelicService } from './relic-service.mjs';
 import { readRelicTables } from '../config/relic-tables.mjs';
 import { createCabinService, CAMPSITE_MODULE_ID } from './cabin-service.mjs';
@@ -43,10 +51,16 @@ import { createEveryTaskService } from './every-task-service.mjs';
 import { createSprintService } from './sprint-service.mjs';
 import { createItemBoxService } from './item-box-service.mjs';
 import { createMissionFightService } from './mission-fight-service.mjs';
+import { createBattleRecordService } from './battle-record-service.mjs';
+import { createCommonMapService } from './common-map-service.mjs';
+import { createStarMissionService } from './star-mission-service.mjs';
+import { readCommonMapTables } from '../config/common-map-tables.mjs';
+import { readStarMissionTables } from '../config/star-mission-tables.mjs';
 import { createMissionExtraService } from './mission-extra-service.mjs';
 import { createActivityReadService } from './activity-read-service.mjs';
 import { createHundredDrawService } from './hundred-draw-service.mjs';
 import { createBonusDrawService } from './bonus-draw-service.mjs';
+import { createDrawActivityService } from './draw-activity-service.mjs';
 import { createCmsService } from './cms-service.mjs';
 import { createGuildNationAssistService } from './guild-nation-assist-service.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
@@ -60,6 +74,8 @@ import { readDiamondBankActTables } from '../config/diamond-bank-act-tables.mjs'
 import { createFreePrivilegeActService } from './free-privilege-act-service.mjs';
 import { readFreePrivilegeActTables } from '../config/free-privilege-act-tables.mjs';
 import { createSlotGameActService } from './slot-game-act-service.mjs';
+import { createActRewardService, ACT_REWARD_ETF_TYPES } from './act-reward-service.mjs';
+import { readActActivityTables } from '../config/act-activity-tables.mjs';
 import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
@@ -85,6 +101,19 @@ import { createPeakTowerService } from './peak-tower-service.mjs';
 import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
+import { createFameHallService } from './fame-hall-service.mjs';
+import { createWorldBossService } from './world-boss-service.mjs';
+import { createPitLordService } from './pit-lord-service.mjs';
+import { createRedCliffService } from './red-cliff-service.mjs';
+import { readRedCliffTables } from '../config/dungeon-activity-tables.mjs';
+import { createTowerDefenseService } from './tower-defense-service.mjs';
+import { readTowerDefenseTables } from '../config/dungeon-activity-tables.mjs';
+import { createSoulTrialService } from './soul-trial-service.mjs';
+import { createScarletTrialService } from './scarlet-trial-service.mjs';
+import { readSoulTrialTables, readScarletTrialTables } from '../config/dungeon-activity-tables.mjs';
+import { createCampTowerService } from './camp-tower-service.mjs';
+import { createDestinyPveService } from './destiny-pve-service.mjs';
+import { readCampTowerTables, readDestinyPveTables } from '../config/dungeon-activity-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -111,6 +140,7 @@ import { createLineFirstRechargeService } from './line-first-recharge-service.mj
 import { createRechargeRebateResetService } from './recharge-rebate-reset-service.mjs';
 import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
 import { createTimeTempleService } from './time-temple-service.mjs';
+import { createBenefitCommerceService } from './benefit-commerce-service.mjs';
 import { createGuideService } from './guide-service.mjs';
 import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
@@ -403,6 +433,19 @@ export function createLocalGame({
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
+  // Block C endgame development: the leader-equipment develop commands share
+  // module 175 with the wear command; the remaining families keep their state in
+  // login modules 158/534/538/539 or in develop_module_state.
+  const endgameDevelopServices = [
+    createLeaderEquipDevelopService({ store, codec }),
+    createWarRuneService({ store, codec, now: clock, random }),
+    createMuseumService({ store, codec, now: clock }),
+    createPetService({ store, codec, now: clock }),
+    createTreasureService({ store, codec }),
+    createElvesService({ store, codec }),
+    createElvesBeadService({ store, codec, now: clock }),
+    createDevelopExtraService({ store, codec, now: clock })
+  ];
   // ArtifactCmd 37060-37075. The artifact login payload is module 50 slot 0, so
   // ensureLoginState only normalises rows that grantArtifact() stored as {tid,num}.
   const artifact = createArtifactService({ store, codec, logger });
@@ -473,6 +516,19 @@ export function createLocalGame({
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
+  // BATTLE-FAMEHALL / WORLDBOSS / PITLORD. Fame hall command payload encodings are
+  // recovered from FameHallCmd.lua; the boss groups keep their own SQLite state.
+  const fameHall = createFameHallService({ store, codec, gameTables: tables, artifact, now: clock, logger });
+  const worldBoss = createWorldBossService({ store, codec, gameTables: tables, now: clock, logger });
+  const pitLord = createPitLordService({ store, codec, gameTables: tables, now: clock, logger });
+  // RedCliffCmd 55001-55004. ETF requests; state and claim bits live in the
+  // shared dungeon activity tables so a restart keeps progress.
+  const redCliff = createRedCliffService({ store, codec, tables: readRedCliffTables(), gameTables: tables, logger, now: clock, random });
+  const towerDefense = createTowerDefenseService({ store, codec, tables: readTowerDefenseTables(), gameTables: tables, logger, now: clock });
+  const soulTrial = createSoulTrialService({ store, codec, tables: readSoulTrialTables(), gameTables: tables, logger, now: clock });
+  const scarletTrial = createScarletTrialService({ store, codec, tables: readScarletTrialTables(), gameTables: tables, logger, now: clock });
+  const campTower = createCampTowerService({ store, codec, tables: readCampTowerTables(), gameTables: tables, logger, now: clock });
+  const destinyPve = createDestinyPveService({ store, codec, tables: readDestinyPveTables(), logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -492,6 +548,7 @@ export function createLocalGame({
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
+  const benefitCommerce=createBenefitCommerceService({store,codec,tables,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const everyTasks=createEveryTaskService({store,codec,tables,now:clock,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -504,6 +561,9 @@ export function createLocalGame({
   // There is no recovered login slot for BonusDrawMgr, so this service answers
   // commands only and keeps its state in its own tables.
   const bonusDraw=createBonusDrawService({store,codec,tables,now:clock,random,logger});
+  // F-block draw activities with recovered table evidence (DRAW-TURNTABLEACT,
+  // DRAW-CAPSULETOY draw, DRAW-THREEADMONITION extra draws).
+  const drawActivity=createDrawActivityService({store,codec,tables,now:clock,random,logger});
   // Fishing reads whose request body is an ETF integer argument (activity id).
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
@@ -518,7 +578,22 @@ export function createLocalGame({
   const diamondBankAct=createDiamondBankActService({store,codec,tables,diamondBankTables:readDiamondBankActTables(),calendar,now:clock,logger});
   const freePrivilegeAct=createFreePrivilegeActService({store,codec,tables,freePrivilegeTables:readFreePrivilegeActTables(),calendar,monthlyCard,now:clock,logger});
   const slotGameAct=createSlotGameActService({store,codec,tables,slotGameTables:readSlotGameActTables(),calendar,now:clock,random,logger});
+  // Festival, sign-in, limited-target and co-op activity commands (#180-#211).
+  const actReward=createActRewardService({store,codec,tables,actTables:readActActivityTables(),calendar,now:clock,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
+  // BATTLE-CORE block: ReportCmd 205/211/212, CommonMapCmd 90601-90603 and
+  // StarMissionCmd 89601-89604. Every handler reuses the shared resource,
+  // battle and SQLite paths; the type ranges do not overlap any existing
+  // dispatch branch, so the ordering constraints of recruit/heroCommandServices
+  // and hundredDraw/activityRead stay untouched.
+  const battleRecords = createBattleRecordService({ store, codec, logger, now: clock });
+  const commonMap = createCommonMapService({
+    store, codec, tables: readCommonMapTables(), heroTables, gameTables: tables,
+    attributeTables, now: clock, logger
+  });
+  const starMission = createStarMissionService({
+    store, codec, tables: readStarMissionTables(), gameTables: tables, now: clock, logger
+  });
   async function loginPayload() {
     const repairedLineups = lineups.ensureLoginState();
     if (repairedLineups.length) logger({ event: 'shared_pre_lineups_repaired', types: repairedLineups });
@@ -832,7 +907,28 @@ export function createLocalGame({
       codec,
       logger: log,
       playbackEnabled: missionFightPlayback,
-      eliteBattle: createEliteMissionBattle({ store, codec, logger: log, now: clock, enemyProvider: eliteEnemies })
+      eliteBattle: createEliteMissionBattle({ store, codec, logger: log, now: clock, enemyProvider: eliteEnemies }),
+      // BATTLE-REPORT: every committed journey win becomes the pass record that
+      // ReportCmd 211 lists. pass_tid is the FightTable row the battle reported
+      // (pb_fight_report.tid) and id is the cleared mission id.
+      onSettlementCommitted: ({ missionId, fightTid, rounds }) => {
+        const passTid = Number(fightTid);
+        if (!Number.isSafeInteger(passTid) || passTid <= 0) {
+          log({ event: 'pass_record_skipped', missionId, reason: 'fight_tid_missing' });
+          return;
+        }
+        const model = store.read();
+        const fightId = passTid * 1000000 + (Number(missionId) % 1000000);
+        battleRecords.recordPass({
+          passTid,
+          businessId: Number(missionId),
+          passType: 1,
+          fightId,
+          passScore: Number(rounds) || 0,
+          show: { pass_time: Math.floor(clock() / 1000), level: Number(model.role?.level ?? 0) }
+        });
+        log({ event: 'pass_record_committed', missionId, passTid, fightId });
+      }
     });
     socket.setNoDelay(true); socket.setTimeout(180000);
     socket.on('timeout', () => socket.destroy());
@@ -1228,6 +1324,47 @@ export function createLocalGame({
         }
         return;
       }
+      if (battleRecords.supports(type) || commonMap.supports(type) || starMission.supports(type)) {
+        try {
+          let input;
+          if (type === 205) {
+            input = request.data?.length ? unpack('pb_share_report', request.data) : {};
+          } else if (type === 211) {
+            input = unpack('pb_pass_record_req', request.data);
+          } else if (type === 212) {
+            input = unpack('pb_pass_record_vote_req', request.data);
+          } else if (type === 90601) {
+            // req_common_map_init carries no payload or one ETF map id.
+            let mapTid;
+            if (request.data?.length) {
+              const decoded = await decodeEtf(request.data);
+              const value = decoded?.value ?? decoded;
+              mapTid = Number(Array.isArray(value) ? value[0] : value);
+              if (!Number.isSafeInteger(mapTid) || mapTid <= 0) throw new GameError(1, 'Invalid common map id');
+            }
+            input = { map_tid: mapTid };
+          } else if (type === 90602) {
+            input = unpack('pb_common_map_node_trigger', request.data);
+          } else if (type === 90603) {
+            input = unpack('pb_common_map_sweep_trigger', request.data);
+          } else if (type === 89602) {
+            input = unpack('pb_star_mission_chapter_award_req', request.data);
+          } else if (type === 89603) {
+            input = unpack('pb_star_mission_skill_req', request.data);
+          } else if (type === 89604) {
+            input = unpack('pb_star_mission_skill_reset_req', request.data);
+          }
+          const service = battleRecords.supports(type) ? battleRecords : commonMap.supports(type) ? commonMap : starMission;
+          const result = await service.execute(type, input);
+          if (result?.data?.length) send(seq, result.data); else send(seq);
+          log({ event: 'battle_core_committed', type, seq, detail: result?.value ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'battle_core_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
+        }
+        return;
+      }
       if (tasks.supports(type)) {
         let taskInput;
         try {
@@ -1294,6 +1431,21 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'bonus_draw_command_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
+        }
+        return;
+      }
+      if (drawActivity.supports(type)) {
+        try {
+          const argument = await etfArgument(request.data, 'Invalid draw activity payload', { optional: true });
+          const value = argument && typeof argument === 'object' ? argument.value ?? argument : argument;
+          const times = value != null && Number.isFinite(Number(value)) ? Number(value) : undefined;
+          const result = drawActivity.execute(type, { times });
+          send(seq, result.data);
+          log({ event: 'draw_activity_command_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'draw_activity_command_rejected', type, seq, code, message: error.message, payloadHead: payloadBytes(request.data, 64) });
         }
         return;
       }
@@ -1399,6 +1551,26 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'dragon_land_rejected', type, seq, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }
+      if (actReward.supports(type)) {
+        try {
+          // Sign-in and festival boards carry their argument list as an Erlang
+          // term; the protobuf commands keep their request body untouched.
+          const etfValue = ACT_REWARD_ETF_TYPES.has(type)
+            ? await etfArgument(request.data, 'Invalid activity payload', { optional: true })
+            : undefined;
+          const result = actReward.execute(type, request.data, { etf: etfValue });
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'act_reward_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'act_reward_rejected', type, seq, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
         }
@@ -1567,6 +1739,22 @@ export function createLocalGame({
         }
         return;
       }
+      if (benefitCommerce.supports(type)) {
+        // 块 I（PAY-*）的礼包/通行证/基金/拍卖命令入口。可结算的命令在这里真实
+        // 扣发并写回登录模块；配置表缺失的命令返回 5 与具体原因，避免用固定空包
+        // 冒充已实现。
+        try {
+          const input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
+          const result = benefitCommerce.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'benefit_command_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'benefit_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (wishTreasure.supports(type)) {
         let awardId;
         try {
@@ -1720,6 +1908,129 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'general_dungeon_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (fameHall.supports(type)) {
+        try {
+          const protobuf = { 91101: 'pb_fame_hall_enter_difficult', 91102: 'pb_fame_hall_choose_drop_req', 91103: 'pb_fame_hall_reward_req', 91104: 'pb_fame_hall_artifact_req' }[type];
+          const input = protobuf ? unpack(protobuf, request.data) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await fameHall.execute(type, input);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'fame_hall_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'fame_hall_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (worldBoss.supports(type)) {
+        try {
+          const input = type === 91805 ? unpack('pb_world_boss_achieve_reward_req', request.data) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await worldBoss.execute(type, input);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'world_boss_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'world_boss_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (pitLord.supports(type)) {
+        try {
+          const result = await pitLord.execute(type, request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'pit_lord_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'pit_lord_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (redCliff.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const input = decoded?.value ?? decoded;
+          const result = await redCliff.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'red_cliff_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'red_cliff_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (towerDefense.supports(type)) {
+        try {
+          let input;
+          if (type === 97601) input = unpack('pb_tower_defense_garrison_req', request.data);
+          else if (request.data?.length) { const decoded = await decodeEtf(request.data); input = decoded?.value ?? decoded; }
+          const result = await towerDefense.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'tower_defense_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'tower_defense_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (soulTrial.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = await soulTrial.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'soul_trial_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'soul_trial_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (scarletTrial.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = await scarletTrial.execute(type, decoded?.value ?? decoded);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'scarlet_trial_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'scarlet_trial_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (campTower.supports(type)) {
+        try {
+          let input;
+          if (type === 93601) input = unpack('pb_camp_tower_cross_award_req', request.data);
+          else if (type === 93602) input = unpack('pb_camp_tower_first_award_req', request.data);
+          else if (request.data?.length) { const decoded = await decodeEtf(request.data); input = decoded?.value ?? decoded; }
+          const result = await campTower.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'camp_tower_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'camp_tower_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (destinyPve.supports(type)) {
+        try {
+          const input = type === 104702 ? unpack('pb_destiny_pve_layer_info_req', request.data) : unpack('pb_destiny_pve_fight_req', request.data);
+          const result = await destinyPve.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'destiny_pve_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'destiny_pve_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
@@ -1956,6 +2267,23 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'relic_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      const endgameDevelop = endgameDevelopServices.find(service => service.supports(type));
+      if (endgameDevelop) {
+        try {
+          const decoded = endgameDevelop.decode(type, request.data);
+          const input = decoded === undefined
+            ? await etfArgument(request.data, 'Invalid endgame develop payload')
+            : decoded;
+          const result = endgameDevelop.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'endgame_develop_committed', type, seq, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'endgame_develop_rejected', type, seq, code, message: error.message });
         }
         return;
       }

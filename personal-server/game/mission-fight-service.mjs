@@ -473,7 +473,7 @@ function combinedChanges(...groups) {
   return [...changes.values()];
 }
 
-export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {}, playbackEnabled = false, eliteBattle = null }) {
+export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {}, playbackEnabled = false, eliteBattle = null, onSettlementCommitted = null }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, lastSettlement = null, fightIds = 0;
 
@@ -627,7 +627,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     };
     const previewValue = missionValue(current, mission, simulation.result, { changes: [], is_overflow: false });
     const stm = { result: simulation.result, stm_data: codec.pack('mission_to_client', previewValue), exception: false };
-    pending = { stm, report, mission, result: simulation.result, committed: false };
+    pending = { stm, report, mission, result: simulation.result, committed: false, fightTid, rounds: simulation.overRound };
     lastReport = report;
     lastSettlement = null;
     const config = missionBattleConfig(mission.missionId);
@@ -644,6 +644,16 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     pending.stm = committed.stm;
     pending.committed = true;
     lastSettlement = { value: { stm: committed.stm }, data: codec.pack('pb_fight_settlement_response', { stm: committed.stm }) };
+    // BATTLE-REPORT: a committed journey win is the authoritative pass record
+    // that ReportCmd 211 lists. The hook runs in its own transaction so a
+    // report-log failure cannot roll back the settlement itself.
+    if (pending.result === RESULT_WIN && onSettlementCommitted) {
+      try {
+        onSettlementCommitted({ missionId: pending.mission.missionId, fightTid: pending.fightTid, rounds: pending.rounds, result: pending.result });
+      } catch (error) {
+        log({ event: 'mission_settlement_record_failed', missionId: pending.mission.missionId, message: error.message });
+      }
+    }
     log({ event: 'mission_fight_committed', missionId, previousMissionId });
     return lastSettlement;
   }

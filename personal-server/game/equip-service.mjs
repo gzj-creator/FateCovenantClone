@@ -1,7 +1,8 @@
 import { GameError } from './hero-progression.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readEquipTables } from '../config/equip-tables.mjs';
-import { consumeResources } from './resources.mjs';
+import { consumeResources, grantResources } from './resources.mjs';
+import { readGameTables } from '../config/game-tables.mjs';
 
 const ROLE_EQUIP_MODULE = 26;
 const BAG_EQUIP_MODULE = 16;
@@ -111,7 +112,8 @@ function developmentCostRows(tables, tableName, fromLevel, targetLevel) {
 
 export function createEquipService({ store, codec, tables = readEquipTables() }) {
   return {
-    supports: type => type === 1001 || type === 1002 || type === 1003 || type === 1004 || type === 1005 || type === 1006,
+    supports: type => type === 1001 || type === 1002 || type === 1003 || type === 1004 || type === 1005 || type === 1006
+      || type === 1007 || type === 1008 || type === 1009,
     execute(type, input) {
       if (type === 1001) {
         const requests = input?.equips;
@@ -377,6 +379,109 @@ export function createEquipService({ store, codec, tables = readEquipTables() })
             schema: 'pb_equip_wear_rsp',
             value,
             data: codec.pack('pb_equip_wear_rsp', value)
+          };
+        });
+      }
+
+      if (type === 1007) {
+        // Awake unlocks exactly one refine level above the configured cap. The
+        // client only sends the equip id over ETF; Const.awaken_open gates the
+        // feature by role level.
+        const id = normalizeId(input);
+        return store.transaction(model => {
+          const modules = new Map(model.state.modules.value);
+          const roleEquips = readModuleEquips(modules, ROLE_EQUIP_MODULE, codec);
+          const bagEquips = readModuleEquips(modules, BAG_EQUIP_MODULE, codec);
+          const equip = [...roleEquips, ...bagEquips].find(item => Number(item.id) === id);
+          if (!equip) fail(5, 'Equip does not exist');
+          const template = configuredEquip(tables, equip.tid);
+          const openLevel = Number(tables.Const?.get(1)?.awaken_open ?? 0);
+          if (openLevel > 0 && Number(model.role.level ?? 0) < openLevel) fail(305, 'Equip awake is not unlocked');
+          const limit = Number(template?.refine_limit_lv ?? 0);
+          const current = Number(equip.refine ?? 0);
+          if (current < limit) fail(305, 'Equip must reach the refine cap before awakening');
+          const costs = new Map();
+          for (const row of developmentCostRows(tables, 'Refine', current, current + 1)) addCosts(costs, row.cost);
+          const consumed = consumeConfiguredCosts(model, costs);
+          equip.refine = current + 1;
+          equip.refine_exp = 0;
+          writeModuleEquips(modules, ROLE_EQUIP_MODULE, codec, roleEquips);
+          writeModuleEquips(modules, BAG_EQUIP_MODULE, codec, bagEquips);
+          model.state.modules.value = [...modules];
+          const value = { equip: cloneEquip(equip), res_change: { changes: consumed, is_overflow: false } };
+          return {
+            schema: 'pb_equip_awake_rsp',
+            value,
+            data: codec.pack('pb_equip_awake_rsp', value),
+            valueForLog: { equipId: id, refine: equip.refine }
+          };
+        });
+      }
+
+      if (type === 1008) {
+        // ResExchange rows describe the ore/billet conversion ladder; value is
+        // the amount produced per converted unit. The ratio is a local-server
+        // reading of those rows because the client manager only sends src/num/dst.
+        const requests = input?.exchanges;
+        if (!Array.isArray(requests) || requests.length === 0) fail(1, 'Equip resource exchange list is empty');
+        return store.transaction(model => {
+          const costs = new Map();
+          const awards = new Map();
+          for (const request of requests) {
+            const src = safeNumber(request?.src, 'exchange source', { min: 1 });
+            const num = safeNumber(request?.num, 'exchange count', { min: 1 });
+            const dst = safeNumber(request?.dst, 'exchange target', { min: 1 });
+            if (src === dst) fail(1, 'Exchange source and target are identical');
+            const srcRow = tables.ResExchange?.get(src);
+            const dstRow = tables.ResExchange?.get(dst);
+            if (!srcRow || !dstRow) fail(5, 'Equip exchange configuration is missing');
+            const produced = Math.floor(num * Number(srcRow.value ?? 1) / Number(dstRow.value ?? 1));
+            if (produced <= 0) fail(1, 'Exchange amount is too small');
+            costs.set(String(src), (costs.get(String(src)) ?? 0n) + BigInt(num));
+            awards.set(String(dst), (awards.get(String(dst)) ?? 0n) + BigInt(produced));
+          }
+          const consumed = consumeConfiguredCosts(model, costs);
+          const granted = grantResources(model, [...awards].map(([tid, count]) => [Number(tid), Number(count)]), readGameTables(), { codec });
+          const value = { changes: [...consumed, ...granted.changes], is_overflow: false };
+          return {
+            schema: 'pb_res_to_client',
+            value,
+            data: codec.pack('pb_res_to_client', value),
+            valueForLog: { exchanges: requests.length }
+          };
+        });
+      }
+
+      if (type === 1009) {
+        // One-key batch refine advances every bag equip with spare refine room by
+        // one level and reports the multiplicities the client prints.
+        return store.transaction(model => {
+          const modules = new Map(model.state.modules.value);
+          const roleEquips = readModuleEquips(modules, ROLE_EQUIP_MODULE, codec);
+          const bagEquips = readModuleEquips(modules, BAG_EQUIP_MODULE, codec);
+          const updated = [];
+          const costs = new Map();
+          for (const equip of bagEquips) {
+            const template = configuredEquip(tables, equip.tid);
+            const limit = Number(template?.refine_limit_lv ?? 0);
+            const current = Number(equip.refine ?? 0);
+            if (limit > 0 && current >= limit) continue;
+            for (const row of developmentCostRows(tables, 'Refine', current, current + 1)) addCosts(costs, row.cost);
+            equip.refine = current + 1;
+            equip.refine_exp = 0;
+            updated.push(cloneEquip(equip));
+          }
+          if (!updated.length) fail(305, 'No bag equips can be refined');
+          const consumed = consumeConfiguredCosts(model, costs);
+          writeModuleEquips(modules, ROLE_EQUIP_MODULE, codec, roleEquips);
+          writeModuleEquips(modules, BAG_EQUIP_MODULE, codec, bagEquips);
+          model.state.modules.value = [...modules];
+          const value = { equips: updated, res_change: { changes: consumed, is_overflow: false }, multi: updated.map(() => 1), times: updated.length };
+          return {
+            schema: 'pb_equip_refine_one_key_batch_rsp',
+            value,
+            data: codec.pack('pb_equip_refine_one_key_batch_rsp', value),
+            valueForLog: { refined: updated.length }
           };
         });
       }

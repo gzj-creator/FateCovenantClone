@@ -16,7 +16,10 @@ const resToClient = res => ({ changes: res.changes, is_overflow: false });
 
 export function createWelfareService({ store, codec, tables, wallet, calendar, now = Date.now, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
-  const supported = new Set([82101, 84601, 99300, 16005]);
+  // 16006 req_loong_recharge is the 龙晶 top-up entry: the client sends the same
+  // pb_recharge_buy_or_rev_req as 16005 and expects res_buy_or_Rev_gift, so it
+  // uses the shared wallet purchase path instead of a second implementation.
+  const supported = new Set([82101, 84601, 99300, 16005, 16006]);
 
   async function multiLoginAward(request) {
     const actId = Number(request.act_id);
@@ -195,7 +198,8 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
         case 82101: return multiLoginAward(codec.unpack('pb_multi_login_award_req', data));
         case 84601: return princessAward(codec.unpack('pb_princess_req', data));
         case 99300: return dailyDiscountSelect(codec.unpack('pb_daily_discount_select_req', data));
-        case 16005: return purchaseGift(codec.unpack('pb_recharge_buy_or_rev_req', data), context);
+        case 16005:
+        case 16006: return purchaseGift(codec.unpack('pb_recharge_buy_or_rev_req', data), context);
         default: throw new GameError(5, 'Welfare command is not implemented');
       }
     }

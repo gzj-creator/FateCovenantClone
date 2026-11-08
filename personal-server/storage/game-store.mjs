@@ -203,6 +203,29 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     CREATE INDEX IF NOT EXISTS pending_rewards_role_idx ON pending_rewards(role_id,status,item_tid);
     CREATE INDEX IF NOT EXISTS cms_questions_active_idx ON cms_questions(cms_tid,enabled,start_time,end_time);
     CREATE INDEX IF NOT EXISTS guild_nation_assists_active_idx ON guild_nation_assists(guild_id,finish_time,assist_num,max_num);
+    -- BATTLE-CORE (task/BATTLE-CORE-20261108). Additive tables only: they hold the
+    -- pass record / vote log, the common map node progress and the star mission
+    -- bit blocks. No data migration is required, so the schema version stays at
+    -- 16; every statement is idempotent and reruns on each open.
+    CREATE TABLE IF NOT EXISTS battle_pass_records (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), pass_tid INTEGER NOT NULL,
+      business_id INTEGER NOT NULL, pass_type INTEGER NOT NULL, fight_id INTEGER NOT NULL,
+      pass_score INTEGER NOT NULL DEFAULT 0, sub_pass_score INTEGER NOT NULL DEFAULT 0,
+      lineup_json TEXT NOT NULL DEFAULT '{}', show_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL, PRIMARY KEY(role_id,pass_tid,business_id,fight_id));
+    CREATE TABLE IF NOT EXISTS battle_pass_votes (
+      pass_tid INTEGER NOT NULL, business_id INTEGER NOT NULL, fight_id INTEGER NOT NULL,
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), up_vote INTEGER NOT NULL CHECK(up_vote IN (0,1)),
+      created_at TEXT NOT NULL, PRIMARY KEY(role_id,pass_tid,business_id,fight_id));
+    CREATE TABLE IF NOT EXISTS common_map_state (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), map_tid INTEGER NOT NULL,
+      map_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(role_id,map_tid));
+    CREATE TABLE IF NOT EXISTS star_mission_state (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), act_id INTEGER NOT NULL,
+      star_bits TEXT NOT NULL DEFAULT '', award_bits TEXT NOT NULL DEFAULT '',
+      skills_json TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL,
+      PRIMARY KEY(role_id,act_id));
+    CREATE INDEX IF NOT EXISTS battle_pass_records_lookup_idx ON battle_pass_records(pass_tid,business_id,pass_score);
   `);
   const writeModel = model => {
     const { state, role, heroInfo, resources, lineups, playLineups } = model;
