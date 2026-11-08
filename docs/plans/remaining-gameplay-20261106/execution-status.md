@@ -144,3 +144,5 @@
 - 真实业务只完成三条：DRAW-TURNTABLEACT 107901、DRAW-CAPSULETOY 102301、DRAW-THREEADMONITION 88965。三者按表内价格扣费、按权重或上限发奖、写 `draw_activity_state`/`draw_activity_logs`，网关在 bonusDraw 之后、activityRead 之前派发。专项 4/4，draw-activity + gameplay-gateway + m5-command-matrix + hundred-draw-gateway + bonus-draw-gateway 定向全通过（日志 `analysis/tmp/f-block/focused.log`）。
 - 其余 71 条仍是 `LOCAL_NOT_IMPLEMENTED`，不计完成：多数族卡在回包 `.db.proto` 数据消息未反解（`pb_capsule_toy_all`、`pb_chess`、`pb_thousand_draw_role_info` 等）或缺奖池表（`PuzzleVersion.draw_lib=5510`、`HeroBlazonDraw.draw_lib=3201`、`Lottery.Item.draw_lib=3901`）。逐族原因见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
 - 三条命令的 ETF 请求形态尚未与抓包比对，未做真实 TCP 端到端；未进入 APK 验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未连接原游戏服务器。
+
+合并：`1e93174` 以 `--no-ff` 合入 main `74060e6`；冲突只在状态表，块 I（第九批）与块 F（第八批）两段并存保留。合并后定向 24/24 通过（draw-activity + gameplay-gateway + m5-command-matrix + benefit-commerce-gateway），日志 `analysis/tmp/f-block/main-after-merge.log`。
