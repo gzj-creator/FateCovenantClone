@@ -106,6 +106,18 @@ import { createEliteMissionService } from './elite-mission-service.mjs';
 import { createEliteMissionBattle } from './elite-mission-battle.mjs';
 import { createPeakTowerService } from './peak-tower-service.mjs';
 import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
+import { createSwapArenaService } from './swap-arena-service.mjs';
+import { createHunterArenaService } from './hunter-arena-service.mjs';
+import { createArenaContestService } from './arena-contest-service.mjs';
+import { createPlayMatchService } from './play-match-service.mjs';
+import { createOverallMatchService } from './overall-match-service.mjs';
+import {
+  readSwapArenaTables,
+  readHunterArenaTables,
+  readArenaContestTables,
+  readPlayMatchTables,
+  readOverallMatchTables
+} from '../config/arena-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { createFameHallService } from './fame-hall-service.mjs';
@@ -538,6 +550,14 @@ export function createLocalGame({
   const destiny = createDestinyService({ store, codec, tables: readDestinyTables() });
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
+  // A2-ARENA cards share the arena table bundle: BATTLE-SWAPARENA 4031-4040,
+  // BATTLE-HUNTERARENA 84001-84011, BATTLE-ARENACONTEST 83301-83315,
+  // BATTLE-PLAYMATCH 98900-98901 and BATTLE-OVERALLMATCH 120001.
+  const swapArena = createSwapArenaService({ store, codec, tables: readSwapArenaTables(), gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, logger, now: clock });
+  const hunterArena = createHunterArenaService({ store, codec, tables: readHunterArenaTables(), gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, logger, now: clock });
+  const arenaContest = createArenaContestService({ store, codec, tables: readArenaContestTables(), gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, logger, now: clock });
+  const playMatch = createPlayMatchService({ store, codec, tables: readPlayMatchTables(), logger, now: clock });
+  const overallMatch = createOverallMatchService({ store, codec, tables: readOverallMatchTables(), logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   // BATTLE-FAMEHALL / WORLDBOSS / PITLORD. Fame hall command payload encodings are
   // recovered from FameHallCmd.lua; the boss groups keep their own SQLite state.
@@ -706,6 +726,12 @@ export function createLocalGame({
     modules.set(CAMPSITE_MODULE_ID, binary(cabin.loginPayload()));
     modules.set(HOUSE_ASSISTANT_MODULE_ID, [binary(houseAssistant.loginPayload())]);
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
+    // A2-ARENA login blocks: module 109 SwapArenaMgr (pb_swap_arena_login),
+    // module 113 ArenaContestMgr (act, role and last match binaries) and
+    // module 121 HunterArenaReqMgr (pb_hunter_arena_login).
+    modules.set(109, binary(swapArena.loginPayload()));
+    modules.set(113, arenaContest.loginPayloads().map((entry) => binary(entry)));
+    modules.set(121, binary(hunterArena.loginPayload()));
     let activity;
     try {
       activity = storedModules.get(92)
@@ -2043,6 +2069,76 @@ export function createLocalGame({
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code }); log({ event: 'feature_rejected', type, seq, code });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-SWAPARENA 4031-4040
+      if (swapArena.supports(type)) {
+        try {
+          const input = type === 4038 ? unpack('pb_swap_arena_rank_award_req', request.data ?? Buffer.alloc(0)) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await swapArena.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'swap_arena_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'swap_arena_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-HUNTERARENA 84001-84011
+      if (hunterArena.supports(type)) {
+        try {
+          const input = type === 84009 ? unpack('pb_hunter_arena_set_report_lock', request.data ?? Buffer.alloc(0)) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await hunterArena.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'hunter_arena_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'hunter_arena_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-ARENACONTEST 83301-83315
+      if (arenaContest.supports(type)) {
+        try {
+          const input = (type === 83304 || type === 83314) ? unpack(type === 83304 ? 'pb_arena_contest_guess_req' : 'pb_arena_contest_guess_award_req', request.data ?? Buffer.alloc(0)) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await arenaContest.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'arena_contest_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'arena_contest_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-PLAYMATCH 98900-98901
+      if (playMatch.supports(type)) {
+        try {
+          const input = request.data?.length ? (await decodeEtf(request.data))?.value : undefined;
+          const result = await playMatch.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'play_match_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'play_match_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A2-ARENA BATTLE-OVERALLMATCH 120001
+      if (overallMatch.supports(type)) {
+        try {
+          const input = unpack('pb_overall_match_start_req', request.data ?? Buffer.alloc(0));
+          const result = await overallMatch.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'overall_match_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'overall_match_rejected', type, seq, code, message: error.message });
         }
         return;
       }
