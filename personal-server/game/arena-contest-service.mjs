@@ -77,14 +77,14 @@ function ensureTables(db) {
     'guess TEXT NOT NULL,' +
     'watch_enter_time INTEGER NOT NULL,' +
     'watch_award_time INTEGER NOT NULL,' +
-    'updated_at TEXT NOT NULL'
+    'updated_at TEXT NOT NULL)'
   );
   db.exec('CREATE TABLE IF NOT EXISTS arena_contest_claims (' +
     'role_id INTEGER NOT NULL,' +
     'claim_type TEXT NOT NULL,' +
     'claim_key TEXT NOT NULL,' +
     'created_at TEXT NOT NULL,' +
-    'PRIMARY KEY(role_id, claim_type, claim_key)'
+    'PRIMARY KEY(role_id, claim_type, claim_key))'
   );
 }
 

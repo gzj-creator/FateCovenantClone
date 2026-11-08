@@ -29,7 +29,7 @@ function ensureTables(db) {
     'state INTEGER NOT NULL,' +
     'started_at INTEGER NOT NULL,' +
     'expires_at INTEGER NOT NULL,' +
-    'updated_at TEXT NOT NULL'
+    'updated_at TEXT NOT NULL)'
   );
 }
 
