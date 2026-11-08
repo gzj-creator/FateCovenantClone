@@ -61,4 +61,3 @@ node --test --test-concurrency=1 test/gameplay-gateway.test.mjs test/battle-repo
 - 战力权重仍是既有本地兼容公式，未恢复原版权重。
 
 本轮未启停实时服务、未读写 `runtime.local-only.data`、未操作模拟器/ADB/APK，无 APK 验收。
-
