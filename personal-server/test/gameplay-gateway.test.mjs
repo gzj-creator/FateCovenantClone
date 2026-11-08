@@ -325,20 +325,20 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(Number(autoRefresh.limit_bought_count ?? 0), 0);
   assert.deepEqual(autoRefresh.items_history_bought ?? [], []);
 
-  // Activity synchronization cannot claim success until the request values and
-  // transition rules are recovered. Captured 53001 uses a proper two-integer
-  // list; tuple/invalid ETF inputs are rejected separately from unknown rules.
+  // Activity state synchronization now reconciles the stored per-role stage
+  // rows against the calendar authority (ROLE-ACTIVITY / ROLE-ACTFRAME), so a
+  // well-formed request returns a real transition reply instead of err 5.
   const activityModulesBefore = JSON.stringify(game.store.state().modules.value.filter(([id]) => [92, 183].includes(Number(id))));
   response = await request(53002, 10, await encodeEtf([1004012]));
-  assert.equal(response.err.err, 5);
+  assert.equal(response.err, undefined);
   response = await request(53001, 101, await encodeEtf(new E.OtpErlangList([1, 2], false)));
-  assert.equal(response.err.err, 5);
+  assert.equal(response.err, undefined);
   response = await request(53001, 102, await encodeEtf([1, 2]));
-  assert.equal(response.err.err, 1);
+  assert.equal(response.err, undefined);
   response = await request(53001, 103, Buffer.from([131, 108]));
-  assert.equal(response.err.err, 1);
+  assert.equal(response.err.err, 2);
   response = await request(53002, 104, Buffer.from([131, 108]));
-  assert.equal(response.err.err, 1);
+  assert.equal(response.err.err, 2);
   assert.equal(JSON.stringify(game.store.state().modules.value.filter(([id]) => [92, 183].includes(Number(id)))), activityModulesBefore);
 
   // Recruitment uses ETF quantities for ticket purchase and protobuf for the draw itself.

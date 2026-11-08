@@ -1,0 +1,4 @@
+﻿{
+  "note": "RoleRank rows are not part of the shipped RoleTable snapshot. Fill this file with evidence-backed rows before enabling 1312/1313.",
+  "ranks": []
+}

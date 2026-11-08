@@ -129,3 +129,11 @@
 - 三项均未进入 APK 验收；本轮未启停实时服务、未读写 runtime.local-only.data 或运行数据库、未操作模拟器/ADB、未生成 APK。主工作树未跟踪 assets/ 保持未提交。
 
 2026-11-08 派发边界调整为三大块，见 [三大块](15-three-work-blocks.md)：块 A #1–#33（本 session）、块 B #34–#119、块 C #120–#276。
+
+## 块 J（#265–#276）交付记录（2026-11-08）
+
+- 分支：feat/block-j-role-support（worktree .worktree/block-j-20261108），已合入 main。
+- 新增服务：role-service（RoleCmd 23 条 + gm_cmd + 红点/日志/推送/玩家数据）、story-service、cdkey-service、act-frame-service（53001–53006）、skin-service（76003–76009）。
+- 迁移：game-store v17 新增 role_profile_extra / role_stories / role_red_dots / role_channel_push / client_diagnostic_logs / cdkey_redemptions / role_figure_items / role_skins / hero_skin_wear / role_skin_state / role_skin_handbook / role_activity_stages / gm_audit_entries。
+- 验证：test/block-j-role-support.test.mjs 4 项通过；gameplay-gateway、login-business-reads、system-integration 回归通过；SQLite 重开后 user_version=17 且角色/奖励/皮肤/剧情/红点/兑换状态保留。
+- 证据缺口：FunctionCache 块 ID、RoleRank 与视频奖励行、皮肤/图鉴配置、开发登录回包字段、53001 双整数语义；均已在 agent/workflow/gameplay-completion/ROLE-*/implementation.md 记录，未以空包冒充完成。

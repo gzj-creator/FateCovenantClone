@@ -177,14 +177,15 @@ export function readGameTables() {
     // RoleTable.Level is the authoritative role experience curve consumed by
     // RoleMgr.CalcLvAndExp and the post-battle RoleExpUpForm.
     ...pick(readGeneratedTables(table('RoleTable.data.lua.json'), [
-      'Level', 'LevelSetting', 'FigureHead', 'FigureFrame', 'FigureTitle', 'FigureChatBubble'
+      'Level', 'LevelSetting', 'FigureHead', 'FigureFrame', 'FigureTitle', 'FigureChatBubble', 'Sundry'
     ]), {
       Level: 'RoleLevel',
       LevelSetting: 'RoleLevelSetting',
       FigureHead: 'FigureHead',
       FigureFrame: 'FigureFrame',
       FigureTitle: 'FigureTitle',
-      FigureChatBubble: 'FigureChatBubble'
+      FigureChatBubble: 'FigureChatBubble',
+      Sundry: 'RoleSundry'
     }),
     ...pick(readGeneratedTables(table('HeroTable.data.lua.json'), ['Hero']), { Hero: 'Hero' }),
     ...pick(readGeneratedTables(table('7289607387164353000-FirstRechargeTable.data.json'), ['FirstRecharge', 'Award']), {

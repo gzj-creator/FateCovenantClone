@@ -1,0 +1,6 @@
+﻿{
+  "min_level": 10,
+  "min_days": 7,
+  "skip_awards": [],
+  "note": "Veteran skip award rows are unrecovered; the eligibility policy is a local server rule until client evidence lands."
+}
