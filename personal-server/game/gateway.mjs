@@ -33,6 +33,9 @@ import { createRankService } from './rank-service.mjs';
 import { createRankAchieveService } from './rank-achieve-service.mjs';
 import { createFirstWeekGoalService } from './first-week-goal-service.mjs';
 import { createGrowthRoadService } from './growth-road-service.mjs';
+import { createFunctionManualService } from './function-manual-service.mjs';
+import { createTaskActivityService } from './task-activity-service.mjs';
+import { readFunctionManualTables, readTaskActivityTables } from '../config/item-task-tables.mjs';
 import { createFriendService } from './friend-service.mjs';
 import { createMessageService } from './message-service.mjs';
 import { createArtifactService } from './artifact-service.mjs';
@@ -470,6 +473,17 @@ export function createLocalGame({
   const growthRoad = createGrowthRoadService({
     store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
   });
+  // ITEM-FUNCTIONMANUAL (FunctionManualCmd 82301) and ITEM-TASKACTIVITY
+  // (TaskActivityCmd 105701). The handbook reads the client's FunctionManualTable
+  // rows; the task activity rides on ActFrame type 1003 and keeps its finished
+  // task list in its own SQLite table.
+  const functionManual = createFunctionManualService({
+    store, codec, tables: readFunctionManualTables(), gameTables: tables, now: clock, logger
+  });
+  const taskActivity = createTaskActivityService({
+    store, codec, tables: readTaskActivityTables(), gameTables: tables,
+    serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+  });
   // FriendCmd 20001-20013. The login module slot for res_friend_login is not
   // recovered, so it stays out of the login container until the owner wires it.
   const friend = createFriendService({
@@ -665,6 +679,7 @@ export function createLocalGame({
     modules.set(firstWeekGoal.moduleId, binary(firstWeekGoal.loginPayload(clock())));
     growthRoad.ensureLoginState(clock());
     modules.set(growthRoad.moduleId, binary(growthRoad.loginPayload(clock())));
+    modules.set(functionManual.moduleId, binary(functionManual.loginPayload()));
     // Cross-server membership is deliberately empty in this single local server.
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
@@ -700,6 +715,12 @@ export function createLocalGame({
     // module_login_data, so the help-up block rides inside module 92.
     const helpUpLoginIds = activityRead.synchronizeHelpUpLogin(activity, loginSeconds);
     if (helpUpLoginIds.length) logger({ event: 'help_up_act_login_synced', actIds: helpUpLoginIds });
+    // TaskActivityActMgr parses pb_task_activity_role_info out of each running
+    // ActFrame type 1003 activity entry, so the block rides inside module 92.
+    const taskActivityLoginIds = taskActivity.synchronizeLogin(activity, loginSeconds);
+    if (taskActivityLoginIds.length) {
+      logger({ event: 'task_activity_login_synced', actIds: taskActivityLoginIds });
+    }
     const groupBuyActLogin = groupBuyAct.synchronizeLogin(activity, loginSeconds);
     // DragonLandActData parses pb_dragon_land_role_data from the activity entry's
     // module_login_data (ActFrameTable type 1036/1037/1044/1045/1046).
@@ -1025,6 +1046,34 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'growth_road_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (functionManual.supports(type)) {
+        try {
+          const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
+          const result = functionManual.execute(type, decoded?.value ?? decoded);
+          send(seq, result.data);
+          log({ event: 'function_manual_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'function_manual_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (taskActivity.supports(type)) {
+        try {
+          const raw = request.data ?? Buffer.alloc(0);
+          const result = taskActivity.isProtobufRequest(type)
+            ? taskActivity.execute(type, raw)
+            : taskActivity.execute(type, raw.length ? (await decodeEtf(raw))?.value : undefined);
+          send(seq, result.data);
+          log({ event: 'task_activity_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'task_activity_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
