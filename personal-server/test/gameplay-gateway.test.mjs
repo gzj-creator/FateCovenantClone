@@ -680,10 +680,21 @@ test('all-open mode returns every stored activity and forces test-visible states
   assert.equal(activity.act_pause_list.length, 0);
   assert.ok(activity.act_list.every(entry => Number(entry.state_data?.cur_state_id) === 50));
   assert.ok(activity.act_parallel_list.every(group => group.states_data.every(entry => Number(entry.cur_state_id) === 50)));
-  assert.ok(activity.act_custom_list.every(entry => Number(entry.start_time ?? 0) === 0 && Number(entry.end_time ?? 0) === 0));
+  const current = SERVER_OPENED_AT + 7 * 86400;
+  assert.ok(activity.act_custom_list.length > 0);
+  assert.ok(activity.act_custom_list.every(entry => (
+    Number(entry.start_time) <= current && current < Number(entry.end_time)
+  )));
   assert.ok(storedIds.every(id => returnedIds.has(id)));
   assert.equal(returnedIds.has(83028), true);
   assert.equal(returnedIds.has(1074011), true);
+
+  const firstWindows = activity.act_custom_list.map(entry => [Number(entry.act_id), Number(entry.start_time), Number(entry.end_time)]);
+  const activityAgain = await loginActivities(await game.loginPayload());
+  assert.deepEqual(
+    activityAgain.act_custom_list.map(entry => [Number(entry.act_id), Number(entry.start_time), Number(entry.end_time)]),
+    firstWindows
+  );
 });
 
 test('leader equipment wear equips gear through the gateway and persists it', { timeout: 10000 }, async t => {

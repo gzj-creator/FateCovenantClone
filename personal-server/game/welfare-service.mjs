@@ -151,19 +151,28 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
     if (!product) throw new GameError(5, 'Gift is not configured');
     log({ event: 'purchase_gift_request', productId, buyNum, extra_param: request.extra_param, extra_param_type: typeof request.extra_param });
     let options;
-    try { options = parseRechargeExtraParam(request.extra_param); }
-    catch (error) {
-      // Purchase UIs wrap unrelated context in extra_param. Only the daily
-      // discount and period-scoped products need its tuple; requiring the same
-      // shape for monthly/permanent cards made the shared 16005 command reject
-      // the whole payment before the wallet could process it.
-      const requiresContext = Number(product.type) === 46 || [4, 5, 7].includes(Number(product.buy_cycle_limit));
-      if (requiresContext) {
-        log({ event: 'parse_extra_param_failed', error: error.message, extra_param: request.extra_param });
-        throw new GameError(1, error.message);
-      }
+    const isHundredSchoolsFreeGift = productId === 880101 && String(request.extra_param ?? '').trim() === '[]';
+    if (isHundredSchoolsFreeGift) {
+      // HeroDrawActGiftForm buys 880101 through the shared 16005 command and
+      // sends an empty ETF list. Unlike daily-discount and period-scoped
+      // products, this gift has no [is_extra_buy, period, day] context.
       options = { is_extra_buy: false, period: 0, day_index: 0 };
-      log({ event: 'purchase_extra_param_ignored', productId, length: String(request.extra_param ?? '').length });
+      log({ event: 'purchase_extra_param_defaulted', productId, extra_param: request.extra_param });
+    } else {
+      try { options = parseRechargeExtraParam(request.extra_param); }
+      catch (error) {
+        // Purchase UIs wrap unrelated context in extra_param. Only the daily
+        // discount and period-scoped products need its tuple; requiring the same
+        // shape for monthly/permanent cards made the shared 16005 command reject
+        // the whole payment before the wallet could process it.
+        const requiresContext = Number(product.type) === 46 || [4, 5, 7].includes(Number(product.buy_cycle_limit));
+        if (requiresContext) {
+          log({ event: 'parse_extra_param_failed', error: error.message, extra_param: request.extra_param });
+          throw new GameError(1, error.message);
+        }
+        options = { is_extra_buy: false, period: 0, day_index: 0 };
+        log({ event: 'purchase_extra_param_ignored', productId, length: String(request.extra_param ?? '').length });
+      }
     }
     log({ event: 'parse_extra_param_success', options });
     const result = wallet.purchaseGift({

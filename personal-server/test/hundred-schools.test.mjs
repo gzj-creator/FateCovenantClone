@@ -477,11 +477,26 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   assert.equal(hasBit(Buffer.from(reward.reward_bytes, 'base64'), 18), true);
   assert.ok(reward.res.changes.length > 0);
 
-  response = await env.request(16005, 21, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 880101, buy_num: 1 }));
+  response = await env.request(16005, 21, codec.pack('pb_recharge_buy_or_rev_req', {
+    recharge_id: 880101,
+    buy_num: 1,
+    extra_param: '[]'
+  }));
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('res_buy_or_Rev_gift', Buffer.from(response.data, 'base64')).extra_ret_list.some(entry => entry.flag === 92), true);
 
-  response = await env.request(16005, 29, codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 880101, buy_num: 1 }));
+  response = await env.request(16005, 28, codec.pack('pb_recharge_buy_or_rev_req', {
+    recharge_id: 40008,
+    buy_num: 1,
+    extra_param: '[]'
+  }));
+  assert.equal(response.err.err, 1);
+
+  response = await env.request(16005, 29, codec.pack('pb_recharge_buy_or_rev_req', {
+    recharge_id: 880101,
+    buy_num: 1,
+    extra_param: '[]'
+  }));
   assert.equal(response.err.err, 16016);
 
   let walletFrames = await env.requestWithWalletPush(22, await encodeEtf([40008, 1, 0]));
@@ -528,4 +543,5 @@ test('real TCP routes genre, recruitment, tasks, gifts, recommendations and rank
   assert.deepEqual(codec.unpack('rank_to_client_list', Buffer.from(response.data, 'base64')).client_list.map(row => row.rank_id), ['180', '181', '182', '183']);
   assert.equal(logs.some(event => event.event === 'hero_draw_genre_selected'), true);
   assert.equal(logs.some(event => event.event === 'hero_draw_task_claimed'), true);
+  assert.equal(logs.some(event => event.event === 'purchase_extra_param_defaulted' && event.productId === 880101), true);
 });

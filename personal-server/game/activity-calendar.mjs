@@ -55,6 +55,26 @@ function isCustomRunning(custom, at) {
   return true;
 }
 
+function recurringAllOpenWindow(startValue, endValue, at) {
+  const start = seconds(startValue);
+  const end = seconds(endValue);
+  if (!(start > 0 && end > start) || !Number.isSafeInteger(at)) return null;
+  const duration = end - start;
+  const cycle = Math.floor((at - start) / duration);
+  const cycleStart = start + cycle * duration;
+  return { start: cycleStart, end: cycleStart + duration };
+}
+
+function sameAllOpenActivityBatch(left, right) {
+  if (!left || !right) return false;
+  const worldTime = seconds(left.world_time);
+  return worldTime > 0
+    && seconds(right.world_time) === worldTime
+    && Math.max(1, Number(left.duration_day) || 1) === Math.max(1, Number(right.duration_day) || 1)
+    && (Number(left.end_time) || 0) === (Number(right.end_time) || 0)
+    && (Number(left.server_day_limit) || 0) === (Number(right.server_day_limit) || 0);
+}
+
 export function activityWindow(config, serverOpenedAt) {
   if (!config) return null;
   const durationDays = Math.max(1, Number(config.duration_day) || 1);
@@ -144,21 +164,44 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     activity.act_pause_list ??= [];
     activity.act_custom_list ??= [];
     if (mode === 'all-open') {
+      const customStartTimes = new Map();
+      for (const custom of activity.act_custom_list) {
+        const config = activityConfig(tables, Number(custom.act_id));
+        const configuredWindow = activityWindow(config, openedAt);
+        const window = recurringAllOpenWindow(custom.start_time, custom.end_time, at)
+          ?? recurringAllOpenWindow(configuredWindow?.start, configuredWindow?.end, at)
+          ?? (() => {
+            const elapsed = Math.max(0, at - openedAt);
+            const cycle = Math.floor(elapsed / ALL_OPEN_LOGIN_WINDOW_SECONDS);
+            const start = openedAt + cycle * ALL_OPEN_LOGIN_WINDOW_SECONDS;
+            return { start, end: start + ALL_OPEN_LOGIN_WINDOW_SECONDS };
+          })();
+        // ActivityTimeUtil.GetInitEndBeginDayCfgTime applies act_custom_list
+        // before the ActivityTable schedule even for ACT_TYPE_TABLE_CONFIG.
+        // Zero is a concrete epoch, so 0/0 makes the client treat an all-open
+        // activity as ended. Keep a non-zero recurring window in the same phase
+        // as the activity's configured or captured period.
+        custom.start_time = window.start;
+        custom.end_time = window.end;
+        customStartTimes.set(Number(custom.act_id), window.start);
+      }
       for (const entry of activity.act_list) {
         if (entry.state_data) {
           entry.state_data.cur_state_id = 50;
-          entry.state_data.history_time = [{ state_id: 50, enter_time: String(openedAt) }];
+          entry.state_data.history_time = [{
+            state_id: 50,
+            enter_time: String(customStartTimes.get(Number(entry.state_data.act_id)) ?? openedAt)
+          }];
         }
       }
       for (const group of activity.act_parallel_list) {
         for (const state of group.states_data ?? []) {
           state.cur_state_id = 50;
-          state.history_time = [{ state_id: 50, enter_time: String(openedAt) }];
+          state.history_time = [{
+            state_id: 50,
+            enter_time: String(customStartTimes.get(Number(state.act_id)) ?? openedAt)
+          }];
         }
-      }
-      for (const custom of activity.act_custom_list) {
-        custom.start_time = 0;
-        custom.end_time = 0;
       }
       activity.act_pause_list = [];
       return activity;
@@ -245,6 +288,56 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     const serverByTid = new Map(server.act_stage_list
       .map(row => [Number(row?.act_id), row])
       .filter(([id]) => Number.isSafeInteger(id) && id > 0));
+
+    // The login snapshot only contains the activities the reference account
+    // happened to have. Paid-shop and exchange-shop activities are separate
+    // ActFrame rows from their parent event, so a parent can be present while
+    // its 182/184 children are missing. The client then falls back to the
+    // shipped table schedule and reports the event as ended. In all-open mode
+    // materialize the missing 182/184 rows from the same event batch, using the
+    // same extended login window as every other stored activity.
+    const batchConfigs = [...serverByTid.keys()]
+      .map(id => activityConfig(tables, id))
+      .filter(config => config && seconds(config.world_time) > 0);
+    const companionIds = new Set();
+    for (const parent of batchConfigs) {
+      for (const [actId, candidate] of tables?.ActFrameAct ?? []) {
+        if (![182, 184].includes(Number(candidate?.type))) continue;
+        if (sameAllOpenActivityBatch(parent, candidate)) companionIds.add(Number(actId));
+      }
+    }
+    for (const id of companionIds) {
+      if (serverByTid.has(id)) continue;
+      const config = activityConfig(tables, id);
+      const window = activityWindow(config, openedAt);
+      const start = Math.min(window?.start ?? openedAt, current);
+      const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
+      const serverRow = {
+        act_id: id,
+        type: Number(config?.type) || 0,
+        start_time: String(start),
+        end_time: String(end),
+        cur_stage_id: 50,
+        is_pause: false,
+        loop_count: 0,
+        stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+      };
+      const playerRow = {
+        act_stage: {
+          act_id: id,
+          start_time: String(start),
+          end_time: String(end),
+          cur_stage_id: 50,
+          loop_count: 0,
+          history_time: [{ stage_id: 50, enter_time: String(start) }]
+        },
+        module_login_data: Buffer.alloc(0)
+      };
+      server.act_stage_list.push(serverRow);
+      serverByTid.set(id, serverRow);
+      player.data_list.push(playerRow);
+      playerByTid.set(id, playerRow);
+    }
 
     for (const [id, serverRow] of serverByTid) {
       const playerRow = playerByTid.get(id);

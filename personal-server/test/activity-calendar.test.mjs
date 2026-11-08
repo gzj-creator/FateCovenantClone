@@ -174,12 +174,38 @@ test('all-open mode retains every stored activity, clears pauses and selects the
   assert.deepEqual(activity.act_parallel_list[0].states_data, [{
     act_id: 83028,
     cur_state_id: 50,
-    history_time: [{ state_id: 50, enter_time: String(SERVER_OPENED_AT) }]
+    history_time: [{ state_id: 50, enter_time: String(at) }]
   }]);
-  assert.deepEqual(activity.act_custom_list, [{ act_id: 83028, start_time: 0, end_time: 0 }]);
+  assert.deepEqual(activity.act_custom_list, [{
+    act_id: 83028,
+    start_time: at,
+    end_time: at + 5 * DAY
+  }]);
   assert.deepEqual(activity.act_pause_list, []);
   assert.equal(calendar.isActivityRunning(83028, null, activity, at), true);
   assert.equal(calendar.activeFishingActivityId(at, activity), 1074011);
+
+  calendar.applyLoginSchedule(activity, at + 3600);
+  assert.deepEqual(activity.act_custom_list, [{
+    act_id: 83028,
+    start_time: at,
+    end_time: at + 5 * DAY
+  }]);
+});
+
+test('schedule mode still closes an expired custom activity window', () => {
+  const at = SERVER_OPENED_AT + 20 * DAY;
+  const calendar = calendarAt(at);
+  const activity = {
+    act_list: [{ state_data: { act_id: 117001, cur_state_id: 50 }, module_login_data: Buffer.alloc(0) }],
+    act_parallel_list: [],
+    act_pause_list: [],
+    act_custom_list: [{ act_id: 117001, fun_id: 117, start_time: 1792875600, end_time: 1793307600 }]
+  };
+
+  const result = calendar.applyLoginSchedule(activity, at);
+  assert.equal(activity.act_list.some(entry => Number(entry.state_data?.act_id) === 117001), false);
+  assert.deepEqual(activity.act_custom_list, []);
 });
 
 test('all-open mode makes every ActFrame server row active for the current login', () => {
@@ -243,4 +269,65 @@ test('all-open mode makes every ActFrame server row active for the current login
   const untouched = structuredClone(server);
   assert.equal(scheduled.normalizeActFrameLogin(player, server, at).adjusted, 0);
   assert.deepEqual(server, untouched);
+});
+
+test('all-open materializes the white-ribbon draw paid and exchange shops from their parent batch', () => {
+  const at = SERVER_OPENED_AT + 14 * DAY;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    mode: 'all-open',
+    currentFishingActivityId: 1074011,
+    now: () => at * 1000
+  });
+  const parent = 1102010;
+  const player = {
+    data_list: [{
+      act_stage: {
+        act_id: parent,
+        start_time: '1792098000',
+        end_time: '1792530000',
+        cur_stage_id: 50,
+        loop_count: 0,
+        history_time: [{ stage_id: 50, enter_time: '1792098000' }]
+      },
+      module_login_data: Buffer.alloc(0)
+    }]
+  };
+  const server = {
+    act_stage_list: [{
+      act_id: parent,
+      type: 1102,
+      start_time: '1792098000',
+      end_time: '1792530000',
+      cur_stage_id: 50,
+      loop_count: 0,
+      stage_time_list: [{ stage_id: 50, start_time: '1792098000', end_time: '1792530000' }]
+    }]
+  };
+
+  const result = calendar.normalizeActFrameLogin(player, server, at);
+  const returned = new Set(result.activityIds);
+  for (const [actId, type] of [[182819, 182], [1841010, 184]]) {
+    assert.equal(returned.has(actId), true);
+    const serverRow = server.act_stage_list.find(row => Number(row.act_id) === actId);
+    assert.ok(serverRow);
+    assert.equal(Number(serverRow.type), type);
+    assert.ok(Number(serverRow.start_time) <= at);
+    assert.ok(Number(serverRow.end_time) > at);
+    assert.equal(serverRow.cur_stage_id, 50);
+    assert.deepEqual(serverRow.stage_time_list, [{
+      stage_id: 50,
+      start_time: serverRow.start_time,
+      end_time: serverRow.end_time
+    }]);
+    const playerRow = player.data_list.find(row => Number(row.act_stage?.act_id) === actId);
+    assert.ok(playerRow);
+    assert.equal(playerRow.act_stage.cur_stage_id, 50);
+    assert.equal(playerRow.act_stage.history_time[0].stage_id, 50);
+  }
+
+  calendar.normalizeActFrameLogin(player, server, at + 60);
+  assert.equal(server.act_stage_list.filter(row => Number(row.act_id) === 1841010).length, 1);
+  assert.equal(player.data_list.filter(row => Number(row.act_stage?.act_id) === 1841010).length, 1);
 });
