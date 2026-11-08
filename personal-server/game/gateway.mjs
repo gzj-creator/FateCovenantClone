@@ -82,6 +82,9 @@ import { createPeakTowerService } from './peak-tower-service.mjs';
 import { readPeakTowerTables } from '../config/peak-tower-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
+import { createFameHallService } from './fame-hall-service.mjs';
+import { createWorldBossService } from './world-boss-service.mjs';
+import { createPitLordService } from './pit-lord-service.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
 import { readMagicCircleTables } from '../config/magic-circle-tables.mjs';
@@ -455,6 +458,11 @@ export function createLocalGame({
   const eliteMission = createEliteMissionService({ store, codec, tables: readGameTables(), logger });
   const peakTower = createPeakTowerService({ store, codec, tables: readPeakTowerTables(), logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
+  // BATTLE-FAMEHALL / WORLDBOSS / PITLORD. Fame hall command payload encodings are
+  // recovered from FameHallCmd.lua; the boss groups keep their own SQLite state.
+  const fameHall = createFameHallService({ store, codec, gameTables: tables, artifact, now: clock, logger });
+  const worldBoss = createWorldBossService({ store, codec, gameTables: tables, now: clock, logger });
+  const pitLord = createPitLordService({ store, codec, gameTables: tables, now: clock, logger });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Set();
@@ -1646,6 +1654,45 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'general_dungeon_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (fameHall.supports(type)) {
+        try {
+          const protobuf = { 91101: 'pb_fame_hall_enter_difficult', 91102: 'pb_fame_hall_choose_drop_req', 91103: 'pb_fame_hall_reward_req', 91104: 'pb_fame_hall_artifact_req' }[type];
+          const input = protobuf ? unpack(protobuf, request.data) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await fameHall.execute(type, input);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'fame_hall_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'fame_hall_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (worldBoss.supports(type)) {
+        try {
+          const input = type === 91805 ? unpack('pb_world_boss_achieve_reward_req', request.data) : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await worldBoss.execute(type, input);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'world_boss_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'world_boss_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (pitLord.supports(type)) {
+        try {
+          const result = await pitLord.execute(type, request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          if (!result.noReply) send(seq, result.data);
+          log({ event: 'pit_lord_command_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'pit_lord_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
