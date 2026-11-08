@@ -188,3 +188,13 @@
 - 状态：完整实现 6 卡（PUZZLEACT/TILESWAP/MUSHROOMMONSTER/GOPHERACT/MATCHINGGAMEACT/ALBUM）；服务端完成含明确拒绝 8 卡（TOWERACT/SPIRITCOURTYARD/TRIPLEMATCH/MONOPOLYACT/DREAMTRIALACT/DIAMONDVEINACT/HOMELAND/BAKINGACT）；仅明确拒绝 1 卡（SOURCEPOINT，源点实例未建模）；FISHINGACT 与 HELPUPACT 回归确认未改动。
 - 明确拒绝均为 GameError(5, 缺口说明)，无空包/固定值销项。逐卡记录见 agent/workflow/gameplay-completion/<CARD>/implementation.md，块记录见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md。
 - 测试：专项 16/16；全量 npm test 2560 项，pass 2558，fail 0，skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
+
+## 块 D 交付记录（2026-11-08）
+
+分支 `task/BLOCK-D-20261108`，worktree `.worktree/gameplay-20261108/block-d-20261108`，基于 `main@bd650ba`。块内 22 卡 / 58 条命令中，9 卡（ITEM-SHOP、ITEM-ITEM、ITEM-MISSION、ITEM-GUIDE、ITEM-EVERYTASK、ITEM-COMMONTASK、ITEM-RANKACHIEVE、ITEM-FIRSTWEEKGOAL、ITEM-GROWTHROAD）此前已合入 main，本轮处理剩余 13 卡 / 27 条命令。
+
+- 交付 2 条：82301（ITEM-FUNCTIONMANUAL，模块 106，按 `FunctionManualTable.Task` 28 行复核 `task_list`，统计源与 `progress_fun` 2/10 行可领，其余进度源返回 5）；105701（ITEM-TASKACTIVITY，按 `ActFrameTable` 类型 1003 的窗口与 `TaskActivityTable.Lib` 版本任务复核，登录把 `pb_task_activity_role_info` 包进模块 92）。两条命令都写 SQLite 领取位、真实发奖，支持重开与编码失败回滚。
+- 105702 未实现：`server_vitality` 需要全服活跃度，本服没有权威生产方，返回 5。
+- 其余 10 卡 / 24 条命令逐卡记录阻塞证据：表未导出或行数为 0、奖励配置缺失、没有权威进度来源。没有用空包、固定值或客户端自报完成来销项。
+- 新增 `tools/extract-lua-table-rows.mjs`（LuaJIT 字面量表行抽取）与 `FunctionManualTable.rows.json.gz`、`TaskActivityTable.rows.json.gz`。
+- 验证：分支全量 2646 项 / pass 2644 / fail 0 / skipped 2，日志 `analysis/test-runs/gameplay-20261106/block-d-merged3-full.log`。`8ac7a73` 以 `--no-ff` 合入 main `78b1a46`；合并后 main tree 与测试提交 tree 相同（`dbe81e8`）。未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未改动 APK。
