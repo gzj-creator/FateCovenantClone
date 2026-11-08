@@ -57,6 +57,8 @@ import { createDragonLandActService } from './dragon-land-act-service.mjs';
 import { readDragonLandTables } from '../config/dragon-land-tables.mjs';
 import { createDiamondBankActService } from './diamond-bank-act-service.mjs';
 import { readDiamondBankActTables } from '../config/diamond-bank-act-tables.mjs';
+import { createFreePrivilegeActService } from './free-privilege-act-service.mjs';
+import { readFreePrivilegeActTables } from '../config/free-privilege-act-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createShopService } from './shop-service.mjs';
@@ -494,6 +496,7 @@ export function createLocalGame({
   const groupBuyAct=createGroupBuyActService({store,codec,tables,groupBuyTables:readGroupBuyActTables(),calendar,now:clock,logger});
   const dragonLandAct=createDragonLandActService({store,codec,tables,dragonLandTables:readDragonLandTables(),calendar,now:clock,logger});
   const diamondBankAct=createDiamondBankActService({store,codec,tables,diamondBankTables:readDiamondBankActTables(),calendar,now:clock,logger});
+  const freePrivilegeAct=createFreePrivilegeActService({store,codec,tables,freePrivilegeTables:readFreePrivilegeActTables(),calendar,monthlyCard,now:clock,logger});
   const hundredAcc=createHundredAccService({store,codec,tables,logger});
   async function loginPayload() {
     const repairedLineups = lineups.ensureLoginState();
@@ -601,6 +604,9 @@ export function createLocalGame({
     // DiamondBankActData parses pb_diamond_bank_act_role_data from the activity
     // entry's module_login_data (ActFrameTable type 1069).
     const diamondBankLogin = diamondBankAct.synchronizeLogin(activity, loginSeconds);
+    // FreePrivilegeActData parses pb_free_privilege_act_act_role_data from the
+    // activity entry's module_login_data (ActFrameTable type 1072).
+    const freePrivilegeLogin = freePrivilegeAct.synchronizeLogin(activity, loginSeconds);
     // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
     // entry's module_login_data (ActFrameTable type 1102).
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
@@ -679,6 +685,7 @@ export function createLocalGame({
       groupBuyActGiftIds: groupBuyActLogin.giftIds,
       dragonLandActId: dragonLandLogin.actId,
       diamondBankActId: diamondBankLogin.actId,
+      freePrivilegeActId: freePrivilegeLogin.actId,
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -1333,6 +1340,23 @@ export function createLocalGame({
           send(seq, Buffer.alloc(0), { err: code });
           log({
             event: 'diamond_bank_rejected', type, seq, actId, code, message: error.message,
+            payloadHead: payloadBytes(request.data, 64)
+          });
+        }
+        return;
+      }
+      if (freePrivilegeAct.supports(type)) {
+        let actId;
+        try {
+          actId = await singleIdArgument(request.data, 'Invalid free privilege activity id');
+          const result = freePrivilegeAct.execute(type, null, actId);
+          send(seq, result.data);
+          log({ event: 'free_privilege_command_committed', type, seq, actId });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({
+            event: 'free_privilege_rejected', type, seq, actId, code, message: error.message,
             payloadHead: payloadBytes(request.data, 64)
           });
         }
@@ -2242,7 +2266,7 @@ export function createLocalGame({
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
     guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
-    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, message, hundredDraw,
+    cms, guildNationAssist, groupBuyAct, dragonLandAct, diamondBankAct, freePrivilegeAct, message, hundredDraw,
     listen(port = 19090) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
     close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };

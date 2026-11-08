@@ -208,5 +208,38 @@ export function createMonthlyCardService({ codec, tables, now = Date.now }) {
     };
   }
 
-  return { supports, assertPurchaseAvailable, purchase, claim, repairLegacyClaimBits, cardByRecharge, cardById };
+  // FreePrivilegeActCmd.req_free_privilege_act_activate_month (110602) grants the
+  // activity version's month card without a recharge. The entry, start day and
+  // serialization match purchase() so login module 20, the daily reward bits and
+  // the can-buy checks all read one authoritative row. A card that is already
+  // active on the current day is refused instead of being restarted, otherwise a
+  // repeated free activation would extend the reward period for free.
+  function activateFreeCard({ model, cardId, at = now() }) {
+    const id = positiveInteger(cardId, 'id');
+    const card = cardById.get(id);
+    if (!card) throw new GameError(5, 'Monthly card configuration is unavailable');
+    const modules = new Map(model.state.modules.value);
+    const { info } = readInfo(modules);
+    const startDay = rechargeDayIndex(at);
+    const existing = info.card_list.find(row => Number(row.id) === id);
+    if (activeOnDay(card, existing, startDay)) throw new GameError(307, 'Monthly card is already active');
+    const entry = {
+      id,
+      invalid_day: 0,
+      last_get_reward_day: 0,
+      last_get_add_reward_day: 0,
+      got_count: 0,
+      start_day: startDay,
+      got_reward: Buffer.alloc(0)
+    };
+    const existingIndex = info.card_list.findIndex(row => Number(row.id) === id);
+    if (existingIndex >= 0) info.card_list[existingIndex] = entry;
+    else info.card_list.push(entry);
+    modules.set(MONTHLY_CARD_MODULE, serializedBinary(codec.pack('pb_monthly_card_info', info)));
+    model.state.modules.value = [...modules];
+    return { cardId: id, startDay, info, entry };
+  }
+
+
+  return { supports, assertPurchaseAvailable, purchase, claim, activateFreeCard, repairLegacyClaimBits, cardByRecharge, cardById };
 }
