@@ -118,6 +118,17 @@ import {
   readPlayMatchTables,
   readOverallMatchTables
 } from '../config/arena-tables.mjs';
+// Card BATTLE-MARTIALCLUB: MartialClubCmd 84401 / 84404-84426.
+import { MARTIAL_CLUB_MODULE_ID, MARTIAL_CLUB_REQUEST_SCHEMAS, createMartialClubService, isEtfRequest as isMartialClubEtfRequest } from './martial-club-service.mjs';
+import { readMartialClubTables } from '../config/martial-club-tables.mjs';
+// Card BATTLE-MARTIALCLUBACT: MartialClubActCmd 84431-84432.
+import { createMartialClubActService } from './martial-club-act-service.mjs';
+import { TOURNAMENT_MODULE_ID, TOURNAMENT_PROTOBUF_COMMANDS, createTournamentService } from './tournament-service.mjs';
+import { readMartialClubActTables } from '../config/martial-club-act-tables.mjs';
+import { readMatchPvpTables } from '../config/match-pvp-tables.mjs';
+// Card BATTLE-TOPARENA: TopArenaCmd 98500 98505 98526-98532 98560-98565 98580-98583 98590 98601-98602.
+import { TOP_ARENA_PROTOBUF_COMMANDS, createTopArenaService } from './top-arena-service.mjs';
+import { readTopArenaTables } from '../config/top-arena-tables.mjs';
 import { createGeneralDungeonService } from './general-dungeon-service.mjs';
 import { readGeneralDungeonTables } from '../config/general-dungeon-tables.mjs';
 import { createFameHallService } from './fame-hall-service.mjs';
@@ -188,6 +199,8 @@ export function createLocalGame({
   localWallet = false,
   missionFightPlayback = false,
   eliteEnemies = null,
+  martialClubRoster = null,
+  tournamentRoster = null,
   guideAwards = readGuideAwards(),
   now = Date.now,
   random = Math.random,
@@ -558,6 +571,14 @@ export function createLocalGame({
   const arenaContest = createArenaContestService({ store, codec, tables: readArenaContestTables(), gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, logger, now: clock });
   const playMatch = createPlayMatchService({ store, codec, tables: readPlayMatchTables(), logger, now: clock });
   const overallMatch = createOverallMatchService({ store, codec, tables: readOverallMatchTables(), logger, now: clock });
+  // Card BATTLE-MARTIALCLUB: 84401 / 84404-84426, authoritative state in SQLite.
+  const martialClub = createMartialClubService({ store, codec, tables: readMartialClubTables(), gameTables: tables, logger, now: clock, enemyRoster: martialClubRoster });
+  // Card BATTLE-MARTIALCLUBACT: 84431-84432, awards driven by MartialClubActTable.
+  const martialClubAct = createMartialClubActService({ store, codec, tables: readMartialClubActTables(), gameTables: tables, logger, now: clock });
+  // Card BATTLE-TOURNAMENT: 88501-88511, MatchPvpTable type 1 (位面锦标赛).
+  const tournament = createTournamentService({ store, codec, tables: readMatchPvpTables(), gameTables: tables, logger, now: clock, enemyRoster: tournamentRoster });
+  // Card BATTLE-TOPARENA: 98500-98602, TopArenaTable local season frame.
+  const topArena = createTopArenaService({ store, codec, tables: readTopArenaTables(), gameTables: tables, logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
   // BATTLE-FAMEHALL / WORLDBOSS / PITLORD. Fame hall command payload encodings are
   // recovered from FameHallCmd.lua; the boss groups keep their own SQLite state.
@@ -723,6 +744,16 @@ export function createLocalGame({
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
+    // Card BATTLE-MARTIALCLUB: login module 123 carries pb_martial_club_role and
+    // pb_martial_club_employ_role, the two blocks MartialClubMgr.LoginParse decodes.
+    martialClub.ensureLoginState();
+    {
+      const martialClubLogin = martialClub.loginPayload();
+      modules.set(MARTIAL_CLUB_MODULE_ID, [binary(martialClubLogin.role), binary(martialClubLogin.employ)]);
+    // Card BATTLE-TOURNAMENT: login module 150 carries one pb_tournament_login block.
+    tournament.ensureLoginState();
+    modules.set(TOURNAMENT_MODULE_ID, binary(tournament.loginPayload().data));
+    }
     modules.set(CAMPSITE_MODULE_ID, binary(cabin.loginPayload()));
     modules.set(HOUSE_ASSISTANT_MODULE_ID, [binary(houseAssistant.loginPayload())]);
     if (mail) modules.set(93, binary(mail.loginPayload(state.roleId)));
@@ -2139,6 +2170,70 @@ export function createLocalGame({
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'overall_match_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-TOURNAMENT: TournamentCmd 88501-88511.
+      if (tournament.supports(type)) {
+        try {
+          const schema = TOURNAMENT_PROTOBUF_COMMANDS[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await tournament.execute(type, input);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'tournament_committed', type, seq, won: result.value?.won ?? null, stage: result.value?.stage ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'tournament_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-TOPARENA: TopArenaCmd 98500-98602.
+      if (topArena.supports(type)) {
+        try {
+          const schema = TOP_ARENA_PROTOBUF_COMMANDS[type];
+          const input = schema
+            ? unpack(schema, request.data)
+            : (request.data?.length ? (await decodeEtf(request.data))?.value : undefined);
+          const result = await topArena.execute(type, input);
+          send(seq, result.data ?? Buffer.alloc(0));
+          log({ event: 'top_arena_committed', type, seq });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'top_arena_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-MARTIALCLUBACT: MartialClubActCmd 84431-84432.
+      if (martialClubAct.supports(type)) {
+        try {
+          const input = request.data?.length ? (await decodeEtf(request.data))?.value : undefined;
+          const result = await martialClubAct.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'martial_club_act_committed', type, seq, changed: result.value?.changes ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'martial_club_act_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // Card BATTLE-MARTIALCLUB: MartialClubCmd 84401 + 84404-84426.
+      if (martialClub.supports(type)) {
+        try {
+          const input = isMartialClubEtfRequest(type)
+            ? (request.data?.length ? (await decodeEtf(request.data))?.value : undefined)
+            : unpack(MARTIAL_CLUB_REQUEST_SCHEMAS[type], request.data);
+          const result = await martialClub.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'martial_club_committed', type, seq, bossTid: result.value?.bossTid ?? null });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'martial_club_rejected', type, seq, code, message: error.message });
         }
         return;
       }
