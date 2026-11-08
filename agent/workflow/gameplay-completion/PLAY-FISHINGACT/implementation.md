@@ -106,3 +106,8 @@ node --test test/gameplay-gateway.test.mjs
 - personal-server/test/activity-read-service.test.mjs
 - personal-server/test/gameplay-gateway.test.mjs
 - personal-server/test/fishing-act-service.test.mjs（新增）
+
+## BLOCK-G2 回归（2026-11-08）
+
+本块未改动该活动实现；G2 网关派发只覆盖 minigame-act-service 注册的命令（102001-111015），既有命令仍由原实现处理，全量 npm test 通过。
+

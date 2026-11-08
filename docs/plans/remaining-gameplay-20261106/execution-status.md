@@ -182,3 +182,9 @@
 - 41 条按任务卡分组 fail closed（`err 5` 附缺失证据）：79103、99401/99402、100101、102906、104601/104602、106203/106205、118001，邀请与回归的 105201/105202/105250/105251/105303/105305/105307，以及夏日 PVE/PVP/养成/结算的 1037xx/1038xx/1039xx/1041xx 一族。逐条原因见 [ACT-REWARD-H 实施记录](../../../agent/workflow/gameplay-completion/ACT-REWARD-H/implementation.md)。
 - 验证：专项 `test/act-reward-service.test.mjs` 9/9；合并后在工作树复核 `act-reward` + `gameplay-gateway` + `m5-command-matrix` 25/25；分支全量 `npm test` 2603 项、pass 2601、fail 0、skipped 2（日志 `analysis/test-runs/gameplay-20261106/main-after-block-h-full.log`）。
 - 证据缺口：`*_bin` 领取位按 proto3 打包 repeated uint32 推断；预热表按 `act_id % 1000` 取 board、`<version><1000><index>` 编 Award、`available_sec` 视为自活动开始经过秒数，三处未与抓包对照；未接登录模块 92；无 APK 验收。本批未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
+## 块 G2 执行记录（2026-11-08）
+
+- 分支 task/BLOCK-G2-20261108（基于 main 8ebd5a1）完成 #163–#179 共 17 卡、96 条命令的服务端接入：personal-server/game/minigame-act-service.mjs + config/minigame-act-tables.mjs + 15 个表资产 + 网关派发与模块 92 登录同步。
+- 状态：完整实现 6 卡（PUZZLEACT/TILESWAP/MUSHROOMMONSTER/GOPHERACT/MATCHINGGAMEACT/ALBUM）；服务端完成含明确拒绝 8 卡（TOWERACT/SPIRITCOURTYARD/TRIPLEMATCH/MONOPOLYACT/DREAMTRIALACT/DIAMONDVEINACT/HOMELAND/BAKINGACT）；仅明确拒绝 1 卡（SOURCEPOINT，源点实例未建模）；FISHINGACT 与 HELPUPACT 回归确认未改动。
+- 明确拒绝均为 GameError(5, 缺口说明)，无空包/固定值销项。逐卡记录见 agent/workflow/gameplay-completion/<CARD>/implementation.md，块记录见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md。
+- 测试：专项 16/16；全量 npm test 2560 项，pass 2558，fail 0，skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
