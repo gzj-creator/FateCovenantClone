@@ -13,6 +13,8 @@ const ELITE_MISSION_MODULE = 140;
 const ROLE_STATISTICS_TYPE = 0;
 const MAIN_LINEAR_TASK_PROGRESS = 1201;
 const DESTINY_REAL_STAGE_PROGRESS = 155;
+const HERO_MAX_STAR_PROGRESS = 66;
+const HERO_MAX_MASTERY_BREAK_PROGRESS = 81;
 const PASSED_SECTION_PROGRESS = 2;
 const PASSED_CHAPTER_PROGRESS = 10;
 const ELITE_CHAPTER_PROGRESS = 247;
@@ -82,6 +84,13 @@ function destinyStageProgress(model, codec) {
   return stage;
 }
 
+function heroMaxProgress(model, config, field) {
+  const heroTid = String(config.task_param ?? '');
+  const heroes = (model.heroInfo?.hero_list ?? []).filter(hero => String(hero.tid) === heroTid);
+  if (!heroes.length) return 0;
+  return Math.max(0, ...heroes.map(hero => Number(hero[field] ?? 0)));
+}
+
 export function currentTaskProgress(model, config, codec, tables) {
   const taskType = Number(config.task_type);
   if (taskType === MAIN_LINEAR_TASK_PROGRESS) {
@@ -94,6 +103,12 @@ export function currentTaskProgress(model, config, codec, tables) {
   if (typeConfig?.progress_type === 2) return totalStatisticProgress(model, config, codec, tables);
   if (typeConfig?.progress_type === 1 && Number(typeConfig.progress_fun) === DESTINY_REAL_STAGE_PROGRESS) {
     return destinyStageProgress(model, codec);
+  }
+  if (typeConfig?.progress_type === 1 && Number(typeConfig.progress_fun) === HERO_MAX_STAR_PROGRESS) {
+    return heroMaxProgress(model, config, 'star');
+  }
+  if (typeConfig?.progress_type === 1 && Number(typeConfig.progress_fun) === HERO_MAX_MASTERY_BREAK_PROGRESS) {
+    return heroMaxProgress(model, config, 'mastery_break');
   }
   throw new GameError(5, 'Linear task progress is not implemented');
 }

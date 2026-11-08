@@ -22,7 +22,7 @@
 
 - `test/block-j-role-support.test.mjs`：13/13 通过。
 - `test/block-j-role-gateway.test.mjs`：1/1 通过，覆盖真实 loopback 登录和模块回填。
-- 最终分支全量 `npm test`：2710 项，pass 2708、fail 0、skipped 2，日志为 `analysis/test-runs/gameplay-20261106/block-j-final-full-4.log`。
+- 合并最新 main 后全量 `npm test`：2734 项，pass 2732、fail 0、skipped 2，日志为 `analysis/test-runs/gameplay-20261106/block-j-after-main-full.log`。
 
 ## 缺口
 

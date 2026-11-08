@@ -22,6 +22,8 @@ triple:<act_id>（minigame_act_state 主键中的 act_key）。
 
 106005 通关进度明确拒绝：关卡进度由客户端棋盘结算上报，未取证。
 
+2026-11-08 残余项复核未改变该结论：106001-106004 正常，106005 仍返回 GameError(5)，没有用客户端自报值销项。
+
 ## 验证
 
 - personal-server/test/minigame-act-service.test.mjs 覆盖本卡的正常路径、资源不足/未达阈值、重复领取、坏负载整笔回滚与 SQLite 重开。

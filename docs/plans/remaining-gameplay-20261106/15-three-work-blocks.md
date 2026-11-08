@@ -190,19 +190,21 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 
 | # | 任务卡 | 玩法 | 命令 | 看板 |
 | ---: | --- | --- | ---: | --- |
-| 107 | SOC-GUILDBOSS | 公会 BOSS、伤害奖励与技能物品 | 12 | 待领取 |
-| 108 | SOC-GUILDJOINT | 公会联合探索与资源争夺 | 25 | 待领取 |
-| 109 | SOC-GUILDRUNESTONE | 公会符石穿脱与合成 | 3 | 待领取 |
-| 110 | SOC-GUILDGVG | 公会 GVG 地图、矿点与据点争夺 | 18 | 待领取 |
-| 111 | SOC-GUILDVOTE | 公会投票 | 2 | 待领取 |
-| 112 | SOC-SLGMAP | SLG 地图视野与进出 | 3 | 待领取 |
-| 113 | SOC-GUILDNATION | 公会国战、建造、兵种、科技、行军与据点 | 64 | 待领取 |
-| 114 | SOC-GUILDBARGAIN | 公会砍价 | 4 | 待领取 |
-| 115 | SOC-GUILDEXPEDITION | 公会远征、宣战、鼓舞、竞猜与地图排名 | 15 | 待领取 |
-| 116 | SOC-CHANNELENTRY | 频道入口业务 | 1 | 待领取 |
-| 117 | SOC-GUILDHUNT | 公会狩猎参与与支援 | 3 | 待领取 |
-| 118 | SOC-GUILDCRUSADE | 公会讨伐排名 | 1 | 待领取 |
-| 119 | SOC-GUILDAUCTION | 公会拍卖、心愿与领取 | 3 | 待领取 |
+| 107 | SOC-GUILDBOSS | 公会 BOSS、伤害奖励与技能物品 | 12 | 服务端完成（证据缺口） |
+| 108 | SOC-GUILDJOINT | 公会联合探索与资源争夺 | 25 | 服务端完成（证据缺口） |
+| 109 | SOC-GUILDRUNESTONE | 公会符石穿脱与合成 | 3 | 服务端完成（证据缺口） |
+| 110 | SOC-GUILDGVG | 公会 GVG 地图、矿点与据点争夺 | 18 | 服务端完成（证据缺口） |
+| 111 | SOC-GUILDVOTE | 公会投票 | 2 | 服务端完成（证据缺口） |
+| 112 | SOC-SLGMAP | SLG 地图视野与进出 | 3 | 服务端完成（证据缺口） |
+| 113 | SOC-GUILDNATION | 公会国战、建造、兵种、科技、行军与据点 | 64 | 服务端完成（证据缺口） |
+| 114 | SOC-GUILDBARGAIN | 公会砍价 | 4 | 服务端完成（证据缺口） |
+| 115 | SOC-GUILDEXPEDITION | 公会远征、宣战、鼓舞、竞猜与地图排名 | 15 | 服务端完成（证据缺口） |
+| 116 | SOC-CHANNELENTRY | 频道入口业务 | 1 | 服务端完成（证据缺口） |
+| 117 | SOC-GUILDHUNT | 公会狩猎参与与支援 | 3 | 服务端完成（证据缺口） |
+| 118 | SOC-GUILDCRUSADE | 公会讨伐排名 | 1 | 响应 schema 缺失，明确拒绝 |
+| 119 | SOC-GUILDAUCTION | 公会拍卖、心愿与领取 | 3 | 服务端完成（证据缺口） |
+
+E2 覆盖 154/154 个缺失命令：153 条进入实际业务服务，`105805` 因 `pb_guild_crusade_rank_rsp` 定义缺失以错误码 5 明确拒绝。现有 `99229` 继续由国战助力服务持有。专项服务、真实临时 TCP、SQLite 重开与 154 条路由唯一性测试通过，并已以 `--no-ff` 合入 main `85c39dd`；不包含跨成员/跨服补证或 APK 验收，详见[交付记录](../../../agent/workflow/gameplay-completion/E2-SOCIAL-COOP/implementation.md)。
 
 ## 块 F：#120–#150（招募、抽取、翻牌与转盘活动）
 
@@ -242,7 +244,7 @@ D 块交付（2026-11-08）：82301 功能手册与 105701 通用任务活动有
 | 149 | DRAW-FLOPCARDACT | 翻牌、单次与累计奖励 | 3 | 服务端完成（APK 未验收） |
 | 150 | DRAW-HUNDREDDRAWACT | 百抽、进度奖、自选、升星奖与跑马灯 | 5 | 服务端完成（保底选择与非英雄星级奖证据待补） |
 
-F 块续做（2026-11-08）：74 条原缺失命令现均有明确路径，其中本 worktree 的统一服务新增覆盖 65 条（44 条表驱动成功路径、21 条无条件 fail closed），其余 9 条由既有百抽、奖励抽取和许愿树服务承担。路径覆盖不等于玩法完成；全部证据缺口、运行规则与未验收边界见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
+F 块续做（2026-11-08）：74 条原缺失命令现均有明确路径，其中本 worktree 的统一服务新增覆盖 65 条（44 条表驱动成功路径、21 条无条件 fail closed），其余 9 条由既有百抽、奖励抽取和许愿树服务承担。路径覆盖不等于玩法完成；交付提交 `aa3f35b` 已合入 main `0cefbbd`，收尾前含后续 A2/E2 合并的 main `d99dae4` 全量回归为 2706 项、fail 0、skip 2。全部证据缺口、运行规则与未验收边界见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
 
 ## 块 G1：#151–#162（探索与家园前半）
 
@@ -405,7 +407,7 @@ F 块续做（2026-11-08）：74 条原缺失命令现均有明确路径，其�
 | 275 | ROLE-CLIENTLOG | 客户端诊断日志 | 1 | 服务端完成（fire-and-forget 落库） |
 | 276 | ROLE-CHANNELPUSH | 渠道推送开关 | 1 | 服务端完成（模块 173 登录回填；命令无回包） |
 
-J 块交付（2026-11-08）：分支 `feat/block-j-role-support`，已补齐 RoleTable / SkinTable / PlayerDataTable 客户端表证据、RoleCmd / RedDotCmd / ChannelPushMgr / SkinDrawMgr / PlayerDataMgr / ActMgr / DreamSummerActMainForm 客户端静态证据、13 项服务专项测试与 1 项临时 loopback TCP + SQLite 重开测试；最终全量 2710 项、pass 2708、fail 0、skipped 2。`RequestActListData(actIdList)` 证明 53006 必须按请求 ETF 过滤，53001/53002 的活动 ID 列表语义也由 LuaJIT 字节码确认，当前只推进或返回请求中的已知活动；PlayerData Type 5 的 block 24 已按 `fashion_id` 返回模块 110 的 `cur_id`；`76009` 同时持久化 SQLite 和登录模块 65，修复仅存在于模块 65 的皮肤无法强化及等级丢失的问题。皮肤真实 UI 发出空 76005 且不发 76004，当前明确返回参数错误，不能称为客户端兑换闭环；Veteran 资格门槛仍无客户端规则，当前只接受显式本地策略。未做 APK 验收，本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
+J 块交付（2026-11-08）：分支 `feat/block-j-role-support`，已补齐 RoleTable / SkinTable / PlayerDataTable 客户端表证据、RoleCmd / RedDotCmd / ChannelPushMgr / SkinDrawMgr / PlayerDataMgr / ActMgr / DreamSummerActMainForm 客户端静态证据、13 项服务专项测试与 1 项临时 loopback TCP + SQLite 重开测试；合并最新 main 后全量 2734 项、pass 2732、fail 0、skipped 2。`RequestActListData(actIdList)` 证明 53006 必须按请求 ETF 过滤，53001/53002 的活动 ID 列表语义也由 LuaJIT 字节码确认，当前只推进或返回请求中的已知活动；PlayerData Type 5 的 block 24 已按 `fashion_id` 返回模块 110 的 `cur_id`；`76009` 同时持久化 SQLite 和登录模块 65，修复仅存在于模块 65 的皮肤无法强化及等级丢失的问题。皮肤真实 UI 发出空 76005 且不发 76004，当前明确返回参数错误，不能称为客户端兑换闭环；Veteran 资格门槛仍无客户端规则，当前只接受显式本地策略。未做 APK 验收，本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
 
 ## 看板说明
 

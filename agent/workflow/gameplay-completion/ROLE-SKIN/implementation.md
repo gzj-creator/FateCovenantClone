@@ -27,7 +27,7 @@
 - 服务专项覆盖未知皮肤、improper ETF、重复选择、显式兑换、真实扣费、穿戴、5 级强化、图鉴和 SQLite 重开。
 - 临时 loopback TCP 验证空 76005 返回 err 1；紧接着发送 76004 proper ETF 和显式 76005 proper ETF，收到扣 1 个 2701900、加 1 个 100712 的 `pb_res_to_client`。
 - 专项 13/13 通过；真实 loopback TCP 还覆盖 76009 扣 3 个 628002、服务重开后模块 65 等级保持 1。
-- 最终分支全量 `npm test`：2710 项，pass 2708、fail 0、skipped 2；日志 `analysis/test-runs/gameplay-20261106/block-j-final-full-4.log`。
+- 合并最新 main 后全量 `npm test`：2734 项，pass 2732、fail 0、skipped 2；日志 `analysis/test-runs/gameplay-20261106/block-j-after-main-full.log`。
 
 ## 缺口
 

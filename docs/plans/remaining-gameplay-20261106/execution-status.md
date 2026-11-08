@@ -6,7 +6,7 @@
 
 全部 276 个模块任务见 [任务索引](task-index.md)，默认状态均为“待领取”；72 个英雄技能任务见 [技能计划](13-special-skills.md)。下表登记已领取任务和七个共享任务。
 
-交付与整卡销项分开计数：当前 59 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 62 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；62/355 约 17.5% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。另有 1 个共享任务（CORE-TIME-TEMPLE）已用注册表全表证据闭合为“本版本不可达”，不计入上面的实现交付数，也不构成 APK 验收。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
+交付与整卡销项分开计数：当前 85 个模块任务、3 个共享任务已有玩法实现交付合入 main，共 88 项，其中包括部分交付和证据待补项。另行提交的配置审计、测试或未知业务拒绝，不当作新增玩法完成。完整分母为 276 个模块 + 7 个共享 + 72 个英雄技能 = 355 项；88/355 约 24.8% 仅表示已有实现交付的任务占比，不表示工作量或完整玩法完成率。另有 1 个共享任务（CORE-TIME-TEMPLE）已用注册表全表证据闭合为“本版本不可达”，不计入上面的实现交付数，也不构成 APK 验收。尚无任务达到“全部证据闭合、只差 APK 操作”的整卡状态。
 
 2026-11-07 第二轮：CORE-BATTLE-A 与 SOC-FRIEND 两个 checkpoint 已续接完成并合入 main，另完成 PLAY-FISHINGACT；三者均通过合并后的定向回归与一次主线全量，业务层为“服务端完成”，各自的证据缺口与 APK 验收边界见下表。
 
@@ -22,6 +22,19 @@
 | CORE-CABIN | 证据闭合（本版两命令已实现） | `task/A1-CORE-RESIDUAL-20261108` @ `7c08a8c` | 83201 解锁格、83202 重排英雄已由 cabin-service 实现，真实 TCP 与 SQLite 重开通过；客户端本版仅注册这两条 cabin 网络命令 | 未安排 | 房间任务、交互奖励和加速没有客户端网络入口；83201/83202 规则仍以现有证据为边界 |
 | SOC-FRIEND | 服务端完成（20012/20013 语义与友情点结算证据待补） | `task/SOC-FRIEND-20261107`，合入 main | 20001–20013 全部网关派发；服务专项 15/15 + 真实临时 TCP 13 个 type + SQLite 重开 + PB 编码失败与 `friend_gifts` ABORT 触发器整体回滚；合并后好友/网关回归 35/35 | 未安排 | 数字登录槽未取证（`loginPayload` 已就绪，待总控选定槽位）；`FlushTime.NowDay` 日界为推断（用 serverDayNumber）；`daily_present_rewards` 发放触发点、favors 增量与友情币换算、20012 过滤语义、20013 举报参数与重复规则未知；2200/2202 推送载荷未取证 |
 | SOC-MSG | 服务端完成（10508 登录槽与部分二进制载荷待补） | `task/SOC-MSG-20261107` @ a124472；合入 main b4880a9 | 10501–10511 全部有处理路径；新增 `message-service`、消息配置和 `MsgTable.ChannelType` 资产；恢复 1400–1403 推送类型；服务 + 真实临时 TCP 专项 13/13，合并后网关/登录/M5 回归通过 | 未安排 | 10508 payload 已就绪但登录模块数字槽位未取证；1400–1403 的 `sender_bin/extra_bin` 内容未反解；原服消息频控、历史分页与跨服聚合语义待补 |
+| SOC-GUILDBOSS | 服务端完成（公式、表值与推送证据待补） | `task/BLOCK-E2-20261108` | 91301–91312 进入 `guild-boss-service`；E2 专项 6/6，覆盖真实阵容战力伤害、实际奖励/领取、SQLite 重开与幂等、真实临时 TCP | 未安排 | Boss HP/技能伤害/奖励/价格/冷却表和原服阶段推进未取证；数值全为本地策略 |
+| SOC-GUILDJOINT | 服务端完成（多人并发与表值证据待补） | `task/BLOCK-E2-20261108` | 91601–91625 进入 `guild-joint-service`；地图、怪物/门、矿脉、任务、先锋、排行、结算与幂等领取纳入 E2 专项及真实临时 TCP 组 | 未安排 | 怪物/门 HP、周期和奖励为本地策略；跨成员分配、跨服争夺与原服战斗公式未取证 |
+| SOC-GUILDRUNESTONE | 服务端完成（组合表与错误码证据待补） | `task/BLOCK-E2-20261108` | 92701–92703 进入 `guild-rune-stone-service`；穿脱/合成消费真实符石道具，槽位与组合状态持久化 | 未安排 | 合成比例/槽位上限为本地策略；原服合法组合、目标 tid 和错误码未取证 |
+| SOC-GUILDGVG | 服务端完成（地图/匹配/结算证据待补） | `task/BLOCK-E2-20261108` | 97001–97018 进入 `guild-gvg-service`；矿点、怪物、区块、据点、PVP、任务、传送门和撤离写入公会/角色状态，奖励走资源事务 | 未安排 | 节点 HP、占领时限、赛季和奖励为本地策略；跨服匹配、对手公会和并发战斗未复现 |
+| SOC-GUILDVOTE | 服务端完成（请求形状与结算证据待补） | `task/BLOCK-E2-20261108` | 98702/99701 进入 `guild-vote-service`；发起、投票、结果与周期奖励持久化 | 未安排 | 候选来源、限额、持续时间和奖励为本地策略；ETF 参数次序与原服多成员结算未取证 |
+| SOC-SLGMAP | 服务端完成（大地图/推送证据待补） | `task/BLOCK-E2-20261108` | 99100–99102 进入 `guild-slg-map-service`；区块视野、进入与离开写入会话状态 | 未安排 | 视野上限与会话生命周期为本地策略；权威坐标、跨服可见性和推送未取证 |
+| SOC-GUILDNATION | 服务端完成（赛季/跨服/表值证据待补） | `task/BLOCK-E2-20261108` | 64/64 缺失命令进入 `guild-nation-service`，现有 99229 保持 `guild-nation-assist-service` 单一所有者；建造、兵种、科技、城防、据点、任务、集结、旗标、援助和奖励均入 SQLite 事务 | 未安排 | 时间、成本、HP、兵种和奖励为本地策略；原服国战地图、联盟状态、跨服集结与赛季结算未取证 |
+| SOC-GUILDBARGAIN | 服务端完成（排期/推送/限次证据待补） | `task/BLOCK-E2-20261108` | 101401–101404 进入 `guild-bargain-service`；砍价、购买和未砍价名单持久化，购买走真实资源事务 | 未安排 | 起价、步长、底价、人数和商品为本地策略；活动排期、实时价格推送与购买限次未取证 |
+| SOC-GUILDEXPEDITION | 服务端完成（跨服/战报/赛季证据待补） | `task/BLOCK-E2-20261108` | 101601–101615 进入 `guild-expedition-service`；宣战、鼓舞、战报、排名、竞猜、位置、点赞、战斗与城市列表均有真实状态 | 未安排 | 城市、轮次、赔率、消耗和名次为本地策略；跨服匹配、战报来源与最终结算未取证 |
+| SOC-CHANNELENTRY | 服务端完成（客户端联合验收待补） | `task/BLOCK-E2-20261108` | 102801 从通用空应答迁入 `channel-entry-service`，返回配置化开放/链接/时间窗并纳入真实临时 TCP | 未安排 | 入口配置为本地策略；与 SOC-MSG/SOC-CHAT 的客户端联合行为未 APK 验收 |
+| SOC-GUILDHUNT | 服务端完成（开猎/并发/推送证据待补） | `task/BLOCK-E2-20261108` | 103401–103403 进入 `guild-hunt-service`；参与、支援和服务器猎物状态持久化 | 未安排 | 怪物 HP、轮次、价格与奖励为本地策略；开猎时间、成员并发伤害和推送未取证 |
+| SOC-GUILDCRUSADE | 证据阻塞（显式拒绝，未伪造排名） | `task/BLOCK-E2-20261108` | 105805 已进入 `guild-crusade-service`；E2 专项断言返回业务错误码 5，不再落入通用未实现分支 | 未安排 | 请求只有 ETF，且 `pb_guild_crusade_rank_rsp` 定义缺失；排名来源和真实帧均未取得 |
+| SOC-GUILDAUCTION | 服务端完成（并发/结算时点证据待补） | `task/BLOCK-E2-20261108` | 107601–107603 进入 `guild-auction-service`；原子扣钻、前手退款、心愿、唯一结算与幂等领奖持久化 | 未安排 | 商品、时长、起价、加价和分红为本地策略；原服结算时点、多人并发竞拍和跨服聚合未取证 |
 | PLAY-FISHINGACT | 服务端完成（记录筛选与活动结束结算证据待补） | `task/PLAY-FISHINGACT-20261107`，合入 main | 110303/110304/110306/110307/110308/110309/110310 补齐，110301/110302/110305/110311 保留；新增 `fishing_act_catches` 真实收鱼记录驱动榜/记录；服务+TCP 14/14、网关 7/7（真实 seq 70–82）、合并后钓鱼/活动/网关 28/28；SQLite 重开与编码回滚通过 | 未安排 | 110308 筛选与上限未取证（当前按该活动全部渔获 id 倒序）；活动结束名次结算（HighScoreRank/ScoreRank）未实现；充值 FishBuy 139001/139002 直发鱼竿未接；天气/鱼竿加成与尺寸公式、错误文案映射未对齐 |
 | BATTLE-ELITEMISSION | 服务端完成（敌方阵容映射与难度证据待补） | `task/BATTLE-ELITEMISSION-20261107`，合入 main | 87001/87002/87003 保留；201/202/207 分流精英关卡（report.type=6）与 BOSS（114），战报来自真实 `simulateBattle`；真实临时 TCP 87001→201→207 两关 + 越级拒绝 err 5，临时 SQLite 重开后 mission_id/领取位/boss_bin 保持，触发器和结算编码失败整体回滚；合并后定向 55/55 | 未安排 | 敌方阵容需部署注入 `eliteEnemies`（FightTable def_team 全库为空，EliteMission 无 enemy 字段，缺省明确拒绝）；201 预扣与 207 扣体力时点、`Boss.open_server_day`/`need_open_days`、精英难度与 award 可重复性未取证 |
 | PLAY-HELPUPACT | 服务端完成（全服聚合与部分周期语义证据待补） | `task/PLAY-HELPUPACT-20261107`，合入 main | 116001 任务奖、116002 阶段奖、116003 发起助力、116004 真实累计次数；`HelpUpActTable` 资产落地，登录数据经模块 92 活动条目下发；专项 8/8（含真实 TCP）、合并后 help-up/活动/网关/m5 37/37；SQLite 重开与整笔回滚通过 | 未安排 | 每次 1 道具/1 次助力、信封抽奖、`cycle_type=1` 日环与周边界为推断；跨角色/跨服“全服”聚合无证据；活动窗口已过期需排期；APK 未验收 |
@@ -161,6 +174,7 @@
 - 统一服务按 `(role,module,version)` 持久化计数器、领取位和选择项，新增真实角色日志；所有成功路径在同一 SQLite 事务中完成扣费、发奖、状态和 PB 编码。网关只对 34 条声明的 ETF 请求执行 ETF 解码，其余 protobuf 命令直接传原始 bytes，修复了把 PB 数据误送 ETF 的早期问题。
 - 详细实现覆盖轮盘、三诫、金字塔、百倍奖励、棋盘、奖券成就、抽奖活动、神秘心愿、水果大奖选择、精灵选择、胶囊四命令、拼图、千抽、祈愿和翻牌累计奖等；棋盘 `is_special` 已纠正为展示标志，使用 `Param.max_turn` 结束回合。象棋翻转领奖在缺 `ActActive → ActTurn` 映射时明确拒绝。逐族规则及 21 条 fail closed 清单见 [BLOCK-F 实施记录](../../../agent/workflow/gameplay-completion/BLOCK-F/implementation.md)。
 - 服务专项 14/14：真实资源变化、领取位/重开、棋盘 15 格、抽奖活动日志、千抽 pending/领取、祈愿阈值、翻牌 pending/claim、PB 编码失败回滚和 SQLite ABORT 回滚。临时端口真实握手/TCP 覆盖 104501→104502、109101→109102 成功及 105502 `err 5` 拒绝。分支全量 `npm test`：2609 项、pass 2607、fail 0、skip 2。
+- 交付提交 `aa3f35b` 已 rebase 到当时最新 main `985720a` 并以 `--no-ff` 合入 `0cefbbd`；收尾前含后续 A2/E2 合并的 main `d99dae4` 上 F 相关 59/59、主线全量 2706（pass 2704 / fail 0 / skip 2），日志为 `analysis/test-runs/gameplay-20261106/block-f-final-full-r2.log`。
 - 未做 APK/真实客户端验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB、未连接原游戏服务器。`102401`、`103502/103503` 等虽具有限制路径，但生产进度来源未接入时仍会明确拒绝，不能按“服务端完成”销项。
 
 ## 集成与验收记录（2026-11-08 第八批：块 F 首批）
@@ -212,6 +226,13 @@
 - 明确拒绝均为 GameError(5, 缺口说明)，无空包/固定值销项。逐卡记录见 agent/workflow/gameplay-completion/<CARD>/implementation.md，块记录见 agent/workflow/gameplay-completion/BLOCK-G2/implementation.md。
 - 测试：专项 17/17；分支内全量 2560 项 pass 2558 / fail 0 / skipped 2；合入 main（24f90e9）后在干净 worktree 复核 2632 项 pass 2630 / fail 0 / skipped 2；补跨块表格式兼容（88219ca）后，main 最终全量 2674 项 pass 2672 / fail 0 / skipped 2。未做 APK 实测，未启停实时服务、未操作设备。
 
+### G2 残余项补完（2026-11-08）
+
+- 分支 `task/BLOCK-G2-RESIDUAL-20261108`，worktree `.worktree/gameplay-20261108/g2-residual`，基于 `main@649a903`。首轮 21 条明确拒绝中补齐 16 条：TOWERACT 104303；SPIRITCOURTYARD 105005；MONOPOLYACT 107802/107804；DIAMONDVEINACT 109005；SOURCEPOINT 110101/110102/110103；HOMELAND 110904；BAKINGACT 111002/111003/111004/111006/111011/111012/111013。
+- SOURCEPOINT 已新增 `source_point:1` 实例/领取位状态和英雄 `source_point_list` 迁移；BAKINGACT 补齐交换、合成、订单、事件和限时刷新，111001/111005 同步扩展棋盘/订单边界；MONOPOLYACT 登录回包补 `act_role_data`、`guild_data`、`guild_count_statics_send`，`task_type=0` 用本地累计 score 对 `target_count`，custom_login 统计读 `guild_count_stats[1006]`。
+- 仍明确拒绝 5 条：SPIRITCOURTYARD 105008/105009/105015（单角色公会社交数据）、TRIPLEMATCH 106005（棋盘通关自报未取证）、MONOPOLYACT 107806（补给由其他角色创建）。
+- 已合并当前 `main@05ec76c`（合并提交 `a5966e4`）。最终验证：专项 35/35；全量 2724 项 pass 2722 / fail 0 / skipped 2（日志 `analysis/test-runs/gameplay-20261106/g2-residual-post-merge-20261108.log`）。未做 APK 实测，未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。
+
 ## 块 D 交付记录（2026-11-08）
 
 分支 `task/BLOCK-D-20261108`，worktree `.worktree/gameplay-20261108/block-d-20261108`，基于 `main@bd650ba`。块内 22 卡 / 58 条命令中，9 卡（ITEM-SHOP、ITEM-ITEM、ITEM-MISSION、ITEM-GUIDE、ITEM-EVERYTASK、ITEM-COMMONTASK、ITEM-RANKACHIEVE、ITEM-FIRSTWEEKGOAL、ITEM-GROWTHROAD）此前已合入 main，本轮处理剩余 13 卡 / 27 条命令。
@@ -227,10 +248,16 @@
 - 分支：`feat/block-j-role-support`；worktree `.worktree/block-j-20261108`。初始 J 基线为 `fdffe0a`，本轮根据离线客户端 Lua 字节码和真实导表补齐原有证据缺口。
 - 客户端证据：从 `64_lua_core.bundle` / `64_lua_general.bundle` / `64_lua_project.bundle` 提取 RoleCmd、RoleFigureMgr、SkinCmd、SkinDrawMgr、SkinMgr、RedDotCmd、RedDotMgr、ChannelPushMgr、PlayerDataMgr、FunctionCachePlayerHandle、StoryCmd、Seq、Session、NetMgr、RoleTable、SkinTable、PlayerDataTable、ActMgr、DreamSummerActMainForm。确认 `39001`、`98201`、`76004` 是无回调发送；模块 4 为 `all_saved_red`，模块 88 为 `[storyTid, story_data]`，模块 173 为 `pb_channel_push_param`；76004 使用 proper ETF，真实皮肤 UI 的 76005 却是空参数且没有先发 76004；`ActMgr:RequestActListData(actIdList)` 把 proper ETF 活动 ID 列表交给 53006，`ActLogin.RevActFrameState` 消费 `act_stage_list`。
 - 表与实现：恢复并接入 RoleTable、SkinTable、PlayerDataTable；改名费用/长度、每日视频奖励、FigureRank 门槛/奖励、姓名词缀、皮肤兑换/强化/图鉴、PlayerData Type/Block/Func 均按客户端表驱动。修复稳定外观 BitBlock 已有位图但 `ownedFigure()` 查不到、称号位图偏移错误、登录模块 4/88/173 不回填、53001/53002 推进未请求活动、53006 返回全部活动且只查 ActFrameTable，以及 76009 只写 SQLite、不同步模块 65 导致客户端已拥有皮肤无法强化或等级丢失等缺陷；53006 现在只返回请求中的已知活动，并以 Activity 表回退活动窗口。
-- 验证：`test/block-j-role-support.test.mjs` 13/13；`test/block-j-role-gateway.test.mjs` 1/1，使用临时 loopback TCP 和临时 SQLite，覆盖登录模块 4/88/173、无回包命令后的 seq 连续性、53001/53002/53006 按请求过滤、76004/76005 显式 ETF、空 76005 拒绝、76009 模块 65 等级持久化、161 玩家数据块与关闭服务后 SQLite 重开登录。最终分支全量 `npm test`：2710 项，pass 2708、fail 0、skipped 2，日志 `analysis/test-runs/gameplay-20261106/block-j-final-full-4.log`。
+- 验证：`test/block-j-role-support.test.mjs` 13/13；`test/block-j-role-gateway.test.mjs` 1/1，使用临时 loopback TCP 和临时 SQLite，覆盖登录模块 4/88/173、无回包命令后的 seq 连续性、53001/53002/53006 按请求过滤、76004/76005 显式 ETF、空 76005 拒绝、76009 模块 65 等级持久化、161 玩家数据块与关闭服务后 SQLite 重开登录。合并最新 main 后全量 `npm test`：2734 项，pass 2732、fail 0、skipped 2，日志 `analysis/test-runs/gameplay-20261106/block-j-after-main-full.log`。
 - 明确缺口：真实客户端皮肤 UI 无法构成可完成的兑换链，服务端保留显式 `76004 → 76005` 能力，同时空 76005 返回 err 1 而不猜测目标；111/112 的 Veteran 新旧账号资格门槛没有客户端规则，`VeteranConst` 只提供跳过后的初始状态，当前显式本地策略仅作可配置兜底；各活动族的完整阶段配置和推进规则尚未全部恢复。另有开发登录回包字段和 `gm_cmd` ETF 请求契约待补。
 - 验收边界：以上是客户端静态证据、服务专项、真实 loopback TCP 与 SQLite 重开证据；未做 APK 实机验收。本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。逐卡记录见 `agent/workflow/gameplay-completion/ROLE-*/implementation.md`。
 
 ## 2026-11-08 G1 探索与家园前半（#151-#162）
 
 分支 task/G1-EXPLORATION-20261108（worktree .worktree/gameplay-20261108/g1-exploration）。98 条命令全部注册；真实状态迁移已覆盖 PLAY-EXPERIENCEACT（2）、PLAY-RADISHFARM（6）、PLAY-HOMEPUZZLEACT（9）、PLAY-MINIGAME（4）、PLAY-GRANDTOURER 每日令牌（1），共 22 条。其余 76 条以 err=5 显式 fail closed，不计作完成。11 张客户端活动表由 tools/extract-exploration-tables.mjs 恢复。专项 7/7 与 gateway 7/7 通过；无 APK 验收。详见 agent/workflow/gameplay-completion/G1-EXPLORATION/implementation.md。
+
+## 块 E2 交付记录（2026-11-08）
+
+- 分支 `task/BLOCK-E2-20261108` 完成 #107–#119 共 13 卡、154 条原缺失命令。153 条进入真实业务服务，`105805` 因响应 schema 缺失明确返回业务错误码 5；既有 `99229` 继续由 `guild-nation-assist-service` 单一持有。
+- E2 业务提交 `ff813e8`、A2 建表修复 `7ada31d` 和文档提交 `cad6a46` 已以 `--no-ff` 合入 main `85c39dd`。A2 修复只补齐 `arena-contest`、`hunter-arena`、`overall-match` 与 `play-match` 的建表 SQL 右括号，避免登录模块初始化时以 `incomplete input` 中断。
+- 合并前定向 `22/22`，合并后主线全量 2706 项、pass 2704、fail 0、skipped 2，日志 `analysis/test-runs/gameplay-20261106/main-after-e2-social-coop-full.log`。全部 13 卡仍为服务端完成/证据缺口，未做 APK 或多人跨服验收；未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。

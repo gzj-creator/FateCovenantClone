@@ -24,7 +24,7 @@
 
 - `test/block-j-role-support.test.mjs` 覆盖改名、随机名、等级奖、FigureRank、视频奖励、姓名占用、稳定 BitBlock 与 Veteran 显式策略。
 - 专项 13/13 通过；临时 loopback TCP 覆盖登录和 161，不把 ROLE-ROLE 的其余命令宣称为 APK 实测。
-- 最终分支全量 `npm test`：2710 项，pass 2708、fail 0、skipped 2；日志 `analysis/test-runs/gameplay-20261106/block-j-final-full-4.log`。
+- 合并最新 main 后全量 `npm test`：2734 项，pass 2732、fail 0、skipped 2；日志 `analysis/test-runs/gameplay-20261106/block-j-after-main-full.log`。
 
 ## 缺口
 
