@@ -51,7 +51,7 @@
 | ITEM-GROWTHROAD | 服务端完成（1111–1113 任务进度证据阻塞） | `task/ITEM-GROWTHROAD-20261106` @ 8003e39 | 专项与 gateway 回归 16/16 + 真实 TCP 69001/69002 + 模块 53696 登录 + SQLite 重开 + 编码回滚；合并后全量 2215/2215 | 未安排 | `progress_fun=203/82`（1111–1113）无权威事件来源；ETF 单 tid 形状来自客户端反汇编、未取得实包；`award_new` 选择与过期 `rev_overdue/overdue_award` 语义待原服对照 |
 | ITEM-FIRSTWEEKGOAL | 服务端完成（部分进度事件证据阻塞） | `task/ITEM-FIRSTWEEKGOAL-20261106` @ 6155312 | 6 项 service + 真实临时 TCP 67004/67005 + 登录模块 59015 + SQLite 重开 + 编码/SQLite 回滚；网关 14/14；合并后全量 2197/2197 | 未安排 | TaskType.progress_fun=1/3 尚无统一生产事件来源；当前统计源任务可领取，其余明确 code 5，不按固定进度放行 |
 
-| BLOCK-E1（#87、#91–#106） | 服务端完成（82 条真实路径 + 46 条 fail closed；#88–#90 为此前批次） | `task/BLOCK-E1-20261108` | 171、21001–21031、85501–85505 公会，46001–84701 社交社区，83101–91209 公会活动全部网关派发；服务专项 26 项 + 真实临时 TCP 1 项；分支全量 2571（pass 2569 / fail 0 / skipped 2）；SQLite 重开与 PB 编码失败回滚通过；未改 game-store | 未安排 | Guild*Table 数值行、171 block 映射、21017/83105 回包、46002/77601/79201 ETF 元素形状未取证；[交付记录](../../../agent/workflow/gameplay-completion/BLOCK-E1/implementation.md) |
+| BLOCK-E1（#87、#91–#106） | 服务端完成（82 条真实路径 + 46 条 fail closed；#88–#90 为此前批次） | `task/BLOCK-E1-20261108` | 171、21001–21031、85501–85505 公会，46001–84701 社交社区，83101–91209 公会活动全部网关派发；服务专项 26 项 + 真实临时 TCP 1 项；合并 main `70de346` 后全量 2643（pass 2641 / fail 0 / skipped 2）；SQLite 重开与 PB 编码失败回滚通过；未改 game-store | 未安排 | Guild*Table 数值行、171 block 映射、21017/83105 回包、46002/77601/79201 ETF 元素形状未取证；[交付记录](../../../agent/workflow/gameplay-completion/BLOCK-E1/implementation.md) |
 ## 集成与验收记录（2026-11-07 第一轮）
 
 - 集成分支：`gameplay/integration-20261107b`（基于含 207 体力、邮件推送和活动登录期限修复的 main `7b5af58`），已以 `--no-ff` 合入 main `7750864`。
