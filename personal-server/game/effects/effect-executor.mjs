@@ -634,6 +634,12 @@ export class EffectExecutor {
     const requestedStacks = Math.max(1, Math.floor(finiteNumber(effect.stacks, 1)));
     const stackLimit = Math.max(1, Math.floor(finiteNumber(effect.maxStacks, 0)) || requestedStacks);
     const managesExisting = effect.unique || effect.maxStacks > 0;
+    // The client keeps one layer counter per FightTable.Buff tid and applies the
+    // reported overlay as a delta, so the report needs to know how many layers
+    // this application actually added. A refused refresh adds nothing.
+    const previousStacks = managesExisting && existingIndex >= 0
+      ? modifierStacks(collection[existingIndex])
+      : 0;
     if (managesExisting && existingIndex >= 0) {
       const existing = collection[existingIndex];
       if (effect.refresh !== false) {
@@ -648,6 +654,10 @@ export class EffectExecutor {
       collection.push({ ...status, stacks: requestedStacks });
     }
 
+    const totalStacks = managesExisting && existingIndex >= 0
+      ? collection[existingIndex].stacks
+      : Math.min(stackLimit, requestedStacks);
+
     return {
       type: 'status',
       actor: actor.id,
@@ -655,9 +665,9 @@ export class EffectExecutor {
       statusType: effect.statusType,
       duration: effect.duration,
       unique: effect.unique,
-      stacks: managesExisting && existingIndex >= 0
-        ? collection[existingIndex].stacks
-        : Math.min(stackLimit, requestedStacks),
+      stacks: totalStacks,
+      previousStacks,
+      stacksDelta: Math.max(0, totalStacks - previousStacks),
       appliedRound: currentRound(this.state),
     };
   }
@@ -702,6 +712,12 @@ export class EffectExecutor {
       actor: actor.id,
       target: target.id,
       removed: removed.map(s => s.type || s.id),
+      // Layer counts are what the client subtracts from its own buff stack, so a
+      // whole-entry dispel reports the real number of layers it removed.
+      removedDetail: removed.map(status => ({
+        statusType: status.type || status.id,
+        stacks: Math.max(1, Math.floor(Number(status.stacks) || 1)),
+      })),
       count: removed.length,
       removeType,
     };

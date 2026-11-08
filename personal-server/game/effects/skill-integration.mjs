@@ -588,6 +588,10 @@ export function processBuffTicks(unit, state, events) {
           statusType: status.type,
           statusId: status.id,
           durationType,
+          // The client tracks layers per buff tid and removes exactly the
+          // reported overlay, so an expiry has to carry the layer count that
+          // disappeared from the server state.
+          stacks: Math.max(1, Math.floor(Number(status.stacks) || 1)),
         });
       }
     }

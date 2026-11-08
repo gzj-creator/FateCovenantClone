@@ -10,6 +10,7 @@ import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs'
 import { missionPosition } from './mission-progress.mjs';
 import { energyMaxForRole, refreshEnergyResources } from './energy.mjs';
 import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
+import { FAT_ACTION, PROMPT } from './effects/report-codes.mjs';
 
 // Ordinary journey (mission) fights.
 // Evidence: FightCmd.fight_start sends pb_fight_request.req = Codec.EncodePB('mission_fight_req');
@@ -27,17 +28,21 @@ const FIGHTER_ROLE_NPC = 2;
 const FIGHTER_ROLE_CAPTAIN = 3;
 const ACTION_ABILITY_COMMON = 1;
 const ACTION_ABILITY_ACTIVE = 2;
-const PROMPT_NORMAL_HARM = 101;
-const ACTION_ACTION_BEFORE = 101;
-const ACTION_ACTION_AFTER = 102;
-const ACTION_BATTLE_OVER = 104;
-const ACTION_FIGHTER_DIE = 105;
-const ACTION_FIGHT_HARM = 106;
-const ACTION_ROUND_READY = 107;
-const ACTION_SHIELD = 109;
-const ACTION_ROUND_OVER = 112;
-const ACTION_FIGHTER_RELIVE = 114;
-const ACTION_FAT_ATTR_SYNC = 116;
+const PROMPT_NORMAL_HARM = PROMPT.HARM_NORMAL;
+const PROMPT_HEAL = PROMPT.HEAL;
+// pb_generic.proto ids come from the shipped client ProtobufKey table; see
+// game/effects/report-codes.mjs for the full evidence record.
+const ACTION_ACTION_BEFORE = FAT_ACTION.ACTION_BEFORE;
+const ACTION_ACTION_AFTER = FAT_ACTION.ACTION_AFTER;
+const ACTION_BUFF_CHANGE = FAT_ACTION.BUFF_CHANGE;
+const ACTION_BATTLE_OVER = FAT_ACTION.BATTLE_OVER;
+const ACTION_FIGHTER_DIE = FAT_ACTION.FIGHTER_DIE;
+const ACTION_FIGHT_HARM = FAT_ACTION.HARM;
+const ACTION_ROUND_READY = FAT_ACTION.ROUND_READY;
+const ACTION_SHIELD = FAT_ACTION.SHIELD;
+const ACTION_ROUND_OVER = FAT_ACTION.ROUND_OVER;
+const ACTION_FIGHTER_RELIVE = FAT_ACTION.FIGHTER_RELIVE;
+const ACTION_FAT_ATTR_SYNC = FAT_ACTION.ATTR_SYNC;
 function action(codec, proto, schema, value) {
   return codec.pack('pb_generic', { proto, bin: codec.pack(schema, value) });
 }
@@ -51,7 +56,9 @@ function unitConfig(tables, role, roleType) {
   return { hero, npc: Boolean(npc), abilities: ability?.ability ?? [] };
 }
 
-function actionList(codec, simulation) {
+// Exported for the report-layer tests: the event -> pb_generic projection is
+// the only place action codes and harm prompt ids reach the client.
+export function actionList(codec, simulation) {
   const events = [];
   for (const event of simulation.events) {
     if (event.kind === 'round-start') {
@@ -80,11 +87,43 @@ function actionList(codec, simulation) {
           shield: harm.shield
         }))
       }));
+    } else if (event.kind === 'heal' && Number(event.actualHeal ?? event.value) > 0) {
+      // TID_PROMPT_HEAL (107): FightTable.Prompt[107] is a positive-number
+      // prompt, which is exactly the client's IFightHarm.IsRecover test.
+      events.push(action(codec, ACTION_FIGHT_HARM, 'pb_fat_harm', {
+        id: event.id,
+        harm_list: [{
+          aim_id: event.aimId,
+          src_id: event.srcId,
+          type: PROMPT_HEAL,
+          is_ab_aim: true,
+          value: event.actualHeal ?? event.value,
+          old_hp: event.oldHp,
+          hp: event.hp ?? event.newHp,
+          old_shield: event.oldShield ?? 0,
+          shield: event.shield ?? 0
+        }]
+      }));
     } else if (event.kind === 'shield') {
       events.push(action(codec, ACTION_SHIELD, 'pb_fat_shield', {
         id: event.id,
         aim_id: event.aimId,
         shield: event.shield
+      }));
+    } else if (event.kind === 'buff-change') {
+      // pb_fat_buff_change (103). sign is the add/remove flag: false -> AddBuff,
+      // true -> RemoveBuff(change_reason), per BuffChangeStep._OnStart.
+      events.push(action(codec, ACTION_BUFF_CHANGE, 'pb_fat_buff_change', {
+        id: event.id,
+        buff_list: event.buffs.map(buff => ({
+          aim_id: buff.aimId,
+          tid: buff.tid,
+          ab_tid: buff.abilityId ?? 0,
+          overlay: buff.overlay ?? 0,
+          sign: Boolean(buff.sign),
+          caster_id: buff.casterId ?? 0,
+          change_reason: buff.changeReason ?? 0
+        }))
       }));
     } else if (event.kind === 'death') {
       events.push(action(codec, ACTION_FIGHTER_DIE, 'pb_fat_fighter_die', {
