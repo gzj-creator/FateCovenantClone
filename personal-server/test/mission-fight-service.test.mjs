@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createMissionFightService, lineupReferenceStats } from '../game/mission-fight-service.mjs';
+import { MISSION_ENERGY_SLOT } from '../game/energy.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 
 const codec = createGameCodec();
@@ -451,6 +452,41 @@ test('40210 uses the documented local chapter-boss fallback and records the comp
   assert.equal(missionModule(env.store).mission_id, '40209');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '40210');
+});
+
+test('mission box claim ignores a time-refreshed energy slot in module 8', async t => {
+  const env = setup(t);
+  setMission(env.store, 30205);
+  env.store.transaction(model => {
+    const stamina = model.resources.get('100012900');
+    stamina.num = '0';
+    stamina.produce_time = 1;
+  });
+
+  const persisted = new Map(env.store.read().state.modules.value).get(8);
+  const refreshed = new Map(env.store.state().modules.value).get(8);
+  assert.notEqual(
+    rawBinary(refreshed.value[MISSION_ENERGY_SLOT]).toString('base64'),
+    rawBinary(persisted.value[MISSION_ENERGY_SLOT]).toString('base64'),
+    'the materialized login state must contain a different energy slot for this regression'
+  );
+
+  const result = await env.service.execute(506, await encodeEtf([1]));
+  const response = codec.unpack('pb_mission_rsp', result.data);
+  assert.ok(response.res_change.changes.some(change => change.tid === '101500' && change.diff_num === '30'));
+  assert.deepEqual([...(await decodeEtf(Buffer.from(response.mission.box_award, 'base64'))).value], [0x40]);
+});
+
+test('mission box claim still rejects a concurrent mission payload change', async t => {
+  const env = setup(t);
+  setMission(env.store, 30205);
+  const prepared = await env.service.prepareBoxClaim([1]);
+  setMission(env.store, 30204);
+
+  assert.throws(
+    () => env.store.transaction((model, db) => env.service.applyBoxClaim(model, db, prepared)),
+    error => error.code === 1 && /Mission data changed/.test(error.message)
+  );
 });
 
 test('mission chapter box grants configured rewards once and persists its BitBlock', async t => {

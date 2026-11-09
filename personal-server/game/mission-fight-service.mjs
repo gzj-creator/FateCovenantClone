@@ -729,7 +729,8 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     const modules = new Map(state.modules.value);
     const module = modules.get(MISSION_MODULE);
     if (!module || !Array.isArray(module.value)) throw new GameError(5, 'Mission login module is missing');
-    const current = codec.unpack('pb_mission', rawBinary(module.value[0]));
+    const missionBytes = rawBinary(module.value[0]);
+    const current = codec.unpack('pb_mission', missionBytes);
     const currentSection = missionTables.sections.get(Number(current.mission_id));
     if (!currentSection) throw new GameError(5, 'Current mission configuration is missing');
     const currentChapter = Number(currentSection.belong_chapter);
@@ -753,15 +754,22 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     for (const box of boxes) nextBits = setBit(nextBits, Number(box.tid));
     const nextMission = { ...current, box_award: (await encodeBitBlock(nextBits)).toString('base64') };
     const moduleBytes = serializedBinary(codec.pack('pb_mission', nextMission));
-    const expectedModule = JSON.stringify(module);
-    return { boxes, chapterPasses, bits, nextMission, moduleBytes, expectedModule };
+    // Module 8 also owns time-refreshed energy in slot 2. Compare only the
+    // pb_mission slot consumed by this operation so unrelated dynamic slots do
+    // not turn an otherwise valid claim into a retry error.
+    const expectedMissionBytes = missionBytes.toString('base64');
+    return { boxes, chapterPasses, bits, nextMission, moduleBytes, expectedMissionBytes };
   }
 
   function applyBoxClaim(model, db, prepared) {
-    const { boxes, chapterPasses, bits, nextMission, moduleBytes, expectedModule } = prepared;
+    const { boxes, chapterPasses, bits, nextMission, moduleBytes, expectedMissionBytes } = prepared;
     const fresh = new Map(model.state.modules.value);
-    if (JSON.stringify(fresh.get(MISSION_MODULE)) !== expectedModule) throw new GameError(1, 'Mission data changed; retry box claim');
-    const module = fresh.get(MISSION_MODULE);
+    const freshModule = fresh.get(MISSION_MODULE);
+    const freshMissionBytes = Array.isArray(freshModule?.value) && freshModule.value.length
+      ? rawBinary(freshModule.value[0]).toString('base64')
+      : null;
+    if (freshMissionBytes !== expectedMissionBytes) throw new GameError(1, 'Mission data changed; retry box claim');
+    const module = freshModule;
     const newlyGranted = [];
     for (const box of boxes) {
       const id = Number(box.tid);
