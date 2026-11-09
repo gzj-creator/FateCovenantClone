@@ -15,7 +15,11 @@ export function createChannelEntryService({ store, codec, coopTables, now = Date
   function execute(type, bytes) {
     if (Number(type) !== CHANNEL_ENTRY_COMMAND) throw new GameError(1, 'Unknown channel entry command');
     return Promise.resolve(decodeCoopRequest(codec, null, Number(type), bytes)).then(input => {
-      const args = etfArgs(input);
+      const decodedArgs = etfArgs(input);
+      // ChannelEntryMgr.PullEntryData passes nil when it wants the default
+      // channel. Atom nil is a value, but it represents the absence of a
+      // channel id in this command's request contract.
+      const args = decodedArgs.length === 1 && decodedArgs[0] === 'nil' ? [] : decodedArgs;
       if (args.length > 1) throw new GameError(1, 'Channel entry takes at most one parameter');
       const entries = coopTables.channel.entries;
       let entry = entries[0];
