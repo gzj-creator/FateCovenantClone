@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf, rawBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readGroupBuyActTables } from '../config/group-buy-act-tables.mjs';
@@ -53,8 +53,7 @@ function setup(t, {
   const seed = seedState();
   let store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
   let currentSeconds = nowSeconds;
-  const wallet = () => createWalletService({ store, codec, tables, now: () => currentSeconds });
-  const make = () => {
+  const makeService = () => {
     const calendar = {
       serverOpenedAt: SERVER_OPENED_AT,
       mode,
@@ -65,7 +64,16 @@ function setup(t, {
       now: () => currentSeconds * 1000
     });
   };
-  let api = { wallet: wallet(), service: make() };
+  const reset = () => {
+    const service = makeService();
+    return {
+      service,
+      wallet: createWalletService({
+        store, codec, tables, groupBuyActivity: service, now: () => currentSeconds
+      })
+    };
+  };
+  let api = reset();
   const logs = [];
   t.after(() => {
     try { store.close(); } catch {}
@@ -78,7 +86,7 @@ function setup(t, {
     get logs() { return logs; },
     setTime(value) {
       currentSeconds = value;
-      api = { wallet: wallet(), service: make() };
+      api = reset();
     },
     buy(productId, seq = 1, buyNum = 1) {
       return api.wallet.purchaseGift({
@@ -116,7 +124,7 @@ function setup(t, {
     reopen() {
       store.close();
       store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
-      api = { wallet: wallet(), service: make() };
+      api = reset();
     }
   };
 }
@@ -229,6 +237,17 @@ test('group award rejects another version and missing activity state', t => {
   assert.throws(() => idle.service.serverData(), error => error.code === 309);
 });
 
+test('closed group-buy activity hides and rejects its type-107 gifts', t => {
+  const e = setup(t, { mode: 'schedule', running: () => false });
+  assert.equal(e.service.isGiftRunning(GIFTS[0]), false);
+  assert.equal(e.wallet.snapshot().products.some(product => product.id === 1070605), false);
+  assert.throws(
+    () => e.wallet.purchaseGift({ product_id: GIFTS[0], request_id: 'closed-group-buy', buy_num: 1 }),
+    error => error.code === 309
+  );
+  assert.equal(e.store.inspect(db => db.prepare('SELECT count(*) n FROM recharge_orders').get().n), 0);
+});
+
 test('an unsupported configured reward rolls back the claim and pending rows', t => {
   const brokenAwards = new Map(groupBuyTables.awards);
   const brokenTid = awardTid(GIFTS[0], 0);
@@ -257,6 +276,9 @@ test('real gateway routes 100601/100602 and appends the group-buy purchase handl
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
   });
   game.store.transaction(model => grantResources(model, [[401500, 12000]], tables));
+  game.wallet.credit({
+    account_id: 'local-1', amount_cents: 12800, request_id: 'group-buy-cash-credit'
+  });
   let socket;
   t.after(async () => {
     socket?.destroy();
@@ -310,12 +332,40 @@ test('real gateway routes 100601/100602 and appends the group-buy purchase handl
   const limit = codec.unpack('pb_recharge_limit_info', Buffer.from(groupBuyExtra.data, 'base64'));
   assert.deepEqual(limit.buy_num_list.map(row => [row.recharge_id, row.buy_num]), [[GIFTS[0], 1]]);
 
+  // The same type-107 family also contains cash-only skin gifts. RechargeMgr
+  // receives one server response and one live 1900 notification; both must
+  // carry the activity id and flag 93 so the shop updates without relogin.
+  const cashSeq = 6;
+  send(codec.pack('pb_c2s', {
+    type: 16004,
+    seq: cashSeq,
+    data: await encodeEtf([1070605, ACT_ID, 0])
+  }));
+  const cashFrames = [codec.unpack('pb_s2c', await next()), codec.unpack('pb_s2c', await next())];
+  const cashResponse = cashFrames.find(frame => frame.seq === cashSeq);
+  const cashPush = cashFrames.find(frame => Number(frame.type) === 1900);
+  assert.ok(cashResponse, 'missing 16004 cash-gift response');
+  assert.ok(cashPush, 'missing 1900 cash-gift notification');
+  for (const frame of [cashResponse, cashPush]) {
+    const success = codec.unpack('res_recharge_success', Buffer.from(frame.data, 'base64'));
+    const extra = success.extra_ret_list.find(entry => Number(entry.flag) === 93);
+    assert.ok(extra, '16004 and 1900 must both carry group-buy handle 93');
+    const info = codec.unpack('pb_recharge_limit_info', Buffer.from(extra.data, 'base64'));
+    assert.deepEqual(
+      info.buy_num_list.map(row => [row.recharge_id, row.buy_num]),
+      [[GIFTS[0], 1], [1070605, 1]]
+    );
+    const params = await decodeEtf(Buffer.from(success.extra_params, 'base64'));
+    assert.equal(Number(params.value[0]?.value ?? params.value[0]), ACT_ID);
+  }
+  assert.equal(game.store.inspect(db => db.prepare('SELECT count(*) n FROM recharge_orders').get().n), 2);
+
   const refreshed = codec.unpack('pb_group_buy_act_server', Buffer.from(
-    (await request(100601, 4, Buffer.alloc(0))).data, 'base64'
+    (await request(100601, 7, Buffer.alloc(0))).data, 'base64'
   ));
   assert.equal(refreshed.record_list.find(row => row.gift_tid === GIFTS[0]).buy_cnt, 1);
 
-  const claimed = await request(100602, 5, codec.pack('pb_group_buy_act_group_award_req', {
+  const claimed = await request(100602, 8, codec.pack('pb_group_buy_act_group_award_req', {
     act_id: ACT_ID, award_tid: awardTid(GIFTS[0], 0)
   }));
   assert.equal(claimed.err, undefined);

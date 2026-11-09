@@ -488,6 +488,11 @@ test('matching-game free and resource gifts preserve their requested activity id
 
 test('scheduled mode rejects premium gifts when the activity is not open', async t => {
   const env = await gatewayFixture(t, 'schedule');
+  assert.equal(
+    env.game.wallet.snapshot().products.some(product => product.id === 1270975),
+    false,
+    'closed PremiumAct cash gifts must not remain in the native product list'
+  );
   const response = await env.request(
     16005,
     20,

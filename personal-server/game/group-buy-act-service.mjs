@@ -384,16 +384,53 @@ export function createGroupBuyActService({
     });
   }
 
-  function purchaseExtra(productId) {
+  function giftConfig(productId, activityId = null) {
     const rechargeId = Number(productId);
     if (!Number.isSafeInteger(rechargeId) || rechargeId <= 0) return null;
+    const product = tables.Recharge?.get(rechargeId);
+    const config = groupBuyTables.gifts.get(rechargeId);
+    if (!product || Number(product.type) !== GROUP_BUY_RECHARGE_TYPE || !config) return null;
+
+    const act = selectActivity(loadActivity(), currentSeconds());
+    if (!act || !versionGiftIds(act).includes(rechargeId)) return null;
+    const requestedActivityId = activityId === undefined || activityId === null ? 0 : Number(activityId);
+    if (requestedActivityId > 0 && requestedActivityId !== act.actId) return null;
+    return { activityId: act.actId, version: act.version, config, product, act };
+  }
+
+  function isGiftRunning(productId) {
+    return Boolean(giftConfig(productId));
+  }
+
+  function assertGiftAvailable(productId, activityId = null) {
+    const gift = giftConfig(productId, activityId);
+    if (!gift) throw new GameError(309, 'Group-buy activity gift is not running');
+    return gift;
+  }
+
+  function giftPurchaseCount(productId, db = null, activityId = null) {
+    if (!db) {
+      const gift = giftConfig(productId, activityId);
+      if (!gift) return 0;
+      return store.inspect(database => giftPurchaseCount(productId, database, gift.activityId));
+    }
+    const gift = giftConfig(productId, activityId);
+    if (!gift) return 0;
+    const roleId = store.state().roleId;
+    return purchaseSnapshot(db, roleId, versionGiftIds(gift.act)).mine.get(Number(productId)) ?? 0;
+  }
+
+  function purchaseExtra(productId) {
     if (!Number.isSafeInteger(rechargeHandle) || rechargeHandle <= 0) {
       throw new GameError(5, 'Group-buy recharge handle is not configured');
     }
-    const act = selectActivity(loadActivity(), currentSeconds());
-    if (!act || !versionGiftIds(act).includes(rechargeId)) return null;
+    const gift = giftConfig(productId);
+    if (!gift) return null;
     const roleId = store.state().roleId;
-    const record = store.inspect(db => rechargeRecord(act, purchaseSnapshot(db, roleId, versionGiftIds(act)).mine));
+    const record = store.inspect(db => rechargeRecord(
+      gift.act,
+      purchaseSnapshot(db, roleId, versionGiftIds(gift.act)).mine
+    ));
     return { flag: rechargeHandle, data: codec.pack('pb_recharge_limit_info', record) };
   }
 
@@ -423,6 +460,10 @@ export function createGroupBuyActService({
     rechargeHandle,
     supports: type => type === SERVER_DATA_TYPE || type === GROUP_AWARD_TYPE,
     currentActivity: (at = currentSeconds()) => selectActivity(loadActivity(), at),
+    giftConfig,
+    isGiftRunning,
+    assertGiftAvailable,
+    giftPurchaseCount,
     synchronizeLogin,
     serverData,
     claim,

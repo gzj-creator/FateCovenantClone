@@ -163,6 +163,14 @@ export function createPremiumActService({
       .some(row => premiumTables.Version.has(Number(row.version)));
   }
 
+  function isGiftRunning(productId) {
+    const id = int(productId);
+    if (!isConfiguredGift(id)) return false;
+    const openVersions = new Set(openActivityIds().map(versionOf));
+    return (premiumTables.configsByGift?.get(id) ?? [])
+      .some(row => openVersions.has(Number(row.version)));
+  }
+
   function assertGiftAvailable(productId, activityId = null) {
     const gift = giftConfig(productId, activityId);
     if (!gift) throw new GameError(309, 'Premium activity gift is not running');
@@ -279,6 +287,7 @@ export function createPremiumActService({
   return {
     rechargeHandle,
     isConfiguredGift,
+    isGiftRunning,
     giftConfig,
     assertGiftAvailable,
     giftPurchaseCount,

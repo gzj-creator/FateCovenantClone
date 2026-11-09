@@ -462,6 +462,10 @@ export function createLocalGame({
   const premiumAct = createPremiumActService({
     store, codec, tables, premiumTables: readPremiumActTables(), calendar, now: clock, logger
   });
+  // Group-buy owns both gated group rewards and the cash skin SKUs in the
+  // same ActivityTable version. Create it before the wallet so product lists,
+  // closed-activity checks and recharge flags use the same live state.
+  const groupBuyAct=createGroupBuyActService({store,codec,tables,groupBuyTables:readGroupBuyActTables(),calendar,now:clock,logger});
   const shop = createShopService({
     store,
     codec,
@@ -645,7 +649,7 @@ export function createLocalGame({
   if(monthlyCardRepair.changed) logger({event:'monthly_card_claim_bits_repaired',cards:monthlyCardRepair.repaired});
   const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,premiumActivity:premiumAct,heroDrawActivity,wishTreasure,wishTree,weekHunt,
+    store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,premiumActivity:premiumAct,heroDrawActivity,groupBuyActivity:groupBuyAct,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,minigameActivity:minigameAct,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -696,7 +700,6 @@ export function createLocalGame({
   // mission block below and is guarded by supports().
   const missionExtra = createMissionExtraService({ store, codec, now: clock, logger });
   const accRecharge=createAccRechargeService({store,codec,tables,calendar,logger});
-  const groupBuyAct=createGroupBuyActService({store,codec,tables,groupBuyTables:readGroupBuyActTables(),calendar,now:clock,logger});
   const dragonLandAct=createDragonLandActService({store,codec,tables,dragonLandTables:readDragonLandTables(),calendar,now:clock,logger});
   const diamondBankAct=createDiamondBankActService({store,codec,tables,diamondBankTables:readDiamondBankActTables(),calendar,now:clock,logger});
   const freePrivilegeAct=createFreePrivilegeActService({store,codec,tables,freePrivilegeTables:readFreePrivilegeActTables(),calendar,monthlyCard,now:clock,logger});
