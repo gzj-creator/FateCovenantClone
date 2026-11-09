@@ -50,3 +50,27 @@ baking:<act_id>（minigame_act_state 主键中的 act_key）。
 ### 验收边界
 
 - 本轮未启停实时服务、未读写运行数据库、未操作模拟器或 APK。部署并重启新服务后，仍需由真实客户端重新登录并进入烘焙屋，确认模块 92 不再报错且烘焙数据正常显示。
+
+## 2026-11-09 “橘屋参数错误”继续定位
+
+### 原因
+
+- 重启并重新登录后，模块 92 的 `Activity 180015 Time Config Error` 与 `LoginFinish Error` 已消失，但客户端仍弹出“橘屋参数错误”。
+- 下一条失败请求为 `53001 req_activity_state_change`。客户端一次发送 25 个活动 ID：`84009,63033,63034,63035,84010,84011,84013,100010,135007,84016,84017,100012,84018,100013,100016,100018,100020,100021,100025,63036,63001,63004,63014,63015,63029`。
+- 这些 ID 都是 `ActivityTable` 中的合法活动实例，但对应活动族并未进入当前模块 92 的 `act_list`/`act_parallel_list`。旧实现只认模块 92 已下发 ID，因此返回 `role_support_command_rejected code=1, Unknown activity ids`；客户端将其显示成登录期根级参数错误，并中止后续活动初始化。
+
+### 修复
+
+- `act-frame-service.mjs` 对 `53001/53002` 区分“已配置但未下发”和真正未知的 ID：前者返回合法的空 `pb_act_state_change_back` / 阶段变化 ACK，不写 `role_activity_stages`；后者仍返回 code 1。
+- 这样既避免请求级 `CONFIG_ERROR`，又不会把客户端任意伪造的 ID 当成有效活动或伪造阶段状态。
+
+### 验证
+
+- `personal-server/test/block-j-role-support.test.mjs` 新增本次真实 25 个 ID 的完整回归，断言均存在于 `ActivityTable`、均不在模块 92 可见列表、服务返回 0 条变化且 SQLite 不新增阶段行；`999999999` 继续拒绝。
+- 角色支持专项 14/14 通过；角色网关、活动日历、玩法网关合并专项 19/19 通过。
+- 全量 `npm test`：2784 项，2782 通过、0 失败、2 跳过；日志 `analysis/test-runs/gameplay-20261108/act-frame-configured-ack-full.log`。
+
+### 部署验收
+
+- 待将本修复合入 `main` 并重启实时服务后，由客户端重新登录，核对日志中的 `53001` 为正常回包且界面不再出现“橘屋参数错误”。
+- `102801 req_channel_entry` 的参数路由修复已单独合入 `main`；当前实时 PID 早于该修复启动，因此本轮重启会一并加载。

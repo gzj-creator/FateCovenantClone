@@ -89,7 +89,12 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
     const changes = [];
     const requested = new Set(requestedIds);
     const known = new Set(activityRows(activity).map(row => Number(row.state.act_id)));
-    const unknown = requestedIds.filter(id => !known.has(id));
+    // The client also sends state-change hints for configured activity instances
+    // that are owned by families absent from module 92. Those hints need a valid
+    // empty acknowledgement; rejecting them surfaces as a request-level
+    // CONFIG_ERROR even though there is no state transition to perform.
+    const configured = id => Boolean(tables?.ActFrameAct?.get?.(id) ?? tables?.Activity?.get?.(id));
+    const unknown = requestedIds.filter(id => !known.has(id) && !configured(id));
     if (unknown.length) throw new GameError(1, `Unknown activity ids: ${unknown.join(',')}`);
     for (const row of activityRows(activity)) {
       const actId = Number(row.state.act_id);
