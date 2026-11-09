@@ -72,5 +72,7 @@ baking:<act_id>（minigame_act_state 主键中的 act_key）。
 
 ### 部署验收
 
-- 待将本修复合入 `main` 并重启实时服务后，由客户端重新登录，核对日志中的 `53001` 为正常回包且界面不再出现“橘屋参数错误”。
-- `102801 req_channel_entry` 的参数路由修复已单独合入 `main`；当前实时 PID 早于该修复启动，因此本轮重启会一并加载。
+- 修复提交 `8f03c6b` 已以 merge `81d5dfb` 合入 `main`。实时服务从旧 PID `18888` 重启为 `23204`，五个端口均由 `23204` 在 `127.0.0.1` 监听，管理页 HTTP 200，stderr 为空；运行日志 `personal-server/runtime.local-only.data/server-20261109-134548.local-only.out.log`。
+- 客户端在重启后自动重连并完成真实登录（role `100001`）。首次 `53001` 为 seq 12、142 字节，服务返回 36 字节并记录 `role_support_command_committed`；随后 17 字节 `53001` 也正常提交，均无 `errCode`。
+- 同一登录链的 `102801` 为 seq 24、7 字节 ETF `[1]`，服务按参数返回 `channelId=1, opens=2`，无 `errCode`。
+- 客户端当前画面见 `analysis/tmp/fc-activity-ack-20261109.png`：已正常进入礼包界面，无“橘屋参数错误”或参数错误弹窗。
