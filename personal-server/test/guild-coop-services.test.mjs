@@ -148,9 +148,12 @@ test('expedition, channel and guild nation commands expose real state', async t 
   assert.equal(codec.unpack('pb_guild_expedition_inspire_back', inspire.data).role_point, '1');
   await env.services.expedition.execute(101614, codec.pack('pb_guild_expedition_pos_fight_req', { build_tid: 1, pos: 1, team_id: 1 }));
 
-  const channel = await env.services.channel.execute(102801, empty);
+  const nilChannel = Buffer.from('836400036e696c', 'hex');
+  const channel = await env.services.channel.execute(102801, nilChannel);
   assert.equal(codec.unpack('pb_channel_entry', channel.data).channel_id, 1);
   assert.equal(codec.unpack('pb_channel_entry', channel.data).is_open, true);
+  const legacyChannel = await env.services.channel.execute(102801, empty);
+  assert.equal(codec.unpack('pb_channel_entry', legacyChannel.data).channel_id, 1);
   const channelTwo = await env.services.channel.execute(102801, await encodeEtf([2]));
   assert.equal(codec.unpack('pb_channel_entry', channelTwo.data).channel_id, 2);
   await assert.rejects(
@@ -213,7 +216,7 @@ test('temporary TCP gateway routes cooperation commands and decodes client respo
   assert.ok(BigInt(codec.unpack('pb_guild_boss_use_skill_back', Buffer.from(hit.data, 'base64')).damage) > 0n);
   const joint = await request(91612, 5, empty);
   assert.equal(codec.unpack('pb_guild_joint_enter_map_back', Buffer.from(joint.data, 'base64')).map.monster_list.length, 3);
-  const channel = await request(102801, 6, await encodeEtf([1]));
+  const channel = await request(102801, 6, Buffer.from('836400036e696c', 'hex'));
   assert.equal(codec.unpack('pb_channel_entry', Buffer.from(channel.data, 'base64')).channel_id, 1);
   assert.equal(codec.unpack('pb_channel_entry', Buffer.from(channel.data, 'base64')).is_open, true);
 });
