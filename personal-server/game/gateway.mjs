@@ -894,6 +894,12 @@ export function createLocalGame({
     // entry's module_login_data (ActFrameTable type 1102).
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
     if (hundredDrawLoginIds.length) logger({ event: 'hundred_draw_login_synced', actIds: hundredDrawLoginIds });
+    // PrayActData consumes pb_pray_act from its ActFrame row in module 183.
+    // Restore persisted selections, draws, progress and history before merging
+    // the module-183 container below.
+    const drawActivityLogin = drawActivity.synchronizeLogin(
+      activity, storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null, loginSeconds
+    );
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -943,6 +949,11 @@ export function createLocalGame({
         loginActivities.push(activity);
       }
     }
+    for (const activity of drawActivityLogin.loginActivities) {
+      if (!loginActivities.some(entry => Number(entry.actTid) === Number(activity.actTid))) {
+        loginActivities.push(activity);
+      }
+    }
     let actFrameNormalization = null;
     let premiumLogin = null;
     const premiumLoginPreview = premiumAct.openActivityIds(loginSeconds);
@@ -985,6 +996,7 @@ export function createLocalGame({
       heroDrawGenreId: heroDrawLogin?.drawData?.role_data?.draw_exchange_id ?? null,
       rechargeRebateResetId: rebateLogin?.actId ?? null,
       accRechargeActivityIds: accRechargeLogin.activityIds,
+      drawActivityLoginIds: drawActivityLogin.activityIds,
       groupBuyActActivityId: groupBuyActLogin.actId,
       groupBuyActGiftIds: groupBuyActLogin.giftIds,
       dragonLandActId: dragonLandLogin.actId,
