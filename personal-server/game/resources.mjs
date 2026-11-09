@@ -25,6 +25,7 @@ const ITEM_GROUP_HANDLERS = new Map([
   ['1900:ItemBase', 3],
   ['3300:ItemBase', 9],
   ['4200:ItemBase', 0],
+  ['4800:ItemBase', 0],
   ['4100:ItemSpiritCourtyard', 19],
   // TreasureHuntTable HighAward rows use museum collection items. The museum
   // service consumes the same family, so rewards must land in an inventory
@@ -68,6 +69,7 @@ function handlerFor(itemId, tables) {
   if (resType === 140000 && objClass === 'ItemBase') return { key: `${pair}:role-exp`, kind: 'roleExp' };
   if (resType === 1500) return { key: `${pair}:currency`, kind: 'currency' };
   if (resType === 1800 && objClass === 'ItemBase') return { key: `${pair}:artifact-currency`, kind: 'artifactCurrency' };
+  if (resType === 4600 && objClass === 'MatchHero') return { key: pair, kind: 'matchHero', group: 0 };
 
   const inventoryGroup = ITEM_GROUP_HANDLERS.get(pair);
   if (inventoryGroup !== undefined) return { key: `${pair}:item-container:${inventoryGroup}`, kind: 'item', group: inventoryGroup };
@@ -359,6 +361,19 @@ function grantHouseAssistant(modules, id, amount, codec) {
   return row.num;
 }
 
+function grantMatchHero(model, modules, id, amount, db, codec) {
+  const newNum = grantItem(model, modules, id, amount, { group: 0 });
+  let star = 0;
+  if (db) {
+    const hasStarTable = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trimatch_hero'").get();
+    if (hasStarTable) {
+      const row = db.prepare('SELECT star FROM trimatch_hero WHERE role_id=? AND hero_tid=?').get(model.state.roleId, id);
+      star = Number(row?.star ?? 0);
+    }
+  }
+  return { newNum, newBin: codec.pack('pb_battle_tri_match_hero_data', { tid: id, star }) };
+}
+
 export function grantResources(model, awards, tables, options = {}) {
   const totals = totalsOf(awards);
   const codec = codecFor(options);
@@ -395,6 +410,12 @@ export function grantResources(model, awards, tables, options = {}) {
           })
         };
         break;
+      case 'matchHero': {
+        const result = grantMatchHero(model, modules, id, amount, options.db, codec);
+        newNum = result.newNum;
+        changeExtra = { new_bin: result.newBin };
+        break;
+      }
       case 'hero': newNum = grantRawHero(model, id, amount, tables); break;
       case 'figure': newNum = grantFigure(model, id, amount, handler); break;
       case 'relic': newNum = grantRelic(modules, id, amount, codec); break;

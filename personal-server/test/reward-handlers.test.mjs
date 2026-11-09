@@ -55,6 +55,8 @@ test('every configured recharge award maps to exactly one explicit handler', () 
   assert.match(rewardHandlerFor(400108, tables).key, /chat-bubble/);
   assert.match(rewardHandlerFor(6008002, tables).key, /FantasyEquipChip:item-container/);
   assert.match(rewardHandlerFor(1012002, tables).key, /SpRelicItem:item-container/);
+  assert.equal(rewardHandlerFor(10134600, tables).key, '4600:MatchHero');
+  assert.equal(rewardHandlerFor(1014800, tables).key, '4800:ItemBase:item-container:0');
 });
 
 test('preflight rejects unknown rewards and grants every dedicated family through its explicit module 6 container', t => {
@@ -83,10 +85,10 @@ test('preflight rejects unknown rewards and grants every dedicated family throug
   const awards = [
     [3030501, 1], [300610, 1], [157112, 1], [400313, 1], [141717, 3], [141117, 3],
     [1202919, 1], [400220, 1], [1030922, 2], [10063200, 1], [100108, 1], [200508, 1],
-    [355708, 1], [400108, 1],
+    [355708, 1], [400108, 1], [10134600, 1], [1014800, 1],
     ...dedicatedContainerIds.map(id => [id, 1])
   ];
-  store.transaction(model => grantResources(model, awards, tables, { codec }));
+  const granted = store.transaction((model, db) => grantResources(model, awards, tables, { codec, db }));
   store.transaction(model => grantResources(model, [[141717, 1]], tables, { codec }));
   const modules = new Map(store.state().modules.value);
   const hero = codec.unpack('pb_hero_info', rawBinary(modules.get(10).value[0]));
@@ -105,6 +107,16 @@ test('preflight rejects unknown rewards and grants every dedicated family throug
   assert.equal(codec.unpack('pb_elves_bead_data', rawBinary(modules.get(539))).elves_beads.filter(row => Number(row.tid) === 1030922).length, 2);
   assert.equal(codec.unpack('pb_house_assistant_info', rawBinary(modules.get(148).value[0])).res.find(row => Number(row.tid) === 10063200).num, '1');
   for (const id of dedicatedContainerIds) assert.equal(store.read().resources.get(String(id))?.location?.[0], 6);
+  assert.deepEqual(
+    codec.unpack('pb_battle_tri_match_hero_data', Buffer.from(granted.changes.find(change => change.tid === '10134600').new_bin, 'base64')),
+    { tid: '10134600' }
+  );
+  assert.deepEqual(
+    codec.unpack('pb_res_obj', Buffer.from(granted.changes.find(change => change.tid === '1014800').new_bin, 'base64')),
+    { tid: '1014800', num: '1' }
+  );
+  assert.equal(store.read().resources.get('10134600').location[0], 6);
+  assert.equal(store.read().resources.get('1014800').location[0], 6);
 
   const role = codec.unpack('to_client_role_info', Buffer.from(store.state().rolePb, 'base64'));
   assert.equal(hasBit(Buffer.from(role.figure_have_info.stable_head_info, 'base64'), 1), true);

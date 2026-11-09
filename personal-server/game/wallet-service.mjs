@@ -52,7 +52,7 @@ function reviveJsonBuffers(value) {
 const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
 export function createWalletService({
   store, codec, tables, voucher, monthPermit, permitService, monthlyCard, diamondFund, permanentCard, petActivity, premiumActivity, heroDrawActivity,
-  wishTreasure, wishTree, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward,
+  wishTreasure, wishTree, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward, minigameActivity,
   accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000)
 }) {
   const log = event => { try { logger(event); } catch {} };
@@ -288,8 +288,23 @@ export function createWalletService({
   // Every granted resource must have an explicit module handler. Permits are
   // the exception because they update their own activity module and expose an
   // empty RechargeTable reward list.
+  const rewardIsHandled = tid => Boolean(rewardHandlerFor(tid, tables))
+    || Boolean(minigameActivity?.isSourcePointReward?.(tid));
   const rewardsAreHandled = row => hasCompleteRewards(row)
-    && row.reward_tid.every(tid => Boolean(rewardHandlerFor(tid, tables)));
+    && row.reward_tid.every(rewardIsHandled);
+  function grantPurchaseRewards(model, db, awards, at) {
+    const sourcePointAwards = [], resourceAwards = [];
+    for (const award of awards) {
+      if (minigameActivity?.isSourcePointReward?.(award[0])) sourcePointAwards.push(award);
+      else resourceAwards.push(award);
+    }
+    const changes = [];
+    if (resourceAwards.length) changes.push(...grantResources(model, resourceAwards, tables, { codec, db }).changes);
+    if (sourcePointAwards.length) {
+      changes.push(...minigameActivity.grantSourcePointRewards({ model, db, awards: sourcePointAwards, at }).changes);
+    }
+    return { changes };
+  }
   const ordinaryCashProduct = row => Boolean(row)
     && row.pay_type === 0
     && Number.isSafeInteger(Number(row.price))
@@ -557,7 +572,10 @@ export function createWalletService({
       const dailyAwards = dailyPlan
         ? dailyPurchaseRules.rewards(product, dailyPlan.oneKeyFreeGiftConsumed)
         : [];
-      changes.push(...grantResources(model, [...product.reward_tid.map((tid,i) => [tid,product.reward_count[i]]), ...dailyAwards], tables, { codec }).changes);
+      changes.push(...grantPurchaseRewards(model, db, [
+        ...product.reward_tid.map((tid,i) => [tid, product.reward_count[i]]),
+        ...dailyAwards
+      ], purchasedAt).changes);
       const monthlyCardPurchase = monthlyCards.supports(product)
         ? monthlyCards.purchase({ model, product, at: purchasedAt })
         : null;
@@ -833,7 +851,12 @@ export function createWalletService({
       if (Number(product.pay_type) === 1) {
         changes.push(...consumeResources(model, [[Number(product.cost_item), itemPrice]]).changes);
       }
-      changes.push(...grantResources(model, product.reward_tid.map((tid, i) => [tid, Number(product.reward_count[i]) * buy_num]), tables).changes);
+      changes.push(...grantPurchaseRewards(
+        model,
+        db,
+        product.reward_tid.map((tid, i) => [tid, Number(product.reward_count[i]) * buy_num]),
+        purchasedAt
+      ).changes);
       const monthlyCardPurchase = monthlyCard
         ? monthlyCards.purchase({ model, product, at: purchasedAt })
         : null;

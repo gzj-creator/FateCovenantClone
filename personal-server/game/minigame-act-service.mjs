@@ -1779,6 +1779,43 @@ export function createMinigameActService({
       state.source_point_list.push({ tid: Number(tid), uid: state.max_uid });
     }
   }
+  function isSourcePointReward(tid) {
+    return t.sourcePoint.SourcePoint.byTid.has(Number(tid));
+  }
+  // Source points are instances in the SourcePointMgr depot, not ordinary bag
+  // rows. The recharge result still carries a normal resource change, with
+  // new_bin holding the newly allocated pb_source_point so the client can add
+  // the exact uid without waiting for a relogin.
+  function grantSourcePointRewards({ model, db, awards, at = currentSeconds() }) {
+    if (!model?.state || !db) throw new GameError(5, 'Source point reward context is unavailable');
+    const totals = new Map();
+    for (const entry of Array.isArray(awards) ? awards : []) {
+      const tid = Number(entry?.[0]);
+      const count = Number(entry?.[1]);
+      if (!Number.isSafeInteger(tid) || tid <= 0) throw new GameError(5, 'Source point reward tid is invalid');
+      if (!Number.isSafeInteger(count) || count <= 0) throw new GameError(5, 'Source point reward count is invalid');
+      requireRow(t.sourcePoint.SourcePoint, tid, 'Source point reward');
+      totals.set(tid, (totals.get(tid) ?? 0) + count);
+    }
+    if (!totals.size) return { changes: [] };
+
+    const roleId = Number(model.state.roleId);
+    const state = sourcePointState({ db, roleId });
+    const changes = [];
+    for (const [tid, count] of totals) {
+      let newNum = state.source_point_list.filter(entry => Number(entry.tid) === tid).length;
+      for (let index = 0; index < count; index += 1) {
+        sourcePointAdd(state, tid, 1);
+        newNum += 1;
+        changes.push({
+          tid: String(tid), new_num: String(newNum), diff_num: '1',
+          new_bin: codec.pack('pb_source_point', { tid: String(tid), uid: String(state.max_uid) })
+        });
+      }
+    }
+    saveState(db, roleId, SOURCE_POINT_KEY, state, at);
+    return { changes };
+  }
   function sourcePointTaskBytes(state) {
     let bits = Buffer.alloc(0);
     for (const tid of state.hero_task_claims) bits = setBit(bits, Number(tid));
@@ -2707,6 +2744,8 @@ export function createMinigameActService({
     supports: type => commands.has(Number(type)),
     commandTypes: () => [...commands.keys()].sort((left, right) => left - right),
     commandCard: type => commands.get(Number(type))?.card ?? null,
+    isSourcePointReward,
+    grantSourcePointRewards,
     decode,
     execute,
     synchronizeLogin,

@@ -643,9 +643,10 @@ export function createLocalGame({
   const monthlyCard=createMonthlyCardService({codec,tables,now:secondsClock});
   const monthlyCardRepair=store.transaction(model=>monthlyCard.repairLegacyClaimBits({model}));
   if(monthlyCardRepair.changed) logger({event:'monthly_card_claim_bits_repaired',cards:monthlyCardRepair.repaired});
+  const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const wallet=localWallet?createWalletService({
     store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,premiumActivity:premiumAct,heroDrawActivity,wishTreasure,wishTree,weekHunt,
-    rechargeBonus,lineFirstRecharge,rechargeExtraAward,now:() => Math.floor(clock() / 1000)
+    rechargeBonus,lineFirstRecharge,rechargeExtraAward,minigameActivity:minigameAct,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const benefitCommerce=createBenefitCommerceService({store,codec,tables,now:clock,logger});
@@ -706,7 +707,6 @@ export function createLocalGame({
   // gopher, tower, spirit courtyard, triple match, matching game, monopoly,
   // dream trial, diamond vein, source point, homeland album, homeland and
   // baking. Rules without shipped evidence fail closed inside the service.
-  const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const explorationAct=createExplorationActService({store,codec,tables,explorationTables:readExplorationActTables(),calendar,now:clock,random,logger});
   // A2-OVERALLPVP: OverallPvpCmd 101101-101130. The cross-server card reads the
   // shipped OverallPvpTable and keeps its own rows; commands that need a real

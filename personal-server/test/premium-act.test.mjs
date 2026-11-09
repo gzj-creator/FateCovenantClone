@@ -8,16 +8,19 @@ import { once } from 'node:events';
 import { binary, createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 import { createActivityCalendar } from '../game/activity-calendar.mjs';
 import { createLocalGame } from '../local-game.mjs';
-import { grantResources } from '../game/resources.mjs';
+import { grantResources, rewardHandlerFor } from '../game/resources.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readPremiumActTables } from '../config/premium-act-tables.mjs';
+import { readMinigameActTables } from '../config/minigame-act-tables.mjs';
+import { ensureTrimatchTables, writeHeroStar } from '../game/trimatch-core.mjs';
 import { decodeModuleLoginBlocks, encodeModuleLoginBlock } from '../game/relic-divine-login.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
 const premiumTables = readPremiumActTables();
+const minigameTables = readMinigameActTables();
 const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const SERVER_OPENED_AT = 1792789200;
@@ -131,6 +134,45 @@ test('PremiumActTable contains the ten white-ling paid-shop gifts', () => {
   assert.equal(tables.Recharge.get(1270975).pay_type, 0);
 });
 
+test('every PremiumAct gift has complete rewards with a concrete grant handler', () => {
+  const sourcePointTids = new Set(minigameTables.sourcePoint.SourcePoint.byTid.keys());
+  const gifts = new Set();
+  const issues = [];
+  for (const config of premiumTables.Config.values()) {
+    const gift = Number(config.gift);
+    gifts.add(gift);
+    const product = tables.Recharge.get(gift);
+    const label = 'gift:' + gift;
+    if (!product) {
+      issues.push(label + ':missing-product');
+      continue;
+    }
+    if (Number(product.sync_handle ?? 0) !== 0) issues.push(label + ':sync-handle:' + product.sync_handle);
+    const rewardTids = Array.from(product.reward_tid ?? []);
+    const rewardCounts = Array.from(product.reward_count ?? []);
+    if (!rewardTids.length || rewardTids.length !== rewardCounts.length) {
+      issues.push(label + ':reward-shape');
+    } else {
+      for (let index = 0; index < rewardTids.length; index += 1) {
+        const tid = Number(rewardTids[index]);
+        const count = Number(rewardCounts[index]);
+        if (!Number.isSafeInteger(count) || count <= 0) issues.push(`${label}:${tid}:invalid-count:${count}`);
+        if (!rewardHandlerFor(tid, tables) && !sourcePointTids.has(tid)) issues.push(`${label}:${tid}:no-handler`);
+      }
+    }
+    const payType = Number(product.pay_type);
+    if (![0, 1, 2].includes(payType)) issues.push(label + ':invalid-pay-type:' + payType);
+    if (payType === 0 && !(Number(product.price) > 0)) issues.push(label + ':invalid-cash-price');
+    if (payType === 1 && (!(Number(product.price) > 0) || !(Number(product.cost_item) > 0))) {
+      issues.push(label + ':invalid-resource-price');
+    }
+    if (payType === 2 && Number(product.price) !== 0) issues.push(label + ':invalid-free-price');
+  }
+  assert.equal(premiumTables.Config.size, 852);
+  assert.equal(gifts.size, 558);
+  assert.deepEqual(issues, []);
+});
+
 test('all-open white-ling gift mall exposes login data, free/resource gifts, cash gift and limits', async t => {
   const env = await gatewayFixture(t, 'all-open');
   const modules = new Map(env.login[2].value);
@@ -199,6 +241,167 @@ test('all-open white-ling gift mall exposes login data, free/resource gifts, cas
   assert.deepEqual(
     after.buy_num_list.map(row => [row.recharge_id, row.buy_num]),
     [[1270973, 1], [1270974, 1], [1270975, 1]]
+  );
+});
+
+test('monthly battle-pass source-point gifts buy through native recharge and persist purchase limits', async t => {
+  const env = await gatewayFixture(t, 'all-open');
+  const products = env.game.wallet.snapshot().products;
+  for (const productId of [1270301, 1270302]) {
+    const product = products.find(row => row.id === productId);
+    assert.ok(product, 'missing native recharge product ' + productId);
+    assert.deepEqual([product.price_cents, product.purchased, product.available], [64800, 0, 3]);
+  }
+
+  // The native client sends coupon item 701500 whenever voucher payment is
+  // available. Fund both purchases so this exercises the captured 16004 shape.
+  grant(env.game.store, 701500, 1296);
+  env.game.wallet.credit({
+    account_id: 'local-1',
+    amount_cents: 129600,
+    request_id: 'monthly-battle-pass-source-points'
+  });
+  const buyNative = async (productId, seq) => {
+    env.send(codec.pack('pb_c2s', {
+      type: 16004,
+      seq,
+      data: await encodeEtf([productId, binary(Buffer.from('[]')), 701500])
+    }));
+    let response;
+    for (let index = 0; index < 4 && !response; index += 1) {
+      const frame = codec.unpack('pb_s2c', await env.next());
+      if (frame.seq === seq) response = frame;
+    }
+    assert.ok(response, 'missing 16004 response for ' + productId);
+    assert.equal(response.err, undefined);
+    return codec.unpack('res_recharge_success', Buffer.from(response.data, 'base64'));
+  };
+
+  const first = await buyNative(1270301, 24);
+  const firstChange = first.res.changes.find(change => change.tid === '100334300');
+  assert.ok(firstChange);
+  assert.deepEqual(
+    codec.unpack('pb_source_point', Buffer.from(firstChange.new_bin, 'base64')),
+    { tid: '100334300', uid: '1' }
+  );
+  let limit = first.extra_ret_list.find(extra => extra.flag === 114);
+  assert.ok(limit);
+  let info = codec.unpack('pb_recharge_limit_info', Buffer.from(limit.data, 'base64'));
+  assert.equal(info.buy_num_list.find(row => row.recharge_id === 1270301).buy_num, 1);
+
+  const second = await buyNative(1270302, 25);
+  const secondChange = second.res.changes.find(change => change.tid === '100344300');
+  assert.ok(secondChange);
+  assert.deepEqual(
+    codec.unpack('pb_source_point', Buffer.from(secondChange.new_bin, 'base64')),
+    { tid: '100344300', uid: '2' }
+  );
+  limit = second.extra_ret_list.find(extra => extra.flag === 114);
+  assert.ok(limit);
+  info = codec.unpack('pb_recharge_limit_info', Buffer.from(limit.data, 'base64'));
+  assert.deepEqual(
+    info.buy_num_list.map(row => [row.recharge_id, row.buy_num]).sort((left, right) => left[0] - right[0]),
+    [[1270301, 1], [1270302, 1]]
+  );
+
+  const state = env.game.store.inspect(db => ({
+    state: JSON.parse(db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('source_point:1').data),
+    purchases: db.prepare("SELECT activity_id,product_id,buy_num FROM activity_purchases ORDER BY product_id").all()
+  }));
+  assert.deepEqual(state.state.source_point_list, [
+    { tid: 100334300, uid: 1 },
+    { tid: 100344300, uid: 2 }
+  ]);
+  assert.deepEqual(state.purchases.map(row => [row.activity_id, row.product_id, row.buy_num]), [
+    [1007101, 1270301, 1],
+    [1007101, 1270302, 1]
+  ]);
+  assert.deepEqual(
+    env.game.premiumAct.rechargeInfo(1007101).buy_num_list.map(row => [row.recharge_id, row.buy_num]),
+    [[1270301, 1], [1270302, 1]]
+  );
+});
+
+test('battle-pass match-hero and triple-match tower gifts grant their dedicated resources', async t => {
+  const env = await gatewayFixture(t, 'all-open');
+  env.game.store.transaction((model, db) => {
+    ensureTrimatchTables(db);
+    writeHeroStar(db, model.state.roleId, 10134600, 3, fixedNow);
+  });
+
+  const products = env.game.wallet.snapshot().products;
+  for (const [productId, price] of [[1270867, 6800], [1270872, 600], [1270873, 3000]]) {
+    const product = products.find(row => row.id === productId);
+    assert.ok(product, 'missing native recharge product ' + productId);
+    assert.equal(product.price_cents, price);
+  }
+
+  // Fund the native purchases with both the same coupon item used by the
+  // client and the local wallet's cash-equivalent balance.
+  grant(env.game.store, 701500, 104);
+  env.game.wallet.credit({ account_id: 'local-1', amount_cents: 10400, request_id: 'battle-pass-trimatch-gifts' });
+  const buyNative = async (productId, seq) => {
+    env.send(codec.pack('pb_c2s', {
+      type: 16004,
+      seq,
+      data: await encodeEtf([productId, binary(Buffer.from('[]')), 701500])
+    }));
+    let response;
+    for (let index = 0; index < 4 && !response; index += 1) {
+      const frame = codec.unpack('pb_s2c', await env.next());
+      if (frame.seq === seq) response = frame;
+    }
+    assert.ok(response, 'missing 16004 response for ' + productId);
+    assert.equal(response.err, undefined);
+    return codec.unpack('res_recharge_success', Buffer.from(response.data, 'base64'));
+  };
+
+  const matchHero = await buyNative(1270867, 30);
+  assert.equal(matchHero.res.changes.find(change => change.tid === '835502').diff_num, '20');
+  assert.equal(matchHero.res.changes.find(change => change.tid === '835402').diff_num, '50');
+  const matchHeroChange = matchHero.res.changes.find(change => change.tid === '10134600');
+  assert.ok(matchHeroChange);
+  assert.deepEqual(
+    codec.unpack('pb_battle_tri_match_hero_data', Buffer.from(matchHeroChange.new_bin, 'base64')),
+    { tid: '10134600', star: '3' }
+  );
+  assert.ok(matchHero.extra_ret_list.some(extra => extra.flag === 114));
+
+  grant(env.game.store, 101500, 300);
+  const resourcePurchase = await env.request(
+    16005,
+    31,
+    codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 1270871, buy_num: 1 })
+  );
+  assert.equal(resourcePurchase.err, undefined);
+  const resourceGift = codec.unpack('res_buy_or_Rev_gift', Buffer.from(resourcePurchase.data, 'base64'));
+  assert.equal(resourceGift.res.changes.find(change => change.tid === '101500').diff_num, '-300');
+  assert.equal(resourceGift.res.changes.find(change => change.tid === '1014800').diff_num, '1');
+  assert.ok(resourceGift.extra_ret_list.some(extra => extra.flag === 114));
+
+  const staminaSmall = await buyNative(1270872, 32);
+  assert.equal(staminaSmall.res.changes.find(change => change.tid === '1014800').diff_num, '5');
+  const staminaLarge = await buyNative(1270873, 33);
+  assert.equal(staminaLarge.res.changes.find(change => change.tid === '1014800').diff_num, '25');
+
+  const roleId = env.game.store.state().roleId;
+  const state = env.game.store.inspect(db => ({
+    matchHero: db.prepare("SELECT amount,location_json FROM resources WHERE role_id=? AND tid='10134600'").get(roleId),
+    stamina: db.prepare("SELECT amount,location_json FROM resources WHERE role_id=? AND tid='1014800'").get(roleId),
+    star: db.prepare('SELECT star FROM trimatch_hero WHERE role_id=? AND hero_tid=?').get(roleId, 10134600),
+    purchases: db.prepare('SELECT activity_id,product_id,buy_num FROM activity_purchases WHERE activity_id=? ORDER BY product_id').all(186420)
+  }));
+  assert.equal(state.matchHero.amount, '1');
+  assert.equal(JSON.parse(state.matchHero.location_json)[0], 6);
+  assert.equal(state.stamina.amount, '31');
+  assert.equal(JSON.parse(state.stamina.location_json)[0], 6);
+  assert.equal(state.star.star, 3);
+  assert.deepEqual(state.purchases.map(row => [row.product_id, row.buy_num]), [
+    [1270867, 1], [1270871, 1], [1270872, 1], [1270873, 1]
+  ]);
+  assert.deepEqual(
+    env.game.premiumAct.rechargeInfo(186420).buy_num_list.map(row => [row.recharge_id, row.buy_num]),
+    [[1270867, 1], [1270871, 1], [1270872, 1], [1270873, 1]]
   );
 });
 

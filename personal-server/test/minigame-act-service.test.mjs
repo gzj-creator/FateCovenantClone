@@ -341,6 +341,51 @@ test('source point change moves owned instances between heroes', async t => {
   assert.deepEqual(second.source_point_list, []);
 });
 
+test('source point rewards allocate persistent depot instances with client binaries', t => {
+  const world = setup(t);
+  assert.equal(world.service.isSourcePointReward(100334300), true);
+  assert.equal(world.service.isSourcePointReward(DIAMOND), false);
+
+  const result = world.store.transaction((model, db) => world.service.grantSourcePointRewards({
+    model,
+    db,
+    awards: [[100334300, 2], [100344300, 1]],
+    at: NOW
+  }));
+  assert.deepEqual(result.changes.map(change => [change.tid, change.diff_num]), [
+    ['100334300', '1'],
+    ['100334300', '1'],
+    ['100344300', '1']
+  ]);
+  assert.deepEqual(
+    result.changes.map(change => codec.unpack('pb_source_point', Buffer.from(change.new_bin, 'base64'))),
+    [
+      { tid: '100334300', uid: '1' },
+      { tid: '100334300', uid: '2' },
+      { tid: '100344300', uid: '3' }
+    ]
+  );
+
+  const readState = store => JSON.parse(store.transaction((model, db) =>
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('source_point:1').data
+  ));
+  assert.deepEqual(readState(world.store), {
+    max_uid: 3,
+    source_point_list: [
+      { tid: 100334300, uid: 1 },
+      { tid: 100334300, uid: 2 },
+      { tid: 100344300, uid: 3 }
+    ],
+    hero_task_claims: []
+  });
+  world.reopen();
+  assert.deepEqual(readState(world.store).source_point_list, [
+    { tid: 100334300, uid: 1 },
+    { tid: 100334300, uid: 2 },
+    { tid: 100344300, uid: 3 }
+  ]);
+});
+
 test('source point combine consumes matching instances and creates the elevated instance', async t => {
   const world = setup(t);
   seed(world.store, [[1040101, 1]]);

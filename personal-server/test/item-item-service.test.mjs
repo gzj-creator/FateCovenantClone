@@ -4,6 +4,7 @@ import { createGameCodec, serializedBinary } from '../protocol/game-codec.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { createItemBoxService } from '../game/item-box-service.mjs';
+import { ensureTrimatchTables, writeHeroStar } from '../game/trimatch-core.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 
 const codec = createGameCodec(), tables = readGameTables(), heroTables = readHeroTables();
@@ -66,15 +67,37 @@ test('chip compose rejects unknown chips, bad quantities and short stock without
   addResource(env.store, 21300104, 30, 2);
   const before = env.store.state();
   assert.throws(() => env.service.composeChip({ tid: 21300104, num: 1 }), error => error.code === 301);
-  // MatchHeroChip 10014700 points at 10014600, which has no reward handler in this build.
-  assert.throws(() => env.service.composeChip({ tid: 10014700, num: 1 }),
-    error => error.code === 5 && /reward handler/.test(error.message));
   assert.throws(() => env.service.composeChip({ tid: 2261200, num: 1 }), error => error.code === 5);
   assert.throws(() => env.service.composeChip({ tid: 21300104, num: 0 }), error => error.code === 1);
   assert.throws(() => env.service.composeChip({ tid: 21300104, num: 1000 }), error => error.code === 1);
   assert.throws(() => env.service.composeChip(null), error => error.code === 1);
   assert.deepEqual(env.store.state(), before);
   assert.equal(env.service.composeCount(21300104), 0);
+});
+
+test('MatchHeroChip composes into the match-hero resource and preserves the current star', t => {
+  const env = setup(t);
+  // ItemTable.Chip[10014700]: point_item 10014600, need_num 80.
+  addResource(env.store, 10014700, 80, 2);
+  env.store.transaction((model, db) => {
+    ensureTrimatchTables(db);
+    writeHeroStar(db, model.state.roleId, 10014600, 3, FIXED_NOW());
+  });
+
+  const result = env.service.composeChip({ tid: 10014700, num: 1 });
+  assert.equal(result.value.changes.find(change => change.tid === '10014700').diff_num, '-80');
+  const granted = result.value.changes.find(change => change.tid === '10014600');
+  assert.equal(granted.diff_num, '1');
+  assert.deepEqual(
+    codec.unpack('pb_battle_tri_match_hero_data', Buffer.from(granted.new_bin, 'base64')),
+    { tid: '10014600', star: '3' }
+  );
+  assert.equal(env.store.read().resources.get('10014600').num, '1');
+  assert.equal(env.store.read().resources.get('10014600').location[0], 6);
+
+  env.reopen();
+  assert.equal(env.store.read().resources.get('10014600').num, '1');
+  assert.equal(env.service.composeCount(10014700), 1);
 });
 
 test('one-key chip compose skips unaffordable families and fails when nothing is affordable', t => {

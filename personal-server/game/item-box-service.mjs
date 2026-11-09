@@ -20,7 +20,7 @@ const MAX_ONE_KEY = 200;
 const SKIN_MODULE = 65;
 const HOUSE_ASSISTANT_MODULE = 148;
 // Reward handlers that keep a countable row in model.resources instead of a bespoke module.
-const RESOURCE_REWARD_KINDS = new Set(['item', 'currency', 'artifactCurrency']);
+const RESOURCE_REWARD_KINDS = new Set(['item', 'currency', 'artifactCurrency', 'matchHero']);
 const GUARANTEE_FIELDS = ['noGuaranteeCount', 'openCount', 'counterGuaranteeCount', 'openTotalCount'];
 const SCHEMA_STATEMENTS = [
   ['CREATE TABLE IF NOT EXISTS item_chip_compose_counts (',
@@ -234,12 +234,12 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
     if (index < 1 || index > options.length) throw new GameError(1, 'Invalid suit box selection');
     const chosen = options[index - 1];
     const scope = requestScope(context);
-    const result = commit(scope, { suitBox: [tid, index] }, model => {
+    const result = commit(scope, { suitBox: [tid, index] }, (model, db) => {
       const held = model.resources.get(String(tid));
       if (!held || BigInt(held.num) < 1n) throw new GameError(1, 'Not enough suit boxes');
       held.num = String(BigInt(held.num) - 1n);
       const changes = [{ tid: String(tid), new_num: held.num, diff_num: '-1' }];
-      changes.push(...grantResources(model, chosen.awards, tables).changes);
+      changes.push(...grantResources(model, chosen.awards, tables, { db }).changes);
       const value = { changes: mergeChanges(changes), is_overflow: false };
       return { value, data: codec.pack('pb_res_to_client', value) };
     });
@@ -348,7 +348,7 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
         held.num = String(BigInt(held.num) - BigInt(num));
         changes.push({ tid: String(tid), new_num: held.num, diff_num: String(-num) });
       }
-      changes.push(...grantResources(model, awards, tables).changes);
+      changes.push(...grantResources(model, awards, tables, { db }).changes);
       const value = { changes: mergeChanges(changes), is_overflow: false };
       return { value, data: codec.pack('pb_res_to_client', value) };
     });
@@ -377,7 +377,7 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
     const expected = boxRule.optionalNum * num;
     if (!Number.isSafeInteger(expected) || total !== expected) throw new GameError(1, 'Box selection count does not match');
     const scope = requestScope(context);
-    const result = commit(scope, { selected: [tid, num, [...counts.entries()].map(([index, count]) => [index, count])] }, model => {
+    const result = commit(scope, { selected: [tid, num, [...counts.entries()].map(([index, count]) => [index, count])] }, (model, db) => {
       const held = model.resources.get(String(tid));
       if (!held || BigInt(held.num) < BigInt(num)) throw new GameError(1, 'Not enough boxes');
       const awards = [];
@@ -389,7 +389,7 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
       }
       held.num = String(BigInt(held.num) - BigInt(num));
       const changes = [{ tid: String(tid), new_num: held.num, diff_num: String(-num) }];
-      changes.push(...grantResources(model, awards, tables).changes);
+      changes.push(...grantResources(model, awards, tables, { db }).changes);
       const value = { changes: mergeChanges(changes), is_overflow: false };
       return { value, data: codec.pack('pb_res_to_client', value) };
     });
@@ -485,10 +485,10 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
     const request = convertRequest(arg);
     const awards = convertRule(request.tid);
     const scope = requestScope(context);
-    const result = commit(scope, { convert: [request.tid, request.num] }, model => {
+    const result = commit(scope, { convert: [request.tid, request.num] }, (model, db) => {
       const modules = new Map(model.state.modules.value);
       const spent = spendCounted(model, modules, request.tid, request.num);
-      const granted = grantResources(model, awards.map(([tid, num]) => [tid, num * request.num]), grantTables);
+      const granted = grantResources(model, awards.map(([tid, num]) => [tid, num * request.num]), grantTables, { db });
       const value = { changes: mergeChanges([spent, ...granted.changes]), is_overflow: false };
       return { value, data: codec.pack('pb_res_to_client', value) };
     });
@@ -498,7 +498,7 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
 
   // ItemTable.Chip.need_num chips become one point_item; 156 composes one chip family
   // and 158 composes the one-key list. A target without a reward handler is refused
-  // before any chip is spent (MatchHero chips in this build).
+  // before any chip is spent.
   function chipRule(tid) {
     const row = tables.Chip?.get(tid);
     if (!row) throw new GameError(5, 'This item is not a composable chip');
@@ -535,7 +535,7 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
         continue;
       }
       changes.push(...consumeResources(model, [[request.tid, cost]], 301).changes);
-      changes.push(...grantResources(model, [[chip.point, request.num]], grantTables).changes);
+      changes.push(...grantResources(model, [[chip.point, request.num]], grantTables, { db }).changes);
       addComposeCount(model, db, request.tid, request.num);
       composed.push(request.tid);
     }
