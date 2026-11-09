@@ -221,3 +221,27 @@
 - 修复提交为 `f5a4ee4`。该分支基线包含另一项角色技能提交，因此没有直接合并整条历史，而是仅将该提交摘取到当时的 `main`，得到 `4d6daac`；无关技能配置未被带入。
 - `main` 上重新执行 `node --test personal-server/test/acc-recharge-service.test.mjs`，`13/13` 通过，包含真实 TCP `98620` 路由用例。
 - 合并完成时尚未重启正在运行的服务；真实客户端需要在新服务启动并重新登录后做页面视觉验收。
+
+## 2026-11-09 新服累充已领取重登仍显示可领取
+
+本轮在独立 worktree `F:\projects\FateCovenantClone\.worktree\acc-recharge-claim-state-20261109`（分支 `fix/acc-recharge-claim-state-20261109`，基线 `main@3d287cc`）修复，未改动主工作树。
+
+### 根因
+
+运行库模块 106 的状态没有丢失：`106036` 的 `award_state` 前四字节为 `70 00 00 00`，`106037` 为 `78 00 00 00`，`activity_claims` 也保留了领取记录；重复 `98620` 请求走幂等确认。问题在登录快照模块 183：参考快照中累计充值行的 `module_login_data` 是 `pb_acc_recharge_list`，但四个活动的领取位都是空字节。网关此前只把状态写入模块 92，没有刷新模块 183。客户端 `AccRechargeActData:_ParseDataImpl` 从模块 183 的 `pb_acc_recharge_list` 读取 `award_state`，因此重登后按空位显示可领取；点击已领取档位时服务器虽返回空成功，界面也不会恢复已领取状态。
+
+### 修复
+
+- `personal-server/game/acc-recharge-service.mjs`：登录同步读取并保留模块 183 原有累计充值列表，用模块 106 的最新 `award_state` 覆盖对应活动行，再返回模块 183 所需的 `loginActivities`；模块 92 的累充登录块改为客户端实际解析的 `pb_acc_recharge_list`，保留其余活动行并按 `act_id` 排序。
+- `personal-server/game/gateway.mjs`：把累充 `loginActivities` 合并进模块 183 的登录容器，更新 player/server 活动行，使 `ActLogin:LoginParse -> AccRechargeActData:ParseData` 能读到当前领取位。
+- `personal-server/test/acc-recharge-service.test.mjs`：覆盖模块 92 和模块 183 的 `70/78` 领取位、四个活动行的保留，以及真实 gateway 登录 ETF 中的模块 183 状态。
+
+### 验证
+
+- `node --test test/acc-recharge-service.test.mjs`：`15/15` 通过。
+- 相邻网关与模块 183 回归：`node --test test/relic-divine-gateway.test.mjs test/help-up-act.test.mjs test/premium-act.test.mjs test/artifact-draw-act-service.test.mjs test/gameplay-gateway.test.mjs`：`39/39` 通过。
+- `npm test`：`2785` 项，pass `2783`、fail `0`、skipped `2`，耗时约 `455138ms`。
+
+### 验收边界
+
+本轮只修改服务端代码，未修改 APK，也未启停实时服务、未读写运行数据库。当前实时服务仍加载旧代码；部署并重启服务后，需要用户重新登录打开新服累充页面做视觉验收。预期已领取档位显示已领取，未领取档位仍可正常领取。

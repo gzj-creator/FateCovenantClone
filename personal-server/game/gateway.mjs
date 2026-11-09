@@ -932,6 +932,14 @@ export function createLocalGame({
       const window = relicActivityWindow(actTid);
       loginActivities.push({ actTid, startTime: window.start, endTime: window.end, blocks: payload.blocks });
     }
+    // AccRechargeActData decodes pb_acc_recharge_list from module 183. Merge
+    // the live award-state list into each running cumulative-recharge row so a
+    // relogin restores the claimed flags instead of the snapshot's empty bytes.
+    for (const activity of accRechargeLogin.loginActivities ?? []) {
+      if (!loginActivities.some(entry => Number(entry.actTid) === Number(activity.actTid))) {
+        loginActivities.push(activity);
+      }
+    }
     let actFrameNormalization = null;
     let premiumLogin = null;
     const premiumLoginPreview = premiumAct.openActivityIds(loginSeconds);
