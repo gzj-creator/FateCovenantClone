@@ -31,7 +31,7 @@
 | SOC-GUILDNATION | 服务端完成（赛季/跨服/表值证据待补） | `task/BLOCK-E2-20261108` | 64/64 缺失命令进入 `guild-nation-service`，现有 99229 保持 `guild-nation-assist-service` 单一所有者；建造、兵种、科技、城防、据点、任务、集结、旗标、援助和奖励均入 SQLite 事务 | 未安排 | 时间、成本、HP、兵种和奖励为本地策略；原服国战地图、联盟状态、跨服集结与赛季结算未取证 |
 | SOC-GUILDBARGAIN | 服务端完成（排期/推送/限次证据待补） | `task/BLOCK-E2-20261108` | 101401–101404 进入 `guild-bargain-service`；砍价、购买和未砍价名单持久化，购买走真实资源事务 | 未安排 | 起价、步长、底价、人数和商品为本地策略；活动排期、实时价格推送与购买限次未取证 |
 | SOC-GUILDEXPEDITION | 服务端完成（跨服/战报/赛季证据待补） | `task/BLOCK-E2-20261108` | 101601–101615 进入 `guild-expedition-service`；宣战、鼓舞、战报、排名、竞猜、位置、点赞、战斗与城市列表均有真实状态 | 未安排 | 城市、轮次、赔率、消耗和名次为本地策略；跨服匹配、战报来源与最终结算未取证 |
-| SOC-CHANNELENTRY | 服务端完成（客户端联合验收待补） | `task/BLOCK-E2-20261108` | 102801 从通用空应答迁入 `channel-entry-service`，返回配置化开放/链接/时间窗并纳入真实临时 TCP | 未安排 | 入口配置为本地策略；与 SOC-MSG/SOC-CHAT 的客户端联合行为未 APK 验收 |
+| SOC-CHANNELENTRY | 服务端完成（真实客户端协议联调通过） | `fix/channel-entry-params-20261109` @ de86e66；合入 main f19313c | 恢复客户端实际 ETF `nil` 参数语义：`nil` 选择默认首项，整数按 `channelId` 选择；真实客户端自动重连后的 102801 连续返回 `channelId=1`，最终专项 6/6、全量 2783（pass 2781 / fail 0 / skipped 2） | 未安排 | 入口配置仍为本地策略；本轮未截图，UI 视觉状态可在现有客户端确认 |
 | SOC-GUILDHUNT | 服务端完成（开猎/并发/推送证据待补） | `task/BLOCK-E2-20261108` | 103401–103403 进入 `guild-hunt-service`；参与、支援和服务器猎物状态持久化 | 未安排 | 怪物 HP、轮次、价格与奖励为本地策略；开猎时间、成员并发伤害和推送未取证 |
 | SOC-GUILDCRUSADE | 证据阻塞（显式拒绝，未伪造排名） | `task/BLOCK-E2-20261108` | 105805 已进入 `guild-crusade-service`；E2 专项断言返回业务错误码 5，不再落入通用未实现分支 | 未安排 | 请求只有 ETF，且 `pb_guild_crusade_rank_rsp` 定义缺失；排名来源和真实帧均未取得 |
 | SOC-GUILDAUCTION | 服务端完成（并发/结算时点证据待补） | `task/BLOCK-E2-20261108` | 107601–107603 进入 `guild-auction-service`；原子扣钻、前手退款、心愿、唯一结算与幂等领奖持久化 | 未安排 | 商品、时长、起价、加价和分红为本地策略；原服结算时点、多人并发竞拍和跨服聚合未取证 |
