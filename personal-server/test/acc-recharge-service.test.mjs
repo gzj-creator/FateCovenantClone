@@ -292,7 +292,7 @@ test('repairs legacy byte-index award states from persisted claims', t => {
   assert.deepEqual(codec.unpack('pb_res_to_client', duplicate.data).changes, []);
 });
 
-test('login synchronizes cumulative recharge award bits into activity module 92', async t => {
+test('login synchronizes cumulative recharge award bits into modules 92 and 183', async t => {
   const e = setup(t);
   setAwardState(e.store, 106036, Buffer.from([0x70, 0, 0, 0]));
   setAwardState(e.store, 106037, Buffer.from([0x78, 0, 0, 0]));
@@ -312,14 +312,22 @@ test('login synchronizes cumulative recharge award bits into activity module 92'
   assert.equal(Number(first.state_data.cur_state_id), 50);
   assert.equal(Number(first.state_data.history_time[0].state_id), 50);
   assert.equal(Number(second.state_data.cur_state_id), 50);
+  const firstState = codec.unpack('pb_acc_recharge_list', unwrapActivityLoginData(first.module_login_data));
+  const secondState = codec.unpack('pb_acc_recharge_list', unwrapActivityLoginData(second.module_login_data));
   assert.deepEqual(
-    [...Buffer.from(codec.unpack('pb_acc_recharge', unwrapActivityLoginData(first.module_login_data)).award_state, 'base64').subarray(0, 4)],
+    [...Buffer.from(firstState.list.find(row => Number(row.act_id) === 106036).award_state, 'base64').subarray(0, 4)],
     [0x70, 0, 0, 0]
   );
   assert.deepEqual(
-    [...Buffer.from(codec.unpack('pb_acc_recharge', unwrapActivityLoginData(second.module_login_data)).award_state, 'base64').subarray(0, 4)],
+    [...Buffer.from(secondState.list.find(row => Number(row.act_id) === 106037).award_state, 'base64').subarray(0, 4)],
     [0x78, 0, 0, 0]
   );
+  assert.deepEqual(firstState.list.map(row => Number(row.act_id)).sort((a, b) => a - b), [106033, 106035, 106036, 106037]);
+  assert.equal(result.loginActivities.length, 2);
+  for (const loginActivity of result.loginActivities) {
+    const state = codec.unpack('pb_acc_recharge_list', loginActivity.blocks[0]);
+    assert.deepEqual(state.list.map(row => Number(row.act_id)).sort((a, b) => a - b), [106033, 106035, 106036, 106037]);
+  }
 
   const roundTrip = codec.unpack('pb_act_login', codec.pack('pb_act_login', activity));
   assert.equal(roundTrip.act_list.filter(entry => [106036, 106037].includes(Number(entry.state_data?.act_id))).length, 2);
@@ -442,4 +450,65 @@ test('real gateway routes 98620 instead of returning LOCAL_NOT_IMPLEMENTED', asy
   const response = await request(98620, 2, codec.pack('pb_acc_recharge_award_req', { act_id: 106036, award_tid: 36001101 }));
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64')).changes.find(x => x.tid === '807002').diff_num, '10');
+});
+
+test('gateway login restores claimed cumulative-recharge bits in module 183', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-acc-recharge-login-'));
+  const game = createLocalGame({
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
+    localWallet: true,
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityMode: 'all-open',
+    currentFishingActivityId: 1074011,
+    now: () => (WINDOW.start + 3600) * 1000,
+    verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
+  });
+  setAwardState(game.store, 106036, Buffer.from([0x70, 0, 0, 0]));
+  setAwardState(game.store, 106037, Buffer.from([0x78, 0, 0, 0]));
+  let socket;
+  t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const address = await game.listen(0);
+  socket = net.connect(address.port, '127.0.0.1');
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
+  socket.on('data', chunk => { for (const data of decoder.push(chunk)) { if (waiters.length) waiters.shift()(data); else queue.push(data); } });
+  const next = () => queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Gateway response timeout')), 5000);
+    waiters.push(data => { clearTimeout(timer); resolve(data); });
+  });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  await once(socket, 'connect');
+  send(Buffer.from('verify'));
+  const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
+  send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
+  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const login = await request(909103, 1, codec.pack('login', {
+    server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: ''
+  }));
+  const loginFlow = await decodeEtf(Buffer.from(login.data, 'base64'));
+  const modules = new Map(loginFlow[2].value.map(([id, entry]) => [Number(id), entry]));
+
+  const activity = codec.unpack('pb_act_login', Buffer.from(modules.get(92).value));
+  const module92Entry = activity.act_list.find(entry => Number(entry.state_data?.act_id) === 106036);
+  assert.ok(module92Entry);
+  const module92State = codec.unpack('pb_acc_recharge_list', unwrapActivityLoginData(module92Entry.module_login_data));
+  assert.deepEqual(
+    [...Buffer.from(module92State.list.find(row => Number(row.act_id) === 106036).award_state, 'base64').subarray(0, 4)],
+    [0x70, 0, 0, 0]
+  );
+
+  const actFramePlayer = codec.unpack('pb_act_role_login', Buffer.from(modules.get(183).value[0].value));
+  const playerEntry = actFramePlayer.data_list.find(row => Number(row.act_stage?.act_id) === 106036);
+  assert.ok(playerEntry, 'module 183 carries the cumulative-recharge player row');
+  const playerState = codec.unpack('pb_acc_recharge_list', unwrapActivityLoginData(playerEntry.module_login_data));
+  assert.deepEqual(playerState.list.map(row => Number(row.act_id)).sort((a, b) => a - b), [106033, 106035, 106036, 106037]);
+  assert.deepEqual(
+    [...Buffer.from(playerState.list.find(row => Number(row.act_id) === 106036).award_state, 'base64').subarray(0, 4)],
+    [0x70, 0, 0, 0]
+  );
+  assert.deepEqual(
+    [...Buffer.from(playerState.list.find(row => Number(row.act_id) === 106037).award_state, 'base64').subarray(0, 4)],
+    [0x78, 0, 0, 0]
+  );
 });

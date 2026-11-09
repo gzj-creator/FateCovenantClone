@@ -5,6 +5,7 @@ import { hasBit, setBit } from './bit-block.mjs';
 import { grantResources, partitionGrantableResources, releaseGrantablePendingRewards } from './resources.mjs';
 
 const MODULE_ID = 106;
+const LOGIN_MODULE_ID = 183;
 const ACT_TYPE = 106;
 const AWARD_STATE_WIDTH = 100;
 const RUNNING_STATE_ID = 50;
@@ -68,6 +69,40 @@ function awardStateBytes(value) {
   const bits = Buffer.alloc(Math.max(AWARD_STATE_WIDTH, current.length));
   current.copy(bits);
   return bits;
+}
+
+function existingLoginRows(modules, codec, tables) {
+  const entry = modules.get(LOGIN_MODULE_ID);
+  if (!entry || !Array.isArray(entry.value) || !entry.value[0]) return [];
+  let player;
+  try {
+    player = codec.unpack('pb_act_role_login', rawBinary(entry.value[0]));
+  } catch {
+    return [];
+  }
+  const rows = new Map();
+  for (const loginRow of player.data_list ?? []) {
+    const actId = Number(loginRow?.act_stage?.act_id);
+    const act = tables.ActFrameAct?.get(actId);
+    if (!act || Number(act.type) !== ACT_TYPE) continue;
+    const bytes = Buffer.from(String(loginRow.module_login_data ?? ''), 'base64');
+    let offset = 0;
+    while (offset + 6 <= bytes.length) {
+      if (bytes[offset] !== 0x83 || bytes[offset + 1] !== 0x6d) break;
+      const length = bytes.readUInt32BE(offset + 2);
+      const end = offset + 6 + length;
+      if (end > bytes.length) break;
+      try {
+        const list = codec.unpack('pb_acc_recharge_list', bytes.subarray(offset + 6, end));
+        for (const row of list.list ?? []) {
+          const id = Number(row?.act_id);
+          if (Number.isSafeInteger(id) && id > 0) rows.set(id, row);
+        }
+      } catch {}
+      offset = end;
+    }
+  }
+  return [...rows.values()];
 }
 
 export function createAccRechargeService({ store, codec, tables, calendar, logger = () => {} }) {
@@ -150,8 +185,10 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
     if (!activity || typeof activity !== 'object') {
       throw new GameError(5, 'Activity login data is invalid');
     }
-    const rows = recharges(new Map(store.state().modules.value).get(MODULE_ID), codec);
+    const modules = new Map(store.state().modules.value);
+    const rows = recharges(modules.get(MODULE_ID), codec);
     rows.list ??= [];
+    const loginRows = new Map(existingLoginRows(modules, codec, tables).map(row => [Number(row.act_id), row]));
     activity.act_list ??= [];
     activity.act_parallel_list ??= [];
 
@@ -188,11 +225,28 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
         runningState.enter_time = serverOpenedAt;
       }
       const awardState = String(row.award_state ?? '');
-      entry.module_login_data = wrapEtfBinary(codec.pack('pb_acc_recharge', {
-        act_id: actId,
-        award_state: awardState
-      })).toString('base64');
-      synced.push({ actId, awardState });
+      const window = activityWindow(act, serverOpenedAt);
+      const scheduledStart = Number(window?.start);
+      const scheduledEnd = Number(window?.end);
+      const startTime = Number.isSafeInteger(scheduledStart) && scheduledStart >= 0
+        ? scheduledStart
+        : Number(runningState.enter_time);
+      const endTime = Number.isSafeInteger(scheduledEnd) && scheduledEnd > startTime
+        ? scheduledEnd
+        : startTime + 86400;
+      synced.push({ actId, awardState, startTime, endTime });
+      loginRows.set(actId, { act_id: actId, award_state: awardState });
+    }
+
+    // AccRechargeActData parses pb_acc_recharge_list from module 183. The
+    // reference login snapshot carries this list with empty award_state bytes;
+    // refresh every cumulative-recharge row while preserving unrelated rows.
+    const loginBlock = codec.pack('pb_acc_recharge_list', {
+      list: [...loginRows.values()].sort((left, right) => Number(left.act_id) - Number(right.act_id))
+    });
+    for (const item of synced) {
+      const entry = activity.act_list.find(candidate => Number(candidate?.state_data?.act_id) === item.actId);
+      if (entry) entry.module_login_data = wrapEtfBinary(loginBlock).toString('base64');
     }
 
     const syncedIds = new Set(synced.map(item => item.actId));
@@ -213,7 +267,15 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
       actIds: synced.map(item => item.actId),
       awardedStates: synced.map(item => Buffer.from(item.awardState, 'base64').subarray(0, 4).toString('hex'))
     });
-    return { activityIds: synced.map(item => item.actId) };
+    return {
+      activityIds: synced.map(item => item.actId),
+      loginActivities: synced.map(item => ({
+        actTid: item.actId,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        blocks: [loginBlock]
+      }))
+    };
   }
 
   function execute(data) {
