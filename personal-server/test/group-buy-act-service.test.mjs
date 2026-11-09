@@ -301,7 +301,7 @@ test('real gateway routes 100601/100602 and appends the group-buy purchase handl
   assert.equal(serverData.record_list.find(row => row.gift_tid === GIFTS[0]).buy_cnt ?? 0, 0);
 
   const purchase = await request(16005, 3, codec.pack('pb_recharge_buy_or_rev_req', {
-    recharge_id: GIFTS[0], buy_num: 1, extra_param: '[[false,0,0]]'
+    recharge_id: GIFTS[0], buy_num: 1, extra_param: String(ACT_ID)
   }));
   assert.equal(purchase.err, undefined);
   const reply = codec.unpack('res_buy_or_Rev_gift', Buffer.from(purchase.data, 'base64'));

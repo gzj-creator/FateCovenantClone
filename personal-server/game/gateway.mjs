@@ -999,7 +999,7 @@ export function createLocalGame({
     throw new GameError(1, 'Invalid mail command payload');
   }
   function rechargeOptions(value) {
-    if (Number.isSafeInteger(value) && value > 0) return { activity_version: value };
+    if (Number.isSafeInteger(value) && value > 0) return { activity_id: value, activity_version: value };
     let bytes = null;
     if (Buffer.isBuffer(value)) bytes = value;
     else if (value?.value?.type === 'Buffer' && Array.isArray(value.value.data)) bytes = Buffer.from(value.value.data);
@@ -2155,11 +2155,11 @@ export function createLocalGame({
           const options = rechargeOptions(args[1]);
           const itemTid = Number(args[2]);
           if (!Number.isSafeInteger(itemTid) || itemTid < 0) throw new GameError(1, 'Invalid recharge payment item');
-          wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
+          wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
           let order;
           if (itemTid === 0) {
             // RechargeMgr sends zero for normal balance payment.
-            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, extra_buy: options.is_extra_buy, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
           } else {
             const product = wallet.snapshot().products.find(value => value.id === productId);
             if (!product) throw new GameError(5, 'Unsupported voucher recharge product');
@@ -2171,7 +2171,7 @@ export function createLocalGame({
             const maximum = voucher.autoCount(product.price_cents);
             const voucherCount = Math.min(available, maximum);
             if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
-            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
           }
           send(seq, Buffer.from(order.notification, 'base64'));
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });

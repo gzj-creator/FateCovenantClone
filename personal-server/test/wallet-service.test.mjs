@@ -48,6 +48,13 @@ test('wallet rejects insufficient balance and rolls back database failures and e
   const broken=createWalletService({store:e.store,tables,codec:{...codec,pack:(name,obj)=>{if(name==='res_recharge_success')throw Error('encode fail');return codec.pack(name,obj);}}});
   assert.throws(()=>broken.buy({product_id:11,request_id:'encode-fail'}));assert.deepEqual(e.store.state(),initial);assert.equal(e.wallet.snapshot().accounts[0].balance_cents,1000);
 });
+test('wallet echoes a numeric activity id for activity gift recharge refresh',async t=>{
+  const e=setup(t);e.wallet.credit({account_id:'local-1',amount_cents:1000,request_id:'activity-gift-fund'});
+  e.wallet.buy({product_id:11,request_id:'activity-gift',activity_id:184401});
+  const push=codec.unpack('res_recharge_success',e.pushes[0].data);
+  const extraParams=await decodeEtf(Buffer.from(push.extra_params,'base64'));
+  assert.equal(Number(extraParams.value[0]?.value??extraParams.value[0]),184401);
+});
 test('admin HTTP requires management key and same origin and persists fractional money as cents',async t=>{
   const e=setup(t),admin=createAdminService({wallet:e.wallet,token:'test-key'}),a=await admin.listen(0);t.after(()=>admin.close());const url='http://127.0.0.1:'+a.port;
   assert.equal((await fetch(url+'/')).status,200);assert.equal((await fetch(url+'/api/state')).status,401);

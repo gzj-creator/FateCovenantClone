@@ -116,6 +116,25 @@ function decodePremiumInfo(block) {
   return info;
 }
 
+async function nativeCashPurchase(env, productId, activityId, seq) {
+  env.send(codec.pack('pb_c2s', {
+    type: 16004,
+    seq,
+    data: await encodeEtf([productId, activityId, 0])
+  }));
+  const frames = [codec.unpack('pb_s2c', await env.next()), codec.unpack('pb_s2c', await env.next())];
+  const response = frames.find(frame => frame.seq === seq);
+  assert.ok(response);
+  assert.equal(response.err, undefined);
+  return codec.unpack('res_recharge_success', Buffer.from(response.data, 'base64'));
+}
+
+function activityPurchaseRows(env) {
+  return env.game.store.inspect(db => db.prepare(
+    'SELECT activity_id,product_id,buy_num FROM activity_purchases ORDER BY rowid'
+  ).all());
+}
+
 test('PremiumActTable contains the ten white-ling paid-shop gifts', () => {
   assert.equal(premiumTables.Version.get(1002)?.tid, 1002);
   const gifts = premiumTables.configsByVersion.get(1002);
@@ -230,6 +249,8 @@ test('all-open white-ling gift mall exposes login data, free/resource gifts, cas
   assert.ok(charged);
   assert.equal(charged.err, undefined);
   const push = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
+  const rechargeExtra = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
+  assert.equal(Number(rechargeExtra.value[0]?.value ?? rechargeExtra.value[0]), ACT_ID);
   limit = push.extra_ret_list.find(extra => extra.flag === 114);
   assert.ok(limit);
   info = codec.unpack('pb_recharge_limit_info', Buffer.from(limit.data, 'base64'));
@@ -403,6 +424,66 @@ test('battle-pass match-hero and triple-match tower gifts grant their dedicated 
     env.game.premiumAct.rechargeInfo(186420).buy_num_list.map(row => [row.recharge_id, row.buy_num]),
     [[1270867, 1], [1270871, 1], [1270872, 1], [1270873, 1]]
   );
+});
+
+test('matching-game cash gifts return their activity id and keep shared skus isolated', async t => {
+  const env = await gatewayFixture(t, 'all-open');
+  env.game.wallet.credit({ account_id: 'local-1', amount_cents: 20000, request_id: 'matching-gifts-credit' });
+
+  let push = await nativeCashPurchase(env, 1270115, 184401, 30);
+  let params = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
+  assert.equal(Number(params.value[0]?.value ?? params.value[0]), 184401);
+  let limit = codec.unpack(
+    'pb_recharge_limit_info',
+    Buffer.from(push.extra_ret_list.find(extra => extra.flag === 114).data, 'base64')
+  );
+  assert.equal(limit.buy_num_list.find(row => row.recharge_id === 1270115).buy_num, 1);
+
+  push = await nativeCashPurchase(env, 1270115, 184402, 31);
+  params = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
+  assert.equal(Number(params.value[0]?.value ?? params.value[0]), 184402);
+  limit = codec.unpack(
+    'pb_recharge_limit_info',
+    Buffer.from(push.extra_ret_list.find(extra => extra.flag === 114).data, 'base64')
+  );
+  assert.equal(limit.buy_num_list.find(row => row.recharge_id === 1270115).buy_num, 1);
+
+  assert.deepEqual(activityPurchaseRows(env).map(row => ({ ...row })), [
+    { activity_id: 184401, product_id: 1270115, buy_num: 1 },
+    { activity_id: 184402, product_id: 1270115, buy_num: 1 }
+  ]);
+  const firstCount = env.game.premiumAct.giftPurchaseCount(1270115, null, 184401);
+  const secondCount = env.game.premiumAct.giftPurchaseCount(1270115, null, 184402);
+  assert.equal(firstCount, 1);
+  assert.equal(secondCount, 1);
+});
+
+test('matching-game free and resource gifts preserve their requested activity id', async t => {
+  const env = await gatewayFixture(t, 'all-open');
+  grant(env.game.store, 101500, 8000);
+  const buyGift = (rechargeId, activityId, seq) => env.request(
+    16005,
+    seq,
+    codec.pack('pb_recharge_buy_or_rev_req', {
+      recharge_id: rechargeId,
+      extra_param: String(activityId),
+      buy_num: 1
+    })
+  );
+
+  let response = await buyGift(1270111, 184401, 40);
+  assert.equal(response.err, undefined);
+  let gift = codec.unpack('res_buy_or_Rev_gift', Buffer.from(response.data, 'base64'));
+  assert.ok(gift.extra_ret_list.some(extra => extra.flag === 114));
+
+  response = await buyGift(1270112, 184402, 41);
+  assert.equal(response.err, undefined);
+  gift = codec.unpack('res_buy_or_Rev_gift', Buffer.from(response.data, 'base64'));
+  assert.ok(gift.extra_ret_list.some(extra => extra.flag === 114));
+  assert.deepEqual(activityPurchaseRows(env).map(row => ({ ...row })), [
+    { activity_id: 184401, product_id: 1270111, buy_num: 1 },
+    { activity_id: 184402, product_id: 1270112, buy_num: 1 }
+  ]);
 });
 
 test('scheduled mode rejects premium gifts when the activity is not open', async t => {

@@ -43,3 +43,34 @@
 - 新服务 PID `42156`，启动时间 `2026-11-08T13:48:51.878Z`，五个端口仍全部仅监听 loopback；stderr 为空。
 - 客户端自动重连并完成登录；实时事件 `premium_act_login_synced` 的 `actIds` 包含 `1841010`，其 `gifts` 为 `1270973..1270982` 的 10 个礼包。`activity_login_calendar_applied` 的 `premiumActivityIds` 也包含 `1841010`，随后 `login_sent` 返回 145 个模块。
 - 服务端登录数据、礼包购买和限购链路已由测试覆盖；仍待用户打开白绫现世礼包页确认列表、价格和点击后的视觉效果。
+
+## 2026-11-09 卡片对对碰礼包售罄刷新修复
+
+- Worktree：`F:\projects\FateCovenantClone\.worktree\matching-gift-soldout-20261109`
+- 分支：`fix/matching-gift-soldout-20261109`
+- 现象：`184401` 的 98 元卡片对对碰礼包购买成功、服务端限购计数也已写入，但客户端内存中的购买状态没有更新，通常要重新登录后才显示售罄。
+- 根因：客户端活动礼包管理器把数字活动 ID 作为 `16004`/`16005` 的 `extra_param` 发出，并在充值成功事件中从回包 `extra_params` 取回该 ID；旧服务端只把该数字当作 `activity_version`，回包又使用普通每日折扣的三元组，因此客户端无法定位本次购买所属的活动。
+
+修复内容：
+
+- `PremiumActService` 的礼包配置、可购检查和限购计数接受显式 `activityId`。同一个 `RechargeTable` SKU 被多个开放活动共享、而请求没有携带活动 ID 时明确拒绝，避免把购买金额串记到错误活动。
+- `PetActivityService` 采用同样的显式活动 ID 规则，并新增运行状态查询，供现金商品列表只展示当前活动可购买的宠物礼包。
+- `gateway.mjs` 把 `16004` 的数字活动参数同时解析为 `activity_id` 和 `activity_version`；`wallet-service.mjs` 在 Premium、Pet 和其他活动礼包的 `res_recharge_success.extra_params` 中回传数字活动 ID，使客户端无需重登即可刷新内存限购状态。每日折扣继续使用原来的 `[additional, period, day]` 三元组上下文。
+- `welfare-service.mjs` 的 `16005` 路径接受数字活动 ID，覆盖 Premium、Pet 和组队购买礼包等由客户端 `RechargeOrBuyGift` 定位活动 ID 的礼包。
+- 组队购买礼包使用数字活动 ID 后不再把 `buy_cycle_limit=5` 误解为体力周期；真实网关测试改为发送客户端实际使用的数字参数。
+
+同类管理器审计：
+
+- 客户端字节码确认 `PremiumActMgr`、`PetActGiftMgr`、`GroupBuyActGiftMgr`、`SummerActMgr`、`TowerActMgr`、`ArtifactDrawActMgr`、`HeroRareActMgr`、`GiftActMgr`、`HeroDownActMgr` 和 `AppearanceReleaseActGiftMgr` 都从 `extraParams` 定位活动 ID，统一由数字活动 ID 原样回传的规则覆盖。
+- `DailyDiscount`、`WishTree`、`WeekHunt` 和 `RecommendGift` 继续使用三元组或自身 protobuf 更新上下文，未改为数字回传。
+- `HeroDraw` 通过 `flag 92` 的 protobuf 更新，不属于本根因。`TriggerGift`、`HoardWheel`、`BuySkinAct` 等服务端尚未完整实现的活动不伪造购买成功；客户端事件语义相同不等于服务端活动已经支持。
+
+验证：
+
+- `node --test test/premium-act.test.mjs`：5/5 通过，包含同一个共享 SKU 在两个卡片对对碰活动中分别计入 1 次并返回各自活动 ID。
+- `node --test test/pet-activity.test.mjs`：4/4 通过，包含共享宠物礼包按活动隔离库存、限购和充值刷新。
+- `node --test test/group-buy-act-service.test.mjs`：7/7 通过，包含真实临时 TCP 网关的 `16005` 购买。
+- `node --test test/wallet-service.test.mjs`：24/24 通过，包含每日折扣、周猎、心愿树和数字活动 ID 回包回归。
+- 全量 `npm test`：2788 项，`pass 2786`、`fail 0`、`skipped 2`、`cancelled 0`、`todo 0`，耗时 461151.4994 ms；日志为 `F:\projects\FateCovenantClone\analysis\test-runs\premium-act-20261109\matching-gift-soldout-full.log`。
+- 修改文件通过 `node --check`，`git diff --check` 通过。
+- 本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，不构成 APK 验收，也没有新增可用 APK 快照。
