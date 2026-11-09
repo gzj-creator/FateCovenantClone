@@ -709,7 +709,11 @@ export function createRecruitService({
     if (isWishUnlocked(pool.rule, progress) && (quality === 50 || quality === 60)) {
       candidates = [];
       for (const item of state.wish_hero_list ?? []) {
-        const hero = pool.byTid.get(Number(item.tid));
+        // Wish candidates use the client's DrawExchangeHero catalog. Some of
+        // those heroes are intentionally excluded from the ordinary random
+        // pool, so validating or drawing them through pool.byTid both rejects
+        // valid selections and drops them from targeted draws.
+        const hero = pool.wishByTid.get(Number(item.tid));
         if (!hero || hero.quality !== quality) continue;
         candidates.push({ ...hero, weight: Number(item.weight) > 0 ? Number(item.weight) : 1 });
       }
@@ -718,7 +722,7 @@ export function createRecruitService({
     const hero = choosePoolHero(pool, quality, random, wishHero ? candidates : null);
     // A targeted pool advances its pity only when the selected adventurer is
     // actually drawn. Other pools keep their normal quality-based pity reset.
-    const resetsPity = pool.rule.wish ? wishHero : quality >= 50;
+    const resetsPity = pool.rule.wish?.targetedPity ? wishHero : quality >= 50;
     if (quality >= 50) state.daily_ssr_draw_num = (state.daily_ssr_draw_num ?? 0) + 1;
     if (resetsPity) {
       state.guaranteed_count = 0;
@@ -933,7 +937,7 @@ export function createRecruitService({
     for (const item of requested) {
       const index = integer(n(item.index), 0, 9999, 'Invalid wish slot');
       const tid = integer(n(item.hero_tid), 1, 999999999, 'Invalid wish hero');
-      const hero = pool.byTid.get(tid);
+      const hero = pool.wishByTid.get(tid);
       if (seen.has(tid) || seenIndexes.has(index)) fail(5, 'Wish hero or slot is duplicated');
       if (!hero || !pool.rule.wish.maxByQuality.some(([quality]) => quality === hero.quality)) {
         fail(5, 'Wish hero is not eligible for this draw library');

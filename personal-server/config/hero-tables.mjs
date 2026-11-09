@@ -13,6 +13,7 @@ export function readHeroTables(file = defaultPath) {
     'Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star',
     'DevelopConst', 'AbilityLevel', 'UpStageTalent', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
+    'DrawExchangeHero',
     'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
     'TeamSuggest', 'TeamSuggestAward', 'TeamSuggestType', 'TeamSuggestTeamType',
     // TeamGenreMgr stores each current cycle and its claimed-award bitmap in
