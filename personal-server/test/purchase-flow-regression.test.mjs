@@ -103,6 +103,13 @@ function permanentCardInfo(store) {
   return codec.unpack('pb_permanent_card', rawBinary(new Map(store.state().modules.value).get(62)));
 }
 
+function regularGiftInfo(value) {
+  const bytes = Buffer.isBuffer(value)
+    ? value
+    : typeof value === 'string' ? Buffer.from(value, 'base64') : rawBinary(value);
+  return codec.unpack('pb_regular_gift_info', bytes);
+}
+
 function permitRows(store) {
   const moduleValue = new Map(store.state().modules.value).get(38);
   return moduleValue.value.flatMap(element => codec.unpack('pb_permit_data', rawBinary(element)).permit_list ?? []);
@@ -119,10 +126,15 @@ test('limited gift purchase counts are numeric, persist in module 19 and reject 
 
   env.wallet.buy({ product_id: 112037, request_id: 'limited-first' });
   const purchase = latestPurchase(env);
-  assert.deepEqual(flags(purchase), [73]);
+  assert.deepEqual(flags(purchase), [73, 7]);
   const giftRecord = purchase.extra_ret_list.find(row => Number(row.flag) === 73);
   const decodedRecord = codec.unpack('pb_buy_gift_record', Buffer.from(giftRecord.data, 'base64'));
   assert.equal(Number(decodedRecord.recharge_tid), 112037);
+  const pushedRegularGifts = regularGiftInfo(purchase.extra_ret_list.find(row => Number(row.flag) === 7).data);
+  const pushedWeeklyGift = pushedRegularGifts.gift_list.find(row => Number(row.type) === 2);
+  assert.equal(Number(pushedWeeklyGift.buy_limit_info.buy_num_list.find(row => Number(row.recharge_id) === 112037).buy_num), 1);
+  const storedRegularGifts = regularGiftInfo(new Map(env.store.state().modules.value).get(26));
+  assert.equal(Number(storedRegularGifts.gift_list.find(row => Number(row.type) === 2).buy_limit_info.buy_num_list.find(row => Number(row.recharge_id) === 112037).buy_num), 1);
 
   const login = rechargeLogin(env.store);
   assert.equal(login.recharge_record.recent_record.some(row => row.recharge_ids.includes(112037)), true);
@@ -150,6 +162,7 @@ test('limited gift purchase counts are numeric, persist in module 19 and reject 
   env.reopen();
   const reopened = env.wallet.snapshot().products.find(row => row.id === 112037);
   assert.deepEqual([reopened.purchased, reopened.available], [1, 0]);
+  assert.equal(Number(regularGiftInfo(new Map(env.store.state().modules.value).get(26)).gift_list.find(row => Number(row.type) === 2).buy_limit_info.buy_num_list.find(row => Number(row.recharge_id) === 112037).buy_num), 1);
 });
 
 test('monthly card purchase writes login module 20, returns flag 5 and rejects a second activation', t => {

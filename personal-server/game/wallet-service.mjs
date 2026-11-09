@@ -8,6 +8,7 @@ import { createMonthlyCardService } from './monthly-card-service.mjs';
 import { createDiamondFundService } from './diamond-fund-service.mjs';
 import { createPermanentCardService } from './permanent-card-service.mjs';
 import { createDailyDiscountPurchaseRules } from './daily-discount-purchase.mjs';
+import { createRegularGiftService, REGULAR_GIFT_HANDLE } from './regular-gift-service.mjs';
 import { isDailyDiscountOrder, rechargeCycleKey } from './recharge-rules.mjs';
 const DAILY_DISCOUNT_RECHARGE = 46;
 const DAILY_DISCOUNT_HANDLE = 40;
@@ -57,6 +58,7 @@ const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
 export function createWalletService({
   store, codec, tables, voucher, monthPermit, permitService, monthlyCard, diamondFund, permanentCard, petActivity, premiumActivity, heroDrawActivity,
   groupBuyActivity, wishTreasure, wishTree, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward, minigameActivity,
+  regularGift,
   accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000)
 }) {
   const log = event => { try { logger(event); } catch {} };
@@ -65,6 +67,7 @@ export function createWalletService({
   const monthlyCards = monthlyCard ?? createMonthlyCardService({ codec, tables });
   const diamondFunds = diamondFund ?? createDiamondFundService({ codec, tables });
   const permanentCards = permanentCard ?? createPermanentCardService({ codec, tables });
+  const regularGifts = regularGift ?? createRegularGiftService({ codec, tables, accountId });
   const GIFT_BUY_RECORD_HANDLE = 73;
   const dailyRechargeRows = [...(tables.DailyDiscountRecharge?.values?.() ?? [])];
   const dailyDiscountProductIds = new Set(dailyRechargeRows.map(row => Number(row.recharge_id)));
@@ -219,6 +222,7 @@ export function createWalletService({
     let changed = false;
     if (diamondFunds.restoreFromOrders({ modules, rows, at: now() })) changed = true;
     if (permanentCards.restoreFromOrders({ modules, rows })) changed = true;
+    if (regularGifts.restoreFromOrders({ modules, rows, at: now() })) changed = true;
     const loginRaw = modules.get(19);
     if (loginRaw) {
       const login = codec.unpack('res_recharge_login', rawBinary(loginRaw));
@@ -511,6 +515,7 @@ export function createWalletService({
     const groupBuyGift = !heroGift && !petGift && !premiumGift && Number(product.type) === 107 && groupBuyActivity
       ? groupBuyActivity.assertGiftAvailable(product_id, activity_id)
       : null;
+    const regularGiftGroupId = regularGifts.groupIdForProduct(product_id);
     const requestedActivityId = positiveInteger(activity_id);
     if (premiumGift && Number(product.pay_type) !== 0) {
       throw new GameError(5, 'Premium activity cash gift has an unsupported price');
@@ -680,6 +685,12 @@ export function createWalletService({
         res.changes.push(...extra.changes);
         extraRetList.push(...extra.extraRetList);
       }
+      if (regularGifts.supportsProduct(product_id)) {
+        modules = new Map(model.state.modules.value);
+        const regularGiftInfo = regularGifts.purchaseExtra({ modules, db, at: purchasedAt });
+        extraRetList.push({ flag: REGULAR_GIFT_HANDLE, data: regularGiftInfo });
+        model.state.modules.value = [...modules];
+      }
       // Some otherwise ordinary products have no dedicated login-module
       // handoff. The native RechargeMgr still requires a non-empty list before
       // it fires EVT_RECHARGE, so persist and return the real purchase record.
@@ -702,9 +713,16 @@ export function createWalletService({
         ?? premiumGift?.activityId
         ?? groupBuyGift?.activityId
         ?? (product.type !== DAILY_DISCOUNT_RECHARGE ? requestedActivityId : 0);
-      const extraParams = activityExtraId > 0
-        ? etfList([activityExtraId])
-        : etfList([[dailyPlan?.additional === true, purchasePeriod, purchaseDay]]);
+      // RegularGiftMgr reads the purchased group ID from extra_params[1]. The
+      // client derives the mall tab from floor(groupId / 1000000), then emits
+      // REGULAR_GIFT_REFRESH_EVT so the complete module-26 snapshot is applied
+      // without a relogin. Activity IDs and the daily-discount tuple do not
+      // satisfy this callback contract for mall gifts.
+      const extraParams = regularGiftGroupId > 0
+        ? etfList([regularGiftGroupId])
+        : activityExtraId > 0
+          ? etfList([activityExtraId])
+          : etfList([[dailyPlan?.additional === true, purchasePeriod, purchaseDay]]);
       const value = { recharge_id: product_id, time: purchasedAt, order, get_token: false, extra_params: extraParams, package_is_full: false, res, extra_ret_list: extraRetList, is_use_token: quote.quantity > 0, display_id: 0, use_item_tid: quote.quantity > 0 ? voucher.itemTid : 0 };
       const data = codec.pack('res_recharge_success',value);
       login.tmp_recharge_record ??= { tmp_record_list: [] };
@@ -728,7 +746,8 @@ export function createWalletService({
         ...(petGift ? { pet_activity_id: petGift.activityId } : {}),
         ...(heroGift || heroShadowRecorded ? { hero_activity_id: (heroGift ?? heroShadowGift).activityId } : {}),
         ...(premiumGift ? { premium_activity_id: premiumGift.activityId } : {}),
-        ...(groupBuyGift ? { group_buy_activity_id: groupBuyGift.activityId } : {})
+        ...(groupBuyGift ? { group_buy_activity_id: groupBuyGift.activityId } : {}),
+        ...(regularGiftGroupId > 0 ? { regular_gift_group_id: regularGiftGroupId } : {})
       };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(result),order);
       db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(order,account_id,'purchase',-quote.balance_cents,balanceAfter,createdAt,JSON.stringify({ product_id, order_id: order, voucher_quantity: quote.quantity, voucher_amount_cents: quote.amount_cents, daily_discount_additional: Boolean(dailyPlan?.additional), requested_extra_buy: extra_buy === true, period: purchasePeriod, day_index: purchaseDay }));
@@ -754,6 +773,7 @@ export function createWalletService({
       || !Number.isSafeInteger(buy_num) || buy_num < 1 || buy_num > 100) throw new GameError(1, 'Invalid local gift purchase');
     const product = tables.Recharge.get(product_id);
     if (!product) throw new GameError(5, 'Gift is not configured');
+    const regularGiftGroupId = regularGifts.groupIdForProduct(product_id);
     const purchasedAt = now();
     if (!Number.isSafeInteger(purchasedAt) || purchasedAt <= 0) throw new GameError(1, 'Invalid purchase time');
     const heroGift = heroDrawActivity?.giftConfig(product_id, purchasedAt) ?? null;
@@ -895,7 +915,9 @@ export function createWalletService({
       const order = 'local-' + randomUUID();
       const createdAt = new Date(purchasedAt * 1000).toISOString();
       db.prepare('INSERT INTO recharge_orders(order_id,account_id,request_id,product_id,price_cents,payload_json,created_at) VALUES (?,?,?,?,?,?,?)')
-        .run(order, account_id, request_id, product_id, chargeCents, '{}', createdAt);
+        .run(order, account_id, request_id, product_id, chargeCents, JSON.stringify({
+          product_id, buy_num, period: normalizedPeriod, day_index: normalizedDay
+        }), createdAt);
       const changes = [];
       if (Number(product.pay_type) === 1) {
         changes.push(...consumeResources(model, [[Number(product.cost_item), itemPrice]]).changes);
@@ -980,6 +1002,12 @@ export function createWalletService({
         });
         extraRetList.push(heroDrawActivity.rechargeExtra(heroGift.activityId, db));
       }
+      if (regularGifts.supportsProduct(product_id)) {
+        const latestModules = new Map(model.state.modules.value);
+        const regularGiftInfo = regularGifts.purchaseExtra({ modules: latestModules, db, at: purchasedAt });
+        extraRetList.push({ flag: REGULAR_GIFT_HANDLE, data: regularGiftInfo });
+        model.state.modules.value = [...latestModules];
+      }
 
       const balanceAfter = balance - chargeCents;
       if (chargeCents > 0) db.prepare('UPDATE local_wallets SET balance_cents=? WHERE account_id=?').run(balanceAfter, account_id);
@@ -994,7 +1022,8 @@ export function createWalletService({
         ...(petGift ? { pet_activity_id: petGift.activityId } : {}),
         ...(heroGift ? { hero_activity_id: heroGift.activityId } : {}),
         ...(premiumGift ? { premium_activity_id: premiumGift.activityId } : {}),
-        ...(groupBuyGift ? { group_buy_activity_id: groupBuyGift.activityId } : {})
+        ...(groupBuyGift ? { group_buy_activity_id: groupBuyGift.activityId } : {}),
+        ...(regularGiftGroupId > 0 ? { regular_gift_group_id: regularGiftGroupId } : {})
       };
       db.prepare('UPDATE recharge_orders SET payload_json=? WHERE order_id=?').run(JSON.stringify(value), order);
       if (chargeCents > 0) {

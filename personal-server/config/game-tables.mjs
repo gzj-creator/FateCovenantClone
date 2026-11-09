@@ -24,6 +24,18 @@ export function readGameTables() {
     ...Object.fromEntries(Object.entries(readGeneratedTables(table('RechargeTable.data.lua.json'), [
       'Recharge', 'Handle', 'Param', 'BuyCycleLimit', 'ExtraReward', 'ExtraFixReward', 'ExtraRewardConst'
     ])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k === 'Handle' ? 'RechargeHandle' : k,v])),
+    // The mall's RegularGiftMgr owns login module 26 and recharge handle 7. Its
+    // Type/Group rows bind every visible shop card to a canonical RechargeTable
+    // SKU; keeping the full family lets the wallet publish a complete limit
+    // snapshot instead of special-casing the welcome gifts.
+    ...pick(readGeneratedTables(table('RegularGiftTable.data.lua.json'), [
+      'Type', 'Group', 'RegularGift', 'PriceAnchor'
+    ]), {
+      Type: 'RegularGiftType',
+      Group: 'RegularGiftGroup',
+      RegularGift: 'RegularGift',
+      PriceAnchor: 'RegularGiftPriceAnchor'
+    }),
     MonthlyCard: readGeneratedTables(table('MonthlyCardTable.data.lua.json'), ['MonthlyCard']).MonthlyCard,
     PermanentCard: readGeneratedTables(table('PermanentCardTable.data.lua.json'), ['PermanentCard']).PermanentCard,
     ...pick(readGeneratedTables(table('DiamondFundTable.data.lua.json'), ['Type']), {
