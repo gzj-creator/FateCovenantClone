@@ -840,25 +840,38 @@ export function createDrawFamilies(engine) {
   // Prayer activity: the selected Award row is granted whenever a tier's
   // progress reaches AwardIndex.progress_val. Critical progress is bounded by
   // critical_val and selected using critical_ration (parts per ten thousand).
-  function prayConfig(request) {
-    const input = engine.decode('pb_pray_act_select_award_req', request.bytes);
-    const actTid = intOf(input.act_tid, 'pray activity');
+  function prayActivity(actTidValue) {
+    const actTid = intOf(actTidValue, 'pray activity');
     const activity = activityTables('PrayActTable');
-    const act = activityRows(activity, 'PrayAct').get(actTid);
+    let act = activityRows(activity, 'PrayAct').get(actTid);
+    let version = actTid;
+    if (!act) {
+      // ActFrame rows use an instance id such as 183013 while PrayActTable is
+      // keyed by version 13. The client sends the instance id from its login
+      // entity for both prayer commands.
+      const frame = tables.ActFrameAct?.get(actTid);
+      if (!frame || Number(frame.type) !== 183) fail(1, 'Pray activity is not configured');
+      version = intOf(frame.version, 'pray activity version');
+      act = activityRows(activity, 'PrayAct').get(version);
+    }
     if (!act) fail(1, 'Pray activity is not configured');
     const indexes = tableRows(activity, 'AwardIndex')
-      .filter(row => Number(row.version) === actTid)
+      .filter(row => Number(row.version) === version)
       .sort((left, right) => Number(left.tid) - Number(right.tid));
     if (!indexes.length) fail(5, 'Pray activity award indexes are missing');
-    return { activity, input, act, actTid, indexes };
+    return { activity, act, actTid, version, indexes };
   }
-  function prayInfo(state, act, indexes) {
+  function prayConfig(request) {
+    const input = engine.decode('pb_pray_act_select_award_req', request.bytes);
+    return { ...prayActivity(input.act_tid), input };
+  }
+  function prayInfo(state, act, indexes, actTid = Number(act.tid)) {
     const drawCounts = counterObject(state, 'drawCounts');
     const progress = counterObject(state, 'progress');
     const history = counterObject(state, 'history');
     const selections = state.selections.awards ?? {};
     return {
-      act_tid: act.tid,
+      act_tid: actTid,
       pray_list: indexes.map(index => ({
         select_award_tid: Number(selections[String(index.tid)] ?? 0),
         pray_index_tid: Number(index.tid),
@@ -872,81 +885,91 @@ export function createDrawFamilies(engine) {
     };
   }
   add('pray_act', [C.praySelect], request => {
-    const { activity, input, actTid, indexes } = prayConfig(request);
+    const { activity, input, actTid, version, indexes } = prayConfig(request);
     const choices = Array.isArray(input.index_award_list) ? input.index_award_list : [];
     if (!choices.length) fail(1, 'Pray selected award list is empty');
     const selected = {};
     for (const choice of choices) {
       const indexTid = intOf(choice.pray_index_tid, 'pray index');
       const awardTid = intOf(choice.award_tid, 'pray award');
+      if (Object.hasOwn(selected, String(indexTid))) fail(1, 'Pray index is selected more than once');
       if (!indexes.some(index => Number(index.tid) === indexTid)) fail(1, 'Pray index is not configured for this activity');
       const award = activityRows(activity, 'Award').get(awardTid);
       if (!award || Number(award.pray_index) !== indexTid) fail(1, 'Pray award does not belong to the selected index');
       selected[String(indexTid)] = awardTid;
     }
-    return tx('pray_act', actTid, ({ state, at, db, roleId }) => {
+    if (Object.keys(selected).length !== indexes.length) fail(1, 'All pray award indexes must be selected');
+    return tx('pray_act', version, ({ state, at, db, roleId }) => {
       state.selections.awards = { ...(state.selections.awards ?? {}), ...selected };
-      engine.recordLog(db, roleId, 'pray_act', actTid, 'select', selected, at);
+      engine.recordLog(db, roleId, 'pray_act', version, 'select', selected, at);
       const value = {};
       return packed(codec, 'pb_pray_act_select_award_rsp', value, { value, actTid, selected });
     });
   });
   add('pray_act', [C.prayDraw], request => {
     const drawInput = engine.decode('pb_pray_act_draw_award_req', request.bytes);
-    const actTid = intOf(drawInput.act_tid, 'pray activity');
-    const activity = activityTables('PrayActTable');
-    const act = activityRows(activity, 'PrayAct').get(actTid);
-    if (!act) fail(1, 'Pray activity is not configured');
-    const indexes = tableRows(activity, 'AwardIndex')
-      .filter(row => Number(row.version) === actTid)
-      .sort((left, right) => Number(left.tid) - Number(right.tid));
-    if (!indexes.length) fail(5, 'Pray activity award indexes are missing');
+    const { activity, act, actTid, version, indexes } = prayActivity(drawInput.act_tid);
     const count = intOf(drawInput.cnt, 'pray draw count', { max: 100 });
-    return tx('pray_act', actTid, ({ model, state }) => {
+    return tx('pray_act', version, ({ model, state }) => {
       const selections = state.selections.awards ?? {};
-      if (!indexes.some(index => selections[String(index.tid)])) fail(311, 'Pray selected award is not configured');
+      const selectedAwards = indexes.map(index => {
+        const indexTid = Number(index.tid);
+        const selectedTid = Number(selections[String(indexTid)] ?? 0);
+        if (!Number.isSafeInteger(selectedTid) || selectedTid < 1) {
+          fail(311, 'Pray selected award is not configured');
+        }
+        const award = activityRows(activity, 'Award').get(selectedTid);
+        if (!award || Number(award.pray_index) !== indexTid) fail(5, 'Pray selected award is missing');
+        return { index, indexTid, selectedTid, award };
+      });
       const spent = consumeResources(model, [[Number(act.consume_tid), Number(act.consume_cnt) * count]], 301);
       const drawCounts = counterObject(state, 'drawCounts');
       const progressMap = counterObject(state, 'progress');
       const history = counterObject(state, 'history');
       const rewards = [], criticalList = [];
       for (let offset = 0; offset < count; offset++) {
-        const index = indexes[0];
-        const indexTid = Number(index.tid);
-        const selectedTid = Number(selections[String(indexTid)]);
-        const award = activityRows(activity, 'Award').get(selectedTid);
-        if (!award) fail(5, 'Pray selected award is missing');
-        const previous = Number(progressMap[String(indexTid)] ?? 0);
-        const critical = Number(engine.random()) * 10000 < Number(index.critical_ration);
-        const criticalMin = Number(index.critical_val?.[0] ?? index.normal_val);
-        const criticalMax = Number(index.critical_val?.[1] ?? criticalMin);
-        const gain = critical
-          ? criticalMin + Math.floor(Math.max(0, criticalMax - criticalMin + 1) * Number(engine.random()))
-          : Number(index.normal_val);
-        const threshold = Number(index.progress_val);
-        const total = previous + Math.max(1, gain);
-        const reached = total >= threshold;
-        progressMap[String(indexTid)] = reached ? total - threshold : total;
-        drawCounts[String(indexTid)] = Number(drawCounts[String(indexTid)] ?? 0) + 1;
-        if (reached) {
-          rewards.push(...pairs(award.award));
-          history[String(selectedTid)] = Number(history[String(selectedTid)] ?? 0) + 1;
+        // Every prayer draw advances all configured indexes. The client sends
+        // one draw_info entry per index and animates each one independently.
+        const drawInfo = [];
+        for (const { index, indexTid, selectedTid, award } of selectedAwards) {
+          const previous = Number(progressMap[String(indexTid)] ?? 0);
+          const critical = Number(engine.random()) * 10000 < Number(index.critical_ration);
+          const criticalMin = Number(index.critical_val?.[0] ?? index.normal_val);
+          const criticalMax = Number(index.critical_val?.[1] ?? criticalMin);
+          const gain = critical
+            ? criticalMin + Math.floor(Math.max(0, criticalMax - criticalMin + 1) * Number(engine.random()))
+            : Number(index.normal_val);
+          const threshold = Number(index.progress_val);
+          const total = previous + Math.max(1, gain);
+          const reached = total >= threshold;
+          progressMap[String(indexTid)] = reached ? total - threshold : total;
+          drawCounts[String(indexTid)] = Number(drawCounts[String(indexTid)] ?? 0) + 1;
+          if (reached) {
+            rewards.push(...pairs(award.award));
+            history[String(selectedTid)] = Number(history[String(selectedTid)] ?? 0) + 1;
+          }
+          drawInfo.push({ pray_index: indexTid, selected_tid: selectedTid, is_direct: false,
+            is_award: reached, is_critical: critical, progress_val: gain });
         }
         criticalList.push({
-          draw_cnt: Number(drawCounts[String(indexTid)]),
-          draw_info: [{ pray_index: indexTid, selected_tid: selectedTid, is_direct: false,
-            is_award: reached, is_critical: critical, progress_val: gain }]
+          draw_cnt: Number(drawCounts[String(indexes[0].tid)]),
+          draw_info: drawInfo
         });
       }
       const granted = rewards.length ? grantResources(model, rewards, tables) : { changes: [] };
       const value = {
-        pray_act_info: prayInfo(state, act, indexes),
+        pray_act_info: prayInfo(state, act, indexes, actTid),
         res: res([...spent.changes, ...granted.changes]),
         draw_critical_list: criticalList
       };
       return packed(codec, 'pb_pray_act_draw_award_rsp', value, { value, actTid, changes: value.res.changes });
     });
   });
+
+  function prayLoginPayload(actTid, state) {
+    const { act, indexes } = prayActivity(actTid);
+    return codec.pack('pb_pray_act', prayInfo(state, act, indexes, Number(actTid)));
+  }
 
   // Flop cards reserve the table-selected award on the reveal. 109102 applies
   // all reservations atomically; 109103 claims cumulative tiers by cond_val.
@@ -1096,5 +1119,5 @@ export function createDrawFamilies(engine) {
     });
   });
 
-  return { handlers, modules };
+  return { handlers, modules, prayLoginPayload };
 }

@@ -11,6 +11,7 @@ import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
+import { decodeModuleLoginBlocks } from '../game/relic-divine-login.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
@@ -26,7 +27,7 @@ test('draw activities complete over temporary TCP and persist against SQLite', {
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: openedAt,
     now: () => (openedAt + 3600) * 1000,
-    random: () => 0.5
+    random: () => 0
   });
   let socket;
   t.after(async () => {
@@ -34,7 +35,7 @@ test('draw activities complete over temporary TCP and persist against SQLite', {
     await game.close();
     fs.rmSync(directory, { recursive: true, force: true });
   });
-  game.store.transaction(model => grantResources(model, [[820202, 50]], tables));
+  game.store.transaction(model => grantResources(model, [[820202, 50], [816002, 100]], tables));
 
   const address = await game.listen(0);
   socket = net.connect(address.port, '127.0.0.1');
@@ -91,5 +92,41 @@ test('draw activities complete over temporary TCP and persist against SQLite', {
 
   response = await request(105502, 6, codec.pack('pb_cashback_draw_get_times_req', { activity_id: 1 }));
   assert.equal(response.err?.err, 5);
+
+  response = await request(104901, 7, codec.pack('pb_pray_act_select_award_req', {
+    act_tid: 183013,
+    index_award_list: [
+      { pray_index_tid: 61, award_tid: 242 },
+      { pray_index_tid: 62, award_tid: 244 },
+      { pray_index_tid: 63, award_tid: 248 },
+      { pray_index_tid: 64, award_tid: 252 },
+      { pray_index_tid: 65, award_tid: 256 }
+    ]
+  }));
+  assert.equal(response.err, undefined);
+  response = await request(104902, 8, codec.pack('pb_pray_act_draw_award_req', { act_tid: 183013, cnt: 50 }));
+  assert.equal(response.err, undefined);
+  const prayer = codec.unpack('pb_pray_act_draw_award_rsp', Buffer.from(response.data, 'base64'));
+  assert.equal(prayer.pray_act_info.act_tid, '183013');
+  assert.deepEqual(prayer.pray_act_info.pray_list.map(index => Number(index.draw_cnt)), [50, 50, 50, 50, 50]);
+  assert.equal(prayer.draw_critical_list.length, 50);
+  assert.deepEqual(prayer.draw_critical_list[0].draw_info.map(info => Number(info.pray_index)), [61, 62, 63, 64, 65]);
+
+  const relogin = await decodeEtf(await game.loginPayload());
+  const reloginModules = new Map(relogin[2].value.map(([id, entry]) => [Number(id), entry]));
+  const player = codec.unpack('pb_act_role_login', Buffer.from(reloginModules.get(183).value[0].value));
+  const prayerRow = player.data_list.find(row => Number(row.act_stage?.act_id) === 183013);
+  const restored = codec.unpack(
+    'pb_pray_act', decodeModuleLoginBlocks(prayerRow.module_login_data)[0]
+  );
+  assert.equal(restored.act_tid, '183013');
+  const restoredIndex = restored.pray_list.find(row => Number(row.pray_index_tid) === 61);
+  assert.equal(restoredIndex.select_award_tid, '242');
+  assert.equal(restoredIndex.draw_cnt, '50');
+  assert.equal(restoredIndex.pray_award_info_list[0].history_cnt, '1');
+  assert.deepEqual(restored.pray_list.map(index => Number(index.draw_cnt)), [50, 50, 50, 50, 50]);
+  assert.equal(game.store.inspect(db => db.prepare(
+    "SELECT version FROM draw_activity_state WHERE module='pray_act'"
+  ).get().version), 13);
   assert.equal(game.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM draw_activity_state WHERE module='flop_card'").get().n), 1);
 });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createGameCodec } from '../protocol/game-codec.mjs';
+import { createGameCodec, rawBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
@@ -251,17 +251,120 @@ test('pray act persists a selected award, consumes draws and grants at the confi
   e.service.execute(DRAW_ACTIVITY_COMMANDS.praySelect, {
     bytes: codec.pack('pb_pray_act_select_award_req', {
       act_tid: 1,
-      index_award_list: [{ pray_index_tid: 1, award_tid: 1 }]
+      index_award_list: [
+        { pray_index_tid: 1, award_tid: 1 },
+        { pray_index_tid: 2, award_tid: 5 },
+        { pray_index_tid: 3, award_tid: 9 },
+        { pray_index_tid: 4, award_tid: 13 },
+        { pray_index_tid: 5, award_tid: 17 }
+      ]
     })
   });
   const drawn = e.service.execute(DRAW_ACTIVITY_COMMANDS.prayDraw, {
     bytes: codec.pack('pb_pray_act_draw_award_req', { act_tid: 1, cnt: 50 })
   });
   assert.equal(drawn.value.pray_act_info.pray_list[0].draw_cnt, 50);
+  assert.ok(drawn.value.pray_act_info.pray_list.every(index => index.draw_cnt === 50));
+  assert.equal(drawn.value.draw_critical_list.length, 50);
+  assert.ok(drawn.value.draw_critical_list.every(draw => draw.draw_info.length === 5));
   assert.equal(e.store.read().resources.get('816002').num, '50');
   assert.equal(e.store.read().resources.get('3791200').num, '1');
   e.reopen();
   assert.equal(e.service.stateOf(100001, 'pray_act', 1).counters.drawCounts['1'], 50);
+  assert.equal(e.service.stateOf(100001, 'pray_act', 1).counters.drawCounts['5'], 50);
+});
+
+test('pray draw fails closed until every configured index has a selected award', async t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[816002, 1]], tables));
+  assert.throws(
+    () => e.service.execute(DRAW_ACTIVITY_COMMANDS.praySelect, {
+      bytes: codec.pack('pb_pray_act_select_award_req', {
+        act_tid: 183013,
+        index_award_list: [{ pray_index_tid: 61, award_tid: 242 }]
+      })
+    }),
+    error => error.code === 1
+  );
+  assert.throws(
+    () => e.service.execute(DRAW_ACTIVITY_COMMANDS.prayDraw, {
+      bytes: codec.pack('pb_pray_act_draw_award_req', { act_tid: 183013, cnt: 1 })
+    }),
+    error => error.code === 311
+  );
+  assert.equal(e.store.read().resources.get('816002').num, '1');
+});
+
+test('pray act accepts the ActFrame instance id and keys state by its config version', async t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[816002, 50]], tables));
+  e.service.execute(DRAW_ACTIVITY_COMMANDS.praySelect, {
+    bytes: codec.pack('pb_pray_act_select_award_req', {
+      act_tid: 183013,
+      index_award_list: [
+        { pray_index_tid: 61, award_tid: 242 },
+        { pray_index_tid: 62, award_tid: 244 },
+        { pray_index_tid: 63, award_tid: 248 },
+        { pray_index_tid: 64, award_tid: 252 },
+        { pray_index_tid: 65, award_tid: 256 }
+      ]
+    })
+  });
+  const drawn = e.service.execute(DRAW_ACTIVITY_COMMANDS.prayDraw, {
+    bytes: codec.pack('pb_pray_act_draw_award_req', { act_tid: 183013, cnt: 50 })
+  });
+  assert.equal(drawn.value.pray_act_info.act_tid, 183013);
+  assert.equal(drawn.value.pray_act_info.pray_list[0].pray_index_tid, 61);
+  assert.equal(drawn.value.pray_act_info.pray_list[0].select_award_tid, 242);
+  assert.equal(drawn.value.pray_act_info.pray_list[0].draw_cnt, 50);
+  assert.equal(drawn.value.pray_act_info.pray_list[0].pray_award_info_list[0].history_cnt, 1);
+  assert.deepEqual(drawn.value.pray_act_info.pray_list.map(index => index.draw_cnt), [50, 50, 50, 50, 50]);
+  assert.deepEqual(drawn.value.pray_act_info.pray_list.map(index => index.progress_value), [0, 50, 50, 50, 50]);
+  assert.deepEqual(drawn.value.pray_act_info.pray_list.map(index => index.pray_award_info_list[0].history_cnt), [1, 1, 2, 3, 3]);
+  assert.equal(drawn.value.draw_critical_list.length, 50);
+  assert.deepEqual(drawn.value.draw_critical_list[0].draw_info.map(info => info.pray_index), [61, 62, 63, 64, 65]);
+  assert.deepEqual(drawn.value.draw_critical_list.map(draw => draw.draw_cnt), Array.from({ length: 50 }, (_, index) => index + 1));
+  assert.equal(e.store.read().resources.get('816002').num, '0');
+  e.reopen();
+  assert.equal(e.service.stateOf(100001, 'pray_act', 13).counters.drawCounts['61'], 50);
+  assert.equal(e.service.stateOf(100001, 'pray_act', 13).selections.awards['61'], 242);
+  assert.equal(e.service.stateOf(100001, 'pray_act', 13).counters.drawCounts['65'], 50);
+});
+
+test('pray login payload restores the persisted ActFrame-183 state', async t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[816002, 50]], tables));
+  e.service.execute(DRAW_ACTIVITY_COMMANDS.praySelect, {
+    bytes: codec.pack('pb_pray_act_select_award_req', {
+      act_tid: 183013,
+      index_award_list: [
+        { pray_index_tid: 61, award_tid: 242 },
+        { pray_index_tid: 62, award_tid: 244 },
+        { pray_index_tid: 63, award_tid: 248 },
+        { pray_index_tid: 64, award_tid: 252 },
+        { pray_index_tid: 65, award_tid: 256 }
+      ]
+    })
+  });
+  e.service.execute(DRAW_ACTIVITY_COMMANDS.prayDraw, {
+    bytes: codec.pack('pb_pray_act_draw_award_req', { act_tid: 183013, cnt: 50 })
+  });
+
+  const modules = new Map(capture.privateFlows.find(x => x.messageId === 'game:tcp-69:s2c:103')
+    .decoded[2].value.map(([id, entry]) => [Number(id), entry]));
+  const activity = codec.unpack('pb_act_login', rawBinary(modules.get(92)));
+  const result = e.service.synchronizeLogin(activity, modules.get(183), fixedNow / 1000);
+  assert.deepEqual(result.activityIds, [183013]);
+  assert.equal(result.loginActivities.length, 1);
+  const payload = codec.unpack('pb_pray_act', result.loginActivities[0].blocks[0]);
+  assert.equal(payload.act_tid, '183013');
+  const index = payload.pray_list.find(row => Number(row.pray_index_tid) === 61);
+  assert.equal(index.select_award_tid, '242');
+  assert.equal(index.draw_cnt, '50');
+  assert.equal(index.progress_value ?? 0, 0);
+  assert.equal(index.pray_award_info_list[0].history_cnt, '1');
+  assert.deepEqual(payload.pray_list.map(row => Number(row.draw_cnt)), [50, 50, 50, 50, 50]);
+  assert.deepEqual(payload.pray_list.map(row => Number(row.progress_value ?? 0)), [0, 50, 50, 50, 50]);
 });
 
 test('flop card reserves a weighted award and claims it with cumulative progress', async t => {
