@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { binary, createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
+import { binary, createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createActivityCalendar } from '../game/activity-calendar.mjs';
@@ -137,24 +137,28 @@ test('all-open pet activity synchronizes login data, shop, free/resource gifts a
   assert.equal(shops[0].items_groups[0].item_list.length, 11);
   assert.equal(shops[1].items_groups.length, 1);
 
-  const buyGift = (rechargeId, seq) => env.request(
+  const buyGift = (rechargeId, seq, activityId) => env.request(
     16005,
     seq,
-    codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: rechargeId, buy_num: 1 })
+    codec.pack('pb_recharge_buy_or_rev_req', {
+      recharge_id: rechargeId,
+      extra_param: activityId === undefined ? '' : String(activityId),
+      buy_num: 1
+    })
   );
-  response = await buyGift(730400, 20);
+  response = await buyGift(730400, 20, PET_ACT_ID);
   assert.equal(response.err, undefined);
   assert.equal(codec.unpack('res_buy_or_Rev_gift', Buffer.from(response.data, 'base64')).res.changes.find(change => change.tid === '847002').diff_num, '3');
-  response = await buyGift(730400, 20);
+  response = await buyGift(730400, 20, PET_ACT_ID);
   assert.equal(response.err, undefined, 'a retried gift response must survive JSON Buffer revival');
   assert.equal(env.game.store.read().resources.get('847002').num, '3');
 
-  response = await buyGift(730401, 21);
+  response = await buyGift(730401, 21, PET_ACT_ID);
   assert.equal(response.err, undefined);
   const resourceGift = codec.unpack('res_buy_or_Rev_gift', Buffer.from(response.data, 'base64'));
   assert.equal(resourceGift.res.changes.find(change => change.tid === '101500').diff_num, '-5000');
   assert.equal(resourceGift.extra_ret_list[0].flag, 65);
-  response = await buyGift(730401, 21);
+  response = await buyGift(730401, 21, PET_ACT_ID);
   assert.equal(response.err, undefined);
 
   env.send(codec.pack('pb_c2s', {
@@ -167,6 +171,8 @@ test('all-open pet activity synchronizes login data, shop, free/resource gifts a
   assert.ok(charged);
   assert.equal(charged.err, undefined);
   const walletPush = codec.unpack('res_recharge_success', Buffer.from(charged.data, 'base64'));
+  const rechargeExtra = await decodeEtf(Buffer.from(walletPush.extra_params, 'base64'));
+  assert.equal(Number(rechargeExtra.value[0]?.value ?? rechargeExtra.value[0]), PET_ACT_ID);
   const limitInfo = walletPush.extra_ret_list.find(extra => extra.flag === 65);
   assert.ok(limitInfo);
   assert.equal(codec.unpack('pb_recharge_limit_info', Buffer.from(limitInfo.data, 'base64')).buy_num_list.find(row => row.recharge_id === 730402).buy_num, 1);
@@ -203,11 +209,55 @@ test('all-open pet activity synchronizes login data, shop, free/resource gifts a
   assert.equal(recommended.length, 1);
   assert.deepEqual(recommended[0].buy_list.map(row => [row.recharge_tid, row.buy_times]), [[730400, 1], [730401, 1], [730402, 1]]);
 
-  response = await buyGift(730400, 26);
+  response = await buyGift(730400, 26, PET_ACT_ID);
   assert.equal(response.err.err, 16016);
   const counts = env.game.store.inspect(db => db.prepare(`SELECT kind,count(*) AS n,sum(buy_num) AS bought
     FROM activity_purchases WHERE activity_id=? GROUP BY kind ORDER BY kind`).all(PET_ACT_ID));
   assert.deepEqual(counts.map(row => [row.kind, row.n, row.bought]), [['gift', 3, 3], ['shop', 1, 1]]);
+});
+
+test('shared pet gift sku uses the requested activity for stock and recharge refresh', async t => {
+  const env = await gatewayFixture(t, 'all-open');
+  env.game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const activity = codec.unpack('pb_act_login', rawBinary(modules.get(92)));
+    const group = activity.act_parallel_list.find(entry =>
+      entry.states_data.some(state => Number(state.act_id) === PET_ACT_ID));
+    const source = group.states_data.find(state => Number(state.act_id) === PET_ACT_ID);
+    const shared = structuredClone(source);
+    shared.act_id = 83031;
+    group.states_data.push(shared);
+    modules.set(92, serializedBinary(codec.pack('pb_act_login', activity)));
+    model.state.modules.value = [...modules];
+  });
+  env.game.wallet.credit({ account_id: 'local-1', amount_cents: 10000, request_id: 'shared-pet-gift-credit' });
+
+  assert.equal(env.game.petActivity.giftConfig(730402), null);
+  assert.equal(env.game.petActivity.giftConfig(730402, PET_ACT_ID).activityId, PET_ACT_ID);
+  assert.equal(env.game.petActivity.giftConfig(730402, 83031).activityId, 83031);
+
+  let purchase = env.game.wallet.buy({
+    account_id: 'local-1', product_id: 730402, request_id: 'shared-pet-gift:83028', activity_id: PET_ACT_ID
+  });
+  let push = codec.unpack('res_recharge_success', Buffer.from(purchase.notification, 'base64'));
+  let params = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
+  assert.equal(Number(params.value[0]?.value ?? params.value[0]), PET_ACT_ID);
+
+  purchase = env.game.wallet.buy({
+    account_id: 'local-1', product_id: 730402, request_id: 'shared-pet-gift:83031', activity_id: 83031
+  });
+  push = codec.unpack('res_recharge_success', Buffer.from(purchase.notification, 'base64'));
+  params = await decodeEtf(Buffer.from(push.extra_params, 'base64'));
+  assert.equal(Number(params.value[0]?.value ?? params.value[0]), 83031);
+
+  assert.deepEqual(env.game.store.inspect(db => db.prepare(
+    'SELECT activity_id,product_id,buy_num FROM activity_purchases ORDER BY rowid'
+  ).all().map(row => ({ ...row }))), [
+    { activity_id: PET_ACT_ID, product_id: 730402, buy_num: 1 },
+    { activity_id: 83031, product_id: 730402, buy_num: 1 }
+  ]);
+  assert.equal(env.game.petActivity.giftPurchaseCount(730402, null, PET_ACT_ID), 1);
+  assert.equal(env.game.petActivity.giftPurchaseCount(730402, null, 83031), 1);
 });
 
 test('scheduled pet activity removes login, shop, gift purchase and recommendation data together', async t => {
@@ -265,7 +315,7 @@ test('pet activity gift and shop purchase counts survive a SQLite reopen', t => 
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
 
   grant(store, PET_CURRENCY, 10000);
-  wallet.purchaseGift({ product_id: 730400, request_id: 'gift:persist:1', buy_num: 1 });
+  wallet.purchaseGift({ product_id: 730400, request_id: 'gift:persist:1', buy_num: 1, activity_id: PET_ACT_ID });
   petActivity.purchaseShop({
     shop_id: PET_SHOP_ID,
     shop_item_id: 5070144001,
@@ -276,7 +326,7 @@ test('pet activity gift and shop purchase counts survive a SQLite reopen', t => 
   store.close();
   store = createGameStore({ databasePath, seed, codec });
   make();
-  assert.equal(petActivity.giftPurchaseCount(730400), 1);
+  assert.equal(petActivity.giftPurchaseCount(730400, null, PET_ACT_ID), 1);
   const shop = petActivity.queryShops([PET_SHOP_ID])[0];
   assert.equal(shop.items_groups[0].item_list.find(item => item.tid === 5070144001).buy_count, 2);
 });

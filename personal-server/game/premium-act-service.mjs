@@ -134,18 +134,26 @@ export function createPremiumActService({
     };
   }
 
-  function giftConfig(productId) {
+  function giftConfig(productId, activityId = null) {
     const id = int(productId);
     const product = tables.Recharge?.get(id);
     if (!product || Number(product.type) !== PREMIUM_RECHARGE_TYPE) return null;
     const rows = premiumTables.configsByGift?.get(id) ?? [];
     if (!rows.length) return null;
-    for (const actId of openActivityIds()) {
+    const requestedActivityId = activityId === undefined || activityId === null ? 0 : int(activityId);
+    const openIds = new Set(openActivityIds());
+    const candidates = requestedActivityId > 0 ? [requestedActivityId] : [...openIds];
+    const matches = [];
+    for (const actId of candidates) {
+      if (!openIds.has(actId)) continue;
       const version = versionOf(actId);
       const row = rows.find(value => Number(value.version) === version);
-      if (row) return { activityId: actId, version, config: row, product };
+      if (row) matches.push({ activityId: actId, version, config: row, product });
     }
-    return null;
+    // Several seasonal malls can share one RechargeTable sku. Without the
+    // client's activity id, assigning the purchase to either one would corrupt
+    // both stores' limits, so only an unambiguous fallback is accepted.
+    return matches.length === 1 ? matches[0] : null;
   }
 
   function isConfiguredGift(productId) {
@@ -155,14 +163,14 @@ export function createPremiumActService({
       .some(row => premiumTables.Version.has(Number(row.version)));
   }
 
-  function assertGiftAvailable(productId) {
-    const gift = giftConfig(productId);
+  function assertGiftAvailable(productId, activityId = null) {
+    const gift = giftConfig(productId, activityId);
     if (!gift) throw new GameError(309, 'Premium activity gift is not running');
     return gift;
   }
 
-  function giftPurchaseCount(productId, db = null) {
-    const gift = giftConfig(productId);
+  function giftPurchaseCount(productId, db = null, activityId = null) {
+    const gift = giftConfig(productId, activityId);
     if (!gift) return 0;
     return giftBuyCounts(gift.activityId, db).get(int(productId)) ?? 0;
   }

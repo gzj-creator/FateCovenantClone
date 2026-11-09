@@ -155,17 +155,34 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
     log({ event: 'purchase_gift_request', productId, buyNum, extra_param: request.extra_param, extra_param_type: typeof request.extra_param });
     let options;
     const isHundredSchoolsFreeGift = productId === 880101 && String(request.extra_param ?? '').trim() === '[]';
+    const isPetGift = Boolean(wallet.isPetGift?.(productId));
     const isPremiumGift = Boolean(wallet.isPremiumGift?.(productId));
-    if (isHundredSchoolsFreeGift || isPremiumGift) {
+    const requestedText = String(request.extra_param ?? '').trim();
+    const numericActivityId = /^\d+$/.test(requestedText) ? Number(requestedText) : 0;
+    const requestedActivityId = Number.isSafeInteger(numericActivityId) && numericActivityId > 0 ? numericActivityId : 0;
+    // Activity gift forms call RechargeOrBuyGift with the act id as the second
+    // argument. Receiving a bare integer therefore means the product has no
+    // [is_extra_buy, period, day] context, even when its buy_cycle_limit is 5.
+    // Group-buy gifts are one such implemented path; PremiumAct and PetAct are
+    // the same shape. Keep type 46 on the tuple parser for DailyDiscount.
+    const activityGift = isPetGift || isPremiumGift
+      || (requestedActivityId > 0 && Number(product.type) !== 46);
+    if (isHundredSchoolsFreeGift || activityGift) {
       // HeroDrawActGiftForm buys 880101 through the shared 16005 command and
       // sends an empty ETF list. Unlike daily-discount and period-scoped
       // products, this gift has no [is_extra_buy, period, day] context.
       // PremiumActMgr uses its own act id rather than the shared period tuple,
       // so its free/resource gifts follow the same defaulted-context path.
-      options = { is_extra_buy: false, period: 0, day_index: 0 };
+      options = {
+        is_extra_buy: false,
+        ...(requestedActivityId > 0 ? { activity_id: requestedActivityId } : {}),
+        period: 0,
+        day_index: 0
+      };
       log({
         event: 'purchase_extra_param_defaulted', productId,
-        extra_param: request.extra_param, premiumGift: isPremiumGift
+        extra_param: request.extra_param, petGift: isPetGift, premiumGift: isPremiumGift,
+        requestedActivityId: requestedActivityId || undefined
       });
     } else {
       try { options = parseRechargeExtraParam(request.extra_param); }
@@ -189,6 +206,7 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
       request_id: 'gift:' + context.connection + ':' + context.seq,
       buy_num: buyNum,
       extra_buy: options.is_extra_buy,
+      activity_id: options.activity_id,
       period: options.period,
       day_index: options.day_index
     });

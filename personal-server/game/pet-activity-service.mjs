@@ -11,6 +11,11 @@ const FEATURED_PET_TID = 500313;
 const FEATURED_WOUND_TIDS = [98, 99, 100, 97];
 const ONE_YEAR_SECONDS = 365 * 86400;
 
+function integer(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) ? number : 0;
+}
+
 function seconds(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;
@@ -52,6 +57,15 @@ export function createPetActivityService({
 }) {
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(now());
+  const activityIdsByGift = new Map();
+  for (const [actId, cfg] of tables.PetActivity?.entries() ?? []) {
+    const shop = tables.GiftShop?.get(Number(cfg.gift));
+    for (const giftId of shop?.gift ?? []) {
+      const id = integer(giftId);
+      if (!activityIdsByGift.has(id)) activityIdsByGift.set(id, []);
+      activityIdsByGift.get(id).push(integer(actId));
+    }
+  }
 
   function loginActivity() {
     const raw = new Map(store.state().modules.value).get(ACTIVITY_LOGIN_MODULE);
@@ -208,26 +222,47 @@ export function createPetActivityService({
     };
   }
 
-  function giftConfig(productId) {
-    const id = Number(productId);
-    const activity = loginActivity();
-    for (const [actId, cfg] of tables.PetActivity?.entries() ?? []) {
-      if (!openState(actId, activity)) continue;
-      const shop = tables.GiftShop?.get(Number(cfg.gift));
-      if ((shop?.gift ?? []).map(Number).includes(id)) return { activityId: Number(actId), config: cfg, productId: id };
-    }
-    return null;
+  function isConfiguredGift(productId) {
+    const id = integer(productId);
+    const product = tables.Recharge?.get(id);
+    return Number(product?.type) === 76 && Boolean(activityIdsByGift.get(id)?.length);
   }
 
-  function assertGiftAvailable(productId) {
-    const product = tables.Recharge?.get(Number(productId));
-    const gift = giftConfig(productId);
+  function isGiftRunning(productId) {
+    const id = integer(productId);
+    if (!isConfiguredGift(id)) return false;
+    const activity = loginActivity();
+    return (activityIdsByGift.get(id) ?? []).some(actId => openState(actId, activity));
+  }
+
+  function giftConfig(productId, activityId = null) {
+    const id = integer(productId);
+    if (!isConfiguredGift(id)) return null;
+    const activity = loginActivity();
+    const requestedActivityId = activityId === undefined || activityId === null ? 0 : integer(activityId);
+    const candidates = requestedActivityId > 0 ? [requestedActivityId] : activityIdsByGift.get(id) ?? [];
+    const matches = [];
+    for (const actId of candidates) {
+      const cfg = configForActivity(actId);
+      if (!cfg || !openState(actId, activity)) continue;
+      const shop = tables.GiftShop?.get(Number(cfg.gift));
+      if ((shop?.gift ?? []).map(Number).includes(id)) matches.push({ activityId: Number(actId), config: cfg, productId: id });
+    }
+    // The same pet gift is shared by several seasonal activities. Without the
+    // activity id in the request, writing an ambiguous purchase to either one
+    // would make both stores report the wrong remaining stock.
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  function assertGiftAvailable(productId, activityId = null) {
+    const product = tables.Recharge?.get(integer(productId));
+    const gift = giftConfig(productId, activityId);
     if (!product || product.type !== 76 || !gift) throw new GameError(309, 'Pet activity gift is not running');
     return { ...gift, product };
   }
 
-  function giftPurchaseCount(productId, db = null) {
-    const gift = giftConfig(productId);
+  function giftPurchaseCount(productId, db = null, activityId = null) {
+    const gift = giftConfig(productId, activityId);
     if (!gift) return 0;
     return giftBuyCounts(gift.activityId, db).get(Number(productId)) ?? 0;
   }
@@ -305,6 +340,8 @@ export function createPetActivityService({
     synchronizeLogin,
     queryShops,
     purchaseShop,
+    isConfiguredGift,
+    isGiftRunning,
     giftConfig,
     assertGiftAvailable,
     giftPurchaseCount,
