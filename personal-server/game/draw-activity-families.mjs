@@ -541,9 +541,16 @@ export function createDrawFamilies(engine) {
   add('draw_wish', [C.chooseWish], request => {
     const input = engine.decode('pb_role_random_draw_item', request.bytes);
     const lib = intOf(input.draw_lib, 'draw wish lib');
+    const wishTid = intOf(input.wish_tid, 'draw wish tid');
+    if (!tables.Draw?.get(lib)) fail(5, `DrawTable library ${lib} is not configured`);
+    const wish = tables.DrawRandomWish?.get(wishTid);
+    if (!wish) fail(1, 'Draw wish is not configured');
+    if (Number(wish.draw_lib) !== lib) {
+      fail(1, 'Draw wish does not belong to the selected draw library');
+    }
     return tx('draw_wish', lib, ({ state }) => {
-      state.selections.wish = Number(input.wish_tid);
-      const value = { draw_list: [{ draw_lib: lib, wish_tid: String(input.wish_tid) }] };
+      state.selections.wish = wishTid;
+      const value = { draw_list: [{ draw_lib: lib, wish_tid: String(wishTid) }] };
       return packed(codec, 'pb_role_random_draw_info', value, { value, lib });
     });
   });

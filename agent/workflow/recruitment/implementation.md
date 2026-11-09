@@ -216,3 +216,6 @@ node personal-server/scripts/generate-new-hero-exclusive-heroes.mjs --table <New
 - 抽取时命中品质 50/60 后通过 `wishByTid` 选择目标，因此客户端可见、但不在普通随机池的心愿英雄也能正常成为定向结果。精英池保持“仅命中已选目标才重置保底”；冒险池保留原有按 SSR 品质重置保底的行为。
 - 定向回归 `recruit-service.test.mjs` 与 `recruit-pool-restrictions.test.mjs` 共 `33/33` 通过，覆盖冒险/精英选择、限定或非普通池英雄、额外心愿、移除、品质配额、实际心愿命中以及随机池隔离。全量 `node --test --test-concurrency=1 --test-reporter=dot test/*.test.mjs` 已完成且无失败输出，`git diff --check` 通过。
 - 本轮未重启实时服务、未读写运行数据库、未操作模拟器/ADB/APK。代码部署后需重启个人服务器，客户端再次打开两套心愿单并完成选择验收。
+- 同类审查又收敛了三个问题：`HeroTable.NormalDrawWishCell` 中冒险主心愿为2格、额外心愿为1格，服务端现在按字段分别限制品质50数量；主心愿与额外心愿不能重复选择同一英雄；额外心愿已并入实际定向抽取候选，命中后在对应列表累计 `draw_num`，不再只是保存展示。
+- `98101 draw_wish` 原先直接持久化客户端 `wish_tid`，没有确认抽取库和心愿目录。现在从 `DrawTable.RandomDrawWish` 严格校验 `draw_lib` 存在、`wish_tid` 存在且属于该库；合法选择仍持久化到原状态，错误值在写事务前拒绝。客户端本地无 `DevelopUnlock` 数据表，因此未伪造按解锁状态过滤。
+- 招募与抽卡定向回归 `49/49` 通过；全量 `npm test` 为2788项，2786通过、0失败、2项因既有无Lua前置条件跳过。本轮仍未部署，实时服务继续运行旧代码；重启服务后需由用户重新完成冒险与精英心愿选择，并观察额外心愿 `draw_num` 是否随命中增长。

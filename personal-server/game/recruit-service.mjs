@@ -708,18 +708,28 @@ export function createRecruitService({
     let candidates = null;
     if (isWishUnlocked(pool.rule, progress) && (quality === 50 || quality === 60)) {
       candidates = [];
-      for (const item of state.wish_hero_list ?? []) {
-        // Wish candidates use the client's DrawExchangeHero catalog. Some of
-        // those heroes are intentionally excluded from the ordinary random
-        // pool, so validating or drawing them through pool.byTid both rejects
-        // valid selections and drops them from targeted draws.
-        const hero = pool.wishByTid.get(Number(item.tid));
-        if (!hero || hero.quality !== quality) continue;
-        candidates.push({ ...hero, weight: Number(item.weight) > 0 ? Number(item.weight) : 1 });
+      for (const field of pool.rule.wish.fields) {
+        for (const item of state[field] ?? []) {
+          // Wish candidates use the client's DrawExchangeHero catalog. Some of
+          // those heroes are intentionally excluded from the ordinary random
+          // pool, so validating or drawing them through pool.byTid both rejects
+          // valid selections and drops them from targeted draws. Extra wishes
+          // are part of the same server-side target set and retain their own
+          // list in the recruit response.
+          const hero = pool.wishByTid.get(Number(item.tid));
+          if (!hero || hero.quality !== quality) continue;
+          candidates.push({ ...hero, weight: Number(item.weight) > 0 ? Number(item.weight) : 1 });
+        }
       }
       wishHero = candidates.length > 0;
     }
     const hero = choosePoolHero(pool, quality, random, wishHero ? candidates : null);
+    if (wishHero) {
+      for (const field of pool.rule.wish.fields) {
+        const selected = (state[field] ?? []).find(item => Number(item.tid) === hero.tid);
+        if (selected) selected.draw_num = nonNegativeInteger(selected.draw_num) + 1;
+      }
+    }
     // A targeted pool advances its pity only when the selected adventurer is
     // actually drawn. Other pools keep their normal quality-based pity reset.
     const resetsPity = pool.rule.wish?.targetedPity ? wishHero : quality >= 50;
@@ -924,26 +934,34 @@ export function createRecruitService({
     refreshDailyState(info, lib, seconds);
     const progress = completedDrawCounts(state.byLib);
     if (!isWishUnlocked(pool.rule, progress)) fail(305, 'Wish list is not unlocked');
+    const qualityLimits = pool.rule.wish.fieldMaxByQuality?.[field] ?? pool.rule.wish.maxByQuality;
+    if (!Array.isArray(qualityLimits) || qualityLimits.length === 0) {
+      fail(5, 'Wish slot configuration is missing');
+    }
     const previous = new Map((info[field] ?? []).map(item => [Number(item.tid), item]));
+    const otherField = extra ? 'wish_hero_list' : 'extra_wish_list';
+    const occupiedTids = new Set((info[otherField] ?? []).map(item => Number(item.tid)));
     const seen = new Set();
     const seenIndexes = new Set();
     const qualityCounts = new Map();
     const list = [];
     const requested = request.choose_item_list ?? [];
     if (!Array.isArray(requested)) fail(1, 'Invalid wish selection');
-    if (requested.length > [...pool.rule.wish.maxByQuality].reduce((sum, [, limit]) => sum + limit, 0)) {
+    if (requested.length > qualityLimits.reduce((sum, [, limit]) => sum + Number(limit), 0)) {
       fail(5, 'Too many wish heroes');
     }
     for (const item of requested) {
       const index = integer(n(item.index), 0, 9999, 'Invalid wish slot');
       const tid = integer(n(item.hero_tid), 1, 999999999, 'Invalid wish hero');
       const hero = pool.wishByTid.get(tid);
-      if (seen.has(tid) || seenIndexes.has(index)) fail(5, 'Wish hero or slot is duplicated');
-      if (!hero || !pool.rule.wish.maxByQuality.some(([quality]) => quality === hero.quality)) {
+      if (seen.has(tid) || seenIndexes.has(index) || occupiedTids.has(tid)) {
+        fail(5, 'Wish hero or slot is duplicated');
+      }
+      if (!hero || !qualityLimits.some(([quality]) => Number(quality) === hero.quality)) {
         fail(5, 'Wish hero is not eligible for this draw library');
       }
       const count = (qualityCounts.get(hero.quality) ?? 0) + 1;
-      const max = Number(pool.rule.wish.maxByQuality.find(([quality]) => quality === hero.quality)?.[1] ?? 0);
+      const max = Number(qualityLimits.find(([quality]) => Number(quality) === hero.quality)?.[1] ?? 0);
       if (count > max) fail(5, 'Wish hero quality limit reached');
       qualityCounts.set(hero.quality, count);
       seen.add(tid);

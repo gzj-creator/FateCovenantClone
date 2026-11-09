@@ -21,6 +21,10 @@ export const RECRUIT_POOL_RULES = Object.freeze({
       minCompletedDraws: 100,
       fields: Object.freeze(['wish_hero_list', 'extra_wish_list']),
       maxByQuality: Object.freeze([[50, 3]]),
+      fieldMaxByQuality: Object.freeze({
+        wish_hero_list: Object.freeze([[50, 2]]),
+        extra_wish_list: Object.freeze([[50, 1]])
+      }),
       candidateSlotTypes: Object.freeze([1]),
       targetedPity: false
     })
@@ -40,6 +44,10 @@ export const RECRUIT_POOL_RULES = Object.freeze({
       minCompletedDraws: 100,
       fields: Object.freeze(['wish_hero_list', 'extra_wish_list']),
       maxByQuality: Object.freeze([[50, 2], [60, 1]]),
+      fieldMaxByQuality: Object.freeze({
+        wish_hero_list: Object.freeze([[50, 2], [60, 1]]),
+        extra_wish_list: Object.freeze([[50, 2], [60, 1]])
+      }),
       candidateSlotTypes: Object.freeze([1, 2]),
       targetedPity: true
     })

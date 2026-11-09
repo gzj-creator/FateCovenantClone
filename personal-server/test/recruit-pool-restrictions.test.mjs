@@ -65,6 +65,10 @@ test('wish catalogs retain every client-listed candidate without changing random
     assert.equal(adventure.byTid.has(tid), false);
     assert.equal(adventure.wishByTid.has(tid), true);
   }
+  assert.deepEqual(adventure.rule.wish.fieldMaxByQuality, {
+    wish_hero_list: [[50, 2]],
+    extra_wish_list: [[50, 1]]
+  });
 
   const elite = catalog.get(2);
   assert.equal(elite.byTid.has(2030601), false);
