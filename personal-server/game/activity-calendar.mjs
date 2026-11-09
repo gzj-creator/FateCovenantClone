@@ -65,6 +65,24 @@ function recurringAllOpenWindow(startValue, endValue, at) {
   return { start: cycleStart, end: cycleStart + duration };
 }
 
+function alignedAllOpenWindow(configuredWindow, at) {
+  if (!configuredWindow) return null;
+  const start = seconds(configuredWindow.start);
+  const end = seconds(configuredWindow.end);
+  if (!(start > 0 && end > start) || !Number.isSafeInteger(at)) return null;
+
+  // ActivityTimeUtil derives the table state end from the start day, while the
+  // custom period separately decides whether the activity is open. Repeating
+  // an arbitrary captured start can put that derived end before the custom end;
+  // once login passes it, module 92 aborts with "Time Config Error". Keep the
+  // table-defined time-of-day phase and move the full period to the current day.
+  const phase = start - dayZero(start);
+  let currentStart = dayZero(at) + phase;
+  if (currentStart > at) currentStart -= DAY_SECONDS;
+  const window = { start: currentStart, end: currentStart + end - start };
+  return at >= window.start && at < window.end ? window : null;
+}
+
 function sameAllOpenActivityBatch(left, right) {
   if (!left || !right) return false;
   const worldTime = seconds(left.world_time);
@@ -168,7 +186,8 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
       for (const custom of activity.act_custom_list) {
         const config = activityConfig(tables, Number(custom.act_id));
         const configuredWindow = activityWindow(config, openedAt);
-        const window = recurringAllOpenWindow(custom.start_time, custom.end_time, at)
+        const window = alignedAllOpenWindow(configuredWindow, at)
+          ?? recurringAllOpenWindow(custom.start_time, custom.end_time, at)
           ?? recurringAllOpenWindow(configuredWindow?.start, configuredWindow?.end, at)
           ?? (() => {
             const elapsed = Math.max(0, at - openedAt);
@@ -179,8 +198,9 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
         // ActivityTimeUtil.GetInitEndBeginDayCfgTime applies act_custom_list
         // before the ActivityTable schedule even for ACT_TYPE_TABLE_CONFIG.
         // Zero is a concrete epoch, so 0/0 makes the client treat an all-open
-        // activity as ended. Keep a non-zero recurring window in the same phase
-        // as the activity's configured or captured period.
+        // activity as ended. Configuration-backed periods must keep their
+        // day-relative start phase so the client's computed state end remains
+        // inside the custom window.
         custom.start_time = window.start;
         custom.end_time = window.end;
         customStartTimes.set(Number(custom.act_id), window.start);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readGameTables } from '../config/game-tables.mjs';
-import { createActivityCalendar, serverDayNumber } from '../game/activity-calendar.mjs';
+import { activityWindow, createActivityCalendar, dayZero, serverDayNumber } from '../game/activity-calendar.mjs';
 
 const SERVER_OPENED_AT = 1792789200;
 const DAY = 86400;
@@ -191,6 +191,56 @@ test('all-open mode retains every stored activity, clears pauses and selects the
     start_time: at,
     end_time: at + 5 * DAY
   }]);
+});
+
+test('all-open realigns the sprint period so module 92 accepts the current login', () => {
+  const at = 1794150019;
+  const actId = 12014;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    mode: 'all-open',
+    currentFishingActivityId: 1074011,
+    now: () => at * 1000
+  });
+  const activity = {
+    act_list: [1101001, 1101002].map(id => ({
+      state_data: { act_id: id, cur_state_id: 90 },
+      module_login_data: Buffer.alloc(0)
+    })),
+    act_parallel_list: [{
+      module_login_data: 'current-sprint-batch',
+      states_data: [{ act_id: actId, cur_state_id: 90 }]
+    }],
+    act_pause_list: [],
+    act_custom_list: [{
+      act_id: actId,
+      fun_id: 12,
+      start_time: 1793545200,
+      end_time: 1794214800
+    }]
+  };
+
+  calendar.applyLoginSchedule(activity, at);
+
+  const custom = activity.act_custom_list.find(row => Number(row.act_id) === actId);
+  const config = tables.Activity.get(actId);
+  const template = activityWindow(config, SERVER_OPENED_AT);
+  assert.ok(custom);
+  assert.equal(custom.start_time - dayZero(custom.start_time), template.start - dayZero(template.start));
+  assert.ok(custom.start_time <= at && at < custom.end_time);
+  assert.equal(custom.end_time - custom.start_time, template.end - template.start);
+
+  let endDayBegin = dayZero(custom.start_time);
+  for (const dayOffset of config.state_end_day) endDayBegin += Number(dayOffset) * DAY;
+  const computedStateEnd = dayZero(endDayBegin) + Number(config.state_end_time.at(-1));
+  // The captured 23:00 start put this end at 1794150000; the reported login
+  // happened 19 seconds later while the custom window still looked active.
+  assert.ok(at < computedStateEnd);
+  assert.equal(custom.end_time, computedStateEnd);
+
+  assert.deepEqual(activity.act_parallel_list[0].states_data.map(state => Number(state.act_id)), [actId]);
+  assert.ok([1101001, 1101002].every(id => activity.act_list.some(entry => Number(entry.state_data.act_id) === id)));
 });
 
 test('schedule mode still closes an expired custom activity window', () => {
