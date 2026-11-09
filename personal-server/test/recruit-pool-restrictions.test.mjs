@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
 import {
   NEW_HERO_EXCLUSIVE_GROUP,
   availableQualityWeights,
@@ -19,7 +20,13 @@ function heroTables(extraHeroes = []) {
     { tid: 4040101, quality: 60, get_way: 32, chip: 24400104 },
     ...extraHeroes
   ];
-  return { Hero: new Map(heroes.map(hero => [hero.tid, hero])) };
+  return {
+    Hero: new Map(heroes.map(hero => [hero.tid, hero])),
+    DrawExchangeHero: new Map([
+      [1030101, { tid: 1030101, slot_type: 1 }],
+      [1040101, { tid: 1040101, slot_type: 2 }]
+    ])
+  };
 }
 
 test('new hero exclusive groups are loaded from the generated client-table manifest', () => {
@@ -46,6 +53,28 @@ test('standard pools exclude new hero exclusives while the limited library retai
   assert.equal(limited.rule.name, 'new-hero-limit');
   for (const tid of [1030601, 1030701, 1040101, 4040101]) assert.equal(limited.byTid.has(tid), true);
   assert.equal(limited.rule.qualityWeights.some(([quality]) => quality === 60), true);
+});
+
+test('wish catalogs retain every client-listed candidate without changing random pools', () => {
+  const restrictions = readRecruitHeroExclusionGroups();
+  const tables = readHeroTables();
+  const catalog = buildRecruitPoolCatalog(tables, { excludedHeroGroups: restrictions.groups });
+
+  const adventure = catalog.get(1);
+  for (const tid of [1030601, 3030501, 4030601]) {
+    assert.equal(adventure.byTid.has(tid), false);
+    assert.equal(adventure.wishByTid.has(tid), true);
+  }
+  assert.deepEqual(adventure.rule.wish.fieldMaxByQuality, {
+    wish_hero_list: [[50, 2]],
+    extra_wish_list: [[50, 1]]
+  });
+
+  const elite = catalog.get(2);
+  assert.equal(elite.byTid.has(2030601), false);
+  assert.equal(elite.wishByTid.has(2030601), true);
+  assert.equal(elite.wishByTid.has(2040201), true);
+  assert.equal(elite.wishByTid.get(2040201).quality, 60);
 });
 
 test('a future non-exclusive quality-60 hero automatically restores the declared standard-pool weight', () => {

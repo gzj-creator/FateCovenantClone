@@ -17,7 +17,10 @@ export function readGameTables() {
       'OptionalSuitBox', 'OptionalSuitRes', 'OptionalSuitType'
     ]),
     // Draw library used by Random_Box.draw_lib: LibWeight picks a group, Group.lib_range picks the award.
-    ...pick(readGeneratedTables(table('DrawTable.data.lua.json'), ['LibWeight', 'Item', 'Group']), { LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup' }),
+    // RandomDrawWish is the client's authoritative draw-library wish catalog.
+    ...pick(readGeneratedTables(table('DrawTable.data.lua.json'), ['LibWeight', 'Item', 'Group', 'RandomDrawWish']), {
+      LibWeight: 'DrawLibWeight', Item: 'DrawItem', Group: 'DrawGroup', RandomDrawWish: 'DrawRandomWish'
+    }),
     ...Object.fromEntries(Object.entries(readGeneratedTables(table('RechargeTable.data.lua.json'), [
       'Recharge', 'Handle', 'Param', 'BuyCycleLimit', 'ExtraReward', 'ExtraFixReward', 'ExtraRewardConst'
     ])).map(([k,v]) => [k === 'Param' ? 'RechargeParam' : k === 'Handle' ? 'RechargeHandle' : k,v])),
@@ -204,7 +207,9 @@ export function readGameTables() {
     ...pick(readGeneratedTables(table('PlayerDataTable.data.lua.json'), ['Type', 'Block', 'Func']), {
       Type: 'PlayerDataType', Block: 'PlayerDataBlock', Func: 'PlayerDataFunc'
     }),
-    ...pick(readGeneratedTables(table('HeroTable.data.lua.json'), ['Hero']), { Hero: 'Hero' }),
+    ...pick(readGeneratedTables(table('HeroTable.data.lua.json'), ['Hero', 'Draw']), {
+      Hero: 'Hero', Draw: 'Draw'
+    }),
     ...pick(readGeneratedTables(table('7289607387164353000-FirstRechargeTable.data.json'), ['FirstRecharge', 'Award']), {
       FirstRecharge: 'FirstRecharge',
       Award: 'FirstRechargeAward'

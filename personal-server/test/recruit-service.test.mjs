@@ -771,19 +771,57 @@ test('statistics push encoding failure rolls back the entire draw', t => {
   assert.deepEqual(env.store.state(), before);
 });
 
-test('wish selection enforces progress, quality quotas and the elite library', t => {
+test('wish selection uses the client exchange catalog for adventure and elite pools', t => {
   const env = setup(t);
   rejected(() => env.service.execute(642, { draw_lib: 2, choose_item_list: [{ index: 0, hero_tid: 1030101 }] }), 305);
-  rejected(() => env.service.execute(642, { draw_lib: 1, choose_item_list: [{ index: 0, hero_tid: 1030101 }] }), 5);
+  rejected(() => env.service.execute(642, { draw_lib: 1, choose_item_list: [{ index: 0, hero_tid: 1030101 }] }), 305);
   setDrawCounts(env, { 1: 50, 2: 50 });
-  let response = codec.unpack('pb_hero_recruit', env.service.execute(642, {
-    draw_lib: 2,
+
+  rejected(() => env.service.execute(642, {
+    draw_lib: 1,
     choose_item_list: [
-      { index: 0, hero_tid: 1030101 },
-      { index: 1, hero_tid: 1030201 }
+      { index: 0, hero_tid: 1030601 },
+      { index: 1, hero_tid: 3030501 },
+      { index: 2, hero_tid: 4030601 }
+    ]
+  }), 5);
+
+  let response = codec.unpack('pb_hero_recruit', env.service.execute(642, {
+    draw_lib: 1,
+    choose_item_list: [
+      { index: 0, hero_tid: 1030601 },
+      { index: 1, hero_tid: 3030501 }
     ]
   }).data);
-  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030101', '1030201']);
+  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030601', '3030501']);
+  rejected(() => env.service.execute(657, {
+    draw_lib: 1,
+    choose_item_list: [
+      { index: 0, hero_tid: 4030601 },
+      { index: 1, hero_tid: 2030601 }
+    ]
+  }), 5);
+  response = codec.unpack('pb_hero_recruit', env.service.execute(657, {
+    draw_lib: 1,
+    choose_item_list: [{ index: 0, hero_tid: 4030601 }]
+  }).data);
+  assert.deepEqual(response.extra_wish_list.map(item => item.tid), ['4030601']);
+  rejected(() => env.service.execute(642, {
+    draw_lib: 1,
+    choose_item_list: [{ index: 0, hero_tid: 4030601 }]
+  }), 5);
+  response = codec.unpack('pb_hero_recruit', env.service.execute(643, [1, 0]).data);
+  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['3030501']);
+
+  response = codec.unpack('pb_hero_recruit', env.service.execute(642, {
+    draw_lib: 2,
+    choose_item_list: [
+      { index: 0, hero_tid: 1030601 },
+      { index: 1, hero_tid: 3030501 },
+      { index: 2, hero_tid: 2040201 }
+    ]
+  }).data);
+  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030601', '3030501', '2040201']);
   rejected(() => env.service.execute(642, {
     draw_lib: 2,
     choose_item_list: [
@@ -806,8 +844,54 @@ test('wish selection enforces progress, quality quotas and the elite library', t
   }).data);
   assert.equal(response.extra_wish_list[0].tid, '2030101');
   response = codec.unpack('pb_hero_recruit', env.service.execute(643, [2, 0]).data);
-  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['1030201']);
+  assert.deepEqual(response.wish_hero_list.map(item => item.tid), ['3030501', '2040201']);
   response = codec.unpack('pb_hero_recruit', env.service.execute(658, [2, 1]).data);
   assert.equal(response.extra_wish_list.length, 0);
   // 651/652/673 are covered by test/hero-support-service.test.mjs.
+});
+
+test('adventure wish can target a client-listed hero outside the random pool', t => {
+  const env = setup(t, () => 0.9);
+  setDrawCounts(env, { 1: 50, 2: 50 });
+  env.service.execute(642, {
+    draw_lib: 1,
+    choose_item_list: [{ index: 0, hero_tid: 1030601 }]
+  });
+  env.seed(2002, 10);
+
+  const result = env.service.execute(601, { draw_lib: 1, point_draw_num: 1 });
+  assert.deepEqual(result.valueForLog.results[0], {
+    tid: 1030601,
+    quality: 50,
+    guaranteed: false,
+    wishHero: true
+  });
+  assert.equal(codec.unpack('pb_hero_recruit', env.service.execute(642, {
+    draw_lib: 1,
+    choose_item_list: []
+  }).data).wish_hero_list.length, 0);
+});
+
+test('extra wishes participate in targeted draws and record satisfaction', t => {
+  const env = setup(t, () => 0);
+  setDrawCounts(env, { 1: 50, 2: 50 });
+  env.service.execute(657, {
+    draw_lib: 1,
+    choose_item_list: [{ index: 0, hero_tid: 3030501 }]
+  });
+  env.seed(2002, 10);
+  setPity(env, 1, 49);
+
+  const result = env.service.execute(601, { draw_lib: 1, point_draw_num: 1 });
+  assert.deepEqual(result.valueForLog.results[0], {
+    tid: 3030501,
+    quality: 50,
+    guaranteed: true,
+    wishHero: true
+  });
+  const info = recruitInfo(env, 1);
+  assert.equal(info.wish_hero_list.length, 0);
+  assert.equal(Number(info.extra_wish_list[0].draw_num), 1);
+  env.reopen();
+  assert.equal(Number(recruitInfo(env, 1).extra_wish_list[0].draw_num), 1);
 });

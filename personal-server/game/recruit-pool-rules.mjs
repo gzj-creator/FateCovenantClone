@@ -16,7 +16,18 @@ export const RECRUIT_POOL_RULES = Object.freeze({
     guaranteeQualities: Object.freeze([50, 60]),
     qualityAvailability: Object.freeze({ 60: Object.freeze({ scope: 'total', minCompletedDraws: 100 }) }),
     unlock: null,
-    wish: null
+    wish: Object.freeze({
+      unlockScope: 'total',
+      minCompletedDraws: 100,
+      fields: Object.freeze(['wish_hero_list', 'extra_wish_list']),
+      maxByQuality: Object.freeze([[50, 3]]),
+      fieldMaxByQuality: Object.freeze({
+        wish_hero_list: Object.freeze([[50, 2]]),
+        extra_wish_list: Object.freeze([[50, 1]])
+      }),
+      candidateSlotTypes: Object.freeze([1]),
+      targetedPity: false
+    })
   }),
   2: Object.freeze({
     lib: 2,
@@ -32,7 +43,13 @@ export const RECRUIT_POOL_RULES = Object.freeze({
       unlockScope: 'total',
       minCompletedDraws: 100,
       fields: Object.freeze(['wish_hero_list', 'extra_wish_list']),
-      maxByQuality: Object.freeze([[50, 2], [60, 1]])
+      maxByQuality: Object.freeze([[50, 2], [60, 1]]),
+      fieldMaxByQuality: Object.freeze({
+        wish_hero_list: Object.freeze([[50, 2], [60, 1]]),
+        extra_wish_list: Object.freeze([[50, 2], [60, 1]])
+      }),
+      candidateSlotTypes: Object.freeze([1, 2]),
+      targetedPity: true
     })
   }),
   3: Object.freeze({
@@ -175,11 +192,38 @@ export function buildRecruitPoolCatalog(heroTables, {
       qualityWeights: Object.freeze(qualityWeights)
     });
     const heroes = [...byQuality.values()].flat();
+    const wishRows = heroTables.DrawExchangeHero;
+    const wishByTid = new Map();
+    if (rule.wish) {
+      if (!(wishRows instanceof Map) || wishRows.size === 0) {
+        throw new Error(`Recruitment wish candidate table is missing for library ${lib}`);
+      }
+      const acceptedSlotTypes = new Set(rule.wish.candidateSlotTypes ?? []);
+      if (acceptedSlotTypes.size === 0) {
+        throw new Error(`Recruitment wish candidate slot types are missing for library ${lib}`);
+      }
+      const allowedQualities = new Set(rule.wish.maxByQuality.map(([quality]) => quality));
+      for (const [rawTid, row] of [...wishRows.entries()].sort(([a], [b]) => Number(a) - Number(b))) {
+        if (!acceptedSlotTypes.has(Number(row?.slot_type))) continue;
+        const tid = Number(rawTid);
+        const hero = heroTables.Hero.get(tid);
+        const quality = Number(hero?.quality);
+        if (!hero || !allowedQualities.has(quality) || !(Number(hero.chip) > 0)) continue;
+        wishByTid.set(tid, { tid, chip: Number(hero.chip), quality });
+      }
+      for (const quality of allowedQualities) {
+        if (![...wishByTid.values()].some(hero => hero.quality === quality)) {
+          throw new Error(`Recruitment wish candidates have no quality-${quality} hero for library ${lib}`);
+        }
+      }
+    }
     catalog.set(lib, {
       rule: effectiveRule,
       byQuality,
       heroes,
       byTid: new Map(heroes.map(hero => [hero.tid, hero])),
+      wishHeroes: [...wishByTid.values()],
+      wishByTid,
       excludedHeroTids: Object.freeze([...excludedHeroes])
     });
   }

@@ -75,6 +75,40 @@ test('102301 draws from the configured pool, grants the toy and enforces the dra
   assert.equal(e.service.stateOf(100001, 'capsule_toy', 1).counters.draw_count, 2);
 });
 
+test('98101 validates the draw-library wish catalog and persists the selected wish', async t => {
+  const e = setup(t);
+  assert.equal(tables.DrawRandomWish.size, 6);
+  const wish = tables.DrawRandomWish.get(300113);
+  assert.equal(Number(wish.draw_lib), 30);
+
+  assert.throws(
+    () => e.service.execute(DRAW_ACTIVITY_COMMANDS.chooseWish, {
+      bytes: codec.pack('pb_role_random_draw_item', { draw_lib: 31, wish_tid: 300113 })
+    }),
+    error => error.code === 1
+  );
+  assert.throws(
+    () => e.service.execute(DRAW_ACTIVITY_COMMANDS.chooseWish, {
+      bytes: codec.pack('pb_role_random_draw_item', { draw_lib: 30, wish_tid: 300120 })
+    }),
+    error => error.code === 1
+  );
+  assert.throws(
+    () => e.service.execute(DRAW_ACTIVITY_COMMANDS.chooseWish, {
+      bytes: codec.pack('pb_role_random_draw_item', { draw_lib: 30 })
+    }),
+    error => error.code === 1
+  );
+
+  const selected = e.service.execute(DRAW_ACTIVITY_COMMANDS.chooseWish, {
+    bytes: codec.pack('pb_role_random_draw_item', { draw_lib: 30, wish_tid: 300113 })
+  });
+  assert.deepEqual(selected.value.draw_list, [{ draw_lib: 30, wish_tid: '300113' }]);
+  assert.equal(e.service.stateOf(100001, 'draw_wish', 30).selections.wish, 300113);
+  e.reopen();
+  assert.equal(e.service.stateOf(100001, 'draw_wish', 30).selections.wish, 300113);
+});
+
 test('88965 charges the extra-draw item, adds attempts and rejects over-cap requests', async t => {
   const e = setup(t);
   e.store.transaction(model => grantResources(model, [[3401900, 100]], tables));

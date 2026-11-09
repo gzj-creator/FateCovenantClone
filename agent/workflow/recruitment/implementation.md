@@ -207,3 +207,15 @@ node personal-server/scripts/generate-new-hero-exclusive-heroes.mjs --table <New
 - 合并后的 `main` 全量回归为 2329 项中 2327 通过、0 失败、2 项因未设置已接受的真实 Lua bundle 按既有条件跳过。
 - 旧服务 PID `2676` 已于 2026-11-07T15:58:59Z 后停止；从 `main` 启动新 PID `9800`，`startedAt=2026-11-07T15:58:59.664Z`。`18880/18881/18882/18883/19090` 均由 PID `9800` 仅监听 `127.0.0.1`，stderr 为空，隔离客户端已自动重连并重新登录。运行日志为 `personal-server/runtime.local-only.data/server-20261107-235857.local-only.out.log` 与同名 `.err.log`。
 - 服务器重启没有修改或重装 APK。心愿单的最终视觉验收仍应观察下一次招募触发的 type 2000 后，统计缓存更新为 111、功能开启请求与 UI 解锁结果。
+
+## 2026-11-09 冒险/精英心愿单完成选择报配置错误
+
+- 工作目录为 `.worktree/recruit-wishlist-20261109`，分支 `fix/recruit-wishlist-20261109`。实时日志 `personal-server/runtime.local-only.data/server-20261109-213506.local-only.out.log` 中，type 642 的冒险请求被 `Wish selection is not supported by this draw library` 拒绝，精英请求被 `Wish hero is not eligible for this draw library` 拒绝，确认不是客户端单次点击问题。
+- 冒险 `lib=1` 此前配置为 `wish:null`；精英 `lib=2` 虽开放心愿，却用实际随机池 `pool.byTid` 校验。客户端两套心愿入口实际读取 `HeroTable.DrawExchangeHero`，其中部分品质 50 英雄（如 `1030601/3030501/4030601`）被 `NewHeroExclusiveTable.WishDrawHero` 排除出普通随机池，因此合法选择仍被服务端拒绝。
+- `buildRecruitPoolCatalog()` 现在为冒险/精英分别构建独立的 `wishByTid` 心愿候选池，来源仍为 `DrawExchangeHero`；冒险只接收普通心愿槽 `slot_type=1`，精英接收 `slot_type=1/2`。普通随机池继续排除限定英雄，未被心愿候选或随机池污染的既有规则不变。
+- 抽取时命中品质 50/60 后通过 `wishByTid` 选择目标，因此客户端可见、但不在普通随机池的心愿英雄也能正常成为定向结果。精英池保持“仅命中已选目标才重置保底”；冒险池保留原有按 SSR 品质重置保底的行为。
+- 定向回归 `recruit-service.test.mjs` 与 `recruit-pool-restrictions.test.mjs` 共 `33/33` 通过，覆盖冒险/精英选择、限定或非普通池英雄、额外心愿、移除、品质配额、实际心愿命中以及随机池隔离。全量 `node --test --test-concurrency=1 --test-reporter=dot test/*.test.mjs` 已完成且无失败输出，`git diff --check` 通过。
+- 本轮未重启实时服务、未读写运行数据库、未操作模拟器/ADB/APK。代码部署后需重启个人服务器，客户端再次打开两套心愿单并完成选择验收。
+- 同类审查又收敛了三个问题：`HeroTable.NormalDrawWishCell` 中冒险主心愿为2格、额外心愿为1格，服务端现在按字段分别限制品质50数量；主心愿与额外心愿不能重复选择同一英雄；额外心愿已并入实际定向抽取候选，命中后在对应列表累计 `draw_num`，不再只是保存展示。
+- `98101 draw_wish` 原先直接持久化客户端 `wish_tid`，没有确认抽取库和心愿目录。现在从 `DrawTable.RandomDrawWish` 严格校验 `draw_lib` 存在、`wish_tid` 存在且属于该库；合法选择仍持久化到原状态，错误值在写事务前拒绝。客户端本地无 `DevelopUnlock` 数据表，因此未伪造按解锁状态过滤。
+- 招募与抽卡定向回归 `49/49` 通过；全量 `npm test` 为2788项，2786通过、0失败、2项因既有无Lua前置条件跳过。本轮仍未部署，实时服务继续运行旧代码；重启服务后需由用户重新完成冒险与精英心愿选择，并观察额外心愿 `draw_num` 是否随命中增长。
