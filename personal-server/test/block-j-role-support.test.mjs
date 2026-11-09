@@ -495,3 +495,28 @@ test('activity reconciliation accepts only requested known ids and rejects impro
   await assert.rejects(() => actFrame.execute(53006, { etf: [999999999] }), error => error.code === 1);
   await assert.rejects(() => actFrame.execute(53006, { etf: { value: [firstId], improper: true } }), error => error.code === 1);
 });
+
+test('activity state-change hints for configured but undelivered activities return an empty acknowledgement', async t => {
+  const env = setup(t);
+  const actFrame = env.actFrame();
+  const requestIds = [
+    84009, 63033, 63034, 63035, 84010, 84011, 84013, 100010, 135007,
+    84016, 84017, 100012, 84018, 100013, 100016, 100018, 100020, 100021,
+    100025, 63036, 63001, 63004, 63014, 63015, 63029
+  ];
+  const visibleIds = new Set(activityIds(env));
+  assert.ok(requestIds.every(id => env.tables.Activity.has(id)));
+  assert.ok(requestIds.every(id => !visibleIds.has(id)));
+
+  const result = await actFrame.execute(53001, { etf: requestIds });
+  assert.deepEqual(result.value, { changes: 0, actIds: requestIds });
+  assert.deepEqual(codec.unpack('pb_act_state_change_back', result.data).change_back_data, []);
+  assert.equal(env.store.inspect(db => db.prepare(
+    `SELECT COUNT(*) AS count FROM role_activity_stages WHERE role_id=? AND act_id IN (${requestIds.map(() => '?').join(',')})`
+  ).get(ROLE_ID, ...requestIds).count), 0);
+
+  await assert.rejects(
+    () => actFrame.execute(53001, { etf: [999999999] }),
+    error => error.code === 1 && error.message.includes('Unknown activity ids')
+  );
+});
