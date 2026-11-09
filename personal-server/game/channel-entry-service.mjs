@@ -15,12 +15,22 @@ export function createChannelEntryService({ store, codec, coopTables, now = Date
   function execute(type, bytes) {
     if (Number(type) !== CHANNEL_ENTRY_COMMAND) throw new GameError(1, 'Unknown channel entry command');
     return Promise.resolve(decodeCoopRequest(codec, null, Number(type), bytes)).then(input => {
-      if (etfArgs(input).length) throw new GameError(1, 'Channel entry takes no parameters');
+      const args = etfArgs(input);
+      if (args.length > 1) throw new GameError(1, 'Channel entry takes at most one parameter');
+      const entries = coopTables.channel.entries;
+      let entry = entries[0];
+      if (args.length === 1) {
+        const channelId = Number(args[0]);
+        if (!Number.isSafeInteger(channelId) || channelId <= 0) {
+          throw new GameError(1, 'Invalid channel entry id');
+        }
+        entry = entries.find(candidate => Number(candidate.channelId) === channelId);
+        if (!entry) throw new GameError(5, `No channel entry is configured for channel ${channelId}`);
+      }
       return store.transaction((model, db) => {
         ensureCoopTables(db);
         const at = toSeconds(now);
         const context = guildContext(model, codec);
-        const entry = coopTables.channel.entries[0];
         if (!entry) throw new GameError(5, 'No channel entry is configured');
         const doc = readDoc(db, SCOPE, context.guildId, context.roleId, 'state') ?? { opens: 0, lastOpen: 0 };
         doc.opens = Number(doc.opens ?? 0) + 1;
