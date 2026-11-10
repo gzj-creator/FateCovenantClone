@@ -736,6 +736,8 @@ export function createLocalGame({
     gameTables: tables, now: clock, logger
   });
   async function loginPayload() {
+    const taskLoginRepair = tasks.ensureLoginState();
+    if (taskLoginRepair.changed) logger({ event: 'task_login_state_repaired', ...taskLoginRepair });
     const repairedLineups = lineups.ensureLoginState();
     if (repairedLineups.length) logger({ event: 'shared_pre_lineups_repaired', types: repairedLineups });
     recruit.ensureLoginState();

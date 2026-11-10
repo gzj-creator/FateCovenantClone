@@ -498,7 +498,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   const taskModule = codec.unpack('pb_linear_task_data', rawBinary(new Map(game.store.state().modules.value).get(90).value[4]));
   assert.equal(taskModule.task_list.find(task => task.type === 1).receive_tid, 10001);
   response = await request(9010, 17, await encodeEtf([10001]));
-  assert.equal(response.err.err, 310);
+  assert.equal(response.err, undefined);
+  const taskReplay = codec.unpack('pb_linear_task_receive_back', Buffer.from(response.data, 'base64'));
+  assert.deepEqual(taskReplay.task, { type: 1, receive_tid: 10001 });
+  assert.deepEqual(taskReplay.res_change.changes, []);
+  assert.equal(BigInt(game.store.read().resources.get('101500').num), taskDiamonds + 50n);
 
   // Chapter completion asks which recommended gifts are active. The scheduled
   // calendar excludes this expired offer so its commerce data cannot leak into

@@ -19,6 +19,8 @@ const PASSED_SECTION_PROGRESS = 2;
 const PASSED_CHAPTER_PROGRESS = 10;
 const ELITE_CHAPTER_PROGRESS = 247;
 const COMMON_TASK_BASE_NUMBER = 10000;
+const LINEAR_TASK_CLAIM = 'linear_task';
+const COMMON_TASK_CLAIM = 'common_task';
 
 function taskGroupIndex(config, offset = 0) {
   const groupType = Number(config.type);
@@ -240,8 +242,145 @@ function configuredAwards(config) {
   });
 }
 
+function linearTaskOrder(config) {
+  const order = Number(config?.sortOrder);
+  if (!Number.isSafeInteger(order)) throw new GameError(5, 'Linear task order is invalid');
+  return order;
+}
+
+function sameBytes(left, right) {
+  return left.length === right.length && left.equals(right);
+}
+
 export function createTaskService({ store, codec, tables, commonTasks = readCommonTaskTables(), now = Date.now, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
+
+  function readTaskModule(model) {
+    const module = new Map(model.state.modules.value).get(TASK_MODULE);
+    if (!module || !Array.isArray(module.value)) throw new GameError(5, 'Task login module is missing');
+    return module;
+  }
+
+  function readLinearTaskData(module, slot) {
+    const payload = module.value[slot];
+    if (payload == null) return { task_list: [] };
+    const bytes = rawBinary(payload);
+    if (!bytes.length) return { task_list: [] };
+    try {
+      const data = codec.unpack('pb_linear_task_data', bytes);
+      data.task_list ??= [];
+      return data;
+    } catch {
+      throw new GameError(5, 'Linear task login data is invalid');
+    }
+  }
+
+  function writeTaskModule(model, module) {
+    const modules = new Map(model.state.modules.value);
+    modules.set(TASK_MODULE, module);
+    model.state.modules.value = [...modules];
+  }
+
+  function linearTaskEntry(taskData, type) {
+    return (taskData.task_list ?? []).find(row => Number(row.type) === Number(type)) ?? null;
+  }
+
+  function setLinearTaskEntry(taskData, config) {
+    const task = { type: Number(config.type), receive_tid: Number(config.tid), snapshot_val: 0 };
+    const existing = linearTaskEntry(taskData, config.type);
+    if (existing) Object.assign(existing, task);
+    else taskData.task_list.push(task);
+    return task;
+  }
+
+  function linearClaimResult(config, task, changes = [], replayed = false) {
+    const res_change = { changes, is_overflow: false };
+    const value = { task, res_change };
+    if (replayed) value.replayed = true;
+    return { value, data: codec.pack('pb_linear_task_receive_back', { task, res_change }) };
+  }
+
+  function ensureLoginState() {
+    return store.transaction((model, db) => {
+      const roleId = model.state.roleId;
+      const module = readTaskModule(model);
+      const values = Array.isArray(module.value) ? [...module.value] : [];
+      const commonClaims = db.prepare(
+        'SELECT claim_key FROM reward_claims WHERE role_id=? AND claim_type=? ORDER BY CAST(claim_key AS INTEGER)'
+      ).all(roleId, COMMON_TASK_CLAIM);
+      const commonClaimIds = new Set(commonClaims.map(row => Number(row.claim_key)));
+      const repairedCommonSlots = [];
+
+      // Rebuild the four CommonTaskMgr slots from their durable claim ledger.
+      // This removes the legacy pb_linear_task_data accidentally stored in slot 0
+      // after 9010 moved to the fifth slot and also repairs any missing bit.
+      for (const [type, rows] of commonTasks.groups) {
+        const slot = commonTasks.slots.get(type);
+        if (!Number.isSafeInteger(slot) || slot < 0) throw new GameError(5, 'Common task group slot is not configured');
+        let receiveList = Buffer.alloc(0);
+        for (const taskId of commonClaimIds) {
+          if (!rows.has(taskId)) continue;
+          receiveList = setBit(receiveList, taskId % COMMON_TASK_BASE_NUMBER);
+        }
+        const payload = serializedBinary(codec.pack('pb_common_task', { receive_list: receiveList }));
+        const current = values[slot] == null ? Buffer.alloc(0) : rawBinary(values[slot]);
+        if (!sameBytes(current, rawBinary(payload))) {
+          while (values.length <= slot) values.push(serializedBinary(Buffer.alloc(0)));
+          values[slot] = payload;
+          repairedCommonSlots.push(type);
+        }
+      }
+
+      const linearSlot = commonTasks.groups.size;
+      const linearData = values[linearSlot] == null
+        ? { task_list: [] }
+        : (() => {
+            const bytes = rawBinary(values[linearSlot]);
+            if (!bytes.length) return { task_list: [] };
+            try {
+              const data = codec.unpack('pb_linear_task_data', bytes);
+              data.task_list ??= [];
+              return data;
+            } catch {
+              throw new GameError(5, 'Linear task login data is invalid');
+            }
+          })();
+      const claimed = db.prepare(
+        'SELECT claim_key FROM reward_claims WHERE role_id=? AND claim_type=? ORDER BY CAST(claim_key AS INTEGER)'
+      ).all(roleId, LINEAR_TASK_CLAIM)
+        .map(row => tables.LinearTask.get(Number(row.claim_key)))
+        .filter(Boolean);
+      let highestClaimed = null;
+      for (const config of claimed) {
+        if (!highestClaimed || linearTaskOrder(config) > linearTaskOrder(highestClaimed)) highestClaimed = config;
+      }
+
+      const current = linearTaskEntry(linearData, 1);
+      let currentConfig = current ? tables.LinearTask.get(Number(current.receive_tid)) : null;
+      let linearRepaired = false;
+      if (current && !currentConfig) throw new GameError(5, 'Linear task login order is invalid');
+      if (highestClaimed && (!currentConfig || linearTaskOrder(currentConfig) < linearTaskOrder(highestClaimed))) {
+        currentConfig = highestClaimed;
+        setLinearTaskEntry(linearData, currentConfig);
+        linearRepaired = true;
+      }
+      if (linearRepaired) {
+        while (values.length <= linearSlot) values.push(serializedBinary(Buffer.alloc(0)));
+        values[linearSlot] = serializedBinary(codec.pack('pb_linear_task_data', linearData));
+      }
+
+      if (repairedCommonSlots.length || linearRepaired) {
+        module.value = values;
+        writeTaskModule(model, module);
+      }
+      return {
+        changed: repairedCommonSlots.length > 0 || linearRepaired,
+        repairedCommonSlots,
+        linearReceiveTid: Number(currentConfig?.tid ?? current?.receive_tid ?? 0),
+        linearRepaired
+      };
+    });
+  }
 
   function commonTaskEntry(taskId) {
     for (const [type, rows] of commonTasks.groups) {
@@ -325,46 +464,60 @@ export function createTaskService({ store, codec, tables, commonTasks = readComm
     if (awards.some(([tid, count]) => !Number.isSafeInteger(tid) || !Number.isSafeInteger(count) || count <= 0)) throw new GameError(5, 'Linear task reward configuration is invalid');
 
     return store.transaction((model, db) => {
-      if (db.prepare('SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?').get(model.state.roleId, 'linear_task', String(id))) throw new GameError(310, 'Linear task reward already claimed');
+      const module = readTaskModule(model);
+      const taskData = readLinearTaskData(module, moduleIndex);
+      const existing = linearTaskEntry(taskData, config.type);
+      const existingConfig = existing ? tables.LinearTask.get(Number(existing.receive_tid)) : null;
+      if (existing && !existingConfig) throw new GameError(5, 'Linear task login order is invalid');
+      const requestedOrder = linearTaskOrder(config);
+      const existingOrder = existingConfig ? linearTaskOrder(existingConfig) : -Infinity;
+      const persistedClaim = db.prepare(
+        'SELECT 1 FROM reward_claims WHERE role_id=? AND claim_type=? AND claim_key=?'
+      ).get(model.state.roleId, LINEAR_TASK_CLAIM, String(id));
+
+      // A repeated click is an acknowledgement, not an error. Older releases
+      // could leave the client below its server high-water mark and the client
+      // maps code 310 to "not unlocked". Keep the claim atomic and idempotent:
+      // repair the login slot, return the highest known received task and never
+      // issue the configured reward twice.
+      if (persistedClaim || existingOrder >= requestedOrder) {
+        const canonical = existingOrder > requestedOrder ? existingConfig : config;
+        const task = setLinearTaskEntry(taskData, canonical);
+        if (!persistedClaim) {
+          db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(
+            model.state.roleId, LINEAR_TASK_CLAIM, String(id), new Date(now()).toISOString()
+          );
+        }
+        while (module.value.length <= moduleIndex) module.value.push(serializedBinary(Buffer.alloc(0)));
+        module.value[moduleIndex] = serializedBinary(codec.pack('pb_linear_task_data', taskData));
+        writeTaskModule(model, module);
+        log({ event: 'linear_task_replay_acknowledged', taskId: id, receiveTid: Number(canonical.tid) });
+        return linearClaimResult(canonical, task, [], true);
+      }
+
       const progress = currentTaskProgress(model, config, codec, tables);
       if (progress < Number(config.target_count)) throw new GameError(5, 'Linear task is not complete');
 
-      const module = new Map(model.state.modules.value).get(TASK_MODULE);
-      if (!module || !Array.isArray(module.value) || !module.value[moduleIndex]) throw new GameError(5, 'Linear task login data is missing');
-      const taskData = codec.unpack('pb_linear_task_data', rawBinary(module.value[moduleIndex]));
-      taskData.task_list ??= [];
       // snapshot_val belongs to the task that is currently active and needs
       // activation. A claimed task must not leave its progress as a baseline:
       // LinearTask groups share one taskMap entry, so a mission-id baseline
       // would otherwise be subtracted from unrelated statistic counters (for
       // example stamina consumption) and produce negative UI progress.
-      const task = { type: Number(config.type), receive_tid: id, snapshot_val: 0 };
-      const existing = taskData.task_list.find(row => Number(row.type) === Number(config.type));
-      const requestedOrder = Number(config.sortOrder);
-      if (!Number.isSafeInteger(requestedOrder)) throw new GameError(5, 'Linear task order is invalid');
-      if (existing) {
-        const claimedId = Number(existing.receive_tid);
-        const claimedConfig = tables.LinearTask.get(claimedId);
-        const claimedOrder = Number(claimedConfig?.sortOrder);
-        if (!Number.isSafeInteger(claimedOrder)) throw new GameError(5, 'Linear task login order is invalid');
-        if (requestedOrder <= claimedOrder) throw new GameError(310, 'Linear task reward already claimed');
-      }
-      if (existing) Object.assign(existing, task); else taskData.task_list.push(task);
+      const task = setLinearTaskEntry(taskData, config);
 
-      db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, 'linear_task', String(id), new Date(now()).toISOString());
+      db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)').run(model.state.roleId, LINEAR_TASK_CLAIM, String(id), new Date(now()).toISOString());
       const reward = grantResources(model, awards, tables);
       const res = { changes: reward.changes, is_overflow: false };
-      const modules = new Map(model.state.modules.value);
+      while (module.value.length <= moduleIndex) module.value.push(serializedBinary(Buffer.alloc(0)));
       module.value[moduleIndex] = serializedBinary(codec.pack('pb_linear_task_data', taskData));
-      modules.set(TASK_MODULE, module);
-      model.state.modules.value = [...modules];
-      const value = { task, res_change: res };
-      return { value, data: codec.pack('pb_linear_task_receive_back', value) };
+      writeTaskModule(model, module);
+      return linearClaimResult(config, task, reward.changes);
     });
   }
 
   return {
     supports: type => type === 9010 || type === 9005,
+    ensureLoginState,
     execute(type, input) {
       if (type === 9010) {
         const result = claimLinearTask(input);
