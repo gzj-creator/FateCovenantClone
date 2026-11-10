@@ -416,6 +416,59 @@ test('shared daily-discount products also update Hundred Schools without exceedi
   }), error => error.code === 307);
 });
 
+test('expired Week Hunt context does not block shared recruitment gifts', async t => {
+  const logs = [];
+  const env = await gatewayFixture(t, event => logs.push(event));
+  const week = codec.unpack('pb_week_hunt', rawBinary(new Map(env.game.store.state().modules.value).get(533))).week_period_info[0];
+  const expiredDay = week.start_day + 22;
+  env.clock.seconds = expiredDay * 86400 - 10800 + 3600;
+
+  addResource(env.game.store, 701500, 100000);
+  env.game.wallet.credit({ account_id: 'local-1', amount_cents: 100000, request_id: 'expired-week-hunt-credit' });
+  const options = JSON.stringify([
+    { ipv4: '10.0.2.15', channel_extra_cfg: '', channel_id: '160092', mac_address: '' },
+    [false, week.version, expiredDay]
+  ]);
+
+  for (const [index, productId] of [40010, 40008].entries()) {
+    const frames = await env.requestWithWalletPush(
+      50 + index,
+      await encodeEtf([productId, binary(Buffer.from(options)), 701500])
+    );
+    assert.equal(frames.ack.err, undefined, `product ${productId}`);
+    assert.ok(frames.notification, `product ${productId} did not publish 1900`);
+    const notification = codec.unpack('res_recharge_success', Buffer.from(frames.notification.data, 'base64'));
+    assert.equal(notification.extra_ret_list.some(entry => entry.flag === 40), true);
+    assert.equal(notification.extra_ret_list.some(entry => entry.flag === 92), true);
+    assert.equal(
+      notification.res.changes.find(change => String(change.tid) === '101500')?.diff_num,
+      String(productId === 40010 ? 120 : 300)
+    );
+    assert.equal(env.game.store.inspect(db => db.prepare(
+      "SELECT count(*) AS n FROM activity_purchases WHERE activity_id=? AND product_id=? AND kind='gift'"
+    ).get(ACTIVITY_ID, productId).n), 1);
+  }
+
+  env.game.store.inspect(db => {
+    const orders = db.prepare(
+      'SELECT product_id,payload_json FROM recharge_orders WHERE product_id IN (40008,40010) ORDER BY product_id'
+    ).all();
+    assert.deepEqual(orders.map(order => order.product_id), [40008, 40010]);
+    for (const order of orders) {
+      const payload = JSON.parse(order.payload_json);
+      assert.equal(payload.period, week.version);
+      assert.equal(payload.day_index, expiredDay);
+      assert.equal(payload.week_hunt_period, undefined);
+    }
+  });
+  const returnedWeek = codec.unpack(
+    'pb_week_hunt',
+    rawBinary(new Map(env.game.store.state().modules.value).get(533))
+  ).week_period_info[0];
+  assert.deepEqual(returnedWeek.upgrade_list ?? [], week.upgrade_list ?? []);
+  assert.equal(logs.filter(event => event.event === 'week_hunt_period_skipped').length, 2);
+});
+
 test('all configured personal, server and selected-genre star tasks can be claimed', t => {
   const env = directFixture(t);
   env.heroDraw.selectGenre(4);

@@ -1,7 +1,7 @@
 # 个人服务器修复记录
 
 基线提交 `26982a4`；2026-10-30 活动修复 worktree 基线 `5aa0a21`。本目录逐项记录“用户反馈 → 证据 → 根因 → 实现边界 → 测试 → 验收级别”。
-统一测试：`npm test --prefix personal-server`，当前工作树结果为 **315/315 通过**。
+统一测试：`npm test --prefix personal-server`，2026-11-10 当前工作树结果为 2808 项、pass 2806、fail 0、skipped 2。
 
 | 编号 | 故障 | 本文档 | 本轮结论 |
 |---|---|---|---|
@@ -17,6 +17,7 @@
 | W3 | 首充购买后仍显示 ¥6 | [first-recharge-status.md](first-recharge-status.md) | 历史订单状态已修复；自动回填与 TCP 测试通过，首充面板待用户确认 |
 | W4 | 限购礼包错误日志 ID | [purchase-limit-error.md](purchase-limit-error.md) | 限购先于余额校验；真实 QuickSDK 返回 307/80001，275/275 测试通过 |
 | W5 | 03:00 后每日折扣购买报 310 | [wish-tree-rebate-cycle-20261108.md](wish-tree-rebate-cycle-20261108.md) | wallet-service 捕获 310 只跳过返利记录，购买成功；全量 2481 项 0 失败，未部署 |
+| W6 | 限时招募礼包显示不可操作 | [limited-recruit-gift-week-hunt-20261110.md](limited-recruit-gift-week-hunt-20261110.md) | 40008/40010 的已关闭 Week Hunt 上下文只跳过任务记账；真实 16004 购买成功，全量 2808 项 0 失败，待部署 |
 | P1 | 636/82601/640/503 后期养成与扫荡 | [endgame-progression.md](endgame-progression.md) | 四接口已实现并集成部署；228/228 测试通过；四项 APK 操作与视觉验收待完成 |
 | L1 | 团长装备穿戴返回未开放 | [leader-equip-wear.md](leader-equip-wear.md) | 98401 已接模块 175 事务穿戴、替换与持久化；315/315 通过，未部署、未做 APK 验收 |
 | F5 | 线性任务缺少星火阶段进度 | [f5-linear-task-destiny-progress.md](f5-linear-task-destiny-progress.md) | 5901/155 读取模块 107 的原始 `cur_stage`；六个任务、临时 TCP 与 307/307 测试通过；未部署、未做 APK 验收 |

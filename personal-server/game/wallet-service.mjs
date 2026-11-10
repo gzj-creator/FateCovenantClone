@@ -94,6 +94,26 @@ export function createWalletService({
       return null;
     }
   };
+  // Week Hunt shares 40008 and 40010 with DailyDiscount and Hundred Schools.
+  // RechargeMgr can retain the closed Week Hunt period in the optional tuple
+  // even when the recruitment gift page is the actual source. Treat that
+  // auxiliary task ledger as unavailable and continue the purchase, while a
+  // real Week Hunt purchase without another live gift source still reports 309.
+  const resolveWeekHuntPurchase = (args, { allowClosedPeriod = false, logSkipped = false } = {}) => {
+    if (typeof weekHunt?.resolvePurchase !== 'function') return null;
+    try {
+      return weekHunt.resolvePurchase(args);
+    } catch (error) {
+      if (!allowClosedPeriod || Number(args?.period) <= 0 || Number(error?.code) !== 309) throw error;
+      if (logSkipped) {
+        log({
+          event: 'week_hunt_period_skipped', productId: Number(args?.product?.tid),
+          period: Number(args.period), dayIndex: Number(args.dayIndex ?? 0), code: 309, reason: error.message
+        });
+      }
+      return null;
+    }
+  };
   const dailyDiscountInfo = modules => {
     const raw = modules.get(DAILY_DISCOUNT_MODULE);
     if (!raw) return { refresh_time: 0, buy_additionally: 0, daily_discount_list: [], select_list: [], data_version: 0 };
@@ -490,7 +510,10 @@ export function createWalletService({
       const modules = new Map(store.state().modules.value);
       const plan = planDailyDiscountPurchase(modules, product, now(), extra_buy === true);
       if (!plan) throw new GameError(307, 'Product purchase limit reached');
-      weekHunt?.resolvePurchase({ modules, product, extraBuy: plan.additional, period, dayIndex: day_index, at: now() });
+      resolveWeekHuntPurchase(
+        { modules, product, extraBuy: plan.additional, period, dayIndex: day_index, at: now() },
+        { allowClosedPeriod: Boolean(heroGiftShadowForDailyPurchase(product_id)) }
+      );
       return;
     }
     const purchaseCount = store.inspect(db => scopedPurchaseQuantity(
@@ -591,8 +614,11 @@ export function createWalletService({
       // otherwise QuickSDK shows the unrelated insufficient-balance message.
       const balance = db.prepare('SELECT balance_cents FROM local_wallets WHERE account_id=?').get(account_id).balance_cents;
       if (balance < quote.balance_cents) throw new GameError(301, 'Account balance is insufficient');
-      const weekPurchase = dailyPlan && weekHunt
-        ? weekHunt.resolvePurchase({ modules: limitModules, product, extraBuy: dailyPlan.additional, period, dayIndex: day_index, at: purchasedAt })
+      const weekPurchase = dailyPlan
+        ? resolveWeekHuntPurchase(
+          { modules: limitModules, product, extraBuy: dailyPlan.additional, period, dayIndex: day_index, at: purchasedAt },
+          { allowClosedPeriod: Boolean(heroShadowGift), logSkipped: true }
+        )
         : null;
       const day = dailyDay(purchasedAt);
       const purchaseDay = weekPurchase?.day ?? (Number.isSafeInteger(day_index) && day_index > 0 ? day_index : day);
