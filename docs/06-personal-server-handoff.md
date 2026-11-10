@@ -1,5 +1,19 @@
 # 个人服务器兼容实验：续接计划
 
+## 2026-11-11 双账号隔离与命运二服裸机部署
+
+当前远端 `main` 为 `1da5abd`，线上 release 为
+`/data/disk1/game/releases/release-20261110T172155Z`，使用 systemd 裸机部署，不使用 Docker。
+线上数据库已是 v19：原账号 `local-1` 继续使用 12 级角色 `100002`；手机号
+`17607270093` 使用独立 1 级角色 `100003`。100 万张、每张 1 元的代金券已通过管理 API
+发到角色 `100003` 的邮件，待用户在游戏内领取。
+
+区服名修复为只显示一次“命运二服”，正式开服时间为
+`2026-11-11T00:00:00+08:00`。部署前 v18 SQLite 完整备份位于
+`/data/disk1/game/backups/pre-account-isolation-20261110T172155Z`，完整性为 `ok`。
+代码改动、验证计数、端口和迁移证据见
+[双账号隔离与部署](../agent/workflow/account-isolation-20261111/implementation.md)。
+
 ## 2026-10-31 冒险十连结果卡与圣装招募待部署修复
 
 冒险十连空白已从真实 APK 和 Lua 调用链定位：首次获得的英雄被完整碎片资源变化、即时英雄 `extra`、`decompose_args` 重复计为结果卡，十连只要有 2/3 名新英雄就会生成 12/13 张卡，超出 `HeroDrawResultShowForm` 的 10 个槽位并抛 `Transform child out of bounds`。服务端已移除首次英雄的 `decompose_args`，碎片、即时英雄对象和 SQLite 英雄记录保持不变。
