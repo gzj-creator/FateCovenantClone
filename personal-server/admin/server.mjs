@@ -70,7 +70,10 @@ export function createAdminService({ wallet, mail, voucher, token = randomBytes(
   server.headersTimeout = 5000;
   return {
     token,
-    listen(port = 18883) { return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve(server.address())); }); },
+    listen(port = 18883, host = '127.0.0.1') {
+      if (typeof host !== 'string' || host.length === 0) return Promise.reject(new TypeError('Invalid host'));
+      return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => resolve(server.address())); });
+    },
     close() { return new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }); }
   };
 }

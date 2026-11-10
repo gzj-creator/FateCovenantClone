@@ -61,12 +61,14 @@ export function buildLocalServer(config, now) {
   };
 }
 
-export function buildServerListMessage(serverConfig, params, now) {
-  const server = buildLocalServer(serverConfig, now);
+export function buildServerListMessage(serverConfigOrList, params, now) {
+  const configs = Array.isArray(serverConfigOrList) ? serverConfigOrList : [serverConfigOrList];
+  if (configs.length === 0) throw new TypeError('At least one server is required');
+  const servers = configs.map(config => buildLocalServer(config, now));
   text(params.channel_id, 'channel_id');
   return {
-    servers: [server], privilege_lv: 0, channel_id: Buffer.from(params.channel_id, 'utf8'), roles: [],
-    now_sec: now, limit_login: false, open_time: server.release_time, ahead_time: 0, role_count: 0
+    servers, privilege_lv: 0, channel_id: Buffer.from(params.channel_id, 'utf8'), roles: [],
+    now_sec: now, limit_login: false, open_time: Math.min(...servers.map(server => server.release_time)), ahead_time: 0, role_count: 0
   };
 }
 
@@ -122,8 +124,14 @@ export function createServerListService(options = {}) {
   const signingKey = text(options.signingKey, 'signingKey');
   const nowSeconds = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
   if (typeof nowSeconds !== 'function') throw new TypeError('nowSeconds must be a function');
-  const serverConfig = Object.freeze({ ...options.server });
-  buildLocalServer(serverConfig, nowSeconds());
+  const configuredServers = options.servers ?? (options.server === undefined ? undefined : [options.server]);
+  if (!Array.isArray(configuredServers) || configuredServers.length === 0) throw new TypeError('At least one server must be configured');
+  const serverConfigs = Object.freeze(configuredServers.map(value => Object.freeze({ ...value })));
+  const serversById = new Map();
+  for (const server of serverConfigs.map(value => buildLocalServer(value, nowSeconds()))) {
+    if (serversById.has(server.id)) throw new TypeError('Server IDs must be unique');
+    serversById.set(server.id, server);
+  }
   const codec = options.codec;
   if (codec !== undefined && (typeof codec.encode !== 'function' || codec.metadata?.name !== 'protobufjs')) throw new TypeError('Use a codec created from an explicitly supplied existing protobufjs package');
   if (options.logger !== undefined && typeof options.logger !== 'function') throw new TypeError('logger must be a function');
@@ -144,11 +152,12 @@ export function createServerListService(options = {}) {
       if (url.search) throw new ContractError(400, 'invalid_query', 'Use form fields without a query string');
       const parsed = parseRequest(await readBody(request), signingKey);
       operation = parsed.method;
-      if (parsed.method === 'login_server' && parsed.params.server_id !== serverConfig.id) throw new ContractError(404, 'unknown_server', 'Server ID is not configured');
+      const selectedServer = parsed.method === 'login_server' ? serversById.get(parsed.params.server_id) : undefined;
+      if (parsed.method === 'login_server' && !selectedServer) throw new ContractError(404, 'unknown_server', 'Server ID is not configured');
       if (!codec) throw new ContractError(501, 'protobuf_codec_unavailable', 'No existing protobufjs runtime was configured; JSON is not a protobuf response');
       const now = nowSeconds();
       const name = parsed.method === 'login_server' ? 'pb_login_server' : 'pb_login_servers';
-      const message = name === 'pb_login_server' ? buildLocalServer(serverConfig, now) : buildServerListMessage(serverConfig, parsed.params, now);
+      const message = name === 'pb_login_server' ? selectedServer : buildServerListMessage(serverConfigs, parsed.params, now);
       const bytes = codec.encode(name, message);
       if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw new Error('Codec returned no bytes');
       send(200, bytes, 'application/octet-stream');
@@ -164,20 +173,21 @@ export function createServerListService(options = {}) {
   let closed = false;
   return Object.freeze({
     codecMetadata: codec?.metadata ?? null,
-    listen(port = 0) {
+    listen(port = 0, host = HOST) {
       if (closed || listening) return Promise.reject(new Error('Service already started or closed'));
       if (!Number.isInteger(port) || port < 0 || port > 65535) return Promise.reject(new TypeError('Invalid port'));
+      if (typeof host !== 'string' || host.length === 0) return Promise.reject(new TypeError('Invalid host'));
       listening = new Promise((resolve, reject) => {
         const onError = error => { server.off('listening', onListening); reject(error); };
         const onListening = () => {
           server.off('error', onError);
           const address = server.address();
-          log({ event: 'listening', host: HOST, port: address.port, protobuf: codec?.metadata?.version ?? 'unavailable' });
-          resolve({ host: HOST, port: address.port, url: 'http://' + HOST + ':' + address.port });
+          log({ event: 'listening', host, port: address.port, protobuf: codec?.metadata?.version ?? 'unavailable' });
+          resolve({ host, port: address.port, url: 'http://' + host + ':' + address.port });
         };
         server.once('error', onError);
         server.once('listening', onListening);
-        server.listen(port, HOST);
+        server.listen(port, host);
       });
       return listening;
     },

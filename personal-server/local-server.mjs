@@ -10,6 +10,7 @@ import { createStartupService } from './startup-service.mjs';
 import { createLocalGame } from './local-game.mjs';
 import { createAdminService } from './admin/server.mjs';
 import { loadActivityCalendarConfig, parseActivityCalendarTimestamp } from './config/activity-calendar-config.mjs';
+import { loadPublicServerConfig } from './config/server-config.mjs';
 
 function configuredPort(variable, fallback) {
   const raw = process.env[variable];
@@ -19,13 +20,19 @@ function configuredPort(variable, fallback) {
   return value;
 }
 
+const publicDeployment = process.argv.includes('--public') ? loadPublicServerConfig() : null;
+
 const requestedPorts = Object.freeze({
-  sdk: configuredPort('FC_SDK_PORT', 18880),
-  list: configuredPort('FC_SERVER_LIST_PORT', 18881),
-  startup: configuredPort('FC_STARTUP_PORT', 18882),
-  game: configuredPort('FC_GAME_PORT', 19090),
-  admin: configuredPort('FC_ADMIN_PORT', 18883)
+  sdk: configuredPort('FC_SDK_PORT', publicDeployment?.ports.sdk ?? 18880),
+  list: configuredPort('FC_SERVER_LIST_PORT', publicDeployment?.ports.list ?? 18881),
+  startup: configuredPort('FC_STARTUP_PORT', publicDeployment?.ports.startup ?? 18882),
+  game: configuredPort('FC_GAME_PORT', publicDeployment?.ports.game ?? 19090),
+  admin: configuredPort('FC_ADMIN_PORT', publicDeployment?.ports.admin ?? 18883)
 });
+const publicListenHost = publicDeployment?.listen.publicHost ?? '127.0.0.1';
+const adminListenHost = publicDeployment?.listen.adminHost ?? '127.0.0.1';
+const listenHosts = Object.freeze({ sdk: publicListenHost, list: publicListenHost, startup: publicListenHost,
+  game: publicListenHost, admin: adminListenHost });
 
 const activityCalendar = loadActivityCalendarConfig(process.env.FC_ACTIVITY_CALENDAR_CONFIG);
 const serverOpenedAt = process.env.FC_SERVER_OPENED_AT
@@ -56,6 +63,7 @@ const sdk = createSdkService({
   quickSdkIdentityResolver: () => ({
     userId: sdkAccount.userId, loginCode: sdkAccount.loginCode, nickname: sdkAccount.nickname
   }),
+  quickServerUrl: publicDeployment?.publicSdkUrl ?? `http://127.0.0.1:${requestedPorts.sdk || 18880}`,
   appId: 'fc-local', appKey: 'fc-local-development-key', account: sdkAccount, logger
 });
 const keyPath = process.env.FC_SERVER_LIST_SIGNING_KEY_PATH
@@ -87,16 +95,19 @@ const services = [admin,sdk,startup,game];
 const boundPorts = {};
 try {
   for (const [name, service] of [['sdk',sdk], ['startup',startup], ['game',game], ['admin',admin]]) {
-    const address = await service.listen(requestedPorts[name]);
+    const address = await service.listen(requestedPorts[name], listenHosts[name]);
     boundPorts[name] = address.port;
   }
-  const list = createServerListService({ signingKey: key, server: { id: 1, name: 'Local Server', extranetIp: `127.0.0.1:${boundPorts.game}`, releaseTime: serverOpenedAt }, codec: createProtobufJsCodec(), logger });
+  const servers = publicDeployment
+    ? publicDeployment.servers.map(server => ({ ...server, releaseTime: serverOpenedAt }))
+    : [{ id: 1, name: '命运一服', extranetIp: `127.0.0.1:${boundPorts.game}`, releaseTime: serverOpenedAt }];
+  const list = createServerListService({ signingKey: key, servers, codec: createProtobufJsCodec(), logger });
   services.push(list);
-  const listAddress = await list.listen(requestedPorts.list);
+  const listAddress = await list.listen(requestedPorts.list, listenHosts.list);
   boundPorts.list = listAddress.port;
   fs.writeFileSync(path.join(directory,'admin-url.local-only.txt'),`http://127.0.0.1:${boundPorts.admin}/#key=${admin.token}`);
   const ports = [boundPorts.sdk, boundPorts.list, boundPorts.startup, boundPorts.game, boundPorts.admin];
-  fs.writeFileSync(path.join(directory, 'server.local-only.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId, ports, boundPorts }, null, 2));
-  logger({ event: 'local_server_ready', ports, boundPorts, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId });
+  fs.writeFileSync(path.join(directory, 'server.local-only.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId, servers, listenHosts, ports, boundPorts }, null, 2));
+  logger({ event: 'local_server_ready', servers, listenHosts, ports, boundPorts, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId });
 } catch (error) { for (const service of services) await service.close(); throw error; }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => { for (const service of services) await service.close(); });

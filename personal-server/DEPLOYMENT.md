@@ -8,6 +8,27 @@
 - npm，用于按 `package-lock.json` 安装锁定的 `protobufjs@8.8.1`。
 - 默认服务只监听 `127.0.0.1`。
 
+公网启动使用可读的 `config/public-server.json`：
+
+```powershell
+npm run start:public --prefix .\personal-server
+```
+
+配置中的 `servers` 数组是可扩展列表；当前第一项 ID 为 `1`、名称为“命运一服”、
+游戏地址为 `140.143.142.251:19090`。后续增加独立区服时向该数组追加配置即可，
+区服列表接口会返回全部条目并按 ID 响应登录选择。该配置让 SDK、区服列表、启动更新
+和游戏网关监听 `0.0.0.0`，Web 管理端 `18883` 继续只监听 `127.0.0.1`。服务器安全组和本机防火墙必须放行 TCP
+`18880`、`18881`、`18882`、`19090`；`18883` 保持不对公网开放。
+
+如使用 Linux UFW，公网四端口的最小放行命令为：
+
+```bash
+sudo ufw allow 18880/tcp
+sudo ufw allow 18881/tcp
+sudo ufw allow 18882/tcp
+sudo ufw allow 19090/tcp
+```
+
 ## 首次启动
 
 从项目根目录执行：

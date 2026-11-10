@@ -1,0 +1,21 @@
+{
+  "listen": {
+    "publicHost": "0.0.0.0",
+    "adminHost": "127.0.0.1"
+  },
+  "ports": {
+    "sdk": 18880,
+    "list": 18881,
+    "startup": 18882,
+    "game": 19090,
+    "admin": 18883
+  },
+  "publicSdkUrl": "http://140.143.142.251:18880",
+  "servers": [
+    {
+      "id": 1,
+      "name": "命运一服",
+      "extranetIp": "140.143.142.251:19090"
+    }
+  ]
+}

@@ -35,11 +35,12 @@ export function createStartupService({ appVersion, assetVersion, updateManifest,
   server.requestTimeout = 5000;
   server.headersTimeout = 5000;
   return {
-    listen(port = 0) {
+    listen(port = 0, host = '127.0.0.1') {
       if (!Number.isInteger(port) || port < 0 || port > 65535) throw new TypeError('Invalid port');
+      if (typeof host !== 'string' || host.length === 0) throw new TypeError('Invalid host');
       return new Promise((resolve, reject) => {
         server.once('error', reject);
-        server.listen(port, '127.0.0.1', () => resolve(server.address()));
+        server.listen(port, host, () => resolve(server.address()));
       });
     },
     close() { return new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }); }

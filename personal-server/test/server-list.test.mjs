@@ -78,6 +78,30 @@ test('trusted protobufjs encodes and reverse-decodes both exact exported message
   assert.throws(() => codec.encode('unknown', {}), /Unsupported/);
 });
 
+test('configured server list returns every realm and resolves each login server by ID', async t => {
+  const servers = [
+    serverConfig,
+    { id: 2, name: '命运二服', extranetIp: '140.143.142.252:19090', releaseTime: SERVER_OPENED_AT }
+  ];
+  const service = createServerListService({ signingKey: KEY, servers, nowSeconds: () => NOW, codec, logger() {} });
+  t.after(() => service.close());
+  const address = await service.listen(0);
+  const form = encodeServerListRequest('preferred_login_servers', { ...params, last_server: 1, manual_select: 1 }, KEY);
+  const response = await fetch(address.url + '/server_list', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form.toString() });
+  const decoded = codec.decode('pb_login_servers', Buffer.from(await response.arrayBuffer()));
+  assert.deepEqual(decoded.servers.map(server => [server.id, server.name, server.extranet_ip]), [
+    [1, 'S1 本地测试服', '127.0.0.1:19090'],
+    [2, '命运二服', '140.143.142.252:19090']
+  ]);
+  for (const server of servers) {
+    const singleForm = encodeServerListRequest('login_server', { server_id: server.id }, KEY);
+    const singleResponse = await fetch(address.url + '/server_list', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: singleForm.toString() });
+    const single = codec.decode('pb_login_server', Buffer.from(await singleResponse.arrayBuffer()));
+    assert.equal(single.id, server.id);
+    assert.equal(single.extranet_ip, server.extranetIp);
+  }
+});
+
 test('HTTP channel and preferred server lists return protobuf binary that reverse-decodes', async t => {
   const f = await fixture(t);
   assert.equal(f.address.host, '127.0.0.1');

@@ -89,6 +89,8 @@ export function createSdkService(options = {}) {
   const localTestOtp = options.localTestOtp === true;
   const quickSdk = options.quickSdk;
   if (quickSdk && (typeof quickSdk.productCode !== 'string' || Buffer.byteLength(quickSdk.productKey ?? '', 'utf8') !== 8)) throw new TypeError('Local QuickSDK requires a product code and eight-byte key');
+  const quickServerUrl = options.quickServerUrl ?? 'http://127.0.0.1:18880';
+  if (typeof quickServerUrl !== 'string' || quickServerUrl.length === 0) throw new TypeError('quickServerUrl must be a nonempty string');
   const quickSdkIdentityResolver = options.quickSdkIdentityResolver;
   if (quickSdkIdentityResolver !== undefined && typeof quickSdkIdentityResolver !== 'function') throw new TypeError('quickSdkIdentityResolver must be a function');
   if (quickSdkIdentityResolver && !quickSdk) throw new TypeError('quickSdkIdentityResolver requires quickSdk configuration');
@@ -254,7 +256,7 @@ export function createSdkService(options = {}) {
       if (url.search) throw new RequestError(400, 400, 'Use form fields without a query string');
       if (request.method !== (['banner', 'quickServers'].includes(route) ? 'GET' : 'POST')) throw new RequestError(405, 405, 'Method not allowed');
       if (route === 'banner') { send(200, {}); return; }
-      if (route === 'quickServers') { send(200, ['http://127.0.0.1:18880']); return; }
+      if (route === 'quickServers') { send(200, [quickServerUrl]); return; }
       if(route==='walletPaytips'){
         const fields=await readForm(request,['appid','userid','sign']);
         const signature=fields.get('sign');fields.delete('sign');
@@ -442,21 +444,22 @@ export function createSdkService(options = {}) {
       const session = sessions.get(tokenKey(token));
       return Boolean(session && session.userId === userId && currentTime() <= session.expiresAt);
     },
-    listen(port = 0) {
+    listen(port = 0, host = HOST) {
       if (closed) return Promise.reject(new Error('Service is closed'));
       if (listenPromise) return Promise.reject(new Error('Service was already started'));
       if (!Number.isInteger(port) || port < 0 || port > 65535) return Promise.reject(new TypeError('Port must be between 0 and 65535'));
+      if (typeof host !== 'string' || host.length === 0) return Promise.reject(new TypeError('Host must be a nonempty string'));
       listenPromise = new Promise((resolve, reject) => {
         const onError = error => { server.off('listening', onListening); reject(error); };
         const onListening = () => {
           server.off('error', onError);
           const address = server.address();
-          log({ event: 'listening', host: HOST, port: address.port });
-          resolve({ host: HOST, port: address.port, url: `http://${HOST}:${address.port}` });
+          log({ event: 'listening', host, port: address.port });
+          resolve({ host, port: address.port, url: `http://${host}:${address.port}` });
         };
         server.once('error', onError);
         server.once('listening', onListening);
-        server.listen(port, HOST);
+        server.listen(port, host);
       });
       return listenPromise;
     },

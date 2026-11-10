@@ -38,7 +38,7 @@ async function waitForReady(file, child, timeoutMs = 30000) {
   throw new Error('Deployment server did not write its ready status');
 }
 
-test('a clean personal-server copy boots without the repository analysis tree', { timeout: 60000 }, async t => {
+test('a clean personal-server copy boots from the public server list without the repository analysis tree', { timeout: 60000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-self-contained-'));
   const serverCopy = path.join(directory, 'personal-server');
   const dataDirectory = path.join(directory, 'runtime');
@@ -50,7 +50,7 @@ test('a clean personal-server copy boots without the repository analysis tree', 
 
   copyServer(serverCopy);
   const stderr = [];
-  child = spawn(process.execPath, [path.join(serverCopy, 'local-server.mjs')], {
+  child = spawn(process.execPath, [path.join(serverCopy, 'local-server.mjs'), '--public'], {
     cwd: directory,
     env: {
       ...process.env,
@@ -70,6 +70,8 @@ test('a clean personal-server copy boots without the repository analysis tree', 
   assert.deepEqual(Object.keys(status.boundPorts).sort(), ['admin', 'game', 'list', 'sdk', 'startup']);
   assert.equal(status.ports.length, 5);
   assert.ok(status.ports.every(port => Number.isInteger(port) && port > 0 && port <= 65535));
+  assert.deepEqual(status.servers, [{ id: 1, name: '命运一服', extranetIp: '140.143.142.251:19090', releaseTime: status.serverOpenedAt }]);
+  assert.deepEqual(status.listenHosts, { sdk: '0.0.0.0', list: '0.0.0.0', startup: '0.0.0.0', game: '0.0.0.0', admin: '127.0.0.1' });
   assert.ok(fs.existsSync(path.join(dataDirectory, 'game.local-only.sqlite')));
   assert.ok(fs.existsSync(path.join(dataDirectory, 'admin-key.local-only.txt')));
 
@@ -83,7 +85,9 @@ test('a clean personal-server copy boots without the repository analysis tree', 
   });
   assert.equal(listResponse.status, 200);
   const decoded = createProtobufJsCodec().decode('pb_login_servers', Buffer.from(await listResponse.arrayBuffer()));
-  assert.equal(decoded.servers[0].extranet_ip, `127.0.0.1:${status.boundPorts.game}`);
+  assert.equal(decoded.servers[0].id, 1);
+  assert.equal(decoded.servers[0].name, '命运一服');
+  assert.equal(decoded.servers[0].extranet_ip, '140.143.142.251:19090');
 
   const exited = once(child, 'exit');
   child.kill('SIGTERM');
