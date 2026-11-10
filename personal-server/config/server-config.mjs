@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { isIP } from 'node:net';
+import { parseActivityCalendarTimestamp } from './activity-calendar-config.mjs';
 
 export const DEFAULT_PUBLIC_SERVER_CONFIG_URL = new URL('./public-server.json', import.meta.url);
 
@@ -25,6 +26,12 @@ function extranetIp(value, name) {
   return value;
 }
 
+function positiveInteger(value, name) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number <= 0) throw new TypeError(`${name} must be a positive integer`);
+  return number;
+}
+
 export function parsePublicServerConfig(value) {
   const root = object(value, 'server config');
   const listen = object(root.listen, 'listen');
@@ -36,7 +43,7 @@ export function parsePublicServerConfig(value) {
   catch { throw new TypeError('publicSdkUrl must be a valid URL'); }
   if (!['http:', 'https:'].includes(sdkUrl.protocol)) throw new TypeError('publicSdkUrl must use HTTP or HTTPS');
 
-  const seenIds = new Set(), seenNames = new Set();
+  const seenIds = new Set(), seenNames = new Set(), seenRoleIds = new Set();
   const servers = root.servers.map((entry, index) => {
     const server = object(entry, `servers[${index}]`);
     const id = Number(server.id);
@@ -46,8 +53,22 @@ export function parsePublicServerConfig(value) {
     const name = host(server.name, `servers[${index}].name`);
     if (seenNames.has(name)) throw new TypeError(`Duplicate server name: ${name}`);
     seenNames.add(name);
-    return Object.freeze({ id, name, extranetIp: extranetIp(server.extranetIp, `servers[${index}].extranetIp`) });
+    const roleId = positiveInteger(server.roleId, `servers[${index}].roleId`);
+    if (seenRoleIds.has(roleId)) throw new TypeError(`Duplicate server roleId: ${roleId}`);
+    seenRoleIds.add(roleId);
+    return Object.freeze({
+      id,
+      name,
+      roleId,
+      roleName: host(server.roleName, `servers[${index}].roleName`),
+      launchProfileId: host(server.launchProfileId, `servers[${index}].launchProfileId`),
+      launchAt: parseActivityCalendarTimestamp(server.launchAt, `servers[${index}].launchAt`),
+      extranetIp: extranetIp(server.extranetIp, `servers[${index}].extranetIp`)
+    });
   });
+  const activeServerId = positiveInteger(root.activeServerId, 'activeServerId');
+  const activeServer = servers.find(server => server.id === activeServerId);
+  if (!activeServer) throw new TypeError(`activeServerId ${activeServerId} is not present in servers`);
 
   return Object.freeze({
     listen: Object.freeze({ publicHost: host(listen.publicHost, 'listen.publicHost'), adminHost: host(listen.adminHost, 'listen.adminHost') }),
@@ -59,6 +80,8 @@ export function parsePublicServerConfig(value) {
       admin: port(ports.admin, 'ports.admin')
     }),
     publicSdkUrl: sdkUrl.href.replace(/\/$/, ''),
+    activeServerId,
+    activeServer,
     servers: Object.freeze(servers)
   });
 }

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 export const ACTIVITY_CALENDAR_MODES = new Set(['schedule', 'all-open']);
 export const DEFAULT_ACTIVITY_CALENDAR_CONFIG_PATH = fileURLToPath(new URL('./activity-calendar.json', import.meta.url));
 
-export function parseActivityCalendarTimestamp(value) {
+export function parseActivityCalendarTimestamp(value, name = 'serverOpenedAt') {
   const text = String(value ?? '').trim();
   if (/^\d+$/.test(text)) {
     const numeric = Number(text);
@@ -13,7 +13,7 @@ export function parseActivityCalendarTimestamp(value) {
   }
   const parsed = Date.parse(text);
   if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed / 1000);
-  throw new Error('serverOpenedAt must be a Unix timestamp or ISO date');
+  throw new Error(`${name} must be a Unix timestamp or ISO date`);
 }
 
 export function parseActivityCalendarConfig(value) {
@@ -21,6 +21,12 @@ export function parseActivityCalendarConfig(value) {
   const mode = String(value.mode ?? 'schedule').trim();
   if (!ACTIVITY_CALENDAR_MODES.has(mode)) throw new Error(`Unsupported activity calendar mode: ${mode}`);
   const serverOpenedAt = parseActivityCalendarTimestamp(value.serverOpenedAt);
+  const activityWindowAnchor = value.activityWindowAnchor == null
+    ? null
+    : parseActivityCalendarTimestamp(value.activityWindowAnchor, 'activityWindowAnchor');
+  if (activityWindowAnchor != null && activityWindowAnchor > serverOpenedAt) {
+    throw new Error('activityWindowAnchor must not be later than serverOpenedAt');
+  }
   let currentFishingActivityId = null;
   if (value.currentFishingActivityId != null) {
     currentFishingActivityId = Number(value.currentFishingActivityId);
@@ -28,7 +34,7 @@ export function parseActivityCalendarConfig(value) {
       throw new Error('currentFishingActivityId must be a positive integer');
     }
   }
-  return { mode, serverOpenedAt, currentFishingActivityId };
+  return { mode, serverOpenedAt, activityWindowAnchor, currentFishingActivityId };
 }
 
 export function loadActivityCalendarConfig(configPath = DEFAULT_ACTIVITY_CALENDAR_CONFIG_PATH) {

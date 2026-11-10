@@ -133,7 +133,34 @@ function remapRoleLineup(roleLineup, idMap) {
   for (const preset of [...(roleLineup?.pre_lineups ?? []), ...(roleLineup?.pre_lineups_standby ?? [])]) remapLineup(preset.lineup, idMap);
 }
 
-export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt, now = Date.now }) {
+function assertLaunchProfile(db, expected) {
+  const rows = db.prepare('SELECT role_id,server_id,metadata_json FROM roles ORDER BY role_id').all();
+  if (!rows.length) return;
+  for (const row of rows) {
+    let metadata;
+    try { metadata = JSON.parse(row.metadata_json); }
+    catch { throw new Error(`Game database launch profile is unreadable for role ${row.role_id}`); }
+    const mismatches = [];
+    const compare = (label, actual, wanted) => {
+      if (wanted != null && String(actual ?? '') !== String(wanted)) mismatches.push(`${label}=${actual ?? '<missing>'}`);
+    };
+    compare('roleId', row.role_id, expected.roleId);
+    compare('serverId', row.server_id, expected.serverId);
+    compare('serverName', metadata.serverName, expected.serverName);
+    compare('roleName', metadata.roleName, expected.roleName);
+    compare('launchProfileId', metadata.launchProfileId, expected.launchProfileId);
+    compare('activityWindowAnchor', Number(metadata.activityWindowAnchor), expected.activityWindowAnchor);
+    compare('serverOpenedAt', Number(metadata.serverOpenedAt), expected.serverOpenedAt);
+    if (mismatches.length) {
+      throw new Error(
+        `Game database launch profile mismatch for role ${row.role_id}: ${mismatches.join(', ')}. ` +
+        'Use the matching persistent data volume or an empty external data directory for this launch profile.'
+      );
+    }
+  }
+}
+
+export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt, launchProfile = null, now = Date.now }) {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
@@ -235,6 +262,10 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
       PRIMARY KEY(role_id,version));
     CREATE INDEX IF NOT EXISTS battle_pass_records_lookup_idx ON battle_pass_records(pass_tid,business_id,pass_score);
   `);
+  if (launchProfile) {
+    try { assertLaunchProfile(db, launchProfile); }
+    catch (error) { db.close(); throw error; }
+  }
   const writeModel = model => {
     const { state, role, heroInfo, resources, lineups, playLineups } = model;
     const { modules, rolePb, guides = {}, lineups: ignored, ...metadata } = state;

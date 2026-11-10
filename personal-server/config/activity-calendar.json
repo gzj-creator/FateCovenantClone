@@ -1,6 +1,7 @@
 {
-  "_comment": "Use all-open for local feature testing; switch mode to schedule to restore server-day gating.",
-  "mode": "all-open",
-  "serverOpenedAt": "2026-10-24T05:00:00+08:00",
+  "_comment": "Public realm schedule. Every absolute activity timestamp in the captured login template is shifted from activityWindowAnchor to serverOpenedAt when a new launch-profile database is seeded.",
+  "mode": "schedule",
+  "serverOpenedAt": "2026-11-10T05:00:00+08:00",
+  "activityWindowAnchor": "2026-10-24T05:00:00+08:00",
   "currentFishingActivityId": 1074011
 }

@@ -1,113 +1,118 @@
-# 个人服务器部署
+# 命运二服生产部署
 
-本目录包含个人服务器运行所需的代码、配置、表数据、协议 schema 和初始化种子。默认资产从 `personal-server/assets/` 读取，不再依赖仓库中的 `analysis/`、`agent/workflow/` 或已删除的 `unity/` 目录。客户端交付物仍是仓库 `apk/` 下的隔离 APK。
+## 生产边界
 
-## 环境
+- 发布包只包含代码、静态资源、协议表、初始化模板和版本化配置。
+- SQLite、SDK 会话、管理密钥、日志和备份只写入外部持久卷。
+- 源码树和容器镜像中不得包含 `*.sqlite`、WAL、SHM 或运行目录。
+- 新服开服时间和活动窗口由 `config/public-server.json` 与
+  `config/activity-calendar.json` 共同确定。两者不一致时服务拒绝启动。
+- 同一外部持久卷绑定到固定的 `launchProfileId`。配置与卷内档案不一致时服务拒绝启动，
+  不会把旧服数据自动改写成新服数据。
+- 发布镜像是不可变制品；修改配置后重新构建并用同一个外部卷重建容器。
 
-- Node.js 26 或更高版本（`package.json` 要求 `>=26`）。
-- npm，用于按 `package-lock.json` 安装锁定的 `protobufjs@8.8.1`。
-- 默认服务只监听 `127.0.0.1`。
+## 当前发布档案
 
-公网启动使用可读的 `config/public-server.json`：
+| 项目 | 值 |
+| --- | --- |
+| 区服 | ID `2`，命运二服 |
+| 角色 | `100002` |
+| 开服时间 | `2026-11-10T05:00:00+08:00` |
+| 活动模板锚点 | `2026-10-24T05:00:00+08:00` |
+| 发布档案 | `public-realm-2-20261110` |
+| 游戏入口 | `140.143.142.251:19090` |
 
-```powershell
-npm run start:public --prefix .\personal-server
-```
+首次建库会把登录模板中模块 92 和模块 183 的绝对活动时间，从活动模板锚点整体平移到
+新服开服时间。相对区服时间仍由 `serverOpenedAt` 计算。所有活动因此以新服时间轴运行，
+开服时刻对应第 1 天。
 
-配置中的 `servers` 数组是可扩展列表；当前第一项 ID 为 `1`、名称为“命运一服”、
-游戏地址为 `140.143.142.251:19090`。后续增加独立区服时向该数组追加配置即可，
-区服列表接口会返回全部条目并按 ID 响应登录选择。该配置让 SDK、区服列表、启动更新
-和游戏网关监听 `0.0.0.0`，Web 管理端 `18883` 继续只监听 `127.0.0.1`。服务器安全组和本机防火墙必须放行 TCP
-`18880`、`18881`、`18882`、`19090`；`18883` 保持不对公网开放。
+`mode` 当前为 `schedule`。正式上线不得改成 `all-open`。`all-open` 只适合使用独立临时数据目录的功能测试。
 
-如使用 Linux UFW，公网四端口的最小放行命令为：
+## Docker 部署
+
+在项目根目录执行：
 
 ```bash
-sudo ufw allow 18880/tcp
-sudo ufw allow 18881/tcp
-sudo ufw allow 18882/tcp
-sudo ufw allow 19090/tcp
+docker compose build
+docker compose up -d
+docker compose ps
 ```
 
-## 首次启动
+首次启动时外部命名卷为：
 
-从项目根目录执行：
-
-```powershell
-npm ci --prefix .\personal-server --ignore-scripts --no-audit --no-fund
-npm test --prefix .\personal-server
-npm start --prefix .\personal-server
+```text
+fate-covenant-realm-2-20261110
 ```
 
-也可以在 `personal-server/` 中直接执行：
+容器根文件系统只读，持久卷挂载在 `/var/lib/fate-covenant/realm-2`。业务服务以非 root
+用户运行，丢弃 Linux capabilities，并禁止提权。
 
-```powershell
-npm ci --ignore-scripts --no-audit --no-fund
-npm start
-```
+端口策略：
 
-首次启动会在 `personal-server/runtime.local-only.data/` 创建运行目录。该目录包含 SQLite 存档、SDK 会话、管理密钥和运行日志，属于本机私有数据，不应提交 Git 或随分发包公开。已有该目录时，服务会继续使用其中的数据。
-
-## 端口
-
-| 服务 | 默认端口 | 环境变量 |
+| 服务 | 端口 | 暴露范围 |
 | --- | ---: | --- |
-| SDK | 18880 | `FC_SDK_PORT` |
-| 区服列表 | 18881 | `FC_SERVER_LIST_PORT` |
-| 启动/更新 | 18882 | `FC_STARTUP_PORT` |
-| 游戏网关 | 19090 | `FC_GAME_PORT` |
-| Web 管理 | 18883 | `FC_ADMIN_PORT` |
+| SDK | 18880 | 公网 TCP |
+| 区服列表 | 18881 | 公网 TCP |
+| 启动/更新 | 18882 | 公网 TCP |
+| 游戏网关 | 19090 | 公网 TCP |
+| Web 管理 | 18883 | 仅宿主机 `127.0.0.1` |
 
-每个变量接受 `0` 到 `65535` 的整数。值 `0` 表示由操作系统分配空闲端口；实际端口写入 `runtime.local-only.data/server.local-only.json` 的 `boundPorts`，区服列表也会广播实际游戏端口。
+云安全组和主机防火墙只放行前四个端口，禁止对公网开放 `18883`。
 
-常用覆盖示例：
+## 启动验收
+
+```bash
+docker compose ps
+docker compose logs --tail=100 realm-2
+docker compose exec realm-2 node -e "const fs=require('node:fs');const s=JSON.parse(fs.readFileSync('/var/lib/fate-covenant/realm-2/server.local-only.json'));console.log(JSON.stringify(s,null,2))"
+```
+
+必须核对：
+
+- `activeServerId` 为 `2`。
+- `launchProfileId` 为 `public-realm-2-20261110`。
+- `serverOpenedAt` 为 `1794258000`。
+- 当前 `serverDay` 为 `1`，到开服后 24 小时进入第 2 天。
+- 区服接口只广播命运二服及游戏地址 `140.143.142.251:19090`。
+- 容器健康检查通过，并在持久卷中生成游戏数据库和管理密钥。
+
+正式验收还需要使用公网 APK 完成 SDK 登录、区服选择、网关握手、进入大厅和首个开服活动检查。
+组件测试或容器启动通过不能替代客户端验收。
+
+## 备份与回滚
+
+在停服窗口内备份整个外部卷最稳妥。在线备份至少应对 SQLite 使用 `VACUUM INTO`，不要直接复制正在写入的主库或单独 WAL。
+
+```bash
+docker compose stop realm-2
+docker run --rm \
+  -v fate-covenant-realm-2-20261110:/data:ro \
+  -v "$PWD/backups:/backup" \
+  alpine sh -c 'tar -C /data -czf /backup/fate-covenant-realm-2-$(date +%Y%m%dT%H%M%S).tgz .'
+docker compose start realm-2
+```
+
+回滚镜像时继续挂载同一个外部卷。若必须回到旧服时间线，应同时恢复与旧镜像匹配的数据卷；
+不要把旧卷挂到不同 `launchProfileId` 的新版本上，服务会按设计拒绝启动。
+
+## 本地开发
+
+普通本地启动默认读取同一活动日历配置。需要开放全部活动测试时，应使用单独配置文件和
+全新临时数据目录，不要让生产卷绑定测试档案：
 
 ```powershell
-$env:FC_LOCAL_DATA = 'D:\fc-server-data'
-$env:FC_SDK_PORT = '0'
-$env:FC_SERVER_LIST_PORT = '0'
-$env:FC_STARTUP_PORT = '0'
-$env:FC_GAME_PORT = '0'
-$env:FC_ADMIN_PORT = '0'
+$env:FC_LOCAL_DATA = Join-Path $env:TEMP 'fc-local-test'
+$env:FC_ACTIVITY_CALENDAR_CONFIG = 'D:\path\to\all-open-calendar.json'
 npm start --prefix .\personal-server
 ```
 
-启动成功后，可读取 `server.local-only.json` 核对五个实际端口。管理页完整地址保存在 `admin-url.local-only.txt`，其中包含访问密钥；不要把该文件内容粘贴到日志、截图或公开记录。
-
-## 运行状态
-
-运行目录中的主要文件：
-
-- `game.local-only.sqlite`：游戏、钱包及活动持久化数据。
-- `sdk-sessions.local-only.json`：SDK 会话。
-- `admin-key.local-only.txt`：Web 管理访问密钥。
-- `admin-url.local-only.txt`：带密钥的管理页地址。
-- `server.local-only.json`：进程、开服时间、活动模式及实际端口。
-- `events.jsonl`：结构化服务日志。
-
-停止服务时向 Node 进程发送 `Ctrl+C` 或 `SIGTERM`。不需要删除运行目录；删除它会丢失存档和管理密钥。
-
-## 资产覆盖
-
-默认使用目录内的 `assets/`。如需用另一套同结构资产启动，可设置绝对路径：
-
-```powershell
-$env:FC_ASSET_ROOT = 'D:\fc-server-assets'
-npm start --prefix .\personal-server
-```
-
-资产内容与查找规则见 [assets/README.md](assets/README.md)。
+公网模式强制要求 `FC_LOCAL_DATA` 是源码树之外的绝对路径，并验证配置中的开服时间。
 
 ## 独立部署验证
-
-以下测试会把完整 `personal-server/` 复制到系统临时目录，排除原运行数据和仓库分析目录，并使用随机端口启动五个服务：
 
 ```powershell
 npm run test:deployment --prefix .\personal-server
 ```
 
-测试会验证服务启动、实际端口、区服响应中的游戏端口、SQLite 与管理密钥创建以及正常关闭。它验证服务目录的自包含性，不代表 APK 已完成新的端到端验收。
-
-## APK 边界
-
-本次服务端审查没有修改 APK。现有可用快照和 `SubDownloadFinish=1` 前置条件仍以仓库 `apk/README.md` 为准；仅凭服务端组件测试不能宣称 APK 登录、大厅或全部玩法已经验收。
+该测试会复制发布目录、主动排除 SQLite，从空的外部目录启动完整服务，并检查开服档案、
+区服响应、运行库创建、数据库不进入发布副本以及公网模式缺失持久目录时拒绝启动。

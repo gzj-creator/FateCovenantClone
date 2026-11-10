@@ -203,6 +203,8 @@ import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
+import { parseActivityCalendarTimestamp } from '../config/activity-calendar-config.mjs';
+import { relocateLaunchActivityWindows } from './launch-profile.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
 export function createLocalGame({
@@ -211,6 +213,12 @@ export function createLocalGame({
   capturePath,
   verifySession,
   serverOpenedAt,
+  serverId = 1,
+  serverName = 'Local Server',
+  roleId = 100001,
+  roleName = 'Local Adventurer',
+  launchProfileId = null,
+  activityWindowAnchor = null,
   activityMode = 'schedule',
   currentFishingActivityId,
   currentArtifactActivityId,
@@ -230,19 +238,58 @@ export function createLocalGame({
 }) {
   const codec = createGameCodec(), { root, pack, unpack } = codec;
   const clock = () => Number(now());
+  const openedAt = serverOpenedAt == null ? null : parseActivityCalendarTimestamp(serverOpenedAt, 'serverOpenedAt');
+  const anchor = activityWindowAnchor == null
+    ? null
+    : parseActivityCalendarTimestamp(activityWindowAnchor, 'activityWindowAnchor');
+  if (!Number.isSafeInteger(serverId) || serverId <= 0) throw new Error('serverId must be a positive integer');
+  if (!Number.isSafeInteger(roleId) || roleId <= 0) throw new Error('roleId must be a positive integer');
+  if (typeof serverName !== 'string' || !serverName.trim()) throw new Error('serverName must be nonempty');
+  if (typeof roleName !== 'string' || !roleName.trim()) throw new Error('roleName must be nonempty');
+  if ((launchProfileId == null) !== (activityWindowAnchor == null)) {
+    throw new Error('launchProfileId and activityWindowAnchor must be supplied together');
+  }
+  if (launchProfileId != null && (typeof launchProfileId !== 'string' || !launchProfileId.trim() || openedAt == null)) {
+    throw new Error('A named launch profile requires a launchProfileId and serverOpenedAt');
+  }
+  const persistedLaunchProfile = launchProfileId == null ? null : Object.freeze({
+    roleId,
+    serverId,
+    serverName,
+    roleName,
+    launchProfileId,
+    activityWindowAnchor: anchor,
+    serverOpenedAt: openedAt
+  });
   function seed() {
     const capture = JSON.parse(fs.readFileSync(capturePath));
     const template = capture.privateFlows.find(x => x.messageId === 'game:tcp-69:s2c:103')?.decoded;
     if (!template || template[0] !== 1) throw new Error('Verified login structure missing');
-    const modules = new Map(template[2].value);
+    let modules = new Map(template[2].value);
+    if (persistedLaunchProfile) modules = relocateLaunchActivityWindows({
+      modules,
+      codec,
+      activityWindowAnchor: persistedLaunchProfile.activityWindowAnchor,
+      serverOpenedAt: persistedLaunchProfile.serverOpenedAt
+    }).modules;
     const role = unpack('to_client_role_info', rawBinary(modules.get(2)));
-    role.nick_name = Buffer.from('Local Adventurer');
+    role.nick_name = Buffer.from(roleName);
     role.res = { changes: [] };
-    return { version: 1, roleId: 100001, serverId: 1, createdAt: Math.floor(clock() / 1000) - 86400,
+    return { version: 1, roleId, serverId, createdAt: persistedLaunchProfile ? openedAt : Math.floor(clock() / 1000) - 86400,
       seedSource: 'offline captured early-game structural fixture; independent local test save',
-      modules: template[2], rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
+      ...(openedAt == null ? {} : { serverOpenedAt: openedAt }),
+      ...(persistedLaunchProfile ?? {}),
+      modules: { value: [...modules.entries()], improper: false },
+      rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
   }
-  const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
+  const store = createGameStore({
+    databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'),
+    legacyStatePath: statePath,
+    seed,
+    codec,
+    serverOpenedAt: openedAt,
+    launchProfile: persistedLaunchProfile
+  });
   const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
   const attributeTables = readAttributeTables();
   const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
@@ -789,7 +836,7 @@ export function createLocalGame({
     const loginMilliseconds = clock();
     const loginSeconds = Math.floor(loginMilliseconds / 1000);
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
-    modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary('Local Server'), binary(''), 0]);
+    modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary(serverName), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
     modules.set(4, binary(roleService.loginRedDots()));
     const storyLogin = storyService.loginPayload();

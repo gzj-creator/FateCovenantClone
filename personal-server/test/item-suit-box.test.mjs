@@ -1,12 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { createGameCodec, serializedBinary } from '../protocol/game-codec.mjs';
-import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createItemBoxService } from '../game/item-box-service.mjs';
+import { createGameFixture } from './helpers/game-fixture.mjs';
 
 // Suit box (ItemCmd.use_selected_suit_box, type 155) evidence:
 // textassets/13517926679985600000-ItemSuitBox.lua.bin sends {tid, index},
@@ -15,21 +12,16 @@ import { createItemBoxService } from '../game/item-box-service.mjs';
 // textassets/13508732289462840000-ItemSuitBoxSelectNode.lua.bin resolves
 // OptionalSuitRes[OptionalSuitBox[tid].range[awardIndex]] for display.
 
-const backup = new URL('./fixtures/wallet-admin.sqlite', import.meta.url);
 const codec = createGameCodec(), tables = readGameTables();
 
 function setup(t, overrides = {}) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-suitbox-'));
-  const file = path.join(directory, 'game.sqlite');
-  fs.copyFileSync(backup, file);
-  let store = createGameStore({ databasePath: file, codec });
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-suitbox-' });
   const serviceTables = { ...tables, ...overrides };
-  const make = () => createItemBoxService({ store, codec, tables: serviceTables });
-  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const make = () => createItemBoxService({ store: fixture.store, codec, tables: serviceTables });
   return {
-    get store() { return store; },
+    get store() { return fixture.store; },
     service: make(),
-    reopen() { store.close(); store = createGameStore({ databasePath: file, codec }); }
+    reopen() { fixture.open(); }
   };
 }
 
