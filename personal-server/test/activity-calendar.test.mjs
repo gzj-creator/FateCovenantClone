@@ -258,6 +258,74 @@ test('schedule mode still closes an expired custom activity window', () => {
   assert.deepEqual(activity.act_custom_list, []);
 });
 
+test('schedule mode materializes legacy hundred-draw gift and shop rows with the running parent window', () => {
+  const at = SERVER_OPENED_AT + 7 * DAY;
+  const calendar = calendarAt(at);
+  const parentId = 20001;
+  const companionIds = [182810, 1841001];
+  const player = { data_list: [] };
+  const server = { act_stage_list: [] };
+
+  const result = calendar.normalizeActFrameLogin(player, server, at, {
+    activityGroups: [{ actId: parentId, companionIds }]
+  });
+  assert.deepEqual(result.activityIds, [parentId, ...companionIds].sort((left, right) => left - right));
+  const parentWindow = activityWindow(tables.Activity.get(parentId), SERVER_OPENED_AT);
+  assert.ok(parentWindow);
+  for (const id of [parentId, ...companionIds]) {
+    const config = tables.Activity?.get(id) ?? tables.ActFrameAct?.get(id);
+    const serverRow = server.act_stage_list.find(row => Number(row.act_id) === id);
+    const playerRow = player.data_list.find(row => Number(row.act_stage?.act_id) === id);
+    assert.ok(serverRow);
+    assert.ok(playerRow);
+    assert.equal(Number(serverRow.type), Number(config.type ?? config.func));
+    assert.equal(Number(serverRow.start_time), parentWindow.start);
+    assert.equal(Number(serverRow.end_time), parentWindow.end);
+    assert.equal(serverRow.cur_stage_id, 50);
+    assert.equal(playerRow.act_stage.cur_stage_id, 50);
+  }
+
+  calendar.normalizeActFrameLogin(player, server, at + 60, {
+    activityGroups: [{ actId: parentId, companionIds }]
+  });
+  for (const id of [parentId, ...companionIds]) {
+    assert.equal(server.act_stage_list.filter(row => Number(row.act_id) === id).length, 1);
+    assert.equal(player.data_list.filter(row => Number(row.act_stage?.act_id) === id).length, 1);
+  }
+});
+
+test('schedule mode prefers the custom parent window when it opens before the static table window', () => {
+  const at = Date.parse('2026-11-10T16:08:19Z') / 1000;
+  const openedAt = Date.parse('2026-11-11T00:00:00+08:00') / 1000;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: openedAt,
+    mode: 'schedule',
+    currentFishingActivityId: 1074011,
+    now: () => at * 1000
+  });
+  const parentId = 20001;
+  const companionIds = [182810, 1841001];
+  const startTime = openedAt;
+  const endTime = openedAt + 9998 * DAY;
+  const player = { data_list: [] };
+  const server = { act_stage_list: [] };
+
+  const result = calendar.normalizeActFrameLogin(player, server, at, {
+    activityGroups: [{ actId: parentId, startTime, endTime, companionIds }]
+  });
+
+  assert.deepEqual(result.activityIds, [parentId, ...companionIds].sort((left, right) => left - right));
+  for (const id of [parentId, ...companionIds]) {
+    const serverRow = server.act_stage_list.find(row => Number(row.act_id) === id);
+    const playerRow = player.data_list.find(row => Number(row.act_stage?.act_id) === id);
+    assert.equal(Number(serverRow.start_time), startTime);
+    assert.equal(Number(serverRow.end_time), endTime);
+    assert.equal(Number(playerRow.act_stage.start_time), startTime);
+    assert.equal(Number(playerRow.act_stage.end_time), endTime);
+  }
+});
+
 test('all-open mode makes every ActFrame server row active for the current login', () => {
   const at = SERVER_OPENED_AT + 14 * DAY;
   const calendar = createActivityCalendar({

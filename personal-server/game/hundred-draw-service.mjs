@@ -1,6 +1,7 @@
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { readHundredDrawTables, readHundredRoleTables } from '../config/hundred-draw-tables.mjs';
+import { activityWindow } from './activity-calendar.mjs';
 
 // HundredDrawActCmd (117001-117005). The table dump was recovered from
 // HundredDrawActTable.data.lua (LuaJIT bytecode) and keeps the client's
@@ -14,7 +15,9 @@ export const HUNDRED_DRAW_COMMANDS = Object.freeze({
   marquee: 117005
 });
 
-const ACT_TYPE = 1102;
+const LEGACY_ACT_TYPE = 20;
+const MODERN_ACT_TYPE = 1102;
+const ACT_TYPES = new Set([LEGACY_ACT_TYPE, MODERN_ACT_TYPE]);
 const RUNNING_STATE_ID = 50;
 const AWARD_COMMON_ITEM = 101;
 const AWARD_ONTOLOGY = 102;
@@ -54,6 +57,14 @@ CREATE TABLE IF NOT EXISTS hundred_draw_marquees (
 CREATE INDEX IF NOT EXISTS hundred_draw_marquees_act_idx
   ON hundred_draw_marquees(act_id, id);
 `;
+
+function activityConfig(tables, actId) {
+  return tables?.ActFrameAct?.get(Number(actId)) ?? tables?.Activity?.get(Number(actId)) ?? null;
+}
+
+function activityType(config) {
+  return Number(config?.type ?? config?.func);
+}
 
 function fail(code, message) {
   throw new GameError(code, message);
@@ -102,6 +113,7 @@ export function createHundredDrawService({
 }) {
   if (!store?.transaction || !store?.inspect) throw new Error('Hundred draw store is unavailable');
   const log = event => { try { logger(event); } catch {} };
+  let loginWindows = new Map();
   store.inspect(db => db.exec(SCHEMA));
 
   function seconds() {
@@ -116,8 +128,8 @@ export function createHundredDrawService({
 
   function configuration(actId) {
     const id = intOf(actId, 'hundred-draw activity id');
-    const act = tables?.ActFrameAct?.get(id);
-    if (!act || Number(act.type) !== ACT_TYPE) fail(1, 'Unknown hundred-draw activity');
+    const act = activityConfig(tables, id);
+    if (!act || !ACT_TYPES.has(activityType(act))) fail(1, 'Unknown hundred-draw activity');
     const version = hundredTables.Version?.get(Number(act.version));
     if (!version) fail(5, 'Hundred-draw activity version is not configured');
     const pool = hundredTables.Pool?.get(Number(version.pool));
@@ -126,7 +138,15 @@ export function createHundredDrawService({
   }
 
   function assertRunning(actId) {
-    if (calendar?.isActivityRunning && !calendar.isActivityRunning(Number(actId), null, null, seconds())) {
+    const id = Number(actId);
+    if (calendar?.mode === 'all-open') return;
+    const at = seconds();
+    const loginWindow = loginWindows.get(id);
+    if (loginWindow) {
+      if (at < loginWindow.start || at >= loginWindow.end) fail(5, 'Hundred-draw activity is not running');
+      return;
+    }
+    if (calendar?.isActivityRunning && !calendar.isActivityRunning(id, null, null, at)) {
       fail(5, 'Hundred-draw activity is not running');
     }
   }
@@ -461,22 +481,54 @@ export function createHundredDrawService({
     return codec.pack('pb_hundred_draw_act_data', actData(state));
   }
 
-  function runningActIds(activity, at) {
-    const result = [];
-    for (const [actId, act] of tables?.ActFrameAct ?? []) {
-      if (Number(act.type) !== ACT_TYPE) continue;
-      if (calendar?.isActivityRunning && !calendar.isActivityRunning(Number(actId), null, activity, at)) continue;
-      if (!hundredTables.Version?.get(Number(act.version))) continue;
-      result.push(Number(actId));
+  function runningConfigs(activity, at) {
+    const configs = new Map();
+    for (const source of [tables?.ActFrameAct, tables?.Activity]) {
+      for (const [actId, act] of source ?? []) {
+        if (!configs.has(Number(actId))) configs.set(Number(actId), act);
+      }
     }
-    return result.sort((left, right) => left - right);
+    const result = [];
+    for (const [actId, act] of configs) {
+      if (!ACT_TYPES.has(activityType(act))) continue;
+      if (calendar?.isActivityRunning && !calendar.isActivityRunning(Number(actId), null, activity, at)) continue;
+      const version = hundredTables.Version?.get(Number(act.version));
+      if (!version) continue;
+      const custom = (activity?.act_custom_list ?? [])
+        .find(row => Number(row?.act_id) === Number(actId));
+      const customStart = Number(custom?.start_time);
+      const customEnd = Number(custom?.end_time);
+      const window = Number.isSafeInteger(customStart) && customStart > 0
+        && Number.isSafeInteger(customEnd) && customEnd > customStart
+        ? { start: customStart, end: customEnd }
+        : activityWindow(act, calendar?.serverOpenedAt);
+      result.push({ actId: Number(actId), act, version, window });
+    }
+    return result.sort((left, right) => left.actId - right.actId);
+  }
+
+  function companionIds(version) {
+    return [...new Set([
+      Number(version?.gift) || 0,
+      Number(version?.shop) || 0
+    ].filter(id => id > 0 && activityConfig(tables, id)))].sort((left, right) => left - right);
+  }
+
+  function loginActFrameGroups(activity, at = seconds()) {
+    return runningConfigs(activity, at).map(({ actId, version, window }) => ({
+      actId,
+      startTime: Number(window?.start ?? 0),
+      endTime: Number(window?.end ?? 0),
+      companionIds: companionIds(version)
+    }));
   }
 
   function synchronizeLogin(activity, at = seconds()) {
     if (!activity || typeof activity !== 'object') fail(5, 'Hundred-draw activity login data is invalid');
     activity.act_list ??= [];
     const synced = [];
-    for (const actId of runningActIds(activity, at)) {
+    const windows = new Map();
+    for (const { actId, window } of runningConfigs(activity, at)) {
       let entry = activity.act_list.find(candidate => Number(candidate?.state_data?.act_id) === actId);
       if (!entry) {
         entry = { state_data: { act_id: actId }, module_login_data: Buffer.alloc(0) };
@@ -492,7 +544,9 @@ export function createHundredDrawService({
       }
       entry.module_login_data = loginPayload(actId, at);
       synced.push(actId);
+      if (window) windows.set(actId, { ...window });
     }
+    loginWindows = windows;
     return synced;
   }
 
@@ -520,6 +574,7 @@ export function createHundredDrawService({
     },
     loginPayload,
     synchronizeLogin,
+    loginActFrameGroups,
     commands: HUNDRED_DRAW_COMMANDS
   };
 }

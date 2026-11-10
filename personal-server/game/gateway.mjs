@@ -940,8 +940,11 @@ export function createLocalGame({
       logger({ event: 'exploration_act_login_synced', actIds: explorationLogin.activityIds, modules: [...explorationLogin.modules.keys()] });
     }
     // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
-    // entry's module_login_data (ActFrameTable type 1102).
+    // entry's module_login_data (ActFrame type 1102 or legacy ActivityTable
+    // func 20). The version mapping also owns the paid-gift and exchange-shop
+    // child rows needed to obtain the configured draw item.
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
+    const hundredDrawActFrameGroups = hundredDraw.loginActFrameGroups(activity, loginSeconds);
     if (hundredDrawLoginIds.length) logger({ event: 'hundred_draw_login_synced', actIds: hundredDrawLoginIds });
     // PrayActData consumes pb_pray_act from its ActFrame row in module 183.
     // Restore persisted selections, draws, progress and history before merging
@@ -1006,15 +1009,16 @@ export function createLocalGame({
     let actFrameNormalization = null;
     let premiumLogin = null;
     const premiumLoginPreview = premiumAct.openActivityIds(loginSeconds);
-    if (loginActivities.length || calendar.mode === 'all-open' || premiumLoginPreview.length) {
+    if (loginActivities.length || calendar.mode === 'all-open' || premiumLoginPreview.length || hundredDrawActFrameGroups.length) {
       const merged = mergeRelicLoginContainer({
         codec,
         entry: storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null,
         activities: loginActivities,
         normalize: ({ player, server }) => {
-          const normalization = calendar.mode === 'all-open'
+          const normalization = calendar.mode === 'all-open' || hundredDrawActFrameGroups.length
             ? calendar.normalizeActFrameLogin(player, server, loginSeconds, {
-              activityIds: [...afterActivityIds]
+              activityIds: calendar.mode === 'all-open' ? [...afterActivityIds] : [],
+              activityGroups: hundredDrawActFrameGroups
             })
             : { mode: calendar.mode, adjusted: 0, activityIds: [] };
           premiumLogin = premiumAct.synchronizeLogin({ player, server }, loginSeconds);
@@ -1054,6 +1058,7 @@ export function createLocalGame({
       slotGameActIds: slotGameLoginIds,
       explorationActActivityIds: explorationLogin.activityIds,
       explorationLoginModules: [...explorationLogin.modules.keys()],
+      hundredDrawActFrameActivityIds: hundredDrawActFrameGroups.flatMap(group => [group.actId, ...group.companionIds]),
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });

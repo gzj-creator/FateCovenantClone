@@ -74,3 +74,11 @@
 - 全量 `npm test`：2788 项，`pass 2786`、`fail 0`、`skipped 2`、`cancelled 0`、`todo 0`，耗时 461151.4994 ms；日志为 `F:\projects\FateCovenantClone\analysis\test-runs\premium-act-20261109\matching-gift-soldout-full.log`。
 - 修改文件通过 `node --check`，`git diff --check` 通过。
 - 本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，不构成 APK 验收，也没有新增可用 APK 快照。
+
+## 2026-11-11 百抽礼包子活动窗口同步
+
+- 旧百抽 `20001` 使用 `ActivityTable.func=20`，其礼包子活动 `1841001` 的静态世界窗口早已结束；只补 module 183 行还不够，`PremiumActService` 在登录后的可购检查若重新读取静态活动日历，仍会把实际由父活动维系开放的子行判为关闭。
+- 登录同步现在保存在本次 module 183 中实际材料化的活动窗口。`activityOpen()` 在调用方没有再次传入 server row 时使用该窗口，供 `openActivityIds()`、礼包定位、购买和限购检查共享。
+- 同一 PremiumAct 版本可被多个百抽活动引用并共享 SKU；测试和客户端路径使用数字 `extra_param` 指定实际活动 ID，避免把购买记到另一个开放商城。
+- 正式 `schedule` 真实临时 TCP 已验证 `1841001` 礼包登录块、`1270963` 免费发 `835802 x30`、购买记录归属 `1841001`，并继续验证 `117001/117005`。该用例使用生产开服锚点并固定在开服后 8 分 19 秒，早于静态表五点窗口，证明子行使用父活动实际自定义窗口。现代白绫 `1841010` 的免费/资源/现金礼包回归同时通过。
+- 本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK。

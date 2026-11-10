@@ -299,7 +299,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
   function normalizeActFrameLogin(player, server, at = currentSeconds(), options = {}) {
     const current = seconds(at);
     const result = { mode, adjusted: 0, activityIds: [] };
-    if (mode !== 'all-open' || !player || !server || !Number.isSafeInteger(current) || current <= 0) return result;
+    if (!player || !server || !Number.isSafeInteger(current) || current <= 0) return result;
     player.data_list ??= [];
     server.act_stage_list ??= [];
     const playerByTid = new Map(player.data_list
@@ -308,6 +308,97 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     const serverByTid = new Map(server.act_stage_list
       .map(row => [Number(row?.act_id), row])
       .filter(([id]) => Number.isSafeInteger(id) && id > 0));
+
+    function upsertLoginRow(id, config, start, end) {
+      if (!config) return false;
+      const type = Number(config.type ?? config.func) || 0;
+      let serverRow = serverByTid.get(id);
+      if (!serverRow) {
+        serverRow = {
+          act_id: id,
+          type,
+          start_time: String(start),
+          end_time: String(end),
+          cur_stage_id: 50,
+          is_pause: false,
+          loop_count: 0,
+          stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+        };
+        server.act_stage_list.push(serverRow);
+        serverByTid.set(id, serverRow);
+      } else {
+        Object.assign(serverRow, {
+          act_id: id,
+          type,
+          start_time: String(start),
+          end_time: String(end),
+          cur_stage_id: 50,
+          is_pause: false,
+          loop_count: 0,
+          stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+        });
+      }
+      let playerRow = playerByTid.get(id);
+      if (!playerRow) {
+        playerRow = {
+          act_stage: {
+            act_id: id,
+            start_time: String(start),
+            end_time: String(end),
+            cur_stage_id: 50,
+            loop_count: 0,
+            history_time: [{ stage_id: 50, enter_time: String(start) }]
+          },
+          module_login_data: Buffer.alloc(0)
+        };
+        player.data_list.push(playerRow);
+        playerByTid.set(id, playerRow);
+      } else {
+        playerRow.act_stage ??= {};
+        Object.assign(playerRow.act_stage, {
+          act_id: id,
+          start_time: String(start),
+          end_time: String(end),
+          cur_stage_id: 50,
+          loop_count: 0,
+          history_time: [{ stage_id: 50, enter_time: String(start) }]
+        });
+      }
+      return true;
+    }
+
+    // A parent draw activity can own a paid-gift and exchange-shop row whose
+    // captured absolute window has already expired. The HundredDraw version
+    // table supplies the authoritative parent/child mapping, so materialize
+    // those exact rows with the running parent's window in schedule mode too.
+    const explicitGroups = (options.activityGroups ?? [])
+      .map(group => ({
+        actId: Number(group?.actId),
+        startTime: Number(group?.startTime),
+        endTime: Number(group?.endTime),
+        companionIds: [...new Set((group?.companionIds ?? []).map(Number))]
+          .filter(id => Number.isSafeInteger(id) && id > 0)
+      }))
+      .filter(group => Number.isSafeInteger(group.actId) && group.actId > 0);
+    if (mode === 'schedule') {
+      const explicitIds = new Set();
+      for (const group of explicitGroups) {
+        const parentConfig = activityConfig(tables, group.actId);
+        const configuredWindow = activityWindow(parentConfig, openedAt);
+        const window = Number.isSafeInteger(group.startTime) && group.startTime > 0
+          && Number.isSafeInteger(group.endTime) && group.endTime > group.startTime
+          ? { start: group.startTime, end: group.endTime }
+          : configuredWindow;
+        if (!parentConfig || !window || current < window.start || current >= window.end) continue;
+        for (const id of [group.actId, ...group.companionIds]) {
+          const config = activityConfig(tables, id);
+          if (upsertLoginRow(id, config, window.start, window.end)) explicitIds.add(id);
+        }
+      }
+      result.activityIds = [...explicitIds].sort((left, right) => left - right);
+      result.adjusted = result.activityIds.length;
+      return result;
+    }
 
     // Some activity families publish their state in module 92 while the
     // reference act-frame snapshot has no matching module-183 stage row. In
@@ -352,6 +443,19 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
         };
         player.data_list.push(playerRow);
         playerByTid.set(id, playerRow);
+      }
+    }
+
+    for (const group of explicitGroups) {
+      const parentConfig = activityConfig(tables, group.actId);
+      const parentWindow = activityWindow(parentConfig, openedAt);
+      const start = Math.min(parentWindow?.start ?? openedAt, current);
+      const end = Math.max(parentWindow?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
+      for (const id of [group.actId, ...group.companionIds]) {
+        const config = activityConfig(tables, id);
+        if (!config) continue;
+        upsertLoginRow(id, config, start, end);
+        if (!result.activityIds.includes(id)) result.activityIds.push(id);
       }
     }
 

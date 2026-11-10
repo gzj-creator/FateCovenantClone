@@ -52,6 +52,17 @@ test('117001 consumes the pool item, records cumulative draws and persists the r
   assert.equal(e.store.read().resources.get('835802').num, '989');
 });
 
+test('legacy ActivityTable func 20 uses the same version pool and draw item as ActFrame type 1102', async t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[835802, 30]], tables));
+  const result = run(e.service, 117001, { act_id: 20001, times: 10 });
+  assert.equal(result.value.act_data.act_id, '20001');
+  assert.equal(result.value.act_data.cumulative_draw_times, '10');
+  assert.equal(result.value.res.changes.find(row => row.tid === '835802').diff_num, '-10');
+  const marquee = run(e.service, 117005, { act_id: 20001, start_range: 1, end_range: 10 });
+  assert.ok(Array.isArray(marquee.value.data.data));
+});
+
 test('117002 enforces the draw threshold, grants once and survives a reopen', async t => {
   const e = setup(t);
   e.store.transaction(model => grantResources(model, [[835802, 1000]], tables));

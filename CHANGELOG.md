@@ -1,0 +1,19 @@
+# Changelog
+
+## 如何维护
+
+- 版本规则：大改动升主版本，新功能升次版本，问题修复升修订版本。
+- 更新时机：每次提交前更新；未发版内容写入 `Unreleased`，发版时整理为 `vX.Y.Z` 版本节。
+- 标题格式：`## [Unreleased]` 或 `## [vX.Y.Z] - YYYY-MM-DD`。
+- 内容粒度：按 Added、Changed、Fixed、Docs、Chore 等小节记录重要行为变化，不逐行抄录 diff。
+
+## [Unreleased]
+
+### Fixed
+
+- 旧 `ActivityTable.func=20` 百抽活动 `20001` 现可使用与现代 `ActFrameAct.type=1102` 相同的抽取、领奖和跑马灯服务。
+- 百抽登录同步会按版本表补齐礼包商城和兑换商店子活动，并使用父活动真实自定义窗口，覆盖新服零点开放但静态表五点开放的时间差。
+
+### Docs
+
+- 记录百抽奖券 `835802` 的领取、抽取与 SQLite 持久化真实 TCP 回归，以及缺失 `ActShopTable` 的明确拒绝边界。

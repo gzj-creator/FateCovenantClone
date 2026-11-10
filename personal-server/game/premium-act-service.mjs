@@ -38,6 +38,7 @@ export function createPremiumActService({
   const log = event => { try { logger(event); } catch {} };
   let loginActivityIds = [];
   let loginDeadlines = new Map();
+  let loginWindows = new Map();
 
   function activityConfig(actId) {
     return tables.ActFrameAct?.get(Number(actId)) ?? tables.Activity?.get(Number(actId)) ?? null;
@@ -60,8 +61,9 @@ export function createPremiumActService({
   function activityOpen(actId, at = currentSeconds(), serverRow = null) {
     const config = activityConfig(actId);
     if (!isPremiumActConfig(config) || !giftRowsFor(actId).length) return false;
-    const start = int(serverRow?.start_time);
-    const end = int(serverRow?.end_time);
+    const windowRow = serverRow ?? loginWindows.get(Number(actId));
+    const start = int(windowRow?.start_time);
+    const end = int(windowRow?.end_time);
     if (calendar?.mode === 'all-open') return true;
     if (start > 0 && end > start) return at >= start && at < end;
     return calendar?.isActivityRunning?.(Number(actId), null, null, at) ?? true;
@@ -247,6 +249,7 @@ export function createPremiumActService({
     server.act_stage_list ??= [];
     const ids = [];
     const deadlines = new Map();
+    const windows = new Map();
     for (const serverRow of server.act_stage_list) {
       const actId = int(serverRow.act_id);
       if (!activityOpen(actId, at, serverRow)) continue;
@@ -268,9 +271,11 @@ export function createPremiumActService({
       updatePlayerRow(playerRow, actId, deadline);
       ids.push(actId);
       deadlines.set(actId, deadline);
+      windows.set(actId, { start_time: serverRow.start_time, end_time: serverRow.end_time });
     }
     loginActivityIds = ids;
     loginDeadlines = deadlines;
+    loginWindows = windows;
     if (ids.length) {
       log({
         event: 'premium_act_login_synced',
