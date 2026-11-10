@@ -100,6 +100,7 @@ export function createRegularGiftService({ codec, tables, accountId = 'local-1' 
   }
 
   const configuredProductIds = [...configByProduct.keys()].sort((left, right) => left - right);
+  const accountIdFor = () => typeof accountId === 'function' ? accountId() : accountId;
   const limitedProductIds = configuredProductIds.filter(productId => {
     return Number(tables.Recharge.get(productId)?.can_buy_times ?? 0) > 0;
   });
@@ -201,7 +202,7 @@ export function createRegularGiftService({ codec, tables, accountId = 'local-1' 
       return writeSnapshot(modules, rows, at).changed;
     },
     purchaseExtra({ modules, db, at }) {
-      const rows = db.prepare('SELECT product_id,created_at,payload_json FROM recharge_orders WHERE account_id=? ORDER BY rowid').all(accountId);
+      const rows = db.prepare('SELECT product_id,created_at,payload_json FROM recharge_orders WHERE account_id=? ORDER BY rowid').all(accountIdFor());
       return writeSnapshot(modules, rows, at).data;
     }
   };

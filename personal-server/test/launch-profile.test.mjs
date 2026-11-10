@@ -148,10 +148,21 @@ test('a persistent database refuses a different launch profile before migrations
     ...selected
   });
   const first = createGameStore({ databasePath, seed, codec, serverOpenedAt: OPENED_AT, launchProfile: selected });
+  const secondary = first.resolveAccount('secondary-account');
+  assert.equal(secondary.roleId, selected.roleId + 1);
   first.close();
 
   const matching = createGameStore({ databasePath, seed, codec, serverOpenedAt: OPENED_AT, launchProfile: selected });
+  assert.equal(matching.roleForAccount('secondary-account'), secondary.roleId);
   matching.close();
+
+  assert.throws(() => createGameStore({
+    databasePath,
+    seed,
+    codec,
+    serverOpenedAt: OPENED_AT,
+    launchProfile: { ...selected, roleId: selected.roleId + 9 }
+  }), /launch profile mismatch.*roleId/i);
 
   assert.throws(() => createGameStore({
     databasePath,

@@ -12,13 +12,14 @@ export function createProtobufJsCodec(packageJsonPath = fileURLToPath(new URL('.
   if (typeof packageJsonPath !== 'string' || !path.isAbsolute(packageJsonPath)) throw new TypeError('An explicit absolute protobufjs package.json path is required');
   const metadata = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   if (metadata.name !== 'protobufjs' || typeof metadata.version !== 'string') throw new TypeError('Expected an existing protobufjs package');
-  const bytes = fs.readFileSync(schemaPath);
-  const hash = createHash('sha256').update(bytes).digest('hex');
+  const text = fs.readFileSync(schemaPath, 'utf8').replace(/\r\n?/g, '\n');
+  const canonicalBytes = Buffer.from(text.replace(/\n/g, '\r\n'), 'utf8');
+  const hash = createHash('sha256').update(canonicalBytes).digest('hex');
   if (hash !== SERVER_SCHEMA_SHA256) throw new Error('Exported server schema SHA-256 mismatch');
   const require = createRequire(packageJsonPath);
   const protobuf = require(path.dirname(packageJsonPath));
   if (typeof protobuf.parse !== 'function') throw new Error('The full protobufjs runtime with .proto parsing is required');
-  const root = protobuf.parse(bytes.toString('utf8'), { keepCase: true }).root;
+  const root = protobuf.parse(text, { keepCase: true }).root;
   const allowed = new Set(['pb_login_servers', 'pb_login_server']);
   function typeFor(name) {
     if (!allowed.has(name)) throw new TypeError('Unsupported response message type');

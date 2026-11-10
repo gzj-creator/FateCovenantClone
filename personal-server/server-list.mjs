@@ -57,7 +57,10 @@ export function buildLocalServer(config, now) {
   return {
     id: config.id, name: config.name, state: 0, label: 1, show_state: 1,
     show_time: releaseTime, release_time: releaseTime, start_maintain_time: 0, stop_maintain_time: 0,
-    extranet_ip: config.extranetIp, nick_name: config.name, cross_stage: 0
+    // `name` is the realm name rendered by the selector. `nick_name` is an
+    // optional secondary label; echoing both values makes clients show
+    // "命运二服命运二服" when they concatenate the two fields.
+    extranet_ip: config.extranetIp, nick_name: '', cross_stage: 0
   };
 }
 

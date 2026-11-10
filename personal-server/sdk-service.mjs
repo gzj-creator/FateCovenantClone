@@ -94,6 +94,8 @@ export function createSdkService(options = {}) {
   const quickSdkIdentityResolver = options.quickSdkIdentityResolver;
   if (quickSdkIdentityResolver !== undefined && typeof quickSdkIdentityResolver !== 'function') throw new TypeError('quickSdkIdentityResolver must be a function');
   if (quickSdkIdentityResolver && !quickSdk) throw new TypeError('quickSdkIdentityResolver requires quickSdk configuration');
+  const phoneIdentityResolver = options.phoneIdentityResolver;
+  if (phoneIdentityResolver !== undefined && typeof phoneIdentityResolver !== 'function') throw new TypeError('phoneIdentityResolver must be a function');
   const appId = requiredText(options.appId, 'appId');
   const appKey = requiredText(options.appKey, 'appKey');
   const platform = options.platform && Object.freeze({
@@ -212,6 +214,18 @@ export function createSdkService(options = {}) {
       });
     } catch { return null; }
   }
+  function phoneIdentity(phone) {
+    const resolved = phoneIdentityResolver?.(phone);
+    return normalizeQuickSdkIdentity(resolved) ?? {
+      userId: 'local-phone-' + phone,
+      loginCode: 'phone-' + phone,
+      nickname: '命运旅者'
+    };
+  }
+  function phoneFor(identity) {
+    const match = /^local-phone-([0-9]{11})$/.exec(identity?.userId ?? '');
+    return match?.[1] ?? '';
+  }
   function resultFor(token, session) {
     const identity = session ?? { ...account, expiresAt: currentTime() };
     return {
@@ -263,7 +277,7 @@ export function createSdkService(options = {}) {
         const validKey=fields.get('appid')===appId?appKey:platform&&fields.get('appid')===platform.appId?platform.appKey:null;
         const expected=validKey?signSdkParameters(fields,validKey):null;
         if(!validKey||!equalMd5Hex(expected,signature))throw new RequestError(401,1001,'Invalid local payment tips signature');
-        if(fields.get('userid')!==account.userId||![...sessions.values()].some(s=>s.userId===account.userId&&currentTime()<=s.expiresAt))throw new RequestError(401,1003,'Local SDK session required');
+        if(!hasActiveSessionFor(fields.get('userid')))throw new RequestError(401,1003,'Local SDK session required');
         // PayActivity only enables payment methods represented by a non-null bean.
         // Local test mode presents the two common methods; the isolated client
         // resolves their success without opening an external payment app.
@@ -282,18 +296,18 @@ export function createSdkService(options = {}) {
           log({event:'wallet_order_signature_rejected',appid:fields.get('appid'),userid:fields.get('userid'),server:fields.get('server'),role_id:fields.get('role_id'),product_id:fields.get('product_id'),cp_order:fields.get('cp_order'),amount:fields.get('amount'),channel:fields.get('channel'),game:fields.get('game'),title:fields.get('title'),recharge_source:fields.get('recharge_source'),third_product_id:fields.get('third_product_id'),extra_params:fields.get('extra_params'),package:fields.get('package'),received:signature,expected,validKeyPresent:Boolean(validKey),activeSession:[...sessions.values()].some(s=>s.userId===account.userId&&currentTime()<=s.expiresAt)});
           throw new RequestError(401,1001,'Invalid local payment signature');
         }
-        if(fields.get('userid')!==account.userId||![...sessions.values()].some(s=>s.userId===account.userId&&currentTime()<=s.expiresAt))throw new RequestError(401,1003,'Local SDK session required');
-        const state=wallet.snapshot(),owner=state.accounts.find(x=>x.account_id===account.userId),product=state.products.find(x=>String(x.id)===fields.get('product_id'));
+        if(!hasActiveSessionFor(fields.get('userid')))throw new RequestError(401,1003,'Local SDK session required');
+        const state=wallet.snapshot(),owner=state.accounts.find(x=>x.account_id===fields.get('userid')),product=state.products.find(x=>String(x.id)===fields.get('product_id'));
         if(!owner||!product||fields.get('server')!=='1'||fields.get('role_id')!==String(owner.role_id)||!/^\d+(?:[.]\d{1,2})?$/.test(fields.get('amount'))||Math.round(Number(fields.get('amount'))*100)!==product.price_cents)throw new RequestError(400,400,'Invalid local product, role or amount');
         // quickOrderPay already committed this order and published its reward.
         // cp_order is that order_id, so confirmation must not buy a second one.
         const existing=wallet.findOrder(fields.get('cp_order'));
         if(existing){
-          if(existing.account_id!==account.userId||existing.product_id!==product.id||existing.price_cents!==product.price_cents)throw new RequestError(400,400,'Local payment order does not match');
+          if(existing.account_id!==fields.get('userid')||existing.product_id!==product.id||existing.price_cents!==product.price_cents)throw new RequestError(400,400,'Local payment order does not match');
           send(200,{rcode:0,rdesc:'Local balance purchase confirmed',result:{order_no:existing.order_id,status:1,balance_cents:existing.balance_cents}});
           log({event:'wallet_order_confirmed',productId:product.id,orderId:existing.order_id});return;
         }
-        let order;try{order=wallet.buy({account_id:account.userId,product_id:product.id,request_id:fields.get('cp_order')});}catch(error){throw new RequestError(400,error.code??400,error.message);}
+        let order;try{order=wallet.buy({account_id:fields.get('userid'),product_id:product.id,request_id:fields.get('cp_order')});}catch(error){throw new RequestError(400,error.code??400,error.message);}
         send(200,{rcode:0,rdesc:'Local balance purchase completed',result:{order_no:order.order_id,status:1,balance_cents:order.balance_cents}});return;
       }
       if (route === 'userStatus') {
@@ -307,7 +321,8 @@ export function createSdkService(options = {}) {
         const active = hasActiveSessionFor(fields.get('userid'));
         if (!active) throw new RequestError(401, 1003, 'Local SDK session required');
         // Fictional identity fixture for this isolated local test, not an identity check.
-        const status = { is_idcode_verified: 1, is_certification: 2, is_guest: 0, is_telphone_bind: 1, info_telphone: '19900000000', info_age: 18 };
+        const activeSession = [...sessions.values()].find(session => session.userId === fields.get('userid') && currentTime() <= session.expiresAt);
+        const status = { is_idcode_verified: 1, is_certification: 2, is_guest: 0, is_telphone_bind: 1, info_telphone: phoneFor(activeSession) || '19900000000', info_age: 18 };
         send(200, { rcode: 0, rdesc: 'ok', ...status, result: status });
         return;
       }
@@ -372,7 +387,7 @@ export function createSdkService(options = {}) {
         }
         if (!/^[A-Za-z0-9_.:-]{1,120}$/.test(payment.cp_order_id) || payment.count !== 1) throw new RequestError(400, 400, 'Invalid local payment order');
         const state = wallet.snapshot();
-        const owner = state.accounts.find(value => value.account_id === account.userId);
+        const owner = state.accounts.find(value => value.account_id === session.userId);
         const product = state.products.find(value => value.id === productId);
         if (!owner || !product) {
           log({ event: 'quick_order_pay_product_unavailable', productId, productExists: Boolean(product), ownerExists: Boolean(owner), code: 400, message: 'Unsupported local payment product' });
@@ -388,7 +403,7 @@ export function createSdkService(options = {}) {
         catch { throw new RequestError(400, 400, 'Invalid local payment role'); }
         if (String(roleInfo.server_id) !== '1' || String(roleInfo.game_role_id) !== String(owner.role_id)) throw new RequestError(400, 400, 'Local payment role does not match the account');
         let order;
-        try { order = wallet.buy({ account_id: account.userId, product_id: productId, request_id: payment.cp_order_id }); }
+        try { order = wallet.buy({ account_id: session.userId, product_id: productId, request_id: payment.cp_order_id }); }
         catch (error) {
           const code = Number.isSafeInteger(error?.code) ? error.code : 400;
           send(200, quickSdkFailure(code, error?.message || 'Local payment failed'));
@@ -410,7 +425,8 @@ export function createSdkService(options = {}) {
         // The isolated SDK's registration screen also signs a password field.
         // It signs into the existing test identity without changing its credentials or save.
         if (route === 'login' && (fields.get('loginCode') !== account.loginCode || !equalMd5Hex(account.passwordMd5, fields.get('password')))) throw new RequestError(401, 1002, 'Invalid credentials');
-        const issued = issueSession({ userId: account.userId, loginCode: account.loginCode, nickname: account.nickname });
+        const identity = route === 'login' ? account : phoneIdentity(fields.get('phone'));
+        const issued = issueSession(identity);
         send(200, { rcode: 0, rdesc: 'ok', result: resultFor(issued.token, issued.session) });
         return;
       }
@@ -439,10 +455,12 @@ export function createSdkService(options = {}) {
   let closePromise;
   return Object.freeze({
     attachWallet(value) { if(!localTestOtp)throw new Error('Wallet requires explicit local test mode');wallet=value; },
+    resolveSession(userId, token) {
+      const session = activeSessionFor(token, userId);
+      return session ? Object.freeze({ userId: session.userId, loginCode: session.loginCode, nickname: session.nickname, expiresAt: session.expiresAt }) : null;
+    },
     verifySession(userId, token) {
-      if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return false;
-      const session = sessions.get(tokenKey(token));
-      return Boolean(session && session.userId === userId && currentTime() <= session.expiresAt);
+      return Boolean(activeSessionFor(token, userId));
     },
     listen(port = 0, host = HOST) {
       if (closed) return Promise.reject(new Error('Service is closed'));

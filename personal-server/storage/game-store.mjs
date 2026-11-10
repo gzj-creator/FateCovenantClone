@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readMissionTables } from '../config/mission-tables.mjs';
 import {
@@ -136,7 +137,7 @@ function remapRoleLineup(roleLineup, idMap) {
 function assertLaunchProfile(db, expected) {
   const rows = db.prepare('SELECT role_id,server_id,metadata_json FROM roles ORDER BY role_id').all();
   if (!rows.length) return;
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
     let metadata;
     try { metadata = JSON.parse(row.metadata_json); }
     catch { throw new Error(`Game database launch profile is unreadable for role ${row.role_id}`); }
@@ -144,7 +145,10 @@ function assertLaunchProfile(db, expected) {
     const compare = (label, actual, wanted) => {
       if (wanted != null && String(actual ?? '') !== String(wanted)) mismatches.push(`${label}=${actual ?? '<missing>'}`);
     };
-    compare('roleId', row.role_id, expected.roleId);
+    // A realm can now hold several accounts. The original launch-template role
+    // is the lowest role id and keeps the configured id; later accounts get
+    // their own role ids while sharing the realm launch metadata.
+    if (index === 0) compare('roleId', row.role_id, expected.roleId);
     compare('serverId', row.server_id, expected.serverId);
     compare('serverName', metadata.serverName, expected.serverName);
     compare('roleName', metadata.roleName, expected.roleName);
@@ -167,9 +171,17 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   const clock = typeof now === 'function' ? now : () => now;
   const missionTables = readMissionTables();
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 18) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 19) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS accounts (
+      account_id TEXT PRIMARY KEY,
+      role_id INTEGER NOT NULL UNIQUE REFERENCES roles(role_id),
+      login_code TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS login_modules (role_id INTEGER NOT NULL REFERENCES roles(role_id), module_id INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,module_id));
     CREATE TABLE IF NOT EXISTS heroes (role_id INTEGER NOT NULL REFERENCES roles(role_id), uid TEXT NOT NULL, tid TEXT NOT NULL, level INTEGER NOT NULL, star INTEGER NOT NULL, star_progress INTEGER NOT NULL, break_level INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,uid));
     CREATE TABLE IF NOT EXISTS hero_cells (role_id INTEGER NOT NULL REFERENCES roles(role_id), cell_index INTEGER NOT NULL, level INTEGER NOT NULL, break_level INTEGER NOT NULL, payload_json TEXT NOT NULL, PRIMARY KEY(role_id,cell_index));
@@ -748,10 +760,49 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         version = 18;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
+    if (version < 19) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const existing = db.prepare('SELECT account_id,role_id FROM local_wallets ORDER BY role_id').all();
+        const insert = db.prepare(`INSERT OR IGNORE INTO accounts
+          (account_id,role_id,login_code,phone,created_at,updated_at) VALUES (?,?,?,?,?,?)`);
+        const timestamp = new Date(clock()).toISOString();
+        for (const row of existing) {
+          const match = /^local-phone-([0-9]{11})$/.exec(row.account_id);
+          insert.run(row.account_id, row.role_id, row.account_id, match?.[1] ?? '', timestamp, timestamp);
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run(
+          'multi-account-role-isolation-v19',
+          'add-accounts-and-preserve-local-1-role',
+          timestamp
+        );
+        db.exec('PRAGMA user_version=19; COMMIT');
+        version = 19;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
   } catch (error) { db.close(); throw error; }
-  function read() {
-    const row = db.prepare('SELECT * FROM roles LIMIT 1').get();
-    const id = row.role_id;
+
+  const roleContext = new AsyncLocalStorage();
+  function defaultRoleId() {
+    const row = db.prepare('SELECT role_id FROM roles ORDER BY role_id LIMIT 1').get();
+    if (!row) throw new Error('Game database has no role');
+    return Number(row.role_id);
+  }
+  function activeRoleId(explicitRoleId) {
+    const candidate = explicitRoleId ?? roleContext.getStore()?.roleId;
+    if (candidate === undefined || candidate === null) return defaultRoleId();
+    const id = Number(candidate);
+    if (!Number.isSafeInteger(id) || id <= 0) throw new TypeError('roleId must be a positive integer');
+    return id;
+  }
+  function accountRow(accountId) {
+    if (typeof accountId !== 'string' || accountId.length === 0) return null;
+    return db.prepare('SELECT * FROM accounts WHERE account_id=?').get(accountId) ?? null;
+  }
+  function read(explicitRoleId) {
+    const id = activeRoleId(explicitRoleId);
+    const row = db.prepare('SELECT * FROM roles WHERE role_id=?').get(id);
+    if (!row) throw new Error('Unknown role ' + id);
     const metadata = JSON.parse(row.metadata_json);
     const state = { ...metadata, roleId: id, serverId: row.server_id, createdAt: row.created_at,
       serverOpenedAt: Number(metadata.serverOpenedAt ?? row.created_at),
@@ -763,18 +814,82 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     return { state, role: JSON.parse(row.profile_json), heroInfo: { hero_list, cell_list }, resources, lineups: JSON.parse(db.prepare('SELECT payload_json FROM lineups WHERE role_id=?').get(id).payload_json),
       playLineups: db.prepare('SELECT payload_json FROM play_lineups WHERE role_id=? ORDER BY lineup_type').all(id).map(row => JSON.parse(row.payload_json)) };
   }
+  function resolveAccount(accountId, { loginCode = accountId, phone = '' } = {}) {
+    if (typeof accountId !== 'string' || accountId.length === 0 || accountId.length > 512) {
+      throw new TypeError('accountId must be a nonempty string of at most 512 characters');
+    }
+    const current = accountRow(accountId);
+    if (current) return { accountId, roleId: Number(current.role_id), created: false };
+    const wallet = db.prepare('SELECT role_id FROM local_wallets WHERE account_id=?').get(accountId);
+    if (wallet) {
+      const timestamp = new Date(clock()).toISOString();
+      db.prepare(`INSERT OR IGNORE INTO accounts
+        (account_id,role_id,login_code,phone,created_at,updated_at) VALUES (?,?,?,?,?,?)`)
+        .run(accountId, wallet.role_id, loginCode, phone, timestamp, timestamp);
+      return { accountId, roleId: Number(wallet.role_id), created: false };
+    }
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const raced = accountRow(accountId);
+      if (raced) {
+        db.exec('COMMIT');
+        return { accountId, roleId: Number(raced.role_id), created: false };
+      }
+      const nextRoleId = Number(db.prepare('SELECT coalesce(max(role_id),0)+1 AS id FROM roles').get().id);
+      if (!Number.isSafeInteger(nextRoleId) || nextRoleId <= 0) throw new Error('Unable to allocate a role id');
+      const state = seed();
+      state.roleId = nextRoleId;
+      state.createdAt = Math.floor(clock() / 1000);
+      const role = codec.unpack('to_client_role_info', Buffer.from(state.rolePb, 'base64'));
+      role.level = 1;
+      role.create_time = state.createdAt;
+      role.level_reward_record = 0;
+      state.rolePb = codec.pack('to_client_role_info', role).toString('base64');
+      writeModel(modelFromState(state, codec));
+      const timestamp = new Date(clock()).toISOString();
+      db.prepare(`INSERT INTO accounts
+        (account_id,role_id,login_code,phone,created_at,updated_at) VALUES (?,?,?,?,?,?)`)
+        .run(accountId, nextRoleId, loginCode, phone, timestamp, timestamp);
+      db.exec('COMMIT');
+      return { accountId, roleId: nextRoleId, created: true };
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+  function roleForAccount(accountId) {
+    const row = accountRow(accountId);
+    if (!row) throw new Error('Unknown game account ' + accountId);
+    return Number(row.role_id);
+  }
+  function accountForRole(roleId = activeRoleId()) {
+    const row = db.prepare('SELECT account_id,login_code,phone FROM accounts WHERE role_id=?').get(activeRoleId(roleId));
+    return row ? { accountId: row.account_id, loginCode: row.login_code, phone: row.phone } : null;
+  }
+  const initialModel = read();
   return {
-    databasePath, read, serverOpenedAt: Number(read().state.serverOpenedAt),
+    databasePath, read, resolveAccount, roleForAccount, accountForRole,
+    runWithRole(roleId, action) {
+      const id = activeRoleId(roleId);
+      if (!db.prepare('SELECT 1 FROM roles WHERE role_id=?').get(id)) throw new Error('Unknown role ' + id);
+      if (typeof action !== 'function') throw new TypeError('role action must be a function');
+      return roleContext.run({ roleId: id }, action);
+    },
+    currentRoleId() { return activeRoleId(); },
+    currentAccountId() { return accountForRole(activeRoleId())?.accountId ?? null; },
+    serverId: Number(initialModel.state.serverId),
+    serverOpenedAt: Number(initialModel.state.serverOpenedAt),
     inspect(action) { return action(db); },
-    state() {
-      const model = read();
+    state(roleId) {
+      const model = read(roleId);
       refreshEnergyResources(model, { missionTables, now: clock });
       return materializeState(model, codec);
     },
-    transaction(action) {
+    transaction(action, roleId) {
+      const id = activeRoleId(roleId);
       db.exec('BEGIN IMMEDIATE');
       try {
-        const model = read(), result = action(model, db);
+        const model = read(id), result = action(model, db);
         if (result && typeof result.then === 'function') throw new Error('Game transactions must be synchronous');
         writeModel(model); db.exec('COMMIT'); return result;
       } catch (error) { db.exec('ROLLBACK'); throw error; }

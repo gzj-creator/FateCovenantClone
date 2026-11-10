@@ -47,6 +47,7 @@ test('strict local message constructors require explicit IPv4:port and opening t
   assert.equal(server.release_time, SERVER_OPENED_AT);
   assert.equal(server.start_maintain_time, 0);
   assert.equal(server.stop_maintain_time, 0);
+  assert.equal(server.nick_name, '');
   const message = buildServerListMessage(serverConfig, params, NOW);
   assert.equal(message.open_time, SERVER_OPENED_AT);
   assert.deepEqual(message.roles, []);

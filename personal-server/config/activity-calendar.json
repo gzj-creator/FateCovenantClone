@@ -1,7 +1,7 @@
 {
   "_comment": "Public realm schedule. Every absolute activity timestamp in the captured login template is shifted from activityWindowAnchor to serverOpenedAt when a new launch-profile database is seeded.",
   "mode": "schedule",
-  "serverOpenedAt": "2026-11-10T05:00:00+08:00",
+  "serverOpenedAt": "2026-11-11T00:00:00+08:00",
   "activityWindowAnchor": "2026-10-24T05:00:00+08:00",
   "currentFishingActivityId": 1074011
 }
