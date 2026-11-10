@@ -91,15 +91,25 @@ const sdkAccount = Object.freeze({
   userId: 'local-1',
   nickname: activeServer?.roleName ?? 'Local Adventurer'
 });
+const phoneIdentity = phone => Object.freeze({
+  userId: 'local-phone-' + phone,
+  loginCode: 'phone-' + phone,
+  nickname: activeServer?.roleName ?? '命运旅者'
+});
+function identityForUserId(userId) {
+  if (userId === sdkAccount.userId) return sdkAccount;
+  const match = /^local-phone-([0-9]{11})$/.exec(userId ?? '');
+  if (match) return phoneIdentity(match[1]);
+  throw new Error('Unknown local account identity');
+}
 const sdk = createSdkService({
   localTestOtp: true,
   sessionTtlSeconds: 604800,
   sessionPath: path.join(directory, 'sdk-sessions.local-only.json'),
   platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform },
   quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' },
-  quickSdkIdentityResolver: () => ({
-    userId: sdkAccount.userId, loginCode: sdkAccount.loginCode, nickname: sdkAccount.nickname
-  }),
+  phoneIdentityResolver: phoneIdentity,
+  quickSdkIdentityResolver: ({ uid }) => identityForUserId(uid),
   quickServerUrl: publicDeployment?.publicSdkUrl ?? `http://127.0.0.1:${requestedPorts.sdk || 18880}`,
   appId: 'fc-local', appKey: 'fc-local-development-key', account: sdkAccount, logger
 });
@@ -116,6 +126,7 @@ const game = createLocalGame({
   statePath: path.join(directory, 'state.local-only.json'),
   capturePath: loginSeedPath,
   verifySession: sdk.verifySession,
+  resolveSession: sdk.resolveSession,
   serverOpenedAt,
   serverId: activeServer?.id ?? 1,
   serverName: activeServer?.name ?? '命运一服',

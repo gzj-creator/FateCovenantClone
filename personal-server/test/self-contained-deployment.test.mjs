@@ -75,8 +75,8 @@ test('a clean personal-server copy boots from the public server list without the
   assert.equal(status.activityWindowAnchor, 1792789200);
   assert.equal(status.ports.length, 5);
   assert.ok(status.ports.every(port => Number.isInteger(port) && port > 0 && port <= 65535));
-  assert.equal(status.serverOpenedAt, 1794258000);
-  assert.deepEqual(status.servers, [{ id: 2, name: '命运二服', extranetIp: '140.143.142.251:19090', releaseTime: 1794258000 }]);
+  assert.equal(status.serverOpenedAt, 1794326400);
+  assert.deepEqual(status.servers, [{ id: 2, name: '命运二服', extranetIp: '140.143.142.251:19090', releaseTime: 1794326400 }]);
   assert.deepEqual(status.listenHosts, { sdk: '0.0.0.0', list: '0.0.0.0', startup: '0.0.0.0', game: '0.0.0.0', admin: '127.0.0.1' });
   assert.ok(fs.existsSync(path.join(dataDirectory, 'game.local-only.sqlite')));
   assert.ok(fs.existsSync(path.join(dataDirectory, 'admin-key.local-only.txt')));

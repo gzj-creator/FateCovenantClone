@@ -38,5 +38,5 @@ test('the checked-in public config targets the new realm without changing its ad
   assert.equal(parsed.activeServer.id, 2);
   assert.equal(parsed.activeServer.name, '命运二服');
   assert.equal(parsed.activeServer.extranetIp, '140.143.142.251:19090');
-  assert.equal(parsed.activeServer.launchAt, 1794258000);
+  assert.equal(parsed.activeServer.launchAt, 1794326400);
 });

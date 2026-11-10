@@ -38,7 +38,8 @@ function awardMessage(rows) {
 
 export function createMailService({ store, codec, tables, voucher, publish = () => {}, now = () => Math.floor(Date.now() / 1000), logger = () => {} }) {
   function roleForAccount(db, accountId) {
-    const row = db.prepare('SELECT role_id FROM local_wallets WHERE account_id=?').get(accountId);
+    const row = db.prepare('SELECT role_id FROM accounts WHERE account_id=?').get(accountId)
+      ?? db.prepare('SELECT role_id FROM local_wallets WHERE account_id=?').get(accountId);
     if (!row) fail(1, 'Unknown local account for mail');
     return row.role_id;
   }
@@ -75,7 +76,7 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
       params: Buffer.alloc(0), common_ref: 0
     };
   }
-  function publishNewMail(mailId) {
+  function publishNewMail(mailId, roleId) {
     try {
       const row = store.inspect(db => db.prepare('SELECT * FROM game_mails WHERE mail_id=? AND deleted=0').get(mailId));
       if (!row) return;
@@ -85,7 +86,7 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
           changes: [{ tid: String(MAIL_RESOURCE_TID), new_num: '1', diff_num: '0', new_bin: newBin }],
           is_overflow: false
         }
-      }));
+      }), roleId);
     } catch (error) {
       try { logger({ event: 'mail_notification_pending', mailId, message: error.message }); } catch {}
     }
@@ -104,7 +105,7 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
       if (voucherGrant.item_tid !== sku.item_tid || voucherGrant.face_value_cents !== sku.face_value_cents) fail(5, 'Voucher mail SKU mismatch');
       if (normalizedAwards.length !== 1 || normalizedAwards[0].tid !== sku.item_tid || normalizedAwards[0].count !== voucherGrant.quantity) fail(5, 'Voucher mail award mismatch');
     }
-    const result = store.transaction((model, db) => {
+    const result = store.runWithRole(roleId, () => store.transaction((model, db) => {
       const old = db.prepare('SELECT * FROM game_mails WHERE role_id=? AND request_id=?').get(roleId, request_id);
       if (old) {
         const grant = db.prepare('SELECT * FROM voucher_grants WHERE mail_id=?').get(old.mail_id);
@@ -119,10 +120,10 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
       const mailId = Number(row.lastInsertRowid);
       if (voucherGrant) voucher.recordGrant({ db, mailId, roleId, quantity: voucherGrant.quantity });
       return { mail_id: mailId, duplicate: false, quantity: voucherGrant?.quantity ?? 0, amount_cents: (voucherGrant?.quantity ?? 0) * (voucherGrant?.face_value_cents ?? 0) };
-    });
+    }));
     if (!result.duplicate) {
       try { logger({ event: 'mail_issued', mailId: result.mail_id, accountId: account_id }); } catch {}
-      publishNewMail(result.mail_id);
+      publishNewMail(result.mail_id, roleId);
     }
     return result;
   }

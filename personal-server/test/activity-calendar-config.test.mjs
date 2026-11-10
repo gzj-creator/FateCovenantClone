@@ -6,7 +6,7 @@ test('the checked-in config selects the public realm launch schedule', () => {
   const config = loadActivityCalendarConfig();
   assert.deepEqual(config, {
     mode: 'schedule',
-    serverOpenedAt: 1794258000,
+    serverOpenedAt: 1794326400,
     activityWindowAnchor: 1792789200,
     currentFishingActivityId: 1074011
   });
