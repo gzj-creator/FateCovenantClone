@@ -85,6 +85,24 @@ test('princess noon and night energy rewards use module 126 and reject duplicate
   assert.deepEqual(codec.unpack('pb_princess', rawBinary(moduleValue(e.store, 126))), { energy: { last_noon_day: '20755', last_night_day: '20755' } });
 });
 
+test('16005 mall gift publishes complete RegularGift module-26 state through handle 7', async t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[401500, 1280]], tables));
+  const result = await run(e.service, 16005, 'pb_recharge_buy_or_rev_req', {
+    recharge_id: 111011,
+    extra_param: '',
+    buy_num: 1
+  }, 31);
+  const event = result.value.extra_ret_list.find(row => Number(row.flag) === 7);
+  assert.ok(event, '16005 response is missing RegularGift handle 7');
+  const pushed = codec.unpack('pb_regular_gift_info', event.data);
+  const pushedType = pushed.gift_list.find(row => Number(row.type) === 1);
+  assert.equal(pushedType.buy_limit_info.buy_num_list.length, 19);
+  assert.equal(Number(pushedType.buy_limit_info.buy_num_list.find(row => Number(row.recharge_id) === 111011).buy_num), 1);
+  const stored = codec.unpack('pb_regular_gift_info', rawBinary(moduleValue(e.store, 26)));
+  assert.equal(Number(stored.gift_list.find(row => Number(row.type) === 1).buy_limit_info.buy_num_list.find(row => Number(row.recharge_id) === 111011).buy_num), 1);
+});
+
 test('daily discount selection persists and updates in place', async t => {
   const e = setup(t);
   const select = (select_tid) => run(e.service, 99300, 'pb_daily_discount_select_req', { recharge_tid: 40008, select_tid, day_index: '20753' });

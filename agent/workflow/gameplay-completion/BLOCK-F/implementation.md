@@ -19,7 +19,7 @@
 | `personal-server/game/draw-activity-service.mjs` | 统一注册 65 条命令，提供 `draw_activity_state` / `draw_activity_logs`、事务、状态读取、通用 `DrawTable` 抽取、ETF/PB 解码和错误边界 |
 | `personal-server/game/draw-activity-families.mjs` | 各族表规则、扣费/发奖、领取位、进度和明确拒绝 |
 | `personal-server/game/gateway.mjs` | 只在命令声明为 ETF 时调用 ETF 解码；PB 命令直接传原始 bytes，避免把 protobuf 误送 ETF 解码器 |
-| `personal-server/test/draw-activity-service.test.mjs` | 14 项服务测试，含重开、非法复用、编码失败和 SQLite ABORT 回滚 |
+| `personal-server/test/draw-activity-service.test.mjs` | 17 项服务测试，含重开、非法复用、祈福实例 ID/五奖池/登录恢复、编码失败和 SQLite ABORT 回滚 |
 | `personal-server/test/draw-activity-gateway.test.mjs` | 临时端口真实握手/TCP，覆盖 104501→104502、109101→109102 现金链路和 105502 fail closed |
 
 状态按 `(role_id, module, version)` 保存计数器、领取位和选择项；日志按模块/版本写入 SQLite。成功命令在 `store.transaction` 内完成扣费、发奖、计数、领取位、日志和 PB 编码；任一写入或编码异常都会回滚资源及活动状态。
@@ -54,7 +54,7 @@
 | DRAW-CHILDPUZZLEACT | 103301–103305 | 有限路径 | 103301 按 `draw_lib`/消耗抽取，103303 换轮，103304 按任务进度领奖，103305 保存选择；103302 的连线/列完成规则未能仅由表 dump 推出，明确拒绝。任务进度生产源仍缺 |
 | DRAW-HOARDWHEELACT | 103501–103503 | 有限路径 | 103501 校验池和自选奖；103502/103503 已按任务/累计抽数状态校验并持久化，但当前没有生产调用方写入这些进度，故新号会明确返回未达门槛 |
 | DRAW-THOUSANDDRAW | 104501–104502 | 服务端链已覆盖 | 按 type 选择 `one/two/three_draw_lib` 和当前塔层 `tower_layer`，在 `Group.lib_range` 加权抽奖；奖励先挂 pending，104502 同事务发放并清空。`max_round=25` 与随机次数字段的完整层控制待 APK 对照 |
-| DRAW-PRAYACT | 104901–104902 | 有限路径 | 保存各奖池自选；104902 按 `consume_tid/cnt` 扣费，以 `normal_val`、`critical_ration`、`critical_val` 和 `progress_val` 推进，达阈值发放选中 `Award`。当前抽取循环使用排序后的首个奖池，多奖池选择与 `direct_group/reward_ration` 仍待证据 |
+| DRAW-PRAYACT | 104901–104902 | 有限路径 | 104901 要求 `AwardIndex` 的五个奖池全部自选并拒绝缺项/重复；104902 接受 ActFrame 实例 ID，状态按配置版本持久化，每次抽同时推进五个索引并按 `normal_val`、`critical_ration`、`critical_val`、`progress_val` 发奖。登录从 SQLite 重建模块 183 的选择、次数、进度和历史；`AwardRation.direct_group/target_cnt/direct_ration` 与 `is_direct` 仍待证据。详见 `DRAW-PRAYACT/implementation.md` |
 | DRAW-CASHBACKDRAW | 105501–105504 | 明确拒绝 | 缺权威充值币种、全服充值和全服进度；四条命令均拒绝，不按客户端数字发奖 |
 | DRAW-TURNTABLEACT | 107901 | 服务端链已覆盖 | 按 `Ver.use_item` 扣费，`Award.min_num` 解锁档位，`Award.weight` 加权发奖；轮数和未中大奖数持久化。回包部分活动字段留空，未做 APK 验收 |
 | DRAW-FLOPCARDACT | 109101–109103 | 服务端链已覆盖 | 109101 按 `Ver.use_item` 扣费、`CardHandRank` 与 `AwardGroup` 选奖并暂存；109102 原子领取；109103 按 `AccAward.cond_val` 领取累计档。牌型展示与 jackpot 后的客户端轮次观感待对照 |
@@ -79,8 +79,8 @@ node --test test/draw-activity-gateway.test.mjs
 npm test
 ```
 
-- 服务专项 `14/14`：轮盘、扭蛋、三诫、胶囊兑换/收集、棋盘 15 格结束与新轮、抽奖活动日志、拼图抽取、千抽 pending/领取、祈愿阈值、翻牌 pending/领取、PB 编码失败回滚、SQLite ABORT 回滚。
-- 临时端口真实握手/TCP：104501→104502、109101→109102 成功，105502 以 `err 5` 拒绝；SQLite 中对应状态可读取。
+- 服务专项 `17/17`：轮盘、扭蛋、三诫、胶囊兑换/收集、棋盘 15 格结束与新轮、抽奖活动日志、拼图抽取、千抽 pending/领取、祈福五奖池/实例 ID/登录恢复、翻牌 pending/领取、PB 编码失败回滚、SQLite ABORT 回滚。
+- 临时端口真实握手/TCP：104501→104502、109101→109102、183013 的 104901→104902 成功，105502 以 `err 5` 拒绝；SQLite 中对应状态和重登模块 183 可读取。
 - 分支全量：`npm test` 结果见下方与总执行状态；未使用实时服务、设备、ADB 或运行数据库。
 - 合并后在 main 重跑 draw-activity、draw-activity-gateway、gameplay-gateway、m5-command-matrix 及既有百抽/奖励抽取/许愿树回归：`59/59`。含后续 A2/E2 合并的收尾前 main `d99dae4` 全量为 `2706` 项、pass `2704`、fail `0`、skip `2`，日志为 `analysis/test-runs/gameplay-20261106/block-f-final-full-r2.log`。
 
@@ -88,4 +88,4 @@ npm test
 
 - 未做 APK 客户端验收，未启停实时服务，未操作模拟器/ADB，未读写 `runtime.local-only.data` 运行数据库。
 - F 路由只解决了“有明确服务端路径”的问题。活动周期、登录数字槽、全服排名/充值和多数回包中的二进制/嵌套字段仍未反解。
-- 后续优先补：Play/Charge 的生产事件、`ActActive` 与 `ActTurn` 映射、Pray 多奖池规则、FlipCard 棋盘表、Lottery 3901、HeroBlazon 3201–3204、TicketDraw 全服结算和 Cashback 权威充值账本。
+- 后续优先补：Play/Charge 的生产事件、`ActActive` 与 `ActTurn` 映射、`AwardRation.direct_group/target_cnt/direct_ration` 与 `is_direct`、FlipCard 棋盘表、Lottery 3901、HeroBlazon 3201–3204、TicketDraw 全服结算和 Cashback 权威充值账本。

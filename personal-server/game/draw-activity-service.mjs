@@ -2,6 +2,9 @@ import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { readActivityTables, activityRows } from '../config/draw-activities-tables.mjs';
 import { createDrawFamilies } from './draw-activity-families.mjs';
+import { activityWindow } from './activity-calendar.mjs';
+import { encodeModuleLoginBlock } from './relic-divine-login.mjs';
+import { rawBinary } from '../protocol/game-codec.mjs';
 
 // F block draw/lottery activities. Each family owns command decoding and table
 // rules; this module provides one transaction, persistent state and resource
@@ -118,12 +121,16 @@ export function createDrawActivityService({
   };
   const iso = at => new Date(at * 1000).toISOString();
 
-  function stateOf(db, roleId, module, version, at) {
-    const row = db.prepare('SELECT * FROM draw_activity_state WHERE role_id=? AND module=? AND version=?').get(roleId, module, version);
+  function stateFromRow(row, at) {
     return row ? {
       counters: jsonObject(row.counters_json), claims: jsonObject(row.claims_json),
       selections: jsonObject(row.selections_json), created_at: row.created_at
     } : { counters: {}, claims: {}, selections: {}, created_at: iso(at) };
+  }
+
+  function stateOf(db, roleId, module, version, at) {
+    const row = db.prepare('SELECT * FROM draw_activity_state WHERE role_id=? AND module=? AND version=?').get(roleId, module, version);
+    return stateFromRow(row, at);
   }
 
   function saveState(db, roleId, module, version, state, at) {
@@ -237,9 +244,100 @@ export function createDrawActivityService({
     result.valueForLog ??= { module: families.modules.get(Number(type)), type: Number(type) };
     return result;
   }
+
+  // Pray login data is carried by ActFrame module 183 rather than by the
+  // activity row embedded in module 92. Rebuild the client's pb_pray_act block
+  // from the authoritative draw_activity_state rows, but only for activities
+  // that are already present in the login container. This restores selection,
+  // draw count, progress and award history after relogin while leaving inactive
+  // or unconfigured activities untouched.
+  function synchronizeLogin(activity, module183Entry = null, at = seconds()) {
+    const roleId = store.state().roleId;
+    const stateRows = store.inspect(db => db.prepare(`
+      SELECT * FROM draw_activity_state
+      WHERE role_id=? AND module='pray_act' ORDER BY version
+    `).all(roleId)).map(row => ({
+      ...stateFromRow(row, at), version: Number(row.version)
+    }));
+    if (!stateRows.length) return { activityIds: [], loginActivities: [] };
+
+    const stateByVersion = new Map(stateRows.map(row => [row.version, row]));
+    const candidates = new Map();
+    const addCandidate = (actIdValue, startValue, endValue, module92Row = null) => {
+      const actId = Number(actIdValue);
+      if (!Number.isSafeInteger(actId) || actId < 1) fail(5, 'Invalid pray login activity id');
+      const frame = tables.ActFrameAct?.get(actId);
+      if (!frame || Number(frame.type) !== 183) return;
+      const version = Number(frame.version);
+      const state = stateByVersion.get(version);
+      if (!state) return;
+      let candidate = candidates.get(actId);
+      if (!candidate) {
+        candidate = { actId, frame, version, state, start: null, end: null, module92Rows: [] };
+        candidates.set(actId, candidate);
+      }
+      const start = Number(startValue), end = Number(endValue);
+      if (candidate.start === null && Number.isSafeInteger(start) && start >= 0) candidate.start = start;
+      if (candidate.end === null && Number.isSafeInteger(end) && end > 0) candidate.end = end;
+      if (module92Row && !candidate.module92Rows.includes(module92Row)) {
+        candidate.module92Rows.push(module92Row);
+      }
+    };
+
+    if (module183Entry != null) {
+      if (!Array.isArray(module183Entry.value)) fail(5, 'Pray module-183 login entry is invalid');
+      let values;
+      try { values = module183Entry.value.map(rawBinary); }
+      catch { fail(5, 'Pray module-183 login entry is invalid'); }
+      if (values[0]?.length) {
+        let player;
+        try { player = codec.unpack('pb_act_role_login', values[0]); }
+        catch { fail(5, 'Pray module-183 player payload is invalid'); }
+        for (const row of player.data_list ?? []) {
+          addCandidate(
+            row?.act_stage?.act_id,
+            row?.act_stage?.start_time,
+            row?.act_stage?.end_time
+          );
+        }
+      }
+    }
+
+    if (activity && typeof activity === 'object') {
+      for (const row of activity.act_list ?? []) {
+        addCandidate(row?.state_data?.act_id, null, null, row);
+      }
+      for (const group of activity.act_parallel_list ?? []) {
+        for (const row of group?.states_data ?? []) addCandidate(row?.act_id, null, null, row);
+      }
+    }
+
+    const loginActivities = [];
+    const synced = [];
+    for (const candidate of [...candidates.values()].sort((left, right) => left.actId - right.actId)) {
+      const payload = families.prayLoginPayload(candidate.actId, candidate.state);
+      const wrapped = encodeModuleLoginBlock(payload).toString('base64');
+      for (const row of candidate.module92Rows) row.module_login_data = wrapped;
+
+      const window = activityWindow(candidate.frame, Number(store.serverOpenedAt));
+      let start = candidate.start;
+      let end = candidate.end;
+      if (start === null) start = Number(window?.start);
+      if (!Number.isSafeInteger(start) || start < 0) start = Math.max(0, Number(at));
+      if (end === null) end = Number(window?.end);
+      if (!Number.isSafeInteger(end) || end <= start) end = start + 86400;
+      loginActivities.push({ actTid: candidate.actId, startTime: start, endTime: end, blocks: [payload] });
+      synced.push({ actId: candidate.actId, version: candidate.version });
+    }
+    if (synced.length) {
+      log({ event: 'draw_activity_pray_login_synchronized', activities: synced });
+    }
+    return { activityIds: synced.map(row => row.actId), loginActivities };
+  }
   return {
     supports: type => families.handlers.has(Number(type)), execute,
     commands: DRAW_ACTIVITY_COMMANDS, families: families.modules,
-    stateOf: (roleId, module, version) => store.inspect(db => stateOf(db, roleId, module, version, seconds()))
+    stateOf: (roleId, module, version) => store.inspect(db => stateOf(db, roleId, module, version, seconds())),
+    synchronizeLogin
   };
 }
