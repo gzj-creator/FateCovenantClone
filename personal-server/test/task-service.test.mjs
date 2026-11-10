@@ -53,6 +53,26 @@ function setLinearTask(store, task) {
   });
 }
 
+function setLegacyLinearCommonSlot(store, task) {
+  store.transaction(model => {
+    const module = new Map(model.state.modules.value).get(90);
+    module.value[0] = serializedBinary(codec.pack('pb_linear_task_data', { task_list: [task] }));
+    const modules = new Map(model.state.modules.value);
+    modules.set(90, module);
+    model.state.modules.value = [...modules];
+  });
+}
+
+function addLinearClaims(store, ids) {
+  const roleId = store.read().state.roleId;
+  store.inspect(db => {
+    for (const id of ids) {
+      db.prepare('INSERT INTO reward_claims VALUES (?,?,?,?)')
+        .run(roleId, 'linear_task', String(id), new Date(fixedNow).toISOString());
+    }
+  });
+}
+
 function setDestiny(store, value, moduleId = 107) {
   store.transaction(model => {
     const modules = new Map(model.state.modules.value);
@@ -239,8 +259,42 @@ test('claims a completed main linear task into the backpack and persists its hig
   env.reopen();
   assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001 }]);
   assert.equal(BigInt(env.store.read().resources.get('101500').num), before + 50n);
-  assert.throws(() => env.service.execute(9010, 10001), error => error.code === 310);
+  const replay = env.service.execute(9010, 10001);
+  assert.equal(codec.unpack('pb_linear_task_receive_back', replay.data).res_change.changes.length, 0);
+  assert.equal(BigInt(env.store.read().resources.get('101500').num), before + 50n);
   assert.equal(claimCount(env.store), 1);
+});
+
+test('repairs the legacy module 90 slot layout and replays the 4-3 reward as a no-op success', t => {
+  const env = setup(t);
+  setMission(env.store, 40204);
+  setLinearTask(env.store, { type: 1, receive_tid: 10004, snapshot_val: 0 });
+  setLegacyLinearCommonSlot(env.store, { type: 1, receive_tid: 10002, snapshot_val: 0 });
+  addLinearClaims(env.store, [10001, 10002, 10003, 10004]);
+
+  const repaired = env.service.ensureLoginState();
+  assert.deepEqual(repaired.repairedCommonSlots, [1201]);
+  assert.equal(repaired.linearReceiveTid, 10004);
+  assert.equal(repaired.linearRepaired, false);
+  const module = new Map(env.store.state().modules.value).get(90);
+  const common = codec.unpack('pb_common_task', rawBinary(module.value[0]));
+  assert.equal(Buffer.from(common.receive_list ?? '', 'base64').length, 0);
+  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10004 }]);
+
+  const rewardBefore = String(env.store.read().resources.get('157002')?.num ?? 0);
+  const result = env.service.execute(9010, 10003);
+  const response = codec.unpack('pb_linear_task_receive_back', result.data);
+  assert.deepEqual(response.task, { type: 1, receive_tid: 10004 });
+  assert.equal(response.res_change.changes.length, 0);
+  assert.equal(String(env.store.read().resources.get('157002')?.num ?? 0), rewardBefore);
+  assert.equal(claimCount(env.store), 4);
+  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10004 }]);
+
+  env.reopen();
+  assert.equal(env.service.ensureLoginState().changed, false);
+  const replay = env.service.execute(9010, 10003);
+  assert.deepEqual(codec.unpack('pb_linear_task_receive_back', replay.data).task, { type: 1, receive_tid: 10004 });
+  assert.equal(claimCount(env.store), 4);
 });
 
 test('rejects unfinished or unknown linear tasks without changing career state', t => {
@@ -253,29 +307,34 @@ test('rejects unfinished or unknown linear tasks without changing career state',
   assert.equal(claimCount(env.store), 0);
 });
 
-test('rejects a task already marked received in legacy login data without rewarding it again', t => {
+test('acknowledges a task already marked received in legacy login data without rewarding it again', t => {
   const env = setup(t);
   setMission(env.store, 30204);
   setLinearTask(env.store, { type: 1, receive_tid: 10001, snapshot_val: '30204' });
-  const before = env.store.state();
+  const resourceBefore = BigInt(env.store.read().resources.get('101500')?.num ?? 0);
 
-  assert.throws(() => env.service.execute(9010, 10001), error => error.code === 310);
-  assert.deepEqual(env.store.state(), before);
-  assert.equal(claimCount(env.store), 0);
+  const result = env.service.execute(9010, 10001);
+  const response = codec.unpack('pb_linear_task_receive_back', result.data);
+  assert.deepEqual(response.task, { type: 1, receive_tid: 10001 });
+  assert.equal(response.res_change.changes.length, 0);
+  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10001 }]);
+  assert.equal(BigInt(env.store.read().resources.get('101500')?.num ?? 0), resourceBefore);
+  assert.equal(claimCount(env.store), 1);
 });
 
-test('does not roll back the legacy linear-task receive high-water mark', t => {
+test('acknowledges a request behind the legacy linear-task high-water mark', t => {
   const env = setup(t);
   setMission(env.store, 40210);
   setLinearTask(env.store, { type: 1, receive_tid: 10020, snapshot_val: 0 });
-  const before = env.store.state();
+  const resourceBefore = BigInt(env.store.read().resources.get('101500')?.num ?? 0);
 
-  assert.throws(
-    () => env.service.execute(9010, 10001),
-    error => error.code === 310 && error.message === 'Linear task reward already claimed'
-  );
-  assert.deepEqual(env.store.state(), before);
-  assert.equal(claimCount(env.store), 0);
+  const result = env.service.execute(9010, 10001);
+  const response = codec.unpack('pb_linear_task_receive_back', result.data);
+  assert.deepEqual(response.task, { type: 1, receive_tid: 10020 });
+  assert.equal(response.res_change.changes.length, 0);
+  assert.deepEqual(taskModule(env.store).task_list, [{ type: 1, receive_tid: 10020 }]);
+  assert.equal(BigInt(env.store.read().resources.get('101500')?.num ?? 0), resourceBefore);
+  assert.equal(claimCount(env.store), 1);
 });
 
 test('claiming a mission task leaves no baseline for the stamina task', t => {
@@ -316,7 +375,12 @@ test('claims a completed stamina task from its configured statistic group', t =>
   assert.equal(BigInt(env.store.read().resources.get('101800').num), before + 1000n);
   assert.equal(taskModule(env.store).task_list.find(task => task.type === 1).receive_tid, 10002);
   assert.equal(claimCount(env.store), 1);
-  assert.throws(() => env.service.execute(9010, 10002), error => error.code === 310);
+  const replay = env.service.execute(9010, 10002);
+  const replayResponse = codec.unpack('pb_linear_task_receive_back', replay.data);
+  assert.equal(replayResponse.task.receive_tid, 10002);
+  assert.equal(replayResponse.res_change.changes.length, 0);
+  assert.equal(BigInt(env.store.read().resources.get('101800').num), before + 1000n);
+  assert.equal(claimCount(env.store), 1);
 });
 
 test('reports insufficient progress for another role statistic task', t => {
