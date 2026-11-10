@@ -6,16 +6,15 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 文件 | `com.jzyx.ps.v10-recharge-fix.apk` |
-| 大小 | 4,185,758,937 字节 |
-| SHA256 | `d7beb6464ed305336704c5e1150093e66eed8a66ff41fdee45b5256d1ad0ecae` |
+| 文件 | `release/com.jzyx.ps.v11-public-140.143.142.251.apk` |
+| 大小 | 4,185,759,009 字节 |
+| SHA256 | `3caa14ca150f8259f5e83d263e6a0a43f9b94df7eb9e3d3f58e0fdc494970d95` |
 | 包名 / 版本 | `com.jzyx.ps` / `1.55.090365`，versionCode `362155` |
-| 签名 | v1/v2/v3、16 KB zipalign 验证通过 |
+| 签名 | v1/v2/v3 重签；16 KB zipalign |
 | 证书 SHA256 | `994c7d946fc38c8d7fff2cb77be9847a73eb248920d57185f355ce7059729fc7` |
-| 来源 | `analysis/experiments/recharge-fix-20261107/signed-installed-base/com.jzyx.ps.signed.apk` |
-| 内容 | 修复每日礼包及共享累充，保留设备已有冲榜配置修正 |
-| 安装校验 | 已安装 base.apk 哈希与本快照相同，新 UID `10046` |
-| 验收 | 已登录本地服大厅，看板娘正常；146 个恢复文件校验一致；本轮未执行消费充值 |
+| 来源 | `com.jzyx.ps.v10-recharge-fix.apk` |
+| 内容 | v10 功能不变；`game_config.json` 与 `quicksdk.xml` 的服务地址改为 `140.143.142.251`，原有端口不变 |
+| 状态 | 已生成并签名；按用户要求未做设备登录或逐文件复核 |
 
 ## 使用条件
 
@@ -29,6 +28,8 @@
 - APK 基于原客户端修改、包含原资源，仅供本地个人服务器联调，不作最终发行包。
 
 ## 本地回退
+
+修改前的 v10 可用包独立备份为 `apk/com.jzyx.ps.v10-before-public-endpoint-20261110.apk`，大小 4,185,758,937 字节，SHA256 `d7beb6464ed305336704c5e1150093e66eed8a66ff41fdee45b5256d1ad0ecae`。备份与源包的大小和 SHA256 已核对一致。
 
 替换前从设备拉取的实际安装包保存在 `apk/com.jzyx.ps.v9-before-recharge-fix.apk`，SHA256 `70d0f7d6e01e95e62d4616cf51882c1373a299cffed7917e65b3722fa8667620`，大小 4,185,758,901 字节。它与旧 `com.jzyx.ps.v9-working.apk` 不同，额外包含冲榜配置修正。两者均不提交。备份来源为 `analysis/experiments/recharge-fix-20261107/device-backup.local-only.data/com.jzyx.ps.installed-before.local-only.apk`。
 
