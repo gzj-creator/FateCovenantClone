@@ -43,6 +43,19 @@ node --test --test-concurrency=1 \
 
 结果：43 项，43 通过，0 失败。
 
+### 合并最新主线后的验证
+
+修复提交为 `624bf68`，随后合入当时最新 `origin/main`（`8f1bf50`，包含账号隔离），合并提交为 `bd58e72`。以下验证均在该合并树上完成：
+
+| 测试 | 结果 | 证据 |
+|---|---|---|
+| 百抽、登录活动、PremiumAct、launch profile、玩法网关定向回归 | 43/43 通过 | `analysis/test-runs/activity-ticket-20261111/targeted-after-merge.log`，SHA256 `03226d050c1535c4369ae6864605aff7e3ce452103e13597ba641a636204699b` |
+| 账号隔离专项 | 2/2 通过 | `analysis/test-runs/activity-ticket-20261111/account-isolation-after-merge.log`，SHA256 `6dcb0ff61e478a371d74a609513672e2bdb51d4bce2cfede08bc3b57e25ee46a` |
+| 先前全量中的 server-list/self-contained 换行失败 | 11/11 通过，确认与本次活动修改无关 | `analysis/test-runs/activity-ticket-20261111/prior-failures-after-merge.log`，SHA256 `f2b67dfeaf060f23605af1ca9a70467d8a8498720d59304d4266b69ac5696ad8` |
+| 全量 `npm test` | 2823 项，pass 2821，fail 0，skipped 2，todo 0 | `analysis/test-runs/activity-ticket-20261111/full-after-merge.log`，SHA256 `9682446b63e4aae272ecf07201d0fdb9fa322b0c3e8ca4b52b940739103d121a` |
+
+合并前同一定向集的日志也保存在 `analysis/test-runs/activity-ticket-20261111/targeted-before-merge.log`，SHA256 `acd4485fd8c944a218a223af5f56b0e7f8198d928cb5ad5869873e0869fcde0a`。
+
 ## 同类项审计
 
 审计时刻固定为真实事件 `2026-11-10T16:08:19Z`（本地 `2026-11-11 00:08:19 +08:00`），正式开服时间为 `2026-11-11T00:00:00+08:00`，活动日历为 `schedule`。`20001` 的模块 92 自定义窗口从开服即开始，而其静态表 `server_start_time=18000` 要到本地 `05:00` 才开放；登录与抽奖判定必须以客户端实际收到的自定义窗口为准。
