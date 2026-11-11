@@ -9,6 +9,8 @@ import { readGameTables } from '../config/game-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createHundredDrawService } from '../game/hundred-draw-service.mjs';
 import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
+import { readModuleData, writeModuleData } from '../game/develop-support.mjs';
+import { decodeModuleLoginBlocks } from '../game/relic-divine-login.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
@@ -39,6 +41,30 @@ function setup(t, random = () => 0.999999, serviceCodec = codec, calendar = null
 }
 
 const run = (service, type, value) => service.execute(type, value);
+
+function setElfStar(store, tid, star) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const data = readModuleData(modules, 538, null, 'pb_elves_develop', { elves: [], help_slots: [] }, codec);
+    const elf = data.elves.find(entry => Number(entry.tid) === Number(tid));
+    if (elf) elf.star = star;
+    else data.elves.push({ tid: String(tid), star });
+    writeModuleData(modules, 538, null, 'pb_elves_develop', data, codec);
+    model.state.modules.value = [...modules];
+  });
+}
+
+function setPetStar(store, tid, star) {
+  store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    const data = readModuleData(modules, 158, 0, 'pb_pet_develop_data', { pets: [], slots: [] }, codec);
+    const pet = data.pets.find(entry => Number(entry.tid) === Number(tid));
+    if (pet) pet.star = star;
+    else data.pets.push({ tid: String(tid), star });
+    writeModuleData(modules, 158, 0, 'pb_pet_develop_data', data, codec);
+    model.state.modules.value = [...modules];
+  });
+}
 
 test('117001 consumes the pool item, records cumulative draws and persists the result', async t => {
   const e = setup(t);
@@ -160,4 +186,94 @@ test('117001 rolls costs and state back when SQLite rejects the state write', as
   assert.equal(e.store.read().resources.get('835802').num, '1000');
   e.store.inspect(db => db.exec('DROP TRIGGER hundred_draw_state_abort'));
   assert.equal(run(e.service, 117001, { act_id: 1102001, times: 1 }).value.act_data.cumulative_draw_times, '1');
+});
+
+test('fixed-pool login reports the configured elf target and zero guarantee before the first draw', t => {
+  const e = setup(t);
+  const encoded = e.service.loginPayload(1102008, Math.floor(fixedNow / 1000));
+  // 模块 92/183 的字段契约是 ETF BINARY 包装（0x83 0x6d + 长度）。
+  assert.equal(encoded.subarray(0, 2).toString('hex'), '836d');
+  const blocks = decodeModuleLoginBlocks(encoded);
+  assert.equal(blocks.length, 1);
+  const data = codec.unpack('pb_hundred_draw_act_data', blocks[0]);
+  assert.equal(data.act_id, '1102008');
+  assert.equal(data.select_target_tid, '500520');
+  assert.equal(Number(data.cumulative_draw_times ?? 0), 0);
+  assert.equal(Number(data.guarantee_times ?? 0), 0);
+  assert.equal(data.received_star_tid_list.length, 0);
+  const stored = e.store.inspect(db => db.prepare(
+    'SELECT select_target_tid FROM hundred_draw_act_state WHERE role_id=? AND act_id=?'
+  ).get(100001, 1102008));
+  assert.equal(stored.select_target_tid, 500520);
+});
+
+test('117004 claims an elf star award from module 538 and rejects a repeated claim', t => {
+  const e = setup(t);
+  setElfStar(e.store, 500520, 5);
+  const result = run(e.service, 117004, { act_id: 1102008, tid_list: [10301] });
+  assert.equal(result.value.act_data.select_target_tid, '500520');
+  assert.equal(result.value.act_data.received_star_tid_list[0], '10301');
+  assert.equal(result.value.res.changes.find(row => row.tid === '836102').diff_num, '10');
+  assert.throws(() => run(e.service, 117004, { act_id: 1102008, tid_list: [10301] }), error => error.code === 310);
+  e.reopen();
+  assert.throws(() => run(e.service, 117004, { act_id: 1102008, tid_list: [10301] }), error => error.code === 310);
+});
+
+test('117004 rejects an elf star award below the configured star', t => {
+  const e = setup(t);
+  setElfStar(e.store, 500520, 4);
+  assert.throws(() => run(e.service, 117004, { act_id: 1102008, tid_list: [10301] }), error => error.code === 311);
+});
+
+test('117004 keeps the unmapped elf type-104 reward closed instead of granting a guess', t => {
+  const e = setup(t);
+  setElfStar(e.store, 500520, 8);
+  assert.throws(() => run(e.service, 117004, { act_id: 1102008, tid_list: [10303] }), error => error.code === 5);
+  const state = e.store.inspect(db => db.prepare(
+    'SELECT received_star_tid_list_json FROM hundred_draw_act_state WHERE role_id=? AND act_id=?'
+  ).get(100001, 1102008));
+  assert.equal(state?.received_star_tid_list_json ?? '[]', '[]');
+});
+
+test('117004 reads pet stars from module 158 for theme 102', t => {
+  const e = setup(t);
+  setPetStar(e.store, 500113, 6);
+  const result = run(e.service, 117004, { act_id: 1102005, tid_list: [10201] });
+  assert.equal(result.value.act_data.select_target_tid, '500113');
+  assert.equal(result.value.res.changes.find(row => row.tid === '835902').diff_num, '10');
+});
+
+test('117002 maps the elf progress chip through ItemTable.Chip', t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[836102, 200]], tables));
+  run(e.service, 117001, { act_id: 1102008, times: 100 });
+  run(e.service, 117001, { act_id: 1102008, times: 25 });
+  const claimed = run(e.service, 117002, { act_id: 1102008, tid_list: [10303] });
+  assert.equal(claimed.value.res.changes.find(row => row.tid === '500521').diff_num, '100');
+});
+
+test('117001 records target hit counts instead of timestamps', t => {
+  const e = setup(t, () => 0);
+  e.store.transaction(model => grantResources(model, [[836102, 20]], tables));
+  const result = run(e.service, 117001, { act_id: 1102008, times: 10 });
+  assert.equal(result.value.act_data.draw_target_time, '10');
+  assert.equal(result.value.act_data.ten_target_times, '10');
+  assert.equal(result.value.act_data.guarantee_times, '0');
+});
+
+test('117004 rolls the star claim back when response encoding fails', t => {
+  const failingCodec = {
+    ...codec,
+    pack(name, value) {
+      if (name === 'pb_hundred_draw_act_rec_star_award_rsp') throw new Error('forced star response failure');
+      return codec.pack(name, value);
+    }
+  };
+  const e = setup(t, () => 0.999999, failingCodec);
+  setElfStar(e.store, 500520, 5);
+  assert.throws(() => run(e.service, 117004, { act_id: 1102008, tid_list: [10301] }), /forced star response failure/);
+  assert.equal(e.store.read().resources.get('836102'), undefined);
+  e.reopen();
+  const claimed = run(e.service, 117004, { act_id: 1102008, tid_list: [10301] });
+  assert.equal(claimed.value.res.changes.find(row => row.tid === '836102').diff_num, '10');
 });

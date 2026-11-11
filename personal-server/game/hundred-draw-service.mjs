@@ -1,7 +1,10 @@
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { readHundredDrawTables, readHundredRoleTables } from '../config/hundred-draw-tables.mjs';
+import { readRelicTables } from '../config/relic-tables.mjs';
 import { activityWindow } from './activity-calendar.mjs';
+import { readModuleData } from './develop-support.mjs';
+import { encodeModuleLoginBlock } from './relic-divine-login.mjs';
 
 // HundredDrawActCmd (117001-117005). The table dump was recovered from
 // HundredDrawActTable.data.lua (LuaJIT bytecode) and keeps the client's
@@ -28,6 +31,10 @@ const AWARD_ONTOLOGY_SKIN = 106;
 const POOL_TYPE_DEVOLVE = 102;
 const MAX_DRAW_TIMES = 100;
 const MAX_MARQUEE_RANGE = 200;
+const PET_MODULE = 158;
+const PET_SCHEMA = 'pb_pet_develop_data';
+const ELVES_MODULE = 538;
+const ELVES_SCHEMA = 'pb_elves_develop';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS hundred_draw_act_state (
@@ -106,6 +113,7 @@ export function createHundredDrawService({
   tables,
   roleTables = readHundredRoleTables(),
   hundredTables = readHundredDrawTables(),
+  relicTables = null,
   calendar = null,
   now = Date.now,
   random = Math.random,
@@ -114,6 +122,7 @@ export function createHundredDrawService({
   if (!store?.transaction || !store?.inspect) throw new Error('Hundred draw store is unavailable');
   const log = event => { try { logger(event); } catch {} };
   let loginWindows = new Map();
+  let relicTableCache = relicTables;
   store.inspect(db => db.exec(SCHEMA));
 
   function seconds() {
@@ -185,19 +194,38 @@ export function createHundredDrawService({
     );
   }
 
+  function targetList(version) {
+    return Array.isArray(version?.target) ? version.target.map(Number) : [];
+  }
+
+  function supportsTargetSelection(config) {
+    return Number(config.pool.pool_type) === POOL_TYPE_DEVOLVE;
+  }
+
+  // 固定池（pool_type 非 102）只有一个配置目标，登录和命令响应都必须下发该目标；
+  // 下放池在玩家选择前保持 0，避免把服务端默认值伪装成玩家的主动选择。
+  function normalizeTarget(config, state) {
+    const selected = Number(state?.select_target_tid ?? 0);
+    const targets = targetList(config.version);
+    if (supportsTargetSelection(config)) return targets.includes(selected) ? selected : 0;
+    if (selected > 0 && targets.includes(selected)) return selected;
+    return targets[0] ?? 0;
+  }
+
   function targetTid(version, state) {
-    const targets = Array.isArray(version.target) ? version.target.map(Number) : [];
+    const targets = targetList(version);
     const selected = Number(state?.select_target_tid ?? 0);
     if (selected > 0 && targets.includes(selected)) return selected;
     return targets[0] ?? 0;
   }
 
-  function actData(state) {
+  function actData(state, config = null) {
+    const selectTarget = config ? normalizeTarget(config, state) : Number(state.select_target_tid ?? 0);
     return {
       act_id: String(state.act_id),
       received_process_tid_list: jsonList(state.received_process_tid_list_json).map(String),
       cumulative_draw_times: String(state.cumulative_draw_times),
-      select_target_tid: String(state.select_target_tid ?? 0),
+      select_target_tid: String(selectTarget),
       guarantee_times: String(state.guarantee_times ?? 0),
       received_star_tid_list: jsonList(state.received_star_tid_list_json).map(String),
       draw_target_time: String(state.draw_target_time ?? 0),
@@ -216,12 +244,16 @@ export function createHundredDrawService({
 
   function chipFor(config, target) {
     const theme = Number(config.pool.theme_type);
+    if (!target) fail(5, 'Hundred-draw chip target is missing');
+    // ItemTable.Chip 以 point_item 指向本体、tid 为碎片，英雄/魔灵/精灵三族共用同一
+    // 反向映射；英雄行还有 Hero.chip 冗余列，二者一致时以配置表为准。
+    const mapped = [...(tables.Chip?.values() ?? [])]
+      .find(row => Number(row.point_item) === Number(target));
+    if (mapped) return Number(mapped.tid);
     if (theme === 101) {
       const chip = Number(targetRow(config, target)?.chip ?? 0);
       if (chip > 0) return chip;
     }
-    // FantasyChipByTid keys are the equipment tids in the shipped table, but no
-    // recovered mapping links a fantasy target to its chip. Do not invent one.
     fail(5, 'Hundred-draw target chip mapping is not recovered for theme ' + theme);
   }
 
@@ -260,9 +292,11 @@ export function createHundredDrawService({
     if (type === AWARD_ONTOLOGY_SKILL) {
       const item = Number(part.item ?? 0);
       if (item > 0 && amount > 0) return [[item, amount]];
-      // RelicTable.SpHero is the remaining source named by HundredDrawActUtil;
-      // that table is not part of the shipped server asset set yet.
-      fail(5, 'Hundred-draw ontology skill reward mapping is not recovered');
+      // 客户端 HundredDrawActUtil 的 104 分支按大奖本体读取 RelicTable.SpHero.item；
+      // 只有该表能证明映射的主体才发奖，魔灵/精灵没有等价来源时继续明确拒绝。
+      const spHero = Number((relicTableCache ??= readRelicTables()).SpHero?.get(Number(target))?.item ?? 0);
+      if (spHero > 0) return [[spHero, amount > 0 ? amount : 1]];
+      fail(5, 'Hundred-draw ontology skill reward mapping is not recovered for theme ' + Number(config.pool.theme_type));
     }
     if (type === AWARD_ONTOLOGY_HEAD) return [[headFor(config, target), amount > 0 ? amount : 1]];
     if (type === AWARD_ONTOLOGY_SKIN) return [[skinFor(config, target), amount > 0 ? amount : 1]];
@@ -332,6 +366,7 @@ export function createHundredDrawService({
       const roleId = model.state.roleId;
       const state = stateRow(db, roleId, actId, at);
       const target = targetTid(config.version, state);
+      if (!supportsTargetSelection(config)) state.select_target_tid = target;
       const spent = consumeResources(model, [[drawItem, times]], 301);
       const awards = [];
       let drawn = 0;
@@ -344,7 +379,10 @@ export function createHundredDrawService({
         state.cumulative_draw_times = String(Number(state.cumulative_draw_times) + 1);
         state.guarantee_times = ontologyHit ? '0' : String(currentGuarantee + 1);
         if (ontologyHit) {
-          state.draw_target_time = at;
+          // pb_hundred_draw_act_data 注释：draw_target_time 是抽中大奖次数，
+          // ten_target_times 是十连内命中次数；这里按次数累加，不再写入时间戳。
+          state.draw_target_time = String(Number(state.draw_target_time ?? 0) + 1);
+          if (times === 10) state.ten_target_times = String(Number(state.ten_target_times ?? 0) + 1);
           recordMarquee(db, roleId, actId, 101, Number(row.award_num) || 1, target, at);
         }
         drawn += 1;
@@ -352,7 +390,7 @@ export function createHundredDrawService({
       const granted = grantResources(model, awards, tables);
       saveState(db, state, at);
       const changes = [...spent.changes, ...granted.changes];
-      const value = { act_data: actData(state), res: { changes, is_overflow: false } };
+      const value = { act_data: actData(state, config), res: { changes, is_overflow: false } };
       return { value, data: codec.pack('pb_hundred_act_draw_rsp', value), drawn, changes: changes.length };
     });
     result.valueForLog = { actId, times, drawn: result.drawn, changes: result.changes };
@@ -388,7 +426,7 @@ export function createHundredDrawService({
       const granted = grantResources(model, awards, tables);
       state.received_process_tid_list_json = JSON.stringify([...claimed].sort((left, right) => left - right));
       saveState(db, state, at);
-      const value = { act_data: actData(state), res: { changes: granted.changes, is_overflow: false } };
+      const value = { act_data: actData(state, config), res: { changes: granted.changes, is_overflow: false } };
       return { value, data: codec.pack('pb_hundred_act_receive_process_award_rsp', value), tids, changes: granted.changes.length };
     });
     result.valueForLog = { actId, tids: result.tids, changes: result.changes };
@@ -408,11 +446,33 @@ export function createHundredDrawService({
       const state = stateRow(db, model.state.roleId, actId, at);
       state.select_target_tid = target;
       saveState(db, state, at);
-      const value = { act_data: actData(state) };
+      const value = { act_data: actData(state, config) };
       return { value, data: codec.pack('pb_hundred_draw_act_select_award_rsp', value), target };
     });
     result.valueForLog = { actId, target: result.target };
     return result;
+  }
+
+  // 升星达标读取各主题的权威养成容器：英雄在 heroInfo，魔灵在模块 158，
+  // 精灵在模块 538；未拥有该目标时星级按 0 处理，由调用方返回 311。
+  function starOfTarget(model, config, target) {
+    const theme = Number(config.pool.theme_type);
+    if (theme === 101) {
+      const hero = model.heroInfo?.hero_list?.find(entry => Number(entry.tid) === Number(target));
+      return hero ? Number(hero.star ?? 0) : 0;
+    }
+    const modules = new Map(model.state.modules.value);
+    if (theme === 102) {
+      const data = readModuleData(modules, PET_MODULE, 0, PET_SCHEMA, { pets: [], slots: [] }, codec);
+      const pet = (data.pets ?? []).find(entry => Number(entry.tid) === Number(target));
+      return pet ? Number(pet.star ?? 0) : 0;
+    }
+    if (theme === 104) {
+      const data = readModuleData(modules, ELVES_MODULE, null, ELVES_SCHEMA, { elves: [], help_slots: [] }, codec);
+      const elf = (data.elves ?? []).find(entry => Number(entry.tid) === Number(target));
+      return elf ? Number(elf.star ?? 0) : 0;
+    }
+    fail(5, 'Hundred-draw star task does not support theme ' + theme);
   }
 
   function starAwardCommand(request) {
@@ -428,24 +488,22 @@ export function createHundredDrawService({
       const roleId = model.state.roleId;
       const state = stateRow(db, roleId, actId, at);
       const target = targetTid(config.version, state);
-      const hero = model.heroInfo?.hero_list?.find(entry => Number(entry.tid) === Number(target)) ?? null;
+      if (!supportsTargetSelection(config)) state.select_target_tid = target;
+      const star = starOfTarget(model, config, target);
       const claimed = new Set(jsonList(state.received_star_tid_list_json));
       const awards = [];
       for (const tid of tids) {
         const row = configured.get(tid);
         if (!row) fail(5, 'Hundred-draw star award is not configured');
         if (claimed.has(tid)) fail(310, 'Hundred-draw star award is already claimed');
-        if (Number(config.pool.theme_type) !== 101 || !hero) {
-          fail(5, 'Hundred-draw star task requires a local hero target');
-        }
-        if (Number(hero.star ?? 0) < Number(row.target)) fail(311, 'Hundred-draw star requirement is not reached');
+        if (star < Number(row.target)) fail(311, 'Hundred-draw star requirement is not reached');
         awards.push(...awardsForParts(awardParts(row), config, target));
         claimed.add(tid);
       }
       const granted = grantResources(model, awards, tables);
       state.received_star_tid_list_json = JSON.stringify([...claimed].sort((left, right) => left - right));
       saveState(db, state, at);
-      const value = { act_data: actData(state), res: { changes: granted.changes, is_overflow: false } };
+      const value = { act_data: actData(state, config), res: { changes: granted.changes, is_overflow: false } };
       return { value, data: codec.pack('pb_hundred_draw_act_rec_star_award_rsp', value), tids, changes: granted.changes.length };
     });
     result.valueForLog = { actId, tids: result.tids, changes: result.changes };
@@ -473,12 +531,16 @@ export function createHundredDrawService({
   }
 
   function loginPayload(actId, at = seconds()) {
+    const config = configuration(actId);
     const state = store.transaction((model, db) => {
       const row = stateRow(db, model.state.roleId, actId, at);
+      if (!supportsTargetSelection(config)) row.select_target_tid = normalizeTarget(config, row);
       saveState(db, row, at);
       return row;
     });
-    return codec.pack('pb_hundred_draw_act_data', actData(state));
+    // 模块 92/183 的 module_login_data 都是 ETF BINARY 包装，客户端先 DecodeErl
+    // 再把负载交给活动 LoginParse；直接写裸 protobuf 会让登录数据整体解析失败。
+    return encodeModuleLoginBlock(codec.pack('pb_hundred_draw_act_data', actData(state, config)));
   }
 
   function runningConfigs(activity, at) {
@@ -527,8 +589,10 @@ export function createHundredDrawService({
     if (!activity || typeof activity !== 'object') fail(5, 'Hundred-draw activity login data is invalid');
     activity.act_list ??= [];
     const synced = [];
+    const loginActivities = [];
     const windows = new Map();
     for (const { actId, window } of runningConfigs(activity, at)) {
+      const config = configuration(actId);
       let entry = activity.act_list.find(candidate => Number(candidate?.state_data?.act_id) === actId);
       if (!entry) {
         entry = { state_data: { act_id: actId }, module_login_data: Buffer.alloc(0) };
@@ -542,12 +606,24 @@ export function createHundredDrawService({
       if (!entry.state_data.history_time.some(item => Number(item?.state_id) === RUNNING_STATE_ID)) {
         entry.state_data.history_time.push({ state_id: RUNNING_STATE_ID, enter_time: String(at) });
       }
-      entry.module_login_data = loginPayload(actId, at);
+      const state = store.transaction((model, db) => {
+        const row = stateRow(db, model.state.roleId, actId, at);
+        if (!supportsTargetSelection(config)) row.select_target_tid = normalizeTarget(config, row);
+        saveState(db, row, at);
+        return row;
+      });
+      const packed = codec.pack('pb_hundred_draw_act_data', actData(state, config));
+      entry.module_login_data = encodeModuleLoginBlock(packed);
       synced.push(actId);
       if (window) windows.set(actId, { ...window });
+      const startTime = Number(window?.start ?? 0);
+      const endTime = Number(window?.end ?? 0);
+      if (startTime > 0 && endTime > startTime) {
+        loginActivities.push({ actTid: actId, startTime, endTime, blocks: [packed] });
+      }
     }
     loginWindows = windows;
-    return synced;
+    return { actIds: synced, loginActivities };
   }
 
   function decode(type, bytes) {
