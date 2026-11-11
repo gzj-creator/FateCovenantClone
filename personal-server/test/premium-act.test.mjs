@@ -534,7 +534,7 @@ test('scheduled legacy hundred-draw syncs its gift mall, obtains coupons and dra
   const hundredEntry = activityLogin.act_list.find(entry => Number(entry.state_data?.act_id) === 20001);
   assert.ok(hundredEntry, 'legacy hundred-draw activity 20001 must be present in module 92');
   assert.equal(
-    codec.unpack('pb_hundred_draw_act_data', Buffer.from(hundredEntry.module_login_data, 'base64')).act_id,
+    codec.unpack('pb_hundred_draw_act_data', decodeModuleLoginBlocks(hundredEntry.module_login_data)[0]).act_id,
     '20001'
   );
   const parentCustom = activityLogin.act_custom_list.find(row => Number(row.act_id) === 20001);
