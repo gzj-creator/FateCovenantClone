@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createGameStore } from '../../storage/game-store.mjs';
+import { createNewAccountModules } from '../../game/new-account-state.mjs';
 
 const capturePath = new URL('../../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath, 'utf8'));
@@ -14,25 +15,42 @@ export function fixtureModules() {
 }
 
 export function createSeed(codec, options = {}) {
+  let modules = options.modules ? structuredClone(options.modules) : fixtureModules();
+  let rolePb;
+  let lineups = options.lineups ?? null;
+  if (options.freshAccount) {
+    const fresh = createNewAccountModules({
+      modules: new Map(modules.value),
+      codec,
+      roleName: options.roleName ?? 'Local Test',
+      starter: options.starter,
+      now: Number(options.createdAt ?? Math.floor(Date.now() / 1000)) * 1000
+    });
+    modules = { value: [...fresh.modules.entries()], improper: false };
+    rolePb = fresh.rolePb;
+    lineups = fresh.lineups;
+  } else {
+    rolePb = codec.pack('to_client_role_info', options.role ?? {
+      level: 9,
+      nick_name: Buffer.from('Local Test')
+    }).toString('base64');
+  }
   return {
     version: 1,
     roleId: options.roleId ?? 100001,
     serverId: options.serverId ?? 1,
     createdAt: options.createdAt ?? 1700000000,
-    modules: options.modules ? structuredClone(options.modules) : fixtureModules(),
-    rolePb: codec.pack('to_client_role_info', options.role ?? {
-      level: 9,
-      nick_name: Buffer.from('Local Test')
-    }).toString('base64'),
+    modules,
+    rolePb,
     guides: structuredClone(options.guides ?? {}),
-    lineups: options.lineups ?? null
+    lineups
   };
 }
 
 export function createGameFixture(t, codec, options = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), options.prefix ?? 'fc-test-'));
   const databasePath = path.join(directory, 'game.sqlite');
-  const seed = () => createSeed(codec, options.seed);
+  const seed = (storeOptions = {}) => createSeed(codec, { ...(options.seed ?? {}), ...storeOptions });
   let store = createGameStore({
     databasePath,
     seed,

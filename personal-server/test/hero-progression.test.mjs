@@ -95,7 +95,7 @@ test('migrates once into relational SQLite tables, backs up JSON, and preserves 
   env.reopen();
   assert.equal(env.store.state().guides[55], 66);
   const db = new DatabaseSync(env.databasePath, { readOnly: true });
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 19);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM migrations').get().n, 20);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_rewards'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reward_claims'").get());
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
@@ -136,7 +136,7 @@ test('version-nine migration aligns recruited hero ids with tids and rewrites ev
   const migrated = codec.unpack('pb_lineup_login', rawBinary(new Map(store.state().modules.value).get(9)));
   const migratedCustom = codec.unpack('pb_custom_lineup_role', Buffer.from(migrated.custom_pre_lineup, 'base64'));
   assert.equal(migratedCustom.custom_pre_lineups[0].lineup.team_list[0].fighter_list.find(fighter => fighter.index === 1).hero_id, '2010101');
-  assert.equal(store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 19);
+  assert.equal(store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 20);
 });
 
 test('version sixteen repairs a stale persisted hero snapshot from authoritative tables', t => {
@@ -160,7 +160,7 @@ test('version sixteen repairs a stale persisted hero snapshot from authoritative
   assert.deepEqual(repaired.hero_list.map(hero => hero.tid), env.store.read().heroInfo.hero_list.map(hero => hero.tid));
   assert.ok(repaired.hero_list.some(hero => hero.tid === removed.tid));
   assert.deepEqual(new Map(env.store.read().state.modules.value).get(10).value.slice(1), preservedSlots);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 19);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 20);
   assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM migrations WHERE name='hero-login-snapshot-v16'").get().n), 1);
 });
 
