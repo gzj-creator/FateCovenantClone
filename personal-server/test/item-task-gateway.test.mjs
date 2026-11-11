@@ -132,5 +132,10 @@ test('FunctionManualCmd 82301 and TaskActivityCmd 105701 share the temporary han
   }));
   assert.equal(repeatedFinish.err.err, 310);
   const vitality = await request(105702, 7, Buffer.alloc(0));
-  assert.equal(vitality.err.err, 5);
+  assert.equal(vitality.err, undefined);
+  const vitalityResponse = codec.unpack('pb_task_activity_data_rsp', Buffer.from(vitality.data, 'base64'));
+  assert.equal(Number(vitalityResponse.server_vitality), 50);
+  const repeatedPoll = await request(105702, 8, Buffer.alloc(0));
+  assert.equal(repeatedPoll.err, undefined);
+  assert.equal(Number(codec.unpack('pb_task_activity_data_rsp', Buffer.from(repeatedPoll.data, 'base64')).server_vitality), 50);
 });

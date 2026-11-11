@@ -14,6 +14,7 @@
 | H1 | 进入大厅显示服务器错误 | [hall-entry.md](hall-entry.md) | 大厅商店读取按请求 id 空组回包、活动阶段同步空变更回执 |
 | H2 | 点击头像显示服务器错误 | [avatar-rank-info.md](avatar-rank-info.md) | 2001 单条排名查询已实现；同分支另补 2002/2005/2006/2007/2009/2010，[详情](../activity-ranking/leaderboard-api.md)；267/267 测试通过，尚未部署与 APK 验收 |
 | E1 | 进入游戏依次提示“仅显示物品不可操作”和“配置出错了” | [entry-display-config-error-20261111.md](entry-display-config-error-20261111.md) | `107703` 关闭活动改为空读取，`10507 type 12` 接入本服频道；目标回归 23/23，通过后待部署与客户端复验 |
+| E2 | 登录后及活动轮询提示“配置出错” | [activity-server-vitality-20261111.md](activity-server-vitality-20261111.md) | `105702` 由无条件 code 5 改为模块 21 槽 29 维度 2 的真实全服聚合；日任务领取补齐统计链路，100701 全服任务复用同一口径；定向 77/77 通过，待部署与 APK 验收 |
 | W2 | daily discount batch purchase limit | [daily-discount-batch-limit.md](daily-discount-batch-limit.md) | 46003 batch_update sync, restart backfill and real TCP verified; 192/192 tests |
 | W3 | 首充购买后仍显示 ¥6 | [first-recharge-status.md](first-recharge-status.md) | 历史订单状态已修复；自动回填与 TCP 测试通过，首充面板待用户确认 |
 | W4 | 限购礼包错误日志 ID | [purchase-limit-error.md](purchase-limit-error.md) | 限购先于余额校验；真实 QuickSDK 返回 307/80001，275/275 测试通过 |
