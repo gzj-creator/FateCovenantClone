@@ -638,9 +638,16 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     const mission = missionRequest(request.req);
     if (!mission) throw new GameError(5, 'Only ordinary mission fights are implemented');
     const current = currentMission(store.read()).value;
-    const currentPosition = missionPosition(missionTables.sections, Number(current.mission_id ?? 0));
+    const currentMissionId = Number(current.mission_id ?? 0);
+    // A new account starts with mission_id=0. That is a valid "no cleared
+    // node" sentinel and is one position before the first configured stage.
+    const currentPosition = currentMissionId === 0
+      ? -1
+      : missionPosition(missionTables.sections, currentMissionId);
     const requestedPosition = missionPosition(missionTables.sections, mission.missionId);
-    if (currentPosition < 0 || requestedPosition < 0) throw new GameError(5, 'Mission progression configuration is missing');
+    if ((currentMissionId !== 0 && currentPosition < 0) || requestedPosition < 0) {
+      throw new GameError(5, 'Mission progression configuration is missing');
+    }
     // A request may replay a cleared node or fight the one immediate successor.
     // The client adds that successor when rendering the current journey entry.
     const isReplay = requestedPosition <= currentPosition;

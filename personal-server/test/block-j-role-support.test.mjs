@@ -187,7 +187,7 @@ test('role names use ChangeName, reject occupied names, persist, and decode rand
   const decoded = codec.unpack('pb_account_roles', list.data);
   assert.equal(decoded.roles[0].name, '新名');
   assert.equal(env.store.read().role.level_reward_record, 3);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 19);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 20);
 });
 
 test('veteran commands use an explicit local policy without an undefined configuration crash', async t => {

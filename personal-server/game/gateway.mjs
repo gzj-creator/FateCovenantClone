@@ -205,6 +205,8 @@ import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../ga
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
 import { parseActivityCalendarTimestamp } from '../config/activity-calendar-config.mjs';
 import { relocateLaunchActivityWindows } from './launch-profile.mjs';
+import { readJsonAsset, tableAsset } from '../assets.mjs';
+import { createNewAccountModules, readStarterConfig } from './new-account-state.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
 export function createLocalGame({
@@ -267,7 +269,8 @@ export function createLocalGame({
     activityWindowAnchor: anchor,
     serverOpenedAt: openedAt
   });
-  function seed() {
+  const starterConfig = readStarterConfig(readJsonAsset(tableAsset('RoleTable.data.lua.json')).tables);
+  function seed({ freshAccount = false } = {}) {
     const capture = JSON.parse(fs.readFileSync(capturePath));
     const template = capture.privateFlows.find(x => x.messageId === 'game:tcp-69:s2c:103')?.decoded;
     if (!template || template[0] !== 1) throw new Error('Verified login structure missing');
@@ -278,15 +281,26 @@ export function createLocalGame({
       activityWindowAnchor: persistedLaunchProfile.activityWindowAnchor,
       serverOpenedAt: persistedLaunchProfile.serverOpenedAt
     }).modules;
-    const role = unpack('to_client_role_info', rawBinary(modules.get(2)));
-    role.nick_name = Buffer.from(roleName);
-    role.res = { changes: [] };
-    return { version: 1, roleId, serverId, createdAt: persistedLaunchProfile ? openedAt : Math.floor(clock() / 1000) - 86400,
-      seedSource: 'offline captured early-game structural fixture; independent local test save',
+    let rolePb;
+    let lineups = null;
+    if (freshAccount) {
+      const fresh = createNewAccountModules({ modules, codec, roleName, starter: starterConfig, now: clock() });
+      modules = fresh.modules;
+      rolePb = fresh.rolePb;
+      lineups = fresh.lineups;
+    } else {
+      const role = unpack('to_client_role_info', rawBinary(modules.get(2)));
+      role.nick_name = Buffer.from(roleName);
+      role.res = { changes: [] };
+      rolePb = pack('to_client_role_info', role).toString('base64');
+    }
+    return { version: 1, roleId, serverId,
+      createdAt: freshAccount ? Math.floor(clock() / 1000) : persistedLaunchProfile ? openedAt : Math.floor(clock() / 1000) - 86400,
+      seedSource: freshAccount ? 'new-account starter state derived from the structural login fixture' : 'offline captured early-game structural fixture; independent local test save',
       ...(openedAt == null ? {} : { serverOpenedAt: openedAt }),
       ...(persistedLaunchProfile ?? {}),
       modules: { value: [...modules.entries()], improper: false },
-      rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
+      rolePb, guides: {}, lineups };
   }
   const store = createGameStore({
     databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'),

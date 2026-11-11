@@ -8,7 +8,7 @@ import { createGameFixture } from './helpers/game-fixture.mjs';
 const codec = createGameCodec();
 
 function setup(t, options = {}) {
-  const fixture = createGameFixture(t, codec, { prefix: 'fc-fight-', now: options.now });
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-fight-', now: options.now, seed: options.seed });
   let store = fixture.store;
   let service = createMissionFightService({ store, codec, playbackEnabled: true, now: options.now });
   return {
@@ -133,11 +133,41 @@ test('v15 keeps stamina in module 8 and rejects the stale full-energy projection
   const stored = env.store.read().resources.get('100012900');
   assert.deepEqual(stored.location, [8, 2, 0]);
   assert.equal(stored.produce_time, nowSeconds);
-  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 19);
+  assert.equal(env.store.inspect(db => db.prepare('PRAGMA user_version').get().user_version), 20);
 
   const module = new Map(env.store.state().modules.value).get(8);
   const loginEnergy = codec.unpack('pb_role_energy_res', rawBinary(module.value[2]));
   assert.deepEqual(loginEnergy.res, [{ tid: '100012900', num: '120', produce_time: nowSeconds }]);
+});
+
+test('a new level-one account can start and settle the first mission', t => {
+  const nowSeconds = 1794326400;
+  const now = () => nowSeconds * 1000;
+  const env = setup(t, { now, seed: { freshAccount: true, createdAt: nowSeconds } });
+  assert.equal(Number(env.store.read().role.level), 1);
+  assert.deepEqual(env.store.read().heroInfo.hero_list.map(hero => hero.tid), ['2010101', '2010201']);
+  assert.equal(String(missionModule(env.store).mission_id ?? '0'), '0');
+  assert.equal(Number(missionModule(env.store).pass_count?.count ?? 0), 0);
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
+
+  const result = env.service.execute(201, fightRequest(10202, {
+    loc: [{ team_id: 1, loc: [
+      { hero_id: '2010101', loc: 6 },
+      { hero_id: '2010201', loc: 4 }
+    ] }]
+  }));
+  const response = codec.unpack('pb_fight_response', result.data);
+  assert.equal(response.report.finish ?? false, false);
+  assert.equal(response.report.battle_list.length, 1);
+  assert.equal(String(missionModule(env.store).mission_id ?? '0'), '0');
+
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  assert.equal(missionModule(env.store).mission_id, '10202');
+  assert.equal(Number(missionModule(env.store).pass_count.count), 1);
+  assert.equal(resourceAmount(env.store, 100012900), 115n);
+  env.reopen();
+  assert.equal(missionModule(env.store).mission_id, '10202');
+  assert.equal(Number(missionModule(env.store).pass_count.count), 1);
 });
 
 test('energy recovery is authoritative and 207 embeds pb_mission_energy_res', t => {

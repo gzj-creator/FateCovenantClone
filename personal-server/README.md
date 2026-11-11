@@ -44,6 +44,16 @@ npm ci --prefix .\personal-server --ignore-scripts --no-audit --no-fund
 npm test --prefix .\personal-server
 ```
 
+日常 `npm test` 只运行快速测试；真实网关、完整部署，以及单文件累计约一秒
+以上的耗时回归集中在 `test/slow-files.json`。准备合并或发布前再执行完整验证：
+
+```powershell
+npm run test:slow --prefix .\personal-server
+npm run test:all --prefix .\personal-server
+```
+
+`test:all` 会同时运行快速和慢速测试。单独修改慢测文件时，用 `test:slow` 回验对应链路。
+
 依赖已在本轮安装，当前机器直接运行第二条即可；第一条供重新建立依赖环境。各组件 CLI 的参数都是本地测试配置，不会自动重定向现有 APK。
 
 ## 本地区服列表组件

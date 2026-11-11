@@ -107,7 +107,11 @@ const sdk = createSdkService({
   platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform },
   quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' },
   phoneIdentityResolver: phoneIdentity,
-  quickSdkIdentityResolver: createQuickSdkIdentityResolver({ primaryAccount: sdkAccount, phoneIdentity }),
+  quickSdkIdentityResolver: createQuickSdkIdentityResolver({
+    primaryAccount: sdkAccount,
+    phoneIdentity,
+    mappingPath: path.join(directory, 'quick-sdk-identities.local-only.json')
+  }),
   quickServerUrl: publicDeployment?.publicSdkUrl ?? `http://127.0.0.1:${requestedPorts.sdk || 18880}`,
   appId: 'fc-local', appKey: 'fc-local-development-key', account: sdkAccount, logger
 });

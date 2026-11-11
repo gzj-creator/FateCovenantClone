@@ -171,7 +171,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   const clock = typeof now === 'function' ? now : () => now;
   const missionTables = readMissionTables();
   let version = db.prepare('PRAGMA user_version').get().user_version;
-  if (version > 19) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
+  if (version > 20) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS roles (role_id INTEGER PRIMARY KEY, server_id INTEGER NOT NULL, created_at INTEGER NOT NULL, profile_json TEXT NOT NULL, metadata_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS accounts (
@@ -780,6 +780,52 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         version = 19;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
+    if (version < 20) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        // v19 created a separate role for the first phone account, but the old
+        // resolver copied only the top-level role level and create time from
+        // the level-9 fixture. Repair exactly that recognizable save shape and
+        // leave the established level-12 primary role untouched.
+        const repaired = [];
+        const rows = typeof seed === 'function' ? db.prepare(
+          'SELECT role_id,server_id,created_at,profile_json,metadata_json FROM roles ORDER BY role_id'
+        ).all() : [];
+        for (const row of rows) {
+          const profile = JSON.parse(row.profile_json);
+          if (Number(profile.level) > 1) continue;
+          const missionRow = db.prepare('SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=8').get(row.role_id);
+          if (!missionRow) continue;
+          const missionModule = JSON.parse(missionRow.payload_json);
+          const mission = codec.unpack('pb_mission', rawBinary(missionModule.value[0]));
+          if (String(mission.mission_id) !== '20205' || Number(mission.pass_count?.count) !== 9) continue;
+          const heroes = db.prepare('SELECT tid,level FROM heroes WHERE role_id=?').all(row.role_id);
+          if (heroes.length !== 6 || !heroes.some(hero => String(hero.tid) === '2020601' && Number(hero.level) === 8)) continue;
+
+          const metadata = JSON.parse(row.metadata_json);
+          const state = seed({ freshAccount: true });
+          Object.assign(state, metadata, {
+            roleId: Number(row.role_id),
+            serverId: Number(row.server_id),
+            createdAt: Number(row.created_at)
+          });
+          const role = codec.unpack('to_client_role_info', Buffer.from(state.rolePb, 'base64'));
+          role.create_time = Number(row.created_at);
+          if (profile.nick_name) role.nick_name = profile.nick_name;
+          role.set_name_times = Number(profile.set_name_times ?? 0);
+          state.rolePb = codec.pack('to_client_role_info', role).toString('base64');
+          writeModel(modelFromState(state, codec));
+          repaired.push(row.role_id);
+        }
+        db.prepare('INSERT OR IGNORE INTO migrations VALUES (?,?,?)').run(
+          'new-account-starter-state-v20',
+          `repaired-role-ids=${repaired.join(',') || 'none'}`,
+          new Date(clock()).toISOString()
+        );
+        db.exec('PRAGMA user_version=20; COMMIT');
+        version = 20;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
   } catch (error) { db.close(); throw error; }
 
   const roleContext = new AsyncLocalStorage();
@@ -837,14 +883,9 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
       }
       const nextRoleId = Number(db.prepare('SELECT coalesce(max(role_id),0)+1 AS id FROM roles').get().id);
       if (!Number.isSafeInteger(nextRoleId) || nextRoleId <= 0) throw new Error('Unable to allocate a role id');
-      const state = seed();
+      const state = seed({ freshAccount: true });
       state.roleId = nextRoleId;
       state.createdAt = Math.floor(clock() / 1000);
-      const role = codec.unpack('to_client_role_info', Buffer.from(state.rolePb, 'base64'));
-      role.level = 1;
-      role.create_time = state.createdAt;
-      role.level_reward_record = 0;
-      state.rolePb = codec.pack('to_client_role_info', role).toString('base64');
       writeModel(modelFromState(state, codec));
       const timestamp = new Date(clock()).toISOString();
       db.prepare(`INSERT INTO accounts
