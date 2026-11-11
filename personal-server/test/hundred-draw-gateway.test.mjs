@@ -10,6 +10,7 @@ import { createLocalGame } from '../local-game.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
+import { decodeModuleLoginBlocks } from '../game/relic-divine-login.mjs';
 
 const codec = createGameCodec();
 const NOW = Date.UTC(2026, 9, 29, 4, 0, 0);
@@ -82,7 +83,23 @@ test('HundredDrawActCmd 117001-117005 use the real handshake and SQLite state', 
   const activityLogin = codec.unpack('pb_act_login', Array.from(module92.value));
   const hundredEntry = activityLogin.act_list.find(entry => Number(entry.state_data?.act_id) === 1102001);
   assert.ok(hundredEntry);
-  assert.equal(codec.unpack('pb_hundred_draw_act_data', Buffer.from(hundredEntry.module_login_data, 'base64')).act_id, '1102001');
+  // 模块 92 的 module_login_data 必须是 ETF BINARY（0x83 0x6d）包装，客户端
+  // ActivityMgr 先 DecodeErl 再交给 HundredDrawActData:LoginParse。
+  const hundredBlocks = decodeModuleLoginBlocks(hundredEntry.module_login_data);
+  assert.equal(hundredBlocks.length, 1);
+  const hundredLoginData = codec.unpack('pb_hundred_draw_act_data', hundredBlocks[0]);
+  assert.equal(hundredLoginData.act_id, '1102001');
+  assert.equal(hundredLoginData.select_target_tid, '5040701');
+  assert.equal(Number(hundredLoginData.guarantee_times ?? 0), 0);
+
+  // ActFrame 行同样携带同一份登录块，避免模块 183 只有空 module_login_data。
+  const module183 = loginModules.get(183);
+  assert.ok(module183, `login module 183 missing; got ${[...loginModules.keys()].join(',')}`);
+  const actFramePlayer = codec.unpack('pb_act_role_login', Buffer.from(module183.value[0].value));
+  const hundredActFrameRow = actFramePlayer.data_list.find(row => Number(row.act_stage?.act_id) === 1102001);
+  assert.ok(hundredActFrameRow);
+  const actFrameBlocks = decodeModuleLoginBlocks(hundredActFrameRow.module_login_data);
+  assert.equal(codec.unpack('pb_hundred_draw_act_data', actFrameBlocks[0]).select_target_tid, '5040701');
 
   const draw = await request(117001, 2, codec.pack('pb_hundred_act_draw_req', { act_id: 1102001, times: 50 }));
   assert.equal(draw.err, undefined);

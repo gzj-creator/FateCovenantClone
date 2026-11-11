@@ -1,8 +1,10 @@
-import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { encodeEtfBinaryAndSmallIntegerTuple, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { setBit } from './bit-block.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 import { currentTaskProgress } from './task-service.mjs';
+import { readTaskActivityTables } from '../config/item-task-tables.mjs';
+import { activityVitalityStatistic, addActivityVitality } from './activity-vitality.mjs';
 
 export const EVERY_TASK_MODULE = 91;
 
@@ -92,6 +94,10 @@ function taskOrder(scope, task) {
 
 export function createEveryTaskService({ store, codec, tables, now = Date.now, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
+  // Daily task vitality (pb_daily_task.vitality, the client's 活跃值) is the
+  // dimension the generic task activity reads back through module 21 and
+  // 105702, so every claim also feeds that cumulative statistic.
+  const activityVitality = activityVitalityStatistic({ tables: readTaskActivityTables(), gameTables: tables });
   store.inspect(db => db.exec(`
     CREATE TABLE IF NOT EXISTS every_task_claims (
       role_id INTEGER NOT NULL REFERENCES roles(role_id),
@@ -253,6 +259,7 @@ export function createEveryTaskService({ store, codec, tables, now = Date.now, l
 
       const claimed = [], skipped = [];
       const awards = [];
+      let vitality = 0;
       for (const task of tasks) {
         const taskId = Number(task.tid);
         if (already.has(taskId)) { skipped.push({ taskId, reason: 'claimed' }); continue; }
@@ -273,10 +280,23 @@ export function createEveryTaskService({ store, codec, tables, now = Date.now, l
         );
         claimed.push({ taskId, progress, type: Number(task.type) });
         awards.push(...configuredAwards(task, `${scope} task`));
+        if (scope === 'daily') vitality += Math.max(0, Number(task.vitality) || 0);
       }
 
       const reward = grantResources(model, awards, tables, { codec });
       const state = rebuildLoginState(model, db, milliseconds);
+      const recorded = vitality > 0 ? addActivityVitality({
+        model, codec, gameTables: tables, statistic: activityVitality, amount: vitality, seconds: Math.floor(milliseconds / 1000)
+      }) : null;
+      if (recorded) {
+        log({ event: 'every_task_activity_vitality_recorded', roleId: recorded.roleId, amount: vitality, total: recorded.total });
+      }
+      const pushes = recorded ? [{
+        type: 2000,
+        data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', {
+          data_list: [{ data: recorded.data, expand_id_list: activityVitality.ids.map(Number), stat_tid: activityVitality.slot }]
+        }))
+      }] : [];
       let data;
       if (scope === 'daily') {
         data = codec.pack('daily_receive_back', {
@@ -297,7 +317,7 @@ export function createEveryTaskService({ store, codec, tables, now = Date.now, l
           res: { changes: reward.changes, is_overflow: false }
         });
       }
-      return { data, value: { scope, periodKey: period.key, claimed, skipped, changes: reward.changes.length } };
+      return { data, pushes, value: { scope, periodKey: period.key, claimed, skipped, changes: reward.changes.length, vitality } };
     });
   }
 

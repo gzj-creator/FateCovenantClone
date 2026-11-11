@@ -967,7 +967,8 @@ export function createLocalGame({
     // entry's module_login_data (ActFrame type 1102 or legacy ActivityTable
     // func 20). The version mapping also owns the paid-gift and exchange-shop
     // child rows needed to obtain the configured draw item.
-    const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
+    const hundredDrawLogin = hundredDraw.synchronizeLogin(activity, loginSeconds);
+    const hundredDrawLoginIds = hundredDrawLogin.actIds;
     const hundredDrawActFrameGroups = hundredDraw.loginActFrameGroups(activity, loginSeconds);
     if (hundredDrawLoginIds.length) logger({ event: 'hundred_draw_login_synced', actIds: hundredDrawLoginIds });
     // PrayActData consumes pb_pray_act from its ActFrame row in module 183.
@@ -1038,6 +1039,14 @@ export function createLocalGame({
       }
     }
     for (const activity of drawActivityLogin.loginActivities) {
+      if (!loginActivities.some(entry => Number(entry.actTid) === Number(activity.actTid))) {
+        loginActivities.push(activity);
+      }
+    }
+    // HundredDrawActData 的登录块同时挂在模块 92 与模块 183；模块 183 的
+    // module_login_data 必须带 ETF BINARY 包装的 pb_hundred_draw_act_data，
+    // 否则 ActFrame 行存在但客户端拿不到目标、保底和升星领取位。
+    for (const activity of hundredDrawLogin.loginActivities ?? []) {
       if (!loginActivities.some(entry => Number(entry.actTid) === Number(activity.actTid))) {
         loginActivities.push(activity);
       }
@@ -1828,6 +1837,9 @@ export function createLocalGame({
           input = await etfArgument(request.data, 'Invalid every-task payload', { optional: [9006, 9007, 9009].includes(type) });
           const result = everyTasks.execute(type, input);
           send(seq, result.data);
+          // The activity statistic belongs to the claiming role; broadcasting
+          // it would overwrite other players' local progress.
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data, connectionRoleId);
           everyTasks.logClaim(result);
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
