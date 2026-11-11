@@ -9,11 +9,12 @@ import { parseLuaJit } from './extract-battle-tables.mjs';
 // shape, so a table that only ships as Lua bytecode can be loaded without
 // hand-transcribing rows.
 export function buildPrototypeDump(buffer) {
-  const parsed = parseLuaJit(buffer);
+  const parsed = parseLuaJit(buffer, { allowMultipleRoots: true });
   return {
     flags: parsed.flags,
     chunk: parsed.chunk,
     rootPrototype: parsed.rootPrototype,
+    rootPrototypes: parsed.rootPrototypes,
     prototypes: parsed.prototypes
   };
 }
@@ -29,5 +30,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   const [input, output] = process.argv.slice(2);
   if (!input || !output) throw new Error('Usage: node dump-table-prototypes.mjs <input.lua.bin> <output.json>');
   const dump = dumpTableFile(input, output);
-  console.log(JSON.stringify({ output, rootPrototype: dump.rootPrototype, prototypes: dump.prototypes.length }));
+  console.log(JSON.stringify({
+    output,
+    rootPrototype: dump.rootPrototype,
+    rootPrototypes: dump.rootPrototypes,
+    prototypes: dump.prototypes.length
+  }));
 }
