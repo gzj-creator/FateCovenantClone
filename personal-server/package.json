@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node local-server.mjs",
     "start:public": "node local-server.mjs --public",
+    "audit:activity-schedule": "node scripts/audit-activity-schedule.mjs",
     "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "test:deployment": "node --test --test-concurrency=1 test/self-contained-deployment.test.mjs"
   },

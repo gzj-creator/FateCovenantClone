@@ -1,5 +1,5 @@
 import { rawBinary } from '../protocol/game-codec.mjs';
-import { activityWindow } from './activity-calendar.mjs';
+import { activityDurationDays, activityWindow } from './activity-calendar.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
 import { GameError } from './hero-progression.mjs';
 import { rechargeClaimKey, rechargeDayIndex, requireRechargeRequestTuple } from './recharge-rules.mjs';
@@ -99,7 +99,11 @@ export function createRechargeRebateResetService({ store, codec, tables, calenda
     removeRebateStates(activity);
     if (!actId) return null;
     const config = activityConfig(actId);
-    const window = activityWindow(config, calendar?.serverOpenedAt ?? store.serverOpenedAt);
+    const window = activityWindow(
+      config,
+      calendar?.serverOpenedAt ?? store.serverOpenedAt,
+      calendar?.activityReferenceOpenedAt ?? null
+    );
     const state = existing?.state_data ? structuredClone(existing.state_data) : {
       act_id: actId,
       cur_state_id: RUNNING_STATE,
@@ -117,7 +121,7 @@ export function createRechargeRebateResetService({ store, codec, tables, calenda
   }
 
   function currentOpenDay(context, at) {
-    const duration = Math.max(1, Number(context.config.duration_day ?? 1));
+    const duration = activityDurationDays(context.config);
     const start = Number(context.window?.start ?? 0);
     if (!start) return 1;
     return Math.min(duration, Math.max(1, rechargeDayIndex(at) - rechargeDayIndex(start) + 1));

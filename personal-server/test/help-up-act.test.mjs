@@ -21,6 +21,7 @@ const codec = createGameCodec();
 const tables = readGameTables();
 const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const SERVER_OPENED_AT = 1792789200;
+const ACTIVITY_REFERENCE_OPENED_AT = 1790784000;
 const DAY = 86400;
 const ACT_ID = 1096001;
 const MODULE_ENTRY_ID = 92144;
@@ -58,12 +59,19 @@ function publishCustomWindow(store) {
   });
 }
 
-function setup(t, initialSeconds = SERVER_OPENED_AT + 3600, { customWindow = true } = {}) {
+function setup(t, initialSeconds = SERVER_OPENED_AT + 3600, { customWindow = true, activityMode = 'all-open' } = {}) {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-helpup-', serverOpenedAt: SERVER_OPENED_AT });
   let nowSeconds = initialSeconds;
   let store = fixture.store;
   if (customWindow) publishCustomWindow(store);
-  const calendar = createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => nowSeconds * 1000 });
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    mode: activityMode,
+    currentFishingActivityId: 1074011,
+    now: () => nowSeconds * 1000
+  });
   const make = () => createActivityReadService({ codec, store, tables, calendar, now: () => nowSeconds * 1000, random: () => 0.5 });
   let service = make();
   return {
@@ -140,7 +148,7 @@ test('help-up resolves only the configured activity and requires the running win
   assert.throws(() => help(env.service, 1, MODULE_ENTRY_ID), error => error.code === 1);
   assert.equal(helpTimes(env.service), 0);
 
-  const closed = setup(t, SERVER_OPENED_AT + 3600, { customWindow: false });
+  const closed = setup(t, SERVER_OPENED_AT + DAY, { customWindow: false, activityMode: 'schedule' });
   assert.throws(() => helpTimes(closed.service), error => error.code === 309);
   assert.throws(() => help(closed.service, 1), error => error.code === 309);
 });

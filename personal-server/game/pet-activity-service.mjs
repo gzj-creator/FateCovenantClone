@@ -1,4 +1,5 @@
 import { binary, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
+import { activityWindow } from './activity-calendar.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 
@@ -97,14 +98,19 @@ export function createPetActivityService({
     return open.length ? { actId: open[0], config: configForActivity(open[0]) } : null;
   }
 
-  function activityDeadline(actId, activity = loginActivity()) {
+  function activityDeadline(actId, activity = loginActivity(), at = currentSeconds()) {
+    if (calendar?.mode === 'all-open') return at + ONE_YEAR_SECONDS;
+    const cfg = tables.Activity?.get(Number(actId));
+    const window = activityWindow(
+      cfg,
+      calendar?.serverOpenedAt ?? store.serverOpenedAt,
+      calendar?.activityReferenceOpenedAt ?? null
+    );
+    if (window) return window.end;
     const custom = (activity.act_custom_list ?? []).find(row => Number(row.act_id) === Number(actId));
     const customEnd = Number(custom?.end_time ?? 0);
-    if (customEnd > currentSeconds()) return customEnd;
-    if (calendar.mode === 'all-open') return currentSeconds() + ONE_YEAR_SECONDS;
-    const cfg = tables.Activity?.get(Number(actId));
-    const configuredEnd = Number(cfg?.world_time ?? 0) + Math.max(1, Number(cfg?.duration_day ?? 1)) * 86400;
-    return configuredEnd > currentSeconds() ? configuredEnd : currentSeconds() + 86400;
+    if (customEnd > at) return customEnd;
+    return at + 86400;
   }
 
   function exclusiveShopConfig(activity) {

@@ -70,9 +70,12 @@ if (publicDeployment) {
   if (environmentOpenedAt != null && environmentOpenedAt !== activeServer.launchAt) {
     throw new Error('FC_SERVER_OPENED_AT cannot override the active server launchAt in public mode');
   }
-  if (activityCalendar.mode === 'schedule' && activityCalendar.activityWindowAnchor == null) {
-    throw new Error('Schedule mode requires activityWindowAnchor for launch-profile rebasing');
-  }
+}
+if (activityCalendar.mode === 'schedule' && activityCalendar.activityWindowAnchor == null) {
+  throw new Error('Schedule mode requires activityWindowAnchor for captured absolute windows');
+}
+if (activityCalendar.mode === 'schedule' && activityCalendar.activityReferenceOpenedAt == null) {
+  throw new Error('Schedule mode requires activityReferenceOpenedAt for relative world-time activities');
 }
 const serverOpenedAt = publicDeployment ? activeServer.launchAt : (environmentOpenedAt ?? activityCalendar.serverOpenedAt);
 const directory = publicDeployment ? publicDataDirectory() : path.resolve(process.env.FC_LOCAL_DATA ?? defaultDataDirectory);
@@ -133,7 +136,8 @@ const game = createLocalGame({
   roleId: activeServer?.roleId ?? 100001,
   roleName: activeServer?.roleName ?? 'Local Adventurer',
   launchProfileId: activeServer?.launchProfileId ?? null,
-  activityWindowAnchor: publicDeployment ? activityCalendar.activityWindowAnchor : null,
+  activityWindowAnchor: activityCalendar.activityWindowAnchor,
+  activityReferenceOpenedAt: activityCalendar.activityReferenceOpenedAt,
   activityMode: activityCalendar.mode,
   currentFishingActivityId: activityCalendar.currentFishingActivityId,
   sprintPreview: true,
@@ -164,7 +168,8 @@ try {
   const launch = {
     activeServerId: activeServer?.id ?? 1,
     launchProfileId: activeServer?.launchProfileId ?? null,
-    activityWindowAnchor: publicDeployment ? activityCalendar.activityWindowAnchor : null,
+    activityWindowAnchor: activityCalendar.activityWindowAnchor,
+    activityReferenceOpenedAt: activityCalendar.activityReferenceOpenedAt,
     serverDay: serverDayNumber(serverOpenedAt, Math.floor(Date.now() / 1000))
   };
   fs.writeFileSync(path.join(directory, 'server.local-only.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), ...launch, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId, servers, listenHosts, ports, boundPorts }, null, 2));

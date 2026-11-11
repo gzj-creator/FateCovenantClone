@@ -20,7 +20,7 @@ const tables = readGameTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const OPENED_AT = Date.parse('2026-10-30T21:00:00Z') / 1000;
 
-function setup(t, mode = 'all-open') {
+function setup(t, mode = 'all-open', configuredTables = tables) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-recharge-rebate-'));
   const databasePath = path.join(directory, 'game.sqlite');
   let now = Date.parse('2026-10-31T00:00:00Z');
@@ -34,11 +34,11 @@ function setup(t, mode = 'all-open') {
   let service;
   const make = () => {
     const calendar = createActivityCalendar({
-      tables, serverOpenedAt: OPENED_AT, mode,
+      tables: configuredTables, serverOpenedAt: OPENED_AT, mode,
       currentFishingActivityId: 1074011,
       now: () => now
     });
-    service = createRechargeRebateResetService({ store, codec, tables, calendar, now: () => now });
+    service = createRechargeRebateResetService({ store, codec, tables: configuredTables, calendar, now: () => now });
   };
   make();
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -78,6 +78,22 @@ test('scheduled rebate reset follows the seven-day server window and rejects cla
   assert.equal(response.act_info.act_id, '118003');
   e.setNow(Date.parse('2026-11-08T00:00:00Z'));
   assert.throws(() => e.service.execute(100201, [118003, 1]), error => error.code === 309);
+});
+
+test('explicit zero-day rebate duration is not promoted to one day', t => {
+  const configuredTables = {
+    ...tables,
+    Activity: new Map(tables.Activity)
+  };
+  configuredTables.Activity.set(118003, {
+    ...tables.Activity.get(118003),
+    duration_day: 0
+  });
+  const e = setup(t, 'all-open', configuredTables);
+  assert.throws(
+    () => e.service.execute(100201, [118003, 0]),
+    error => error.code === 311
+  );
 });
 
 test('rebate claim insertion failure rolls back reward and activity state', t => {

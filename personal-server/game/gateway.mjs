@@ -220,6 +220,7 @@ export function createLocalGame({
   roleName = 'Local Adventurer',
   launchProfileId = null,
   activityWindowAnchor = null,
+  activityReferenceOpenedAt = null,
   activityMode = 'schedule',
   currentFishingActivityId,
   currentArtifactActivityId,
@@ -243,13 +244,16 @@ export function createLocalGame({
   const anchor = activityWindowAnchor == null
     ? null
     : parseActivityCalendarTimestamp(activityWindowAnchor, 'activityWindowAnchor');
+  const referenceOpenedAt = activityReferenceOpenedAt == null
+    ? null
+    : parseActivityCalendarTimestamp(activityReferenceOpenedAt, 'activityReferenceOpenedAt');
   if (!Number.isSafeInteger(serverId) || serverId <= 0) throw new Error('serverId must be a positive integer');
   if (!Number.isSafeInteger(roleId) || roleId <= 0) throw new Error('roleId must be a positive integer');
   if (resolveSession !== undefined && typeof resolveSession !== 'function') throw new TypeError('resolveSession must be a function');
   if (typeof serverName !== 'string' || !serverName.trim()) throw new Error('serverName must be nonempty');
   if (typeof roleName !== 'string' || !roleName.trim()) throw new Error('roleName must be nonempty');
-  if ((launchProfileId == null) !== (activityWindowAnchor == null)) {
-    throw new Error('launchProfileId and activityWindowAnchor must be supplied together');
+  if (launchProfileId != null && activityWindowAnchor == null) {
+    throw new Error('launchProfileId requires activityWindowAnchor');
   }
   if (launchProfileId != null && (typeof launchProfileId !== 'string' || !launchProfileId.trim() || openedAt == null)) {
     throw new Error('A named launch profile requires a launchProfileId and serverOpenedAt');
@@ -301,6 +305,9 @@ export function createLocalGame({
   const calendar = createActivityCalendar({
     tables,
     serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt,
+    activityReferenceOpenedAt: referenceOpenedAt,
+    activityWindowAnchor: anchor,
+    activityWindowsAlreadyRebased: persistedLaunchProfile != null,
     mode: activityMode,
     currentFishingActivityId,
     now: clock
@@ -393,7 +400,11 @@ export function createLocalGame({
   function relicActivityWindow(actTid) {
     const id = Number(actTid), config = tables.Activity?.get(id);
     if (!config) throw new GameError(5, `Activity ${id} is missing for module 183`);
-    const window = activityWindow(config, calendar.serverOpenedAt);
+    const window = activityWindow(
+      config,
+      calendar.serverOpenedAt,
+      calendar.activityReferenceOpenedAt
+    );
     if (!window) throw new GameError(5, `Activity ${id} has no reproducible login window`);
     return window;
   }
@@ -578,10 +589,12 @@ export function createLocalGame({
     store, codec, tables: readRankAchieveTables(), resourceTables: tables, now: clock, logger
   });
   const firstWeekGoal = createFirstWeekGoalService({
-    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt,
+    activityReferenceOpenedAt: calendar.activityReferenceOpenedAt, now: clock, logger
   });
   const growthRoad = createGrowthRoadService({
-    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt,
+    activityReferenceOpenedAt: calendar.activityReferenceOpenedAt, now: clock, logger
   });
   // ITEM-FUNCTIONMANUAL (FunctionManualCmd 82301) and ITEM-TASKACTIVITY
   // (TaskActivityCmd 105701). The handbook reads the client's FunctionManualTable
@@ -592,7 +605,9 @@ export function createLocalGame({
   });
   const taskActivity = createTaskActivityService({
     store, codec, tables: readTaskActivityTables(), gameTables: tables,
-    serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+    serverOpenedAt: calendar.serverOpenedAt,
+    activityReferenceOpenedAt: calendar.activityReferenceOpenedAt,
+    now: clock, logger
   });
   // FriendCmd 20001-20013. The login module slot for res_friend_login is not
   // recovered, so it stays out of the login container until the owner wires it.
@@ -730,7 +745,7 @@ export function createLocalGame({
   const bonusDraw=createBonusDrawService({store,codec,tables,now:clock,random,logger});
   // F-block draw activities with recovered table evidence (DRAW-TURNTABLEACT,
   // DRAW-CAPSULETOY draw, DRAW-THREEADMONITION extra draws).
-  const drawActivity=createDrawActivityService({store,codec,tables,now:clock,random,logger});
+  const drawActivity=createDrawActivityService({store,codec,tables,calendar,now:clock,random,logger});
   // Fishing reads whose request body is an ETF integer argument (activity id).
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
@@ -959,6 +974,10 @@ export function createLocalGame({
     const drawActivityLogin = drawActivity.synchronizeLogin(
       activity, storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null, loginSeconds
     );
+    // Activity services above can add rows that were absent from the captured
+    // login snapshot. Run the calendar once more so those rows carry the same
+    // rebased windows and state history as snapshot-backed activities.
+    calendar.applyLoginSchedule(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -1016,18 +1035,17 @@ export function createLocalGame({
     let actFrameNormalization = null;
     let premiumLogin = null;
     const premiumLoginPreview = premiumAct.openActivityIds(loginSeconds);
-    if (loginActivities.length || calendar.mode === 'all-open' || premiumLoginPreview.length || hundredDrawActFrameGroups.length) {
+    if (loginActivities.length || storedModules.has(RELIC_ACTIVITY_LOGIN_MODULE_ID) || premiumLoginPreview.length) {
       const merged = mergeRelicLoginContainer({
         codec,
         entry: storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null,
         activities: loginActivities,
         normalize: ({ player, server }) => {
-          const normalization = calendar.mode === 'all-open' || hundredDrawActFrameGroups.length
-            ? calendar.normalizeActFrameLogin(player, server, loginSeconds, {
-              activityIds: calendar.mode === 'all-open' ? [...afterActivityIds] : [],
-              activityGroups: hundredDrawActFrameGroups
-            })
-            : { mode: calendar.mode, adjusted: 0, activityIds: [] };
+          const normalization = calendar.normalizeActFrameLogin(player, server, loginSeconds, {
+            activityIds: [...afterActivityIds],
+            activityGroups: hundredDrawActFrameGroups,
+            activity
+          });
           premiumLogin = premiumAct.synchronizeLogin({ player, server }, loginSeconds);
           normalization.premiumActivityIds = premiumLogin.activityIds;
           return normalization;
@@ -1040,6 +1058,7 @@ export function createLocalGame({
       event: 'activity_login_calendar_applied',
       activityMode: calendar.mode,
       serverOpenedAt: calendar.serverOpenedAt,
+      activityReferenceOpenedAt: calendar.activityReferenceOpenedAt,
       serverDay: serverDayNumber(calendar.serverOpenedAt, loginSeconds),
       activeFishingActivityIds: schedule.fishingActivityIds,
       fishingBenefitActivityId: fishingBenefits.actId,

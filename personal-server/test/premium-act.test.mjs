@@ -8,6 +8,8 @@ import { once } from 'node:events';
 import { binary, createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 import { createLocalGame } from '../local-game.mjs';
+import { createGameStore } from '../storage/game-store.mjs';
+import { createPremiumActService } from '../game/premium-act-service.mjs';
 import { grantResources, rewardHandlerFor } from '../game/resources.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -193,6 +195,31 @@ test('every PremiumAct gift has complete rewards with a concrete grant handler',
   assert.equal(premiumTables.Config.size, 852);
   assert.equal(gifts.size, 558);
   assert.deepEqual(issues, []);
+});
+
+test('scheduled premium mall prefers the relative table window over stored stage times', t => {
+  const expected = activityWindow(tables.ActFrameAct.get(ACT_ID), SERVER_OPENED_AT);
+  const at = expected.start + 60;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-premium-window-'));
+  const store = createGameStore({
+    databasePath: path.join(directory, 'game.sqlite'),
+    seed,
+    codec,
+    serverOpenedAt: SERVER_OPENED_AT
+  });
+  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => at * 1000
+  });
+  const service = createPremiumActService({ store, codec, tables, premiumTables, calendar, now: () => at * 1000 });
+  const player = { data_list: [] };
+  const server = { act_stage_list: [{ act_id: ACT_ID, type: 184, start_time: '1', end_time: '2' }] };
+
+  assert.deepEqual(service.synchronizeLogin({ player, server }, at).activityIds, [ACT_ID]);
+  const block = decodeModuleLoginBlocks(player.data_list[0].module_login_data)[0];
+  assert.equal(Number(decodePremiumInfo(block).recharge_info.refresh_time), expected.end);
 });
 
 test('all-open white-ling gift mall exposes login data, free/resource gifts, cash gift and limits', async t => {

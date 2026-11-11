@@ -24,8 +24,14 @@ export function parseActivityCalendarConfig(value) {
   const activityWindowAnchor = value.activityWindowAnchor == null
     ? null
     : parseActivityCalendarTimestamp(value.activityWindowAnchor, 'activityWindowAnchor');
+  const activityReferenceOpenedAt = value.activityReferenceOpenedAt == null
+    ? null
+    : parseActivityCalendarTimestamp(value.activityReferenceOpenedAt, 'activityReferenceOpenedAt');
   if (activityWindowAnchor != null && activityWindowAnchor > serverOpenedAt) {
     throw new Error('activityWindowAnchor must not be later than serverOpenedAt');
+  }
+  if (activityReferenceOpenedAt != null && activityReferenceOpenedAt > serverOpenedAt) {
+    throw new Error('activityReferenceOpenedAt must not be later than serverOpenedAt');
   }
   let currentFishingActivityId = null;
   if (value.currentFishingActivityId != null) {
@@ -34,7 +40,7 @@ export function parseActivityCalendarConfig(value) {
       throw new Error('currentFishingActivityId must be a positive integer');
     }
   }
-  return { mode, serverOpenedAt, activityWindowAnchor, currentFishingActivityId };
+  return { mode, serverOpenedAt, activityReferenceOpenedAt, activityWindowAnchor, currentFishingActivityId };
 }
 
 export function loadActivityCalendarConfig(configPath = DEFAULT_ACTIVITY_CALENDAR_CONFIG_PATH) {

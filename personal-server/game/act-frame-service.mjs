@@ -169,10 +169,14 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
       const actStageList = ids.map(actId => {
         const stored = stageRow(db, roleId, actId);
         const config = tables?.ActFrameAct?.get?.(actId) ?? tables?.Activity?.get?.(actId) ?? null;
-        const window = activityWindow(config, calendar.serverOpenedAt);
+        const window = activityWindow(
+          config,
+          calendar.serverOpenedAt,
+          calendar.activityReferenceOpenedAt
+        );
         const customRow = custom.get(actId);
-        const start = Number(customRow?.start_time ?? window?.start ?? 0);
-        const end = Number(customRow?.end_time ?? window?.end ?? 0);
+        const start = Number(window?.start ?? customRow?.start_time ?? 0);
+        const end = Number(window?.end ?? customRow?.end_time ?? 0);
         const current = stored ? Number(stored.stage_id) : STATES.RUNNING;
         return {
           act_id: actId,
@@ -181,7 +185,7 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
           end_time: String(end),
           cur_stage_id: current,
           is_pause: pause.has(actId),
-          ignore_fix_time: Boolean(customRow),
+          ignore_fix_time: Boolean(customRow && !window),
           loop_count: Number(stored?.loop_count ?? 0),
           stage_time_list: [{ stage_id: current, start_time: String(start), end_time: String(end) }]
         };

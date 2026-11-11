@@ -24,8 +24,8 @@ function rechargeDayIndex(timestampSeconds) {
   return Math.floor((timestampSeconds + 10800) / 86400);
 }
 
-function rechargeRangeTotal(modules, codec, activity, serverOpenedAt, activityMode) {
-  const window = activityWindow(activity, serverOpenedAt);
+function rechargeRangeTotal(modules, codec, activity, serverOpenedAt, activityReferenceOpenedAt, activityMode) {
+  const window = activityWindow(activity, serverOpenedAt, activityReferenceOpenedAt);
   if (!window || !Number.isSafeInteger(window.start) || !Number.isSafeInteger(window.end) || window.end < window.start) {
     throw new GameError(5, 'Cumulative-recharge activity window is invalid');
   }
@@ -108,6 +108,7 @@ function existingLoginRows(modules, codec, tables) {
 export function createAccRechargeService({ store, codec, tables, calendar, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
   const serverOpenedAt = Number(calendar?.serverOpenedAt ?? store.serverOpenedAt);
+  const activityReferenceOpenedAt = calendar?.activityReferenceOpenedAt ?? null;
   const activityMode = calendar?.mode ?? 'schedule';
 
   // The first implementation treated award_state as one byte per tier. The
@@ -213,7 +214,7 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
       if (!runningState) {
         const enterTime = activityMode === 'all-open'
           ? serverOpenedAt
-          : Number(activityWindow(act, serverOpenedAt)?.start ?? at);
+          : Number(activityWindow(act, serverOpenedAt, activityReferenceOpenedAt)?.start ?? at);
         runningState = { state_id: RUNNING_STATE_ID, enter_time: enterTime };
         entry.state_data.history_time.push(runningState);
       } else if (activityMode === 'all-open') {
@@ -225,7 +226,7 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
         runningState.enter_time = serverOpenedAt;
       }
       const awardState = String(row.award_state ?? '');
-      const window = activityWindow(act, serverOpenedAt);
+      const window = activityWindow(act, serverOpenedAt, activityReferenceOpenedAt);
       const scheduledStart = Number(window?.start);
       const scheduledEnd = Number(window?.end);
       const startTime = Number.isSafeInteger(scheduledStart) && scheduledStart >= 0
@@ -345,7 +346,9 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
 
       // The client compares this activity's inclusive day range from the recharge
       // records, and both record amounts and award.acc_cnt are stored in cents.
-      const { totalCents, startDay, endDay } = rechargeRangeTotal(freshModules, codec, act, serverOpenedAt, activityMode);
+      const { totalCents, startDay, endDay } = rechargeRangeTotal(
+        freshModules, codec, act, serverOpenedAt, activityReferenceOpenedAt, activityMode
+      );
       const requiredCents = Number(award.acc_cnt);
       if (!Number.isSafeInteger(requiredCents) || requiredCents <= 0) {
         throw new GameError(5, 'Cumulative-recharge threshold is invalid');

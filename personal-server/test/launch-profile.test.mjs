@@ -6,7 +6,7 @@ import test from 'node:test';
 import { rawBinary, createGameCodec } from '../protocol/game-codec.mjs';
 import { ACTIVITY_LOGIN_MODULE_ID, relocateLaunchActivityWindows } from '../game/launch-profile.mjs';
 import { createActivityCalendar, serverDayNumber } from '../game/activity-calendar.mjs';
-import { createLocalGame } from '../local-game.mjs';
+import { createLocalGame, decodeEtf } from '../local-game.mjs';
 import { mergeRelicLoginContainer, RELIC_ACTIVITY_LOGIN_MODULE_ID } from '../game/relic-divine-login.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
@@ -14,6 +14,8 @@ import { createSeed } from './helpers/game-fixture.mjs';
 
 const ANCHOR = 1792789200;
 const OPENED_AT = 1794258000;
+const ACTIVITY_REFERENCE_OPENED_AT = 1790784000;
+const PUBLIC_SERVER_OPENED_AT = 1794326400;
 const OFFSET = OPENED_AT - ANCHOR;
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url), 'utf8'));
 const template = capture.privateFlows.find(flow => flow.messageId === 'game:tcp-69:s2c:103').decoded;
@@ -99,7 +101,7 @@ test('launch relocation rejects an anchor later than the opening time', () => {
   }), /must not be later/);
 });
 
-test('the rebased login template follows server days 1, 2, 7 and 8', () => {
+test('the rebased login template follows static relative days instead of captured all-open custom windows', () => {
   const modules = relocateLaunchActivityWindows({
     modules: new Map(template[2].value),
     codec,
@@ -122,12 +124,11 @@ test('the rebased login template follows server days 1, 2, 7 and 8', () => {
   assert.equal(serverDayNumber(OPENED_AT, OPENED_AT + 86400), 2);
   assert.equal(serverDayNumber(OPENED_AT, OPENED_AT + 6 * 86400), 7);
   assert.equal(serverDayNumber(OPENED_AT, OPENED_AT + 7 * 86400), 8);
-  assert.equal(idsAt(0).has(20001), true);
-  assert.equal(idsAt(0).has(53037), false);
-  assert.equal(idsAt(1).has(53037), true);
-  assert.equal(idsAt(6).has(53037), true);
-  assert.equal(idsAt(7).has(53037), true);
-  assert.equal(idsAt(8).has(53037), false);
+  assert.equal(idsAt(0).has(89001), true);
+  assert.equal(idsAt(6).has(89001), true);
+  assert.equal(idsAt(7).has(89001), false);
+  assert.equal(idsAt(9, OPENED_AT + 9 * 86400 - 1).has(12015), false);
+  assert.equal(idsAt(9).has(12015), true);
 });
 
 test('a persistent database refuses a different launch profile before migrations can reinterpret it', t => {
@@ -201,4 +202,52 @@ test('gateway seeding binds the configured realm, role and launch profile', asyn
   assert.equal(state.serverName, 'Realm 2');
   assert.equal(state.roleName, 'Adventurer');
   assert.equal(decodeActivity(new Map(state.modules.value).get(ACTIVITY_LOGIN_MODULE_ID)).act_custom_list.length, 96);
+});
+
+test('gateway login exposes white-ribbon at server day 16 with the same five-day window in modules 92 and 183', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-white-ribbon-day16-'));
+  const at = PUBLIC_SERVER_OPENED_AT + 15 * 86400 + 6 * 3600;
+  const game = createLocalGame({
+    databasePath: path.join(directory, 'game.sqlite'),
+    statePath: path.join(directory, 'absent.json'),
+    capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
+    verifySession: () => true,
+    serverOpenedAt: PUBLIC_SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    activityWindowAnchor: ANCHOR,
+    launchProfileId: 'white-ribbon-day16',
+    activityMode: 'schedule',
+    now: () => at * 1000
+  });
+  t.after(async () => { await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  const login = await decodeEtf(await game.loginPayload());
+  const modules = new Map(login[2].value.map(entry => [Number(entry[0]), entry[1]]));
+  const activity = codec.unpack('pb_act_login', Buffer.from(modules.get(ACTIVITY_LOGIN_MODULE_ID).value));
+  const activityIds = new Set([
+    ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+    ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
+  ]);
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, at), 16);
+  assert.equal(activityIds.has(1102010), true);
+  assert.deepEqual(
+    activity.act_custom_list.filter(row => Number(row.act_id) === 1102010)
+      .map(row => [Number(row.start_time), Number(row.end_time)]),
+    [[1795640400, 1796072400]]
+  );
+
+  const module183 = modules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID);
+  const player = codec.unpack('pb_act_role_login', Buffer.from(module183.value[0].value));
+  const server = codec.unpack('pb_act_server_data', Buffer.from(module183.value[1].value));
+  for (const actId of [1102010, 182819, 1841010]) {
+    for (const row of [
+      player.data_list.find(entry => Number(entry.act_stage?.act_id) === actId)?.act_stage,
+      server.act_stage_list.find(entry => Number(entry.act_id) === actId)
+    ]) {
+      assert.ok(row, `module 183 row ${actId} is present`);
+      assert.equal(Number(row.start_time), 1795640400);
+      assert.equal(Number(row.end_time), 1796072400);
+      assert.equal(Number(row.end_time) - Number(row.start_time), 5 * 86400);
+    }
+  }
 });

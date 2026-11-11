@@ -35,6 +35,7 @@ export function createPremiumActService({
     throw new Error('RechargeTable has no PremiumActMgr handle for type 128');
   }
   const currentSeconds = () => Math.floor(Number(now()) / 1000);
+  const activityReferenceOpenedAt = calendar?.activityReferenceOpenedAt ?? null;
   const log = event => { try { logger(event); } catch {} };
   let loginActivityIds = [];
   let loginDeadlines = new Map();
@@ -61,11 +62,23 @@ export function createPremiumActService({
   function activityOpen(actId, at = currentSeconds(), serverRow = null) {
     const config = activityConfig(actId);
     if (!isPremiumActConfig(config) || !giftRowsFor(actId).length) return false;
-    const windowRow = serverRow ?? loginWindows.get(Number(actId));
-    const start = int(windowRow?.start_time);
-    const end = int(windowRow?.end_time);
     if (calendar?.mode === 'all-open') return true;
+    const window = activityWindow(config, calendar?.serverOpenedAt, activityReferenceOpenedAt);
+    if (window && at >= window.start && at < window.end) {
+      return calendar?.isActivityRunning
+        ? calendar.isActivityRunning(Number(actId), null, null, at)
+        : true;
+    }
+    const start = int(serverRow?.start_time);
+    const end = int(serverRow?.end_time);
     if (start > 0 && end > start) return at >= start && at < end;
+    const cached = loginWindows.get(Number(actId));
+    if (cached && at >= cached.start && at < cached.end) return true;
+    if (window) {
+      return calendar?.isActivityRunning
+        ? calendar.isActivityRunning(Number(actId), null, null, at)
+        : false;
+    }
     return calendar?.isActivityRunning?.(Number(actId), null, null, at) ?? true;
   }
 
@@ -91,24 +104,27 @@ export function createPremiumActService({
   function openActivityIds(at = currentSeconds()) {
     const ids = new Set(loginActivityIds.map(Number));
     const stored = readStoredActFrame();
+    const rows = new Map();
     for (const row of stored?.server?.act_stage_list ?? []) {
       const actId = int(row.act_id);
+      rows.set(actId, row);
       if (activityOpen(actId, at, row)) ids.add(actId);
     }
-    return [...ids].filter(actId => activityOpen(actId, at));
+    return [...ids].filter(actId => activityOpen(actId, at, rows.get(actId) ?? null));
   }
 
-  function activityDeadline(actId) {
-    const current = currentSeconds();
-    const cached = int(loginDeadlines.get(Number(actId)));
-    if (cached > current) return cached;
-    const stored = readStoredActFrame();
-    const row = stored?.server?.act_stage_list?.find(value => int(value.act_id) === Number(actId));
+  function activityDeadline(actId, at = currentSeconds(), serverRow = null) {
+    if (calendar?.mode === 'all-open') return at + ONE_YEAR_SECONDS;
+    const window = activityWindow(activityConfig(actId), calendar?.serverOpenedAt, activityReferenceOpenedAt);
+    if (window && at >= window.start && at < window.end) return window.end;
+    const stored = serverRow ? null : readStoredActFrame();
+    const row = serverRow ?? stored?.server?.act_stage_list?.find(value => int(value.act_id) === Number(actId));
     const storedEnd = int(row?.end_time);
-    if (storedEnd > current) return storedEnd;
-    if (calendar?.mode === 'all-open') return current + ONE_YEAR_SECONDS;
-    const window = activityWindow(activityConfig(actId), calendar?.serverOpenedAt);
-    return window?.end > current ? window.end : current + 86400;
+    if (storedEnd > at) return storedEnd;
+    if (window) return window.end;
+    const cached = int(loginDeadlines.get(Number(actId)));
+    if (cached > at) return cached;
+    return at + 86400;
   }
 
   function giftBuyCounts(activityId, db = null) {
@@ -267,11 +283,11 @@ export function createPremiumActService({
         };
         player.data_list.push(playerRow);
       }
-      const deadline = int(serverRow.end_time) > at ? int(serverRow.end_time) : activityDeadline(actId);
+      const deadline = activityDeadline(actId, at, serverRow);
       updatePlayerRow(playerRow, actId, deadline);
       ids.push(actId);
       deadlines.set(actId, deadline);
-      windows.set(actId, { start_time: serverRow.start_time, end_time: serverRow.end_time });
+      windows.set(actId, { start: int(serverRow.start_time), end: deadline });
     }
     loginActivityIds = ids;
     loginDeadlines = deadlines;

@@ -9,7 +9,7 @@ import { binary, createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBin
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
-import { createActivityCalendar } from '../game/activity-calendar.mjs';
+import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 import { createHeroDrawActivityService } from '../game/hero-draw-activity-service.mjs';
 import { createRecruitService } from '../game/recruit-service.mjs';
 import { createWalletService } from '../game/wallet-service.mjs';
@@ -42,18 +42,18 @@ function seed() {
   };
 }
 
-function makeServices(store, clock) {
+function makeServices(store, clock, mode = 'all-open', configuredTables = tables) {
   const calendar = createActivityCalendar({
-    tables,
+    tables: configuredTables,
     serverOpenedAt: SERVER_OPENED_AT,
-    mode: 'all-open',
+    mode,
     currentFishingActivityId: 1074011,
     now: () => clock.seconds * 1000
   });
   const heroDraw = createHeroDrawActivityService({
     store,
     codec,
-    tables,
+    tables: configuredTables,
     heroTables,
     calendar,
     now: () => clock.seconds
@@ -61,7 +61,7 @@ function makeServices(store, clock) {
   const wallet = createWalletService({
     store,
     codec,
-    tables,
+    tables: configuredTables,
     heroDrawActivity: heroDraw,
     now: () => clock.seconds
   });
@@ -77,12 +77,12 @@ function makeServices(store, clock) {
   return { calendar, heroDraw, wallet, recruit };
 }
 
-function directFixture(t) {
+function directFixture(t, mode = 'all-open', configuredTables = tables) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-hundred-schools-'));
   const databasePath = path.join(directory, 'game.sqlite');
   const clock = { seconds: FIXED_NOW };
   let store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
-  let services = makeServices(store, clock);
+  let services = makeServices(store, clock, mode, configuredTables);
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   return {
     databasePath,
@@ -94,7 +94,7 @@ function directFixture(t) {
     reopen() {
       store.close();
       store = createGameStore({ databasePath, seed, codec, serverOpenedAt: SERVER_OPENED_AT });
-      services = makeServices(store, clock);
+      services = makeServices(store, clock, mode, configuredTables);
     }
   };
 }
@@ -289,6 +289,23 @@ test('genre selection persists and the star task uses the selected lineup id', t
   env.reopen();
   assert.equal(storedDraw(env.store).role_data.draw_exchange_id, 4);
   assert.throws(() => env.heroDraw.claimTask(7), error => error.code === 310);
+});
+
+test('scheduled Hundred Schools deadline uses the table-relative end time', t => {
+  const configuredTables = {
+    ...tables,
+    Activity: new Map(tables.Activity)
+  };
+  configuredTables.Activity.set(ACTIVITY_ID, {
+    ...tables.Activity.get(ACTIVITY_ID),
+    server_max_open_limited: 0
+  });
+  const env = directFixture(t, 'schedule', configuredTables);
+  const expected = activityWindow(configuredTables.Activity.get(ACTIVITY_ID), SERVER_OPENED_AT);
+  env.clock.seconds = expected.start + 60;
+  const data = env.heroDraw.rechargeExtra(ACTIVITY_ID).data;
+  const role = codec.unpack('pb_hero_draw_act_role', data);
+  assert.equal(Number(role.recharge_limit_info.refresh_time), expected.end);
 });
 
 test('100-draw task uses normal, quality and magic client statistics', t => {

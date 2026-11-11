@@ -73,6 +73,7 @@ export function createDragonLandActService({
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(typeof now === 'function' ? now() : now);
   const serverOpenedAt = Number(calendar?.serverOpenedAt ?? store.serverOpenedAt);
+  const activityReferenceOpenedAt = calendar?.activityReferenceOpenedAt ?? null;
   const nowIso = () => new Date(currentSeconds() * 1000).toISOString();
 
   // Every dragon land activity version owns its own DragonLandActTable row, so a
@@ -93,7 +94,7 @@ export function createDragonLandActService({
   }
 
   function withWindow(act) {
-    return { ...act, window: activityWindow(act.config, serverOpenedAt) };
+    return { ...act, window: activityWindow(act.config, serverOpenedAt, activityReferenceOpenedAt) };
   }
 
   function started(act, at) {

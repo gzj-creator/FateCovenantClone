@@ -8,7 +8,7 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
-import { createActivityCalendar } from '../game/activity-calendar.mjs';
+import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 import { createRoleService, properList } from '../game/role-service.mjs';
 import { createStoryService } from '../game/story-service.mjs';
 import { createSkinService } from '../game/skin-service.mjs';
@@ -494,6 +494,30 @@ test('activity reconciliation accepts only requested known ids and rejects impro
   await assert.rejects(() => actFrame.execute(53006, { etf: [1.5] }), error => error.code === 1);
   await assert.rejects(() => actFrame.execute(53006, { etf: [999999999] }), error => error.code === 1);
   await assert.rejects(() => actFrame.execute(53006, { etf: { value: [firstId], improper: true } }), error => error.code === 1);
+});
+
+test('ActFrame list responses prefer the table-relative window over a stale custom row', async t => {
+  const env = setup(t);
+  const actId = activityIds(env).find(id => (
+    env.tables.ActFrameAct?.get(id) ?? env.tables.Activity?.get(id)
+  ));
+  assert.ok(actId);
+  const config = env.tables.ActFrameAct?.get(actId) ?? env.tables.Activity?.get(actId);
+  const expected = activityWindow(config, env.calendar.serverOpenedAt, env.calendar.activityReferenceOpenedAt);
+  assert.ok(expected);
+  setModules(env, current => {
+    const activity = codec.unpack('pb_act_login', rawBinary(current.get(92)));
+    activity.act_custom_list = [
+      ...(activity.act_custom_list ?? []).filter(row => Number(row.act_id) !== actId),
+      { act_id: actId, start_time: 1, end_time: 2 }
+    ];
+    current.set(92, serializedBinary(codec.pack('pb_act_login', activity)));
+  });
+
+  const result = await env.actFrame().execute(53006, { etf: [actId] });
+  const row = codec.unpack('pb_act_frame_stage_push', result.data).act_stage_list[0];
+  assert.deepEqual([Number(row.start_time), Number(row.end_time)], [expected.start, expected.end]);
+  assert.equal(Boolean(row.ignore_fix_time), false);
 });
 
 test('activity state-change hints for configured but undelivered activities return an empty acknowledgement', async t => {

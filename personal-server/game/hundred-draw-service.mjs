@@ -501,7 +501,7 @@ export function createHundredDrawService({
       const window = Number.isSafeInteger(customStart) && customStart > 0
         && Number.isSafeInteger(customEnd) && customEnd > customStart
         ? { start: customStart, end: customEnd }
-        : activityWindow(act, calendar?.serverOpenedAt);
+        : activityWindow(act, calendar?.serverOpenedAt, calendar?.activityReferenceOpenedAt);
       result.push({ actId: Number(actId), act, version, window });
     }
     return result.sort((left, right) => left.actId - right.actId);

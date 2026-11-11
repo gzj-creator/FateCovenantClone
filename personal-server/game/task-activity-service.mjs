@@ -69,6 +69,7 @@ export function createTaskActivityService({
   tables = readTaskActivityTables(),
   gameTables = readGameTables(),
   serverOpenedAt,
+  activityReferenceOpenedAt = null,
   now = Date.now,
   logger = () => {}
 }) {
@@ -87,14 +88,14 @@ export function createTaskActivityService({
   }
 
   function windowOf(act) {
-    const window = activityWindow(act, openedAt);
+    const window = activityWindow(act, openedAt, activityReferenceOpenedAt);
     if (!window) fail(CODE_UNAVAILABLE, `Task activity ${act.tid} window is not configured`);
     return window;
   }
 
   function runningActivities(at) {
     return configured()
-      .map(act => ({ act, window: activityWindow(act, openedAt) }))
+      .map(act => ({ act, window: activityWindow(act, openedAt, activityReferenceOpenedAt) }))
       .filter(entry => entry.window && at >= entry.window.start && at < entry.window.end)
       .map(entry => entry.act);
   }
@@ -205,7 +206,7 @@ export function createTaskActivityService({
     entry.state_data.act_id = Number(act.tid);
     entry.state_data.cur_state_id = RUNNING_STATE_ID;
     entry.state_data.history_time = Array.isArray(entry.state_data.history_time) ? entry.state_data.history_time : [];
-    const window = activityWindow(act, openedAt);
+    const window = activityWindow(act, openedAt, activityReferenceOpenedAt);
     const running = entry.state_data.history_time.find(item => Number(item?.state_id) === RUNNING_STATE_ID);
     if (running) running.enter_time = window?.start ?? 0;
     else entry.state_data.history_time.push({ state_id: RUNNING_STATE_ID, enter_time: window?.start ?? 0 });

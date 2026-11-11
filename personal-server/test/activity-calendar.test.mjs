@@ -1,14 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readGameTables } from '../config/game-tables.mjs';
-import { activityWindow, createActivityCalendar, dayZero, serverDayNumber } from '../game/activity-calendar.mjs';
+import { activityDurationDays, activityWindow, createActivityCalendar, dayZero, serverDayNumber } from '../game/activity-calendar.mjs';
 
 const SERVER_OPENED_AT = 1792789200;
+const ACTIVITY_REFERENCE_OPENED_AT = 1790784000;
+const PUBLIC_SERVER_OPENED_AT = 1794326400;
 const DAY = 86400;
 const tables = readGameTables();
 
 function calendarAt(seconds) {
-  return createActivityCalendar({ tables, serverOpenedAt: SERVER_OPENED_AT, now: () => seconds * 1000 });
+  return createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    now: () => seconds * 1000
+  });
 }
 
 test('maps the local opening epoch to activity days and 05:00 boundaries', () => {
@@ -19,6 +26,105 @@ test('maps the local opening epoch to activity days and 05:00 boundaries', () =>
   assert.equal(serverDayNumber(SERVER_OPENED_AT, SERVER_OPENED_AT + 7 * DAY), 8);
 });
 
+test('rebases world-time activities from the reference server open to the target server open', () => {
+  const whiteRibbon = tables.ActFrameAct.get(1102010);
+  const window = activityWindow(whiteRibbon, PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
+  assert.deepEqual(window, {
+    start: 1795640400,
+    end: 1796072400,
+    kind: 'server-relative-world'
+  });
+
+  const at = seconds => createActivityCalendar({
+    tables,
+    serverOpenedAt: PUBLIC_SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    now: () => seconds * 1000
+  });
+  assert.equal(at(window.start - 1).isActivityRunning(1102010, null), false);
+  assert.equal(at(window.start).isActivityRunning(1102010, null), true);
+  assert.equal(at(window.end - 1).isActivityRunning(1102010, null), true);
+  assert.equal(at(window.end).isActivityRunning(1102010, null), false);
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.start), 16);
+});
+
+test('prefers an explicit world time over redundant server-day defaults', () => {
+  const config = tables.ActFrameAct.get(182001);
+  const window = activityWindow(config, PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
+  assert.equal(config.refer_day, 1);
+  assert.equal(window.kind, 'server-relative-world');
+  assert.equal(window.start, Number(config.world_time) + PUBLIC_SERVER_OPENED_AT - ACTIVITY_REFERENCE_OPENED_AT);
+  assert.notEqual(window.start, PUBLIC_SERVER_OPENED_AT + 5 * 3600);
+});
+
+test('keeps the table-defined duration sequence and non-default end times', () => {
+  const expectedHundredDraws = [
+    [1102008, 1, 6, 5],
+    [1102009, 6, 11, 5],
+    [1102002, 8, 15, 7],
+    [1102005, 10, 15, 5],
+    [1102003, 15, 22, 7],
+    [1102010, 16, 21, 5],
+    [1102004, 22, 29, 7],
+    [1102006, 24, 29, 5]
+  ].map(([actId, startDay, endDay, durationDays]) => ({
+    actId,
+    startDay,
+    endDay,
+    start: PUBLIC_SERVER_OPENED_AT + (startDay - 1) * DAY + 18000,
+    end: PUBLIC_SERVER_OPENED_AT + (endDay - 1) * DAY + 18000,
+    durationDays
+  }));
+
+  for (const expected of expectedHundredDraws) {
+    const window = activityWindow(
+      tables.ActFrameAct.get(expected.actId),
+      PUBLIC_SERVER_OPENED_AT,
+      ACTIVITY_REFERENCE_OPENED_AT
+    );
+    assert.equal(window.start, expected.start, `activity ${expected.actId} start`);
+    assert.equal(window.end, expected.end, `activity ${expected.actId} end`);
+    assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.start), expected.startDay);
+    assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.end), expected.endDay);
+    assert.equal((window.end - window.start) / DAY, expected.durationDays);
+  }
+
+  const sprint = activityWindow(
+    tables.Activity.get(12014),
+    PUBLIC_SERVER_OPENED_AT,
+    ACTIVITY_REFERENCE_OPENED_AT
+  );
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, sprint.start), 1);
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, sprint.end), 8);
+  assert.equal(sprint.end - sprint.start, 7 * DAY + 18 * 3600);
+
+  const fishing = activityWindow(
+    tables.ActFrameAct.get(1074011),
+    PUBLIC_SERVER_OPENED_AT,
+    ACTIVITY_REFERENCE_OPENED_AT
+  );
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, fishing.start), 6);
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, fishing.end), 10);
+  assert.equal(fishing.end - fishing.start, 4 * DAY + 18 * 3600 + 59 * 60);
+});
+
+test('preserves explicit zero-day windows as one-minute activities', () => {
+  for (const [source, actId] of [
+    ['ActFrameAct', 93021],
+    ['Activity', 76006],
+    ['Activity', 77024],
+    ['Activity', 81005]
+  ]) {
+    const config = tables[source].get(actId);
+    const window = activityWindow(config, PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
+    assert.ok(window, `${source} activity ${actId} has a window`);
+    assert.equal(window.end - window.start, 60, `${source} activity ${actId} lasts one minute`);
+  }
+  assert.equal(activityDurationDays({ duration_day: 0 }, 7), 0);
+  assert.equal(activityDurationDays({}, 7), 7);
+  assert.equal(activityDurationDays({ duration_day: 'invalid' }, 7), 7);
+});
+
 test('opens only the fishing generation assigned to the current server day', () => {
   const at = seconds => calendarAt(seconds);
   assert.deepEqual(at(SERVER_OPENED_AT - 1).activeFishingActivityIds(), []);
@@ -27,7 +133,7 @@ test('opens only the fishing generation assigned to the current server day', () 
 
   assert.deepEqual(at(SERVER_OPENED_AT + 5 * DAY - 1).activeFishingActivityIds(), [1074003]);
   assert.deepEqual(at(SERVER_OPENED_AT + 5 * DAY).activeFishingActivityIds(), []);
-  assert.deepEqual(at(SERVER_OPENED_AT + 7 * DAY).activeFishingActivityIds(), []);
+  assert.deepEqual(at(SERVER_OPENED_AT + 7 * DAY).activeFishingActivityIds(), [1074011]);
 
   assert.deepEqual(at(SERVER_OPENED_AT + 10 * DAY).activeFishingActivityIds(), [1074005]);
   assert.deepEqual(at(SERVER_OPENED_AT + 20 * DAY).activeFishingActivityIds(), [1074007]);
@@ -57,7 +163,7 @@ test('filters expired custom activities while preserving a live parallel group p
   };
 
   const result = calendarAt(at).applyLoginSchedule(activity, at);
-  assert.deepEqual(result.fishingActivityIds, []);
+  assert.deepEqual(result.fishingActivityIds, [1074011]);
   assert.deepEqual(activity.act_parallel_list.map(group => ({
     ids: group.states_data.map(state => Number(state.act_id)),
     payload: group.module_login_data
@@ -384,9 +490,119 @@ test('all-open mode makes every ActFrame server row active for the current login
   }
 
   const scheduled = calendarAt(at);
-  const untouched = structuredClone(server);
-  assert.equal(scheduled.normalizeActFrameLogin(player, server, at).adjusted, 0);
-  assert.deepEqual(server, untouched);
+  const scheduledResult = scheduled.normalizeActFrameLogin(player, server, at);
+  assert.equal(scheduledResult.adjusted, 0);
+  assert.deepEqual(server.act_stage_list, []);
+  assert.deepEqual(player.data_list, []);
+});
+
+test('schedule mode rewrites the client custom window from the relative server day', () => {
+  const at = PUBLIC_SERVER_OPENED_AT + 17 * DAY + 6 * 3600;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: PUBLIC_SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    now: () => at * 1000
+  });
+  const activity = {
+    act_list: [
+      { state_data: { act_id: 1102003, cur_state_id: 50, history_time: [{ state_id: 50, enter_time: '1794326400' }] }, module_login_data: Buffer.alloc(0) },
+      { state_data: { act_id: 1102010, cur_state_id: 50, history_time: [{ state_id: 50, enter_time: '1794326400' }] }, module_login_data: Buffer.alloc(0) }
+    ],
+    act_parallel_list: [],
+    act_pause_list: [],
+    act_custom_list: [
+      { act_id: 1102003, fun_id: 1102, start_time: PUBLIC_SERVER_OPENED_AT, end_time: PUBLIC_SERVER_OPENED_AT + 7 * DAY },
+      { act_id: 1102010, fun_id: 1102, start_time: PUBLIC_SERVER_OPENED_AT, end_time: PUBLIC_SERVER_OPENED_AT + 5 * DAY }
+    ]
+  };
+
+  calendar.applyLoginSchedule(activity, at);
+
+  assert.deepEqual(activity.act_list.map(entry => Number(entry.state_data.act_id)).sort((a, b) => a - b), [1102003, 1102010]);
+  const qianqianWindow = activityWindow(tables.ActFrameAct.get(1102003), PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
+  const qianqianCustom = activity.act_custom_list.find(row => Number(row.act_id) === 1102003);
+  assert.equal(qianqianCustom.start_time, qianqianWindow.start);
+  assert.equal(qianqianCustom.end_time, qianqianWindow.end);
+  const whiteWindow = activityWindow(tables.ActFrameAct.get(1102010), PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
+  const whiteCustom = activity.act_custom_list.find(row => Number(row.act_id) === 1102010);
+  assert.equal(whiteCustom.start_time, whiteWindow.start);
+  assert.equal(whiteCustom.end_time, whiteWindow.end);
+});
+
+test('dynamic activities fall back to a login custom window and fail closed without one', () => {
+  const actId = 900009;
+  const dynamicTables = {
+    Activity: new Map(),
+    ActFrameAct: new Map([[actId, {
+      tid: actId,
+      type: 1038,
+      time_fun: 461,
+      time_fun_args: [29, 1, 0],
+      world_time: 0,
+      refer_day: 0,
+      refer_start_time: 0,
+      duration_day: 4,
+      end_time: 18000
+    }]])
+  };
+  const at = PUBLIC_SERVER_OPENED_AT;
+  const calendar = createActivityCalendar({
+    tables: dynamicTables,
+    serverOpenedAt: PUBLIC_SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    activityWindowAnchor: SERVER_OPENED_AT,
+    now: () => at * 1000
+  });
+  const activity = {
+    act_list: [{
+      state_data: { act_id: actId, cur_state_id: 50, history_time: [] },
+      module_login_data: Buffer.alloc(0)
+    }],
+    act_parallel_list: [],
+    act_pause_list: [],
+    act_custom_list: [{ act_id: actId, fun_id: 1038, start_time: SERVER_OPENED_AT, end_time: SERVER_OPENED_AT + 4 * DAY }]
+  };
+
+  calendar.applyLoginSchedule(activity, at);
+  const custom = activity.act_custom_list.find(row => Number(row.act_id) === actId);
+  assert.deepEqual([custom.start_time, custom.end_time], [PUBLIC_SERVER_OPENED_AT, PUBLIC_SERVER_OPENED_AT + 4 * DAY]);
+  assert.equal(activity.act_list[0].state_data.history_time[0].enter_time, String(PUBLIC_SERVER_OPENED_AT));
+  assert.equal(calendar.isActivityRunning(actId, activity.act_list[0].state_data, activity, at), true);
+
+  const player = { data_list: [] };
+  const server = { act_stage_list: [] };
+  calendar.normalizeActFrameLogin(player, server, at, { activityIds: [actId], activity });
+  assert.equal(Number(server.act_stage_list[0].start_time), PUBLIC_SERVER_OPENED_AT);
+  assert.equal(Number(server.act_stage_list[0].end_time), PUBLIC_SERVER_OPENED_AT + 4 * DAY);
+
+  const withoutWindow = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+  assert.equal(calendar.isActivityRunning(actId, { act_id: actId, cur_state_id: 50 }, withoutWindow, at), false);
+});
+
+test('schedule mode materializes relative module-183 windows and matching draw shops', () => {
+  const at = PUBLIC_SERVER_OPENED_AT + 16 * DAY + 6 * 3600;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: PUBLIC_SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    now: () => at * 1000
+  });
+  const activity = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+  const player = { data_list: [] };
+  const server = { act_stage_list: [] };
+
+  const result = calendar.normalizeActFrameLogin(player, server, at, {
+    activityIds: [1102010],
+    activity
+  });
+  const ids = new Set(result.activityIds);
+  for (const id of [1102010, 182819, 1841010]) assert.equal(ids.has(id), true);
+  for (const row of server.act_stage_list) {
+    assert.equal(row.start_time, '1795640400');
+    assert.equal(row.end_time, '1796072400');
+  }
+  assert.equal(player.data_list.length, server.act_stage_list.length);
 });
 
 test('all-open materializes module-92 activities missing from act-frame login rows', () => {
