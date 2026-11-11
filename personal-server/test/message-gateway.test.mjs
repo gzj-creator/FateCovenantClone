@@ -108,6 +108,10 @@ test('MsgCmd 10501-10511 are dispatched over the temporary handshake with real E
   assert.equal(privateJoined.err, undefined);
   assert.equal(codec.unpack('pb_msg_range_list_with_role_info', payloadOf(privateJoined)).channel_id, '10310047');
 
+  const localServer = await etfRequest(10507, 13, [12, []]);
+  assert.equal(localServer.err, undefined);
+  assert.equal(codec.unpack('pb_msg_range_list_with_role_info', payloadOf(localServer)).channel_id, '11200001');
+
   const logged = await request(10510, 10, codec.pack('pb_req_send_msg', {
     channel_id: String(WORLD),
     content_bin: Buffer.from('log only', 'utf8')
@@ -127,6 +131,6 @@ test('MsgCmd 10501-10511 are dispatched over the temporary handshake with real E
   }));
   assert.equal(stored.history, 1);
   assert.equal(stored.logs, 1);
-  assert.deepEqual(stored.members, [WORLD, 10310047]);
+  assert.deepEqual(stored.members, [WORLD, 10310047, 11200001]);
   assert.equal(Number(game.store.inspect(db => db.prepare('SELECT COUNT(*) AS count FROM message_history WHERE channel_id=?').get(10310047).count)), 0);
 });

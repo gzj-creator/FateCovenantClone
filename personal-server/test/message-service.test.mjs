@@ -106,6 +106,17 @@ test('10507 resolves the world channel id and persists the join', t => {
   assert.deepEqual(joined.map(row => Number(row.channel_id)), [10100001]);
 });
 
+test('10507 resolves the captured non-chat server channel type 12', t => {
+  const env = setup(t);
+  const result = env.service.execute(MESSAGE_COMMANDS.getChannelIdAndEnter, [12, []]);
+  const body = codec.unpack('pb_msg_range_list_with_role_info', result.data);
+  const channelId = channelIdFor(12, SERVER);
+  assert.equal(body.channel_id, String(channelId));
+  assert.deepEqual(body.msg_list, []);
+  const joined = env.store.inspect(db => db.prepare('SELECT channel_id FROM message_members WHERE role_id=?').all(ACTOR));
+  assert.deepEqual(joined.map(row => Number(row.channel_id)), [channelId]);
+});
+
 test('10501 writes real history and 10506 reads the requested index range', t => {
   const env = setup(t);
   env.service.execute(MESSAGE_COMMANDS.getChannelIdAndEnter, [1, []]);
