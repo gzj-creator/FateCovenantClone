@@ -151,6 +151,7 @@
     "time-temple-service.test.mjs",
     "tower-defense-service.test.mjs",
     "trial-activities-service.test.mjs",
+    "up-star-gift-service.test.mjs",
     "wallet-service.test.mjs",
     "week-hunt-service.test.mjs",
     "welfare-service.test.mjs",

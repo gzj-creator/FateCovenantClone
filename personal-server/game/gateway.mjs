@@ -104,6 +104,7 @@ import { readOverallPvpTables } from '../config/overall-pvp-tables.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createPremiumActService } from './premium-act-service.mjs';
 import { readPremiumActTables } from '../config/premium-act-tables.mjs';
+import { createUpStarGiftService } from './up-star-gift-service.mjs';
 import { createShopService } from './shop-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
 import { createPermitService } from './permit-service.mjs';
@@ -737,6 +738,7 @@ export function createLocalGame({
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const benefitCommerce=createBenefitCommerceService({store,codec,tables,now:clock,logger});
+  const upStarGift=createUpStarGiftService({store,codec,tables,calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const everyTasks=createEveryTaskService({store,codec,tables,now:clock,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -989,6 +991,14 @@ export function createLocalGame({
     const drawActivityLogin = drawActivity.synchronizeLogin(
       activity, storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null, loginSeconds
     );
+    // UpStarGiftMgr parses pb_up_star_gift_master from the func 25 parallel
+    // group's module_login_data. The captured snapshot carries 66 versions but
+    // no selected version and misses versions opened by the live schedule
+    // (e.g. 25111), which leaves the page without a valid selection.
+    const upStarGiftLogin = upStarGift.synchronizeLogin(activity, loginSeconds);
+    if (upStarGiftLogin.activityIds.length) {
+      logger({ event: 'up_star_gift_login_synced', ...upStarGiftLogin });
+    }
     // Activity services above can add rows that were absent from the captured
     // login snapshot. Run the calendar once more so those rows carry the same
     // rebased windows and state history as snapshot-backed activities.
@@ -2242,6 +2252,24 @@ export function createLocalGame({
           const code = error instanceof GameError ? (error.code === 307 ? 16016 : error.code) : 2;
           send(seq, Buffer.alloc(0), { err: code });
           log({ event: 'welfare_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      if (upStarGift.supports(type)) {
+        // 31052 是 protobuf pb_up_star_gift_req，31053 是 ETF 版本号；分成两条
+        // 解码路径，避免把 protobuf 当 ETF 解析成 code 1。领奖缺少
+        // UpStarGiftTable 时由服务返回 code 5 与具体缺口。
+        try {
+          const input = type === 31052
+            ? unpackRequest('pb_up_star_gift_req', request.data)
+            : await singleIdArgument(request.data, 'Invalid up-star gift version');
+          const result = upStarGift.execute(type, input);
+          if (result.data?.length) send(seq, result.data); else send(seq);
+          log({ event: 'up_star_gift_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'up_star_gift_rejected', type, seq, code, message: error.message });
         }
         return;
       }
