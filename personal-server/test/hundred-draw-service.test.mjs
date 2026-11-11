@@ -8,13 +8,14 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createHundredDrawService } from '../game/hundred-draw-service.mjs';
+import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const fixedNow = 1793300000000;
 
-function setup(t, random = () => 0.999999, serviceCodec = codec) {
+function setup(t, random = () => 0.999999, serviceCodec = codec, calendar = null) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-hundred-draw-'));
   const file = path.join(dir, 'game.sqlite');
   const seed = () => ({
@@ -24,7 +25,7 @@ function setup(t, random = () => 0.999999, serviceCodec = codec) {
     guides: {}, lineups: null
   });
   let store = createGameStore({ databasePath: file, seed, codec });
-  let service = createHundredDrawService({ store, codec: serviceCodec, tables, now: () => fixedNow, random });
+  let service = createHundredDrawService({ store, codec: serviceCodec, tables, calendar, now: () => fixedNow, random });
   t.after(() => { store.close(); fs.rmSync(dir, { recursive: true, force: true }); });
   return {
     get store() { return store; },
@@ -32,7 +33,7 @@ function setup(t, random = () => 0.999999, serviceCodec = codec) {
     reopen(nextRandom = random) {
       store.close();
       store = createGameStore({ databasePath: file, seed, codec });
-      service = createHundredDrawService({ store, codec, tables, now: () => fixedNow, random: nextRandom });
+      service = createHundredDrawService({ store, codec, tables, calendar, now: () => fixedNow, random: nextRandom });
     }
   };
 }
@@ -50,6 +51,35 @@ test('117001 consumes the pool item, records cumulative draws and persists the r
   const after = run(e.service, 117001, { act_id: 1102001, times: 1 });
   assert.equal(after.value.act_data.cumulative_draw_times, '11');
   assert.equal(e.store.read().resources.get('835802').num, '989');
+});
+
+test('legacy ActivityTable func 20 uses the same version pool and draw item as ActFrame type 1102', async t => {
+  const e = setup(t);
+  e.store.transaction(model => grantResources(model, [[835802, 30]], tables));
+  const result = run(e.service, 117001, { act_id: 20001, times: 10 });
+  assert.equal(result.value.act_data.act_id, '20001');
+  assert.equal(result.value.act_data.cumulative_draw_times, '10');
+  assert.equal(result.value.res.changes.find(row => row.tid === '835802').diff_num, '-10');
+  const marquee = run(e.service, 117005, { act_id: 20001, start_range: 1, end_range: 10 });
+  assert.ok(Array.isArray(marquee.value.data.data));
+});
+
+test('modern HundredDraw login groups fall back to the reference-relative activity window', t => {
+  const serverOpenedAt = 1794326400;
+  const activityReferenceOpenedAt = 1790784000;
+  const at = 1795640400 + 60;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt,
+    activityReferenceOpenedAt,
+    now: () => at * 1000
+  });
+  const e = setup(t, () => 0, codec, calendar);
+  const groups = e.service.loginActFrameGroups({ act_list: [], act_custom_list: [] }, at);
+  const group = groups.find(row => row.actId === 1102010);
+  const expected = activityWindow(tables.ActFrameAct.get(1102010), serverOpenedAt, activityReferenceOpenedAt);
+
+  assert.deepEqual([group.startTime, group.endTime], [expected.start, expected.end]);
 });
 
 test('117002 enforces the draw threshold, grants once and survives a reopen', async t => {

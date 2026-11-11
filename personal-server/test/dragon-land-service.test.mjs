@@ -299,7 +299,16 @@ test('DragonLandActCmd 107703 rejects requests without guild authority', t => {
     () => harness.service.execute(107703, Buffer.from([0xff, 0xff, 0xff])),
     error => error instanceof GameError && error.code === 1
   );
+});
+
+test('DragonLandActCmd 107703 acknowledges closed activity reads without a popup error', t => {
   const stopped = setup(t, { mode: 'schedule', running: () => false });
-  seedGuild(stopped.store);
-  assert.throws(() => readGuildData(stopped.service), error => error instanceof GameError && error.code === 309);
+  const closed = readGuildData(stopped.service);
+  assert.equal(closed.result.closed, true);
+  assert.equal(closed.value.guild_info.version, String(VERSION));
+  assert.equal(closed.value.guild_info.level, '1');
+  assert.equal(closed.value.guild_info.boss_id, '1');
+  assert.equal(Number(closed.value.guild_info.lost_hp ?? 0), 0);
+  assert.deepEqual(closed.value.guild_info.piece_list, []);
+  assert.deepEqual(closed.value.guild_info.display_list, []);
 });

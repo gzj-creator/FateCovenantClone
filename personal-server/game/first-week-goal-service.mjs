@@ -23,7 +23,7 @@ function milliseconds(value) {
   return Math.floor(number > 100_000_000_000 ? number : number * 1000);
 }
 
-function periodActivity({ gameTables, firstWeekTables, serverOpenedAt, at }) {
+function periodActivity({ gameTables, firstWeekTables, serverOpenedAt, activityReferenceOpenedAt, at }) {
   const openedAt = milliseconds(serverOpenedAt);
   const nowSeconds = Math.floor(milliseconds(at) / 1000);
   const openedSeconds = Math.floor(openedAt / 1000);
@@ -38,7 +38,7 @@ function periodActivity({ gameTables, firstWeekTables, serverOpenedAt, at }) {
     const maximum = Number(row.server_max_open_limited) || 0;
     if (minimum > 0 && openedSeconds < minimum) continue;
     if (maximum > 0 && openedSeconds > maximum) continue;
-    const window = activityWindow(row, openedAt);
+    const window = activityWindow(row, openedAt, activityReferenceOpenedAt);
     if (!window || nowSeconds < window.start || nowSeconds >= window.end) continue;
     candidates.push({ activityId: Number(row.tid), version, window, row });
   }
@@ -130,6 +130,7 @@ export function createFirstWeekGoalService({
   tables = readFirstWeekGoalTables(),
   gameTables = readGameTables(),
   serverOpenedAt,
+  activityReferenceOpenedAt = null,
   now = Date.now,
   progressForTask,
   logger = () => {}
@@ -140,7 +141,13 @@ export function createFirstWeekGoalService({
   store.inspect(db => ensureTables(db));
 
   function activeAt(at) {
-    return periodActivity({ gameTables, firstWeekTables: tables, serverOpenedAt: openedAt, at });
+    return periodActivity({
+      gameTables,
+      firstWeekTables: tables,
+      serverOpenedAt: openedAt,
+      activityReferenceOpenedAt,
+      at
+    });
   }
 
   function progressOf(model, task) {

@@ -13,6 +13,7 @@ const configuration = {
   appId: 'local-sdk-test', appKey: 'local test key', sessionTtlSeconds: 60,
   account: { loginCode: 'local player', passwordMd5: digest('test-only-password'), userId: 'local-test-1', nickname: '本地测试' }
 };
+const PHONE_USER_ID = 'local-phone-19900000000';
 
 async function fixture(t, options = {}) {
   let now = 1_790_000_000;
@@ -264,7 +265,8 @@ test('test OTP is opt-in, accepts arbitrary nonempty code, and creates a verifie
   assert.match(sms.body.rdesc, /no SMS sent/);
   const login = await f.post('/user/phoneLogin', fields);
   assert.equal(login.status, 200);
-  assert.equal(f.service.verifySession(configuration.account.userId, login.body.result.token), true);
+  assert.equal(login.body.result.userid, PHONE_USER_ID);
+  assert.equal(f.service.verifySession(PHONE_USER_ID, login.body.result.token), true);
   assert.equal((await f.verify(login.body.result)).status, 200);
   assert.equal((await f.post('/user/loginReg', { ...fields, verifyCode: '4321' })).status, 200);
   assert.equal((await f.post('/user/phoneLogin', { ...fields, verifyCode: '' })).status, 400);
@@ -274,14 +276,14 @@ test('test OTP is opt-in, accepts arbitrary nonempty code, and creates a verifie
   for (const value of [fields.phone, fields.verifyCode, login.body.result.token]) assert.equal(logs.includes(value), false);
 });
 
-test('isolated phone registration signs into the existing account and supports token verification', async t => {
+test('isolated phone registration gets its own account and supports token verification', async t => {
   const fields={appid:configuration.appId,phone:'19900000000',password:'a'.repeat(32),verifyCode:'1234'};
   const disabled=await fixture(t);
   assert.equal((await disabled.post('/user/phoneRegist',fields)).status,404);
   const f=await fixture(t,{localTestOtp:true});
   assert.equal((await f.post('/user/phoneRegist',fields,{sign:'0'.repeat(32)})).status,401);
   for(const code of ['123','123456','abcd'])assert.equal((await f.post('/user/phoneRegist',{...fields,verifyCode:code})).status,400);
-  const login=await f.post('/user/phoneRegist',fields);assert.equal(login.status,200);assert.equal(login.body.rcode,0);assert.equal(login.body.result.userid,configuration.account.userId);
+  const login=await f.post('/user/phoneRegist',fields);assert.equal(login.status,200);assert.equal(login.body.rcode,0);assert.equal(login.body.result.userid,PHONE_USER_ID);
   assert.equal((await f.verify(login.body.result)).status,200);
   assert.equal((await f.login()).status,200);
   const logs=JSON.stringify(f.events);for(const value of [fields.phone,fields.password,fields.verifyCode,login.body.result.token])assert.equal(logs.includes(value),false);
@@ -292,7 +294,7 @@ test('secondary SDK validates signed DES carrier against issued session and reje
   const f = await fixture(t, { localTestOtp: true, quickSdk });
   const login = await f.post('/user/phoneLogin', { appid: configuration.appId, phone: '19900000000', verifyCode: '1234' });
   async function check(overrides = {}, badSign = false, lowercase = false) {
-    const data = { uid: configuration.account.userId, token: login.body.result.token, ...overrides };
+    const data = { uid: PHONE_USER_ID, token: login.body.result.token, ...overrides };
     const key = Buffer.from(quickSdk.productKey);
     const cipher = createCipheriv('des-ede3', Buffer.concat([key, key, key]), null);
     const json_data = Buffer.concat([cipher.update(JSON.stringify(data), 'utf8'), cipher.final()]).toString('base64');
@@ -305,7 +307,7 @@ test('secondary SDK validates signed DES carrier against issued session and reje
   assert.equal(accepted.status, 200);
   assert.equal(accepted.body.result, true);
   assert.equal(accepted.body.data.user_token, login.body.result.token);
-  assert.equal(accepted.body.data.uid, configuration.account.userId);
+  assert.equal(accepted.body.data.uid, PHONE_USER_ID);
   assert.equal((await check({ token: 'a'.repeat(64) })).status, 401);
   assert.equal((await check({ uid: 'unknown' })).body.result, false);
   assert.equal((await check({}, true)).status, 401);
@@ -382,7 +384,7 @@ test('QuickSDK order payment validates its carrier, product, role and amount bef
   const calls = [];
   const wallet = {
     snapshot: () => ({
-      accounts: [{ account_id: configuration.account.userId, role_id: 100001 }],
+      accounts: [{ account_id: PHONE_USER_ID, role_id: 100001 }],
       products: [{ id: 40009, price_cents: 600, type: 46 }]
     }),
     buy: input => {
@@ -396,7 +398,7 @@ test('QuickSDK order payment validates its carrier, product, role and amount bef
   f.service.attachWallet(wallet);
   const login = await f.post('/user/phoneLogin', { appid: configuration.appId, phone: '19900000000', verifyCode: '1234' });
   const basePayment = {
-    uid: configuration.account.userId, user_name: configuration.account.nickname, token: login.body.result.token,
+    uid: PHONE_USER_ID, user_name: configuration.account.nickname, token: login.body.result.token,
     goods_id: 40009, goods_name: 'Value stamina', goods_desc: 'Local test product',
     cp_order_id: '100001179328161371540009', price: 6, count: 1, amount: 6,
     callback_url: 'http://127.0.0.1:18880/callback', extras_params: JSON.stringify({ roleID: 100001, goodsID: 40009, storeProductId: 'com.woobest.mysq_6', productID: 40009 }),
@@ -417,7 +419,7 @@ test('QuickSDK order payment validates its carrier, product, role and amount bef
   assert.equal(accepted.body.result, true);
   assert.deepEqual(accepted.body.error, {});
   assert.deepEqual(accepted.body.data, { order_id: 'local-order-40009', channel_order_id: 'local-order-40009', channel_params: '' });
-  assert.deepEqual(calls[0], { account_id: configuration.account.userId, product_id: 40009, request_id: '100001179328161371540009' });
+  assert.deepEqual(calls[0], { account_id: PHONE_USER_ID, product_id: 40009, request_id: '100001179328161371540009' });
   assert.equal((await pay()).body.data.order_id, 'local-order-40009');
   assert.equal(orders.size, 1);
 
@@ -475,7 +477,7 @@ test('QuickSDK order payment maps wallet failures to an ApiResult error', async 
   let failure = Object.assign(new Error('Account balance is insufficient'), { code: 301 });
   f.service.attachWallet({
     snapshot: () => ({
-      accounts: [{ account_id: configuration.account.userId, role_id: 100001 }],
+      accounts: [{ account_id: PHONE_USER_ID, role_id: 100001 }],
       products: [{ id: 40009, price_cents: 600, type: 46 }]
     }),
     buy: () => { throw failure; }
@@ -484,7 +486,7 @@ test('QuickSDK order payment maps wallet failures to an ApiResult error', async 
   const key = Buffer.from(quickSdk.productKey);
   async function pay(cpOrderId) {
     const payment = {
-      uid: configuration.account.userId, token: login.body.result.token, goods_id: 40009,
+      uid: PHONE_USER_ID, token: login.body.result.token, goods_id: 40009,
       cp_order_id: cpOrderId, price: 6, amount: 6, count: 1,
       extras_params: JSON.stringify({ goodsID: 40009, productID: 40009 }),
       game_role_info: Buffer.from(JSON.stringify({ server_id: '1', game_role_id: '100001' })).toString('base64')

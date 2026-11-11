@@ -13,6 +13,7 @@
 | G5 | 新超凡魔灵服务器错误 | [pet-activity/implementation.md](../pet-activity/implementation.md) | 83028 活动、专属商城和现世礼包已接入同一开服活动日历；组件/TCP 通过，实时 APK 未验收 |
 | H1 | 进入大厅显示服务器错误 | [hall-entry.md](hall-entry.md) | 大厅商店读取按请求 id 空组回包、活动阶段同步空变更回执 |
 | H2 | 点击头像显示服务器错误 | [avatar-rank-info.md](avatar-rank-info.md) | 2001 单条排名查询已实现；同分支另补 2002/2005/2006/2007/2009/2010，[详情](../activity-ranking/leaderboard-api.md)；267/267 测试通过，尚未部署与 APK 验收 |
+| E1 | 进入游戏依次提示“仅显示物品不可操作”和“配置出错了” | [entry-display-config-error-20261111.md](entry-display-config-error-20261111.md) | `107703` 关闭活动改为空读取，`10507 type 12` 接入本服频道；目标回归 23/23，通过后待部署与客户端复验 |
 | W2 | daily discount batch purchase limit | [daily-discount-batch-limit.md](daily-discount-batch-limit.md) | 46003 batch_update sync, restart backfill and real TCP verified; 192/192 tests |
 | W3 | 首充购买后仍显示 ¥6 | [first-recharge-status.md](first-recharge-status.md) | 历史订单状态已修复；自动回填与 TCP 测试通过，首充面板待用户确认 |
 | W4 | 限购礼包错误日志 ID | [purchase-limit-error.md](purchase-limit-error.md) | 限购先于余额校验；真实 QuickSDK 返回 307/80001，275/275 测试通过 |

@@ -27,12 +27,15 @@ function activityConfig(tables, actId) {
 
 function serverEligibility(config, serverOpenedAt, at) {
   if (!config) return true;
-  const minimumDay = Math.max(
-    0,
-    Number(config.join_server_day) || 0,
-    Number(config.server_day_limit) || 0
-  );
+  const minimumDay = Math.max(0, Number(config.join_server_day) || 0);
   if (minimumDay > 0 && serverDayNumber(serverOpenedAt, at) < minimumDay) return false;
+
+  // server_day_limit is the oldest server age for which this row is valid
+  // (for example the *_7日 and *_29日 variants). Treating it as a minimum
+  // delayed day-16 activities such as 1102010 until day 29 and made them
+  // expire before they could ever run.
+  const maximumDay = Math.max(0, Number(config.server_day_limit) || 0);
+  if (maximumDay > 0 && serverDayNumber(serverOpenedAt, at) > maximumDay) return false;
 
   const openedAt = seconds(serverOpenedAt);
   const minimumOpenTime = seconds(config.server_mini_open_limited);
@@ -44,6 +47,21 @@ function serverEligibility(config, serverOpenedAt, at) {
 
 function customActivity(activity, actId) {
   return (activity?.act_custom_list ?? []).find(row => Number(row.act_id) === actId) ?? null;
+}
+
+// Legacy HundredDraw is the one schedule family whose captured parent custom
+// window is authoritative: its ActivityTable row starts at 05:00, while the
+// live event is deliberately opened at server launch and owns 182/184 child
+// rows through the HundredDraw version table.
+function usesLegacyCustomWindow(config) {
+  return Number(config?.func) === 20 && config?.type == null;
+}
+
+export function activityDurationDays(config, fallback = 1) {
+  const raw = config?.duration_day;
+  if (raw == null || raw === '') return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
 }
 
 function isCustomRunning(custom, at) {
@@ -88,18 +106,37 @@ function sameAllOpenActivityBatch(left, right) {
   const worldTime = seconds(left.world_time);
   return worldTime > 0
     && seconds(right.world_time) === worldTime
-    && Math.max(1, Number(left.duration_day) || 1) === Math.max(1, Number(right.duration_day) || 1)
+    && activityDurationDays(left) === activityDurationDays(right)
     && (Number(left.end_time) || 0) === (Number(right.end_time) || 0)
     && (Number(left.server_day_limit) || 0) === (Number(right.server_day_limit) || 0);
 }
 
-export function activityWindow(config, serverOpenedAt) {
+export function activityWindow(config, serverOpenedAt, activityReferenceOpenedAt = null) {
   if (!config) return null;
-  const durationDays = Math.max(1, Number(config.duration_day) || 1);
+  const durationDays = activityDurationDays(config);
   const endTime = Number(config.end_time) || 0;
   const worldTime = seconds(config.world_time);
   const relativeDay = Number(config.refer_day ?? config.server_day ?? 0);
   const relativeStart = Number(config.refer_start_time ?? config.server_start_time ?? 0);
+
+  if (worldTime > 0) {
+    const configuredEnd = dayZero(dayZero(worldTime) + durationDays * DAY_SECONDS) + endTime;
+    const referenceOpenedAt = seconds(activityReferenceOpenedAt);
+    const targetOpenedAt = seconds(serverOpenedAt);
+    if (referenceOpenedAt > 0 && targetOpenedAt > 0) {
+      const offset = targetOpenedAt - referenceOpenedAt;
+      return {
+        start: worldTime + offset,
+        end: configuredEnd + offset,
+        kind: 'server-relative-world'
+      };
+    }
+    return {
+      start: worldTime,
+      end: configuredEnd,
+      kind: 'world-time'
+    };
+  }
 
   if (relativeDay > 0) {
     if (!seconds(serverOpenedAt)) return null;
@@ -108,14 +145,6 @@ export function activityWindow(config, serverOpenedAt) {
       start: firstDay + relativeStart,
       end: dayZero(firstDay + durationDays * DAY_SECONDS) + endTime,
       kind: 'server-day'
-    };
-  }
-
-  if (worldTime > 0) {
-    return {
-      start: worldTime,
-      end: dayZero(dayZero(worldTime) + durationDays * DAY_SECONDS) + endTime,
-      kind: 'world-time'
     };
   }
 
@@ -131,9 +160,24 @@ export function activityWindow(config, serverOpenedAt) {
   return null;
 }
 
-export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedule', currentFishingActivityId, now = Date.now }) {
+export function createActivityCalendar({
+  tables,
+  serverOpenedAt,
+  activityReferenceOpenedAt = null,
+  activityWindowAnchor = null,
+  activityWindowsAlreadyRebased = false,
+  mode = 'schedule',
+  currentFishingActivityId,
+  now = Date.now
+}) {
   const openedAt = seconds(serverOpenedAt);
   if (!openedAt) throw new Error('A valid server opening time is required');
+  const referenceOpenedAt = seconds(activityReferenceOpenedAt);
+  const storedWindowAnchor = seconds(activityWindowAnchor) || referenceOpenedAt;
+  if (typeof activityWindowsAlreadyRebased !== 'boolean') {
+    throw new Error('activityWindowsAlreadyRebased must be a boolean');
+  }
+  const normalizedCustomWindows = new WeakSet();
   if (!['schedule', 'all-open'].includes(mode)) throw new Error(`Unsupported activity calendar mode: ${mode}`);
   const currentSeconds = () => seconds(now());
   const configuredFishingIds = () => {
@@ -158,14 +202,40 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     if (!Number.isSafeInteger(id) || id <= 0) return false;
     if (stateData && Number(stateData.cur_state_id ?? 50) !== 50) return false;
 
-    const custom = customActivity(activity, id);
-    if (custom) return isCustomRunning(custom, at);
-
     const config = activityConfig(tables, id);
-    if (!serverEligibility(config, openedAt, at)) return false;
-    const window = activityWindow(config, openedAt);
-    if (window) return at >= window.start && at < window.end;
+    if (config && !serverEligibility(config, openedAt, at)) return false;
+    if (config || customActivity(activity, id)) {
+      const window = scheduledWindow(id, activity);
+      if (window) return at >= window.start && at < window.end;
+    }
+    if (config) return false;
     return Number(stateData?.cur_state_id ?? 50) === 50;
+  }
+
+  function scheduledWindow(actId, activity) {
+    const id = Number(actId);
+    const config = activityConfig(tables, id);
+    const custom = customActivity(activity, id);
+    let customWindow = null;
+    if (custom) {
+      const start = Number(custom.start_time) || 0;
+      const end = Number(custom.end_time) || 0;
+      if (start > 0 && end > start) {
+        const alreadyRebased = activityWindowsAlreadyRebased || normalizedCustomWindows.has(custom);
+        const adjustment = alreadyRebased ? 0 : openedAt - storedWindowAnchor;
+        customWindow = {
+          start: start + adjustment,
+          end: end + adjustment,
+          kind: alreadyRebased ? 'server-relative-custom' : 'rebase-custom'
+        };
+      }
+    }
+    if (config && usesLegacyCustomWindow(config) && customWindow) return customWindow;
+    if (config) {
+      const window = activityWindow(config, openedAt, referenceOpenedAt);
+      if (window) return window;
+    }
+    return customWindow;
   }
 
   function isActivityRunning(actId, stateData, activity, at = currentSeconds()) {
@@ -185,7 +255,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
       const customStartTimes = new Map();
       for (const custom of activity.act_custom_list) {
         const config = activityConfig(tables, Number(custom.act_id));
-        const configuredWindow = activityWindow(config, openedAt);
+        const configuredWindow = activityWindow(config, openedAt, referenceOpenedAt);
         const window = alignedAllOpenWindow(configuredWindow, at)
           ?? recurringAllOpenWindow(custom.start_time, custom.end_time, at)
           ?? recurringAllOpenWindow(configuredWindow?.start, configuredWindow?.end, at)
@@ -244,7 +314,45 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     activity.act_pause_list = (activity.act_pause_list ?? []).filter(actId => (
       isScheduledActivity(Number(actId), null, activity, at)
     ));
-    activity.act_custom_list = (activity.act_custom_list ?? []).filter(custom => (
+    const customById = new Map(activity.act_custom_list.map(custom => [Number(custom.act_id), custom]));
+    const setHistory = state => {
+      const window = scheduledWindow(state.act_id, activity);
+      if (!window) return;
+      state.history_time = [{ state_id: 50, enter_time: String(window.start) }];
+    };
+    for (const entry of activity.act_list) if (entry.state_data) setHistory(entry.state_data);
+    for (const group of activity.act_parallel_list) {
+      for (const state of group.states_data ?? []) setHistory(state);
+    }
+
+    for (const custom of activity.act_custom_list) {
+      const id = Number(custom.act_id);
+      if (!retained.has(id)) continue;
+      const window = scheduledWindow(id, activity);
+      if (!window) continue;
+      custom.start_time = window.start;
+      custom.end_time = window.end;
+      normalizedCustomWindows.add(custom);
+    }
+    // The client prefers act_custom_list over static world_time. Publish the
+    // rebased window for world-time activities even when the captured login
+    // snapshot did not contain a custom row.
+    for (const id of retained) {
+      if (customById.has(id)) continue;
+      const config = activityConfig(tables, id);
+      if (!(seconds(config?.world_time) > 0)) continue;
+      const window = activityWindow(config, openedAt, referenceOpenedAt);
+      if (!window) continue;
+      const custom = {
+        act_id: id,
+        fun_id: Number(config.type) || 0,
+        start_time: window.start,
+        end_time: window.end
+      };
+      activity.act_custom_list.push(custom);
+      customById.set(id, custom);
+    }
+    activity.act_custom_list = activity.act_custom_list.filter(custom => (
       retained.has(Number(custom.act_id)) && isCustomRunning(custom, at) === true
     ));
     return activity;
@@ -253,13 +361,13 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
   function activeFishingActivities(at = currentSeconds(), activity = null) {
     if (mode === 'all-open') {
       const config = activityConfig(tables, allOpenFishingActivityId);
-      return [{ actId: allOpenFishingActivityId, config, window: activityWindow(config, openedAt) }];
+      return [{ actId: allOpenFishingActivityId, config, window: activityWindow(config, openedAt, referenceOpenedAt) }];
     }
     const result = [];
     for (let actId = FISHING_ACT_FIRST; actId <= FISHING_ACT_LAST; actId++) {
       if (!isActivityRunning(actId, null, activity, at)) continue;
       const config = activityConfig(tables, actId);
-      result.push({ actId, config, window: activityWindow(config, openedAt) });
+      result.push({ actId, config, window: activityWindow(config, openedAt, referenceOpenedAt) });
     }
     return result;
   }
@@ -299,7 +407,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
   function normalizeActFrameLogin(player, server, at = currentSeconds(), options = {}) {
     const current = seconds(at);
     const result = { mode, adjusted: 0, activityIds: [] };
-    if (mode !== 'all-open' || !player || !server || !Number.isSafeInteger(current) || current <= 0) return result;
+    if (!player || !server || !Number.isSafeInteger(current) || current <= 0) return result;
     player.data_list ??= [];
     server.act_stage_list ??= [];
     const playerByTid = new Map(player.data_list
@@ -308,6 +416,128 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     const serverByTid = new Map(server.act_stage_list
       .map(row => [Number(row?.act_id), row])
       .filter(([id]) => Number.isSafeInteger(id) && id > 0));
+
+    function upsertLoginRow(id, config, start, end) {
+      if (!config) return false;
+      const type = Number(config.type ?? config.func) || 0;
+      let serverRow = serverByTid.get(id);
+      if (!serverRow) {
+        serverRow = { act_id: id };
+        server.act_stage_list.push(serverRow);
+        serverByTid.set(id, serverRow);
+      }
+      Object.assign(serverRow, {
+        act_id: id,
+        type,
+        start_time: String(start),
+        end_time: String(end),
+        cur_stage_id: 50,
+        is_pause: false,
+        loop_count: 0,
+        stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+      });
+
+      let playerRow = playerByTid.get(id);
+      if (!playerRow) {
+        playerRow = { act_stage: { act_id: id }, module_login_data: Buffer.alloc(0) };
+        player.data_list.push(playerRow);
+        playerByTid.set(id, playerRow);
+      }
+      playerRow.act_stage ??= {};
+      Object.assign(playerRow.act_stage, {
+        act_id: id,
+        start_time: String(start),
+        end_time: String(end),
+        cur_stage_id: 50,
+        loop_count: 0,
+        history_time: [{ stage_id: 50, enter_time: String(start) }]
+      });
+      return true;
+    }
+
+    // HundredDraw version rows own the parent/child mapping. The captured
+    // parent window can intentionally precede the static ActivityTable time,
+    // so these explicit groups override both the static row and stale stage
+    // timestamps when the parent is currently running.
+    const explicitGroups = (options.activityGroups ?? [])
+      .map(group => ({
+        actId: Number(group?.actId),
+        startTime: Number(group?.startTime),
+        endTime: Number(group?.endTime),
+        companionIds: [...new Set((group?.companionIds ?? []).map(Number))]
+          .filter(id => Number.isSafeInteger(id) && id > 0)
+      }))
+      .filter(group => Number.isSafeInteger(group.actId) && group.actId > 0);
+    if (mode === 'schedule') {
+      const activity = options.activity ?? null;
+      const isRunning = id => isActivityRunning(id, null, activity, current);
+      const activeIds = new Set((options.activityIds ?? [])
+        .map(Number)
+        .filter(id => Number.isSafeInteger(id) && id > 0 && isRunning(id)));
+      const explicitWindows = new Map();
+
+      // Existing module-183 rows can outlive the corresponding module-92
+      // state. Keep active configured rows, but remove expired ones so a stale
+      // absolute stage window cannot keep an old activity reachable.
+      player.data_list = player.data_list.filter(row => {
+        const id = Number(row?.act_stage?.act_id);
+        const config = activityConfig(tables, id);
+        if (!config) return true;
+        if (isRunning(id)) {
+          activeIds.add(id);
+          return true;
+        }
+        return false;
+      });
+      server.act_stage_list = server.act_stage_list.filter(row => {
+        const id = Number(row?.act_id);
+        const config = activityConfig(tables, id);
+        if (!config) return true;
+        if (isRunning(id)) activeIds.add(id);
+        return isRunning(id);
+      });
+      playerByTid.clear();
+      for (const row of player.data_list) playerByTid.set(Number(row?.act_stage?.act_id), row);
+      serverByTid.clear();
+      for (const row of server.act_stage_list) serverByTid.set(Number(row?.act_id), row);
+
+      for (const group of explicitGroups) {
+        const parentConfig = activityConfig(tables, group.actId);
+        const configuredWindow = activityWindow(parentConfig, openedAt, referenceOpenedAt);
+        const window = Number.isSafeInteger(group.startTime) && group.startTime > 0
+          && Number.isSafeInteger(group.endTime) && group.endTime > group.startTime
+          ? { start: group.startTime, end: group.endTime, kind: 'explicit-group' }
+          : configuredWindow;
+        if (!parentConfig || !window || current < window.start || current >= window.end) continue;
+        for (const id of [group.actId, ...group.companionIds]) {
+          explicitWindows.set(id, window);
+          activeIds.add(id);
+        }
+      }
+
+      // Paid and exchange shops are separate ActFrame rows from their parent
+      // draw event. Restore the same relative-time batch when the parent is in
+      // the current window, even if the captured login snapshot omitted it.
+      const parentConfigs = [...activeIds]
+        .map(id => activityConfig(tables, id))
+        .filter(config => config && seconds(config.world_time) > 0);
+      for (const parent of parentConfigs) {
+        for (const [id, candidate] of tables?.ActFrameAct ?? []) {
+          if (![182, 184].includes(Number(candidate?.type))) continue;
+          if (sameAllOpenActivityBatch(parent, candidate) && isRunning(Number(id))) activeIds.add(Number(id));
+        }
+      }
+
+      for (const id of activeIds) {
+        const config = activityConfig(tables, id);
+        const window = explicitWindows.get(id) ?? scheduledWindow(id, activity);
+        if (!config || !window || !Number(config.type ?? config.func)) continue;
+        if (!upsertLoginRow(id, config, window.start, window.end)) continue;
+        result.activityIds.push(id);
+      }
+      result.adjusted = result.activityIds.length;
+      return result;
+    }
 
     // Some activity families publish their state in module 92 while the
     // reference act-frame snapshot has no matching module-183 stage row. In
@@ -321,7 +551,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
       const config = activityConfig(tables, id);
       const type = Number(config?.type) || 0;
       if (!config || type <= 0) continue;
-      const window = activityWindow(config, openedAt);
+      const window = activityWindow(config, openedAt, referenceOpenedAt);
       const start = Math.min(window?.start ?? openedAt, current);
       const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
       if (!serverByTid.has(id)) {
@@ -355,6 +585,18 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
       }
     }
 
+    for (const group of explicitGroups) {
+      const parentConfig = activityConfig(tables, group.actId);
+      const parentWindow = activityWindow(parentConfig, openedAt, referenceOpenedAt);
+      const start = Math.min(parentWindow?.start ?? openedAt, current);
+      const end = Math.max(parentWindow?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
+      for (const id of [group.actId, ...group.companionIds]) {
+        const config = activityConfig(tables, id);
+        if (!config || !upsertLoginRow(id, config, start, end)) continue;
+        if (!result.activityIds.includes(id)) result.activityIds.push(id);
+      }
+    }
+
     // The login snapshot only contains the activities the reference account
     // happened to have. Paid-shop and exchange-shop activities are separate
     // ActFrame rows from their parent event, so a parent can be present while
@@ -375,7 +617,7 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
     for (const id of companionIds) {
       if (serverByTid.has(id)) continue;
       const config = activityConfig(tables, id);
-      const window = activityWindow(config, openedAt);
+      const window = activityWindow(config, openedAt, referenceOpenedAt);
       const start = Math.min(window?.start ?? openedAt, current);
       const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
       const serverRow = {
@@ -439,6 +681,8 @@ export function createActivityCalendar({ tables, serverOpenedAt, mode = 'schedul
 
   return {
     serverOpenedAt: openedAt,
+    activityReferenceOpenedAt: referenceOpenedAt || null,
+    activityWindowAnchor: storedWindowAnchor || null,
     mode,
     currentSeconds,
     isServerEligible: (actId, at = currentSeconds()) => serverEligibility(activityConfig(tables, Number(actId)), openedAt, at),

@@ -3,11 +3,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createCipheriv } from 'node:crypto';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createProtobufJsCodec } from '../server-list-codec.mjs';
 import { encodeServerListRequest } from '../server-list.mjs';
+import { signQuickSdk } from '../quick-sdk.mjs';
 
 const sourceRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -19,7 +21,9 @@ function copyServer(target) {
   ]);
   fs.cpSync(sourceRoot, target, {
     recursive: true,
-    filter(source) { return !skipped.has(source); }
+    filter(source) {
+      return !skipped.has(source) && !/\.sqlite(?:-shm|-wal)?$/i.test(path.basename(source));
+    }
   });
   fs.symlinkSync(sourceDependencies, path.join(target, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
 }
@@ -68,12 +72,21 @@ test('a clean personal-server copy boots from the public server list without the
 
   const status = await waitForReady(path.join(dataDirectory, 'server.local-only.json'), child);
   assert.deepEqual(Object.keys(status.boundPorts).sort(), ['admin', 'game', 'list', 'sdk', 'startup']);
+  assert.equal(status.activeServerId, 2);
+  assert.equal(status.launchProfileId, 'public-realm-2-20261110');
+  assert.equal(status.activityWindowAnchor, 1792789200);
   assert.equal(status.ports.length, 5);
   assert.ok(status.ports.every(port => Number.isInteger(port) && port > 0 && port <= 65535));
-  assert.deepEqual(status.servers, [{ id: 1, name: '命运一服', extranetIp: '140.143.142.251:19090', releaseTime: status.serverOpenedAt }]);
+  assert.equal(status.serverOpenedAt, 1794326400);
+  assert.deepEqual(status.servers, [{ id: 2, name: '命运二服', extranetIp: '140.143.142.251:19090', releaseTime: 1794326400 }]);
   assert.deepEqual(status.listenHosts, { sdk: '0.0.0.0', list: '0.0.0.0', startup: '0.0.0.0', game: '0.0.0.0', admin: '127.0.0.1' });
   assert.ok(fs.existsSync(path.join(dataDirectory, 'game.local-only.sqlite')));
   assert.ok(fs.existsSync(path.join(dataDirectory, 'admin-key.local-only.txt')));
+  const packagedSqlite = [];
+  for (const entry of fs.readdirSync(serverCopy, { recursive: true })) {
+    if (/\.sqlite(?:-shm|-wal)?$/i.test(entry)) packagedSqlite.push(entry);
+  }
+  assert.deepEqual(packagedSqlite, []);
 
   const signingKey = JSON.parse(fs.readFileSync(path.join(serverCopy, 'config', 'server-list-signing-key.json'), 'utf8')).key;
   const form = encodeServerListRequest('channel_login_servers', { channel_id: 'local-channel', channel_uid: 'local-account', device_label: 'local-device' }, signingKey);
@@ -85,9 +98,28 @@ test('a clean personal-server copy boots from the public server list without the
   });
   assert.equal(listResponse.status, 200);
   const decoded = createProtobufJsCodec().decode('pb_login_servers', Buffer.from(await listResponse.arrayBuffer()));
-  assert.equal(decoded.servers[0].id, 1);
-  assert.equal(decoded.servers[0].name, '命运一服');
+  assert.equal(decoded.servers[0].id, 2);
+  assert.equal(decoded.servers[0].name, '命运二服');
   assert.equal(decoded.servers[0].extranet_ip, '140.143.142.251:19090');
+
+  const quickSdkKey = 'fclocal1';
+  const cipher = createCipheriv('des-ede3', Buffer.concat([Buffer.from(quickSdkKey), Buffer.from(quickSdkKey), Buffer.from(quickSdkKey)]), null);
+  const carrier = Buffer.concat([
+    cipher.update(JSON.stringify({ uid: '9768a7c5ad00', token: '97170cea8a25' }), 'utf8'),
+    cipher.final()
+  ]).toString('base64');
+  const quickFields = new Map([['product_code', 'fc-local'], ['json_data', carrier]]);
+  const quickResponse = await fetch(`http://127.0.0.1:${status.boundPorts.sdk}/v2/users/checkLogin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: new URLSearchParams([...quickFields, ['sign', signQuickSdk(quickFields, quickSdkKey)]]).toString(),
+    signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(quickResponse.status, 200);
+  const quickLogin = await quickResponse.json();
+  assert.equal(quickLogin.result, true);
+  assert.equal(quickLogin.data.uid, 'local-1');
+  assert.match(quickLogin.data.user_token, /^[0-9a-f]{64}$/);
 
   const exited = once(child, 'exit');
   child.kill('SIGTERM');
@@ -97,4 +129,22 @@ test('a clean personal-server copy boots from the public server list without the
   });
   await Promise.race([exited, stopTimeout]);
   assert.equal(stderr.join(''), '');
+
+  const publicEnvironment = { ...process.env };
+  delete publicEnvironment.FC_LOCAL_DATA;
+  const missingData = spawnSync(process.execPath, [path.join(serverCopy, 'local-server.mjs'), '--public'], {
+    cwd: directory,
+    env: publicEnvironment,
+    encoding: 'utf8'
+  });
+  assert.notEqual(missingData.status, 0);
+  assert.match(missingData.stderr, /FC_LOCAL_DATA is required in public mode/);
+
+  const insideSource = spawnSync(process.execPath, [path.join(serverCopy, 'local-server.mjs'), '--public'], {
+    cwd: directory,
+    env: { ...process.env, FC_LOCAL_DATA: path.join(serverCopy, 'runtime') },
+    encoding: 'utf8'
+  });
+  assert.notEqual(insideSource.status, 0);
+  assert.match(insideSource.stderr, /must be outside the deployed source tree/);
 });

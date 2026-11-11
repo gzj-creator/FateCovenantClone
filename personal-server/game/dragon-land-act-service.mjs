@@ -73,6 +73,7 @@ export function createDragonLandActService({
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(typeof now === 'function' ? now() : now);
   const serverOpenedAt = Number(calendar?.serverOpenedAt ?? store.serverOpenedAt);
+  const activityReferenceOpenedAt = calendar?.activityReferenceOpenedAt ?? null;
   const nowIso = () => new Date(currentSeconds() * 1000).toISOString();
 
   // Every dragon land activity version owns its own DragonLandActTable row, so a
@@ -93,7 +94,7 @@ export function createDragonLandActService({
   }
 
   function withWindow(act) {
-    return { ...act, window: activityWindow(act.config, serverOpenedAt) };
+    return { ...act, window: activityWindow(act.config, serverOpenedAt, activityReferenceOpenedAt) };
   }
 
   function started(act, at) {
@@ -125,11 +126,19 @@ export function createDragonLandActService({
     return { ...running[0], start: Number(running[0].window?.start ?? serverOpenedAt) };
   }
 
-  function requestActivity(actId, at = currentSeconds()) {
+  function resolveActivity(actId) {
     const act = actConfig(actId);
     if (!act) throw new GameError(1, 'Unknown dragon land activity');
-    const resolved = withWindow(act);
-    if (calendar?.isActivityRunning && !calendar.isActivityRunning(resolved.actId, null, null, at)) {
+    return withWindow(act);
+  }
+
+  function activityRunning(act, at) {
+    return !calendar?.isActivityRunning || calendar.isActivityRunning(act.actId, null, null, at);
+  }
+
+  function requestActivity(actId, at = currentSeconds()) {
+    const resolved = resolveActivity(actId);
+    if (!activityRunning(resolved, at)) {
       throw new GameError(309, 'Dragon land activity is not running');
     }
     return { ...resolved, start: Number(resolved.window?.start ?? serverOpenedAt) };
@@ -494,7 +503,28 @@ export function createDragonLandActService({
     const actId = Number(request.activity_id);
     if (!Number.isSafeInteger(actId) || actId <= 0) throw new GameError(1, 'Invalid dragon land activity id');
     const at = currentSeconds();
-    const act = requestActivity(actId, at);
+    const act = resolveActivity(actId);
+    // The client probes every cached DragonLandAct row while it enters the
+    // hall. A closed row is still a valid read; returning 309 here produces the
+    // misleading global "仅显示物品不可操作" toast even though the live row is
+    // requested immediately afterwards. Answer with a complete zero state
+    // instead, while award commands remain fail-closed through requestActivity.
+    if (!activityRunning(act, at)) {
+      const first = firstBossOf(act.version);
+      const value = {
+        guild_info: {
+          version: String(act.version),
+          level: String(first ? Number(first.level) : 0),
+          boss_id: String(first ? Number(first.tid) : 0),
+          lost_hp: '0',
+          piece: '0',
+          piece_list: [],
+          display_list: []
+        }
+      };
+      log({ event: 'dragon_land_guild_data_closed', actId, version: act.version });
+      return { value, data: codec.pack('pb_dragon_land_guild_data_rsp', value), actId, closed: true };
+    }
     const state = store.state();
     const guildId = guildIdOf(state);
     if (!guildId) throw new GameError(5, 'Guild does not exist');

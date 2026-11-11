@@ -282,6 +282,8 @@ test('real gateway routes welfare claims and gift purchase without LOCAL_NOT_IMP
     statePath: path.join(directory, 'absent.json'),
     capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
     localWallet: true,
+    activityMode: 'all-open',
+    currentFishingActivityId: 1074011,
     now: () => fixedNow,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
   });

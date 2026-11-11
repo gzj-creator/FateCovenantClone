@@ -6,8 +6,10 @@ import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
 import { binary, createGameCodec, decodeEtf, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
-import { createActivityCalendar } from '../game/activity-calendar.mjs';
+import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 import { createLocalGame } from '../local-game.mjs';
+import { createGameStore } from '../storage/game-store.mjs';
+import { createPremiumActService } from '../game/premium-act-service.mjs';
 import { grantResources, rewardHandlerFor } from '../game/resources.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
@@ -40,17 +42,20 @@ function seed() {
   };
 }
 
-async function gatewayFixture(t, activityMode) {
+async function gatewayFixture(t, activityMode, options = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-premium-act-'));
   let game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
     capturePath,
-    serverOpenedAt: SERVER_OPENED_AT,
+    serverOpenedAt: options.serverOpenedAt ?? SERVER_OPENED_AT,
+    launchProfileId: options.launchProfileId,
+    activityWindowAnchor: options.activityWindowAnchor,
     activityMode,
     currentFishingActivityId: 1074011,
     localWallet: true,
-    now: () => fixedNow,
+    now: options.now ?? (() => fixedNow),
+    random: options.random,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
   });
   let socket;
@@ -110,8 +115,8 @@ function grant(store, tid, amount) {
   store.transaction(model => grantResources(model, [[tid, amount]], tables));
 }
 
-function decodePremiumInfo(block) {
-  const info = codec.unpack('pb_premium_act', block).recharge_list.find(row => Number(row.act_tid) === ACT_ID);
+function decodePremiumInfo(block, activityId = ACT_ID) {
+  const info = codec.unpack('pb_premium_act', block).recharge_list.find(row => Number(row.act_tid) === activityId);
   assert.ok(info);
   return info;
 }
@@ -192,6 +197,31 @@ test('every PremiumAct gift has complete rewards with a concrete grant handler',
   assert.deepEqual(issues, []);
 });
 
+test('scheduled premium mall prefers the relative table window over stored stage times', t => {
+  const expected = activityWindow(tables.ActFrameAct.get(ACT_ID), SERVER_OPENED_AT);
+  const at = expected.start + 60;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-premium-window-'));
+  const store = createGameStore({
+    databasePath: path.join(directory, 'game.sqlite'),
+    seed,
+    codec,
+    serverOpenedAt: SERVER_OPENED_AT
+  });
+  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => at * 1000
+  });
+  const service = createPremiumActService({ store, codec, tables, premiumTables, calendar, now: () => at * 1000 });
+  const player = { data_list: [] };
+  const server = { act_stage_list: [{ act_id: ACT_ID, type: 184, start_time: '1', end_time: '2' }] };
+
+  assert.deepEqual(service.synchronizeLogin({ player, server }, at).activityIds, [ACT_ID]);
+  const block = decodeModuleLoginBlocks(player.data_list[0].module_login_data)[0];
+  assert.equal(Number(decodePremiumInfo(block).recharge_info.refresh_time), expected.end);
+});
+
 test('all-open white-ling gift mall exposes login data, free/resource gifts, cash gift and limits', async t => {
   const env = await gatewayFixture(t, 'all-open');
   const modules = new Map(env.login[2].value);
@@ -214,7 +244,7 @@ test('all-open white-ling gift mall exposes login data, free/resource gifts, cas
   const buyGift = (rechargeId, seq) => env.request(
     16005,
     seq,
-    codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: rechargeId, buy_num: 1 })
+    codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: rechargeId, extra_param: String(ACT_ID), buy_num: 1 })
   );
 
   let response = await buyGift(1270973, 20);
@@ -242,7 +272,7 @@ test('all-open white-ling gift mall exposes login data, free/resource gifts, cas
   env.send(codec.pack('pb_c2s', {
     type: 16004,
     seq: 22,
-    data: await encodeEtf([1270975, binary(Buffer.from('[]')), 0])
+    data: await encodeEtf([1270975, ACT_ID, 0])
   }));
   const walletFrames = [codec.unpack('pb_s2c', await env.next()), codec.unpack('pb_s2c', await env.next())];
   const charged = walletFrames.find(frame => frame.seq === 22);
@@ -256,7 +286,7 @@ test('all-open white-ling gift mall exposes login data, free/resource gifts, cas
   info = codec.unpack('pb_recharge_limit_info', Buffer.from(limit.data, 'base64'));
   assert.equal(info.buy_num_list.find(row => row.recharge_id === 1270975).buy_num, 1);
   assert.equal(env.game.wallet.snapshot().accounts[0].balance_cents, 9400);
-  assert.equal(env.game.premiumAct.giftPurchaseCount(1270975), 1);
+  assert.equal(env.game.premiumAct.giftPurchaseCount(1270975, null, ACT_ID), 1);
 
   const after = env.game.premiumAct.rechargeInfo(ACT_ID);
   assert.deepEqual(
@@ -484,6 +514,90 @@ test('matching-game free and resource gifts preserve their requested activity id
     { activity_id: 184401, product_id: 1270111, buy_num: 1 },
     { activity_id: 184402, product_id: 1270112, buy_num: 1 }
   ]);
+});
+
+test('scheduled legacy hundred-draw syncs its gift mall, obtains coupons and draws through SQLite', async t => {
+  const openedAt = Date.parse('2026-11-11T00:00:00+08:00') / 1000;
+  const now = () => Date.parse('2026-11-10T16:08:19Z');
+  const env = await gatewayFixture(t, 'schedule', {
+    now,
+    random: () => 0.999999,
+    serverOpenedAt: openedAt,
+    activityWindowAnchor: SERVER_OPENED_AT,
+    launchProfileId: 'legacy-hundred-draw-production-window-test'
+  });
+  const modules = new Map(env.login[2].value);
+
+  const module92 = modules.get(92);
+  assert.ok(module92, 'module 92 must be present');
+  const activityLogin = codec.unpack('pb_act_login', Array.from(module92.value));
+  const hundredEntry = activityLogin.act_list.find(entry => Number(entry.state_data?.act_id) === 20001);
+  assert.ok(hundredEntry, 'legacy hundred-draw activity 20001 must be present in module 92');
+  assert.equal(
+    codec.unpack('pb_hundred_draw_act_data', Buffer.from(hundredEntry.module_login_data, 'base64')).act_id,
+    '20001'
+  );
+  const parentCustom = activityLogin.act_custom_list.find(row => Number(row.act_id) === 20001);
+  assert.ok(parentCustom, 'legacy hundred-draw custom window must survive login scheduling');
+  assert.equal(Number(parentCustom.start_time), openedAt);
+  assert.ok(now() / 1000 < activityWindow(tables.Activity.get(20001), openedAt).start,
+    'the real custom window must be tested before the static 05:00 table window opens');
+
+  const entry183 = modules.get(183);
+  assert.ok(entry183, 'module 183 must be present');
+  const entryValues = entry183.value?.value ?? entry183.value;
+  const player = codec.unpack('pb_act_role_login', Buffer.from(entryValues[0].value));
+  const server = codec.unpack('pb_act_server_data', Buffer.from(entryValues[1].value));
+  for (const [actId, type] of [[20001, 20], [1841001, 184], [182810, 182]]) {
+    const playerRow = player.data_list.find(row => Number(row.act_stage?.act_id) === actId);
+    const serverRow = server.act_stage_list.find(row => Number(row.act_id) === actId && Number(row.type) === type);
+    assert.ok(playerRow, `missing player row ${actId}`);
+    assert.ok(serverRow, `missing server row ${actId}`);
+    assert.equal(Number(serverRow.start_time), Number(parentCustom.start_time));
+    assert.equal(Number(serverRow.end_time), Number(parentCustom.end_time));
+  }
+  const giftPlayer = player.data_list.find(row => Number(row.act_stage?.act_id) === 1841001);
+  const giftBlocks = decodeModuleLoginBlocks(giftPlayer.module_login_data);
+  assert.equal(giftBlocks.length, 1);
+  const giftInfo = decodePremiumInfo(giftBlocks[0], 1841001);
+  assert.ok(Number(giftInfo.recharge_info?.refresh_time) > now() / 1000);
+
+  const couponPurchase = await env.request(
+    16005,
+    20,
+    codec.pack('pb_recharge_buy_or_rev_req', { recharge_id: 1270963, extra_param: '1841001', buy_num: 1 })
+  );
+  assert.equal(couponPurchase.err, undefined);
+  const purchased = codec.unpack('res_buy_or_Rev_gift', Buffer.from(couponPurchase.data, 'base64'));
+  assert.equal(purchased.res.changes.find(change => change.tid === '835802').diff_num, '30');
+  assert.equal(purchased.extra_ret_list.find(extra => extra.flag === 114)?.data != null, true);
+
+  const draw = await env.request(
+    117001,
+    21,
+    codec.pack('pb_hundred_act_draw_req', { act_id: 20001, times: 10 })
+  );
+  assert.equal(draw.err, undefined);
+  const drawBody = codec.unpack('pb_hundred_act_draw_rsp', Buffer.from(draw.data, 'base64'));
+  assert.equal(drawBody.act_data.act_id, '20001');
+  assert.equal(drawBody.act_data.cumulative_draw_times, '10');
+  assert.equal(drawBody.res.changes.find(change => change.tid === '835802').diff_num, '-10');
+
+  const marquee = await env.request(
+    117005,
+    22,
+    codec.pack('pb_hundred_draw_act_marquee_req', { act_id: 20001, start_range: 1, end_range: 10 })
+  );
+  assert.equal(marquee.err, undefined);
+  assert.ok(Array.isArray(codec.unpack('pb_hundred_draw_act_marquee_rsp', Buffer.from(marquee.data, 'base64')).data.data));
+
+  assert.deepEqual(activityPurchaseRows(env).map(row => ({ ...row })), [
+    { activity_id: 1841001, product_id: 1270963, buy_num: 1 }
+  ]);
+  const state = env.game.store.inspect(db => db.prepare(
+    'SELECT cumulative_draw_times FROM hundred_draw_act_state WHERE role_id=? AND act_id=20001'
+  ).get(env.game.store.state().roleId));
+  assert.equal(state.cumulative_draw_times, '10');
 });
 
 test('scheduled mode rejects premium gifts when the activity is not open', async t => {

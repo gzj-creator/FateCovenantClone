@@ -39,6 +39,12 @@ const CODE_UNAVAILABLE = 5;
 const MAX_REPLY_MESSAGES = 200;
 const MAX_ROLE_IDS = 200;
 
+// The client enters type 12 while it initializes its message data. The recovered
+// ChannelType row is non-cross and non-chat, so this server keeps it as one
+// local channel per realm. Without this mapping the background read fails with
+// code 5, which the client renders as "配置出错了".
+const LOCAL_SERVER_CHANNEL_TYPES = new Set([12]);
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS message_channels (
   channel_id INTEGER PRIMARY KEY,
@@ -170,6 +176,9 @@ export function createMessageService({
       const targetId = privateTargetOf(extra);
       if (targetId === actor.roleId) fail(CODE_INVALID, 'Private channel target must be another role');
       return resolveChannel(tables.channelIdFor(channelType, targetId), actor);
+    }
+    if (LOCAL_SERVER_CHANNEL_TYPES.has(channelType)) {
+      return resolveChannel(tables.channelIdFor(channelType, actor.serverId), actor);
     }
     fail(CODE_UNAVAILABLE, 'Channel type ' + channelType + ' is not available on the local server');
   }

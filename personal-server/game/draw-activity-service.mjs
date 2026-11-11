@@ -102,7 +102,7 @@ export function rowsOf(table) {
 
 export function createDrawActivityService({
   store, codec, tables, activityTables = name => readActivityTables(name),
-  now = Date.now, random = Math.random, logger = () => {}
+  calendar = null, now = Date.now, random = Math.random, logger = () => {}
 }) {
   if (!store?.transaction || !store?.inspect) throw new Error('Draw activity store is unavailable');
   if (!codec?.pack || !codec?.unpack) throw new Error('Draw activity codec is unavailable');
@@ -315,16 +315,23 @@ export function createDrawActivityService({
     const loginActivities = [];
     const synced = [];
     for (const candidate of [...candidates.values()].sort((left, right) => left.actId - right.actId)) {
+      if (calendar?.isActivityRunning && !calendar.isActivityRunning(candidate.actId, null, activity, at)) {
+        continue;
+      }
       const payload = families.prayLoginPayload(candidate.actId, candidate.state);
       const wrapped = encodeModuleLoginBlock(payload).toString('base64');
       for (const row of candidate.module92Rows) row.module_login_data = wrapped;
 
-      const window = activityWindow(candidate.frame, Number(store.serverOpenedAt));
-      let start = candidate.start;
-      let end = candidate.end;
-      if (start === null) start = Number(window?.start);
+      const window = activityWindow(
+        candidate.frame,
+        Number(calendar?.serverOpenedAt ?? store.serverOpenedAt),
+        calendar?.activityReferenceOpenedAt ?? null
+      );
+      let start = Number(window?.start);
+      let end = Number(window?.end);
+      if (!Number.isSafeInteger(start)) start = candidate.start;
+      if (!Number.isSafeInteger(end)) end = candidate.end;
       if (!Number.isSafeInteger(start) || start < 0) start = Math.max(0, Number(at));
-      if (end === null) end = Number(window?.end);
       if (!Number.isSafeInteger(end) || end <= start) end = start + 86400;
       loginActivities.push({ actTid: candidate.actId, startTime: start, endTime: end, blocks: [payload] });
       synced.push({ actId: candidate.actId, version: candidate.version });

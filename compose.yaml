@@ -1,0 +1,51 @@
+services:
+  realm-2:
+    build:
+      context: ./personal-server
+    image: fate-covenant-server:realm-2-20261110
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: Asia/Shanghai
+      FC_LOCAL_DATA: /var/lib/fate-covenant/realm-2
+      FC_ADMIN_LISTEN_HOST: 0.0.0.0
+    ports:
+      - "18880:18880"
+      - "18881:18881"
+      - "18882:18882"
+      - "19090:19090"
+      - "127.0.0.1:18883:18883"
+    volumes:
+      - fate-covenant-realm-2:/var/lib/fate-covenant/realm-2
+    tmpfs:
+      - /tmp:size=64m
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          const net=require('node:net');
+          const socket=net.connect(18880,'127.0.0.1',()=>{socket.end();process.exit(0)});
+          socket.on('error',()=>process.exit(1));
+          setTimeout(()=>process.exit(1),2000);
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 5
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
+
+volumes:
+  fate-covenant-realm-2:
+    name: fate-covenant-realm-2-20261110
+

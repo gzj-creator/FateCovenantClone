@@ -1,4 +1,5 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { activityDurationDays } from './activity-calendar.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 import { parseRechargeExtraParam } from './recharge-rules.mjs';
@@ -45,7 +46,7 @@ export function createWelfareService({ store, codec, tables, wallet, calendar, n
     const cfg = tables.Activity.get(actId);
     if (!cfg || cfg.func !== 53) throw new GameError(5, 'Activity is not a multi-login activity');
     const version = Number(cfg.version);
-    const duration = Number(cfg.duration_day) || 7;
+    const duration = activityDurationDays(cfg, 7);
     const enterTime = entry.state_data.history_time?.find(row => Number(row.state_id) === 50)?.enter_time;
     if (enterTime === undefined) throw new GameError(5, 'Multi-login activity has no running state');
     const currentDay = Math.min(duration, dayIndex(now()) - dayIndex(Number(enterTime) * 1000) + 1);

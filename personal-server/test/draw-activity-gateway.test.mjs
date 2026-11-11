@@ -26,6 +26,7 @@ test('draw activities complete over temporary TCP and persist against SQLite', {
     capturePath,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: openedAt,
+    activityMode: 'all-open',
     now: () => (openedAt + 3600) * 1000,
     random: () => 0
   });

@@ -90,14 +90,14 @@ function bitsFor(ids) {
   return trimBits(bits);
 }
 
-function activityFor({ gameTables, serverOpenedAt, at }) {
+function activityFor({ gameTables, serverOpenedAt, activityReferenceOpenedAt, at }) {
   const openedAt = milliseconds(serverOpenedAt);
   const nowSeconds = Math.floor(milliseconds(at) / 1000);
   const rows = [...(gameTables.Activity?.values() ?? [])].filter(row => Number(row.func) === GROWTH_ROAD_ACTIVITY_FUNC);
   if (!rows.length) fail(CODE_UNAVAILABLE, 'Growth road activity is not configured');
   rows.sort((left, right) => Number(left.tid) - Number(right.tid));
   const row = rows.find(candidate => Number(candidate.tid) === GROWTH_ROAD_ACTIVITY_ID) ?? rows[0];
-  const window = activityWindow(row, openedAt);
+  const window = activityWindow(row, openedAt, activityReferenceOpenedAt);
   if (!window) fail(CODE_UNAVAILABLE, 'Growth road activity window is invalid');
   return {
     activityId: Number(row.tid),
@@ -162,6 +162,7 @@ export function createGrowthRoadService({
   tables = readGrowthRoadTables(),
   gameTables = readGameTables(),
   serverOpenedAt,
+  activityReferenceOpenedAt = null,
   now = Date.now,
   progressForTask,
   logger = () => {}
@@ -172,7 +173,7 @@ export function createGrowthRoadService({
   store.inspect(db => ensureTables(db));
 
   function activeAt(at) {
-    return activityFor({ gameTables, serverOpenedAt: openedAt, at });
+    return activityFor({ gameTables, serverOpenedAt: openedAt, activityReferenceOpenedAt, at });
   }
 
   function infoState(db, roleId, version) {

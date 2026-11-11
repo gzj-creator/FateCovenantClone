@@ -28,6 +28,11 @@ fighttable-details.jsonl
 
 # Decrypted local configuration and credentials.
 **/*.local-only.*
+
+# Runtime state must live on an external persistent volume, never in Git or
+# a release image. This also covers SQLite WAL and shared-memory sidecars.
+*.sqlite
+*.sqlite-*
 # Raw app backups can contain stored account sessions.
 analysis/experiments/private-server-*/p0/backup/
 

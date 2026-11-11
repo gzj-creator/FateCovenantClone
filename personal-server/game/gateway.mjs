@@ -203,6 +203,8 @@ import { readGuideAwards } from '../config/guide-awards.mjs';
 import { roleLoginDayCount } from './recharge-rules.mjs';
 import { GameFrameDecoder, encodeGameFrame, isInitialVerifyPayload } from '../game-framing.mjs';
 import { createServerHandshakeChallenge, LOCAL_AES_PROFILE } from '../game-handshake.mjs';
+import { parseActivityCalendarTimestamp } from '../config/activity-calendar-config.mjs';
+import { relocateLaunchActivityWindows } from './launch-profile.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
 export function createLocalGame({
@@ -210,7 +212,15 @@ export function createLocalGame({
   statePath,
   capturePath,
   verifySession,
+  resolveSession,
   serverOpenedAt,
+  serverId = 1,
+  serverName = 'Local Server',
+  roleId = 100001,
+  roleName = 'Local Adventurer',
+  launchProfileId = null,
+  activityWindowAnchor = null,
+  activityReferenceOpenedAt = null,
   activityMode = 'schedule',
   currentFishingActivityId,
   currentArtifactActivityId,
@@ -230,19 +240,62 @@ export function createLocalGame({
 }) {
   const codec = createGameCodec(), { root, pack, unpack } = codec;
   const clock = () => Number(now());
+  const openedAt = serverOpenedAt == null ? null : parseActivityCalendarTimestamp(serverOpenedAt, 'serverOpenedAt');
+  const anchor = activityWindowAnchor == null
+    ? null
+    : parseActivityCalendarTimestamp(activityWindowAnchor, 'activityWindowAnchor');
+  const referenceOpenedAt = activityReferenceOpenedAt == null
+    ? null
+    : parseActivityCalendarTimestamp(activityReferenceOpenedAt, 'activityReferenceOpenedAt');
+  if (!Number.isSafeInteger(serverId) || serverId <= 0) throw new Error('serverId must be a positive integer');
+  if (!Number.isSafeInteger(roleId) || roleId <= 0) throw new Error('roleId must be a positive integer');
+  if (resolveSession !== undefined && typeof resolveSession !== 'function') throw new TypeError('resolveSession must be a function');
+  if (typeof serverName !== 'string' || !serverName.trim()) throw new Error('serverName must be nonempty');
+  if (typeof roleName !== 'string' || !roleName.trim()) throw new Error('roleName must be nonempty');
+  if (launchProfileId != null && activityWindowAnchor == null) {
+    throw new Error('launchProfileId requires activityWindowAnchor');
+  }
+  if (launchProfileId != null && (typeof launchProfileId !== 'string' || !launchProfileId.trim() || openedAt == null)) {
+    throw new Error('A named launch profile requires a launchProfileId and serverOpenedAt');
+  }
+  const persistedLaunchProfile = launchProfileId == null ? null : Object.freeze({
+    roleId,
+    serverId,
+    serverName,
+    roleName,
+    launchProfileId,
+    activityWindowAnchor: anchor,
+    serverOpenedAt: openedAt
+  });
   function seed() {
     const capture = JSON.parse(fs.readFileSync(capturePath));
     const template = capture.privateFlows.find(x => x.messageId === 'game:tcp-69:s2c:103')?.decoded;
     if (!template || template[0] !== 1) throw new Error('Verified login structure missing');
-    const modules = new Map(template[2].value);
+    let modules = new Map(template[2].value);
+    if (persistedLaunchProfile) modules = relocateLaunchActivityWindows({
+      modules,
+      codec,
+      activityWindowAnchor: persistedLaunchProfile.activityWindowAnchor,
+      serverOpenedAt: persistedLaunchProfile.serverOpenedAt
+    }).modules;
     const role = unpack('to_client_role_info', rawBinary(modules.get(2)));
-    role.nick_name = Buffer.from('Local Adventurer');
+    role.nick_name = Buffer.from(roleName);
     role.res = { changes: [] };
-    return { version: 1, roleId: 100001, serverId: 1, createdAt: Math.floor(clock() / 1000) - 86400,
+    return { version: 1, roleId, serverId, createdAt: persistedLaunchProfile ? openedAt : Math.floor(clock() / 1000) - 86400,
       seedSource: 'offline captured early-game structural fixture; independent local test save',
-      modules: template[2], rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
+      ...(openedAt == null ? {} : { serverOpenedAt: openedAt }),
+      ...(persistedLaunchProfile ?? {}),
+      modules: { value: [...modules.entries()], improper: false },
+      rolePb: pack('to_client_role_info', role).toString('base64'), guides: {}, lineups: null };
   }
-  const store = createGameStore({ databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'), legacyStatePath: statePath, seed, codec, serverOpenedAt });
+  const store = createGameStore({
+    databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'),
+    legacyStatePath: statePath,
+    seed,
+    codec,
+    serverOpenedAt: openedAt,
+    launchProfile: persistedLaunchProfile
+  });
   const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
   const attributeTables = readAttributeTables();
   const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
@@ -252,6 +305,9 @@ export function createLocalGame({
   const calendar = createActivityCalendar({
     tables,
     serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt,
+    activityReferenceOpenedAt: referenceOpenedAt,
+    activityWindowAnchor: anchor,
+    activityWindowsAlreadyRebased: persistedLaunchProfile != null,
     mode: activityMode,
     currentFishingActivityId,
     now: clock
@@ -344,7 +400,11 @@ export function createLocalGame({
   function relicActivityWindow(actTid) {
     const id = Number(actTid), config = tables.Activity?.get(id);
     if (!config) throw new GameError(5, `Activity ${id} is missing for module 183`);
-    const window = activityWindow(config, calendar.serverOpenedAt);
+    const window = activityWindow(
+      config,
+      calendar.serverOpenedAt,
+      calendar.activityReferenceOpenedAt
+    );
     if (!window) throw new GameError(5, `Activity ${id} has no reproducible login window`);
     return window;
   }
@@ -529,10 +589,12 @@ export function createLocalGame({
     store, codec, tables: readRankAchieveTables(), resourceTables: tables, now: clock, logger
   });
   const firstWeekGoal = createFirstWeekGoalService({
-    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt,
+    activityReferenceOpenedAt: calendar.activityReferenceOpenedAt, now: clock, logger
   });
   const growthRoad = createGrowthRoadService({
-    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+    store, codec, gameTables: tables, serverOpenedAt: calendar.serverOpenedAt,
+    activityReferenceOpenedAt: calendar.activityReferenceOpenedAt, now: clock, logger
   });
   // ITEM-FUNCTIONMANUAL (FunctionManualCmd 82301) and ITEM-TASKACTIVITY
   // (TaskActivityCmd 105701). The handbook reads the client's FunctionManualTable
@@ -543,7 +605,9 @@ export function createLocalGame({
   });
   const taskActivity = createTaskActivityService({
     store, codec, tables: readTaskActivityTables(), gameTables: tables,
-    serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
+    serverOpenedAt: calendar.serverOpenedAt,
+    activityReferenceOpenedAt: calendar.activityReferenceOpenedAt,
+    now: clock, logger
   });
   // FriendCmd 20001-20013. The login module slot for res_friend_login is not
   // recovered, so it stays out of the login container until the owner wires it.
@@ -635,8 +699,13 @@ export function createLocalGame({
   const triMatchPvp = createTriMatchPvpService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
-  const subscribers=new Set();
-  const publish=(type,data)=>{for(const send of subscribers){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}};
+  const subscribers=new Map();
+  const publish=(type,data,targetRoleId=null)=>{
+    const targets = targetRoleId == null
+      ? [...subscribers.values()].flatMap(group => [...group])
+      : [...(subscribers.get(Number(targetRoleId)) ?? [])];
+    for(const send of targets){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}
+  };
   const timeTemple=createTimeTempleService({store,codec,publish});
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
@@ -676,7 +745,7 @@ export function createLocalGame({
   const bonusDraw=createBonusDrawService({store,codec,tables,now:clock,random,logger});
   // F-block draw activities with recovered table evidence (DRAW-TURNTABLEACT,
   // DRAW-CAPSULETOY draw, DRAW-THREEADMONITION extra draws).
-  const drawActivity=createDrawActivityService({store,codec,tables,now:clock,random,logger});
+  const drawActivity=createDrawActivityService({store,codec,tables,calendar,now:clock,random,logger});
   // Fishing reads whose request body is an ETF integer argument (activity id).
   const fishingEtfTypes=new Set([110303,110308,110309]);
   const cms=createCmsService({codec,store,tables,now:clock});
@@ -789,7 +858,7 @@ export function createLocalGame({
     const loginMilliseconds = clock();
     const loginSeconds = Math.floor(loginMilliseconds / 1000);
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
-    modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary('Local Server'), binary(''), 0]);
+    modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary(serverName), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
     modules.set(4, binary(roleService.loginRedDots()));
     const storyLogin = storyService.loginPayload();
@@ -893,8 +962,11 @@ export function createLocalGame({
       logger({ event: 'exploration_act_login_synced', actIds: explorationLogin.activityIds, modules: [...explorationLogin.modules.keys()] });
     }
     // HundredDrawActData decodes pb_hundred_draw_act_data from the activity
-    // entry's module_login_data (ActFrameTable type 1102).
+    // entry's module_login_data (ActFrame type 1102 or legacy ActivityTable
+    // func 20). The version mapping also owns the paid-gift and exchange-shop
+    // child rows needed to obtain the configured draw item.
     const hundredDrawLoginIds = hundredDraw.synchronizeLogin(activity, loginSeconds);
+    const hundredDrawActFrameGroups = hundredDraw.loginActFrameGroups(activity, loginSeconds);
     if (hundredDrawLoginIds.length) logger({ event: 'hundred_draw_login_synced', actIds: hundredDrawLoginIds });
     // PrayActData consumes pb_pray_act from its ActFrame row in module 183.
     // Restore persisted selections, draws, progress and history before merging
@@ -902,6 +974,10 @@ export function createLocalGame({
     const drawActivityLogin = drawActivity.synchronizeLogin(
       activity, storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null, loginSeconds
     );
+    // Activity services above can add rows that were absent from the captured
+    // login snapshot. Run the calendar once more so those rows carry the same
+    // rebased windows and state history as snapshot-backed activities.
+    calendar.applyLoginSchedule(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -959,17 +1035,17 @@ export function createLocalGame({
     let actFrameNormalization = null;
     let premiumLogin = null;
     const premiumLoginPreview = premiumAct.openActivityIds(loginSeconds);
-    if (loginActivities.length || calendar.mode === 'all-open' || premiumLoginPreview.length) {
+    if (loginActivities.length || storedModules.has(RELIC_ACTIVITY_LOGIN_MODULE_ID) || premiumLoginPreview.length) {
       const merged = mergeRelicLoginContainer({
         codec,
         entry: storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null,
         activities: loginActivities,
         normalize: ({ player, server }) => {
-          const normalization = calendar.mode === 'all-open'
-            ? calendar.normalizeActFrameLogin(player, server, loginSeconds, {
-              activityIds: [...afterActivityIds]
-            })
-            : { mode: calendar.mode, adjusted: 0, activityIds: [] };
+          const normalization = calendar.normalizeActFrameLogin(player, server, loginSeconds, {
+            activityIds: [...afterActivityIds],
+            activityGroups: hundredDrawActFrameGroups,
+            activity
+          });
           premiumLogin = premiumAct.synchronizeLogin({ player, server }, loginSeconds);
           normalization.premiumActivityIds = premiumLogin.activityIds;
           return normalization;
@@ -982,6 +1058,7 @@ export function createLocalGame({
       event: 'activity_login_calendar_applied',
       activityMode: calendar.mode,
       serverOpenedAt: calendar.serverOpenedAt,
+      activityReferenceOpenedAt: calendar.activityReferenceOpenedAt,
       serverDay: serverDayNumber(calendar.serverOpenedAt, loginSeconds),
       activeFishingActivityIds: schedule.fishingActivityIds,
       fishingBenefitActivityId: fishingBenefits.actId,
@@ -1007,6 +1084,7 @@ export function createLocalGame({
       slotGameActIds: slotGameLoginIds,
       explorationActActivityIds: explorationLogin.activityIds,
       explorationLoginModules: [...explorationLogin.modules.keys()],
+      hundredDrawActFrameActivityIds: hundredDrawActFrameGroups.flatMap(group => [group.actId, ...group.companionIds]),
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
@@ -1121,7 +1199,15 @@ export function createLocalGame({
     const id = crypto.randomUUID();
     const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 });
     let phase = 'verify', challenge, chain = Promise.resolve(), onlineGiftSessionAttempted = false;
+    let connectionRoleId = null, connectionAccountId = null;
     const push=(type,data)=>{if(!socket.destroyed)socket.write(encodeGameFrame(pack('pb_s2c',{type,data})));};
+    const subscribe = roleId => {
+      const id = Number(roleId);
+      for (const group of subscribers.values()) group.delete(push);
+      if (!subscribers.has(id)) subscribers.set(id, new Set());
+      subscribers.get(id).add(push);
+    };
+    const unsubscribe = () => { for (const group of subscribers.values()) group.delete(push); };
     const log = event => logger({ connection: id, ...event });
     // protobufjs decodes an empty `bytes` field into a plain array, so rejection
     // and fallback logs must not assume the request payload is a Buffer.
@@ -1167,9 +1253,13 @@ export function createLocalGame({
     socket.on('timeout', () => socket.destroy());
     socket.on('error', error => log({ event: 'socket_error', code: error.code }));
     socket.on('close', () => {
-      subscribers.delete(push); sockets.delete(socket);
+      unsubscribe(); sockets.delete(socket);
       if (onlineGiftSessionAttempted) {
-        try { onlineGift.endSession(); } catch (error) { log({ event: 'online_gift_session_close_failed', message: error.message }); }
+        try {
+          const closeSession = () => onlineGift.endSession();
+          if (connectionRoleId == null) closeSession();
+          else store.runWithRole(connectionRoleId, closeSession);
+        } catch (error) { log({ event: 'online_gift_session_close_failed', message: error.message }); }
       }
       log({ event: 'game_closed' });
     });
@@ -1210,6 +1300,10 @@ export function createLocalGame({
       // Heartbeat is one-way. A zero-length S2C frame leaves the client's
       // TcpConnectionWorker receive stream at offset 4 and corrupts the next frame.
       if (type === -1) return;
+      if (phase !== 'ready' && ![909101, 909102, 909103].includes(type)) {
+        send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Login required' });
+        return;
+      }
       if (onlineGift.supports(type)) {
         try {
           const decoded = request.data?.length ? await decodeEtf(request.data) : undefined;
@@ -1395,7 +1489,7 @@ export function createLocalGame({
             return;
           }
           const payload = await loginPayload();
-          send(seq, payload); phase = 'ready'; subscribers.add(push);
+          send(seq, payload); phase = 'ready'; subscribe(state.roleId);
           log({ event: 'login_dev_accepted', type, seq, roleId: state.roleId });
         } catch (error) {
           send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Invalid dev login payload' });
@@ -1404,15 +1498,29 @@ export function createLocalGame({
         return;
       }
       if (type === 909103) {
-        const state = store.state();
         const login = root.lookupType('login').decode(request.data);
-        if (login.server_id !== state.serverId || !verifySession(login.channel_uid, login.verify_code)) {
-          log({ event: 'login_rejected', serverMatches: login.server_id === state.serverId, credentialFields: { uidLength: login.channel_uid.length, codeLength: login.verify_code.length, extraLength: login.channel_extra.length } });
+        const serverMatches = login.server_id === store.serverId;
+        const identity = resolveSession
+          ? resolveSession(login.channel_uid, login.verify_code)
+          : verifySession(login.channel_uid, login.verify_code) ? Object.freeze({ userId: login.channel_uid }) : null;
+        if (!serverMatches || !identity) {
+          log({ event: 'login_rejected', serverMatches, credentialFields: { uidLength: login.channel_uid.length, codeLength: login.verify_code.length, extraLength: login.channel_extra.length } });
           send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Local SDK session required' }); return;
         }
+        const account = resolveSession
+          ? store.resolveAccount(identity.userId, {
+            loginCode: identity.loginCode,
+            phone: /^local-phone-([0-9]{11})$/.exec(identity.userId)?.[1] ?? ''
+          })
+          : { accountId: identity.userId, roleId: store.currentRoleId(), created: false };
+        connectionAccountId = account.accountId;
+        connectionRoleId = account.roleId;
+        const state = store.read(connectionRoleId);
+        if (wallet) store.runWithRole(connectionRoleId, () => wallet.ensureAccount());
         onlineGiftSessionAttempted = true;
-        const payload = await loginPayload();
-        send(seq, payload); phase = 'ready'; subscribers.add(push); log({ event: 'login_sent', moduleCount: state.modules.value.length, roleId: state.roleId }); return;
+        const payload = await store.runWithRole(connectionRoleId, () => loginPayload());
+        send(seq, payload); phase = 'ready'; subscribe(connectionRoleId);
+        log({ event: 'login_sent', moduleCount: state.state.modules.value.length, roleId: state.state.roleId, accountCreated: account.created }); return;
       }
       if (phase !== 'ready') throw new Error('Login required');
       if (roleService.supports(type) || storyService.supports(type) || cdkeyService.supports(type)
@@ -3202,8 +3310,11 @@ export function createLocalGame({
       log({ event: 'unsupported_command', type, seq, payloadHead: payloadBytes(request.data, 64) });
       send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'LOCAL_NOT_IMPLEMENTED:' + type });
     }
+    const handleInRole = payload => connectionRoleId == null
+      ? handle(payload)
+      : store.runWithRole(connectionRoleId, () => handle(payload));
     socket.on('data', chunk => {
-      try { for (const payload of decoder.push(chunk)) chain = chain.then(() => handle(payload)); }
+      try { for (const payload of decoder.push(chunk)) chain = chain.then(() => handleInRole(payload)); }
       catch (error) { socket.destroy(); log({ event: 'frame_error', message: error.message }); }
       chain = chain.catch(error => { log({ event: 'handler_error', message: error.message }); socket.destroy(); });
     });

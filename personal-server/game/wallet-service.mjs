@@ -62,12 +62,20 @@ export function createWalletService({
   accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000)
 }) {
   const log = event => { try { logger(event); } catch {} };
+  const configuredAccountId = accountId;
+  const accountIdFor = () => store.currentAccountId?.() ?? configuredAccountId;
+  function roleIdForAccount(account) {
+    const row = store.inspect(db => db.prepare('SELECT role_id FROM accounts WHERE account_id=?').get(account)
+      ?? db.prepare('SELECT role_id FROM local_wallets WHERE account_id=?').get(account));
+    if (!row) throw new GameError(5, 'Unknown local account');
+    return Number(row.role_id);
+  }
   const permits = monthPermit ?? createMonthPermitService({ codec, tables });
   const standardPermits = permitService ?? createPermitService({ codec, tables });
   const monthlyCards = monthlyCard ?? createMonthlyCardService({ codec, tables });
   const diamondFunds = diamondFund ?? createDiamondFundService({ codec, tables });
   const permanentCards = permanentCard ?? createPermanentCardService({ codec, tables });
-  const regularGifts = regularGift ?? createRegularGiftService({ codec, tables, accountId });
+  const regularGifts = regularGift ?? createRegularGiftService({ codec, tables, accountId: accountIdFor });
   const GIFT_BUY_RECORD_HANDLE = 73;
   const dailyRechargeRows = [...(tables.DailyDiscountRecharge?.values?.() ?? [])];
   const dailyDiscountProductIds = new Set(dailyRechargeRows.map(row => Number(row.recharge_id)));
@@ -233,11 +241,13 @@ export function createWalletService({
     records.push({ recharge_tid: rechargeTid, buy_time: buyTime });
     setBuyGiftRecords(login, records);
   };
-  store.transaction((model, db) => {
-    db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(accountId, model.state.roleId);
+  function synchronizeAccount() {
+    const currentAccountId = accountIdFor();
+    return store.transaction((model, db) => {
+    db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(currentAccountId, model.state.roleId);
     // Rebuild the client's gift purchase history from orders so purchase limits
     // remain visible after a server restart or a fresh client login.
-    const rows = db.prepare('SELECT product_id,created_at,payload_json FROM recharge_orders WHERE account_id=? ORDER BY rowid').all(accountId);
+    const rows = db.prepare('SELECT product_id,created_at,payload_json FROM recharge_orders WHERE account_id=? ORDER BY rowid').all(currentAccountId);
     const modules = new Map(model.state.modules.value);
     let changed = false;
     if (diamondFunds.restoreFromOrders({ modules, rows, at: now() })) changed = true;
@@ -308,7 +318,10 @@ export function createWalletService({
       if (dailyChanged) { setDailyDiscountInfo(modules, info); changed = true; }
     }
     if (changed) model.state.modules.value = [...modules];
+    return { accountId: currentAccountId, roleId: model.state.roleId };
   });
+  }
+  synchronizeAccount();
   const hasCompleteRewards = row => Array.isArray(row?.reward_tid)
     && Array.isArray(row?.reward_count)
     && row.reward_tid.length === row.reward_count.length
@@ -366,11 +379,11 @@ export function createWalletService({
   const payloadOf = row => {
     try { return JSON.parse(row.payload_json ?? '{}'); } catch { return {}; }
   };
-  const scopedPurchaseQuantity = (db, product, at, period = 0) => {
+  const scopedPurchaseQuantity = (db, account, product, at, period = 0) => {
     const cycle = Number(product.buy_cycle_limit ?? 0);
     const wanted = rechargeCycleKey(product, at, { period });
     return db.prepare('SELECT created_at,payload_json FROM recharge_orders WHERE account_id=? AND product_id=? ORDER BY rowid')
-      .all(accountId, product.tid)
+      .all(account, product.tid)
       .reduce((total, row) => {
         const seconds = Math.floor(Date.parse(row.created_at) / 1000);
         if (!Number.isSafeInteger(seconds)) return total;
@@ -410,8 +423,21 @@ export function createWalletService({
     return heroDrawActivity?.giftConfig(productId) ?? null;
   }
   function snapshot() {
+    const currentAccountId = accountIdFor();
     return store.inspect(db => ({
-      accounts: db.prepare('SELECT account_id,role_id,balance_cents FROM local_wallets ORDER BY account_id').all().map(row => ({ ...row, phone: row.account_id === accountId ? phone : '', nickname: store.read().role.nick_name ? Buffer.from(store.read().role.nick_name, 'base64').toString() : '' })),
+      accounts: db.prepare(`SELECT w.account_id,w.role_id,w.balance_cents,
+        coalesce(a.phone,'') phone,r.profile_json
+        FROM local_wallets w
+        LEFT JOIN accounts a ON a.account_id=w.account_id
+        LEFT JOIN roles r ON r.role_id=w.role_id
+        ORDER BY w.account_id`).all().map(row => {
+          let nickname = '';
+          try {
+            const profile = JSON.parse(row.profile_json);
+            nickname = profile.nick_name ? Buffer.from(profile.nick_name, 'base64').toString() : '';
+          } catch {}
+          return { account_id: row.account_id, role_id: row.role_id, balance_cents: row.balance_cents, phone: row.phone, nickname };
+        }),
       ledger: db.prepare('SELECT * FROM wallet_ledger ORDER BY rowid DESC LIMIT 100').all().map(row => ({ ...row, details: JSON.parse(row.details_json), details_json: undefined })),
       orders: db.prepare(`SELECT o.order_id,o.account_id,o.product_id,o.price_cents,o.created_at,o.acknowledged,
         coalesce(r.quantity,0) voucher_quantity, coalesce(r.amount_cents,0) voucher_amount_cents,
@@ -423,7 +449,7 @@ export function createWalletService({
         voucher_order_count: db.prepare('SELECT count(*) n FROM voucher_redemptions').get().n },
       products: supportedProducts().map(row => {
         const purchaseCount = store.inspect(db => {
-          return db.prepare('SELECT count(*) AS purchase_count FROM recharge_orders WHERE account_id=? AND product_id=?').get(accountId, row.tid).purchase_count;
+          return db.prepare('SELECT count(*) AS purchase_count FROM recharge_orders WHERE account_id=? AND product_id=?').get(currentAccountId, row.tid).purchase_count;
         });
         return {
           id: row.tid,
@@ -438,7 +464,8 @@ export function createWalletService({
     }));
   }
   function credit({ account_id, amount_cents, request_id, note = '' }) {
-    if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(amount_cents) || amount_cents <= 0 || amount_cents > 100000000 || typeof note !== 'string' || note.length > 200) throw new GameError(1, 'Invalid local balance credit');
+    const ownerRoleId = typeof account_id === 'string' ? roleIdForAccount(account_id) : null;
+    if (!ownerRoleId || !key(request_id) || !Number.isSafeInteger(amount_cents) || amount_cents <= 0 || amount_cents > 100000000 || typeof note !== 'string' || note.length > 200) throw new GameError(1, 'Invalid local balance credit');
     return store.transaction((model, db) => {
       const id = account_id + ':credit:' + request_id;
       const old = db.prepare('SELECT * FROM wallet_ledger WHERE entry_id=?').get(id);
@@ -449,9 +476,9 @@ export function createWalletService({
       db.prepare('INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)').run(id, account_id, 'credit', amount_cents, balance, new Date().toISOString(), JSON.stringify({ note }));
       log({ event: 'wallet_credited', accountId: account_id, amountCents: amount_cents });
       return { balance_cents: balance, duplicate: false };
-    });
+    }, ownerRoleId);
   }
-  function assertPurchaseAvailable({ product_id, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0 } = {}) {
+  function assertPurchaseAvailable({ account_id = accountIdFor(), product_id, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0 } = {}) {
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
     if (Number(product.type) === 107 && groupBuyActivity) {
@@ -518,6 +545,7 @@ export function createWalletService({
     }
     const purchaseCount = store.inspect(db => scopedPurchaseQuantity(
       db,
+      account_id,
       product,
       now(),
       Number.isSafeInteger(period) && period >= 0 ? period : 0,
@@ -525,8 +553,14 @@ export function createWalletService({
     ));
     if (purchaseCount >= product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
   }
-  function buy({ account_id = accountId, product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0 }) {
-    if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)) throw new GameError(1, 'Invalid local purchase');
+  function buy(options = {}) {
+    const account_id = options.account_id ?? accountIdFor();
+    const ownerRoleId = roleIdForAccount(account_id);
+    if (store.currentRoleId() !== ownerRoleId) {
+      return store.runWithRole(ownerRoleId, () => buy({ ...options, account_id }));
+    }
+    const { product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0 } = options;
+    if (typeof account_id !== 'string' || !key(request_id) || !Number.isSafeInteger(product_id)) throw new GameError(1, 'Invalid local purchase');
     const product = tables.Recharge.get(product_id);
     if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
     const heroGift = heroGiftForPurchase(product_id, activity_version);
@@ -601,6 +635,7 @@ export function createWalletService({
         } else {
           const purchaseCount = scopedPurchaseQuantity(
             db,
+            account_id,
             product,
             purchasedAt,
             Number.isSafeInteger(period) && period >= 0 ? period : 0,
@@ -794,8 +829,14 @@ export function createWalletService({
   // Command 16005 covers free, inventory-priced and local-balance gifts. The
   // same transaction owns order creation, limit checks, payment, rewards and
   // activity bookkeeping so an injected failure cannot leave a paid order.
-  function purchaseGift({ account_id = accountId, product_id, request_id, buy_num = 1, extra_buy = false, activity_id, period = 0, day_index = 0 }) {
-    if (account_id !== accountId || !key(request_id) || !Number.isSafeInteger(product_id)
+  function purchaseGift(options = {}) {
+    const account_id = options.account_id ?? accountIdFor();
+    const ownerRoleId = roleIdForAccount(account_id);
+    if (store.currentRoleId() !== ownerRoleId) {
+      return store.runWithRole(ownerRoleId, () => purchaseGift({ ...options, account_id }));
+    }
+    const { product_id, request_id, buy_num = 1, extra_buy = false, activity_id, period = 0, day_index = 0 } = options;
+    if (typeof account_id !== 'string' || !key(request_id) || !Number.isSafeInteger(product_id)
       || !Number.isSafeInteger(buy_num) || buy_num < 1 || buy_num > 100) throw new GameError(1, 'Invalid local gift purchase');
     const product = tables.Recharge.get(product_id);
     if (!product) throw new GameError(5, 'Gift is not configured');
@@ -932,7 +973,7 @@ export function createWalletService({
           dailyPlan = planDailyDiscountPurchase(new Map(model.state.modules.value), product, purchasedAt, extra_buy === true);
           if (!dailyPlan) throw new GameError(307, 'Product purchase limit reached');
         } else {
-          const purchaseCount = scopedPurchaseQuantity(db, product, purchasedAt, normalizedPeriod);
+          const purchaseCount = scopedPurchaseQuantity(db, account_id, product, purchasedAt, normalizedPeriod);
           if (purchaseCount + buy_num > product.can_buy_times) throw new GameError(307, 'Product purchase limit reached');
         }
       }
@@ -1071,7 +1112,7 @@ export function createWalletService({
   function acknowledge(order) {
     if (typeof order !== 'string' || order.length > 120) throw new GameError(1,'Invalid order acknowledgement');
     store.transaction((model,db) => {
-      const row = db.prepare('SELECT order_id FROM recharge_orders WHERE account_id=? AND order_id=?').get(accountId,order);
+      const row = db.prepare('SELECT order_id FROM recharge_orders WHERE account_id=? AND order_id=?').get(accountIdFor(),order);
       if (!row) throw new GameError(1,'Local order not found');
       const modules = new Map(model.state.modules.value), login = codec.unpack('res_recharge_login',rawBinary(modules.get(19)));
       if (login.tmp_recharge_record) login.tmp_recharge_record.tmp_record_list = login.tmp_recharge_record.tmp_record_list.filter(x=>x.order_no!==order);
@@ -1093,7 +1134,8 @@ export function createWalletService({
     });
   }
   return {
-    snapshot, credit, assertPurchaseAvailable, buy, purchaseGift, acknowledge, findOrder, accountId,
+    snapshot, credit, assertPurchaseAvailable, buy, purchaseGift, acknowledge, findOrder, ensureAccount: synchronizeAccount,
+    get accountId() { return accountIdFor(); },
     isPetGift: productId => Boolean(petActivity?.isConfiguredGift?.(productId)),
     isPremiumGift: productId => Boolean(premiumActivity?.isConfiguredGift(productId))
   };

@@ -8,11 +8,14 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createDrawActivityService, DRAW_ACTIVITY_COMMANDS } from '../game/draw-activity-service.mjs';
+import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 
 const codec = createGameCodec();
 const tables = readGameTables();
 const capture = JSON.parse(fs.readFileSync(new URL('../fixtures/login-modules.seed.json', import.meta.url)));
 const fixedNow = 1793400000000;
+const SERVER_OPENED_AT = 1792789200;
+const ACTIVITY_REFERENCE_OPENED_AT = 1790784000;
 
 function setup(t, random = () => 0) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-draw-activity-'));
@@ -331,7 +334,7 @@ test('pray act accepts the ActFrame instance id and keys state by its config ver
   assert.equal(e.service.stateOf(100001, 'pray_act', 13).counters.drawCounts['65'], 50);
 });
 
-test('pray login payload restores the persisted ActFrame-183 state', async t => {
+test('pray login payload restores persisted state and uses the table-relative window', async t => {
   const e = setup(t);
   e.store.transaction(model => grantResources(model, [[816002, 50]], tables));
   e.service.execute(DRAW_ACTIVITY_COMMANDS.praySelect, {
@@ -365,6 +368,34 @@ test('pray login payload restores the persisted ActFrame-183 state', async t => 
   assert.equal(index.pray_award_info_list[0].history_cnt, '1');
   assert.deepEqual(payload.pray_list.map(row => Number(row.draw_cnt)), [50, 50, 50, 50, 50]);
   assert.deepEqual(payload.pray_list.map(row => Number(row.progress_value ?? 0)), [0, 50, 50, 50, 50]);
+
+  const expected = activityWindow(
+    tables.ActFrameAct.get(183013),
+    SERVER_OPENED_AT,
+    ACTIVITY_REFERENCE_OPENED_AT
+  );
+  const at = expected.start + 60;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    now: () => at * 1000
+  });
+  const scheduled = createDrawActivityService({ store: e.store, codec, tables, calendar, now: () => at * 1000 });
+  const scheduledResult = scheduled.synchronizeLogin(activity, modules.get(183), at);
+  assert.deepEqual(
+    [scheduledResult.loginActivities[0].startTime, scheduledResult.loginActivities[0].endTime],
+    [expected.start, expected.end]
+  );
+  const closedAt = expected.end + 1;
+  const closedCalendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    now: () => closedAt * 1000
+  });
+  const closed = createDrawActivityService({ store: e.store, codec, tables, calendar: closedCalendar, now: () => closedAt * 1000 });
+  assert.deepEqual(closed.synchronizeLogin(activity, modules.get(183), closedAt), { activityIds: [], loginActivities: [] });
 });
 
 test('flop card reserves a weighted award and claims it with cumulative progress', async t => {

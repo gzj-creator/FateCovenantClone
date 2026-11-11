@@ -8,7 +8,7 @@ import { once } from 'node:events';
 import { binary, createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
-import { createActivityCalendar } from '../game/activity-calendar.mjs';
+import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
 import { createPetActivityService } from '../game/pet-activity-service.mjs';
 import { createWalletService } from '../game/wallet-service.mjs';
 import { grantResources } from '../game/resources.mjs';
@@ -21,6 +21,7 @@ const tables = readGameTables();
 const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 const SERVER_OPENED_AT = 1792789200;
+const ACTIVITY_REFERENCE_OPENED_AT = 1790784000;
 const PET_ACT_ID = 83028;
 const PET_SHOP_ID = 5070005;
 const PET_CURRENCY = 6861900;
@@ -293,6 +294,29 @@ test('scheduled pet activity removes login, shop, gift purchase and recommendati
   assert.equal(response.err, undefined);
   assert.deepEqual(codec.unpack('pb_recommend_gift_active_rsp', Buffer.from(response.data ?? '', 'base64')).gift_list, []);
   assert.equal(env.game.store.inspect(db => db.prepare('SELECT count(*) AS n FROM activity_purchases').get().n), 0);
+});
+
+test('scheduled pet deadlines use the shared server-relative activity window', t => {
+  const actId = 83027;
+  const expected = activityWindow(tables.Activity.get(actId), SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
+  const at = expected.start + 60;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-pet-activity-deadline-'));
+  const store = createGameStore({
+    databasePath: path.join(directory, 'game.sqlite'),
+    seed,
+    codec,
+    serverOpenedAt: SERVER_OPENED_AT
+  });
+  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt: SERVER_OPENED_AT,
+    activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    now: () => at * 1000
+  });
+  const petActivity = createPetActivityService({ store, codec, tables, calendar, now: () => at * 1000 });
+
+  assert.equal(petActivity.rechargeInfo(actId).refresh_time, expected.end);
 });
 
 test('pet activity gift and shop purchase counts survive a SQLite reopen', t => {

@@ -75,7 +75,7 @@ test('sprint claim grants configured awards once, updates nested login bits and 
 
 test('SDK balance payment authenticates signed local sessions and debits SQLite once',async t=>{
   const e=setup(t);let now=1790000000;
-  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',platform:{appId:'test-platform',appKey:'platform-key'},account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},nowSeconds:()=>now,sessionTtlSeconds:60});
+  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',platform:{appId:'test-platform',appKey:'platform-key'},account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},phoneIdentityResolver:()=>({userId:'local-1',loginCode:'local',nickname:'Local Test'}),nowSeconds:()=>now,sessionTtlSeconds:60});
   sdk.attachWallet(e.wallet);const address=await sdk.listen(0);t.after(()=>sdk.close());
   const post=async(route,fields,key='test-key',override={})=>{const signed={...fields};if(route==='/pay/recharge/order'&&(signed.channel===undefined||signed.channel===''))signed.channel='null';const form=new URLSearchParams({...fields,sign:signSdkParameters(signed,key),...override});const r=await fetch(address.url+route,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});return{status:r.status,body:await r.json()};};
   const input={appid:'test-sdk',userid:'local-1',server:'1',role_id:'100001',product_id:'11',cp_order:'sdk-order',amount:'6.00',channel:'',extra_params:''};
@@ -94,7 +94,7 @@ test('SDK balance payment authenticates signed local sessions and debits SQLite 
 
 test('QuickSDK order payment reports an exhausted gift limit instead of insufficient balance',async t=>{
   const e=setup(t),quickSdk={productCode:'fc-local',productKey:'fclocal1'},now=1790000000;
-  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',quickSdk,account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},nowSeconds:()=>now,sessionTtlSeconds:60});
+  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',quickSdk,account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},phoneIdentityResolver:()=>({userId:'local-1',loginCode:'local',nickname:'Local Test'}),nowSeconds:()=>now,sessionTtlSeconds:60});
   sdk.attachWallet(e.wallet);const address=await sdk.listen(0);t.after(()=>sdk.close());
   const post=async(route,fields)=>{const form=new URLSearchParams({...fields,sign:signSdkParameters(fields,'test-key')});const response=await fetch(address.url+route,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:form});return{status:response.status,body:await response.json()};};
   const login=await post('/user/phoneLogin',{appid:'test-sdk',phone:'19900000000',verifyCode:'1234'});assert.equal(login.status,200);
@@ -117,7 +117,7 @@ test('QuickSDK order payment reports an exhausted gift limit instead of insuffic
 
 test('wallet order confirms an existing QuickSDK order without buying or notifying twice',async t=>{
   const e=setup(t),now=1790000000;
-  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',platform:{appId:'test-platform',appKey:'platform-key'},account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},nowSeconds:()=>now,sessionTtlSeconds:60});
+  const sdk=createSdkService({localTestOtp:true,appId:'test-sdk',appKey:'test-key',platform:{appId:'test-platform',appKey:'platform-key'},account:{loginCode:'local',passwordMd5:'a'.repeat(32),userId:'local-1'},phoneIdentityResolver:()=>({userId:'local-1',loginCode:'local',nickname:'Local Test'}),nowSeconds:()=>now,sessionTtlSeconds:60});
   sdk.attachWallet(e.wallet);const address=await sdk.listen(0);t.after(()=>sdk.close());
   const post=async(route,fields,key='test-key',override={})=>{const signed={...fields};if(route==='/pay/recharge/order'&&(signed.channel===undefined||signed.channel===''))signed.channel='null';const form=new URLSearchParams({...fields,sign:signSdkParameters(signed,key),...override});const r=await fetch(address.url+route,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});return{status:r.status,body:await r.json()};};
   await post('/user/phoneLogin',{appid:'test-sdk',phone:'19900000000',verifyCode:'1234'});

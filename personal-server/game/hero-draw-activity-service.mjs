@@ -1,4 +1,5 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { activityWindow } from './activity-calendar.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
@@ -15,6 +16,7 @@ const TID_COUNT_DRAW = 1;
 const PERSONAL_DRAW_LIBRARIES = new Set([1, 2, 10]);
 const DAY_SECONDS = 86400;
 const RESET_OFFSET_SECONDS = 10800;
+const ONE_YEAR_SECONDS = 365 * DAY_SECONDS;
 
 const fail = (code, message) => { throw new GameError(code, message); };
 const integer = (value, min, max, message) => {
@@ -156,11 +158,16 @@ export function createHeroDrawActivityService({
   }
 
   function deadline(context, at) {
+    if (calendar?.mode === 'all-open') return at + ONE_YEAR_SECONDS;
+    const window = activityWindow(
+      context.config,
+      calendar?.serverOpenedAt ?? store.serverOpenedAt,
+      calendar?.activityReferenceOpenedAt ?? null
+    );
+    if (window) return window.end;
     const customEnd = Number((context.activity?.act_custom_list ?? []).find(row => Number(row.act_id) === context.actId)?.end_time ?? 0);
     if (customEnd > at) return customEnd;
-    const enter = runningEnterTime(context.state);
-    const configuredEnd = enter + Math.max(1, Number(context.config.duration_day ?? 1)) * DAY_SECONDS;
-    return configuredEnd > at ? configuredEnd : at + 365 * DAY_SECONDS;
+    return at + ONE_YEAR_SECONDS;
   }
 
   function drawFromEntry(entry) {

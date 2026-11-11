@@ -40,3 +40,15 @@ The required activity/read, welfare, gateway and broader focused regression is r
 ## Acceptance boundary
 
 This is a server implementation with evidence gaps, not a completed APK acceptance. No live service was started or stopped, no running database or `runtime.local-only.data` was read or written, no emulator/ADB/APK was operated, and no original game server was contacted. APK acceptance remains pending, especially guarantee weighting, non-hero star tasks, type-104 skill rewards, chip target mapping and original response-code parity.
+
+## 2026-11-11 legacy activity compatibility
+
+真实事件 `2026-11-10T16:08:19.443Z command type=117005 seq=21 bytes=8` 暴露了旧活动代际未被百抽服务识别的问题：`ActivityTable.Act[20001]` 使用 `func=20/version=1`，而旧服务只接受 `ActFrameAct.type=1102`。
+
+- `HundredDrawActTable.Version[1]` 映射池 `101`、礼包 `1841001`、商店 `182810`；池 `101` 的 `draw_item` 为 `835802`。
+- 百抽配置查找和登录扫描现在同时接受旧 `func=20` 与新 `type=1102`。
+- 登录同步输出父活动及其 `Version.gift/shop` 子行；`activity-calendar` 在 `schedule` 和 `all-open` 下都可用父活动窗口材料化这些明确关联行。线上新服 `00:00` 开服时，`20001` 的模块 92 自定义窗口早于静态表 `05:00` 窗口，因此登录和命令运行判定都使用实际自定义窗口。
+- `PremiumActService` 记住本次登录材料化的子活动窗口，后续 `16005` 限购与可购检查不再回落到子行已经过期的静态窗口。
+- 正式排期真实临时 TCP 覆盖：module 92 的 `20001` 数据、module 183 的 `20001/1841001/182810`、`1270963` 免费获得 `835802 x30`、`117001` 扣 10 张、`117005` 成功、SQLite 累计抽数为 10。测试固定在开服后 8 分 19 秒、静态表五点窗口之前，定向 43/43 通过。
+
+`182810` 的兑换商店命令仍依赖缺失的 `ActShopTable`，继续明确拒绝。该兼容修复不改变保底权重、非英雄星级条件和其他既有证据边界。

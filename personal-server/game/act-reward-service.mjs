@@ -95,6 +95,7 @@ export function createActRewardService({
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(typeof now === 'function' ? now() : now);
   const serverOpenedAt = Number(calendar?.serverOpenedAt ?? store.serverOpenedAt);
+  const activityReferenceOpenedAt = calendar?.activityReferenceOpenedAt ?? null;
   const allOpen = calendar?.mode === 'all-open';
 
   store.inspect(db => db.exec(STATE_TABLE));
@@ -110,7 +111,7 @@ export function createActRewardService({
     const version = Number(config.version);
     if (!Number.isSafeInteger(version) || version <= 0) throw new GameError(5, 'Activity version is not configured');
     const at = currentSeconds();
-    const window = activityWindow(config, serverOpenedAt);
+    const window = activityWindow(config, serverOpenedAt, activityReferenceOpenedAt);
     if (window && window.start > at) throw new GameError(309, 'Activity is not running');
     if (!allOpen && calendar?.isActivityRunning && !calendar.isActivityRunning(id, null, null, at)) {
       throw new GameError(309, 'Activity is not running');

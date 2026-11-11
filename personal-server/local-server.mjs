@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { readAssetBytes, readJsonAsset, defaultDataDirectory, loginSeedPath,
+import { readAssetBytes, readJsonAsset, defaultDataDirectory, loginSeedPath, serverRootPath,
   protocolAsset, serverListSigningKeyPath, tableAsset } from './assets.mjs';
 import { createSdkService } from './sdk-service.mjs';
 import { createServerListService } from './server-list.mjs';
@@ -11,6 +11,8 @@ import { createLocalGame } from './local-game.mjs';
 import { createAdminService } from './admin/server.mjs';
 import { loadActivityCalendarConfig, parseActivityCalendarTimestamp } from './config/activity-calendar-config.mjs';
 import { loadPublicServerConfig } from './config/server-config.mjs';
+import { serverDayNumber } from './game/activity-calendar.mjs';
+import { createQuickSdkIdentityResolver } from './quick-sdk-accounts.mjs';
 
 function configuredPort(variable, fallback) {
   const raw = process.env[variable];
@@ -20,7 +22,30 @@ function configuredPort(variable, fallback) {
   return value;
 }
 
+function configuredHost(variable, fallback) {
+  const raw = process.env[variable];
+  if (raw === undefined || raw.trim() === '') return fallback;
+  return raw.trim();
+}
+
+function pathIsInside(parent, candidate) {
+  const relative = path.relative(path.resolve(parent), path.resolve(candidate));
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
+function publicDataDirectory() {
+  const raw = process.env.FC_LOCAL_DATA;
+  if (!raw) throw new Error('FC_LOCAL_DATA is required in public mode and must name an external persistent volume');
+  if (!path.isAbsolute(raw)) throw new Error('FC_LOCAL_DATA must be an absolute path in public mode');
+  const resolved = path.resolve(raw);
+  if (pathIsInside(serverRootPath, resolved)) {
+    throw new Error('FC_LOCAL_DATA must be outside the deployed source tree in public mode');
+  }
+  return resolved;
+}
+
 const publicDeployment = process.argv.includes('--public') ? loadPublicServerConfig() : null;
+const activeServer = publicDeployment?.activeServer ?? null;
 
 const requestedPorts = Object.freeze({
   sdk: configuredPort('FC_SDK_PORT', publicDeployment?.ports.sdk ?? 18880),
@@ -30,15 +55,31 @@ const requestedPorts = Object.freeze({
   admin: configuredPort('FC_ADMIN_PORT', publicDeployment?.ports.admin ?? 18883)
 });
 const publicListenHost = publicDeployment?.listen.publicHost ?? '127.0.0.1';
-const adminListenHost = publicDeployment?.listen.adminHost ?? '127.0.0.1';
+const adminListenHost = configuredHost('FC_ADMIN_LISTEN_HOST', publicDeployment?.listen.adminHost ?? '127.0.0.1');
 const listenHosts = Object.freeze({ sdk: publicListenHost, list: publicListenHost, startup: publicListenHost,
   game: publicListenHost, admin: adminListenHost });
 
 const activityCalendar = loadActivityCalendarConfig(process.env.FC_ACTIVITY_CALENDAR_CONFIG);
-const serverOpenedAt = process.env.FC_SERVER_OPENED_AT
+const environmentOpenedAt = process.env.FC_SERVER_OPENED_AT
   ? parseActivityCalendarTimestamp(process.env.FC_SERVER_OPENED_AT)
-  : activityCalendar.serverOpenedAt;
-const directory = path.resolve(process.env.FC_LOCAL_DATA ?? defaultDataDirectory);
+  : null;
+if (publicDeployment) {
+  if (!activeServer) throw new Error('Public mode requires one active server in public-server.json');
+  if (activityCalendar.serverOpenedAt !== activeServer.launchAt) {
+    throw new Error('activity-calendar serverOpenedAt must equal the active server launchAt');
+  }
+  if (environmentOpenedAt != null && environmentOpenedAt !== activeServer.launchAt) {
+    throw new Error('FC_SERVER_OPENED_AT cannot override the active server launchAt in public mode');
+  }
+}
+if (activityCalendar.mode === 'schedule' && activityCalendar.activityWindowAnchor == null) {
+  throw new Error('Schedule mode requires activityWindowAnchor for captured absolute windows');
+}
+if (activityCalendar.mode === 'schedule' && activityCalendar.activityReferenceOpenedAt == null) {
+  throw new Error('Schedule mode requires activityReferenceOpenedAt for relative world-time activities');
+}
+const serverOpenedAt = publicDeployment ? activeServer.launchAt : (environmentOpenedAt ?? activityCalendar.serverOpenedAt);
+const directory = publicDeployment ? publicDataDirectory() : path.resolve(process.env.FC_LOCAL_DATA ?? defaultDataDirectory);
 fs.mkdirSync(directory, { recursive: true });
 const logger = event => { const line = JSON.stringify({ time: new Date().toISOString(), ...event }); fs.appendFileSync(path.join(directory, 'events.jsonl'), line + String.fromCharCode(10)); console.log(line); };
 // Compatibility constants stay on disk; the isolated APK still signs Lua requests with these.
@@ -52,7 +93,12 @@ const sdkAccount = Object.freeze({
   loginCode: 'localtest',
   passwordMd5: createHash('md5').update('Local2026!').digest('hex'),
   userId: 'local-1',
-  nickname: 'Local Adventurer'
+  nickname: activeServer?.roleName ?? 'Local Adventurer'
+});
+const phoneIdentity = phone => Object.freeze({
+  userId: 'local-phone-' + phone,
+  loginCode: 'phone-' + phone,
+  nickname: activeServer?.roleName ?? '命运旅者'
 });
 const sdk = createSdkService({
   localTestOtp: true,
@@ -60,9 +106,8 @@ const sdk = createSdkService({
   sessionPath: path.join(directory, 'sdk-sessions.local-only.json'),
   platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform },
   quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' },
-  quickSdkIdentityResolver: () => ({
-    userId: sdkAccount.userId, loginCode: sdkAccount.loginCode, nickname: sdkAccount.nickname
-  }),
+  phoneIdentityResolver: phoneIdentity,
+  quickSdkIdentityResolver: createQuickSdkIdentityResolver({ primaryAccount: sdkAccount, phoneIdentity }),
   quickServerUrl: publicDeployment?.publicSdkUrl ?? `http://127.0.0.1:${requestedPorts.sdk || 18880}`,
   appId: 'fc-local', appKey: 'fc-local-development-key', account: sdkAccount, logger
 });
@@ -79,7 +124,15 @@ const game = createLocalGame({
   statePath: path.join(directory, 'state.local-only.json'),
   capturePath: loginSeedPath,
   verifySession: sdk.verifySession,
+  resolveSession: sdk.resolveSession,
   serverOpenedAt,
+  serverId: activeServer?.id ?? 1,
+  serverName: activeServer?.name ?? '命运一服',
+  roleId: activeServer?.roleId ?? 100001,
+  roleName: activeServer?.roleName ?? 'Local Adventurer',
+  launchProfileId: activeServer?.launchProfileId ?? null,
+  activityWindowAnchor: activityCalendar.activityWindowAnchor,
+  activityReferenceOpenedAt: activityCalendar.activityReferenceOpenedAt,
   activityMode: activityCalendar.mode,
   currentFishingActivityId: activityCalendar.currentFishingActivityId,
   sprintPreview: true,
@@ -99,7 +152,7 @@ try {
     boundPorts[name] = address.port;
   }
   const servers = publicDeployment
-    ? publicDeployment.servers.map(server => ({ ...server, releaseTime: serverOpenedAt }))
+    ? [{ id: activeServer.id, name: activeServer.name, extranetIp: activeServer.extranetIp, releaseTime: activeServer.launchAt }]
     : [{ id: 1, name: '命运一服', extranetIp: `127.0.0.1:${boundPorts.game}`, releaseTime: serverOpenedAt }];
   const list = createServerListService({ signingKey: key, servers, codec: createProtobufJsCodec(), logger });
   services.push(list);
@@ -107,7 +160,14 @@ try {
   boundPorts.list = listAddress.port;
   fs.writeFileSync(path.join(directory,'admin-url.local-only.txt'),`http://127.0.0.1:${boundPorts.admin}/#key=${admin.token}`);
   const ports = [boundPorts.sdk, boundPorts.list, boundPorts.startup, boundPorts.game, boundPorts.admin];
-  fs.writeFileSync(path.join(directory, 'server.local-only.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId, servers, listenHosts, ports, boundPorts }, null, 2));
-  logger({ event: 'local_server_ready', servers, listenHosts, ports, boundPorts, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId });
+  const launch = {
+    activeServerId: activeServer?.id ?? 1,
+    launchProfileId: activeServer?.launchProfileId ?? null,
+    activityWindowAnchor: activityCalendar.activityWindowAnchor,
+    activityReferenceOpenedAt: activityCalendar.activityReferenceOpenedAt,
+    serverDay: serverDayNumber(serverOpenedAt, Math.floor(Date.now() / 1000))
+  };
+  fs.writeFileSync(path.join(directory, 'server.local-only.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), ...launch, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId, servers, listenHosts, ports, boundPorts }, null, 2));
+  logger({ event: 'local_server_ready', ...launch, servers, listenHosts, ports, boundPorts, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId });
 } catch (error) { for (const service of services) await service.close(); throw error; }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => { for (const service of services) await service.close(); });

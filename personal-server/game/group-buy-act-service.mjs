@@ -52,6 +52,7 @@ export function createGroupBuyActService({
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => seconds(typeof now === 'function' ? now() : now);
   const serverOpenedAt = Number(calendar?.serverOpenedAt ?? store.serverOpenedAt);
+  const activityReferenceOpenedAt = calendar?.activityReferenceOpenedAt ?? null;
   const rechargeHandle = rechargeHandleForType(tables, GROUP_BUY_RECHARGE_TYPE);
 
   // func=135 lives in ActivityTable; ActFrameTable has no type 135 entry.
@@ -95,7 +96,10 @@ export function createGroupBuyActService({
   function selectActivity(activity = null, at = currentSeconds()) {
     const candidates = activities.filter(act => groupGifts(act.version).length > 0);
     if (!candidates.length) return null;
-    const withWindow = candidates.map(act => ({ ...act, window: activityWindow(act.config, serverOpenedAt) }));
+    const withWindow = candidates.map(act => ({
+      ...act,
+      window: activityWindow(act.config, serverOpenedAt, activityReferenceOpenedAt)
+    }));
     if (calendar?.mode === 'all-open') {
       const started = withWindow
         .filter(act => Number.isSafeInteger(act.window?.start) && act.window.start <= at)
