@@ -4,10 +4,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 import { spawn, spawnSync } from 'node:child_process';
+import { createCipheriv } from 'node:crypto';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createProtobufJsCodec } from '../server-list-codec.mjs';
 import { encodeServerListRequest } from '../server-list.mjs';
+import { signQuickSdk } from '../quick-sdk.mjs';
 
 const sourceRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -99,6 +101,25 @@ test('a clean personal-server copy boots from the public server list without the
   assert.equal(decoded.servers[0].id, 2);
   assert.equal(decoded.servers[0].name, '命运二服');
   assert.equal(decoded.servers[0].extranet_ip, '140.143.142.251:19090');
+
+  const quickSdkKey = 'fclocal1';
+  const cipher = createCipheriv('des-ede3', Buffer.concat([Buffer.from(quickSdkKey), Buffer.from(quickSdkKey), Buffer.from(quickSdkKey)]), null);
+  const carrier = Buffer.concat([
+    cipher.update(JSON.stringify({ uid: '9768a7c5ad00', token: '97170cea8a25' }), 'utf8'),
+    cipher.final()
+  ]).toString('base64');
+  const quickFields = new Map([['product_code', 'fc-local'], ['json_data', carrier]]);
+  const quickResponse = await fetch(`http://127.0.0.1:${status.boundPorts.sdk}/v2/users/checkLogin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: new URLSearchParams([...quickFields, ['sign', signQuickSdk(quickFields, quickSdkKey)]]).toString(),
+    signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(quickResponse.status, 200);
+  const quickLogin = await quickResponse.json();
+  assert.equal(quickLogin.result, true);
+  assert.equal(quickLogin.data.uid, 'local-1');
+  assert.match(quickLogin.data.user_token, /^[0-9a-f]{64}$/);
 
   const exited = once(child, 'exit');
   child.kill('SIGTERM');

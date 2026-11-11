@@ -12,6 +12,7 @@ import { createAdminService } from './admin/server.mjs';
 import { loadActivityCalendarConfig, parseActivityCalendarTimestamp } from './config/activity-calendar-config.mjs';
 import { loadPublicServerConfig } from './config/server-config.mjs';
 import { serverDayNumber } from './game/activity-calendar.mjs';
+import { createQuickSdkIdentityResolver } from './quick-sdk-accounts.mjs';
 
 function configuredPort(variable, fallback) {
   const raw = process.env[variable];
@@ -99,12 +100,6 @@ const phoneIdentity = phone => Object.freeze({
   loginCode: 'phone-' + phone,
   nickname: activeServer?.roleName ?? '命运旅者'
 });
-function identityForUserId(userId) {
-  if (userId === sdkAccount.userId) return sdkAccount;
-  const match = /^local-phone-([0-9]{11})$/.exec(userId ?? '');
-  if (match) return phoneIdentity(match[1]);
-  throw new Error('Unknown local account identity');
-}
 const sdk = createSdkService({
   localTestOtp: true,
   sessionTtlSeconds: 604800,
@@ -112,7 +107,7 @@ const sdk = createSdkService({
   platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform },
   quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' },
   phoneIdentityResolver: phoneIdentity,
-  quickSdkIdentityResolver: ({ uid }) => identityForUserId(uid),
+  quickSdkIdentityResolver: createQuickSdkIdentityResolver({ primaryAccount: sdkAccount, phoneIdentity }),
   quickServerUrl: publicDeployment?.publicSdkUrl ?? `http://127.0.0.1:${requestedPorts.sdk || 18880}`,
   appId: 'fc-local', appKey: 'fc-local-development-key', account: sdkAccount, logger
 });
