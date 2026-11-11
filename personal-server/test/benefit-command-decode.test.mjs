@@ -70,11 +70,45 @@ function start(t, events = []) {
 
 test('every protobuf benefit request schema is backed by the bundled protobuf assets', () => {
   const entries = Object.entries(BENEFIT_PROTOBUF_REQUESTS);
-  assert.equal(entries.length, 28);
+  assert.equal(entries.length, 27);
   for (const [type, schema] of entries) {
     assert.match(schema, /^pb_/, 'type ' + type + ' must map to a pb_ request schema');
     assert.doesNotThrow(() => codec.root.lookupType(schema), 'missing schema ' + schema + ' for ' + type);
   }
+});
+
+test('delivered APK activity tables are described by their unresolved state contract', async () => {
+  const { createBenefitCommerceService } = await import('../game/benefit-commerce-service.mjs');
+  const service = createBenefitCommerceService({
+    store: {}, codec: {}, tables: {}, now: () => BASE_MS, logger: () => {}
+  });
+  const delivered = {
+    'PAY-LINKGIFT': /custom_list/,
+    'PAY-APPEARANCERELEASEACT': /interact_state/,
+    'PAY-BUYSKINACT': /unlock_day/,
+    'PAY-VICKREYAUCTIONACT': /密封出价/,
+    'PAY-GIFTBOXACT': /box_bought_list/,
+    'PAY-SUBSCRIPTIONACT': /全服 round/,
+    'PAY-NEWPERMITACT': /Tier\.recharge/,
+    'PAY-REBATESHOPACT': /got_shop_award/,
+    'PAY-LEVELSPRINT': /pb_level_sprint/,
+    'PAY-WEEKENDBONUS': /模块 145.*reward_bin/,
+    'PAY-DIAMONDFUND': /SteadyFundAward.*FortuneFundAward.*day_award_history/,
+    'PAY-WEEKHUNT': /TaskType.*Progress.*common_progress/,
+    'PAY-FLASHSALE': /FlashSaleTaskGroup.*FlashSaleGift.*砍价/,
+    'PAY-ACTSHOP': /104801/,
+    'PAY-PREMIUMACT': /asserts/,
+    'PAY-FASHION': /FashionTable.*模块 110/
+  };
+  for (const [card, contract] of Object.entries(delivered)) {
+    const family = [...new Set(service.refusals.values())].find(item => item.card === card);
+    assert.ok(family, 'missing refusal family ' + card);
+    assert.match(family.reason, contract);
+    assert.doesNotMatch(family.reason, /Table 未导出/);
+  }
+  const redEnvelope = [...new Set(service.refusals.values())].find(item => item.card === 'PAY-REDENVELOPE');
+  assert.match(redEnvelope.reason, /RedEnvelopeTable 未导出.*pb_red_envelope/);
+  assert.doesNotMatch(redEnvelope.reason, /pb_client_red_envelope 定义缺失/);
 });
 
 test('protobuf benefit requests reach the family refusal instead of code 1', async t => {
@@ -83,7 +117,6 @@ test('protobuf benefit requests reach the family refusal instead of code 1', asy
   const { request } = await connect(t, instance);
 
   const cases = [
-    [104801, 'pb_act_shop_info_req', { version: 7 }],
     [104802, 'pb_act_buy_goods_req', { act_tid: 182007, goods_tid: 102, count: 1 }],
     [104803, 'pb_act_shop_level_rewards_req', { act_tid: 182007, shop_level_tid: 1 }],
     [105401, 'pb_premium_free_award_req', { activity_id: 184005, free_gift_id: 100001 }],
@@ -101,9 +134,9 @@ test('protobuf benefit requests reach the family refusal instead of code 1', asy
     assert.equal(typeof refused.reason, 'string');
     assert.ok(refused.reason.length > 0);
   }
-  const readRefusal = events.find(event => event.type === 104801 && event.event === 'benefit_command_refused');
-  assert.equal(Number(readRefusal.request?.version), 7, 'refusal log keeps the decoded request fields');
-  assert.equal(readRefusal.card, 'PAY-ACTSHOP');
+  const actShopWriteRefusal = events.find(event => event.type === 104802 && event.event === 'benefit_command_refused');
+  assert.equal(Number(actShopWriteRefusal.request?.act_tid), 182007, 'refusal log keeps the decoded request fields');
+  assert.equal(actShopWriteRefusal.card, 'PAY-ACTSHOP');
 });
 
 test('refused writes leave login modules untouched and stay refused on repeat', async t => {

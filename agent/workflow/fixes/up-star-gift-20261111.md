@@ -1,145 +1,184 @@
-# 独立“限时升星 / 升星礼包”：登录版本块、版本选择与配置缺口
+# 独立“限时升星 / 升星礼包”：完整登录、版本选择与免费任务领奖
 
-2026-11-11。分支 `fix/up-star-gift-20261111`，worktree `.worktree/up-star-gift-20261111`，基于最新
-main `f1fed77`（线上 `release-20261111T085036Z`，`RELEASE_COMMIT=f1fed77572aad3538ffb1b6173551f52af121b98`）。
-本轮没有启停服务、写入运行数据库或操作客户端/ADB/APK；运行库只用 `DatabaseSync(..., {readOnly:true})` 读取。
+更新时间：2026-11-12（Asia/Shanghai）。分支 `fix/up-star-gift-20261111`，worktree
+`.worktree/up-star-gift-20261111`。开工时 HEAD 为 `b044a0d`，已合入 main `95112fb` 与
+`origin/main 3a1518f`；最终 fetch 后 `origin/main` 仍为 `3a1518f`，所以没有再合并 main。
+
+本轮没有启停实时服务、没有写运行数据库、没有操作客户端、ADB 或 APK。运行库只以只读方式检查。
 
 ## 结论
 
-1. `31052/31053` 在 main 上被 `benefit-commerce-service.mjs` 的 `PAY-UPSTARGIFT` 整族主动拒绝；
-   网关还把两条命令都按 ETF 解码，因此 `31052` 的 protobuf 请求会先被判成 code 1，看不到真实缺口。
-2. 登录块不是“完全缺失”：模块 92 的 func 25 并行组里确有参考服 534 字节的
-   `pb_up_star_gift_master`，66 个版本，`cur_choose_version=0`。问题在于正式排期下开放的 9 个版本里
-   `25111`（限时升星_天极汐夜新服0906）不在该快照中，同时没有任何有效选中版本，页面拿不到可渲染的当前版本。
-3. 独立升星的档位条件与奖励属于 `UpStarGiftTable`，本环境任何来源都没有该表。本轮实现登录版本块、
-   版本选择与持久化；`31052` 保留 code 5 的明确拒绝，不猜奖励、不发空成功。
+1. `31053` 现在只接受当前正在运行且有 `UpStarGiftTable` 配置的版本。历史版本、过期版本、未知版本和
+   `0` 都不会被当作“自动选择”；登录同步会在原选择为空或已失效时，自动选择当前开放期中开窗时间最新的一版。
+2. `31052.ids` 是 `UpStarGift.tid`，不是版本号或活动 ID。服务从真实英雄、魔灵和精灵养成数据判断任务是否达标，
+   检查当前版本的 `award_bin` 后，才按静态表的 `award` 发奖。
+3. `gift=0` 才是免费任务奖励；`gift>0` 是充值商品，必须继续走 RechargeMgr，不能由 31052 发放。表内 508 个
+   非零 `gift` 全部能在当前 `RechargeTable` 找到同 tid 的商品；30 个免费行只存在于历史版本 2–6。
+4. 当前正式排期开放的 40/49/52/56/111 版本全部只有充值礼包行，没有免费任务档位。因此当前真实活动里
+   `31052` 对这些行应返回明确的充值流程拒绝；免费领奖路径由历史配置和隔离测试证明，不能被描述成当前 111
+   版本存在免费可领奖励。
+5. 发奖、领取位和模块 92 写回在同一 SQLite 事务中完成。资源、protobuf/ETF 编码或模块持久化任一失败都会整体回滚；
+   完整重放返回空资源变更，不重复发奖。
 
-## 证据
+## 证据等级
 
-### 线上与运行库（只读）
+- **线上/运行库（只读，已证实现状）**：两个角色 `100002/100003` 的模块 92 中，func 25 并行组的
+  `module_login_data` 外层为 534 字节，ETF BINARY_EXT 内层为 528 字节；解码为 66 条 `info_list`，
+  `cur_choose_version=0`，没有 `25111`，所有 `award_bin` 为空。这个样本只证明旧运行状态，不被直接写回。
+- **线上命令样本**：`/data/disk1/game/data/events.jsonl` 没有 `31052/31053` 请求或对应拒绝事件。因此命令修复的
+  证据等级是静态确认加临时 TCP，不是线上命令回放。
+- **静态确认**：当前 APK 的 `UpStarGiftCmd/Mgr/NewNode/Table` Lua prototype、`ActivityTable`、
+  `TaskTable`、`ItemTable`、`HeroTable`、`RechargeTable`、两份 up-star protobuf 与 538 行活动表共同闭合契约。
+- **客户端视觉**：尚未由用户重登并操作确认，本文不记为 APK/视觉验收。
 
-- `/data/disk1/game/data/events.jsonl` 的 `activity_login_calendar_applied`（08:55:23、08:56:55、08:57:13 UTC）
-  在 `actFrameAdjustedActivityIds` 中保留 `25072/25056/25051/25053/25073/25075/25074/25042`，
-  没有 `25111`。
-- 运行库两个角色（100002、100003）的 `login_modules.module_id=92` 里，func 25 并行组
-  `module_login_data` 都是 534 字节、66 条 `info_list`，`cur_choose_version=0`，
-  `award_bin` 与 `buy_limit_info` 全部为空。
-- 该 66 条与并行组的 66 个 `states_data` 一一对应；解码后每条只有 `version` 与 `act_id`
-  （`83 6d 00 00 02 10` 为 ETF BINARY_EXT 包装，内层是 protobuf `repeated{version, act_id}`）。
-- 日志里没有任何 `31052/31053` 请求或 `benefit_command_refused` 事件。也就是说这两个命令的
-  拒绝是潜在故障，当前“空白”来自登录数据与选中版本，而不是某次命令报错。
+## 来源资产与哈希
 
-### 客户端静态配置
+`node analysis/incoming/activity-ticket-20261111/verify-delivery.mjs` 的结果为：559 个文件、
+219 个 TextAsset、27 个 UI bundle、18 张表、67 个必需检查，失败数 0。
 
-- `ActivityTable` 共 104 行 `func=25`，`version=tid-25000`，`ref_name` 为
-  “限时升星/精灵升星/魔灵升星/首周招募…升星”。正式排期第 1 天在窗口内的是
-  `25042(v40) 25051(v49) 25053(v52) 25056(v56) 25072(v72) 25073(v73) 25074(v74) 25075(v75) 25111(v111)`。
-- `ModuleTable`：`92037 活动_限时升星 → project/activity/up_star_gift`。
-- `up_star_gift.db.proto`：`pb_up_star_gift_master{ info_list, cur_choose_version }`，
-  `pb_time_limit_up_star{ version, act_id, award_bin, buy_limit_info }`；
-  `up_star_gift.net.proto`：`pb_up_star_gift_req{ repeated int32 ids }`、`pb_up_star_gift_back{ info, res }`。
+- APK `com.jzyx.ps`，versionName `1.55.090365`，versionCode `362155`，assetVersion `364110`：
+  SHA256 `3caa14ca150f8259f5e83d263e6a0a43f9b94df7eb9e3d3f58e0fdc494970d95`。
+- `64_lua_project.bundle`：SHA256 `2b1fd41f3fb40ea3d3dcd1b7d1591d3d17ffacbc6422c028de4dc02ad04ecdc7`。
+- `64_lua_core.bundle`：SHA256 `054c3a1d5de29f66b5f41f413ac56a473ee7b95ccf1226b343068b79cdd3be56`。
+- `526731904065320800-UpStarGiftTable.data.lua.bin`：SHA256
+  `fbef7e9b68bf34af736e446d825c02ffd77f3eec6f4722a60fed1fc6df66f569`。
+- `15441160127181445000-UpStarGiftMgr.lua.bin`：SHA256
+  `89e49d65a6969b0753c8d90d70b361853a5db242aac310b8d556eb246449198d`。
+- `1086730739918066200-UpStarGiftCmd.lua.bin`：SHA256
+  `5abd182fe773a35f546b085dbfc136b94d0f362099c651f0185f32464e958de2`。
+- 已纳入运行资产链的 `personal-server/assets/tables/UpStarGiftTable.data.lua.json.gz`：SHA256
+  `3cba6b25d8a9fdab300b830c46656940b601bcd8f7f863e355f1c42e5e3a394c`，与交付目录中的
+  `expanded/tables/UpStarGiftTable.json.gz` 逐字节一致。
 
-### UpStarGiftTable 的查找范围（均未找到）
+可重复提取命令：
 
-- `personal-server/assets/tables` 185 个表资产，没有 `UpStarGiftTable`。
-- `personal-server/assets/protobuf` 只有 `up_star_gift.db.proto.bin` 与 `up_star_gift.net.proto.bin`。
-- `git log --all -- '*UpStarGift*'` 为空；`git log -S UpStarGiftTable` 只有 PAY-BLOCK-I 的拒绝实现。
-- 当前环境没有 APK 与解码后的 lua bundle（`analysis/reports/private-client-16448/lua-bundles/...` 不存在，
-  `apk/release/` 为空）；`personal-server/assets/protocol/update-manifest-364110.txt` 只有
-  `Android/ui/project/activity/upstargift.bundle` 等界面包，没有数据表。
-- 因此档位 id、达标条件、奖励和礼包限购都无法核对；没有用 `RechargeTable type 110` 之类的近似表替代，
-  因为现有证据不能证明它们就是升星礼包的档位。
+```text
+node tools/extract-lua-table-rows.mjs \
+  analysis/incoming/activity-ticket-20261111/expanded/textassets/526731904065320800-UpStarGiftTable.data.lua.bin \
+  personal-server/assets/tables/UpStarGiftTable.data.lua.json.gz
+```
 
-## 修复内容
+提取器只解释生成表构造器和静态数组，不执行客户端 Lua。运行时不依赖未提交的 `analysis/`；所需 gzip 已进入
+`personal-server/assets/tables/`。
 
-### 新服务 `personal-server/game/up-star-gift-service.mjs`
+## ETF/protobuf 登录包装
 
-- `synchronizeLogin(activity, at)`
-  - 解析模块 92 并行组的 ETF BINARY_EXT + protobuf 载荷（旧代码若直接按裸 protobuf 解析会报
-    `illegal tag: field number 0`）。
-  - 按 `ActivityTable.func=25` 与活动日历计算当前开放版本；补齐缺失的状态行和 `info_list` 条目
-    （当前补的是 `25111`），保留参考服已有的历史版本行，不删除、不改写其领取位。
-  - `cur_choose_version` 若仍指向开放版本则保留；为空或已过期时选开窗时间最新的开放版本。
-- `31053 req_up_star_choose_version`：ETF 整数版本号。只接受当前开放的版本，事务内写回模块 92；
-  重复选择同一版本返回 `changed=false`，不重复写库。
-- `31052 req_up_star_gift_award`：解析 `pb_up_star_gift_req`，校验 `ids` 非空、正整数、去重、上限 100，
-  校验当前选中版本仍在活动窗口内，然后因 `UpStarGiftTable` 缺失返回 code 5 与具体原因，且不写领取位。
+模块 92 的 func 25 并行组中，`module_login_data` 外层是 ETF `0x83 0x6d` + uint32 BE 长度，内层是
+`pb_up_star_gift_master`。不能直接把外层当 protobuf。
 
-### 网关与拒绝清单
+```proto
+pb_up_star_gift_master {
+  repeated pb_time_limit_up_star info_list = 1;
+  uint32 cur_choose_version = 2;
+}
+pb_time_limit_up_star {
+  uint32 version = 1;
+  uint64 act_id = 2;
+  bytes award_bin = 3;
+  pb_recharge_limit_info buy_limit_info = 4;
+}
+pb_up_star_gift_req { repeated int32 ids = 1; }
+pb_up_star_gift_back { pb_time_limit_up_star info = 1; pb_res_to_client res = 2; }
+```
 
-- `gateway.mjs`：新增 import、服务实例、登录同步调用（模块 92 打包前）和派发分支；
-  `31052` 走 `unpackRequest('pb_up_star_gift_req', ...)`，`31053` 走 ETF 单整数。
-- `benefit-commerce-service.mjs`：移除 `PAY-UPSTARGIFT` 的整族拒绝，保留注释说明由新服务接管。
+`buy_limit_info` 是充值限购状态：`refresh_time` 与 `buy_num_list{recharge_id,buy_num,refresh_time,used_extra_times}`。
+免费任务领奖只保留并回写它，不据此发放充值商品。
+
+## UpStarGiftTable 字段全集
+
+| 子表/字段 | 行数与真实语义 |
+| --- | --- |
+| `UpStarGift` 538 | 每个活动版本的领奖/商品档位。 |
+| `UpStarGift.tid` | 客户端资格 id，即 31052 `ids`；数值编码 `version=floor(tid/100)`、领取位 `tid%100`。 |
+| `UpStarGift.type` | `TaskTable.Type` 键，不是英雄/精灵 id。实际只有 1199、13005、14701。 |
+| `UpStarGift.version` | 期次版本；与 `ActivityTable.version`、`Show.tid` 对应，并必须等于 `floor(tid/100)`。 |
+| `UpStarGift.target_count` | `TaskTable.Type.progress_fun` 对应养成值的门槛。当前三类均为星级门槛，不是累计任务次数。 |
+| `UpStarGift.task_param` | 养成目标 tid：1199 为 HeroTable tid；13005 为 ItemTable type=171 的魔灵 tid；14701 为 ItemTable type=191 的精灵 tid。 |
+| `UpStarGift.gift` | `0` 表示免费任务奖励；非零值是 RechargeTable tid，由充值购买流程处理。508 个非零值均一一命中 RechargeTable。 |
+| `UpStarGift.award` | 免费档的实际资源 `[ItemTable tid, count]` 集合。服务只发此列，不用 RechargeTable 反推。 |
+| `UpStarGift.one_key` | 一键礼包成员标记；对应 `UpStarOneKeyGift` 与 Mgr 的 one-key 红点/购买路径。当前 538 行全为 0。 |
+| `UpStarGift.star_unLock` | 额外展示门槛；非零时读取 `Show.show_style` 指向英雄的最高星级。不是 `target_count` 的替代。 |
+| `UpStarGift.ignore_red_dot` | 客户端红点抑制展示位。 |
+| `UpStarGift.is_special_show` | 特殊展示样式位。 |
+| `Show` 109 | 每期展示配置；`tid=version`，`show_style` 是锁星级校验所用展示英雄，`hero` 是对应展示对象，另有 `is_choose/ui_style_idx/main_jump_version` 等 UI 字段。 |
+| `HeroShow` 88 | 背景、头像、进度、特殊礼包底图等纯展示资源。 |
+| `Const` 1 | `hero_item_show=[101500,401500]`，是资源展示白名单。 |
+| `UpStarOneKeyGift` 1 | 一键礼包定义；当前唯一行是 version 2、gift 540213、target_count 5、Hero 3030501；该 gift 命中 RechargeTable。 |
+
+表内实际 type 分布与来源：
+
+| type | 行数 | TaskTable.progress_fun | 进度来源 | task_param |
+| ---: | ---: | ---: | --- | --- |
+| 1199 | 390 | 66 | 英雄最高星级/突破后的星数 | HeroTable tid |
+| 13005 | 74 | 362 | 模块 158 `pb_pet_develop_data.pets` 的 star | ItemTable type 171 |
+| 14701 | 74 | 363 | 模块 538 `pb_elves_develop.elves` 的 star | ItemTable type 191 |
+
+客户端 `UpStarGiftNewNode` 的 `ReqTaskAward`/`ReqBuyRechargeGift` 分支、Mgr 的 `ReqTaskAward`、
+`GetAwardRedDotStateByVersion`、`GetGiftTidListByVersion`、`ReqChooseActVersion` 与上述字段共同证明：
+版本选择、免费任务领取和充值礼包购买是三条不同路径。
+
+## 领取位与请求语义
+
+- `31052.ids` 非空、最多 100、均为正整数、不得重复，并且每项必须是 `UpStarGift.tid`。
+- 只处理 `master.cur_choose_version` 对应版本的行；跨版本 id 返回 code 5。
+- `award_bin` 是版本内 BitBlock，索引为 `tid % 100`，字节内按 MSB-first。
+- 完整重放同一 ids 返回 0 资源变更的成功回包；部分已领、部分未领返回 code 310，不产生部分发奖。
+- `gift>0`、`one_key!=0`、空 award 分别返回具体 code 5；不会把充值礼包或占位行当免费奖励。
+- 服务从不信任 ids 自带的“已达标”含义，门槛始终从 Hero/模块 158/模块 538 的权威数据读取。
+
+## 版本选择与登录恢复
+
+- 静态 `ActivityTable.func=25` 共 104 行。2026-11-11 18:29 UTC 的正式排期中，已废弃的 72–75 行不会再进入运行集，
+  实际开放版本为 40、49、52、56、111，活动为 25042、25051、25053、25056、25111。
+- 登录保留既有 66 条历史 `info_list`；其中重复版本 91 的领取位按位或合并，再选择当前 25091、排除已废弃 25098。
+- 当前开放但缺失的 25111 会补 status 和 info 行；其他已不在 ActivityTable 的历史行保留，避免丢旧领取记录。
+- 如果 `cur_choose_version` 仍指向开放版本则保留；为 0、过期或未知时，自动选择当前开放版本中开窗时间最新的一版。
+  这是登录恢复，不表示 31053 接受 0。
+- `31053` 只能选当前开放、已配置且存在于登录数据中的版本。选择同一版本幂等；历史、过期、未知版本返回 309；
+  当前开放但缺 UpStarGiftTable 的行返回 code 5。
+
+## 31052 的原子结算
+
+1. 读取模块 92 的 `pb_act_login`，找到 func 25 并行组，解码 ETF + `pb_up_star_gift_master`。
+2. 重算当前版本、规范化历史和当前 info 行，校验选中版本仍在运行且有静态表。
+3. 校验 ids、版本、免费行、award、任务进度与 `Show.show_style` 的 `star_unLock`。
+4. 在 SQLite 事务内设置 `award_bin`，先预编码 `pb_act_login`，再调用既有 `grantResources` 发奖。
+5. 把资源模型变化和 canonical 模块 92 一起提交；随后编码 `pb_up_star_gift_back`。任何一步抛错都会回滚事务。
+6. 进程重开测试重新从 SQLite 读取模块 92 和资源，领取位与资源均保持，不依赖内存状态。
+
+准确错误行为：
+
+| 条件 | 返回/行为 |
+| --- | --- |
+| ActivityTable 无 func 25 配置 | code 5 |
+| 模块 92 或会话结构缺失 | code 5 |
+| 表中没有运行版本 | code 309 |
+| 选中版本不在运行集 | code 309 |
+| 开放版本缺 UpStarGiftTable/Show | code 5 |
+| ids 空、超 100、非整数、非正、重复、未知 | code 1 |
+| id 属于其他版本 | code 5 |
+| id 是充值商品、one-key 或空 award | code 5 |
+| 任务星级不足或展示 `star_unLock` 不足 | code 5 |
+| 全部 id 已领 | 成功、空资源变更 |
+| 同一请求部分 id 已领 | code 310，全部不发 |
+| grant、编码或 SQLite 持久化失败 | 抛错并整体回滚 |
 
 ## 回归
 
-`personal-server/test/up-star-gift-service.test.mjs`（7 项）：
+`up-star-gift-service.test.mjs` 覆盖多版本、历史保存、重复版本 91、选择幂等与重登、非法 ids、跨版本隔离、
+英雄/魔灵/精灵进度、展示星锁、当前付费行不进入 31052、完整重放、部分重放、grant 失败与持久化失败回滚、
+成功重开恢复、ETF/protobuf wrapper、以及真实网关优先于 benefit-commerce 的路由。
 
-1. 登录同步补齐 `25111` 状态与 `info_list`，保留 66 条历史版本，选中开放版本。
-2. 有效选择保留、过期选择修复。
-3. `31053` 选择、幂等与重登恢复。
-4. `31053` 拒绝未开放/未知版本且不写库。
-5. `31052` 校验请求并因缺表返回 code 5，不写领取位。
-6. 序列化失败时事务回滚。
-7. 真实网关：`31052` 按 protobuf 解码（code 5 而不是 code 1）、`31053` 按 ETF 解码、登录响应里已有
-   `25111` 与有效选中版本。
+定向套件同时运行 ActShop、benefit 解码/网关、activity-calendar、activity-read-service：61/61 通过。
+最终全量 `npm test` 为 2891 项、pass 2889、fail 0、skipped 2；两项跳过均因未设置
+`FC_RECHARGE_CLIENT_BUNDLE`。日志为 `analysis/test-runs/up-star-gift-20261112/full-final.log`。
 
-全量 `npm test`（`node --test --test-concurrency=1 test/*.test.mjs`）：2852 项、2850 通过、0 失败、
-2 跳过（`duration_ms` 1479467），其中包含本文件新增的 7 项。改完最后一处代码后用同一命令复跑
-`up-star-gift-service`、`benefit-commerce-service`、`benefit-commerce-gateway`、`activity-calendar`、
-`activity-read-service`、`activity-schedule-audit` 六个文件，40/40 通过。
+## 限制与未验收项
 
-## REFUSAL_FAMILIES 复核（只算当前可见入口）
-
-方法：用 `ActFrameTable.ActType` 的 `lua_module` 把当前开放活动映射到管理器，再对照拒绝清单；
-同时确认这些命令号没有被更早的派发分支接管（`rg` 全仓只有 `benefit-commerce-service.mjs` 命中）。
-
-| 家族 | 命令 | 现在可见的入口（静态配置 + 正式排期） | 证据等级 | 结论 |
-| --- | --- | --- | --- | --- |
-| PAY-UPSTARGIFT | 31052/31053 | func 25：25042/25051/25053/25056/25072/25073/25074/25075/25111 | 线上登录数据 + 静态 | 本次修复登录/版本；领奖仍缺表 |
-| PAY-ACTSHOP | 104801-104803 | ActShopMgr type 182：182007/182010/187314/182503/182604/182212/182608/182817（182810/182817 属百抽子商店，归百抽 agent） | 静态确认 | 入口存在，只有拒绝 |
-| PAY-PREMIUMACT | 105401 | PremiumActMgr type 184：16 个（184005/1007002/184304/184305/…） | 静态确认 | 入口存在，只有拒绝 |
-| PAY-LINKGIFT | 97401 | LinkGiftMgr type 93：93053/93054/93059/93064/93071 | 静态确认 | 入口存在，只有拒绝 |
-| PAY-BUYSKINACT | 104001 | BuySkinActMgr type 175：175003/175005/175007 | 静态确认 | 入口存在，只有拒绝 |
-| PAY-APPEARANCERELEASEACT | 98800 | AppearanceReleaseActMgr type 103：103022/103023 | 静态确认 | 入口存在，只有拒绝 |
-| PAY-NEWPERMITACT | 107401 | NewPermitActMgr type 1016：1016004/1016005/1019314/1016319 | 静态确认 | 入口存在，只有拒绝 |
-| PAY-VICKREYAUCTIONACT | 106101-106102 | VickreyAuctionActMgr type 1008：1008004/1008005/1018014 | 静态确认 | 入口存在，只有拒绝 |
-| PAY-SUBSCRIPTIONACT | 107301-107303 | SubscriptionActMgr type 1014：1015005/1015006 | 静态确认 | 入口存在，只有拒绝 |
-| PAY-GIFTBOXACT | 106301 | GiftBoxActMgr type 1013：1013004/1013007/1013008 | 静态确认 | 入口存在，只有拒绝 |
-| PAY-PERMIT | 35003-35011 | PermitActMgr type 62：188045/188055（35001/35002/35005 已实现） | 静态确认 | 入口存在，仅部分命令可结算 |
-| PAY-LEVELSPRINT | 88101 | 67001 等级冲刺1（func 67，ModuleTable 92044 level_sprint），官方排期第 1 天在窗口内 | 静态（活动在窗口内 + 模块路径与 `req_level_sprint_free_award` 名称匹配；ActFrameType 无 func 67 行） | 入口存在，只有拒绝；缺 `LevelSprintTable` |
-| PAY-REBATESHOPACT | 100701 | 138004 神域秘市_返利商店（func 138），官方排期第 1 天在窗口内 | 静态（同上，命令 `req_rebate_shop_act_award`） | 入口存在，只有拒绝；缺 `RebateShopActTable` |
-| 其余家族 | — | 当前排期没有对应开放活动（按 ActFrameType/ActivityTable 与日历逐项核对） | 静态确认 | 不是当前线上故障 |
-
-说明：`ActFrameTable.ActType` 对 func 67、138 没有行，这两行的管理器是按 `ModuleTable` 的活动名、
-模块路径和命令名匹配的；本轮用日历确认 `67001`、`138004` 在官方排期第 1 天都处于窗口内，
-所以“入口可见”成立，但仍不等于客户端一定会调用被拒绝的命令（例如部分礼包走 `16005` 充值链路），
-要收敛成确定故障还需要客户端请求日志。
-
-### 同类解码缺陷（已在同分支后续提交修复）
-
-`benefit-commerce-service.mjs` 的派发原先统一按 ETF 解包，被拒绝的 protobuf 命令会在进入拒绝分支前
-变成 code 1（`Invalid benefit payload`）。后续提交按 tcp-commands 目录与 protobuf 资产为 28 条命令补了
-`BENEFIT_PROTOBUF_REQUESTS`，网关先按 schema 解码、解不开才回退 ETF。详细证据与剩余阻断见
-[benefit-command-decode-20261111.md](benefit-command-decode-20261111.md)。
-
-其中 `104801 req_act_shop_info` 是读取命令，type 182 活动商店当前有 8 个开放入口；`107302`、`106101`
-也带读取语义。这些命令现在会返回 code 5 与该家族的真实原因，但要给出真实数据仍需
-`ActShopTable` / `SubscriptionActTable` / `VickreyAuctionActTable`，本轮没有用空包冒充成功。
-
-## 证据缺口与限制
-
-- `31052` 仍不可结算：没有 `UpStarGiftTable` 就无法知道每个 id 的达标条件、奖励和限购，不能宣称
-  “升星礼包可领取”。补齐后需要把 `award()` 的拒绝分支替换为按 `award_bin` 位图写领取位并真实发奖。
-- 没有客户端 UI/请求日志，无法证明用户看到的空白就是独立升星而不是百抽 `1102008/theme104` 的升星页；
-  后者由另一 agent 负责，本轮未改百抽服务。
-- 默认选中“开窗时间最新的开放版本”是客户端语义推断；如果拿到 UpStarGiftMgr 的 Lua 证据，应核对它
-  是否在 `cur_choose_version=0` 时自行选择，再决定是否保留该默认值。
-- 共享文件改动只有 `gateway.mjs`（import、实例、登录同步、派发）与 `benefit-commerce-service.mjs`
-  的一行拒绝项；合并时注意与其它 agent 的网关改动相邻。
-- 上述 protobuf 命令在 benefit 路径按 ETF 解码的问题仍然存在（本轮只修了 31052 一条），
-  读取类入口（104801/107302/106101）的空白与报错需要单独排期。
-- 本轮未部署、未重启线上服务、未做 APK/用户视觉验收。
-- 本 worktree 的 `personal-server/node_modules` 是指向线上 release 共享依赖的软链接（便于复跑测试），
-  已在 `.git/info/exclude` 排除，未进入提交。
-
+- 当前 111 版本所有 5 行都是充值礼包；本修复并未把充值购买移植到 31052，购买仍由既有 RechargeMgr/支付链负责。
+- 本轮没有真实 31052/31053 请求样本，也没有用户视觉确认；临时 TCP 只证明协议路由、事务和回包。
+- `ignore_red_dot`、`is_special_show`、HeroShow 与 one-key 红点属于客户端展示，服务端只影响资格/领取判断；
+  需真实 UI 样本确认所有展示分支。
+- 百抽精灵 `1102008/theme104` 的内部升星由另一 agent 负责，本轮未修改。
+- 独立升星当前的空白是否由用户已进入的页面实际触发仍未由 UI 日志确认；本修复闭合的是模块 92、版本和
+  UpStarGiftTable 契约，不把无请求证据的视觉症状宣称为已验收。

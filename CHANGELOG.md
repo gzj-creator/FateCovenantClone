@@ -11,6 +11,10 @@
 
 ### Fixed
 
+- 独立限时升星 `31052` 现按 `UpStarGiftTable` 解码 ETF/protobuf 登录块，以模块 92 版本与领取位为权威状态，从英雄、魔灵和精灵真实星级校验门槛并同事务发放免费任务奖励；充值礼包行继续走 RechargeMgr，完整重放幂等，grant 或持久化失败整体回滚。
+- 独立限时升星 `31053` 与登录同步只选择当前开放且有静态配置的版本；缺失的 25111 登录行会补齐，过期/零值选择会恢复，历史版本和非法版本不会被当成当前活动。
+- 活动商店 `104801` 改用独立 ActShop 服务，按开放 ActFrame、`ActShopTable` 与 ETF/protobuf 玩家状态返回真实商店列表；缺少 104802/104803 状态机时继续明确拒绝，不再整族拒绝或返回空成功。
+- 块 I 拒绝原因按最新 APK/Lua/表复核：修正 WeekendBonus、DiamondFund、WeekHunt、FlashSale、LinkGift、LevelSprint、RebateShop、AppearanceRelease、BuySkin、Vickrey、GiftBox、Subscription、NewPermit、Premium、Fashion 与 RedEnvelope 对缺失资产的过时描述。
 - 修复新超凡精灵百抽 `1102008` 的登录数据编码：模块 92 与模块 183 的 `module_login_data` 统一改为客户端要求的 ETF BINARY 包装，并补齐模块 183 的 `pb_hundred_draw_act_data`，避免目标、保底与领取位整体解析失败。
 - 固定池百抽在登录和命令响应中统一返回配置目标（`1102008` 为精灵 `500520`），并把规范化目标写回 SQLite；下放池在选择前仍保持 0。
 - 百抽升星领奖按主题读取真实星级：英雄取角色列表、魔灵取模块 158、精灵取模块 538；碎片奖励统一按 `ItemTable.Chip.point_item` 反查，精灵 `500520` 正确映射到 `500521`。
@@ -28,6 +32,8 @@
 
 ### Docs
 
+- 记录独立升星的完整表字段、任务类型、领取位、版本恢复、事务/幂等/回滚和当前免费行边界，见 `agent/workflow/fixes/up-star-gift-20261111.md`。
+- 记录 ActShop 104801 数据链与 104802/104803 证据缺口，见 `agent/workflow/fixes/act-shop-20261112.md`；新增 43 家族/83 命令的活动资产审计矩阵，见 `agent/workflow/fixes/activity-asset-audit-20261112.md`。
 - 记录新超凡精灵百抽的登录块编码根因、固定池目标语义、精灵/魔灵星级来源、类型 104 边界与 APK 待验收项，见 `agent/workflow/fixes/hundred-draw-spirit-star-20261111.md`。
 - 记录活动参考服开服、目标服开服、登录模板锚点三种时间基准，以及全部活动审计和 4 个无法静态还原配置项的边界。
 - 记录百抽奖券 `835802` 的领取、抽取与 SQLite 持久化真实 TCP 回归，以及缺失 `ActShopTable` 的明确拒绝边界。

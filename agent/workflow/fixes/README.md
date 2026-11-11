@@ -1,7 +1,8 @@
 # 个人服务器修复记录
 
 基线提交 `26982a4`；2026-10-30 活动修复 worktree 基线 `5aa0a21`。本目录逐项记录“用户反馈 → 证据 → 根因 → 实现边界 → 测试 → 验收级别”。
-统一测试：`npm test --prefix personal-server`，2026-11-10 当前工作树结果为 2808 项、pass 2806、fail 0、skipped 2。
+统一测试：`npm test --prefix personal-server`；本轮实测 2891 项、pass 2889、fail 0、skipped 2（两项均等待
+`FC_RECHARGE_CLIENT_BUNDLE`），日志 `analysis/test-runs/up-star-gift-20261112/full-final.log`。
 
 | 编号 | 故障 | 本文档 | 本轮结论 |
 |---|---|---|---|
@@ -14,8 +15,9 @@
 | H1 | 进入大厅显示服务器错误 | [hall-entry.md](hall-entry.md) | 大厅商店读取按请求 id 空组回包、活动阶段同步空变更回执 |
 | H2 | 点击头像显示服务器错误 | [avatar-rank-info.md](avatar-rank-info.md) | 2001 单条排名查询已实现；同分支另补 2002/2005/2006/2007/2009/2010，[详情](../activity-ranking/leaderboard-api.md)；267/267 测试通过，尚未部署与 APK 验收 |
 | E1 | 进入游戏依次提示“仅显示物品不可操作”和“配置出错了” | [entry-display-config-error-20261111.md](entry-display-config-error-20261111.md) | `107703` 关闭活动改为空读取，`10507 type 12` 接入本服频道；目标回归 23/23，通过后待部署与客户端复验 |
-| U1 | 独立“限时升星/升星礼包”空白 | [up-star-gift-20261111.md](up-star-gift-20261111.md) | 登录版本块补齐当前开放版本（含 25111）并修复选中版本；31053 可选择并持久化；31052 因 UpStarGiftTable 缺失仍明确拒绝 |
-| U2 | 块 I 同类活动“有入口但只有拒绝” | [benefit-command-decode-20261111.md](benefit-command-decode-20261111.md) | 28 条被拒绝的 protobuf 命令按 schema 解码，拒绝落在 code 5 与家族原因；ETF 家族路径不变；缺表家族逐一记录阻断资产 |
+| U1 | 独立“限时升星/升星礼包”空白 | [up-star-gift-20261111.md](up-star-gift-20261111.md) | 登录版本块补齐当前开放版本并修复选中版本；31053 仅选当前开放版本；31052 按英雄/魔灵/精灵真实星级、静态奖励与 award_bin 同事务结算；当前开放行均为充值礼包，充值仍走 RechargeMgr |
+| U2 | 块 I 同类活动“有入口但只有拒绝” | [benefit-command-decode-20261111.md](benefit-command-decode-20261111.md) | 27 条仍由 benefit 处理的 protobuf 命令按 schema 解码；104801 拆到 ActShop；拒绝原因按最新 APK/Lua/表复核，Fashion 与红包的旧缺失文案已纠正 |
+| U3 | 活动商店读取与同类资产缺口 | [act-shop-20261112.md](act-shop-20261112.md)、[activity-asset-audit-20261112.md](activity-asset-audit-20261112.md) | 104801 返回当前 ActFrame 商店并持久化 ETF/protobuf 玩家状态；104802/104803 保留具体拒绝；43 家族/83 命令逐项登记资产、入口和持久化缺口 |
 | E2 | 登录后及活动轮询提示“配置出错” | [activity-server-vitality-20261111.md](activity-server-vitality-20261111.md) | `105702` 由无条件 code 5 改为模块 21 槽 29 维度 2 的真实全服聚合；日任务领取补齐统计链路，100701 全服任务复用同一口径；定向 77/77 通过，待部署与 APK 验收 |
 | W2 | daily discount batch purchase limit | [daily-discount-batch-limit.md](daily-discount-batch-limit.md) | 46003 batch_update sync, restart backfill and real TCP verified; 192/192 tests |
 | W3 | 首充购买后仍显示 ¥6 | [first-recharge-status.md](first-recharge-status.md) | 历史订单状态已修复；自动回填与 TCP 测试通过，首充面板待用户确认 |

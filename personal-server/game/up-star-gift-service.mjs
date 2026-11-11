@@ -1,30 +1,39 @@
 import { GameError } from './hero-progression.mjs';
 import { activityWindow } from './activity-calendar.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { grantResources } from './resources.mjs';
+import { readModuleData } from './develop-support.mjs';
+import { hasBit, setBit } from './bit-block.mjs';
 
 // 独立“限时升星 / 升星礼包”家族（模块 92037，ActivityTable func 25）。
 //
-// 登录数据 pb_up_star_gift_master 挂在模块 92 并行活动组的 module_login_data 里，
-// 外层是 ETF BINARY_EXT 包装、内层是 protobuf：
-//   info_list[]       每个版本一条 { version, act_id, award_bin, buy_limit_info }
-//   cur_choose_version 客户端当前选中的版本
-// 参考服登录快照（两份角色、534 字节）只带 version/act_id，领取位与限购为空，说明
-// 这两项是玩家态而不是静态配置；静态档位与奖励属于 UpStarGiftTable。
+// 登录数据 pb_up_star_gift_master 挂在模块 92 并行活动组的
+// module_login_data 里，外层是 ETF BINARY_EXT 包装、内层是 protobuf：
+//   info_list[]        每个活动版本一条 {version, act_id, award_bin, buy_limit_info}
+//   cur_choose_version 客户端当前选中的版本号（不是 act_id）
 //
-// 31053 选择版本：校验版本属于当前开放的 func 25 活动并写回模块 92。
-// 31052 领奖：pb_up_star_gift_req{ids} 需要 UpStarGiftTable 的档位条件和奖励，
-// 当前资产里没有该表，因此校验请求后按 code 5 明确拒绝，不伪造奖励或空成功。
+// 客户端 UpStarGiftMgr.ParseData 把 info_list 变成 upStarDataMap[version]，
+// 并把 award_bin 交给 Core.BitBlock.DecodePB；Show/HeroShow 是客户端静态表，
+// 不进入登录包。UpStarGiftNewNode 只有在 gift==0 时才走 ReqTaskAward；
+// gift>0 的行走 ReqBuyRechargeGift，由 RechargeMgr 购买，绝不是 31052 领奖。
 export const UP_STAR_GIFT_ACTIVITY_FUNC = 25;
 export const UP_STAR_GIFT_MODULE_ID = 92;
 export const UP_STAR_GIFT_COMMANDS = Object.freeze({ AWARD: 31052, CHOOSE_VERSION: 31053 });
-export const UP_STAR_GIFT_AWARD_GAP =
-  'PAY-UPSTARGIFT: UpStarGiftTable 未导出，升星礼包的档位条件与奖励无法核对；' +
-  '已在 personal-server/assets/tables、assets/protobuf、客户端 lua/UI bundle 清单和' +
-  'agent/workflow 证据中查找，均无该表';
 
 const RUNNING_STATE_ID = 50;
 const ETF_VERSION = 0x83;
 const ETF_BINARY_EXT = 0x6d;
+
+// TaskTable.Type keys are task types, not hero/pet/elf ids. The progress
+// function is the only static link from a task type to a player-data family:
+//   1199.progress_fun=66  -> hero star; task_param is a HeroTable tid
+//   13005.progress_fun=362 -> pet star; task_param is an ItemTable type=171 pet
+//   14701.progress_fun=363 -> elf star; task_param is an ItemTable type=191 elf
+// These numbers are verified against TaskTable.data.lua and ItemTable.data.lua
+// (see the fix document); no id-prefix heuristic is used here.
+const HERO_STAR_PROGRESS = 66;
+const PET_STAR_PROGRESS = 362;
+const ELF_STAR_PROGRESS = 363;
 
 function bytesOf(value) {
   if (value == null) return Buffer.alloc(0);
@@ -67,11 +76,35 @@ function wireEntry(entry) {
   return row;
 }
 
-export function createUpStarGiftService({ store, codec, tables, calendar, now = Date.now, logger = () => {} }) {
+function maxStar(rows, tid) {
+  let max = 0;
+  for (const row of rows ?? []) {
+    if (String(row?.tid ?? '') !== String(tid)) continue;
+    const star = Number(row.star ?? 0);
+    if (Number.isSafeInteger(star) && star > max) max = star;
+  }
+  return max;
+}
+
+function unionBits(left, right) {
+  const a = bytesOf(left), b = bytesOf(right);
+  const result = Buffer.alloc(Math.max(a.length, b.length));
+  for (let index = 0; index < result.length; index += 1) result[index] = (a[index] ?? 0) | (b[index] ?? 0);
+  return result;
+}
+
+function mergeBuyLimitInfo(left, right) {
+  if (!left || typeof left !== 'object') return right && typeof right === 'object' ? { ...right } : {};
+  if (!right || typeof right !== 'object') return { ...left };
+  return { ...left, ...right };
+}
+
+export function createUpStarGiftService({ store, codec, tables, upStarTables, calendar, now = Date.now, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
   const currentSeconds = () => Math.floor(Number(now()) / 1000);
 
-  // ActivityTable func 25 是这一家族的注册表：tid 是活动 id，version 是客户端版本号。
+  // ActivityTable func 25 is the registry: tid is the activity id and version
+  // is the client-side version number used by Show/UpStarGift rows.
   function versions() {
     const rows = [];
     for (const [tid, row] of tables?.Activity ?? []) {
@@ -83,6 +116,11 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
     return rows.sort((left, right) => left.version - right.version);
   }
 
+  function configured(row) {
+    return Boolean(upStarTables?.giftsByVersion?.has(Number(row.version))
+      && upStarTables?.showsByVersion?.has(Number(row.version)));
+  }
+
   function isUpStarState(state) {
     return Number(tables?.Activity?.get?.(Number(state?.act_id))?.func) === UP_STAR_GIFT_ACTIVITY_FUNC;
   }
@@ -91,7 +129,7 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
     return (activity.act_parallel_list ?? []).find(group => (group.states_data ?? []).some(isUpStarState)) ?? null;
   }
 
-  function decodeMaster(raw) {
+  function decodeMaster(raw, { strict = false } = {}) {
     const inner = unwrapEtfBinary(raw);
     if (!inner.length) return { info_list: [], cur_choose_version: 0 };
     try {
@@ -99,7 +137,8 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
       master.info_list ??= [];
       return master;
     } catch (error) {
-      // 载荷损坏时不能中断登录；重建后仍会写回完整结构，并把原始问题留在日志里。
+      if (strict) throw new GameError(5, 'Up-star gift login data is invalid');
+      // 登录不能因单个历史块损坏而中断；重建后仍写回完整结构并留日志。
       log({ event: 'up_star_gift_login_parse_failed', message: error.message, bytes: inner.length });
       return { info_list: [], cur_choose_version: 0 };
     }
@@ -117,73 +156,171 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
     return Number(window?.start) || 0;
   }
 
-  function runningVersions(activity, at, rows) {
-    return rows.filter(row => {
-      const state = (activity.act_parallel_list ?? [])
-        .flatMap(group => group.states_data ?? [])
-        .find(candidate => Number(candidate?.act_id) === row.actId) ?? null;
-      return calendar.isActivityRunning(row.actId, state, activity, at);
-    });
+  function discardedAt(row, at) {
+    const discardTime = Number(row?.row?.discard_time ?? 0);
+    return discardTime > 0 && at >= discardTime;
   }
 
-  // 登录与两条命令共用同一套对齐：补齐当前开放但登录快照缺失的版本（例如
-  // 25111 在排期内开放，却不在参考快照的 66 条里），并把失效的选中版本切回
-  // 当前开放的最新版本。参考服的 info_list 会保留未开放版本，所以这里不删除历史行。
+  function compareVersionRows(left, right) {
+    return windowStart(right) - windowStart(left) || right.actId - left.actId;
+  }
+
+  function selectVersionRow(candidates, running, existingActId, at) {
+    const available = candidates.filter(candidate => !discardedAt(candidate, at));
+    const runningAvailable = running.filter(candidate => !discardedAt(candidate, at));
+    if (runningAvailable.length) return [...runningAvailable].sort(compareVersionRows)[0];
+
+    const known = available.find(candidate => candidate.actId === Number(existingActId));
+    if (known) return known;
+    if (available.length) return [...available].sort(compareVersionRows)[0];
+
+    const existing = candidates.find(candidate => candidate.actId === Number(existingActId));
+    if (existing) return existing;
+    return [...candidates].sort(compareVersionRows)[0] ?? null;
+  }
+
+  function stateFor(group, actId) {
+    return (group.states_data ?? []).find(candidate => Number(candidate?.act_id) === Number(actId)) ?? null;
+  }
+
+  // Keep one info_list row per ActivityTable func25 version, not just the
+  // captured 66 historical rows. ActivityTable contains a duplicate version 91
+  // entry (25091 current and 25098 discarded), so the mapping must be selected
+  // by running state, discard_time and window rather than table insertion order.
+  // Existing award_bin/buy_limit_info rows are preserved.
   function reconcile(activity, at) {
     activity.act_parallel_list ??= [];
     const rows = versions();
-    if (!rows.length) return { group: null, master: null, running: [], addedStates: [], addedInfo: [], curChooseVersion: 0 };
-
-    const running = runningVersions(activity, at, rows);
-    if (!running.length) return { group: familyGroup(activity), master: null, running: [], addedStates: [], addedInfo: [], curChooseVersion: 0 };
+    if (!rows.length) {
+      return {
+        group: null, master: null, running: [], configured: [], unconfiguredRunning: [],
+        addedStates: [], addedInfo: [], curChooseVersion: 0, hasActivityConfig: false
+      };
+    }
 
     let group = familyGroup(activity);
+    const addedStates = [];
+    const runningRows = [];
+    const rowsByVersion = new Map();
+    for (const row of rows) {
+      if (!rowsByVersion.has(row.version)) rowsByVersion.set(row.version, []);
+      rowsByVersion.get(row.version).push(row);
+    }
+
+    // Determine the live rows before materializing any ActivityTable row into
+    // the login snapshot. Historical table rows are configuration, not current
+    // running evidence.
+    for (const row of rows) {
+      const state = group ? stateFor(group, row.actId) : null;
+      if (!discardedAt(row, at) && calendar.isActivityRunning(row.actId, state, activity, at)) {
+        runningRows.push(row);
+      }
+    }
+
+    if (!runningRows.length) {
+      const configuredRows = [];
+      for (const candidates of rowsByVersion.values()) {
+        const row = selectVersionRow(candidates, [], 0, at);
+        if (row && configured(row)) configuredRows.push(row);
+      }
+      return {
+        group, master: null, running: [], configured: configuredRows, unconfiguredRunning: [],
+        addedStates, addedInfo: [], curChooseVersion: 0, hasActivityConfig: true
+      };
+    }
+
     if (!group) {
       group = { states_data: [], module_login_data: Buffer.alloc(0) };
       activity.act_parallel_list.push(group);
     }
     group.states_data ??= [];
+    for (const row of runningRows) {
+      if (stateFor(group, row.actId)) continue;
+      group.states_data.push({
+        act_id: row.actId,
+        cur_state_id: RUNNING_STATE_ID,
+        history_time: [{ state_id: RUNNING_STATE_ID, enter_time: String(windowStart(row) || at) }]
+      });
+      addedStates.push(row.actId);
+    }
 
-    const addedStates = [];
-    for (const row of running) {
-      let state = group.states_data.find(candidate => Number(candidate?.act_id) === row.actId);
-      if (!state) {
-        state = {
-          act_id: row.actId,
-          cur_state_id: RUNNING_STATE_ID,
-          history_time: [{ state_id: RUNNING_STATE_ID, enter_time: String(windowStart(row) || at) }]
-        };
-        group.states_data.push(state);
-        addedStates.push(row.actId);
-      } else if (Number(state.cur_state_id) !== RUNNING_STATE_ID) {
-        state.cur_state_id = RUNNING_STATE_ID;
-        state.history_time = [...(state.history_time ?? []), { state_id: RUNNING_STATE_ID, enter_time: String(at) }];
-        addedStates.push(row.actId);
+    const master = decodeMaster(group.module_login_data, { strict: true });
+    const existing = new Map();
+    for (const entry of master.info_list) {
+      const version = Number(entry.version);
+      const actId = Number(entry.act_id);
+      if (!Number.isSafeInteger(version) || version <= 0
+        || !Number.isSafeInteger(actId) || actId <= 0) {
+        throw new GameError(5, 'Up-star gift login data contains an invalid version entry');
+      }
+      const current = existing.get(version);
+      if (!current) {
+        existing.set(version, {
+          ...entry,
+          award_bin: bytesOf(entry.award_bin),
+          buy_limit_info: mergeBuyLimitInfo(entry.buy_limit_info, {})
+        });
+      } else {
+        // A duplicated version is still one client-side BitBlock. Merge claim
+        // state so canonicalization can never turn an existing claim back into
+        // an unclaimed reward.
+        current.award_bin = unionBits(current.award_bin, entry.award_bin);
+        current.buy_limit_info = mergeBuyLimitInfo(current.buy_limit_info, entry.buy_limit_info);
       }
     }
 
-    const master = decodeMaster(group.module_login_data);
-    const known = new Set((master.info_list ?? []).map(entry => Number(entry.act_id)));
-    const addedInfo = [];
-    for (const row of running) {
-      if (known.has(row.actId)) continue;
-      master.info_list.push({ version: row.version, act_id: row.actId, award_bin: '', buy_limit_info: {} });
-      addedInfo.push(row.actId);
+    const selectedByVersion = new Map();
+    for (const [version, candidates] of rowsByVersion) {
+      const runningForVersion = runningRows.filter(row => row.version === version);
+      selectedByVersion.set(version, selectVersionRow(
+        candidates, runningForVersion, existing.get(version)?.act_id, at
+      ));
+    }
+    const configuredRows = [...selectedByVersion.values()].filter(row => row && configured(row));
+    const running = configuredRows.filter(row => runningRows.includes(row));
+    const unconfiguredRunning = runningRows
+      .filter(row => !configured(selectedByVersion.get(row.version) ?? row))
+      .filter((row, index, all) => all.findIndex(candidate => candidate.version === row.version) === index);
+
+    if (!running.length) {
+      return {
+        group, master: null, running: [], configured: configuredRows, unconfiguredRunning,
+        addedStates, addedInfo: [], curChooseVersion: 0, hasActivityConfig: true
+      };
     }
 
-    const runningVersionsById = new Map(running.map(row => [row.actId, row]));
-    const storedChoice = Number(master.cur_choose_version) || 0;
-    const storedEntry = (master.info_list ?? []).find(entry => Number(entry.version) === storedChoice);
-    const storedRunning = storedEntry && runningVersionsById.has(Number(storedEntry.act_id));
-    if (!storedRunning) {
-      const newest = [...running].sort((left, right) => windowStart(right) - windowStart(left) || right.version - left.version)[0];
-      master.cur_choose_version = newest.version;
+    const addedInfo = [];
+    for (const row of configuredRows) {
+      const entry = existing.get(row.version);
+      if (!entry) {
+        const created = { version: row.version, act_id: String(row.actId), award_bin: '', buy_limit_info: {} };
+        master.info_list.push(created);
+        existing.set(row.version, created);
+        addedInfo.push(row.actId);
+      } else if (Number(entry.act_id) !== row.actId) {
+        // The reference snapshot's act_id is authoritative only while it still
+        // matches ActivityTable. Correct stale ids instead of rendering an
+        // unrelated activity version.
+        entry.act_id = String(row.actId);
+      }
     }
+    // Remove duplicate historical entries after their claim bits have been
+    // merged. Preserve already stored versions that are no longer present in
+    // ActivityTable so old claim records are not silently discarded.
+    master.info_list = [...existing.values(), ...master.info_list.filter(entry => !existing.has(Number(entry.version)))];
+
+    const runningByVersion = new Map(running.map(row => [row.version, row]));
+    let chosen = Number(master.cur_choose_version) || 0;
+    if (!runningByVersion.has(chosen)) {
+      const newest = [...running].sort((left, right) =>
+        windowStart(right) - windowStart(left) || right.version - left.version)[0];
+      chosen = newest.version;
+    }
+    master.cur_choose_version = chosen;
     group.module_login_data = encodeMaster(master);
     return {
-      group, master, running,
-      addedStates, addedInfo,
-      curChooseVersion: Number(master.cur_choose_version) || 0
+      group, master, running, configured: configuredRows, addedStates, addedInfo,
+      unconfiguredRunning, curChooseVersion: chosen, hasActivityConfig: true
     };
   }
 
@@ -191,19 +328,25 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
     if (!activity || typeof activity !== 'object') throw new GameError(5, 'Activity login data is invalid');
     const state = reconcile(activity, at);
     if (!state.running.length) {
-      return { activityIds: [], versions: [], curChooseVersion: 0, addedStates: [], addedInfo: [] };
+      return {
+        activityIds: [], versions: [], curChooseVersion: 0,
+        addedStates: state.addedStates, addedInfo: [], unconfiguredRunning: state.unconfiguredRunning,
+        hasActivityConfig: state.hasActivityConfig
+      };
     }
     return {
       activityIds: state.running.map(row => row.actId),
       versions: state.running.map(row => row.version),
       curChooseVersion: state.curChooseVersion,
       addedStates: state.addedStates,
-      addedInfo: state.addedInfo
+      addedInfo: state.addedInfo,
+      unconfiguredRunning: state.unconfiguredRunning,
+      hasActivityConfig: state.hasActivityConfig
     };
   }
 
-  function readActivity() {
-    const module = new Map(store.state().modules.value).get(UP_STAR_GIFT_MODULE_ID);
+  function readActivityFrom(modules) {
+    const module = modules.get(UP_STAR_GIFT_MODULE_ID);
     if (!module) throw new GameError(5, 'Activity login data is unavailable');
     try {
       return codec.unpack('pb_act_login', rawBinary(module));
@@ -219,25 +362,32 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
     const at = currentSeconds();
     const result = store.transaction(model => {
       const modules = new Map(model.state.modules.value);
-      const module = modules.get(UP_STAR_GIFT_MODULE_ID);
-      if (!module) throw new GameError(5, 'Activity login data is unavailable');
-      let activity;
-      try {
-        activity = codec.unpack('pb_act_login', rawBinary(module));
-      } catch {
-        throw new GameError(5, 'Activity login data is invalid');
-      }
+      const activity = readActivityFrom(modules);
       const state = reconcile(activity, at);
-      if (!state.group || !state.master) throw new GameError(309, 'Up-star gift activity is not running');
+      if (!state.hasActivityConfig) throw new GameError(5, 'Up-star gift activity configuration is unavailable');
+      if (!state.group || !state.master) {
+        if (state.unconfiguredRunning.length) {
+          throw new GameError(5, 'Running up-star gift activity has no UpStarGiftTable configuration');
+        }
+        throw new GameError(309, 'Up-star gift activity is not running');
+      }
       const row = state.running.find(candidate => candidate.version === selected);
-      if (!row) throw new GameError(309, 'Up-star gift version is not running');
-      const entry = (state.master.info_list ?? []).find(candidate => Number(candidate.act_id) === row.actId);
+      if (!row) {
+        if (state.unconfiguredRunning.some(candidate => candidate.version === selected)) {
+          throw new GameError(5, 'Up-star gift version ' + selected + ' has no UpStarGiftTable configuration');
+        }
+        throw new GameError(309, 'Up-star gift version is not running');
+      }
+      if (!upStarTables.giftsByVersion.has(selected)) throw new GameError(5, 'Up-star gift version has no UpStarGiftTable configuration');
+      const entry = (state.master.info_list ?? []).find(candidate => Number(candidate.version) === selected);
       if (!entry) throw new GameError(5, 'Up-star gift login data is missing the selected version');
       const changed = Number(state.master.cur_choose_version) !== selected;
       if (changed) {
         state.master.cur_choose_version = selected;
         state.group.module_login_data = encodeMaster(state.master);
-        modules.set(UP_STAR_GIFT_MODULE_ID, serializedBinary(codec.pack('pb_act_login', activity)));
+        // Pack before mutating the model so a schema error leaves no partial write.
+        const packed = codec.pack('pb_act_login', activity);
+        modules.set(UP_STAR_GIFT_MODULE_ID, serializedBinary(packed));
         model.state.modules.value = [...modules];
       }
       return { changed, version: selected, actId: row.actId };
@@ -246,9 +396,69 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
     return { value: result, data: Buffer.alloc(0) };
   }
 
-  // 31052 req_up_star_gift_award：pb_up_star_gift_req{ids}。
-  // 请求结构、版本和活动窗口可以校验；每个 id 的达标条件与奖励来自
-  // UpStarGiftTable，本环境没有该资产，因此明确拒绝，不写领取位。
+  function progressReader(model, modules) {
+    const cache = new Map();
+    let petRows;
+    let elfRows;
+
+    const loadPets = () => {
+      if (petRows) return petRows;
+      const module = modules.get(158);
+      if (!module) return (petRows = []);
+      try {
+        petRows = readModuleData(modules, 158, 0, 'pb_pet_develop_data', { pets: [], slots: [] }, codec).pets ?? [];
+      } catch {
+        throw new GameError(5, 'Pet login data is invalid');
+      }
+      return petRows;
+    };
+
+    const loadElves = () => {
+      if (elfRows) return elfRows;
+      const module = modules.get(538);
+      if (!module) return (elfRows = []);
+      try {
+        elfRows = readModuleData(modules, 538, null, 'pb_elves_develop', { elves: [], help_slots: [] }, codec).elves ?? [];
+      } catch {
+        throw new GameError(5, 'Elf login data is invalid');
+      }
+      return elfRows;
+    };
+
+    return gift => {
+      const key = gift.type + ':' + gift.taskParam;
+      if (cache.has(key)) return cache.get(key);
+      const typeConfig = tables?.TaskType?.get(Number(gift.type));
+      if (!typeConfig || Number(typeConfig.progress_type) !== 1) {
+        throw new GameError(5, 'Up-star gift task type is not configured: ' + gift.type);
+      }
+      const progressFun = Number(typeConfig.progress_fun);
+      let progress;
+      if (progressFun === HERO_STAR_PROGRESS) {
+        if (!tables?.Hero?.has?.(Number(gift.taskParam))) {
+          throw new GameError(5, 'Up-star gift HeroTable target is unavailable: ' + gift.taskParam);
+        }
+        progress = maxStar(model.heroInfo?.hero_list, gift.taskParam);
+      } else if (progressFun === PET_STAR_PROGRESS) {
+        if (Number(tables?.Item?.get?.(Number(gift.taskParam))?.type) !== 171) {
+          throw new GameError(5, 'Up-star gift pet task_param is not an ItemTable type 171: ' + gift.taskParam);
+        }
+        progress = maxStar(loadPets(), gift.taskParam);
+      } else if (progressFun === ELF_STAR_PROGRESS) {
+        if (Number(tables?.Item?.get?.(Number(gift.taskParam))?.type) !== 191) {
+          throw new GameError(5, 'Up-star gift elf task_param is not an ItemTable type 191: ' + gift.taskParam);
+        }
+        progress = maxStar(loadElves(), gift.taskParam);
+      }
+      else throw new GameError(5, 'Up-star gift task progress is not implemented: ' + progressFun);
+      cache.set(key, progress);
+      return progress;
+    };
+  }
+
+  // 31052 req_up_star_gift_award：pb_up_star_gift_req{ids}。ids 是
+  // UpStarGiftTable.UpStarGift.tid，不是版本号；gift>0 的行是充值礼包，由
+  // RechargeMgr 处理，不能从这里免费领取。
   function award(request) {
     const raw = request?.ids ?? [];
     if (!Array.isArray(raw)) throw new GameError(1, 'Invalid up-star gift ids');
@@ -259,14 +469,90 @@ export function createUpStarGiftService({ store, codec, tables, calendar, now = 
       throw new GameError(1, 'Invalid up-star gift ids');
     }
     const at = currentSeconds();
-    const activity = readActivity();
-    const state = reconcile(activity, at);
-    if (!state.group || !state.master || !state.running.length) throw new GameError(309, 'Up-star gift activity is not running');
-    const version = Number(state.master.cur_choose_version) || 0;
-    const entry = (state.master.info_list ?? []).find(candidate => Number(candidate.version) === version);
-    if (!entry) throw new GameError(309, 'Up-star gift version is not selected');
-    log({ event: 'up_star_gift_award_refused', version, actId: Number(entry.act_id), ids });
-    throw new GameError(5, UP_STAR_GIFT_AWARD_GAP);
+    const result = store.transaction(model => {
+      const modules = new Map(model.state.modules.value);
+      const activity = readActivityFrom(modules);
+      const state = reconcile(activity, at);
+      if (!state.hasActivityConfig) throw new GameError(5, 'Up-star gift activity configuration is unavailable');
+      if (!state.group || !state.master || !state.running.length) {
+        if (state.unconfiguredRunning.length) {
+          throw new GameError(5, 'Running up-star gift activity has no UpStarGiftTable configuration');
+        }
+        throw new GameError(309, 'Up-star gift activity is not running');
+      }
+      const version = Number(state.master.cur_choose_version) || 0;
+      const selected = state.running.find(row => row.version === version);
+      if (!selected) throw new GameError(309, 'Up-star gift version is not selected');
+      const entry = (state.master.info_list ?? []).find(candidate => Number(candidate.version) === version);
+      if (!entry) throw new GameError(5, 'Up-star gift login data is missing the selected version');
+      const versionRows = upStarTables.giftsByVersion.get(version);
+      if (!versionRows?.length) throw new GameError(5, 'Up-star gift version has no UpStarGiftTable configuration');
+
+      const gifts = ids.map(id => {
+        const gift = upStarTables.giftsById.get(id);
+        if (!gift) throw new GameError(1, 'Unknown up-star gift id: ' + id);
+        if (gift.version !== version) {
+          throw new GameError(5, 'Up-star gift id ' + id + ' belongs to version ' + gift.version + ', not selected version ' + version);
+        }
+        if (gift.gift > 0) throw new GameError(5, 'Up-star gift id ' + id + ' is a recharge product; use the recharge flow');
+        if (!gift.award.length) throw new GameError(5, 'Up-star gift id ' + id + ' has no claimable award');
+        if (gift.oneKey !== 0) throw new GameError(5, 'Up-star gift id ' + id + ' is a one-key gift');
+        return gift;
+      });
+
+      const bits = bytesOf(entry.award_bin);
+      const already = ids.filter(id => hasBit(bits, id % 100));
+      if (already.length === ids.length) {
+        // A retried request must not duplicate resources. Return the same
+        // state shape with an empty resource change list.
+        const info = wireEntry(entry);
+        const res = { changes: [], is_overflow: false };
+        return { info, res, data: codec.pack('pb_up_star_gift_back', { info, res }), idempotent: true };
+      }
+      if (already.length) throw new GameError(310, 'Up-star gift award was already claimed: ' + already.join(','));
+
+      const progressOf = progressReader(model, modules);
+      const show = upStarTables.showsByVersion.get(version);
+      const awards = [];
+      for (const gift of gifts) {
+        const progress = progressOf(gift);
+        if (progress < gift.targetCount) {
+          throw new GameError(5, 'Up-star gift id ' + gift.tid + ' task is not complete: requires ' + gift.targetCount + ', current ' + progress);
+        }
+        if (gift.starUnlock > 0) {
+          if (!show) throw new GameError(5, 'Up-star gift display configuration is unavailable for version ' + version);
+          const displayProgress = maxStar(model.heroInfo?.hero_list, show.showStyle);
+          if (displayProgress < gift.starUnlock) {
+            throw new GameError(5, 'Up-star gift id ' + gift.tid + ' display gift is locked: requires hero ' +
+              show.showStyle + ' star ' + gift.starUnlock + ', current ' + displayProgress);
+          }
+        }
+        awards.push(...gift.award);
+      }
+
+      let nextBits = bits;
+      for (const id of ids) nextBits = setBit(nextBits, id % 100);
+      entry.award_bin = nextBits;
+      state.group.module_login_data = encodeMaster(state.master);
+
+      // Validate serialization before granting, then merge the granted module
+      // changes back before writing module 92. A grant or pack failure aborts
+      // the surrounding SQLite transaction as a whole.
+      const packedActivity = codec.pack('pb_act_login', activity);
+      const res = grantResources(model, awards, tables, { codec });
+      const finalModules = new Map(model.state.modules.value);
+      finalModules.set(UP_STAR_GIFT_MODULE_ID, serializedBinary(packedActivity));
+      model.state.modules.value = [...finalModules];
+      const info = wireEntry(entry);
+      const data = codec.pack('pb_up_star_gift_back', { info, res });
+      return { info, res, data, idempotent: false };
+    });
+    log({
+      event: result.idempotent ? 'up_star_gift_award_idempotent' : 'up_star_gift_award_claimed',
+      version: Number(result.info.version), actId: Number(result.info.act_id), ids: ids.length,
+      changes: result.res.changes.length
+    });
+    return { value: { info: result.info, res: result.res }, data: result.data };
   }
 
   return {
