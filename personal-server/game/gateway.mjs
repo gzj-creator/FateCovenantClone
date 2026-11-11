@@ -2250,16 +2250,28 @@ export function createLocalGame({
       if (benefitCommerce.supports(type)) {
         // 块 I（PAY-*）的礼包/通行证/基金/拍卖命令入口。可结算的命令在这里真实
         // 扣发并写回登录模块；配置表缺失的命令返回 5 与具体原因，避免用固定空包
-        // 冒充已实现。
+        // 冒充已实现。请求编码按 tcp-commands.md：标为 protobuf 的命令先按 schema
+        // 解码，解不开时才回退 ETF 路径，避免真实客户端在进入拒绝分支前先拿到 code 1。
+        const schema = benefitCommerce.requestSchema(type);
+        const card = benefitCommerce.refusals.get(Number(type))?.card ?? null;
         try {
-          const input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
-          const result = benefitCommerce.execute(type, input);
+          let input;
+          if (schema) {
+            try {
+              input = unpackRequest(schema, request.data);
+            } catch {
+              input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
+            }
+          } else {
+            input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
+          }
+          const result = benefitCommerce.execute(type, input, schema);
           send(seq, result.data);
           log({ event: 'benefit_command_committed', type, seq });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'benefit_command_rejected', type, seq, code, message: error.message });
+          log({ event: 'benefit_command_rejected', type, seq, code, card, schema, message: error.message });
         }
         return;
       }

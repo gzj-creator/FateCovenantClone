@@ -107,27 +107,25 @@ main `f1fed77`（线上 `release-20261111T085036Z`，`RELEASE_COMMIT=f1fed77572a
 | PAY-SUBSCRIPTIONACT | 107301-107303 | SubscriptionActMgr type 1014：1015005/1015006 | 静态确认 | 入口存在，只有拒绝 |
 | PAY-GIFTBOXACT | 106301 | GiftBoxActMgr type 1013：1013004/1013007/1013008 | 静态确认 | 入口存在，只有拒绝 |
 | PAY-PERMIT | 35003-35011 | PermitActMgr type 62：188045/188055（35001/35002/35005 已实现） | 静态确认 | 入口存在，仅部分命令可结算 |
-| PAY-LEVELSPRINT | 88101 | 67001 等级冲刺1（func 67，ModuleTable 92044 level_sprint） | 静态（活动名与模块路径） | 待验证命令归属 |
-| PAY-REBATESHOPACT | 100701 | 138004 神域秘市_返利商店（func 138） | 待验证 | 命令与活动的对应关系未证实 |
-| 其余 28 个家族 | — | 当前排期没有对应开放活动 | 静态确认 | 不是当前线上故障 |
+| PAY-LEVELSPRINT | 88101 | 67001 等级冲刺1（func 67，ModuleTable 92044 level_sprint），官方排期第 1 天在窗口内 | 静态（活动在窗口内 + 模块路径与 `req_level_sprint_free_award` 名称匹配；ActFrameType 无 func 67 行） | 入口存在，只有拒绝；缺 `LevelSprintTable` |
+| PAY-REBATESHOPACT | 100701 | 138004 神域秘市_返利商店（func 138），官方排期第 1 天在窗口内 | 静态（同上，命令 `req_rebate_shop_act_award`） | 入口存在，只有拒绝；缺 `RebateShopActTable` |
+| 其余家族 | — | 当前排期没有对应开放活动（按 ActFrameType/ActivityTable 与日历逐项核对） | 静态确认 | 不是当前线上故障 |
 
-说明：`ActFrameTable.ActType` 对 func 67、138 没有行，这两行的管理器是按 `ModuleTable` 的活动名与路径
-推断的，标为待验证；“入口可见”也不等于客户端一定会调用被拒绝的命令（例如部分礼包走
-`16005` 充值链路），需要客户端请求日志才能把清单收敛成确定故障。
+说明：`ActFrameTable.ActType` 对 func 67、138 没有行，这两行的管理器是按 `ModuleTable` 的活动名、
+模块路径和命令名匹配的；本轮用日历确认 `67001`、`138004` 在官方排期第 1 天都处于窗口内，
+所以“入口可见”成立，但仍不等于客户端一定会调用被拒绝的命令（例如部分礼包走 `16005` 充值链路），
+要收敛成确定故障还需要客户端请求日志。
 
-### 同类解码缺陷（已确认，本轮未改）
+### 同类解码缺陷（已在同分支后续提交修复）
 
-`benefit-commerce-service.mjs` 的派发统一按 ETF 解包，但下面这些被拒绝的命令实际是 protobuf 请求，
-真实客户端发来时会在进入拒绝分支之前先变成 code 1（`Invalid benefit payload`），日志也拿不到
-家族与原因：
+`benefit-commerce-service.mjs` 的派发原先统一按 ETF 解包，被拒绝的 protobuf 命令会在进入拒绝分支前
+变成 code 1（`Invalid benefit payload`）。后续提交按 tcp-commands 目录与 protobuf 资产为 28 条命令补了
+`BENEFIT_PROTOBUF_REQUESTS`，网关先按 schema 解码、解不开才回退 ETF。详细证据与剩余阻断见
+[benefit-command-decode-20261111.md](benefit-command-decode-20261111.md)。
 
-`102702 98800 99002 99901 101701 104801 104802 104803 105401 105901 106101 106102 107301 107302
-107401 35010 35011 101903 104001`（来源：`not-implemented-interfaces.md` 的编码列）。
-
-其中 `104801 req_act_shop_info` 是读取命令，而 type 182 活动商店当前有 8 个开放入口；`107302`、
-`106101` 也带读取语义。这一族需要先补 `ActShopTable` / `SubscriptionActTable` / `VickreyAuctionActTable`
-才能给出真实数据，本轮没有用空包冒充成功。建议主 agent 把 benefit 派发按命令 schema 解码，
-至少让拒绝落在 code 5 与具体家族原因上，并按当前可见入口排优先级。
+其中 `104801 req_act_shop_info` 是读取命令，type 182 活动商店当前有 8 个开放入口；`107302`、`106101`
+也带读取语义。这些命令现在会返回 code 5 与该家族的真实原因，但要给出真实数据仍需
+`ActShopTable` / `SubscriptionActTable` / `VickreyAuctionActTable`，本轮没有用空包冒充成功。
 
 ## 证据缺口与限制
 

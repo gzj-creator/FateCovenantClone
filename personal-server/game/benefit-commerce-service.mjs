@@ -16,6 +16,59 @@ export const BENEFIT_COMMANDS = Object.freeze({
 
 const dayIndex = seconds => Math.floor((Number(seconds) + 10800) / 86400);
 
+// 请求编码和 schema 取自 agent/workflow/interface-catalog/tcp-commands.md 与
+// assets/protobuf 里的 net 描述。真实客户端对下面这些命令发的是 protobuf，
+// 网关若统一按 ETF 解包，请求会在进入拒绝分支之前变成 code 1
+// (Invalid benefit payload)，家族与缺失资产就查不出来。
+export const BENEFIT_PROTOBUF_REQUESTS = Object.freeze({
+  98800: 'pb_appearance_release_act_interact_req',
+  99002: 'pb_cake_activity_select_plate_req',
+  99901: 'pb_finance_manage_act_select_product_req',
+  101701: 'pb_divine_realm_gift_select_req',
+  102701: 'pb_auction_bid_req',
+  102702: 'pb_auction_wish_req',
+  101903: 'pb_bonus_shopping_req',
+  104001: 'pb_buy_skin_free_req',
+  104801: 'pb_act_shop_info_req',
+  104802: 'pb_act_buy_goods_req',
+  104803: 'pb_act_shop_level_rewards_req',
+  105401: 'pb_premium_free_award_req',
+  105901: 'pb_recycle_act_recycle_req',
+  106101: 'pb_vickrey_auction_act_info_req',
+  106102: 'pb_vickrey_auction_act_bid_req',
+  106301: 'pb_gift_box_receive_req',
+  107301: 'pb_subscription_act_subscribe_req',
+  107302: 'pb_subscription_act_subscribe_req',
+  107401: 'pb_new_permit_award_req',
+  88901: 'pb_assistant_setting_req',
+  88902: 'pb_assistant_execute_req',
+  92902: 'pb_red_rain_rev_award_req',
+  93401: 'pb_week_common_task_req',
+  93402: 'pb_week_common_progress_req',
+  93403: 'pb_week_upgrade_gift_req',
+  98630: 'pb_gem_rebate_req',
+  35010: 'pb_permit_select_award_req',
+  35011: 'pb_permit_choose_req'
+});
+
+// 拒绝日志只保留可读的标量字段，避免把整包二进制写进事件文件。
+function summarizeRequest(value) {
+  if (value == null) return null;
+  if (Buffer.isBuffer(value)) return { bytes: value.length };
+  if (Array.isArray(value)) return value.slice(0, 8).map(summarizeRequest);
+  if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value.toNumber === 'function') return Number(value.toNumber());
+  const output = {};
+  for (const [key, field] of Object.entries(value)) {
+    if (Object.keys(output).length >= 8) break;
+    if (field == null) continue;
+    if (typeof field === 'number' || typeof field === 'string' || typeof field === 'boolean') output[key] = field;
+    else if (typeof field.toNumber === 'function') output[key] = Number(field.toNumber());
+    else if (Array.isArray(field) || typeof field === 'object') output[key] = summarizeRequest(field);
+  }
+  return output;
+}
+
 // 每个家族代表一张任务卡。reason 会同时进入错误信息和日志，便于把服务端拒绝
 // 还原到具体缺失的证据。
 const REFUSAL_FAMILIES = [
@@ -23,7 +76,7 @@ const REFUSAL_FAMILIES = [
   // 31052/31053 由 up-star-gift-service.mjs 接管：登录版本块、版本选择与
   // 真实活动窗口已实现；31052 的档位奖励仍因 UpStarGiftTable 缺失而拒绝。
   { card: 'PAY-VIP', types: [33001, 33002, 76301], reason: 'VipTable 未导出：VIP 等级、礼包与经验兑换配置无证据' },
-  { card: 'PAY-PERMIT', types: [35003, 35004, 35006, 35007, 35008, 35009, 35010, 35011], reason: 'ETF 请求契约与买级/福利/期数配置未取得：只有已实现的 35001/35002/35005 可结算' },
+  { card: 'PAY-PERMIT', types: [35003, 35004, 35006, 35007, 35008, 35009, 35010, 35011], reason: 'PermitTable 已导出，35001/35002/35005 可结算；35003/35004/35006-35009 的买级、期数调整、福利与手动结算规则未取得，35010/35011 的选奖与换期规则未取得' },
   { card: 'PAY-FUNDACT', types: [51001], reason: 'FundActTable 未导出：基金活动等级与奖励配置无证据' },
   { card: 'PAY-NOTIFYGIFT', types: [76201], reason: '平台推送礼包数据由 GMC 下发，本服没有对应配置与推送通道' },
   { card: 'PAY-REDENVELOPE', types: [77001, 77002, 77003], reason: '红包配置表未导出：红包 tid 与掉落奖励无证据，且 pb_client_red_envelope 定义缺失' },
@@ -57,8 +110,8 @@ const REFUSAL_FAMILIES = [
   { card: 'PAY-AUCTION', types: [102701, 102702, 102703, 102704, 102705], reason: 'AuctionTable 未导出：拍卖场次、底价、分红与流拍规则无证据' },
   { card: 'PAY-SKINRECHARGE', types: [103601], reason: 'SkinRechargeTable 未导出：皮肤充值角色/档位配置无证据' },
   { card: 'PAY-BUYSKINACT', types: [104001], reason: 'BuySkinActTable 未导出：购皮肤活动免费档位配置无证据' },
-  { card: 'PAY-ACTSHOP', types: [104801, 104802, 104803], reason: 'ActShopTable 未导出：活动商店商品、货币与等级奖励配置无证据' },
-  { card: 'PAY-PREMIUMACT', types: [105401], reason: 'PremiumActTable 未导出：增值活动免费档位配置无证据' },
+  { card: 'PAY-ACTSHOP', types: [104801, 104802, 104803], reason: 'ActShopTable 未导出：活动商店商品、货币与等级奖励配置无证据，读取命令 104801 也没有可回放的 shop_list' },
+  { card: 'PAY-PREMIUMACT', types: [105401], reason: 'PremiumActTable 已导出（100/104/108 版本有 Free 行），但免费档位的解锁条件 asserts 与领取规则未解码；当前白绫活动 1841010 的版本 1002 本身没有 Free 行' },
   { card: 'PAY-RECYCLEACT', types: [105901], reason: 'RecycleActTable 未导出：回收折算比例配置无证据' },
   { card: 'PAY-VICKREYAUCTIONACT', types: [106101, 106102], reason: 'VickreyAuctionActTable 未导出：密封拍卖场次与结算规则无证据' },
   { card: 'PAY-GIFTBOXACT', types: [106301], reason: 'GiftBoxActTable 未导出：礼盒档位与领取条件配置无证据' },
@@ -158,18 +211,27 @@ export function createBenefitCommerceService({ store, codec, tables, now = Date.
     return { value: result, data: codec.pack('pb_princess_supplement_back', { supplement: result.supplement, res: result.res }) };
   }
 
-  function execute(type, input) {
+  function requestSchema(type) {
+    return BENEFIT_PROTOBUF_REQUESTS[Number(type)] ?? null;
+  }
+
+  function execute(type, input, schema = requestSchema(type)) {
     if (Number(type) === BENEFIT_COMMANDS.PERMANENT_CARD_AWARD) return permanentCardAward(input);
     if (Number(type) === BENEFIT_COMMANDS.PRINCESS_AWARD_SUPPLEMENT) return princessAwardSupplement(input);
     const family = REFUSALS.get(Number(type));
     if (!family) throw new GameError(1, 'Unsupported benefit command');
-    log({ event: 'benefit_command_refused', type: Number(type), card: family.card, reason: family.reason });
+    log({
+      event: 'benefit_command_refused', type: Number(type), card: family.card,
+      encoding: schema ? 'protobuf' : 'etf', schema, reason: family.reason,
+      request: summarizeRequest(input)
+    });
     throw new GameError(5, family.card + ': ' + family.reason);
   }
 
   return {
     supports: type => REFUSALS.has(Number(type)) || Object.values(BENEFIT_COMMANDS).includes(Number(type)),
     execute,
+    requestSchema,
     refusals: REFUSALS,
     commands: BENEFIT_COMMANDS
   };
