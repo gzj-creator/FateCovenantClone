@@ -5,6 +5,11 @@ import { readGameTables } from '../config/game-tables.mjs';
 import { activityWindow } from './activity-calendar.mjs';
 import { statisticTaskProgress } from './task-statistics.mjs';
 import { wrapEtfBinary } from './etf-binary.mjs';
+import {
+  SERVER_VITALITY_PROGRESS_FUN,
+  activityVitalityStatistic,
+  readServerVitality
+} from './activity-vitality.mjs';
 
 // ActFrameTable ActType 1003 is the generic task activity
 // (TaskActivityActMgr, module 92114 活动_通用任务活动). Its tasks live in
@@ -80,6 +85,9 @@ export function createTaskActivityService({
   const openedAt = openedSeconds(serverOpenedAt ?? store.serverOpenedAt);
   const log = event => { try { logger(event); } catch {} };
   store.inspect(db => ensureTables(db));
+  // 14301 personal rows and 100701 server rows share one vitality dimension,
+  // derived from the shipped tables instead of a hard-coded slot.
+  const vitalityStatistic = activityVitalityStatistic({ tables, gameTables });
 
   function configured() {
     return [...(gameTables.ActFrameAct?.values() ?? [])]
@@ -132,18 +140,28 @@ export function createTaskActivityService({
       .run(roleId, actId, state.version, JSON.stringify(state.finished), new Date(at).toISOString());
   }
 
-  function taskProgress(model, task) {
+  function taskProgress(model, task, vitality) {
     const typeConfig = gameTables.TaskType?.get(Number(task.type));
     if (!typeConfig) fail(CODE_UNAVAILABLE, `Task activity task type ${task.type} is not configured`);
+    // TaskTable.Type 100701 progress_fun 460 is TaskActivityActMgr's server
+    // active value: the same vitality dimension summed over every role.
+    if (Number(typeConfig.progress_type) === 1 && Number(typeConfig.progress_fun) === SERVER_VITALITY_PROGRESS_FUN) {
+      return vitality();
+    }
     if (Number(typeConfig.progress_type) !== 2) {
       fail(CODE_UNAVAILABLE, `Task activity task type ${task.type} progress_fun ${typeConfig.progress_fun ?? 0} is unavailable`);
     }
     return statisticTaskProgress({ model, typeConfig, codec, gameTables, label: 'Task activity statistics' });
   }
 
+  function serverVitality() {
+    return readServerVitality({ store, codec, gameTables, statistic: vitalityStatistic }).total;
+  }
+
   // TaskActivityCmd 105701 req_task_activity_finish. The request lists the task
   // tids the player submitted; every entry is re-checked against the module 21
-  // statistics before any reward is granted.
+  // statistics (or, for the 100701 server rows, the realm aggregate) before any
+  // reward is granted.
   function finish(raw) {
     let request;
     try {
@@ -166,11 +184,12 @@ export function createTaskActivityService({
       const state = stateOf(db, roleId, actId, version, at);
       const done = new Set(state.finished);
       const awards = [];
+      let vitality = null;
       for (const tid of tids) {
         const task = rows.get(tid);
         if (!task) fail(CODE_INVALID, `Unknown task activity task ${tid}`);
         if (done.has(tid)) fail(CODE_ALREADY_FINISHED, `Task activity task ${tid} was already finished`);
-        const progress = taskProgress(model, task);
+        const progress = taskProgress(model, task, () => (vitality ??= serverVitality()));
         if (progress < task.targetCount) {
           fail(CODE_UNAVAILABLE, `Task activity task ${tid} needs ${task.targetCount} (${progress})`);
         }
@@ -236,12 +255,18 @@ export function createTaskActivityService({
 
   return {
     supports: type => Number(type) === TASK_ACTIVITY_COMMANDS.finish || Number(type) === TASK_ACTIVITY_COMMANDS.data,
-    // pb_task_activity_data_rsp carries the server-wide activity vitality
-    // (TaskActivityActMgr.UpdateServerActiveValue). No authoritative producer
-    // exists here, so the data read stays unavailable instead of a fixed value.
+    // The 105702 request carries no fields and TaskActivityActMgr polls it for
+    // the realm-wide active value; every running version reads the same
+    // statistics dimension, so the aggregate is not activity- or role-scoped.
     execute(type, raw) {
       if (Number(type) === TASK_ACTIVITY_COMMANDS.finish) return finish(raw);
-      if (Number(type) === TASK_ACTIVITY_COMMANDS.data) fail(CODE_UNAVAILABLE, 'Task activity server vitality is not available');
+      if (Number(type) === TASK_ACTIVITY_COMMANDS.data) {
+        const vitality = readServerVitality({ store, codec, gameTables, statistic: vitalityStatistic });
+        return {
+          data: codec.pack('pb_task_activity_data_rsp', { server_vitality: String(vitality.total) }),
+          value: { serverVitality: vitality.total, roles: vitality.roles, contributors: vitality.contributors }
+        };
+      }
       return fail(CODE_INVALID, 'Unknown task activity command');
     },
     isProtobufRequest: type => Number(type) === TASK_ACTIVITY_COMMANDS.finish,

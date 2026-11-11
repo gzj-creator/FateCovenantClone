@@ -33,10 +33,10 @@ function setup(t) {
   };
 }
 
-function setStatistic(store, statisticType, id, total) {
+function setStatistic(store, statisticType, id, total, roleId = null) {
   const index = roleStatistics.findIndex(row => Number(row.tid) === statisticType);
   assert.ok(index >= 0, `statistics slot ${statisticType} exists`);
-  store.transaction(model => {
+  const write = () => store.transaction(model => {
     const modules = new Map(model.state.modules.value);
     const module = modules.get(21);
     assert.ok(module && Array.isArray(module.value));
@@ -46,6 +46,8 @@ function setStatistic(store, statisticType, id, total) {
     modules.set(21, module);
     model.state.modules.value = [...modules];
   });
+  if (roleId == null) write();
+  else store.runWithRole(roleId, write);
 }
 
 function finishRequest(activityId, tids) {
@@ -54,6 +56,17 @@ function finishRequest(activityId, tids) {
 
 function resource(store, tid) {
   return BigInt(store.read().resources.get(String(tid))?.num ?? 0);
+}
+
+function readVitality(service) {
+  const result = service.execute(TASK_ACTIVITY_COMMANDS.data, undefined);
+  return codec.unpack('pb_task_activity_data_rsp', result.data);
+}
+
+// proto3 omits zero-valued scalars, so an untouched realm decodes without the
+// field and the client sees its default zero.
+function vitalityValue(response) {
+  return Number(response.server_vitality ?? 0);
 }
 
 test('TaskActivityTable keeps the shipped versions and ActFrame windows', () => {
@@ -121,9 +134,83 @@ test('105701 rejects unfinished tasks, unknown tasks and closed activities', t =
   );
 });
 
-test('105702 stays unavailable because no server vitality producer exists', t => {
+test('105702 returns the real zero server vitality before any role contributes', t => {
   const { service } = setup(t);
-  assert.throws(() => service.execute(TASK_ACTIVITY_COMMANDS.data, Buffer.alloc(0)), error => error.code === 5);
+  const response = readVitality(service);
+  assert.equal(vitalityValue(response), 0);
+});
+
+test('105702 sums activity vitality across roles and survives reconnect', t => {
+  const harness = setup(t);
+  setStatistic(harness.store, 29, 2, 60);
+  const second = harness.store.resolveAccount('task-activity-second');
+  setStatistic(harness.store, 29, 2, 40, second.roleId);
+  assert.equal(vitalityValue(readVitality(harness.service)), 100);
+
+  setStatistic(harness.store, 29, 2, 90, second.roleId);
+  assert.equal(vitalityValue(readVitality(harness.service)), 150);
+
+  harness.reopen();
+  assert.equal(vitalityValue(readVitality(harness.service)), 150);
+});
+
+test('105702 counts only the task activity vitality dimension', t => {
+  const harness = setup(t);
+  setStatistic(harness.store, 29, 1, 999);
+  setStatistic(harness.store, 1, 1, 999);
+  assert.equal(vitalityValue(readVitality(harness.service)), 0);
+
+  setStatistic(harness.store, 29, 2, 25);
+  assert.equal(vitalityValue(readVitality(harness.service)), 25);
+});
+
+test('105702 keeps answering after the activity window closes', t => {
+  const harness = setup(t);
+  setStatistic(harness.store, 29, 2, 30);
+  const closed = createTaskActivityService({
+    store: harness.store, codec, tables, gameTables, serverOpenedAt,
+    now: () => Date.UTC(2027, 0, 1)
+  });
+  assert.deepEqual(closed.runningActivityIds(Math.floor(Date.UTC(2027, 0, 1) / 1000)), []);
+  assert.equal(vitalityValue(readVitality(closed)), 30);
+});
+
+test('105702 shares one realm value across the running task activity versions', t => {
+  const harness = setup(t);
+  setStatistic(harness.store, 29, 2, 12);
+  assert.deepEqual(
+    harness.service.runningActivityIds(Math.floor(fixedNow / 1000)).sort((left, right) => left - right),
+    [1003001, 1003004, 1003006]
+  );
+  assert.equal(vitalityValue(readVitality(harness.service)), 12);
+});
+
+test('105702 reports corrupt statistics instead of a fake zero', t => {
+  const harness = setup(t);
+  const index = roleStatistics.findIndex(row => Number(row.tid) === 29) + 1;
+  harness.store.inspect(db => {
+    const payload = JSON.parse(db.prepare('SELECT payload_json FROM login_modules WHERE role_id=100001 AND module_id=21').get().payload_json);
+    payload.value[index] = { value: { type: 'Buffer', data: [255, 255] }, bits: 8 };
+    db.prepare('UPDATE login_modules SET payload_json=? WHERE role_id=100001 AND module_id=21').run(JSON.stringify(payload));
+  });
+  assert.throws(() => readVitality(harness.service), error => error.code === 5);
+});
+
+test('105701 server-wide tasks compare the summed realm vitality', t => {
+  const harness = setup(t);
+  setStatistic(harness.store, 29, 2, 20000);
+  const second = harness.store.resolveAccount('task-activity-realm');
+  setStatistic(harness.store, 29, 2, 9999, second.roleId);
+  assert.throws(
+    () => harness.service.execute(TASK_ACTIVITY_COMMANDS.finish, finishRequest(runningActId, [14])),
+    error => error.code === 5 && /needs 30000 \(29999\)/.test(error.message)
+  );
+
+  setStatistic(harness.store, 29, 2, 10000, second.roleId);
+  const gemBefore = resource(harness.store, 101500);
+  const result = harness.service.execute(TASK_ACTIVITY_COMMANDS.finish, finishRequest(runningActId, [14]));
+  assert.deepEqual(result.value.tids, [14]);
+  assert.equal(resource(harness.store, 101500), gemBefore + 500n);
 });
 
 test('login sync writes the ETF wrapped pb_task_activity_role_info for running versions', t => {

@@ -1818,6 +1818,9 @@ export function createLocalGame({
           input = await etfArgument(request.data, 'Invalid every-task payload', { optional: [9006, 9007, 9009].includes(type) });
           const result = everyTasks.execute(type, input);
           send(seq, result.data);
+          // The activity statistic belongs to the claiming role; broadcasting
+          // it would overwrite other players' local progress.
+          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data, connectionRoleId);
           everyTasks.logClaim(result);
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;

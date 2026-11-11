@@ -1,5 +1,8 @@
 # ITEM-TASKACTIVITY 实施记录
 
+> 2026-11-11 更新：`105702 req_task_activity_data` 已不再按 `5` 拒绝。全服活跃值改为模块 21 槽 29 维度 2 的真实跨角色聚合，日任务领取会写入该维度，100701 全服任务也改用同一数据源。根因、测试与待验收见
+> [activity-server-vitality-20261111.md](../../fixes/activity-server-vitality-20261111.md)。下文“105702 未实现”段落保留为历史记录。
+
 日期：2026-11-08
 分支：`task/BLOCK-D-20261108`（worktree `.worktree/gameplay-20261108/block-d-20261108`）
 基线：`main@bd650ba`

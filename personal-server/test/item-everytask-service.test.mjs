@@ -108,6 +108,18 @@ function resource(store, tid) {
   return BigInt(store.read().resources.get(String(tid))?.num ?? 0);
 }
 
+function activityVitality(store) {
+  const rows = [...tables.CountStatistics.values()].filter(row => !row.custom_login && Number(row.type) === 0);
+  const index = rows.findIndex(row => Number(row.tid) === 29);
+  const slot = new Map(store.state().modules.value).get(21).value[index + 1];
+  const bytes = slot?.value?.data?.length ? Buffer.from(slot.value.data) : Buffer.alloc(0);
+  return bytes.length ? codec.unpack('pb_count_statics_data', bytes) : { list: [] };
+}
+
+function activityVitalityTotal(store) {
+  return Number(activityVitality(store).list?.find(row => String(row.id) === '2')?.total ?? 0);
+}
+
 function syntheticDailyTables({ vitality = 100 } = {}) {
   const daily = new Map([
     [2001, { tid: 2001, type: 1002, target_count: 10, vitality, award: [[101500, 10]], day_range: [1, 999999], compensate_group_id: 1, sortOrder: 2 }],
@@ -147,6 +159,28 @@ test('daily claim rejects unfinished work, then pays once and survives reopen', 
   assert.equal(hasBit(Buffer.from(dailyState(env.store).finish_tid_list, 'base64'), 3), true);
   assert.equal(resource(env.store, 101500), rewarded + 10n);
   assert.throws(() => env.service.execute(9000, 3), error => error.code === 310);
+});
+
+test('daily claims feed the activity vitality statistic and push it', async t => {
+  const env = setup(t, { tables: syntheticDailyTables({ vitality: 100 }) });
+  setStatistics(env.store, 1, 1, 10);
+  assert.equal(activityVitalityTotal(env.store), 0);
+
+  const first = env.service.execute(9000, 2002);
+  assert.equal(activityVitalityTotal(env.store), 100);
+  assert.equal(first.pushes.length, 1);
+  const tuple = await decodeEtf(first.pushes[0].data);
+  const pushed = codec.unpack('pb_count_statics_send_list', Buffer.from(tuple[0].value));
+  assert.equal(pushed.data_list.length, 1);
+  assert.equal(Number(pushed.data_list[0].stat_tid), 29);
+  assert.deepEqual(pushed.data_list[0].expand_id_list.map(Number), [2]);
+  const pushedRow = pushed.data_list[0].data.list.find(row => String(row.id) === '2');
+  assert.equal(Number(pushedRow.total), 100);
+
+  env.service.execute(9000, 2001);
+  assert.equal(activityVitalityTotal(env.store), 200);
+  env.reopen();
+  assert.equal(activityVitalityTotal(env.store), 200);
 });
 
 test('weekly and all-time main tasks use separate periods and configured progress sources', t => {
