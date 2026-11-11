@@ -20,7 +20,8 @@ const dayIndex = seconds => Math.floor((Number(seconds) + 10800) / 86400);
 // 还原到具体缺失的证据。
 const REFUSAL_FAMILIES = [
   { card: 'PAY-TRIGGERGIFT', types: [18001, 18002], reason: 'TriggerGiftTable 未导出：触发礼包的 tid、次数与奖励配置无证据' },
-  { card: 'PAY-UPSTARGIFT', types: [31052, 31053], reason: 'UpStarGiftTable 未导出：升星礼包档位与活动版本配置无证据' },
+  // 31052/31053 由 up-star-gift-service.mjs 接管：登录版本块、版本选择与
+  // 真实活动窗口已实现；31052 的档位奖励仍因 UpStarGiftTable 缺失而拒绝。
   { card: 'PAY-VIP', types: [33001, 33002, 76301], reason: 'VipTable 未导出：VIP 等级、礼包与经验兑换配置无证据' },
   { card: 'PAY-PERMIT', types: [35003, 35004, 35006, 35007, 35008, 35009, 35010, 35011], reason: 'ETF 请求契约与买级/福利/期数配置未取得：只有已实现的 35001/35002/35005 可结算' },
   { card: 'PAY-FUNDACT', types: [51001], reason: 'FundActTable 未导出：基金活动等级与奖励配置无证据' },
