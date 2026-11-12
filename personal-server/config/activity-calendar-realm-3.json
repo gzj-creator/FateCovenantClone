@@ -1,0 +1,8 @@
+{
+  "_comment": "命运三服 schedule. Server opening time follows realm 3 in config/public-server.json; the reference server and template anchor are unchanged.",
+  "mode": "schedule",
+  "serverOpenedAt": "2026-11-12T18:00:00+08:00",
+  "activityReferenceOpenedAt": "2026-10-01T00:00:00+08:00",
+  "activityWindowAnchor": "2026-10-24T05:00:00+08:00",
+  "currentFishingActivityId": 1074011
+}

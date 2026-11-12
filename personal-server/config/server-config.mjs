@@ -86,12 +86,26 @@ export function parsePublicServerConfig(value) {
   });
 }
 
-export function loadPublicServerConfig(source = DEFAULT_PUBLIC_SERVER_CONFIG_URL) {
+/**
+ * Public mode serves exactly one realm per process. The realm list itself is
+ * shared, so a new realm is added once and started as its own process.
+ */
+export function selectActiveServer(config, serverId) {
+  const id = Number(serverId);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new TypeError('activeServerId override must be a positive integer');
+  const server = config.servers.find(entry => entry.id === id);
+  if (!server) throw new TypeError(`activeServerId ${id} is not present in servers`);
+  if (config.activeServerId === id) return config;
+  return Object.freeze({ ...config, activeServerId: id, activeServer: server });
+}
+
+export function loadPublicServerConfig(source = DEFAULT_PUBLIC_SERVER_CONFIG_URL, { activeServerId } = {}) {
   let value;
   try { value = JSON.parse(fs.readFileSync(source, 'utf8')); }
   catch (error) {
     if (error instanceof SyntaxError) throw new Error(`Public server config is not valid JSON: ${error.message}`);
     throw error;
   }
-  return parsePublicServerConfig(value);
+  const config = parsePublicServerConfig(value);
+  return activeServerId === undefined ? config : selectActiveServer(config, activeServerId);
 }

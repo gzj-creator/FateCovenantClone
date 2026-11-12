@@ -78,7 +78,10 @@ test('a clean personal-server copy boots from the public server list without the
   assert.equal(status.ports.length, 5);
   assert.ok(status.ports.every(port => Number.isInteger(port) && port > 0 && port <= 65535));
   assert.equal(status.serverOpenedAt, 1794326400);
-  assert.deepEqual(status.servers, [{ id: 2, name: '命运二服', extranetIp: '140.143.142.251:19090', releaseTime: 1794326400 }]);
+  assert.deepEqual(status.servers, [
+    { id: 2, name: '命运二服', extranetIp: '140.143.142.251:19090', releaseTime: 1794326400 },
+    { id: 3, name: '命运三服', extranetIp: '140.143.142.251:19091', releaseTime: 1794477600 }
+  ]);
   assert.deepEqual(status.listenHosts, { sdk: '0.0.0.0', list: '0.0.0.0', startup: '0.0.0.0', game: '0.0.0.0', admin: '127.0.0.1' });
   assert.ok(fs.existsSync(path.join(dataDirectory, 'game.local-only.sqlite')));
   assert.ok(fs.existsSync(path.join(dataDirectory, 'admin-key.local-only.txt')));
@@ -98,9 +101,21 @@ test('a clean personal-server copy boots from the public server list without the
   });
   assert.equal(listResponse.status, 200);
   const decoded = createProtobufJsCodec().decode('pb_login_servers', Buffer.from(await listResponse.arrayBuffer()));
-  assert.equal(decoded.servers[0].id, 2);
-  assert.equal(decoded.servers[0].name, '命运二服');
-  assert.equal(decoded.servers[0].extranet_ip, '140.143.142.251:19090');
+  assert.deepEqual(decoded.servers.map(server => [server.id, server.name, server.extranet_ip]), [
+    [2, '命运二服', '140.143.142.251:19090'],
+    [3, '命运三服', '140.143.142.251:19091']
+  ]);
+  const realmThreeForm = encodeServerListRequest('login_server', { server_id: 3 }, signingKey);
+  const realmThreeResponse = await fetch(`http://127.0.0.1:${status.boundPorts.list}/server_list`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: realmThreeForm.toString(),
+    signal: AbortSignal.timeout(5000)
+  });
+  assert.equal(realmThreeResponse.status, 200);
+  const realmThree = createProtobufJsCodec().decode('pb_login_server', Buffer.from(await realmThreeResponse.arrayBuffer()));
+  assert.equal(realmThree.id, 3);
+  assert.equal(realmThree.extranet_ip, '140.143.142.251:19091');
 
   const quickSdkKey = 'fclocal1';
   const cipher = createCipheriv('des-ede3', Buffer.concat([Buffer.from(quickSdkKey), Buffer.from(quickSdkKey), Buffer.from(quickSdkKey)]), null);
