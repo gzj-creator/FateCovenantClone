@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { consumeResources, grantResources, rewardHandlerFor } from './resources.mjs';
 import { GameError } from './hero-progression.mjs';
+import { gameDay, gameDayIndex } from './time.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
 import { createPermitService } from './permit-service.mjs';
 import { createMonthlyCardService } from './monthly-card-service.mjs';
@@ -13,7 +14,6 @@ import { isDailyDiscountOrder, rechargeCycleKey } from './recharge-rules.mjs';
 const DAILY_DISCOUNT_RECHARGE = 46;
 const DAILY_DISCOUNT_HANDLE = 40;
 const DAILY_DISCOUNT_MODULE = 108;
-const DAILY_RESET_OFFSET_SECONDS = 10800;
 const key = value => typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,120}$/.test(value);
 // res_recharge_success.extra_params is an ETF argument list. RechargeMgr takes
 // its first element and passes it to the recharge event as extraParams; the
@@ -85,8 +85,8 @@ export function createWalletService({
     rows: dailyRechargeRows,
     rechargeTable: tables.Recharge
   });
-  const dailyDay = seconds => Math.floor((seconds + DAILY_RESET_OFFSET_SECONDS) / 86400);
-  const nextDailyRefresh = seconds => (dailyDay(seconds) + 1) * 86400 - DAILY_RESET_OFFSET_SECONDS;
+  const dailyDay = seconds => gameDayIndex(seconds);
+  const nextDailyRefresh = seconds => gameDay(seconds) + 86400;
   // WishTree only accepts rebate days inside the open 14-day cycle. A purchase
   // whose server day falls outside that cycle still debits vouchers, grants
   // rewards and records its order; only the rebate bookkeeping is unavailable.

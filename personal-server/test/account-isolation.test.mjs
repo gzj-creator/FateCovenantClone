@@ -83,7 +83,7 @@ function assertStarterAccount(store, roleId, {
       ? group.value.length === 0
       : group.bits === 8 && group.value?.data?.length === 0));
     assert.ok(starterModule(modules, 10).slice(1).every(value => value.length === 0));
-    for (const id of [12, 16, 21, 26, 29, 65, 90]) assertEmptyModule(modules, id);
+    for (const id of [3, 12, 16, 21, 26, 29, 65, 90]) assertEmptyModule(modules, id);
     assert.deepEqual([...model.resources.keys()], ['100012900']);
   } else {
     assert.equal(model.resources.has('198830'), false);

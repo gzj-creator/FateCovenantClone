@@ -1,5 +1,6 @@
 import { GameError } from './hero-progression.mjs';
 import { grantResources, consumeResources } from './resources.mjs';
+import { DEFAULT_RESET_HOUR, DEFAULT_TIMEZONE_OFFSET_SECONDS } from './time.mjs';
 import {
   createFantasyEquipmentInventory,
   FANTASY_EQUIP_ITEM_TYPE
@@ -7,7 +8,7 @@ import {
 
 const INT32_MAX = 2147483647;
 const DAY_SECONDS = 86400;
-const DEFAULT_RESET_OFFSET_SECONDS = 10800;
+const DEFAULT_RESET_OFFSET_SECONDS = DEFAULT_TIMEZONE_OFFSET_SECONDS - DEFAULT_RESET_HOUR * 3600;
 const DEFAULT_MAX_TASK_IDS = 100;
 const DEFAULT_MAX_CELLS = 10000;
 const ARTIFACT_DRAW_STATE_VERSION = 1;

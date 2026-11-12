@@ -3,6 +3,7 @@ import { GameError } from './hero-progression.mjs';
 import { grantResources, consumeResources } from './resources.mjs';
 import { GUILD_MODULE_ID } from './guild-roster-service.mjs';
 import { buildLineupAttrInfo } from './attribute-service.mjs';
+import { localDateKey, localWeekday, naturalDay } from './time.mjs';
 
 // Shared authority for the E2 social-cooperation block (GuildBossCmd,
 // GuildJointCmd, GuildRuneStoneCmd, GuildGVGCmd, GuildVoteCmd, SlgMapCmd,
@@ -66,14 +67,12 @@ export function toSeconds(now) {
 // The deployment runs on Asia/Shanghai; daily and weekly guild resets follow
 // the same local midnight that the rest of the server uses for its day keys.
 export function dayKey(seconds) {
-  return new Date((seconds + 8 * 3600) * 1000).toISOString().slice(0, 10);
+  return localDateKey(seconds);
 }
 
 export function weekKey(seconds) {
-  const local = new Date((seconds + 8 * 3600) * 1000);
-  const day = (local.getUTCDay() + 6) % 7;
-  const monday = new Date(local.getTime() - day * 86400000);
-  return monday.toISOString().slice(0, 10);
+  const day = (localWeekday(seconds) + 6) % 7;
+  return localDateKey(naturalDay(seconds) - day * 86400);
 }
 
 export function isoStamp(seconds) {

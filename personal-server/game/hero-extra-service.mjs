@@ -1,6 +1,7 @@
 ﻿import { rawBinary, serializedBinary, encodeEtfBinaryList } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 // HeroCmd 614 (use_hero_chip), 647 (req_hero_visit) and the reforge trio
 // 663/664/665. Everything else in the HERO-HERO card stays explicit.
@@ -16,8 +17,6 @@ const HERO_MODULE_ID = 10;
 // pb_role_hero_visit. Slot 4 belongs to the favour module and stays untouched.
 const VISIT_SLOT = 5;
 const DAY_SECONDS = 86400;
-// FlushTime day boundary is 05:00 Asia/Shanghai on the local server.
-const RESET_OFFSET_SECONDS = 10800;
 const MAX_UINT32 = 0xffffffff;
 const PENDING_TABLE = 'hero_reforge_pending';
 // ReforgeConst.lock_price_ratio is scaled into hundred-thousandths.
@@ -44,7 +43,7 @@ function positiveTid(value, field) {
 }
 
 function dayIndex(seconds) {
-  return Math.floor((seconds + RESET_OFFSET_SECONDS) / DAY_SECONDS);
+  return gameDayIndex(seconds);
 }
 
 function ensureTables(db) {

@@ -1,6 +1,7 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 // 块 I（PAY-*，#212–#264）的命令入口。87301 永久卡每日奖励与 84602 公主体力
 // 补领在这里真实结算，16006 龙晶充值走既有 16005 链路；其余家族只有在请求、
@@ -14,7 +15,7 @@ export const BENEFIT_COMMANDS = Object.freeze({
   PRINCESS_AWARD_SUPPLEMENT: 84602
 });
 
-const dayIndex = seconds => Math.floor((Number(seconds) + 10800) / 86400);
+const dayIndex = seconds => gameDayIndex(Number(seconds));
 
 // 请求编码和 schema 取自 agent/workflow/interface-catalog/tcp-commands.md 与
 // assets/protobuf 里的 net 描述。真实客户端对下面这些命令发的是 protobuf，

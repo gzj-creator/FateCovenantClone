@@ -3,6 +3,7 @@ import { GameError } from './hero-progression.mjs';
 import { activityWindow } from './activity-calendar.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
 import { grantResources, partitionGrantableResources, releaseGrantablePendingRewards } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 const MODULE_ID = 106;
 const LOGIN_MODULE_ID = 183;
@@ -21,7 +22,7 @@ function wrapEtfBinary(bytes) {
 }
 
 function rechargeDayIndex(timestampSeconds) {
-  return Math.floor((timestampSeconds + 10800) / 86400);
+  return gameDayIndex(timestampSeconds);
 }
 
 function rechargeRangeTotal(modules, codec, activity, serverOpenedAt, activityReferenceOpenedAt, activityMode) {

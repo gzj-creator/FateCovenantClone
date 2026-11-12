@@ -7,13 +7,13 @@ import {
 import { hasBit, setBit } from './bit-block.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 export const WISH_TREE_MODULE = 165;
 const AWARD_BIT_DELTA = 1000;
-const DAY_OFFSET_SECONDS = 10800;
 const COMMANDS = new Set([91701, 91702, 91703, 91704]);
 
-const dayIndex = milliseconds => Math.floor((Math.floor(Number(milliseconds) / 1000) + DAY_OFFSET_SECONDS) / 86400);
+const dayIndex = milliseconds => gameDayIndex(Math.floor(Number(milliseconds) / 1000));
 const integer = (value, fallback = 0) => Number.isSafeInteger(Number(value)) ? Number(value) : fallback;
 const nonNegative = value => Math.max(0, integer(value));
 const u64 = value => String(nonNegative(value));

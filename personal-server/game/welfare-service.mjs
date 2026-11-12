@@ -4,9 +4,9 @@ import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 import { parseRechargeExtraParam } from './recharge-rules.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
+import { gameDayIndex } from './time.mjs';
 
-// All activity day counters use the same 04:00 UTC+8 reset as the existing sprint service.
-const dayIndex = now => Math.floor((now / 1000 + 10800) / 86400);
+const dayIndex = now => gameDayIndex(now);
 
 async function readEtfBinary(raw) {
   try { return await decodeBitBlock(raw); }

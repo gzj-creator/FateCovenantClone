@@ -1,4 +1,4 @@
-import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, encodeEtfIntegerTuple, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { setBit } from './bit-block.mjs';
 import {
   MISSION_ENERGY_MODULE_ID,
@@ -8,6 +8,7 @@ import {
   missionEnergyBin
 } from './energy.mjs';
 import { GameError } from './hero-progression.mjs';
+import { addRoleExp } from './role-level.mjs';
 
 const ITEM_GROUP_HANDLERS = new Map([
   // Module 6 containers are selected by the exact client resource type and
@@ -244,11 +245,13 @@ function grantMissionEnergy(model, modules, id, amount, codec, options = {}) {
   return resource.num;
 }
 
-function grantRoleExp(model, amount) {
-  const next = BigInt(model.role.exp ?? 0) + BigInt(amount);
-  if (next > 4294967295n) throw new GameError(1, 'Resource limit reached');
-  model.role.exp = Number(next);
-  return next.toString();
+function grantRoleExp(model, amount, tables, options) {
+  const result = addRoleExp(model.role, amount, {
+    tables,
+    source: options.roleExpSource ?? 'resource_reward',
+    onLevelUp: options.onRoleLevelUp ?? null
+  });
+  return result;
 }
 
 function grantRawHero(model, id, amount, tables) {
@@ -394,7 +397,12 @@ export function grantResources(model, awards, tables, options = {}) {
   for (const { id, amount, item, handler } of plans) {
     let newNum, changeExtra = {};
     switch (handler.kind) {
-      case 'roleExp': newNum = grantRoleExp(model, amount); break;
+      case 'roleExp': {
+        const result = grantRoleExp(model, amount, tables, options);
+        newNum = String(result.exp);
+        changeExtra = { extra: encodeEtfIntegerTuple([result.level, result.exp]).toString('base64') };
+        break;
+      }
       case 'currency': newNum = grantCurrency(model, modules, id, amount, 5, null, codec); break;
       case 'energy':
         newNum = grantMissionEnergy(model, modules, id, amount, codec, options);

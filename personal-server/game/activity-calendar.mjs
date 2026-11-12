@@ -1,5 +1,6 @@
+import { naturalDay } from './time.mjs';
+
 const DAY_SECONDS = 86400;
-const RESET_OFFSET_SECONDS = 8 * 3600;
 const FISHING_ACT_FIRST = 1074001;
 const FISHING_ACT_LAST = 1074011;
 const ALL_OPEN_LOGIN_WINDOW_SECONDS = 365 * DAY_SECONDS;
@@ -11,8 +12,7 @@ function seconds(value) {
 }
 
 export function dayZero(value) {
-  const timestamp = seconds(value);
-  return Math.floor((timestamp + RESET_OFFSET_SECONDS) / DAY_SECONDS) * DAY_SECONDS - RESET_OFFSET_SECONDS;
+  return naturalDay(seconds(value));
 }
 
 export function serverDayNumber(serverOpenedAt, at) {

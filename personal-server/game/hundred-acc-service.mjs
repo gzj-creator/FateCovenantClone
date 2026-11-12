@@ -1,6 +1,7 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 const MODULE_ID = 166;
 const CLAIM_ACT_ID = 92001;
@@ -19,7 +20,7 @@ function activityData(module, codec) {
 }
 
 function dayIndex(timestampSeconds) {
-  return Math.floor((timestampSeconds + 10800) / 86400);
+  return gameDayIndex(timestampSeconds);
 }
 
 function normalizeGroups(value) {

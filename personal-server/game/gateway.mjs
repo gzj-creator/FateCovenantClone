@@ -42,6 +42,7 @@ import { createArtifactService } from './artifact-service.mjs';
 import { createChatService } from './chat-service.mjs';
 import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
+import { loadFunOpenRules } from './feature-rules.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { readEquipTables } from '../config/equip-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
@@ -81,6 +82,7 @@ import { createGuildCrusadeService } from './guild-crusade-service.mjs';
 import { createGuildAuctionService } from './guild-auction-service.mjs';
 import { readGuildCoopTables } from '../config/guild-coop-tables.mjs';
 import { activityWindow, createActivityCalendar, serverDayNumber } from './activity-calendar.mjs';
+import { DEFAULT_TIMEZONE_OFFSET_SECONDS } from './time.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createGroupBuyActService } from './group-buy-act-service.mjs';
 import { readGroupBuyActTables } from '../config/group-buy-act-tables.mjs';
@@ -658,7 +660,17 @@ export function createLocalGame({
   const guildActivity = createGuildActivityService({
     store, codec, tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
   });
-  const features = createFeatureService({ store, codec, sprintPreview });
+  const features = createFeatureService({
+    store,
+    codec,
+    sprintPreview,
+    rules: loadFunOpenRules(),
+    context: ({ model }) => ({
+      serverDay: serverDayNumber(calendar.serverOpenedAt, Math.floor(clock() / 1000)),
+      createDay: Math.max(1, Math.floor((Math.floor(clock() / 1000) - Number(model.role.create_time ?? 0)) / 86400) + 1)
+    }),
+    logger
+  });
   const recruit = createRecruitService({
     store,
     codec,
@@ -880,6 +892,7 @@ export function createLocalGame({
     rechargeBonus.synchronize();
     onlineGift.beginSession();
     rankAchieve.ensureLoginState();
+    features.reconcile();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
@@ -1141,7 +1154,7 @@ export function createLocalGame({
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
       addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
     });
-    return encodeEtf([1, [loginMilliseconds, 28800, 1], new E.OtpErlangList([...modules], false), false]);
+    return encodeEtf([1, [loginMilliseconds, DEFAULT_TIMEZONE_OFFSET_SECONDS, 1], new E.OtpErlangList([...modules], false), false]);
   }
   async function mailArgument(data) {
     const decoded = await decodeEtf(data);

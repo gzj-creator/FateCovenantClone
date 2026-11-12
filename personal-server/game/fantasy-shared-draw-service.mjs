@@ -1,4 +1,5 @@
 import { GameError } from './hero-progression.mjs';
+import { gameDay, gameDayIndex } from './time.mjs';
 
 export const FANTASY_DRAW_MODULE_ID = 518;
 export const FANTASY_DRAW_STATE_VERSION = 1;
@@ -6,7 +7,6 @@ export const FANTASY_DRAW_STATE_KEY = 'fantasyDrawPools';
 
 const INT32_MAX = 2147483647;
 const DAY_SECONDS = 86400;
-const RESET_OFFSET_SECONDS = 10800;
 const DEFAULT_MAX_DRAW_COUNT = 1000;
 const DEFAULT_RECENT_GROUPS = 10;
 
@@ -54,11 +54,11 @@ function addUnsignedCount(value, amount, field) {
 }
 
 function dayIndex(seconds) {
-  return Math.floor((seconds + RESET_OFFSET_SECONDS) / DAY_SECONDS);
+  return gameDayIndex(seconds);
 }
 
 function dayStart(seconds) {
-  return Math.max(0, dayIndex(seconds) * DAY_SECONDS - RESET_OFFSET_SECONDS);
+  return Math.max(0, gameDay(seconds));
 }
 
 function emptyPoolState(drawLib, version, seconds) {

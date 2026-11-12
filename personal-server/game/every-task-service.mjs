@@ -5,11 +5,11 @@ import { grantResources } from './resources.mjs';
 import { currentTaskProgress } from './task-service.mjs';
 import { readTaskActivityTables } from '../config/item-task-tables.mjs';
 import { activityVitalityStatistic, addActivityVitality } from './activity-vitality.mjs';
+import { gameDay, localWeekday } from './time.mjs';
 
 export const EVERY_TASK_MODULE = 91;
 
 const DAY_SECONDS = 86400;
-const MARKET_RESET_OFFSET_SECONDS = 3 * 3600;
 const SLOTS = Object.freeze({ daily: 0, main: 1, weekly: 2 });
 const SCOPES = new Set(['daily', 'main', 'weekly', 'daily_active']);
 const SINGLE_TYPES = new Map([
@@ -24,7 +24,7 @@ const ALL_TYPES = new Map([
 ]);
 
 function gameDayStart(seconds) {
-  return Math.floor((seconds + MARKET_RESET_OFFSET_SECONDS) / DAY_SECONDS) * DAY_SECONDS - MARKET_RESET_OFFSET_SECONDS;
+  return gameDay(seconds);
 }
 
 function periodFor(scope, milliseconds) {
@@ -36,8 +36,7 @@ function periodFor(scope, milliseconds) {
     return { key: String(dailyStart), start: dailyStart, end: dailyStart + DAY_SECONDS };
   }
   if (scope !== 'weekly') throw new GameError(5, 'Task scope is invalid');
-  const localDate = new Date((dailyStart + 8 * 3600) * 1000);
-  const mondayOffset = (localDate.getUTCDay() + 6) % 7;
+  const mondayOffset = (localWeekday(dailyStart) + 6) % 7;
   const start = dailyStart - mondayOffset * DAY_SECONDS;
   return { key: String(start), start, end: start + 7 * DAY_SECONDS };
 }

@@ -3,6 +3,7 @@ import { activityWindow } from './activity-calendar.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
+import { DEFAULT_RESET_HOUR, DEFAULT_TIMEZONE_OFFSET_SECONDS } from './time.mjs';
 
 const ACTIVITY_MODULE = 92;
 const ACTIVITY_ID = 117001;
@@ -15,7 +16,7 @@ const TID_COUNT_DRAW = 1;
 // HeroDrawUILogic.GetPersonalDrawCount sums normal, quality and magic draws.
 const PERSONAL_DRAW_LIBRARIES = new Set([1, 2, 10]);
 const DAY_SECONDS = 86400;
-const RESET_OFFSET_SECONDS = 10800;
+const RESET_OFFSET_SECONDS = DEFAULT_TIMEZONE_OFFSET_SECONDS - DEFAULT_RESET_HOUR * 3600;
 const ONE_YEAR_SECONDS = 365 * DAY_SECONDS;
 
 const fail = (code, message) => { throw new GameError(code, message); };

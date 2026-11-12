@@ -1,5 +1,6 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { consumeResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 import {
   assertFantasyDrawSync,
   equipmentRewardChanges,
@@ -17,9 +18,8 @@ const POOL_NAME = 'resident_fantasy';
 const DRAW_LIB = 226;
 const MODULE_ID = 518;
 const DAY_SECONDS = 86400;
-const RESET_OFFSET_SECONDS = 10800;
 
-const dayIndex = seconds => Math.floor((seconds + RESET_OFFSET_SECONDS) / DAY_SECONDS);
+const dayIndex = seconds => gameDayIndex(seconds);
 
 function positiveConfig(value, field) {
   const number = Number(value);

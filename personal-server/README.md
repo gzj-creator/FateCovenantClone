@@ -44,8 +44,9 @@ npm ci --prefix .\personal-server --ignore-scripts --no-audit --no-fund
 npm test --prefix .\personal-server
 ```
 
-日常 `npm test` 只运行快速测试；真实网关、完整部署，以及单文件累计约一秒
-以上的耗时回归集中在 `test/slow-files.json`。准备合并或发布前再执行完整验证：
+日常 `npm test` 只运行快速测试。英雄技能校验、真实网关、完整部署和多实例登录等
+耗时回归集中在 `test/slow-files.json`；2026-11-13 起快速套件为 37 个文件，实测约
+14 秒。准备合并或发布前再执行完整验证：
 
 ```powershell
 npm run test:slow --prefix .\personal-server

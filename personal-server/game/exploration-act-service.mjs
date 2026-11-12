@@ -2,6 +2,7 @@ import { decodeEtf } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { wrapEtfBinary } from './etf-binary.mjs';
+import { gameDayIndex } from './time.mjs';
 
 // G1 (#151-#162): exploration and home activities.
 //
@@ -10,7 +11,6 @@ import { wrapEtfBinary } from './etf-binary.mjs';
 // table data cannot describe yet refuse with an explicit code instead of
 // inventing rewards, so the client never sees a fabricated success.
 
-const RESET_SECONDS = 5 * 3600;
 const DAY_SECONDS = 86400;
 
 function seconds(value) {
@@ -20,7 +20,7 @@ function seconds(value) {
 }
 
 function dayOf(at) {
-  return Math.floor((at + RESET_SECONDS) / DAY_SECONDS);
+  return gameDayIndex(at);
 }
 
 function plainOf(value) {
