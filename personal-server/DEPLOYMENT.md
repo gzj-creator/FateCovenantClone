@@ -147,6 +147,10 @@ npm run test:deployment --prefix .\personal-server
 | 端口 | 18880/18881/18882/19090，管理 18883 | 18890/18891/18892/19091，管理 18893 |
 | systemd 单元 | `fate-covenant-realm-2.service` | `fate-covenant-realm-3.service` |
 
+公网只需在云安全组额外放行 `19091`。客户端继续用 `18880/18881/18882` 登录并取区服列表，
+选中命运三服后连接 `19091`；`18890/18891/18892/18893` 是区服三自身的 SDK、列表、更新和
+管理端口，无需对公网开放。
+
 命运三服的 SDK 会话复用命运二服，因为客户端公网只配置一个 SDK 地址。区服三进程额外设置
 `FC_SDK_SESSION_SOURCE=/data/disk1/game/data/sdk-sessions.local-only.json`，按文件修改时间
 增量读取主区服会话；它不复制、不写回该文件，自己的 `sdk-sessions.local-only.json` 只在有人
