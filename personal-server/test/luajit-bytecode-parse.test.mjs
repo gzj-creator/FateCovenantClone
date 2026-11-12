@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLuaJit } from '../../tools/luajit-bytecode-parse.mjs';
+import { serializeLuaJit } from '../../tools/luajit-dump-tools.mjs';
 
 function uleb(value) {
   const bytes = [];
@@ -67,4 +68,11 @@ test('uses the exact header upvalue count when choosing the constant boundary', 
   assert.equal(root.upvalueCount, 2);
   assert.deepEqual(root.upvalues, [0xc000, 0xc002]);
   assert.deepEqual(root.numbers, [1910265202002]);
+});
+
+test('round-trips 33-bit integer fields at the six-bit continuation boundary', () => {
+  const expected = [0, 63, 64, 127, 128, 4095];
+  const parsed = parseLuaJit(minimalDump(expected));
+  const rewritten = parseLuaJit(serializeLuaJit(parsed));
+  assert.deepEqual(rewritten.prototypes[rewritten.rootPrototype].numbers, expected);
 });

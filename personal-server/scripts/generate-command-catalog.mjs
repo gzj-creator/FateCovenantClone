@@ -18,6 +18,7 @@ if (!Array.isArray(probe.results) || probe.results.length !== 1407) {
   throw new Error(`Expected 1407 probe results, got ${probe.results?.length}`);
 }
 
+const writePattern = /(^|_)(set|change|edit|save|create|delete|remove|buy|sell|use|draw|claim|award|upgrade|compose|consume|submit|cancel|kick|invite|join|leave|apply|accept|reject)(_|$)/;
 const readPattern = /(^get_|^query_|^list_|^search_|^fetch_|^load_|^check_|^preview_|^calc_|^can_|_info$|_list$|_login$|_query$|_snapshot$|_rank$|^sync|^view_)/;
 const commands = probe.results.map(row => ({
   type: Number(row.type),
@@ -25,7 +26,7 @@ const commands = probe.results.map(row => ({
   module: String(row.module),
   task: String(row.task),
   plan: String(row.plan),
-  access: readPattern.test(String(row.name)) ? 'read' : 'write',
+  access: writePattern.test(String(row.name)) || !readPattern.test(String(row.name)) ? 'write' : 'read',
   requires: []
 })).sort((left, right) => left.type - right.type);
 

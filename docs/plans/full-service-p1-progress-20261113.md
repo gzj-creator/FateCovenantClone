@@ -9,7 +9,8 @@
 
 - [x] E9-1 FunOpen 表完整导出：523 行、271 个唯一断言、来源与生成资产均记录 SHA256。
 - [x] E9-1 可执行条件：164 行由 MethodScript/MethodTable 字节码证实；未知/空条件严格关闭。
-- [~] E9-2 命令/模块到 FunOpen id 的映射：待扫描客户端 Cmd/Mgr 控制流并复核 1407 条 `access`。
+- [~] E9-2 命令/模块到 FunOpen id 的映射：已扫描 10,928 个 Lua 文件，454 个 FunOpen 模块完成解析；185 条命令有可复核规则（14 条同 prototype、171 条同管理器唯一 id），246 条发送点保持证据缺口；`21008/84410` 的 read 初值已修正为 write。
+- [!] E9-2 剩余缺口：65 个发送点存在多个候选 funId，181 个无可归因 id，11 个 FunOpen 模块仍受复杂字节码边界限制；未生成猜测规则。证据见 `agent/workflow/evidence/E9-2.md`。
 - [!] E9-1 剩余 359 行：多断言组合、复杂表达式、目标 2、`GetPassedSection` 等尚无充分证据，保持 fail closed。
   证据见 `agent/workflow/evidence/E9-1.md`。
 

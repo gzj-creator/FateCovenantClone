@@ -1,5 +1,5 @@
 const names = ('ISLT ISGE ISLE ISGT ISEQV ISNEV ISEQS ISNES ISEQN ISNEN ISEQP ISNEP ISTC ISFC IST ISF ISTYPE ISNUM MOV NOT UNM LEN ADDVN SUBVN MULVN DIVVN MODVN ADDNV SUBNV MULNV DIVNV MODNV ADDVV SUBVV MULVV DIVVV MODVV POW CAT KSTR KCDATA KSHORT KNUM KPRI KNIL UGET USETV USETS USETN USETP UCLO FNEW TNEW TDUP GGET GSET TGETV TGETS TGETB TGETR TSETV TSETS TSETB TSETM TSETR CALLM CALL CALLMT CALLT ITERC ITERN VARG ISNEXT RETM RET RET0 RET1 FORI JFORI FORL IFORL JFORL ITERL IITERL JITERL LOOP ILOOP JLOOP JMP FUNCF IFUNCF JFUNCF FUNCV IFUNCV JFUNCV FUNCC FUNCCW').split(' ');
-export function parseLuaJit(buffer) {
+export function parseLuaJit(buffer, { allowMultipleRoots = false } = {}) {
   let position = 0;
   const need = size => { if (position + size > buffer.length || size < 0) throw new Error('Truncated LuaJIT dump'); };
   const byte = () => { need(1); return buffer[position++]; };
@@ -140,6 +140,9 @@ export function parseLuaJit(buffer) {
     stack.push(proto.index);
   }
 
-  if (position !== buffer.length || stack.length !== 1) throw new Error('LuaJIT root/EOF mismatch');
-  return { flags, chunk, prototypes, rootPrototype: stack[0] };
+  if (position !== buffer.length) throw new Error('LuaJIT EOF mismatch');
+  if (stack.length === 0 || (!allowMultipleRoots && stack.length !== 1)) {
+    throw new Error(`LuaJIT root/EOF mismatch: roots=${stack.length}`);
+  }
+  return { flags, chunk, prototypes, rootPrototype: stack[0], rootPrototypes: [...stack] };
 }

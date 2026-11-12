@@ -2196,7 +2196,7 @@
       "module": "GuildCmd",
       "task": "SOC-GUILD",
       "plan": "05-social-guild.md",
-      "access": "read",
+      "access": "write",
       "requires": []
     },
     {
@@ -4212,7 +4212,7 @@
       "module": "MartialClubCmd",
       "task": "BATTLE-MARTIALCLUB",
       "plan": "01-battle.md",
-      "access": "read",
+      "access": "write",
       "requires": []
     },
     {

@@ -1,4 +1,5871 @@
 {
-  "description": "Command -> FunOpen gate overrides. Populated from E9-2 evidence; empty means commands keep their existing dispatch without a function gate.",
-  "rules": []
+  "schemaVersion": 1,
+  "generatedBy": "tools/extract-command-fun-open-gates.mjs",
+  "sources": {
+    "funOpenTable": {
+      "file": "2456793199459520500-FunOpenTable.lua.bin",
+      "sha256": "70B8271705BF5EC152C6881FCD6AD599DF026E41C89C59010F24E16CDBE35A4B",
+      "constants": 244
+    },
+    "commandCatalog": {
+      "file": "command-catalog.json",
+      "sha256": "38FE0BD8D080010A315B4C6CBA25B9C3859F017B90702785ACCBAF875E004F80",
+      "commands": 1407
+    }
+  },
+  "summary": {
+    "scannedFiles": 10928,
+    "funOpenFiles": 454,
+    "parseErrors": 11,
+    "commandsWithSends": 431,
+    "commandsWithRule": 185,
+    "directRules": 14,
+    "fileRules": 171,
+    "accessOverrides": 0,
+    "commandGaps": 246
+  },
+  "rules": [
+    {
+      "type": 659,
+      "name": "req_hero_mastery_level_up",
+      "module": "MasteryCmd",
+      "requires": [
+        1270
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_MASTERY"
+        ],
+        "namespaceAffinity": [
+          "MASTERY"
+        ],
+        "candidates": [
+          {
+            "file": "705657568927851400-HeroMasteryMgr.lua.bin",
+            "module": "MasteryCmd",
+            "prototype": 6,
+            "tgetsPc": 10,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1270
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 660,
+      "name": "req_hero_mastery_break",
+      "module": "MasteryCmd",
+      "requires": [
+        1270
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_MASTERY"
+        ],
+        "namespaceAffinity": [
+          "MASTERY"
+        ],
+        "candidates": [
+          {
+            "file": "705657568927851400-HeroMasteryMgr.lua.bin",
+            "module": "MasteryCmd",
+            "prototype": 11,
+            "tgetsPc": 10,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1270
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 661,
+      "name": "req_hero_diff",
+      "module": "HeroCmd",
+      "requires": [
+        1321
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_ALL_HERO_DIFF"
+        ],
+        "namespaceAffinity": [
+          "DIFF"
+        ],
+        "candidates": [
+          {
+            "file": "16859062668496278000-HeroDiffMgr.lua.bin",
+            "module": "HeroCmd",
+            "prototype": 8,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1321
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 663,
+      "name": "req_hero_reforge",
+      "module": "HeroCmd",
+      "requires": [
+        1451
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_REFORGE"
+        ],
+        "namespaceAffinity": [
+          "REFORGE"
+        ],
+        "candidates": [
+          {
+            "file": "15148887434501190000-HeroReforgeMgr.lua.bin",
+            "module": "HeroCmd",
+            "prototype": 17,
+            "tgetsPc": 22,
+            "callPc": 27,
+            "directIds": [],
+            "fileIds": [
+              1451
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 664,
+      "name": "req_hero_reforge_save",
+      "module": "HeroCmd",
+      "requires": [
+        1451
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_REFORGE"
+        ],
+        "namespaceAffinity": [
+          "REFORGE"
+        ],
+        "candidates": [
+          {
+            "file": "15148887434501190000-HeroReforgeMgr.lua.bin",
+            "module": "HeroCmd",
+            "prototype": 21,
+            "tgetsPc": 30,
+            "callPc": 33,
+            "directIds": [],
+            "fileIds": [
+              1451
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 665,
+      "name": "req_hero_reforge_cancel",
+      "module": "HeroCmd",
+      "requires": [
+        1451
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_REFORGE"
+        ],
+        "namespaceAffinity": [
+          "REFORGE"
+        ],
+        "candidates": [
+          {
+            "file": "15148887434501190000-HeroReforgeMgr.lua.bin",
+            "module": "HeroCmd",
+            "prototype": 23,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1451
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 1304,
+      "name": "req_set_role_figure",
+      "module": "RoleCmd",
+      "requires": [
+        1051
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ROLE_FIGURE_RANK"
+        ],
+        "namespaceAffinity": [
+          "FIGURE"
+        ],
+        "candidates": [
+          {
+            "file": "17674965087217110000-RoleFigureMgr.lua.bin",
+            "module": "RoleCmd",
+            "prototype": 16,
+            "tgetsPc": 24,
+            "callPc": 31,
+            "directIds": [],
+            "fileIds": [
+              1051
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 1308,
+      "name": "req_refresh_figure_red",
+      "module": "RoleCmd",
+      "requires": [
+        1051
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ROLE_FIGURE_RANK"
+        ],
+        "namespaceAffinity": [
+          "FIGURE"
+        ],
+        "candidates": [
+          {
+            "file": "17674965087217110000-RoleFigureMgr.lua.bin",
+            "module": "RoleCmd",
+            "prototype": 22,
+            "tgetsPc": 29,
+            "callPc": 32,
+            "directIds": [],
+            "fileIds": [
+              1051
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 1309,
+      "name": "req_set_figure_sex",
+      "module": "RoleCmd",
+      "requires": [
+        1051
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ROLE_FIGURE_RANK"
+        ],
+        "namespaceAffinity": [
+          "FIGURE"
+        ],
+        "candidates": [
+          {
+            "file": "17674965087217110000-RoleFigureMgr.lua.bin",
+            "module": "RoleCmd",
+            "prototype": 24,
+            "tgetsPc": 27,
+            "callPc": 30,
+            "directIds": [],
+            "fileIds": [
+              1051
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 1310,
+      "name": "req_set_figure_style",
+      "module": "RoleCmd",
+      "requires": [
+        1051
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ROLE_FIGURE_RANK"
+        ],
+        "namespaceAffinity": [
+          "FIGURE"
+        ],
+        "candidates": [
+          {
+            "file": "17674965087217110000-RoleFigureMgr.lua.bin",
+            "module": "RoleCmd",
+            "prototype": 26,
+            "tgetsPc": 89,
+            "callPc": 92,
+            "directIds": [],
+            "fileIds": [
+              1051
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 1312,
+      "name": "req_up_rank",
+      "module": "RoleCmd",
+      "requires": [
+        1051
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_ROLE_FIGURE_RANK"
+        ],
+        "namespaceAffinity": [],
+        "candidates": [
+          {
+            "file": "17674965087217110000-RoleFigureMgr.lua.bin",
+            "module": "RoleCmd",
+            "prototype": 38,
+            "tgetsPc": 49,
+            "callPc": 53,
+            "directIds": [
+              1051
+            ],
+            "fileIds": [
+              1051
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 1313,
+      "name": "req_role_figure_rank_award",
+      "module": "RoleCmd",
+      "requires": [
+        1051
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ROLE_FIGURE_RANK"
+        ],
+        "namespaceAffinity": [
+          "FIGURE"
+        ],
+        "candidates": [
+          {
+            "file": "17674965087217110000-RoleFigureMgr.lua.bin",
+            "module": "RoleCmd",
+            "prototype": 43,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1051
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 1315,
+      "name": "req_role_figure_chat_bubble",
+      "module": "RoleCmd",
+      "requires": [
+        1051
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ROLE_FIGURE_RANK"
+        ],
+        "namespaceAffinity": [
+          "FIGURE"
+        ],
+        "candidates": [
+          {
+            "file": "17674965087217110000-RoleFigureMgr.lua.bin",
+            "module": "RoleCmd",
+            "prototype": 41,
+            "tgetsPc": 33,
+            "callPc": 36,
+            "directIds": [],
+            "fileIds": [
+              1051
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4031,
+      "name": "req_swap_arena_get_match",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 46,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4032,
+      "name": "req_swap_arena_refresh_match",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 50,
+            "tgetsPc": 39,
+            "callPc": 42,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4033,
+      "name": "req_swap_arena_buy_fight_times",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 54,
+            "tgetsPc": 51,
+            "callPc": 54,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4034,
+      "name": "req_swap_arena_more_fight",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 52,
+            "tgetsPc": 22,
+            "callPc": 25,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4035,
+      "name": "req_swap_arena_fight_report",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 56,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4037,
+      "name": "req_swap_arena_set_read_report_time",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 58,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4038,
+      "name": "req_swap_arena_rank_award",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 48,
+            "tgetsPc": 22,
+            "callPc": 26,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4039,
+      "name": "req_swap_arena_update_cross_stage",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 61,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 4040,
+      "name": "req_swap_arena_init_double_team",
+      "module": "SwapArenaCmd",
+      "requires": [
+        2005
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SWAP_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "SWAP"
+        ],
+        "candidates": [
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 63,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          },
+          {
+            "file": "9738961556166552000-SwapArenaMgr.lua.bin",
+            "module": "SwapArenaCmd",
+            "prototype": 65,
+            "tgetsPc": 8,
+            "callPc": 11,
+            "directIds": [],
+            "fileIds": [
+              2005
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 16001,
+      "name": "req_get_first_recharge_reward",
+      "module": "RechargeCmd",
+      "requires": [
+        1590
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FIRST_RECHARGE"
+        ],
+        "namespaceAffinity": [
+          "FIRST",
+          "RECHARGE"
+        ],
+        "candidates": [
+          {
+            "file": "15398563769071557000-FirstRechargeMgr.lua.bin",
+            "module": "RechargeCmd",
+            "prototype": 9,
+            "tgetsPc": 83,
+            "callPc": 86,
+            "directIds": [
+              1590
+            ],
+            "fileIds": [
+              1590
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 18001,
+      "name": "req_active_trigger_gift",
+      "module": "TriggerGiftCmd",
+      "requires": [
+        1612
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_TRIGGER_GIFT"
+        ],
+        "namespaceAffinity": [
+          "GIFT",
+          "TRIGGER"
+        ],
+        "candidates": [
+          {
+            "file": "4486726753140635000-TriggerGiftMgr.lua.bin",
+            "module": "TriggerGiftCmd",
+            "prototype": 31,
+            "tgetsPc": 20,
+            "callPc": 26,
+            "directIds": [],
+            "fileIds": [
+              1612
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 18002,
+      "name": "req_add_trigger_times",
+      "module": "TriggerGiftCmd",
+      "requires": [
+        1612
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_TRIGGER_GIFT"
+        ],
+        "namespaceAffinity": [
+          "TRIGGER"
+        ],
+        "candidates": [
+          {
+            "file": "4486726753140635000-TriggerGiftMgr.lua.bin",
+            "module": "TriggerGiftCmd",
+            "prototype": 28,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1612
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 37060,
+      "name": "req_artifact_synthesis",
+      "module": "ArtifactCmd",
+      "requires": [
+        1620
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_ARTIFACT"
+        ],
+        "namespaceAffinity": [
+          "ARTIFACT"
+        ],
+        "candidates": [
+          {
+            "file": "3973850176285744600-ArtifactMgr.lua.bin",
+            "module": "ArtifactCmd",
+            "prototype": 9,
+            "tgetsPc": 56,
+            "callPc": 60,
+            "directIds": [
+              1620
+            ],
+            "fileIds": [
+              1620,
+              1310,
+              1104
+            ]
+          },
+          {
+            "file": "3973850176285744600-ArtifactMgr.lua.bin",
+            "module": "ArtifactCmd",
+            "prototype": 11,
+            "tgetsPc": 60,
+            "callPc": 64,
+            "directIds": [
+              1620
+            ],
+            "fileIds": [
+              1620,
+              1310,
+              1104
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 37062,
+      "name": "req_artifact_quality",
+      "module": "ArtifactCmd",
+      "requires": [
+        1620
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_ARTIFACT"
+        ],
+        "namespaceAffinity": [
+          "ARTIFACT"
+        ],
+        "candidates": [
+          {
+            "file": "3973850176285744600-ArtifactMgr.lua.bin",
+            "module": "ArtifactCmd",
+            "prototype": 14,
+            "tgetsPc": 46,
+            "callPc": 49,
+            "directIds": [
+              1620
+            ],
+            "fileIds": [
+              1620,
+              1310,
+              1104
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 69006,
+      "name": "req_growth_target_phase_award",
+      "module": "GrowthTargetCmd",
+      "requires": [
+        1250
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_GROWTH_TARGET"
+        ],
+        "namespaceAffinity": [
+          "GROWTH",
+          "TARGET"
+        ],
+        "candidates": [
+          {
+            "file": "2239858042947601000-GrowthTargetMgr.lua.bin",
+            "module": "GrowthTargetCmd",
+            "prototype": 16,
+            "tgetsPc": 12,
+            "callPc": 17,
+            "directIds": [],
+            "fileIds": [
+              1250
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 69007,
+      "name": "req_growth_target_task_award",
+      "module": "GrowthTargetCmd",
+      "requires": [
+        1250
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_GROWTH_TARGET"
+        ],
+        "namespaceAffinity": [
+          "GROWTH",
+          "TARGET"
+        ],
+        "candidates": [
+          {
+            "file": "2239858042947601000-GrowthTargetMgr.lua.bin",
+            "module": "GrowthTargetCmd",
+            "prototype": 9,
+            "tgetsPc": 12,
+            "callPc": 19,
+            "directIds": [],
+            "fileIds": [
+              1250
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 76003,
+      "name": "skin_wear",
+      "module": "SkinCmd",
+      "requires": [
+        1107
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_SHOW_SKIN"
+        ],
+        "namespaceAffinity": [
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "4497159346882619400-SkinMgr.lua.bin",
+            "module": "SkinCmd",
+            "prototype": 7,
+            "tgetsPc": 42,
+            "callPc": 46,
+            "directIds": [],
+            "fileIds": [
+              1107
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 76004,
+      "name": "req_choose_exchange_skin",
+      "module": "SkinCmd",
+      "requires": [
+        1122
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_YJ_SKIN_DRAW"
+        ],
+        "namespaceAffinity": [
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "2880284145015662000-SkinDrawMgr.lua.bin",
+            "module": "SkinCmd",
+            "prototype": 10,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1122
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 76005,
+      "name": "req_exchange_skin",
+      "module": "SkinCmd",
+      "requires": [
+        1122
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_YJ_SKIN_DRAW"
+        ],
+        "namespaceAffinity": [
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "2880284145015662000-SkinDrawMgr.lua.bin",
+            "module": "SkinCmd",
+            "prototype": 12,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1122
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 76006,
+      "name": "toggle_ignore_fantasy_skin",
+      "module": "SkinCmd",
+      "requires": [
+        1107
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_SHOW_SKIN"
+        ],
+        "namespaceAffinity": [
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "4497159346882619400-SkinMgr.lua.bin",
+            "module": "SkinCmd",
+            "prototype": 9,
+            "tgetsPc": 9,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1107
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 76007,
+      "name": "skin_activation_handbook",
+      "module": "SkinCmd",
+      "requires": [
+        1379
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SKIN_HANDBOOK"
+        ],
+        "namespaceAffinity": [
+          "HANDBOOK",
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "9943352501184530000-SkinHandBookMgr.lua.bin",
+            "module": "SkinCmd",
+            "prototype": 3,
+            "tgetsPc": 11,
+            "callPc": 14,
+            "directIds": [],
+            "fileIds": [
+              1379
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 76008,
+      "name": "skin_handbook_info",
+      "module": "SkinCmd",
+      "requires": [
+        1379
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SKIN_HANDBOOK"
+        ],
+        "namespaceAffinity": [
+          "HANDBOOK",
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "9943352501184530000-SkinHandBookMgr.lua.bin",
+            "module": "SkinCmd",
+            "prototype": 5,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1379
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 76009,
+      "name": "skin_increase",
+      "module": "SkinCmd",
+      "requires": [
+        1107
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_SHOW_SKIN"
+        ],
+        "namespaceAffinity": [
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "4497159346882619400-SkinMgr.lua.bin",
+            "module": "SkinCmd",
+            "prototype": 30,
+            "tgetsPc": 8,
+            "callPc": 11,
+            "directIds": [],
+            "fileIds": [
+              1107
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 77601,
+      "name": "req_adventure_role_list",
+      "module": "AdventureCmd",
+      "requires": [
+        2006
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ADVENTURE"
+        ],
+        "namespaceAffinity": [
+          "ADVENTURE"
+        ],
+        "candidates": [
+          {
+            "file": "15499783589818212000-AdventureMgr.lua.bin",
+            "module": "AdventureCmd",
+            "prototype": 1,
+            "tgetsPc": 22,
+            "callPc": 25,
+            "directIds": [],
+            "fileIds": [
+              2006
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 82601,
+      "name": "req_destiny_up",
+      "module": "DestinyCmd",
+      "requires": [
+        1701
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_DESTINY"
+        ],
+        "namespaceAffinity": [
+          "DESTINY"
+        ],
+        "candidates": [
+          {
+            "file": "7561630687592458000-DestinyMgr.lua.bin",
+            "module": "DestinyCmd",
+            "prototype": 12,
+            "tgetsPc": 42,
+            "callPc": 45,
+            "directIds": [
+              1701
+            ],
+            "fileIds": [
+              1701
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 82602,
+      "name": "req_fashion_act",
+      "module": "FashionCmd",
+      "requires": [
+        1632
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FASHION"
+        ],
+        "namespaceAffinity": [
+          "FASHION"
+        ],
+        "candidates": [
+          {
+            "file": "5694555246504566000-FashionMgr.lua.bin",
+            "module": "FashionCmd",
+            "prototype": 9,
+            "tgetsPc": 56,
+            "callPc": 59,
+            "directIds": [
+              1632
+            ],
+            "fileIds": [
+              1632
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 82603,
+      "name": "req_fashion_wear",
+      "module": "FashionCmd",
+      "requires": [
+        1632
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FASHION"
+        ],
+        "namespaceAffinity": [
+          "FASHION"
+        ],
+        "candidates": [
+          {
+            "file": "5694555246504566000-FashionMgr.lua.bin",
+            "module": "FashionCmd",
+            "prototype": 11,
+            "tgetsPc": 27,
+            "callPc": 30,
+            "directIds": [
+              1632
+            ],
+            "fileIds": [
+              1632
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 82604,
+      "name": "req_fashion_lv",
+      "module": "FashionCmd",
+      "requires": [
+        1632
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FASHION"
+        ],
+        "namespaceAffinity": [
+          "FASHION"
+        ],
+        "candidates": [
+          {
+            "file": "5694555246504566000-FashionMgr.lua.bin",
+            "module": "FashionCmd",
+            "prototype": 13,
+            "tgetsPc": 27,
+            "callPc": 30,
+            "directIds": [],
+            "fileIds": [
+              1632
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 82701,
+      "name": "req_vip_city_rebuild",
+      "module": "VipCityCmd",
+      "requires": [
+        1611
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_VIP_REBUILD"
+        ],
+        "namespaceAffinity": [
+          "REBUILD",
+          "VIP"
+        ],
+        "candidates": [
+          {
+            "file": "7280961096574410000-VipCityMgr.lua.bin",
+            "module": "VipCityCmd",
+            "prototype": 15,
+            "tgetsPc": 16,
+            "callPc": 19,
+            "directIds": [],
+            "fileIds": [
+              1611
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83001,
+      "name": "req_war_rune_active",
+      "module": "WarRuneCmd",
+      "requires": [
+        1054
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WAR_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "WAR"
+        ],
+        "candidates": [
+          {
+            "file": "10376732543662483000-WarRuneMgr.lua.bin",
+            "module": "WarRuneCmd",
+            "prototype": 6,
+            "tgetsPc": 41,
+            "callPc": 44,
+            "directIds": [],
+            "fileIds": [
+              1054
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83002,
+      "name": "req_war_rune_up_stage",
+      "module": "WarRuneCmd",
+      "requires": [
+        1054
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WAR_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "WAR"
+        ],
+        "candidates": [
+          {
+            "file": "10376732543662483000-WarRuneMgr.lua.bin",
+            "module": "WarRuneCmd",
+            "prototype": 8,
+            "tgetsPc": 18,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1054
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83003,
+      "name": "req_war_rune_attr_random",
+      "module": "WarRuneCmd",
+      "requires": [
+        1054
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WAR_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "WAR"
+        ],
+        "candidates": [
+          {
+            "file": "10376732543662483000-WarRuneMgr.lua.bin",
+            "module": "WarRuneCmd",
+            "prototype": 10,
+            "tgetsPc": 39,
+            "callPc": 44,
+            "directIds": [],
+            "fileIds": [
+              1054
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83004,
+      "name": "req_war_rune_recast",
+      "module": "WarRuneCmd",
+      "requires": [
+        1054
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WAR_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "WAR"
+        ],
+        "candidates": [
+          {
+            "file": "10376732543662483000-WarRuneMgr.lua.bin",
+            "module": "WarRuneCmd",
+            "prototype": 13,
+            "tgetsPc": 5,
+            "callPc": 10,
+            "directIds": [],
+            "fileIds": [
+              1054
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83005,
+      "name": "req_war_rune_edu",
+      "module": "WarRuneCmd",
+      "requires": [
+        1054
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WAR_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "WAR"
+        ],
+        "candidates": [
+          {
+            "file": "10376732543662483000-WarRuneMgr.lua.bin",
+            "module": "WarRuneCmd",
+            "prototype": 17,
+            "tgetsPc": 11,
+            "callPc": 16,
+            "directIds": [],
+            "fileIds": [
+              1054
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83006,
+      "name": "req_war_rune_up_level",
+      "module": "WarRuneCmd",
+      "requires": [
+        1054
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WAR_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "WAR"
+        ],
+        "candidates": [
+          {
+            "file": "10376732543662483000-WarRuneMgr.lua.bin",
+            "module": "WarRuneCmd",
+            "prototype": 19,
+            "tgetsPc": 29,
+            "callPc": 32,
+            "directIds": [],
+            "fileIds": [
+              1054
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83007,
+      "name": "req_war_rune_up_star",
+      "module": "WarRuneCmd",
+      "requires": [
+        1054
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WAR_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "WAR"
+        ],
+        "candidates": [
+          {
+            "file": "10376732543662483000-WarRuneMgr.lua.bin",
+            "module": "WarRuneCmd",
+            "prototype": 15,
+            "tgetsPc": 38,
+            "callPc": 41,
+            "directIds": [],
+            "fileIds": [
+              1054
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83301,
+      "name": "req_arena_contest_enter",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 31,
+            "tgetsPc": 18,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83302,
+      "name": "req_arena_contest_leave",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 33,
+            "tgetsPc": 18,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83303,
+      "name": "req_arena_contest_sign_up",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 17,
+            "tgetsPc": 15,
+            "callPc": 19,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83304,
+      "name": "req_arena_contest_guess",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 19,
+            "tgetsPc": 19,
+            "callPc": 22,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83305,
+      "name": "req_arena_contest_rev_fight_award",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 42,
+            "tgetsPc": 19,
+            "callPc": 22,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83306,
+      "name": "req_arena_contest_get_guess_info",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 23,
+            "tgetsPc": 14,
+            "callPc": 17,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83307,
+      "name": "req_arena_contest_get_role_fight_report",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 35,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83308,
+      "name": "req_arena_contest_get_final_info",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 38,
+            "tgetsPc": 32,
+            "callPc": 37,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83309,
+      "name": "req_arena_contest_get_final_power_info",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 40,
+            "tgetsPc": 14,
+            "callPc": 17,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83310,
+      "name": "req_arena_contest_congratulate",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 44,
+            "tgetsPc": 18,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83311,
+      "name": "req_arena_contest_get_top_roles",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 46,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83312,
+      "name": "req_arena_contest_watch_fight",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 54,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83314,
+      "name": "req_arena_contest_rev_guess_award",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 26,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          },
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 29,
+            "tgetsPc": 36,
+            "callPc": 39,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 83315,
+      "name": "req_arena_contest_watch_award",
+      "module": "ArenaContestCmd",
+      "requires": [
+        1064
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ARENA_CONTEST"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "CONTEST"
+        ],
+        "candidates": [
+          {
+            "file": "9040997613532255000-ArenaContestMgr.lua.bin",
+            "module": "ArenaContestCmd",
+            "prototype": 14,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84001,
+      "name": "req_hunter_arena_clear_change",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 10,
+            "tgetsPc": 18,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84002,
+      "name": "req_hunter_arena_day_award",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 16,
+            "tgetsPc": 47,
+            "callPc": 50,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84003,
+      "name": "req_hunter_arena_season_award",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 14,
+            "tgetsPc": 47,
+            "callPc": 50,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84004,
+      "name": "req_hunter_arena_palace",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 12,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84005,
+      "name": "req_hunter_arena_fight",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 8,
+            "tgetsPc": 22,
+            "callPc": 25,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84007,
+      "name": "req_hunter_arena_set_read_report_time",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 20,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84008,
+      "name": "req_hunter_arena_history_rank",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 23,
+            "tgetsPc": 11,
+            "callPc": 14,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84009,
+      "name": "req_hunter_arena_report_lock",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 25,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84010,
+      "name": "req_hunter_arena_set_award_tips",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 27,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84011,
+      "name": "req_hunter_arena_enter_form",
+      "module": "HunterArenaCmd",
+      "requires": [
+        1066
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_HUNTER_ARENA"
+        ],
+        "namespaceAffinity": [
+          "ARENA",
+          "HUNTER"
+        ],
+        "candidates": [
+          {
+            "file": "17659321777226422000-HunterArenaReqMgr.lua.bin",
+            "module": "HunterArenaCmd",
+            "prototype": 30,
+            "tgetsPc": 12,
+            "callPc": 15,
+            "directIds": [],
+            "fileIds": [
+              1066
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84401,
+      "name": "req_martial_club_first_award",
+      "module": "MartialClubCmd",
+      "requires": [
+        1068
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_MARTIAL_CLUB"
+        ],
+        "namespaceAffinity": [
+          "CLUB",
+          "MARTIAL"
+        ],
+        "candidates": [
+          {
+            "file": "10666296325623335000-MartialClubMgr.lua.bin",
+            "module": "MartialClubCmd",
+            "prototype": 16,
+            "tgetsPc": 63,
+            "callPc": 67,
+            "directIds": [],
+            "fileIds": [
+              1068
+            ]
+          },
+          {
+            "file": "10666296325623335000-MartialClubMgr.lua.bin",
+            "module": "MartialClubCmd",
+            "prototype": 19,
+            "tgetsPc": 10,
+            "callPc": 14,
+            "directIds": [],
+            "fileIds": [
+              1068
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84426,
+      "name": "req_martial_club_relic",
+      "module": "MartialClubCmd",
+      "requires": [
+        1068
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_MARTIAL_CLUB"
+        ],
+        "namespaceAffinity": [
+          "CLUB",
+          "MARTIAL"
+        ],
+        "candidates": [
+          {
+            "file": "10666296325623335000-MartialClubMgr.lua.bin",
+            "module": "MartialClubCmd",
+            "prototype": 12,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1068
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84501,
+      "name": "req_tactics_level_up",
+      "module": "TacticsCmd",
+      "requires": [
+        1052
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_TACTICS"
+        ],
+        "namespaceAffinity": [
+          "TACTICS"
+        ],
+        "candidates": [
+          {
+            "file": "17147031390774977000-TacticsMgr.lua.bin",
+            "module": "TacticsCmd",
+            "prototype": 5,
+            "tgetsPc": 104,
+            "callPc": 107,
+            "directIds": [],
+            "fileIds": [
+              1052
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 84502,
+      "name": "req_tactics_reset",
+      "module": "TacticsCmd",
+      "requires": [
+        1052
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_TACTICS"
+        ],
+        "namespaceAffinity": [
+          "TACTICS"
+        ],
+        "candidates": [
+          {
+            "file": "17147031390774977000-TacticsMgr.lua.bin",
+            "module": "TacticsCmd",
+            "prototype": 7,
+            "tgetsPc": 19,
+            "callPc": 22,
+            "directIds": [],
+            "fileIds": [
+              1052
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 85804,
+      "name": "req_career_life_story_award",
+      "module": "CareerLifeCmd",
+      "requires": [
+        1129
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_CAREER_LIFE"
+        ],
+        "namespaceAffinity": [
+          "CAREER",
+          "LIFE"
+        ],
+        "candidates": [
+          {
+            "file": "3458452070119195600-CareerLifeMgr.lua.bin",
+            "module": "CareerLifeCmd",
+            "prototype": 8,
+            "tgetsPc": 33,
+            "callPc": 36,
+            "directIds": [],
+            "fileIds": [
+              1129
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87301,
+      "name": "req_permanent_card_award",
+      "module": "PermanentCardCmd",
+      "requires": [
+        1135
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_PERMANENT_CARD"
+        ],
+        "namespaceAffinity": [
+          "CARD",
+          "PERMANENT"
+        ],
+        "candidates": [
+          {
+            "file": "13317530313439508000-PermanentCardMgr.lua.bin",
+            "module": "PermanentCardCmd",
+            "prototype": 12,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1135
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87501,
+      "name": "req_weekend_award",
+      "module": "WeekendBonusCmd",
+      "requires": [
+        1138
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WEEKEND_BONUS"
+        ],
+        "namespaceAffinity": [
+          "WEEKEND"
+        ],
+        "candidates": [
+          {
+            "file": "8373305304349459000-WeekendBonusMgr.lua.bin",
+            "module": "WeekendBonusCmd",
+            "prototype": 20,
+            "tgetsPc": 36,
+            "callPc": 39,
+            "directIds": [],
+            "fileIds": [
+              1138
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87502,
+      "name": "req_weekend_play_count_award",
+      "module": "WeekendBonusCmd",
+      "requires": [
+        1138
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WEEKEND_BONUS"
+        ],
+        "namespaceAffinity": [
+          "WEEKEND"
+        ],
+        "candidates": [
+          {
+            "file": "8373305304349459000-WeekendBonusMgr.lua.bin",
+            "module": "WeekendBonusCmd",
+            "prototype": 22,
+            "tgetsPc": 16,
+            "callPc": 19,
+            "directIds": [],
+            "fileIds": [
+              1138
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87601,
+      "name": "req_fantasy_equip_put_on",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 9,
+            "tgetsPc": 26,
+            "callPc": 32,
+            "directIds": [
+              1151
+            ],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87603,
+      "name": "req_fantasy_equip_take_off",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 15,
+            "tgetsPc": 8,
+            "callPc": 11,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87604,
+      "name": "req_fantasy_equip_bless",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 31,
+            "tgetsPc": 72,
+            "callPc": 78,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          },
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 34,
+            "tgetsPc": 71,
+            "callPc": 77,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87606,
+      "name": "req_fantasy_equip_levelup",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 29,
+            "tgetsPc": 6,
+            "callPc": 12,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87607,
+      "name": "req_fantasy_equip_starup",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 17,
+            "tgetsPc": 16,
+            "callPc": 23,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87608,
+      "name": "req_fantasy_equip_sp_starup",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 22,
+            "tgetsPc": 15,
+            "callPc": 22,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87609,
+      "name": "req_fantasy_equip_composite",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 19,
+            "tgetsPc": 16,
+            "callPc": 23,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87610,
+      "name": "req_fantasy_equip_synthesis",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 38,
+            "tgetsPc": 21,
+            "callPc": 24,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87614,
+      "name": "rep_fantasy_in_formation",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "14220701741324726000-FantasyEquipAccreditMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 10,
+            "tgetsPc": 18,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87615,
+      "name": "req_fantasy_equip_sp_quality_up",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 12,
+            "tgetsPc": 9,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 87616,
+      "name": "req_fantasy_equip_ur_star_up",
+      "module": "FantasyEquipCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "EQUIP",
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "4328555218233530000-FantasyEquipMgr.lua.bin",
+            "module": "FantasyEquipCmd",
+            "prototype": 25,
+            "tgetsPc": 9,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88401,
+      "name": "req_res_rollback_preview",
+      "module": "ResRollbackCmd",
+      "requires": [
+        1173
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_RES_ROLLBACK"
+        ],
+        "namespaceAffinity": [
+          "RES",
+          "ROLLBACK"
+        ],
+        "candidates": [
+          {
+            "file": "9265521260756130000-ResRollbackMgr.lua.bin",
+            "module": "ResRollbackCmd",
+            "prototype": 5,
+            "tgetsPc": 17,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1173
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88402,
+      "name": "req_res_rollback",
+      "module": "ResRollbackCmd",
+      "requires": [
+        1173
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_RES_ROLLBACK"
+        ],
+        "namespaceAffinity": [
+          "RES",
+          "ROLLBACK"
+        ],
+        "candidates": [
+          {
+            "file": "9265521260756130000-ResRollbackMgr.lua.bin",
+            "module": "ResRollbackCmd",
+            "prototype": 8,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1173
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88510,
+      "name": "req_tournament_start_promote",
+      "module": "TournamentCmd",
+      "requires": [
+        1159
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_TOURNAMENT"
+        ],
+        "namespaceAffinity": [
+          "TOURNAMENT"
+        ],
+        "candidates": [
+          {
+            "file": "13013420613678574000-TournamentMgr.lua.bin",
+            "module": "TournamentCmd",
+            "prototype": 13,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1159
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88511,
+      "name": "req_tournament_enter_form",
+      "module": "TournamentCmd",
+      "requires": [
+        1159
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_TOURNAMENT"
+        ],
+        "namespaceAffinity": [
+          "TOURNAMENT"
+        ],
+        "candidates": [
+          {
+            "file": "13013420613678574000-TournamentMgr.lua.bin",
+            "module": "TournamentCmd",
+            "prototype": 46,
+            "tgetsPc": 12,
+            "callPc": 15,
+            "directIds": [],
+            "fileIds": [
+              1159
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88601,
+      "name": "req_heat_gift_support",
+      "module": "HeatGiftCmd",
+      "requires": [
+        1161
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ACT_HEAT_GIFT"
+        ],
+        "namespaceAffinity": [
+          "GIFT",
+          "HEAT"
+        ],
+        "candidates": [
+          {
+            "file": "4430794899088450600-HeatGiftMgr.lua.bin",
+            "module": "HeatGiftCmd",
+            "prototype": 26,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1161
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88602,
+      "name": "req_heat_gift_server_info",
+      "module": "HeatGiftCmd",
+      "requires": [
+        1161
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_ACT_HEAT_GIFT"
+        ],
+        "namespaceAffinity": [
+          "GIFT",
+          "HEAT"
+        ],
+        "candidates": [
+          {
+            "file": "4430794899088450600-HeatGiftMgr.lua.bin",
+            "module": "HeatGiftCmd",
+            "prototype": 28,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1161
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88801,
+      "name": "req_team_suggest_award",
+      "module": "TeamSuggestCmd",
+      "requires": [
+        1165
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_TEAM_SUGGEST"
+        ],
+        "namespaceAffinity": [
+          "SUGGEST",
+          "TEAM"
+        ],
+        "candidates": [
+          {
+            "file": "4474495167612463000-TeamSuggestMgr.lua.bin",
+            "module": "TeamSuggestCmd",
+            "prototype": 14,
+            "tgetsPc": 5,
+            "callPc": 10,
+            "directIds": [],
+            "fileIds": [
+              1165
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88802,
+      "name": "req_team_suggest_active",
+      "module": "TeamSuggestCmd",
+      "requires": [
+        1165
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_TEAM_SUGGEST"
+        ],
+        "namespaceAffinity": [
+          "SUGGEST",
+          "TEAM"
+        ],
+        "candidates": [
+          {
+            "file": "4474495167612463000-TeamSuggestMgr.lua.bin",
+            "module": "TeamSuggestCmd",
+            "prototype": 16,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1165
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88803,
+      "name": "req_team_suggest_select",
+      "module": "TeamSuggestCmd",
+      "requires": [
+        1165
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_TEAM_SUGGEST"
+        ],
+        "namespaceAffinity": [
+          "SUGGEST",
+          "TEAM"
+        ],
+        "candidates": [
+          {
+            "file": "4474495167612463000-TeamSuggestMgr.lua.bin",
+            "module": "TeamSuggestCmd",
+            "prototype": 12,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1165
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 88951,
+      "name": "req_hero_blazon_up",
+      "module": "HeroBlazonCmd",
+      "requires": [
+        1168
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_BLAZON"
+        ],
+        "namespaceAffinity": [
+          "BLAZON"
+        ],
+        "candidates": [
+          {
+            "file": "5920822371229992000-HeroBlazonMgr.lua.bin",
+            "module": "HeroBlazonCmd",
+            "prototype": 37,
+            "tgetsPc": 47,
+            "callPc": 52,
+            "directIds": [],
+            "fileIds": [
+              1168
+            ]
+          },
+          {
+            "file": "5920822371229992000-HeroBlazonMgr.lua.bin",
+            "module": "HeroBlazonCmd",
+            "prototype": 40,
+            "tgetsPc": 12,
+            "callPc": 17,
+            "directIds": [],
+            "fileIds": [
+              1168
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89001,
+      "name": "req_fantasy_handbook_star",
+      "module": "FantasyHandbookCmd",
+      "requires": [
+        1151
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FANTASY_EQUIP"
+        ],
+        "namespaceAffinity": [
+          "FANTASY"
+        ],
+        "candidates": [
+          {
+            "file": "10564384161731322000-FantasyHandbookMgr.lua.bin",
+            "module": "FantasyHandbookCmd",
+            "prototype": 8,
+            "tgetsPc": 12,
+            "callPc": 16,
+            "directIds": [],
+            "fileIds": [
+              1151
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89602,
+      "name": "req_star_mission_chapter_award",
+      "module": "StarMissionCmd",
+      "requires": [
+        1192
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_STAR_MISSION"
+        ],
+        "namespaceAffinity": [
+          "STAR"
+        ],
+        "candidates": [
+          {
+            "file": "3712381569805115000-StarMissionMgr.lua.bin",
+            "module": "StarMissionCmd",
+            "prototype": 9,
+            "tgetsPc": 24,
+            "callPc": 28,
+            "directIds": [],
+            "fileIds": [
+              1192
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89603,
+      "name": "req_star_mission_skill",
+      "module": "StarMissionCmd",
+      "requires": [
+        1192
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_STAR_MISSION"
+        ],
+        "namespaceAffinity": [
+          "STAR"
+        ],
+        "candidates": [
+          {
+            "file": "3712381569805115000-StarMissionMgr.lua.bin",
+            "module": "StarMissionCmd",
+            "prototype": 24,
+            "tgetsPc": 53,
+            "callPc": 57,
+            "directIds": [],
+            "fileIds": [
+              1192
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89604,
+      "name": "req_star_mission_skill_reset",
+      "module": "StarMissionCmd",
+      "requires": [
+        1192
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_STAR_MISSION"
+        ],
+        "namespaceAffinity": [
+          "STAR"
+        ],
+        "candidates": [
+          {
+            "file": "3712381569805115000-StarMissionMgr.lua.bin",
+            "module": "StarMissionCmd",
+            "prototype": 26,
+            "tgetsPc": 15,
+            "callPc": 18,
+            "directIds": [],
+            "fileIds": [
+              1192
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89701,
+      "name": "req_relic_break_up",
+      "module": "RelicCmd",
+      "requires": [
+        1195
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "8662604276790466000-RelicMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 27,
+            "tgetsPc": 27,
+            "callPc": 30,
+            "directIds": [
+              1195
+            ],
+            "fileIds": [
+              1195
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89702,
+      "name": "req_relic_recast",
+      "module": "RelicCmd",
+      "requires": [
+        1195
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "8662604276790466000-RelicMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 30,
+            "tgetsPc": 13,
+            "callPc": 17,
+            "directIds": [
+              1195
+            ],
+            "fileIds": [
+              1195
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89704,
+      "name": "req_relic_save_recast",
+      "module": "RelicCmd",
+      "requires": [
+        1195
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "12316205204171400000-LeaderEquipRefineMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 3,
+            "tgetsPc": 27,
+            "callPc": 31,
+            "directIds": [
+              1195
+            ],
+            "fileIds": [
+              1195
+            ]
+          },
+          {
+            "file": "8662604276790466000-RelicMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 37,
+            "tgetsPc": 27,
+            "callPc": 31,
+            "directIds": [
+              1195
+            ],
+            "fileIds": [
+              1195
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89705,
+      "name": "req_relic_resolve",
+      "module": "RelicCmd",
+      "requires": [
+        1195
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "8662604276790466000-RelicMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 35,
+            "tgetsPc": 20,
+            "callPc": 23,
+            "directIds": [
+              1195
+            ],
+            "fileIds": [
+              1195
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89706,
+      "name": "req_relic_cancel_recast",
+      "module": "RelicCmd",
+      "requires": [
+        1195
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "8662604276790466000-RelicMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 39,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1195
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89708,
+      "name": "req_relic_stage",
+      "module": "RelicCmd",
+      "requires": [
+        1195
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "8662604276790466000-RelicMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 33,
+            "tgetsPc": 33,
+            "callPc": 37,
+            "directIds": [
+              1195
+            ],
+            "fileIds": [
+              1195
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89709,
+      "name": "req_relic_wear",
+      "module": "RelicCmd",
+      "requires": [
+        1195
+      ],
+      "evidence": {
+        "scope": "same_prototype",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "8662604276790466000-RelicMgr.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 43,
+            "tgetsPc": 60,
+            "callPc": 63,
+            "directIds": [
+              1195
+            ],
+            "fileIds": [
+              1195
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89710,
+      "name": "req_relic_up_sp",
+      "module": "RelicCmd",
+      "requires": [
+        1305
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_SP_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC",
+          "SP"
+        ],
+        "candidates": [
+          {
+            "file": "11212753092186059000-HeroUniqueRelicLogic.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 22,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1305
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89712,
+      "name": "req_relic_refine",
+      "module": "RelicCmd",
+      "requires": [
+        1305
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_SP_RELIC"
+        ],
+        "namespaceAffinity": [
+          "RELIC"
+        ],
+        "candidates": [
+          {
+            "file": "11212753092186059000-HeroUniqueRelicLogic.lua.bin",
+            "module": "RelicCmd",
+            "prototype": 25,
+            "tgetsPc": 8,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1305
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 89916,
+      "name": "req_magical_journey_power",
+      "module": "MagicalJourneyCmd",
+      "requires": [
+        1198
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_MAGICAL_JOURNEY"
+        ],
+        "namespaceAffinity": [
+          "JOURNEY",
+          "MAGICAL"
+        ],
+        "candidates": [
+          {
+            "file": "8121417838935959000-MagicalJourneyMgr.lua.bin",
+            "module": "MagicalJourneyCmd",
+            "prototype": 20,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1198
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 90201,
+      "name": "req_norse_rune_draw",
+      "module": "NorseRuneCmd",
+      "requires": [
+        1201
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_NORSE_RUNE"
+        ],
+        "namespaceAffinity": [
+          "NORSE",
+          "RUNE"
+        ],
+        "candidates": [
+          {
+            "file": "11553036965960784000-NorseRuneMgr.lua.bin",
+            "module": "NorseRuneCmd",
+            "prototype": 1,
+            "tgetsPc": 43,
+            "callPc": 46,
+            "directIds": [],
+            "fileIds": [
+              1201
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 90202,
+      "name": "req_norse_rune_replace",
+      "module": "NorseRuneCmd",
+      "requires": [
+        1201
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_NORSE_RUNE"
+        ],
+        "namespaceAffinity": [
+          "NORSE",
+          "RUNE"
+        ],
+        "candidates": [
+          {
+            "file": "11553036965960784000-NorseRuneMgr.lua.bin",
+            "module": "NorseRuneCmd",
+            "prototype": 3,
+            "tgetsPc": 10,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1201
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 90203,
+      "name": "req_norse_rune_wish_level_up",
+      "module": "NorseRuneCmd",
+      "requires": [
+        1201
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_NORSE_RUNE"
+        ],
+        "namespaceAffinity": [
+          "NORSE",
+          "RUNE"
+        ],
+        "candidates": [
+          {
+            "file": "11553036965960784000-NorseRuneMgr.lua.bin",
+            "module": "NorseRuneCmd",
+            "prototype": 5,
+            "tgetsPc": 22,
+            "callPc": 25,
+            "directIds": [],
+            "fileIds": [
+              1201
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 90204,
+      "name": "req_norse_rune_rune_level_up",
+      "module": "NorseRuneCmd",
+      "requires": [
+        1201
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_OPEN_NORSE_RUNE"
+        ],
+        "namespaceAffinity": [
+          "NORSE",
+          "RUNE"
+        ],
+        "candidates": [
+          {
+            "file": "11553036965960784000-NorseRuneMgr.lua.bin",
+            "module": "NorseRuneCmd",
+            "prototype": 7,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1201
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 90738,
+      "name": "req_rune_upgrade",
+      "module": "PetCmd",
+      "requires": [
+        1212
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_PET_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE"
+        ],
+        "candidates": [
+          {
+            "file": "11412365457685567000-PetRuneMgr.lua.bin",
+            "module": "PetCmd",
+            "prototype": 11,
+            "tgetsPc": 14,
+            "callPc": 17,
+            "directIds": [],
+            "fileIds": [
+              1212
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 90739,
+      "name": "req_rune_convert",
+      "module": "PetCmd",
+      "requires": [
+        1212
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_PET_RUNE"
+        ],
+        "namespaceAffinity": [
+          "RUNE"
+        ],
+        "candidates": [
+          {
+            "file": "11412365457685567000-PetRuneMgr.lua.bin",
+            "module": "PetCmd",
+            "prototype": 13,
+            "tgetsPc": 29,
+            "callPc": 32,
+            "directIds": [],
+            "fileIds": [
+              1212
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 90741,
+      "name": "req_pet_up_quality",
+      "module": "PetCmd",
+      "requires": [
+        1209
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_PET_DEVELOP"
+        ],
+        "namespaceAffinity": [
+          "PET"
+        ],
+        "candidates": [
+          {
+            "file": "10111144484269007000-PetDevelopMgr.lua.bin",
+            "module": "PetCmd",
+            "prototype": 9,
+            "tgetsPc": 19,
+            "callPc": 22,
+            "directIds": [],
+            "fileIds": [
+              1209
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91101,
+      "name": "req_fame_hall_enter_difficult",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 12,
+            "tgetsPc": 49,
+            "callPc": 53,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91102,
+      "name": "req_fame_hall_choose_drop",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 15,
+            "tgetsPc": 5,
+            "callPc": 11,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          },
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 27,
+            "tgetsPc": 12,
+            "callPc": 17,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91103,
+      "name": "req_fame_hall_stage_award",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 20,
+            "tgetsPc": 8,
+            "callPc": 11,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91104,
+      "name": "req_fame_hall_edit_artifact",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 22,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91105,
+      "name": "req_fame_hall_reset",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 25,
+            "tgetsPc": 27,
+            "callPc": 30,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91107,
+      "name": "req_fame_hall_terminate",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 30,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91108,
+      "name": "req_fame_hall_sweep",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 32,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91109,
+      "name": "req_fame_hall_data",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 34,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91111,
+      "name": "req_fame_hall_reissue_stage_award",
+      "module": "FameHallCmd",
+      "requires": [
+        1218
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FAME_HALL"
+        ],
+        "namespaceAffinity": [
+          "FAME",
+          "HALL"
+        ],
+        "candidates": [
+          {
+            "file": "153125187709622800-FameHallMgr.lua.bin",
+            "module": "FameHallCmd",
+            "prototype": 36,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1218
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91301,
+      "name": "req_guild_boss_enter_map",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 31,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91302,
+      "name": "req_guild_boss_leave_map",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 33,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91303,
+      "name": "req_guild_boss_use_skill",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 25,
+            "tgetsPc": 18,
+            "callPc": 22,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          },
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 27,
+            "tgetsPc": 10,
+            "callPc": 14,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          },
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 29,
+            "tgetsPc": 15,
+            "callPc": 19,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91305,
+      "name": "req_batch_claim_boss_award",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 14,
+            "tgetsPc": 20,
+            "callPc": 24,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          },
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 18,
+            "tgetsPc": 9,
+            "callPc": 14,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          },
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 20,
+            "tgetsPc": 5,
+            "callPc": 10,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91308,
+      "name": "req_claim_guild_boss_box",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 16,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91309,
+      "name": "req_join_guild_boss",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 36,
+            "tgetsPc": 27,
+            "callPc": 31,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91310,
+      "name": "req_claim_guild_boss_online_award",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 40,
+            "tgetsPc": 15,
+            "callPc": 18,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91311,
+      "name": "req_buy_guild_boss_item",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 42,
+            "tgetsPc": 33,
+            "callPc": 38,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91312,
+      "name": "req_guild_boss_guild_info",
+      "module": "GuildBossCmd",
+      "requires": [
+        1217
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_GUILD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS"
+        ],
+        "candidates": [
+          {
+            "file": "15812951963527234000-GuildBossMgr.lua.bin",
+            "module": "GuildBossCmd",
+            "prototype": 44,
+            "tgetsPc": 53,
+            "callPc": 56,
+            "directIds": [],
+            "fileIds": [
+              1217
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91701,
+      "name": "req_wish_tree_draw",
+      "module": "WishTreeCmd",
+      "requires": [
+        1223
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WISH_TREE"
+        ],
+        "namespaceAffinity": [
+          "TREE",
+          "WISH"
+        ],
+        "candidates": [
+          {
+            "file": "16501764670750208000-WishTreeMgr.lua.bin",
+            "module": "WishTreeCmd",
+            "prototype": 6,
+            "tgetsPc": 61,
+            "callPc": 64,
+            "directIds": [],
+            "fileIds": [
+              1223
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91704,
+      "name": "req_wish_tree_select",
+      "module": "WishTreeCmd",
+      "requires": [
+        1223
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WISH_TREE"
+        ],
+        "namespaceAffinity": [
+          "TREE",
+          "WISH"
+        ],
+        "candidates": [
+          {
+            "file": "16501764670750208000-WishTreeMgr.lua.bin",
+            "module": "WishTreeCmd",
+            "prototype": 21,
+            "tgetsPc": 26,
+            "callPc": 31,
+            "directIds": [],
+            "fileIds": [
+              1223
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91801,
+      "name": "req_world_boss_enter_map",
+      "module": "WorldBossCmd",
+      "requires": [
+        1224
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_WORLD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS",
+          "WORLD"
+        ],
+        "candidates": [
+          {
+            "file": "15826776243903015000-WorldBossMgr.lua.bin",
+            "module": "WorldBossCmd",
+            "prototype": 57,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1224
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91802,
+      "name": "req_world_boss_leave_map",
+      "module": "WorldBossCmd",
+      "requires": [
+        1224
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_WORLD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS",
+          "WORLD"
+        ],
+        "candidates": [
+          {
+            "file": "15826776243903015000-WorldBossMgr.lua.bin",
+            "module": "WorldBossCmd",
+            "prototype": 59,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1224
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91803,
+      "name": "req_world_boss_receive",
+      "module": "WorldBossCmd",
+      "requires": [
+        1224
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_WORLD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS",
+          "WORLD"
+        ],
+        "candidates": [
+          {
+            "file": "15826776243903015000-WorldBossMgr.lua.bin",
+            "module": "WorldBossCmd",
+            "prototype": 61,
+            "tgetsPc": 19,
+            "callPc": 22,
+            "directIds": [],
+            "fileIds": [
+              1224
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91804,
+      "name": "req_world_boss_history_rank",
+      "module": "WorldBossCmd",
+      "requires": [
+        1224
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_WORLD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS",
+          "WORLD"
+        ],
+        "candidates": [
+          {
+            "file": "15826776243903015000-WorldBossMgr.lua.bin",
+            "module": "WorldBossCmd",
+            "prototype": 66,
+            "tgetsPc": 28,
+            "callPc": 32,
+            "directIds": [],
+            "fileIds": [
+              1224
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 91805,
+      "name": "req_world_boss_receive_achievement",
+      "module": "WorldBossCmd",
+      "requires": [
+        1224
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_WORLD_BOSS"
+        ],
+        "namespaceAffinity": [
+          "BOSS",
+          "WORLD"
+        ],
+        "candidates": [
+          {
+            "file": "15826776243903015000-WorldBossMgr.lua.bin",
+            "module": "WorldBossCmd",
+            "prototype": 77,
+            "tgetsPc": 9,
+            "callPc": 12,
+            "directIds": [],
+            "fileIds": [
+              1224
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 92101,
+      "name": "req_raffle_ticket_achievement",
+      "module": "RaffleTicketCmd",
+      "requires": [
+        1242
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_RAFFLE_TICKET"
+        ],
+        "namespaceAffinity": [
+          "RAFFLE",
+          "TICKET"
+        ],
+        "candidates": [
+          {
+            "file": "1394966248305941200-RaffleTicketMgr.lua.bin",
+            "module": "RaffleTicketCmd",
+            "prototype": 3,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1242
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 92201,
+      "name": "req_hero_blazon_draw",
+      "module": "HeroBlazonDrawCmd",
+      "requires": [
+        1247
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_BLAZON_DRAW"
+        ],
+        "namespaceAffinity": [
+          "BLAZON",
+          "DRAW"
+        ],
+        "candidates": [
+          {
+            "file": "5066668195324765000-HeroBlazonDrawMgr.lua.bin",
+            "module": "HeroBlazonDrawCmd",
+            "prototype": 11,
+            "tgetsPc": 5,
+            "callPc": 10,
+            "directIds": [],
+            "fileIds": [
+              1247
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 92701,
+      "name": "req_guild_rune_stone_take_on",
+      "module": "GuildRuneStoneCmd",
+      "requires": [
+        1264
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_GUILD_RUNE_STONE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "STONE"
+        ],
+        "candidates": [
+          {
+            "file": "1768500703277700000-GuildRuneStoneMgr.lua.bin",
+            "module": "GuildRuneStoneCmd",
+            "prototype": 17,
+            "tgetsPc": 8,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1264
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 92702,
+      "name": "req_guild_rune_stone_take_off",
+      "module": "GuildRuneStoneCmd",
+      "requires": [
+        1264
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_GUILD_RUNE_STONE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "STONE"
+        ],
+        "candidates": [
+          {
+            "file": "1768500703277700000-GuildRuneStoneMgr.lua.bin",
+            "module": "GuildRuneStoneCmd",
+            "prototype": 20,
+            "tgetsPc": 5,
+            "callPc": 10,
+            "directIds": [],
+            "fileIds": [
+              1264
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 92703,
+      "name": "req_guild_rune_stone_compose",
+      "module": "GuildRuneStoneCmd",
+      "requires": [
+        1264
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_GUILD_RUNE_STONE"
+        ],
+        "namespaceAffinity": [
+          "RUNE",
+          "STONE"
+        ],
+        "candidates": [
+          {
+            "file": "1768500703277700000-GuildRuneStoneMgr.lua.bin",
+            "module": "GuildRuneStoneCmd",
+            "prototype": 23,
+            "tgetsPc": 16,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1264
+            ]
+          },
+          {
+            "file": "1768500703277700000-GuildRuneStoneMgr.lua.bin",
+            "module": "GuildRuneStoneCmd",
+            "prototype": 26,
+            "tgetsPc": 5,
+            "callPc": 10,
+            "directIds": [],
+            "fileIds": [
+              1264
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93001,
+      "name": "req_mystery_wish_exchange",
+      "module": "MysteryWishCmd",
+      "requires": [
+        1271
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_MYSTERY_WISH"
+        ],
+        "namespaceAffinity": [
+          "MYSTERY",
+          "WISH"
+        ],
+        "candidates": [
+          {
+            "file": "2868717783851763000-MysteryWishMgr.lua.bin",
+            "module": "MysteryWishCmd",
+            "prototype": 6,
+            "tgetsPc": 27,
+            "callPc": 30,
+            "directIds": [],
+            "fileIds": [
+              1271
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93102,
+      "name": "req_lottery_expire",
+      "module": "LotteryCmd",
+      "requires": [
+        1272
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_LOTTERY"
+        ],
+        "namespaceAffinity": [
+          "LOTTERY"
+        ],
+        "candidates": [
+          {
+            "file": "6880354882433647000-LotteryItemMgr.lua.bin",
+            "module": "LotteryCmd",
+            "prototype": 3,
+            "tgetsPc": 11,
+            "callPc": 14,
+            "directIds": [],
+            "fileIds": [
+              1272
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93301,
+      "name": "req_treasure_star",
+      "module": "TreasureCmd",
+      "requires": [
+        1280
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_TREASURE"
+        ],
+        "namespaceAffinity": [
+          "TREASURE"
+        ],
+        "candidates": [
+          {
+            "file": "1721980513722456800-TreasureMgr.lua.bin",
+            "module": "TreasureCmd",
+            "prototype": 13,
+            "tgetsPc": 11,
+            "callPc": 14,
+            "directIds": [],
+            "fileIds": [
+              1280
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93303,
+      "name": "req_treasure_suit_up",
+      "module": "TreasureCmd",
+      "requires": [
+        1280
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_TREASURE"
+        ],
+        "namespaceAffinity": [
+          "TREASURE"
+        ],
+        "candidates": [
+          {
+            "file": "1721980513722456800-TreasureMgr.lua.bin",
+            "module": "TreasureCmd",
+            "prototype": 17,
+            "tgetsPc": 12,
+            "callPc": 15,
+            "directIds": [],
+            "fileIds": [
+              1280
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93306,
+      "name": "req_treasure_box",
+      "module": "TreasureCmd",
+      "requires": [
+        1280
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_TREASURE"
+        ],
+        "namespaceAffinity": [
+          "TREASURE"
+        ],
+        "candidates": [
+          {
+            "file": "1721980513722456800-TreasureMgr.lua.bin",
+            "module": "TreasureCmd",
+            "prototype": 19,
+            "tgetsPc": 18,
+            "callPc": 21,
+            "directIds": [],
+            "fileIds": [
+              1280
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93401,
+      "name": "req_week_hunt_common_task",
+      "module": "WeekHuntCmd",
+      "requires": [
+        1281
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WEEK_HUNT"
+        ],
+        "namespaceAffinity": [
+          "HUNT",
+          "WEEK"
+        ],
+        "candidates": [
+          {
+            "file": "7701150901378187000-WeekHuntMgr.lua.bin",
+            "module": "WeekHuntCmd",
+            "prototype": 5,
+            "tgetsPc": 29,
+            "callPc": 35,
+            "directIds": [],
+            "fileIds": [
+              1281
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93402,
+      "name": "req_week_hunt_common_progress",
+      "module": "WeekHuntCmd",
+      "requires": [
+        1281
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WEEK_HUNT"
+        ],
+        "namespaceAffinity": [
+          "HUNT",
+          "WEEK"
+        ],
+        "candidates": [
+          {
+            "file": "7701150901378187000-WeekHuntMgr.lua.bin",
+            "module": "WeekHuntCmd",
+            "prototype": 7,
+            "tgetsPc": 26,
+            "callPc": 32,
+            "directIds": [],
+            "fileIds": [
+              1281
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93403,
+      "name": "req_week_hunt_upgrade_gift",
+      "module": "WeekHuntCmd",
+      "requires": [
+        1281
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_WEEK_HUNT"
+        ],
+        "namespaceAffinity": [
+          "HUNT",
+          "WEEK"
+        ],
+        "candidates": [
+          {
+            "file": "7701150901378187000-WeekHuntMgr.lua.bin",
+            "module": "WeekHuntCmd",
+            "prototype": 9,
+            "tgetsPc": 15,
+            "callPc": 20,
+            "directIds": [],
+            "fileIds": [
+              1281
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93701,
+      "name": "req_elves_up_star",
+      "module": "ElvesCmd",
+      "requires": [
+        1297
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_ELVES"
+        ],
+        "namespaceAffinity": [
+          "ELVES"
+        ],
+        "candidates": [
+          {
+            "file": "12384803053551665000-ElvesMgr.lua.bin",
+            "module": "ElvesCmd",
+            "prototype": 8,
+            "tgetsPc": 15,
+            "callPc": 18,
+            "directIds": [],
+            "fileIds": [
+              1297
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93702,
+      "name": "req_elves_up_talent",
+      "module": "ElvesCmd",
+      "requires": [
+        1297
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_ELVES"
+        ],
+        "namespaceAffinity": [
+          "ELVES"
+        ],
+        "candidates": [
+          {
+            "file": "12384803053551665000-ElvesMgr.lua.bin",
+            "module": "ElvesCmd",
+            "prototype": 10,
+            "tgetsPc": 29,
+            "callPc": 35,
+            "directIds": [],
+            "fileIds": [
+              1297
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93704,
+      "name": "req_elves_lineup_help",
+      "module": "ElvesCmd",
+      "requires": [
+        1297
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_ELVES"
+        ],
+        "namespaceAffinity": [
+          "ELVES"
+        ],
+        "candidates": [
+          {
+            "file": "12384803053551665000-ElvesMgr.lua.bin",
+            "module": "ElvesCmd",
+            "prototype": 12,
+            "tgetsPc": 49,
+            "callPc": 52,
+            "directIds": [],
+            "fileIds": [
+              1297
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93705,
+      "name": "req_elves_wear_skin",
+      "module": "ElvesCmd",
+      "requires": [
+        1107
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_HERO_SHOW_SKIN"
+        ],
+        "namespaceAffinity": [
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "4497159346882619400-SkinMgr.lua.bin",
+            "module": "ElvesCmd",
+            "prototype": 5,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1107
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 93707,
+      "name": "req_elves_up_break_lv",
+      "module": "ElvesCmd",
+      "requires": [
+        1297
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_ELVES"
+        ],
+        "namespaceAffinity": [
+          "ELVES"
+        ],
+        "candidates": [
+          {
+            "file": "12384803053551665000-ElvesMgr.lua.bin",
+            "module": "ElvesCmd",
+            "prototype": 15,
+            "tgetsPc": 15,
+            "callPc": 18,
+            "directIds": [],
+            "fileIds": [
+              1297
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 100401,
+      "name": "req_skin_crystal_buy",
+      "module": "SkinCrystalCmd",
+      "requires": [
+        1376
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SKIN_CRYSTAL_DRAW_OPEN"
+        ],
+        "namespaceAffinity": [
+          "CRYSTAL",
+          "SKIN"
+        ],
+        "candidates": [
+          {
+            "file": "15234614509584020000-SkinCrystalMgr.lua.bin",
+            "module": "SkinCrystalCmd",
+            "prototype": 3,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1376
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 101119,
+      "name": "req_overall_pvp_final_record",
+      "module": "OverallPvpCmd",
+      "requires": [
+        1386
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_OVERALL_PVP"
+        ],
+        "namespaceAffinity": [
+          "OVERALL",
+          "PVP"
+        ],
+        "candidates": [
+          {
+            "file": "17333425722189101000-OverallChampionMgr.lua.bin",
+            "module": "OverallPvpCmd",
+            "prototype": 10,
+            "tgetsPc": 20,
+            "callPc": 23,
+            "directIds": [],
+            "fileIds": [
+              1386
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 101120,
+      "name": "req_overall_pvp_final_watch_award",
+      "module": "OverallPvpCmd",
+      "requires": [
+        1386
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_OVERALL_PVP"
+        ],
+        "namespaceAffinity": [
+          "OVERALL",
+          "PVP"
+        ],
+        "candidates": [
+          {
+            "file": "17333425722189101000-OverallChampionMgr.lua.bin",
+            "module": "OverallPvpCmd",
+            "prototype": 12,
+            "tgetsPc": 16,
+            "callPc": 19,
+            "directIds": [],
+            "fileIds": [
+              1386
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 101124,
+      "name": "req_overall_pvp_show_reward",
+      "module": "OverallPvpCmd",
+      "requires": [
+        1386
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_OVERALL_PVP"
+        ],
+        "namespaceAffinity": [
+          "OVERALL",
+          "PVP"
+        ],
+        "candidates": [
+          {
+            "file": "17333425722189101000-OverallChampionMgr.lua.bin",
+            "module": "OverallPvpCmd",
+            "prototype": 14,
+            "tgetsPc": 16,
+            "callPc": 19,
+            "directIds": [],
+            "fileIds": [
+              1386
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 104201,
+      "name": "req_badge_active",
+      "module": "BadgeCmd",
+      "requires": [
+        1520
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUN_BADGE"
+        ],
+        "namespaceAffinity": [
+          "BADGE"
+        ],
+        "candidates": [
+          {
+            "file": "17792747255757806000-BadgeMgr.lua.bin",
+            "module": "BadgeCmd",
+            "prototype": 4,
+            "tgetsPc": 11,
+            "callPc": 15,
+            "directIds": [],
+            "fileIds": [
+              1520
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 104501,
+      "name": "req_thousand_draw",
+      "module": "ThousandDrawCmd",
+      "requires": [
+        1531
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_THOUSAND_DRAW"
+        ],
+        "namespaceAffinity": [
+          "DRAW",
+          "THOUSAND"
+        ],
+        "candidates": [
+          {
+            "file": "3806732621737670000-ThousandDrawMgr.lua.bin",
+            "module": "ThousandDrawCmd",
+            "prototype": 15,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1531
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 104502,
+      "name": "req_thousand_award",
+      "module": "ThousandDrawCmd",
+      "requires": [
+        1531
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_THOUSAND_DRAW"
+        ],
+        "namespaceAffinity": [
+          "THOUSAND"
+        ],
+        "candidates": [
+          {
+            "file": "3806732621737670000-ThousandDrawMgr.lua.bin",
+            "module": "ThousandDrawCmd",
+            "prototype": 18,
+            "tgetsPc": 72,
+            "callPc": 75,
+            "directIds": [],
+            "fileIds": [
+              1531
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 104901,
+      "name": "req_pray_act_select_award",
+      "module": "PrayActCmd",
+      "requires": [
+        1540
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_PRAY_ACT"
+        ],
+        "namespaceAffinity": [
+          "PRAY"
+        ],
+        "candidates": [
+          {
+            "file": "13080662526298085000-PrayActMgr.lua.bin",
+            "module": "PrayActCmd",
+            "prototype": 17,
+            "tgetsPc": 9,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1540
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 104902,
+      "name": "req_pray_act_draw_award",
+      "module": "PrayActCmd",
+      "requires": [
+        1540
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_PRAY_ACT"
+        ],
+        "namespaceAffinity": [
+          "PRAY"
+        ],
+        "candidates": [
+          {
+            "file": "13080662526298085000-PrayActMgr.lua.bin",
+            "module": "PrayActCmd",
+            "prototype": 20,
+            "tgetsPc": 13,
+            "callPc": 17,
+            "directIds": [],
+            "fileIds": [
+              1540
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105005,
+      "name": "req_spirit_courtyard_get_task_reward",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 61,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105006,
+      "name": "req_spirit_courtyard_update_task",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 69,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105007,
+      "name": "req_spirit_courtyard_publish_collaboration",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 63,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105008,
+      "name": "req_spirit_courtyard_assist_entrust",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 67,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105009,
+      "name": "req_spirit_courtyard_finish_guild_task",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 71,
+            "tgetsPc": 10,
+            "callPc": 13,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105012,
+      "name": "req_spirit_courtyard_refresh_role_info",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 77,
+            "tgetsPc": 5,
+            "callPc": 10,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105013,
+      "name": "req_spirit_courtyard_cancel_publish_collaboration",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 65,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105014,
+      "name": "req_spirit_courtyard_intimacy_task_reward",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 75,
+            "tgetsPc": 12,
+            "callPc": 15,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105015,
+      "name": "req_spirit_courtyard_banquet_award",
+      "module": "SpiritCourtyardCmd",
+      "requires": [
+        1542
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_SPIRIT_COURTYARD"
+        ],
+        "namespaceAffinity": [
+          "COURTYARD",
+          "SPIRIT"
+        ],
+        "candidates": [
+          {
+            "file": "17000967070152612000-SpiritCourtyardMgr.lua.bin",
+            "module": "SpiritCourtyardCmd",
+            "prototype": 73,
+            "tgetsPc": 5,
+            "callPc": 8,
+            "directIds": [],
+            "fileIds": [
+              1542
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": 105401,
+      "name": "req_premium_free_award",
+      "module": "PremiumActCmd",
+      "requires": [
+        1541
+      ],
+      "evidence": {
+        "scope": "same_file_unique",
+        "funOpenConstants": [
+          "TID_FUNC_PREMIUM_ACT"
+        ],
+        "namespaceAffinity": [
+          "PREMIUM"
+        ],
+        "candidates": [
+          {
+            "file": "13398170147540695000-PremiumActMgr.lua.bin",
+            "module": "PremiumActCmd",
+            "prototype": 21,
+            "tgetsPc": 5,
+            "callPc": 9,
+            "directIds": [],
+            "fileIds": [
+              1541
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

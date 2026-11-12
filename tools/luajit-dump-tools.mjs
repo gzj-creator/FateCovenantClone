@@ -27,8 +27,19 @@ function uleb(value) {
   return bytes;
 }
 
-function uleb33(value) {
-  return uleb(BigInt.asUintN(64, BigInt(value)));
+function uleb33(low, discriminator = 0) {
+  let remaining = BigInt.asUintN(32, BigInt(low));
+  const bytes = [((Number(remaining & 0x3fn) << 1) | discriminator)];
+  remaining >>= 6n;
+  if (remaining === 0n) return bytes;
+  bytes[0] |= 0x80;
+  while (remaining) {
+    let byte = Number(remaining & 0x7fn);
+    remaining >>= 7n;
+    if (remaining) byte |= 0x80;
+    bytes.push(byte);
+  }
+  return bytes;
 }
 
 function doubleParts(value) {
@@ -103,10 +114,10 @@ export function serializeLuaJit(parsed, { stripDebug = true } = {}) {
     for (const constant of [...prototype.constants].reverse()) body.push(...encodeConstant(constant));
     for (const number of prototype.numbers) {
       if (Number.isInteger(number) && number >= -2147483648 && number <= 2147483647) {
-        body.push(...uleb33(BigInt.asUintN(32, BigInt(number)) << 1n));
+        body.push(...uleb33(number));
       } else {
         const [low, high] = doubleParts(number);
-        body.push(...uleb33((BigInt(low) << 1n) | 1n), ...uleb(high));
+        body.push(...uleb33(low, 1), ...uleb(high));
       }
     }
     output.push(...uleb(body.length), ...body);

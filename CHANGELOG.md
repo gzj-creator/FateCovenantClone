@@ -14,6 +14,7 @@
 - 新增统一时间基准 `personal-server/game/time.mjs`：自然日、业务日（05:00）、服务器日与周起点集中计算，业务代码不再裸写 `10800/18000/28800` 等偏移；新增源码扫描测试防止回退。
 - 新增唯一角色经验入口 `personal-server/game/role-level.mjs`：一次奖励可跨多级，满级经验封顶，主线与道具/奖励经验共用同一实现。
 - 完善功能开放规则引擎与取证资产：`config/fun-open-rules.json` 现覆盖客户端 FunOpen 全 523 行并记录来源 SHA256，164 行由字节码证实为等级/创角天数/服务器日条件，359 行证据不足严格关闭；7000 申请按权威规则逐条复核。新增 `tools/extract-fun-open-rules.mjs` 与 LuaJIT 33-bit number/upvalue 边界回归测试。
+- 新增 E9-2 命令门禁取证工具与 185 条静态映射：14 条由同一 prototype 的 `FunOpenMgr:IsOpen` 与命令发送直接证明，171 条要求同管理器唯一 FunOpen id 且命名吻合；246 个多候选或无可归因发送点保留为缺口，不生成猜测规则。
 - 新增活动生命周期引擎 `activity-lifecycle.mjs`：预告/进行/领奖/展示/关闭状态机，`read/operate/claim` 门禁，暂停、强开、延长、区服资格、玩家条件与父子活动判定。
 - 新增通用调度器 `scheduler.mjs`：`scheduler_job` 表、到期执行、失败重试计数与启动补跑基础。
 - 新增活动实例/覆盖/结算/审计持久化 `activity-store.mjs` 与运行时 `activity-runtime.mjs`：登录写入实例、每分钟推进阶段、离开进行态幂等结算，并支持活动窗口预演。
@@ -30,6 +31,8 @@
 
 ### Fixed
 
+- 修正命令目录的读写启发式：`21008 req_change_base_info` 与 `84410 req_martial_club_set_team_info` 由 read 改为 write；强写操作词现在优先于 `_info` 等读后缀。
+- 修正 LuaJIT 多 root prototype 解析与 33-bit number 序列化边界，补充跨 bit-6 continuation 的往返测试。
 - 修复新账号只改角色等级却继承旧登录模块的问题：每次创建账号现在会生成完整的 1 级起始档，包括两名初始英雄、空任务/装备/战令进度、120 体力、初始编队和正确的通行证开服日；同服连续注册的账号保持独立角色。
 - 修复 QuickSDK 外部身份全部落回 `local-1` 的问题：外部 UID 以 SHA-256 持久化映射到独立服务器账号，已有手机号账号继续按 `local-phone-*` 隔离，映射文件损坏时失败关闭。
 - 新增 SQLite schema v20 一次性修复，仅识别旧实现产生的“顶层 1 级但仍是 9 级模板进度”角色，并保留角色号、创建时间、昵称和账号关联；已建立的 12 级主账号不受影响。
