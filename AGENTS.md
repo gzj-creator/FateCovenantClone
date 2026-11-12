@@ -173,3 +173,17 @@ sha256: 43e304cb118d8cdbd3f8dbfb2881f0a48988adf402c528c95011ec6f35dcf476
 - `unity/FateCovenantClone/Assets/Scripts/Battle/Domain/`：已通过的纯 C# 战斗内核。
 - 验证命令：`powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-battle-core-tests.ps1`。
 - 本地循环验证：`powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-game-core-tests.ps1`；当前工程开发优先，以上新手号检查点仅用于将来需要时续接侦察。
+2026-11-12 部署与命运三服：`main` 已同步到最新并部署为 `release-20261112T111827Z`
+（`RELEASE_COMMIT=fe86043`，随后文档提交到 `cee0aa1`，不影响运行代码）。新增多区服支持：
+`config/public-server.json` 同时描述命运二服（ID 2）与命运三服（ID 3），所有区服进程广播
+完整列表；`FC_ACTIVE_SERVER_ID` 选择本进程区服，`FC_SDK_SESSION_SOURCE` 让区服三只读复用
+区服二的 SDK 会话。区服三裸机部署：`fate-covenant-realm-3.service`、数据目录
+`/data/disk1/game/data-realm-3`、端口 18890/18891/18892/19091（管理 18893）、活动日历
+`config/activity-calendar-realm-3.json`、发布档案 `public-realm-3-20261112`、开服
+`2026-11-12T18:00:00+08:00`（`1794477600`）。全量 2901 项 pass 2899 / fail 0 / skipped 2；
+线上实测 19090 登录角色 100002、19091 登录角色 100004、区服三拒绝 `server_id=2`，两个区服
+列表接口都返回两服；区服三日历审计 PASS。切换前备份
+`backups/pre-realm-3-20261112T111827Z/data.tar.gz`。腾讯云安全组仍需放行
+`18890/18891/18892/19091`；APK 视觉验收待用户完成。细节见
+`personal-server/docs/multi-realm-20261112.md` 与 `personal-server/DEPLOYMENT.md`。
+
