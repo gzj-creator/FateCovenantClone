@@ -42,8 +42,13 @@ export function serverDay(serverOpenedAt, value, options = {}) {
   const opened = timestampSeconds(serverOpenedAt);
   if (opened <= 0) return 0;
   if (timestampSeconds(value) < opened) return 0;
-  const difference = gameDay(value, options) - gameDay(opened, options);
-  return Math.max(0, Math.floor(difference / DAY_SECONDS) + 1);
+  // The opening calendar day owns day 1 even when the realm opens before the
+  // reset hour (for example at 00:00). Anchoring to gameDay(opened) would make
+  // a midnight opening start on the previous business day and shift every
+  // refer_day window by one.
+  const openingDay = naturalDay(opened, options);
+  const difference = gameDay(value, options) - openingDay;
+  return Math.max(1, Math.floor(difference / DAY_SECONDS) + 1);
 }
 
 // Week: Monday at the business-day reset hour.

@@ -1,5 +1,7 @@
 {
   "description": "Files whose measured serial runtime is at least one second or that exercise a real gateway/deployment path. Run these with npm run test:slow; npm run test:all includes them with the fast suite.",
+  "thresholdMs": 1000,
+  "generatedAt": "2026-11-12T16:52:53.761Z",
   "files": [
     "acc-recharge-service.test.mjs",
     "account-isolation.test.mjs",
@@ -29,6 +31,7 @@
     "camp-tower-destiny-pve-service.test.mjs",
     "chat-gateway.test.mjs",
     "chat-service.test.mjs",
+    "command-gate-gateway.test.mjs",
     "demigod-act-service.test.mjs",
     "destiny-service.test.mjs",
     "diamond-bank-act-service.test.mjs",

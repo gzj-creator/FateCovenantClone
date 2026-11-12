@@ -46,3 +46,14 @@ test('rescheduling clears completion and can run again', t => {
   assert.equal(scheduler.runDue(() => {}).length, 1);
 });
 
+test('a recurring handler queues its next run after completion', t => {
+  const { store } = fixture(t);
+  let now = 1000;
+  const scheduler = createScheduler({ store, now: () => now * 1000 });
+  scheduler.schedule('activity.tick', now);
+  const first = scheduler.runDue(() => ({ nextDueAt: 1060 }));
+  assert.deepEqual(first, [{ key: 'activity.tick', ok: true }]);
+  assert.deepEqual(scheduler.due(1059), []);
+  assert.equal(scheduler.due(1060)[0].key, 'activity.tick');
+});
+

@@ -42,7 +42,13 @@ import { createArtifactService } from './artifact-service.mjs';
 import { createChatService } from './chat-service.mjs';
 import { readRankAchieveTables } from '../config/rank-achieve-tables.mjs';
 import { createFeatureService } from './feature-service.mjs';
+import { createFeatureOverrideStore } from './feature-overrides.mjs';
 import { loadFunOpenRules } from './feature-rules.mjs';
+import { createCommandRegistry, loadCommandCatalog, loadCommandGateRules } from './command-registry.mjs';
+import { createActivityStore } from './activity-store.mjs';
+import { createActivityRuntime } from './activity-runtime.mjs';
+import { createScheduler } from './scheduler.mjs';
+import { backupSqlite } from './db-backup.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { readEquipTables } from '../config/equip-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
@@ -338,6 +344,7 @@ export function createLocalGame({
     now: clock
   });
   const secondsClock = () => Math.floor(clock() / 1000);
+  const dataDirectory = path.dirname(databasePath ?? statePath);
   if (relicDrawGroupResolver !== undefined && typeof relicDrawGroupResolver !== 'function') {
     throw new Error('relicDrawGroupResolver must be a function');
   }
@@ -660,16 +667,50 @@ export function createLocalGame({
   const guildActivity = createGuildActivityService({
     store, codec, tables, serverOpenedAt: calendar.serverOpenedAt, now: clock, logger
   });
+  // Server-scoped FunOpen overrides live in SQLite so an emergency close or a
+  // scheduled open survives restarts and is shared by every role on the realm.
+  const featureOverrides = createFeatureOverrideStore({ store });
   const features = createFeatureService({
     store,
     codec,
     sprintPreview,
     rules: loadFunOpenRules(),
+    overrides: serverId => featureOverrides.activeFor(serverId),
     context: ({ model }) => ({
       serverDay: serverDayNumber(calendar.serverOpenedAt, Math.floor(clock() / 1000)),
       createDay: Math.max(1, Math.floor((Math.floor(clock() / 1000) - Number(model.role.create_time ?? 0)) / 86400) + 1)
     }),
     logger
+  });
+  // The catalog is the 1407-command client registry recovered from Cmd.lua and
+  // confirmed by the route probe. Startup fails if the shipped asset is short
+  // or duplicated; gate rules are empty until the client command -> function
+  // map (E9-2) is recovered, so existing behaviour is unchanged.
+  const commandRegistry = createCommandRegistry({
+    catalog: loadCommandCatalog(),
+    rules: loadCommandGateRules(process.env.FC_COMMAND_GATE_RULES_PATH ? path.resolve(process.env.FC_COMMAND_GATE_RULES_PATH) : undefined),
+    logger
+  });
+  const commandRegistryHasGates = commandRegistry.coverage().requires > 0;
+  const activityStore = createActivityStore({ store });
+  const scheduler = createScheduler({ store, now: clock, logger });
+  const activityRuntime = createActivityRuntime({
+    store, calendar, tables, activityStore, featureService: features, now: clock, logger,
+    onSettle: change => {
+      const file = backupSqlite(store, {
+        directory: path.join(dataDirectory, 'backups'),
+        prefix: `activity-${change.actId}-${change.periodNo}`,
+        now: clock
+      });
+      logger({ event: 'activity_settled', ...change, backup: file });
+    },
+    onStageChanged: change => logger({ event: 'activity_stage_online_sync', ...change })
+  });
+  scheduler.schedule('activity.tick', secondsClock());
+  scheduler.start(job => {
+    if (job.key !== 'activity.tick') return;
+    activityRuntime.tick();
+    return { nextDueAt: secondsClock() + 60 };
   });
   const recruit = createRecruitService({
     store,
@@ -897,6 +938,7 @@ export function createLocalGame({
     const storedModules = new Map(state.modules.value);
     const list = revive(state.modules);
     const modules = new Map(list.value);
+    features.maskLogin(modules);
     const loginMilliseconds = clock();
     const loginSeconds = Math.floor(loginMilliseconds / 1000);
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
@@ -1036,6 +1078,7 @@ export function createLocalGame({
     // login snapshot. Run the calendar once more so those rows carry the same
     // rebased windows and state history as snapshot-backed activities.
     calendar.applyLoginSchedule(activity, loginSeconds);
+    activityRuntime.synchronizeLogin(activity, loginSeconds);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -1368,6 +1411,16 @@ export function createLocalGame({
       if (type === -1) return;
       if (phase !== 'ready' && ![909101, 909102, 909103].includes(type)) {
         send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Login required' });
+        return;
+      }
+      const commandGate = commandRegistryHasGates ? commandRegistry.gate(type, features.openIds()) : null;
+      if (commandGate && !commandGate.allowed) {
+        log({
+          event: 'fun_open_command_denied', type, access: commandGate.access,
+          requires: commandGate.requires, missing: commandGate.missing
+        });
+        if (commandGate.access === 'read') send(seq, Buffer.alloc(0));
+        else send(seq, Buffer.alloc(0), { err: 309 });
         return;
       }
       if (onlineGift.supports(type)) {
@@ -3440,10 +3493,11 @@ export function createLocalGame({
     cms, guildNationAssist, guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap, guildNation,
     guildBargain, guildExpedition, channelEntry, guildHunt, guildCrusade, guildAuction, groupBuyAct,
     dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,
+    activityStore, activityRuntime, scheduler, commandRegistry, featureOverrides,
     listen(port = 19090, host = '127.0.0.1') {
       if (typeof host !== 'string' || host.length === 0) return Promise.reject(new TypeError('Invalid host'));
       return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => resolve(server.address())); });
     },
-    close() { for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
+    close() { scheduler.stop(); for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(() => { store.close(); resolve(); })); }
   };
 }

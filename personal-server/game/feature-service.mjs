@@ -19,6 +19,19 @@ function updateBits(login, ids) {
   login.target_list = [...targets.values()];
 }
 
+function clearBits(login, ids) {
+  const targets = new Map((login?.target_list ?? []).map(target => [Number(target.target_tid), target]));
+  for (const id of ids) {
+    const [targetId, index] = splitId(id);
+    const target = targets.get(targetId);
+    if (!target) continue;
+    const bytes = Buffer.from(target.fun_open_state ?? '', 'base64');
+    if (bytes.length <= Math.floor(index / 8)) continue;
+    bytes[Math.floor(index / 8)] &= ~(128 >> (index % 8));
+    target.fun_open_state = bytes.toString('base64');
+  }
+}
+
 export function openFeatureIds(login) {
   const result = new Set();
   for (const target of login?.target_list ?? []) {
@@ -32,9 +45,29 @@ export function openFeatureIds(login) {
   return result;
 }
 
-export function createFeatureService({ store, codec, sprintPreview = false, rules = [], context = () => ({}), logger = () => {} }) {
+export function createFeatureService({
+  store, codec, sprintPreview = false, rules = [], context = () => ({}),
+  overrides = () => [], logger = () => {}
+}) {
   const log = event => { try { logger(event); } catch {} };
   const ruleList = Array.isArray(rules) ? rules : [];
+  const overridesFor = serverId => {
+    let rows;
+    try { rows = typeof overrides === 'function' ? overrides(serverId) : overrides; } catch (error) {
+      log({ event: 'fun_open_override_read_failed', message: error.message });
+      rows = [];
+    }
+    // activeFor returns newest first. The first row for a function wins, so a
+    // later force_open can supersede an older force_close without deleting the
+    // historical audit row.
+    const map = new Map();
+    for (const row of rows ?? []) {
+      const id = Number(row.fun_id ?? row.funId);
+      if (!Number.isSafeInteger(id) || id <= 0 || map.has(id)) continue;
+      map.set(id, String(row.mode));
+    }
+    return map;
+  };
   function commit(ids) {
     return store.transaction(model => {
       const modules = new Map(model.state.modules.value);
@@ -64,7 +97,8 @@ export function createFeatureService({ store, codec, sprintPreview = false, rule
     };
     const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3) ?? Buffer.alloc(0)));
     const current = openFeatureIds(login);
-    const ids = [1039, 1322, 1348, 1537].filter(id => !current.has(id));
+    const forced = overridesFor(store.state().serverId);
+    const ids = [1039, 1322, 1348, 1537].filter(id => !current.has(id) && forced.get(id) !== 'force_close');
     if (ids.length) commit(ids);
   }
 
@@ -91,14 +125,24 @@ export function createFeatureService({ store, codec, sprintPreview = false, rule
         guides: model.guides,
         heroInfo: model.heroInfo
       }, ruleList, modelContext(model));
-      const allowed = unique.filter(id => evaluation.open.has(id));
-      const denied = unique.filter(id => !evaluation.open.has(id));
+      const overrideMap = overridesFor(model.state.serverId);
+      const isAllowed = id => overrideMap.get(id) === 'force_open'
+        || (overrideMap.get(id) !== 'force_close' && evaluation.open.has(id));
+      const allowed = unique.filter(isAllowed);
+      const denied = unique.filter(id => !isAllowed(id));
       if (denied.length) log({ event: 'fun_open_denied', ids: denied, denied: evaluation.denied });
       log({ event: 'feature_request', ids: unique, allowed });
       return commit(allowed);
     },
     reconcile() {
-      if (!ruleList.length) return [];
+      if (!ruleList.length) {
+        const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3) ?? Buffer.alloc(0)));
+        const current = openFeatureIds(login);
+        const forced = overridesFor(store.state().serverId);
+        const ids = [...forced].filter(([id, mode]) => mode === 'force_open' && !current.has(id)).map(([id]) => id);
+        if (ids.length) commit(ids);
+        return ids;
+      }
       return store.transaction(model => {
         const modules = new Map(model.state.modules.value);
         const login = codec.unpack('res_fun_open_login', rawBinary(modules.get(3) ?? Buffer.alloc(0)));
@@ -108,7 +152,10 @@ export function createFeatureService({ store, codec, sprintPreview = false, rule
           guides: model.guides,
           heroInfo: model.heroInfo
         }, ruleList, modelContext(model));
-        const add = [...evaluation.open].filter(id => !current.has(id));
+        const forced = overridesFor(model.state.serverId);
+        const visible = new Set([...evaluation.open].filter(id => forced.get(id) !== 'force_close'));
+        for (const [id, mode] of forced) if (mode === 'force_open') visible.add(id);
+        const add = [...visible].filter(id => !current.has(id));
         if (add.length) {
           updateBits(login, add);
           modules.set(3, serializedBinary(codec.pack('res_fun_open_login', login)));
@@ -117,6 +164,32 @@ export function createFeatureService({ store, codec, sprintPreview = false, rule
         if (evaluation.denied.length) log({ event: 'fun_open_rule_denied', denied: evaluation.denied });
         return add;
       });
+    },
+    // force_close must not rewrite the role bitmap. Mask the outgoing module 3
+    // copy instead so revoking the override restores the prior bitmap exactly.
+    maskLogin(modules) {
+      const serverId = store.state().serverId;
+      const closed = [...overridesFor(serverId)].filter(([, mode]) => mode === 'force_close').map(([id]) => id);
+      if (!closed.length || !modules?.has(3)) return closed;
+      const login = codec.unpack('res_fun_open_login', rawBinary(modules.get(3) ?? Buffer.alloc(0)));
+      const current = openFeatureIds(login);
+      const present = closed.filter(id => current.has(id));
+      if (!present.length) return closed;
+      clearBits(login, present);
+      modules.set(3, serializedBinary(codec.pack('res_fun_open_login', login)));
+      return closed;
+    },
+    overrideMode(funId) {
+      return overridesFor(store.state().serverId).get(Number(funId)) ?? null;
+    },
+    openIds() {
+      const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3) ?? Buffer.alloc(0)));
+      const open = openFeatureIds(login);
+      for (const [id, mode] of overridesFor(store.state().serverId)) {
+        if (mode === 'force_open') open.add(id);
+        else if (mode === 'force_close') open.delete(id);
+      }
+      return open;
     }
   };
 }

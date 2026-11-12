@@ -33,6 +33,10 @@ export function createScheduler({ store, now = Date.now, logger = () => {} }) {
     return store.inspect(db => db.prepare('SELECT key,due_at,attempts FROM scheduler_job WHERE done_at IS NULL AND due_at<=? ORDER BY due_at,key').all(at));
   }
 
+  function list() {
+    return store.inspect(db => db.prepare('SELECT key,due_at,done_at,attempts,last_error,updated_at FROM scheduler_job ORDER BY due_at,key').all());
+  }
+
   function runDue(handler, at = clock()) {
     if (typeof handler !== 'function') throw new TypeError('Scheduler handler is required');
     const jobs = due(at);
@@ -43,6 +47,9 @@ export function createScheduler({ store, now = Date.now, logger = () => {} }) {
         if (result && typeof result.then === 'function') throw new Error('Scheduler handlers must be synchronous');
         store.inspect(db => db.prepare('UPDATE scheduler_job SET done_at=?, attempts=attempts+1, last_error=NULL, updated_at=? WHERE key=? AND done_at IS NULL')
           .run(clock(), stamp(), job.key));
+        // A recurring job returns the next due time. Scheduling it after the
+        // completion update avoids the completion update overwriting the new row.
+        if (Number.isSafeInteger(result?.nextDueAt) && result.nextDueAt > 0) schedule(job.key, result.nextDueAt);
         processed.push({ key: job.key, ok: true });
       } catch (error) {
         store.inspect(db => db.prepare('UPDATE scheduler_job SET attempts=attempts+1, last_error=?, updated_at=? WHERE key=? AND done_at IS NULL')
@@ -57,6 +64,7 @@ export function createScheduler({ store, now = Date.now, logger = () => {} }) {
   return {
     schedule,
     due,
+    list,
     runDue,
     start(handler, intervalMs = 60000) {
       if (timer) return;

@@ -12,6 +12,7 @@
     "test": "node scripts/run-tests.mjs fast",
     "test:slow": "node scripts/run-tests.mjs slow",
     "test:all": "node scripts/run-tests.mjs all",
+    "test:measure-slow": "node scripts/measure-slow-files.mjs",
     "test:deployment": "node --test --test-concurrency=1 test/self-contained-deployment.test.mjs"
   },
   "dependencies": {

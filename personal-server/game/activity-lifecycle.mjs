@@ -106,7 +106,8 @@ export function evaluateActivity({
   override = null,
   funOpen = null,
   role = null,
-  parent = null
+  parent = null,
+  windowOverride = null
 } = {}) {
   if (!config) return closed('missing_config');
   if (parent && !parent.visible) return closed('parent_hidden');
@@ -130,7 +131,7 @@ export function evaluateActivity({
   if (minimumOpen > 0 && opened < minimumOpen) return closed('before_open_limit');
   if (maximumOpen > 0 && opened > maximumOpen) return closed('after_open_limit');
 
-  const baseWindow = activityWindow(config, serverOpenedAt, activityReferenceOpenedAt);
+  const baseWindow = windowOverride ?? activityWindow(config, serverOpenedAt, activityReferenceOpenedAt);
   const overrideResult = applyOverride(baseWindow, override, at);
   if (overrideResult.closed) return closed('override_closed');
   const window = overrideResult.window;

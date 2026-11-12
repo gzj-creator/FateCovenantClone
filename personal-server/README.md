@@ -45,8 +45,8 @@ npm test --prefix .\personal-server
 ```
 
 日常 `npm test` 只运行快速测试。英雄技能校验、真实网关、完整部署和多实例登录等
-耗时回归集中在 `test/slow-files.json`；2026-11-13 起快速套件为 37 个文件，实测约
-14 秒。准备合并或发布前再执行完整验证：
+耗时回归集中在 `test/slow-files.json`；2026-11-13 本轮收敛后快速套件为 43 个文件，实测约
+15 秒。准备合并或发布前再执行完整验证：
 
 ```powershell
 npm run test:slow --prefix .\personal-server
@@ -54,6 +54,15 @@ npm run test:all --prefix .\personal-server
 ```
 
 `test:all` 会同时运行快速和慢速测试。单独修改慢测文件时，用 `test:slow` 回验对应链路。
+
+新增或调整测试后，可逐文件实测并自动维护清单：
+
+```powershell
+npm run test:measure-slow --prefix .\personal-server
+npm run test:measure-slow --prefix .\personal-server -- --file new-gateway.test.mjs --write
+```
+
+默认阈值为 1000ms；`--write` 无 `--file` 时重算全量清单，带 `--file` 时只增量更新指定文件。
 
 依赖已在本轮安装，当前机器直接运行第二条即可；第一条供重新建立依赖环境。各组件 CLI 的参数都是本地测试配置，不会自动重定向现有 APK。
 

@@ -1,4 +1,4 @@
-import { naturalDay } from './time.mjs';
+import { naturalDay, serverDay } from './time.mjs';
 
 const DAY_SECONDS = 86400;
 const FISHING_ACT_FIRST = 1074001;
@@ -16,9 +16,7 @@ export function dayZero(value) {
 }
 
 export function serverDayNumber(serverOpenedAt, at) {
-  const opened = seconds(serverOpenedAt);
-  if (!opened) return 0;
-  return Math.floor((seconds(at) - opened) / DAY_SECONDS) + 1;
+  return serverDay(seconds(serverOpenedAt), seconds(at));
 }
 
 function activityConfig(tables, actId) {
@@ -687,6 +685,9 @@ export function createActivityCalendar({
     currentSeconds,
     isServerEligible: (actId, at = currentSeconds()) => serverEligibility(activityConfig(tables, Number(actId)), openedAt, at),
     isActivityRunning,
+    // Expose the same custom/table window the login filter uses so the
+    // lifecycle instance table and the client payload cannot drift apart.
+    windowFor: (actId, activity = null) => scheduledWindow(Number(actId), activity),
     filterLoginActivity,
     applyLoginSchedule,
     normalizeActFrameLogin,
