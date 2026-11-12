@@ -241,7 +241,7 @@ function printReport(report) {
 }
 
 function main() {
-  const config = loadActivityCalendarConfig();
+  const config = loadActivityCalendarConfig(process.env.FC_ACTIVITY_CALENDAR_CONFIG);
   const args = process.argv.slice(2);
   const report = auditActivitySchedule({
     tables: readGameTables(),

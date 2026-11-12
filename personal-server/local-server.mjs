@@ -44,7 +44,12 @@ function publicDataDirectory() {
   return resolved;
 }
 
-const publicDeployment = process.argv.includes('--public') ? loadPublicServerConfig() : null;
+const activeServerOverride = process.env.FC_ACTIVE_SERVER_ID === undefined || process.env.FC_ACTIVE_SERVER_ID === ''
+  ? undefined
+  : Number(process.env.FC_ACTIVE_SERVER_ID);
+const publicDeployment = process.argv.includes('--public')
+  ? loadPublicServerConfig(undefined, { activeServerId: activeServerOverride })
+  : null;
 const activeServer = publicDeployment?.activeServer ?? null;
 
 const requestedPorts = Object.freeze({
@@ -58,6 +63,13 @@ const publicListenHost = publicDeployment?.listen.publicHost ?? '127.0.0.1';
 const adminListenHost = configuredHost('FC_ADMIN_LISTEN_HOST', publicDeployment?.listen.adminHost ?? '127.0.0.1');
 const listenHosts = Object.freeze({ sdk: publicListenHost, list: publicListenHost, startup: publicListenHost,
   game: publicListenHost, admin: adminListenHost });
+
+// Extra realms on the same host reuse the primary realm's SDK session store so a
+// player who logged in through the public SDK endpoint can enter them. The file
+// is shared read-only; these processes only issue sessions on their own login.
+const sharedSessionPath = process.env.FC_SDK_SESSION_SOURCE
+  ? path.resolve(process.env.FC_SDK_SESSION_SOURCE)
+  : null;
 
 const activityCalendar = loadActivityCalendarConfig(process.env.FC_ACTIVITY_CALENDAR_CONFIG);
 const environmentOpenedAt = process.env.FC_SERVER_OPENED_AT
@@ -104,6 +116,7 @@ const sdk = createSdkService({
   localTestOtp: true,
   sessionTtlSeconds: 604800,
   sessionPath: path.join(directory, 'sdk-sessions.local-only.json'),
+  ...(sharedSessionPath ? { sessionSourcePaths: [sharedSessionPath] } : {}),
   platform: { appId: platformFields.app_id, appKey: platformFields.sign_to_platform },
   quickSdk: { productCode: 'fc-local', productKey: 'fclocal1' },
   phoneIdentityResolver: phoneIdentity,
@@ -155,8 +168,10 @@ try {
     const address = await service.listen(requestedPorts[name], listenHosts[name]);
     boundPorts[name] = address.port;
   }
+  // Every realm shares one checked-in realm list, so the selector shows all of
+  // them no matter which realm process answers the list request.
   const servers = publicDeployment
-    ? [{ id: activeServer.id, name: activeServer.name, extranetIp: activeServer.extranetIp, releaseTime: activeServer.launchAt }]
+    ? publicDeployment.servers.map(server => ({ id: server.id, name: server.name, extranetIp: server.extranetIp, releaseTime: server.launchAt }))
     : [{ id: 1, name: '命运一服', extranetIp: `127.0.0.1:${boundPorts.game}`, releaseTime: serverOpenedAt }];
   const list = createServerListService({ signingKey: key, servers, codec: createProtobufJsCodec(), logger });
   services.push(list);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadPublicServerConfig, parsePublicServerConfig } from '../config/server-config.mjs';
+import { loadPublicServerConfig, parsePublicServerConfig, selectActiveServer } from '../config/server-config.mjs';
 
 function config(overrides = {}) {
   return {
@@ -39,4 +39,20 @@ test('the checked-in public config targets the new realm without changing its ad
   assert.equal(parsed.activeServer.name, '命运二服');
   assert.equal(parsed.activeServer.extranetIp, '140.143.142.251:19090');
   assert.equal(parsed.activeServer.launchAt, 1794326400);
+  assert.deepEqual(parsed.servers.map(server => [server.id, server.name, server.extranetIp]), [
+    [2, '命运二服', '140.143.142.251:19090'],
+    [3, '命运三服', '140.143.142.251:19091']
+  ]);
+});
+
+test('an explicit realm override selects another configured realm and keeps the shared list', () => {
+  const parsed = loadPublicServerConfig(undefined, { activeServerId: 3 });
+  assert.equal(parsed.activeServerId, 3);
+  assert.equal(parsed.activeServer.name, '命运三服');
+  assert.equal(parsed.activeServer.roleId, 100004);
+  assert.equal(parsed.activeServer.launchProfileId, 'public-realm-3-20261112');
+  assert.equal(parsed.activeServer.launchAt, 1794477600);
+  assert.equal(parsed.servers.length, 2);
+  assert.throws(() => selectActiveServer(parsed, 9), /is not present/);
+  assert.throws(() => selectActiveServer(parsed, 0), /positive integer/);
 });

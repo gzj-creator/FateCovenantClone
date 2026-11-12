@@ -117,7 +117,15 @@ export function createSdkService(options = {}) {
   if (options.logger !== undefined && typeof options.logger !== 'function') throw new TypeError('logger must be a function');
   const sessionPath = options.sessionPath;
   if (sessionPath !== undefined && (typeof sessionPath !== 'string' || sessionPath.trim().length === 0)) throw new TypeError('sessionPath must be a nonempty string');
+  const sessionSourcePaths = options.sessionSourcePaths ?? [];
+  if (!Array.isArray(sessionSourcePaths) || sessionSourcePaths.some(value => typeof value !== 'string' || value.trim().length === 0)) {
+    throw new TypeError('sessionSourcePaths must be an array of nonempty paths');
+  }
   const sessions = new Map();
+  // Realms that share one public SDK endpoint read the primary realm's session
+  // store instead of issuing their own logins.
+  const sourceSessions = new Map();
+  const sourceStamps = new Map();
   let wallet;
   const log = event => {
     try { options.logger?.(Object.freeze(event)); } catch {}
@@ -156,13 +164,61 @@ export function createSdkService(options = {}) {
     if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return undefined;
     const key = tokenKey(token);
     const session = sessions.get(key);
-    if (!session) return undefined;
+    if (!session) {
+      const shared = sharedSessionFor(key, userId);
+      return shared;
+    }
     if (currentTime() > session.expiresAt) {
       sessions.delete(key);
       persistSessions();
       return undefined;
     }
     return session.userId === userId ? session : undefined;
+  }
+  function refreshSourceSessions() {
+    for (const [source, stamp] of sourceStamps) {
+      let current;
+      try {
+        const stats = fs.statSync(source);
+        current = stats.mtimeMs + ':' + stats.size;
+      } catch (error) {
+        if (error?.code !== 'ENOENT') log({ event: 'sdk_session_source_stat_failed', path: source, code: error?.code ?? 'unknown' });
+        sourceSessions.delete(source);
+        sourceStamps.delete(source);
+        continue;
+      }
+      if (current === stamp) continue;
+      let stored;
+      try { stored = JSON.parse(fs.readFileSync(source, 'utf8')); }
+      catch { log({ event: 'sdk_session_source_unreadable', path: source }); continue; }
+      if (!SUPPORTED_SESSION_STORE_VERSIONS.has(stored?.version) || !Array.isArray(stored.sessions)) {
+        log({ event: 'sdk_session_source_unsupported', path: source });
+        continue;
+      }
+      const entries = new Map();
+      for (const entry of stored.sessions) {
+        if (!entry || !/^[0-9a-f]{64}$/.test(entry.tokenHash ?? '')) continue;
+        if (stored.version === 1) entries.set(entry.tokenHash, { userId: account.userId, loginCode: account.loginCode, nickname: account.nickname, expiresAt: entry.expiresAt });
+        else entries.set(entry.tokenHash, { userId: entry.userId, loginCode: entry.loginCode, nickname: entry.nickname, expiresAt: entry.expiresAt });
+      }
+      sourceSessions.set(source, entries);
+      sourceStamps.set(source, current);
+    }
+  }
+  function sharedSessionFor(key, userId) {
+    if (!sessionSourcePaths?.length) return undefined;
+    refreshSourceSessions();
+    for (const entries of sourceSessions.values()) {
+      const session = entries.get(key);
+      if (!session) continue;
+      if (currentTime() > session.expiresAt) return undefined;
+      return session.userId === userId ? Object.freeze({ ...session }) : undefined;
+    }
+    return undefined;
+  }
+  for (const source of sessionSourcePaths) {
+    sourceStamps.set(source, '');
+    refreshSourceSessions();
   }
   if (sessionPath && fs.existsSync(sessionPath)) {
     let stored;

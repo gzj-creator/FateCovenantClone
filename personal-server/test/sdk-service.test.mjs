@@ -244,6 +244,33 @@ test('version 1 session files migrate to version 2 identities without changing v
   assert.equal((await migrated.verify(login.body.result)).status, 200);
 });
 
+test('a realm process resolves sessions written by the primary realm without issuing its own login', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-sdk-shared-sessions-'));
+  const primaryPath = path.join(directory, 'primary-sessions.json');
+  const realmPath = path.join(directory, 'realm-sessions.json');
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+
+  const primary = await fixture(t, { sessionPath: primaryPath });
+  const login = await primary.login();
+  assert.equal(login.status, 200);
+
+  const realm = await fixture(t, { sessionPath: realmPath, sessionSourcePaths: [primaryPath] });
+  assert.equal((await realm.verify(login.body.result)).status, 200);
+  assert.equal(realm.service.resolveSession(configuration.account.userId, login.body.result.token).loginCode, configuration.account.loginCode);
+
+  // A token issued for another account must not be accepted by the shared store.
+  const impostor = await realm.service.resolveSession('someone-else', login.body.result.token);
+  assert.equal(impostor, null);
+
+  // The realm does not copy the shared sessions into its own store.
+  assert.equal(fs.existsSync(realmPath), false);
+
+  primary.setTime(login.body.result.expire_time + 1);
+  realm.setTime(login.body.result.expire_time + 1);
+  assert.equal((await realm.verify(login.body.result)).status, 401);
+  await primary.service.close();
+});
+
 test('factory fails closed for missing config, bad MD5, TTL, clock, and invalid port', async () => {
   assert.throws(() => createSdkService(), /appId/);
   assert.throws(() => createSdkService({ ...configuration, account: { ...configuration.account, passwordMd5: 'plaintext' } }), /passwordMd5/);
