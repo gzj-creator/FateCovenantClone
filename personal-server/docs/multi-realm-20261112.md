@@ -93,3 +93,5 @@ accounts=1，角色 1 为 1 级、经验 0、148 个登录模块；重启后再�
 /data/disk1/game/backups/pre-empty-realm-20261112T131204Z/data-realm-3-rollover.tar.gz，
 SHA256 e76ed1f0ffea27931f070afcc9db8d76011540c6300d9f49f7d42b556b0f637f。
 定向测试 15/15，部署测试 1/1，全量测试 1707 项（pass 1705、fail 0、skipped 2）。
+端到端验证账号随后通过停服备份并清空 live 目录移除，正式库重新回到 roles=0/accounts=0；
+验证库完整保留在 post-empty-runtime-verification-20261112T132600Z。

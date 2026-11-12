@@ -23,7 +23,9 @@
 首个真实账号登录创建 roleId=1、等级1、经验0的完整新手存档；重开后仍可登录，二服 server_id=2
 被拒绝。真实链路验证 148 个登录模块、英雄 2010101/2010201 均1级、SQLite integrity ok。
 全量 npm test 1707项（pass 1705/fail 0/skipped 2），部署测试1/1。旧三服目录及切换前备份保留：
-`/data/disk1/game/backups/pre-empty-realm-20261112T131204Z/`。APK 大厅视觉验收仍待用户完成。
+`/data/disk1/game/backups/pre-empty-realm-20261112T131204Z/`。端到端验证后已备份验证库
+`/data/disk1/game/backups/post-empty-runtime-verification-20261112T132600Z/` 并恢复正式目录为空库，
+当前 roles=0/accounts=0，首个真实账号将获得角色1。APK 大厅视觉验收仍待用户完成。
 
 2026-11-08 BLOCK-G2（探索与小游戏后半 #163–#179，17 卡 96 命令）：分支 `task/BLOCK-G2-20261108` 在 worktree `.worktree/gameplay-20261108/g2-exploration` 完成，提交 82c3e9d，以 24f90e9 合入 main；新增 `game/minigame-act-service.mjs`（96 type 统一服务，权威状态写 SQLite）、`config/minigame-act-tables.mjs`（15 张表逐族行数校验）、15 个表资产与 17 份逐卡记录，网关加 import/实例/派发与模块 92 登录同步。完整实现 6 卡（PUZZLEACT/TILESWAP/MUSHROOMMONSTER/GOPHERACT/MATCHINGGAMEACT/ALBUM），服务端完成含明确拒绝 8 卡（TOWERACT/SPIRITCOURTYARD/TRIPLEMATCH/MONOPOLYACT/DREAMTRIALACT/DIAMONDVEINACT/HOMELAND/BAKINGACT），SOURCEPOINT 仅明确拒绝，拒绝一律 GameError(5, 缺口说明)。随后 88219ca 让 `readGeneratedDump` 兼容行级表 dump（HomelandActTable），专项 17 项；main 88219ca 在干净 worktree 全量 2674（pass 2672 / fail 0 / skipped 2），日志 `analysis/test-runs/gameplay-20261106/block-g2-main-88219ca-full.log`。本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，无 APK 验收。
 

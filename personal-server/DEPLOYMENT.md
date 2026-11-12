@@ -198,5 +198,6 @@ FC_ACTIVITY_CALENDAR_CONFIG=config/activity-calendar-realm-3.json npm run audit:
 验证结果：全量 `npm test` 1707 项、pass 1705、fail 0、skipped 2；部署测试 1/1。线上真实 SDK
 手机号登录后经公网 `19090` 进入区服 3，创建 `roleId=1`、`level=1`、经验 `0`、148 个登录模块；
 重载种子角色 `2010101/2010201` 均为 1 级；使用 `server_id=2` 被拒绝。重启三服后同一账号仍为
-角色 1、等级 1，SQLite `integrity_check=ok`。两服 unit 状态为二服 inactive/disabled、三服
-active/enabled。APK 大厅视觉验收仍待用户完成。
+角色 1、等级 1，SQLite `integrity_check=ok`。验证账号随后已通过停服备份整个数据目录并恢复到
+空库清除；该验证库保留在 `/data/disk1/game/backups/post-empty-runtime-verification-20261112T132600Z/`。
+两服 unit 状态为二服 inactive/disabled、三服 active/enabled。APK 大厅视觉验收仍待用户完成。
