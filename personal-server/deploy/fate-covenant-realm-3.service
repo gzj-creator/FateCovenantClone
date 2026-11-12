@@ -12,7 +12,7 @@ Group=ubuntu
 WorkingDirectory=/data/disk1/game/current
 Environment=NODE_ENV=production
 Environment=TZ=Asia/Shanghai
-Environment=FC_LOCAL_DATA=/data/disk1/game/data-realm-3
+Environment=FC_LOCAL_DATA=/data/disk1/game/data-realm-3-rollover
 Environment=FC_ADMIN_LISTEN_HOST=127.0.0.1
 Environment=FC_ACTIVE_SERVER_ID=3
 Environment=FC_ACTIVITY_CALENDAR_CONFIG=/data/disk1/game/current/config/activity-calendar-realm-3.json
@@ -36,7 +36,7 @@ LockPersonality=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 CapabilityBoundingSet=
 AmbientCapabilities=
-ReadWritePaths=/data/disk1/game/data-realm-3
+ReadWritePaths=/data/disk1/game/data-realm-3-rollover
 
 [Install]
 WantedBy=multi-user.target
