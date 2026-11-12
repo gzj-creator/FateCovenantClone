@@ -1,5 +1,5 @@
 import { GameError } from './hero-progression.mjs';
-import { grantResources } from './resources.mjs';
+import { grantResources, partitionGrantableResources } from './resources.mjs';
 
 const MAIL_COMMANDS = new Set([3000, 3001, 3002, 3003, 3004, 3005, 3006]);
 // MailTable.data row 11400 is the first ordinary (type=1) system mail. tid=0 is
@@ -30,6 +30,13 @@ function awards(value) {
     tid: integer(Number(row?.tid ?? row?.id), 1, 2147483647, 'Invalid mail award item'),
     count: integer(Number(row?.count ?? row?.num), 1, 1000000000, 'Invalid mail award count')
   }));
+}
+
+function assertGrantableMailAwards(rows, tables) {
+  const { pending } = partitionGrantableResources(rows.map(row => [row.tid, row.count]), tables);
+  if (pending.length) {
+    fail(5, 'Mail award has no production resource handler: ' + pending.map(row => row.tid).join(','));
+  }
 }
 
 function awardMessage(rows) {
@@ -92,35 +99,62 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
     }
   }
 
-  function issue({ account_id, request_id, title = '代金券到账', content = '', awards: rawAwards, expire_at = 0, send_name = '系统', voucherGrant = null }) {
+  function normalizeIssue({ request_id, title = '代金券到账', content = '', awards: rawAwards, expire_at = 0, send_name = '系统', voucherGrant = null }) {
     requestKey(request_id);
-    const roleId = store.inspect(db => roleForAccount(db, account_id));
     const normalizedAwards = awards(rawAwards);
     text(title, 'title', 80);
     if (typeof content !== 'string' || content.length > 1000) fail(1, 'Invalid mail content');
     text(send_name, 'sender', 40);
     const expireAt = expiry(expire_at);
+    assertGrantableMailAwards(normalizedAwards, tables);
     if (voucherGrant) {
+      if (!voucher) fail(5, 'Voucher mail service is unavailable');
       const sku = voucher.sku();
       if (voucherGrant.item_tid !== sku.item_tid || voucherGrant.face_value_cents !== sku.face_value_cents) fail(5, 'Voucher mail SKU mismatch');
       if (normalizedAwards.length !== 1 || normalizedAwards[0].tid !== sku.item_tid || normalizedAwards[0].count !== voucherGrant.quantity) fail(5, 'Voucher mail award mismatch');
     }
-    const result = store.runWithRole(roleId, () => store.transaction((model, db) => {
-      const old = db.prepare('SELECT * FROM game_mails WHERE role_id=? AND request_id=?').get(roleId, request_id);
-      if (old) {
-        const grant = db.prepare('SELECT * FROM voucher_grants WHERE mail_id=?').get(old.mail_id);
-        const same = old.title === title && old.content === content && old.award_json === JSON.stringify(normalizedAwards)
-          && old.expire_at === expireAt && (!voucherGrant || (grant && grant.quantity === voucherGrant.quantity));
-        if (!same) fail(1, 'Mail request ID already used');
-        return { mail_id: old.mail_id, duplicate: true, quantity: grant?.quantity ?? 0, amount_cents: (grant?.quantity ?? 0) * (grant?.face_value_cents ?? 0) };
-      }
-      const sendTime = now();
-      const row = db.prepare('INSERT INTO game_mails(role_id,request_id,tid,send_name,title,content,send_time,expire_at,read,received,deleted,award_json,created_at) VALUES (?,?,?,?,?,?,?,?,0,0,0,?,?)')
-        .run(roleId, request_id, MAIL_CONFIG_TID, send_name, title, content, sendTime, expireAt, JSON.stringify(normalizedAwards), new Date().toISOString());
-      const mailId = Number(row.lastInsertRowid);
-      if (voucherGrant) voucher.recordGrant({ db, mailId, roleId, quantity: voucherGrant.quantity });
-      return { mail_id: mailId, duplicate: false, quantity: voucherGrant?.quantity ?? 0, amount_cents: (voucherGrant?.quantity ?? 0) * (voucherGrant?.face_value_cents ?? 0) };
-    }));
+    return { request_id, title, content, awards: normalizedAwards, expireAt, send_name, voucherGrant };
+  }
+
+  // Activity settlement calls this from inside its own store.transaction so the
+  // mail row and the settlement-step marker commit atomically. Notification is
+  // intentionally deferred to publishNewMail after that transaction commits.
+  function enqueueToRoleInTransaction({ db, roleId, ...message }) {
+    if (!db?.prepare) throw new TypeError('Mail transaction database is required');
+    const id = integer(Number(roleId), 1, Number.MAX_SAFE_INTEGER, 'Invalid mail role ID');
+    if (!db.prepare('SELECT 1 FROM roles WHERE role_id=?').get(id)) fail(5, 'Unknown role for mail');
+    const normalized = normalizeIssue(message);
+    const old = db.prepare('SELECT * FROM game_mails WHERE role_id=? AND request_id=?').get(id, normalized.request_id);
+    if (old) {
+      const grant = db.prepare('SELECT * FROM voucher_grants WHERE mail_id=?').get(old.mail_id);
+      const same = old.title === normalized.title && old.content === normalized.content
+        && old.award_json === JSON.stringify(normalized.awards) && old.expire_at === normalized.expireAt
+        && (!normalized.voucherGrant || (grant && grant.quantity === normalized.voucherGrant.quantity));
+      if (!same) fail(1, 'Mail request ID already used');
+      return {
+        mail_id: old.mail_id, duplicate: true, role_id: id, awards: normalized.awards,
+        quantity: grant?.quantity ?? 0,
+        amount_cents: (grant?.quantity ?? 0) * (grant?.face_value_cents ?? 0)
+      };
+    }
+    const sendTime = now();
+    const row = db.prepare('INSERT INTO game_mails(role_id,request_id,tid,send_name,title,content,send_time,expire_at,read,received,deleted,award_json,created_at) VALUES (?,?,?,?,?,?,?,?,0,0,0,?,?)')
+      .run(id, normalized.request_id, MAIL_CONFIG_TID, normalized.send_name, normalized.title, normalized.content,
+        sendTime, normalized.expireAt, JSON.stringify(normalized.awards), new Date().toISOString());
+    const mailId = Number(row.lastInsertRowid);
+    if (normalized.voucherGrant) voucher.recordGrant({ db, mailId, roleId: id, quantity: normalized.voucherGrant.quantity });
+    return {
+      mail_id: mailId, duplicate: false, role_id: id, awards: normalized.awards,
+      quantity: normalized.voucherGrant?.quantity ?? 0,
+      amount_cents: (normalized.voucherGrant?.quantity ?? 0) * (normalized.voucherGrant?.face_value_cents ?? 0)
+    };
+  }
+
+  function issue({ account_id, request_id, title = '代金券到账', content = '', awards: rawAwards, expire_at = 0, send_name = '系统', voucherGrant = null }) {
+    const roleId = store.inspect(db => roleForAccount(db, account_id));
+    const result = store.runWithRole(roleId, () => store.transaction((model, db) => enqueueToRoleInTransaction({
+      db, roleId, request_id, title, content, awards: rawAwards, expire_at, send_name, voucherGrant
+    })));
     if (!result.duplicate) {
       try { logger({ event: 'mail_issued', mailId: result.mail_id, accountId: account_id }); } catch {}
       publishNewMail(result.mail_id, roleId);
@@ -129,6 +163,7 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
   }
 
   function issueVoucher({ account_id, request_id, quantity, amount_cents, title = '代金券到账', content, expire_at = 0, send_name = '系统' }) {
+    if (!voucher) fail(5, 'Voucher mail service is unavailable');
     const sku = voucher.sku();
     let count;
     if (quantity !== undefined) {
@@ -243,5 +278,9 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
     return codec.pack('pb_mail', fullMail(row));
   }
 
-  return { supports: type => MAIL_COMMANDS.has(type), issue, issueVoucher, loginPayload, read, readOneKey, claim, claimOneKey, delete: del, deleteOneKey: delOneKey, detail };
+  return {
+    supports: type => MAIL_COMMANDS.has(type), issue, issueVoucher,
+    enqueueToRoleInTransaction, publishNewMail,
+    loginPayload, read, readOneKey, claim, claimOneKey, delete: del, deleteOneKey: delOneKey, detail
+  };
 }

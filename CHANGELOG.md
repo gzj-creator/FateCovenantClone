@@ -15,6 +15,7 @@
 - 新增唯一角色经验入口 `personal-server/game/role-level.mjs`：一次奖励可跨多级，满级经验封顶，主线与道具/奖励经验共用同一实现。
 - 完善功能开放规则引擎与取证资产：`config/fun-open-rules.json` 现覆盖客户端 FunOpen 全 523 行并记录来源 SHA256，164 行由字节码证实为等级/创角天数/服务器日条件，359 行证据不足严格关闭；7000 申请按权威规则逐条复核。新增 `tools/extract-fun-open-rules.mjs` 与 LuaJIT 33-bit number/upvalue 边界回归测试。
 - 新增 E9-2 命令门禁取证工具与 185 条静态映射：14 条由同一 prototype 的 `FunOpenMgr:IsOpen` 与命令发送直接证明，171 条要求同管理器唯一 FunOpen id 且命名吻合；246 个多候选或无可归因发送点保留为缺口，不生成猜测规则。
+- 新增活动统一结算服务：榜单快照、逐角色补发邮件、个人期数状态与 `(act_id,period_no,role_id,step)` marker 同 SQLite 事务提交，提交后仅推送一次；支持显式 `none`、`clear_on_settle`、`keep_until_close` 货币策略，未登记家族保持 running 且不发奖。
 - 新增活动生命周期引擎 `activity-lifecycle.mjs`：预告/进行/领奖/展示/关闭状态机，`read/operate/claim` 门禁，暂停、强开、延长、区服资格、玩家条件与父子活动判定。
 - 新增通用调度器 `scheduler.mjs`：`scheduler_job` 表、到期执行、失败重试计数与启动补跑基础。
 - 新增活动实例/覆盖/结算/审计持久化 `activity-store.mjs` 与运行时 `activity-runtime.mjs`：登录写入实例、每分钟推进阶段、离开进行态幂等结算，并支持活动窗口预演。
@@ -27,6 +28,7 @@
 
 - 测试分层进一步收紧：英雄技能校验、真实网关和多实例登录等 83 个耗时文件移入慢测清单，`npm test` 快速套件从 115 个文件降到 37 个，实测约 14 秒。
 - 调度器支持 recurring job：handler 返回 `nextDueAt` 时，在完成标记之后重新登记下一轮，避免完成更新覆盖新任务。
+- 活动运行时登录同步改为不拥有阶段：只刷新可复现窗口，调度器持有的 running/claim/show/closed 状态不会被登录回滚；运营延长保留原期号，暂停/强制关闭不再误触发结算。
 - `serverDayNumber` 改为统一业务日口径：开服自然日锚定第 1 天，05:00 切换；18:00 开服次日 05:00 进入第 2 天，00:00 开服不再整体平移活动窗口。
 
 ### Fixed

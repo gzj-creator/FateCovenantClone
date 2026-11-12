@@ -49,7 +49,7 @@
 - [x] P0-4-3 状态机：未开始/预告/进行/领奖/展示/关闭；离开进行时结算。
 - [x] P0-4-4 统一 `activityGate(actId, read|operate|claim)`。
 - [~] P0-4-5 验收 T6–T13。
-  已覆盖 T6/T7/T11/T12 的引擎单测；`activity-runtime.mjs` 在登录时写入实例、调度器按分钟推进阶段，并以 `(act_id, period_no, role_id, step)` 幂等记录生命周期结算。T8/T9 的家族奖励邮件、T10 延长后的个人进度、T13 新期家族计数清零仍待各家族 `settle` 接口接入。
+  已覆盖 T6/T7/T11/T12 的引擎单测；2026-11-13 新增统一 `activity-settlement-service.mjs`，以 `(act_id, period_no, role_id, step)` 将榜单快照、逐角色补发邮件、个人状态和幂等 marker 同事务提交，邮件提交后推送；T8/T9/T10/T13 合成家族专项已通过。真实 43 家族仍缺榜单/补发/专属货币语义，网关 registry 为空并保持 fail closed。
 
 ## 5. 调度与运营（ops §5–§6）
 

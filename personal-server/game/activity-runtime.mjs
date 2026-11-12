@@ -1,5 +1,5 @@
 import { serverDayNumber } from './activity-calendar.mjs';
-import { activityGate, evaluateActivity } from './activity-lifecycle.mjs';
+import { activityGate, applyOverride, evaluateActivity } from './activity-lifecycle.mjs';
 
 function seconds(value) {
   const number = Number(value);
@@ -66,10 +66,11 @@ export function createActivityRuntime({
       const override = activityStore.activeOverride?.(srv, actId, at) ?? null;
       const result = evaluate(actId, at, { activity, window, funOpen: open, role, override });
       const periodNo = Math.max(1, serverDayNumber(calendar.serverOpenedAt, window.start));
-      activityStore.upsertInstance({
+      const effectiveWindow = result.window ?? window;
+      activityStore.observeInstance({
         serverId: srv, actId, periodNo, family: String(config.type ?? config.func ?? ''),
-        previewAt: window.start, openAt: window.start, closeAt: window.end,
-        showUntil: window.end, stage: result.status
+        previewAt: effectiveWindow.start, openAt: effectiveWindow.start, closeAt: effectiveWindow.end,
+        showUntil: effectiveWindow.end, stage: result.status
       });
       changed.push({ actId, periodNo, stage: result.status, reason: result.reason ?? null });
     }
@@ -86,7 +87,11 @@ export function createActivityRuntime({
       if (row.show_until == null && row.close_at == null) continue;
       const window = { start: Number(row.open_at ?? row.preview_at), end: Number(row.show_until ?? row.close_at) };
       if (!(window.start > 0 && window.end > window.start)) continue;
-      const result = evaluate(Number(row.act_id), at, { window });
+      const override = activityStore.activeOverride?.(srv, Number(row.act_id), at) ?? null;
+      // Pause and force-close are visibility switches, not lifecycle closure.
+      // Keep the running instance intact so progress survives resume.
+      if (override?.kind === 'pause' || override?.kind === 'force_close') continue;
+      const result = evaluate(Number(row.act_id), at, { window, override });
       if (result.status === row.stage) continue;
       const previous = row.stage;
       const change = { actId: Number(row.act_id), periodNo: Number(row.period_no), from: previous, to: result.status };
@@ -113,8 +118,14 @@ export function createActivityRuntime({
   function gate(actId, need, at = clock()) {
     const row = activityStore.instance(serverId(), Number(actId));
     if (!row) return false;
-    if (row.open_at != null && Number(row.open_at) > at) return false;
-    if (row.show_until != null && at >= Number(row.show_until)) return false;
+    const override = activityStore.activeOverride?.(serverId(), Number(actId), at) ?? null;
+    if (override?.kind === 'pause' || override?.kind === 'force_close') return false;
+    const base = row.open_at != null && row.show_until != null
+      ? { start: Number(row.open_at), end: Number(row.show_until) }
+      : null;
+    const resolved = applyOverride(base, override, at);
+    if (resolved.closed || !resolved.window) return false;
+    if (resolved.window.start > at || at >= resolved.window.end) return false;
     return activityGate(row.stage, need);
   }
 

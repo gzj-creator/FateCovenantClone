@@ -47,6 +47,7 @@ import { loadFunOpenRules } from './feature-rules.mjs';
 import { createCommandRegistry, loadCommandCatalog, loadCommandGateRules } from './command-registry.mjs';
 import { createActivityStore } from './activity-store.mjs';
 import { createActivityRuntime } from './activity-runtime.mjs';
+import { createActivitySettlementService } from './activity-settlement-service.mjs';
 import { createScheduler } from './scheduler.mjs';
 import { backupSqlite } from './db-backup.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -694,6 +695,7 @@ export function createLocalGame({
   const commandRegistryHasGates = commandRegistry.coverage().requires > 0;
   const activityStore = createActivityStore({ store });
   const scheduler = createScheduler({ store, now: clock, logger });
+  let activitySettlement = null;
   const activityRuntime = createActivityRuntime({
     store, calendar, tables, activityStore, featureService: features, now: clock, logger,
     onSettle: change => {
@@ -702,9 +704,13 @@ export function createLocalGame({
         prefix: `activity-${change.actId}-${change.periodNo}`,
         now: clock
       });
+      activitySettlement.settle(change);
       logger({ event: 'activity_settled', ...change, backup: file });
     },
-    onStageChanged: change => logger({ event: 'activity_stage_online_sync', ...change })
+    onStageChanged: change => {
+      activitySettlement.onStageChanged(change);
+      logger({ event: 'activity_stage_online_sync', ...change });
+    }
   });
   scheduler.schedule('activity.tick', secondsClock());
   scheduler.start(job => {
@@ -784,7 +790,8 @@ export function createLocalGame({
   };
   const timeTemple=createTimeTempleService({store,codec,publish});
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
-  const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
+  const mail=createMailService({store,codec,tables,voucher,publish,logger});
+  activitySettlement=createActivitySettlementService({store,activityStore,mail,families:[],now:clock,logger});
   const standardPermit=createPermitService({codec,tables,now:secondsClock});
   const monthPermit=createMonthPermitService({codec,tables});
   const monthPermitRepair=store.hasRoles()

@@ -50,6 +50,13 @@ export function activityStateAt(config, window, at) {
     }
     offset += days;
   }
+  // An operational extend keeps the activity's final declared stage alive
+  // through the overridden end. Without this, state_end_day would still close
+  // a running activity at the original relative-day boundary.
+  if (window?.kind === 'override-extend' && now < end && states.length) {
+    const status = STATE_STATUS.get(states.at(-1));
+    if (status) return { status, visible: true, stateId: states.at(-1), start: start + offset * DAY_SECONDS, end, index: states.length - 1 };
+  }
   return closed('after_last_state');
 }
 
@@ -62,7 +69,7 @@ export function activityGate(status, need) {
   }
 }
 
-function applyOverride(baseWindow, override, at) {
+export function applyOverride(baseWindow, override, at) {
   if (!override) return { window: baseWindow, forcedOpen: false };
   if (override.kind === 'pause' || override.kind === 'force_close') return { closed: true };
   if (override.kind === 'force_open') {
@@ -82,6 +89,11 @@ function applyOverride(baseWindow, override, at) {
     return { window: baseWindow && end > baseWindow.start
       ? { ...baseWindow, end, kind: 'override-extend' }
       : baseWindow };
+  }
+  if (override.kind === 'close_early') {
+    const cutoff = seconds(override.at);
+    const end = baseWindow ? Math.min(seconds(baseWindow.end), cutoff) : 0;
+    return { window: baseWindow && end > baseWindow.start ? { ...baseWindow, end, kind: 'override-close' } : null };
   }
   return { window: baseWindow };
 }
