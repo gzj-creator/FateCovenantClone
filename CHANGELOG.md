@@ -36,6 +36,7 @@
 
 ### Docs
 
+- 新增 `docs/plans/pending-work-20261112.md`：按“明确拒绝 / 待补证据 / 横切缺口 / 活动入口 / 仅待验收”五类口径汇总全项目待实现项，登记 13 个工作块 276 张卡 / 1252 条缺失命令的交付与拒绝清单，并盘点 10 个 worktree 的文档合并状态。
 - 记录独立升星的完整表字段、任务类型、领取位、版本恢复、事务/幂等/回滚和当前免费行边界，见 `agent/workflow/fixes/up-star-gift-20261111.md`。
 - 记录 ActShop 104801 数据链与 104802/104803 证据缺口，见 `agent/workflow/fixes/act-shop-20261112.md`；新增 43 家族/83 命令的活动资产审计矩阵，见 `agent/workflow/fixes/activity-asset-audit-20261112.md`。
 - 记录新超凡精灵百抽的登录块编码根因、固定池目标语义、精灵/魔灵星级来源、类型 104 边界与 APK 待验收项，见 `agent/workflow/fixes/hundred-draw-spirit-star-20261111.md`。
