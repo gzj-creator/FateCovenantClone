@@ -131,30 +131,28 @@ npm run test:deployment --prefix .\personal-server
 
 该测试会复制发布目录、主动排除 SQLite，从空的外部目录启动完整服务，并检查开服档案、
 区服响应、运行库创建、数据库不进入发布副本以及公网模式缺失持久目录时拒绝启动。
-## 多区服（命运三服）
+## 多区服（当前只启用命运三服）
 
-一份 `config/public-server.json` 现在同时描述命运二服和命运三服。每个区服仍是独立进程、
-独立数据目录和独立端口；`FC_ACTIVE_SERVER_ID` 指定本进程服务哪一区服，区服接口对所有
-区服进程返回完整列表，客户端因此在选择界面能看到两个区服。
+`config/public-server.json` 当前只广播命运三服。2026-11-12 用户要求关闭命运二服，并
+让命运三服占用二服原有的公网端口。多区服代码仍保留：将来重新启用两个区服时，每个区服
+使用独立进程、数据目录和游戏端口，`FC_ACTIVE_SERVER_ID` 指定本进程服务的区服。
 
-| 项目 | 命运二服 | 命运三服 |
-| --- | --- | --- |
-| 区服 ID / 角色 | `2` / `100002` | `3` / `100004` |
-| 开服时间 | `2026-11-11T00:00:00+08:00` | `2026-11-12T18:00:00+08:00` |
-| 发布档案 | `public-realm-2-20261110` | `public-realm-3-20261112` |
-| 活动日历 | `config/activity-calendar.json` | `config/activity-calendar-realm-3.json` |
-| 数据目录（裸机） | `/data/disk1/game/data` | `/data/disk1/game/data-realm-3` |
-| 端口 | 18880/18881/18882/19090，管理 18883 | 18890/18891/18892/19091，管理 18893 |
-| systemd 单元 | `fate-covenant-realm-2.service` | `fate-covenant-realm-3.service` |
+| 项目 | 当前值 |
+| --- | --- |
+| 区服 ID / 角色 | `3` / `100004` |
+| 区服名称 | 命运三服 |
+| 开服时间 | `2026-11-12T18:00:00+08:00` |
+| 发布档案 | `public-realm-3-20261112` |
+| 活动日历 | `config/activity-calendar-realm-3.json` |
+| 数据目录（裸机） | `/data/disk1/game/data-realm-3-rollover` |
+| 公网端口 | 18880/18881/18882/19090，管理 18883 |
+| systemd 单元 | `fate-covenant-realm-3.service` |
 
-公网只需在云安全组额外放行 `19091`。客户端继续用 `18880/18881/18882` 登录并取区服列表，
-选中命运三服后连接 `19091`；`18890/18891/18892/18893` 是区服三自身的 SDK、列表、更新和
-管理端口，无需对公网开放。
+客户端使用 `18880` SDK、`18881` 区服列表、`18882` 更新检查和 `19090` 游戏网关；这些端口
+原先已经对公网开放，不需要再新增安全组规则。管理页只在宿主机 `127.0.0.1:18883` 监听。
 
-命运三服的 SDK 会话复用命运二服，因为客户端公网只配置一个 SDK 地址。区服三进程额外设置
-`FC_SDK_SESSION_SOURCE=/data/disk1/game/data/sdk-sessions.local-only.json`，按文件修改时间
-增量读取主区服会话；它不复制、不写回该文件，自己的 `sdk-sessions.local-only.json` 只在有人
-直接访问它的 SDK 端口时才写入。
+命运三服现在直接签发和验证自己的 SDK 会话，不再读取二服的 `sdk-sessions.local-only.json`。
+`fate-covenant-realm-2.service` 保留在机器上供将来恢复，但保持停止并禁用。
 
 裸机发布与切换：
 
@@ -168,19 +166,18 @@ rsync -a --exclude node_modules --exclude "*.sqlite*" --exclude "*.local-only.*"
 git -C <repo> rev-parse HEAD > "$REL/RELEASE_COMMIT"
 ```
 
-停服备份整个数据目录，再原子切换 `current` 并重启两个单元：
+停服备份整个数据目录，再原子切换 `current` 并只启动当前单元：
 
 ```bash
 sudo systemctl stop fate-covenant-realm-2 fate-covenant-realm-3
 tar -czf "backups/pre-$TS/data.tar.gz" -C /data/disk1/game data data-realm-3
 ln -sfn "releases/release-$TS" /data/disk1/game/current.next
 mv -T /data/disk1/game/current.next /data/disk1/game/current
-sudo systemctl start fate-covenant-realm-2 fate-covenant-realm-3
+sudo systemctl start fate-covenant-realm-3
 ```
 
-开服前对两个区服分别跑活动时间审计，两者都必须 `Result: PASS`：
+启动前对当前区服跑活动时间审计，结果必须为 `Result: PASS`：
 
 ```bash
-FC_ACTIVITY_CALENDAR_CONFIG=config/activity-calendar.json         npm run audit:activity-schedule --prefix personal-server
 FC_ACTIVITY_CALENDAR_CONFIG=config/activity-calendar-realm-3.json npm run audit:activity-schedule --prefix personal-server
 ```

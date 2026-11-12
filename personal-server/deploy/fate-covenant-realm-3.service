@@ -16,12 +16,6 @@ Environment=FC_LOCAL_DATA=/data/disk1/game/data-realm-3
 Environment=FC_ADMIN_LISTEN_HOST=127.0.0.1
 Environment=FC_ACTIVE_SERVER_ID=3
 Environment=FC_ACTIVITY_CALENDAR_CONFIG=/data/disk1/game/current/config/activity-calendar-realm-3.json
-Environment=FC_SDK_SESSION_SOURCE=/data/disk1/game/data/sdk-sessions.local-only.json
-Environment=FC_SDK_PORT=18890
-Environment=FC_SERVER_LIST_PORT=18891
-Environment=FC_STARTUP_PORT=18892
-Environment=FC_GAME_PORT=19091
-Environment=FC_ADMIN_PORT=18893
 ExecStart=/usr/bin/node /data/disk1/game/current/local-server.mjs --public
 Restart=always
 RestartSec=3s

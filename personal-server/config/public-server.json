@@ -11,17 +11,8 @@
     "admin": 18883
   },
   "publicSdkUrl": "http://140.143.142.251:18880",
-  "activeServerId": 2,
+  "activeServerId": 3,
   "servers": [
-    {
-      "id": 2,
-      "name": "命运二服",
-      "roleId": 100002,
-      "roleName": "命运旅者",
-      "launchProfileId": "public-realm-2-20261110",
-      "launchAt": "2026-11-11T00:00:00+08:00",
-      "extranetIp": "140.143.142.251:19090"
-    },
     {
       "id": 3,
       "name": "命运三服",
@@ -29,7 +20,7 @@
       "roleName": "命运旅者",
       "launchProfileId": "public-realm-3-20261112",
       "launchAt": "2026-11-12T18:00:00+08:00",
-      "extranetIp": "140.143.142.251:19091"
+      "extranetIp": "140.143.142.251:19090"
     }
   ]
 }
