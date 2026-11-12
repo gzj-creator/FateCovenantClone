@@ -33,7 +33,7 @@
 
 ### Docs
 
-- 记录独立限时升星的线上登录缺口、客户端协议、`UpStarGiftTable` 查找范围、同类拒绝家族证据等级与剩余领取限制，见 `agent/workflow/fixes/up-star-gift-20261111.md`。
+- 记录独立限时升星的线上登录缺口、客户端协议、`UpStarGiftTable` 查找范围、同类拒绝家族证据等级，并落地可执行的剩余待实现清单与验收边界，见 `agent/workflow/fixes/up-star-gift-20261111.md`。
 - 记录新超凡精灵百抽的登录块编码根因、固定池目标语义、精灵/魔灵星级来源、类型 104 边界与 APK 待验收项，见 `agent/workflow/fixes/hundred-draw-spirit-star-20261111.md`。
 - 记录活动参考服开服、目标服开服、登录模板锚点三种时间基准，以及全部活动审计和 4 个无法静态还原配置项的边界。
 - 记录百抽奖券 `835802` 的领取、抽取与 SQLite 持久化真实 TCP 回归，以及缺失 `ActShopTable` 的明确拒绝边界。
