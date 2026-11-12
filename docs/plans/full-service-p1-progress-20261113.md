@@ -1,45 +1,46 @@
-# 全功能计划 P1 实施进度（2026-11-13）
+# 全功能计划 P1 工作进度（2026-11-13）
 
-基线：`main@913b3a95288476e8dfe20b33a9c138ecab1faef0`。
-分支：`feat/full-service-p1-20261113`。
+基线：`main@913b3a9`。本轮 worktree：`.worktree/full-service-p1-20261113`；分支：
+`feat/full-service-p1-20261113`。标记：`[x]` 已完成并有测试，`[~]` 部分完成，
+`[!]` 证据或客户端验收缺口。
 
-标记：`[x]` 已完成并有测试，`[~]` 进行中，`[!]` 证据缺口或待外部验收。
+## 已完成
 
-## E9 取证
+- [x] E9-1 客户端 FunOpen 表：导出 523 行、271 个唯一断言；164 行转为可执行规则，
+  359 行因表达式/组合/服务端时机等证据不足 fail closed。证据见
+  `agent/workflow/evidence/E9-1.md`。
+- [x] E9-2 命令到功能 id 映射：静态扫描 10,928 个 Lua 文件，生成 185 条有证据门禁规则；
+  14 条同 prototype 直接证明，171 条同管理器唯一 id 且命名吻合。246 个发送点保留缺口。
+  `21008/84410` 的 access 修正为 write。证据见 `agent/workflow/evidence/E9-2.md`。
+- [~] 活动统一结算：`activity-settlement-service.mjs` 已把榜单快照、逐角色邮件补发、
+  个人期数状态和幂等 marker 放入同一事务，提交后推送。T8/T9/T10/T13 合成 family
+  专项通过；43 个真实活动家族仍未登记 `settle` adapter，未知 family 保持 running 且不发奖。
+- [x] 活动登录/在线同步：模块 92/183 使用生命周期权威结果；ActFrame 阶段发送 3304，
+  旧 ActivityTable 发送 3301；`closed` 无可信客户端值时不猜值。证据见
+  `agent/workflow/evidence/E9-4.md`。
+- [x] P0-2-3 等级事件：事务事件总线、`role.levelUp`、FunOpen 同事务重算、属性/战力缓存
+  失效和 COMMIT 后定向 7201 已接通。定向 12/12、快速全量 236 项通过；证据见
+  `agent/workflow/evidence/P0-2-3.md`。
+- [!] 等级/战力没有已证实的专用 S2C 推送类型；当前不伪造。资源变化沿用现有业务回包，
+  属性变化保证缓存失鲜，7201 仍缺独立用户动作/APK 视觉验收。
 
-- [x] E9-1 FunOpen 表完整导出：523 行、271 个唯一断言、来源与生成资产均记录 SHA256。
-- [x] E9-1 可执行条件：164 行由 MethodScript/MethodTable 字节码证实；未知/空条件严格关闭。
-- [~] E9-2 命令/模块到 FunOpen id 的映射：已扫描 10,928 个 Lua 文件，454 个 FunOpen 模块完成解析；185 条命令有可复核规则（14 条同 prototype、171 条同管理器唯一 id），246 条发送点保持证据缺口；`21008/84410` 的 read 初值已修正为 write。
-- [!] E9-2 剩余缺口：65 个发送点存在多个候选 funId，181 个无可归因 id，11 个 FunOpen 模块仍受复杂字节码边界限制；未生成猜测规则。证据见 `agent/workflow/evidence/E9-2.md`。
-- [!] E9-1 剩余 359 行：多断言组合、复杂表达式、目标 2、`GetPassedSection` 等尚无充分证据，保持 fail closed。
-  证据见 `agent/workflow/evidence/E9-1.md`。
+## 待完成 P0
 
-## 活动统一结算
+- [ ] 连接上限配置化，禁止网关源码内固定 8；补生产入口、环境配置、非法值与边界测试。
+- [ ] 推送目标强制为角色/公会/全服三选一，移除隐式广播；审查现有 `publish` 和
+  `result.pushes` 调用并补多连接定向测试。
+- [ ] 命令注册表对账实际派发 owner：输出未注册、重复 owner、注册无 `supports`、不可达
+  命令和编码/回包元数据差异；1407 条逐条有明确状态，不把证据缺口记为已实现。
+- [~] 命令功能门禁目前只覆盖 185 条静态映射，其余未声明项仍需在 E9-2 证据增加后补齐；
+  读写初值只对有明确 setter 证据的两条完成修正。
 
-- [~] T8 在线跨活动结束：操作拒绝、榜单冻结、补发邮件且只发一次。
-  `activity-settlement-service.mjs` 已提供统一 `settle(ctx)`：榜单快照、逐角色邮件和个人状态均与 step 幂等标记同事务提交，邮件只在该事务提交后推送；测试家族覆盖 clear/none/keep 三种显式货币策略。
-- [~] T9 结算中途重启：重启后补完且不重复发奖。
-  专项测试在后段 step 注入失败，重开后只补未完成 step；已提交邮件保持一封且 marker 全部落库。
-- [~] T10 进行中延长：期号和个人进度保持。
-  `extend` 保留 `(act_id, period_no)` 和 running 阶段至新结束时间；登录只刷新窗口，不回滚调度器阶段。
-- [~] T13 进入新期：期内计数清零，显式跨期累计保留。
-  新期只继承 family 明确列出的 cumulative key；counters/claims/currency 默认清空。
-- [!] 实际活动家族 adapter：现有 43 个拒绝家族没有足够的榜单奖励、未领奖、专属货币语义证据，网关 registry 当前为空；未知 family 保持 running、不发奖、不推进阶段。不能把合成 family 测试当作 43 家族已完成。
+## P1 入口条件
 
-## 活动运行时与在线同步
+P0 横切项和全量验证完成后再进入 P1 属性管线、敌方数值、完整战报和统一战斗模式。
+活动真实家族 adapter、7201/3301/3304 APK 视觉和陈旧命令证据继续保留 `[!]`。
 
-- [x] 模块 92/183 接回活动运行时可见性。
-  登录副本会移除生命周期判定为 `closed` 的活动，并写入权威 `cur_state_id`/`cur_stage_id`、当前状态进入时间与有效窗口；旧登录快照不回写。模块 183 同时应用 `extend/force_open` 的运行窗口。
-- [x] E9-4 推送类型取证后实现在线阶段同步。
-  已证实 ActFrame 使用 `3304/pb_act_frame_stage_push`、旧 `ActivityTable` 使用 `3301/pb_act_state_change_back`；在线可见阶段变化按配置来源发送真实 id/阶段/窗口。`closed` 没有客户端数值，严格跳过并记录 `closed_stage_not_mapped`。证据见 `agent/workflow/evidence/E9-4.md`。
-- [!] E9-4 运行验收：3301/3304 目前只有静态 wire/handler/schema 证据，尚无原服真实流量或 APK 视觉样本；3302/3303 因缺少可信变更输入保持不发。
+## 验证与安全边界
 
-## P0-2-3 等级升级后续动作
-
-- [ ] 事件总线、`role.levelUp` 订阅、属性/战力缓存失效、事务提交后推送。
-
-## P0 横切项
-
-- [ ] 连接上限配置化。
-- [ ] 推送目标强制为角色/公会/全服三选一。
-- [ ] 命令注册表与实际 `supports` 派发覆盖对账。
+- 2026-11-13 `npm test`：49 文件、236 项，pass 234 / fail 0 / skipped 2。
+- 本轮未启停线上服务、未读写线上数据库、未操作模拟器/ADB/APK。
+- 所有临时验证只使用源码、临时 SQLite 和组件代码；缺证据仍按 fail closed 处理。

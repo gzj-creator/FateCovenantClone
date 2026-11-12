@@ -56,6 +56,7 @@ export function createGameFixture(t, codec, options = {}) {
     seed,
     codec,
     serverOpenedAt: options.serverOpenedAt,
+    eventBus: options.eventBus,
     now: options.now
   });
 
@@ -70,7 +71,10 @@ export function createGameFixture(t, codec, options = {}) {
     get store() { return store; },
     open() {
       store.close();
-      store = createGameStore({ databasePath, seed, codec, serverOpenedAt: options.serverOpenedAt, now: options.now });
+      store = createGameStore({
+        databasePath, seed, codec, serverOpenedAt: options.serverOpenedAt,
+        eventBus: options.eventBus, now: options.now
+      });
       return store;
     }
   };

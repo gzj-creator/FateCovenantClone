@@ -11,7 +11,7 @@ import { createHeroBondService } from './hero-bond-service.mjs';
 import { createHeroSupportService } from './hero-support-service.mjs';
 import { createHeroRentService } from './hero-rent-service.mjs';
 import { createHeroMasteryService } from './hero-mastery-service.mjs';
-import { buildLineupAttrInfo } from './attribute-service.mjs';
+import { createLineupAttributeCache } from './attribute-service.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
@@ -51,6 +51,7 @@ import { createActivitySettlementService } from './activity-settlement-service.m
 import { createActivityOnlineSync } from './activity-online-sync.mjs';
 import { createScheduler } from './scheduler.mjs';
 import { backupSqlite } from './db-backup.mjs';
+import { createEventBus } from './event-bus.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { readEquipTables } from '../config/equip-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
@@ -318,19 +319,22 @@ export function createLocalGame({
       modules: { value: [...modules.entries()], improper: false },
       rolePb, guides: {}, lineups };
   }
+  const eventBus = createEventBus({ now: clock, logger });
   const store = createGameStore({
     databasePath: databasePath ?? path.join(path.dirname(statePath), 'game.local-only.sqlite'),
     legacyStatePath: statePath,
     seed,
     codec,
     serverOpenedAt: openedAt,
-    launchProfile: persistedLaunchProfile
+    launchProfile: persistedLaunchProfile,
+    eventBus
   });
   if (store.empty && launchProfileId == null) {
     throw new Error('Empty public realms require a named launch profile');
   }
   const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
   const attributeTables = readAttributeTables();
+  const attributePowerCache = createLineupAttributeCache();
   const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
   const onlineGiftTables = readOnlineGiftTables();
   const fantasyActTables = loadFantasyActTables();
@@ -792,6 +796,23 @@ export function createLocalGame({
       : [...(subscribers.get(Number(targetRoleId)) ?? [])];
     for(const send of targets){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}
   };
+  eventBus.on('role.levelUp', event => {
+    const model = eventBus.currentModel();
+    if (!model) throw new Error('role.levelUp fired without a role transaction');
+    const added = features.reconcileModel(model);
+    attributePowerCache.invalidate(event.roleId);
+    const notifications = features.onlineNotificationsForIds(added, model);
+    if (notifications.length) {
+      eventBus.afterCommit(() => {
+        for (const notification of notifications) publish(notification.type, notification.data, event.roleId);
+        logger({
+          event: 'role_level_up_feature_push', roleId: event.roleId, from: event.from, to: event.to,
+          funOpenIds: added, pushTypes: notifications.map(item => item.type), targetRoleId: event.roleId
+        });
+      });
+    }
+    logger({ event: 'role_level_up_reconciled', roleId: event.roleId, from: event.from, to: event.to, source: event.source, funOpenIds: added });
+  });
   const timeTemple=createTimeTempleService({store,codec,publish});
   const voucher=localWallet?createVoucherService({store,tables,logger}):undefined;
   const mail=createMailService({store,codec,tables,voucher,publish,logger});
@@ -1698,7 +1719,7 @@ export function createLocalGame({
               if (Number.isSafeInteger(argument) && argument > 0) lineupType = argument;
             } catch {}
           }
-          const value = buildLineupAttrInfo({ model: store.read(), lineupType, heroTables, attributeTables });
+          const value = attributePowerCache.get({ model: store.read(), lineupType, heroTables, attributeTables });
           send(seq, pack('pb_attr_lineup_all_info', value));
           log({ event: 'role_attr_info_sent', type, seq, lineupType, lineupPower: value.lineup_attr.lineup_power, entities: value.lineup_attr.attr_list.length });
         } catch (error) {

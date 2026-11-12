@@ -11,6 +11,11 @@
 
 ### Added
 
+- 新增事务域事件总线与 `role.levelUp` 流水线：角色经验奖励和主线结算在同一事务内触发
+  FunOpen 重算与属性/战力缓存失效，提交后按角色定向发送已取证的 `7201`；回滚不会执行
+  在线推送，事件包含 roleId、服务器日、来源和幂等键。
+- 新增 1316 属性/战力缓存：角色等级、编队和英雄成长状态共同组成 key，
+  等级事件主动失效，直接状态变化也会在下次查询时失鲜重算。
 - 新增统一时间基准 `personal-server/game/time.mjs`：自然日、业务日（05:00）、服务器日与周起点集中计算，业务代码不再裸写 `10800/18000/28800` 等偏移；新增源码扫描测试防止回退。
 - 新增唯一角色经验入口 `personal-server/game/role-level.mjs`：一次奖励可跨多级，满级经验封顶，主线与道具/奖励经验共用同一实现。
 - 完善功能开放规则引擎与取证资产：`config/fun-open-rules.json` 现覆盖客户端 FunOpen 全 523 行并记录来源 SHA256，164 行由字节码证实为等级/创角天数/服务器日条件，359 行证据不足严格关闭；7000 申请按权威规则逐条复核。新增 `tools/extract-fun-open-rules.mjs` 与 LuaJIT 33-bit number/upvalue 边界回归测试。
@@ -35,6 +40,8 @@
 
 ### Fixed
 
+- 修复角色经验奖励触发功能开放后仍用旧 modules map 覆盖模块 3 的问题：领域事件在 action
+  返回后统一 flush，所有订阅写入参与同一最终持久化快照。
 - 修正命令目录的读写启发式：`21008 req_change_base_info` 与 `84410 req_martial_club_set_team_info` 由 read 改为 write；强写操作词现在优先于 `_info` 等读后缀。
 - 修正 LuaJIT 多 root prototype 解析与 33-bit number 序列化边界，补充跨 bit-6 continuation 的往返测试。
 - 修复新账号只改角色等级却继承旧登录模块的问题：每次创建账号现在会生成完整的 1 级起始档，包括两名初始英雄、空任务/装备/战令进度、120 体力、初始编队和正确的通行证开服日；同服连续注册的账号保持独立角色。
@@ -62,6 +69,9 @@
 
 ### Docs
 
+- 新增 `docs/plans/full-service-p1-progress-20261113.md` 与
+  `agent/workflow/evidence/P0-2-3.md`，记录 E9-1/E9-2、活动结算/在线同步、等级事务事件和
+  剩余 P0 横切项；属性/战力专用 S2C 与 APK 视觉仍明确标记证据缺口。
 - 新增 `docs/plans/pending-work-20261112.md`：按“明确拒绝 / 待补证据 / 横切缺口 / 活动入口 / 仅待验收”五类口径汇总全项目待实现项，登记 13 个工作块 276 张卡 / 1252 条缺失命令的交付与拒绝清单，并盘点 10 个 worktree 的文档合并状态。
 - 记录独立升星的完整表字段、任务类型、领取位、版本恢复、事务/幂等/回滚和当前免费行边界，见 `agent/workflow/fixes/up-star-gift-20261111.md`。
 - 记录 ActShop 104801 数据链与 104802/104803 证据缺口，见 `agent/workflow/fixes/act-shop-20261112.md`；新增 43 家族/83 命令的活动资产审计矩阵，见 `agent/workflow/fixes/activity-asset-audit-20261112.md`。

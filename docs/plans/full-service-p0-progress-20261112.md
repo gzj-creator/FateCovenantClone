@@ -26,8 +26,11 @@
 
 - [x] P0-2-1 唯一经验入口 `addRoleExp(role, amount, source)`，支持一次跨多级、满级封顶。
 - [x] P0-2-2 主线结算与道具/奖励经验走同一入口。
-- [~] P0-2-3 升级后动作：功能开放重算、等级属性失效、`role.levelUp` 事件、事务后推送。
-  `addRoleExp` 已提供 `onLevelUp` 回调；事件总线、属性缓存失效和登录/在线推送仍待 P0-6 接线。
+- [x] P0-2-3 升级后动作：功能开放重算、等级属性失效、`role.levelUp` 事件、事务后推送。
+  2026-11-13：事务事件总线已接通，订阅方在写库前重算 FunOpen 并失效属性/战力缓存，COMMIT
+  后只向该角色发送已取证的 7201。回滚丢弃 `afterCommit`；未发现属性/战力专用 S2C 类型，
+  不伪造推送。详见 `agent/workflow/evidence/P0-2-3.md` 与
+  `docs/plans/full-service-p1-progress-20261113.md`。
 - [x] P0-2-4 验收 T2/T3：一次跨 3 级、满级经验封顶。
 
 ## 3. 功能开放（ops §3）

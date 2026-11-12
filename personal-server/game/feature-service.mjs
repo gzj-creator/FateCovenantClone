@@ -93,13 +93,70 @@ export function createFeatureService({
     if (store.empty && !store.hasRoles()) return {
       supports: type => type === 7000,
       execute() { throw new GameError(5, 'No player role exists yet'); },
-      reconcile() { return []; }
+      reconcile() { return []; },
+      reconcileModel() { return []; },
+      onlineNotificationsForIds() { return []; }
     };
     const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3) ?? Buffer.alloc(0)));
     const current = openFeatureIds(login);
     const forced = overridesFor(store.state().serverId);
     const ids = [1039, 1322, 1348, 1537].filter(id => !current.has(id) && forced.get(id) !== 'force_close');
     if (ids.length) commit(ids);
+  }
+
+  function reconcileModel(model) {
+    const modules = new Map(model.state.modules.value);
+    const login = codec.unpack('res_fun_open_login', rawBinary(modules.get(3) ?? Buffer.alloc(0)));
+    const current = openFeatureIds(login);
+    const forced = overridesFor(model.state.serverId);
+    let add;
+    if (!ruleList.length) {
+      add = [...forced].filter(([id, mode]) => mode === 'force_open' && !current.has(id)).map(([id]) => id);
+    } else {
+      const evaluation = evaluateFunOpen({
+        ...model.role,
+        guides: model.guides,
+        heroInfo: model.heroInfo
+      }, ruleList, modelContext(model));
+      const visible = new Set([...evaluation.open].filter(id => forced.get(id) !== 'force_close'));
+      for (const [id, mode] of forced) if (mode === 'force_open') visible.add(id);
+      add = [...visible].filter(id => !current.has(id));
+      if (evaluation.denied.length) log({ event: 'fun_open_rule_denied', denied: evaluation.denied });
+    }
+    if (add.length) {
+      updateBits(login, add);
+      modules.set(3, serializedBinary(codec.pack('res_fun_open_login', login)));
+      model.state.modules.value = [...modules];
+    }
+    return add;
+  }
+
+  // 7201/res_notify_fun_open is the decoded online notification for a changed
+  // FunOpen target bitmap. The client's OpenFunAndNotify applies each entry's
+  // data as the replacement bitset; flag=1 is the add/set operation used by a
+  // newly unlocked function. No enable time is invented when the table has none.
+  function onlineNotificationsForIds(ids, model = store.read()) {
+    const wanted = new Set((ids ?? []).map(Number).filter(Number.isSafeInteger));
+    if (!wanted.size) return [];
+    const login = codec.unpack('res_fun_open_login', rawBinary(new Map(model.state.modules.value).get(3) ?? Buffer.alloc(0)));
+    const targets = new Map((login.target_list ?? []).map(target => [Number(target.target_tid), target]));
+    const targetIds = [...new Set([...wanted].map(id => Math.floor(id / 1000)))].sort((a, b) => a - b);
+    const notifications = [];
+    for (const targetTid of targetIds) {
+      const target = targets.get(targetTid);
+      if (!target) throw new GameError(5, `FunOpen target ${targetTid} is missing after reconciliation`);
+      const data = Buffer.from(target.fun_open_state ?? '', 'base64');
+      if (!data.length) throw new GameError(5, `FunOpen target ${targetTid} has an empty bitmap`);
+      notifications.push({
+        type: 7201,
+        targetTid,
+        data: codec.pack('res_notify_fun_open', {
+          target_tid: targetTid,
+          extra_ret_list: [{ flag: 1, data }]
+        })
+      });
+    }
+    return notifications;
   }
 
   return {
@@ -133,37 +190,9 @@ export function createFeatureService({
       log({ event: 'feature_request', ids: unique, allowed });
       return commit(allowed);
     },
-    reconcile() {
-      if (!ruleList.length) {
-        const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3) ?? Buffer.alloc(0)));
-        const current = openFeatureIds(login);
-        const forced = overridesFor(store.state().serverId);
-        const ids = [...forced].filter(([id, mode]) => mode === 'force_open' && !current.has(id)).map(([id]) => id);
-        if (ids.length) commit(ids);
-        return ids;
-      }
-      return store.transaction(model => {
-        const modules = new Map(model.state.modules.value);
-        const login = codec.unpack('res_fun_open_login', rawBinary(modules.get(3) ?? Buffer.alloc(0)));
-        const current = openFeatureIds(login);
-        const evaluation = evaluateFunOpen({
-          ...model.role,
-          guides: model.guides,
-          heroInfo: model.heroInfo
-        }, ruleList, modelContext(model));
-        const forced = overridesFor(model.state.serverId);
-        const visible = new Set([...evaluation.open].filter(id => forced.get(id) !== 'force_close'));
-        for (const [id, mode] of forced) if (mode === 'force_open') visible.add(id);
-        const add = [...visible].filter(id => !current.has(id));
-        if (add.length) {
-          updateBits(login, add);
-          modules.set(3, serializedBinary(codec.pack('res_fun_open_login', login)));
-          model.state.modules.value = [...modules];
-        }
-        if (evaluation.denied.length) log({ event: 'fun_open_rule_denied', denied: evaluation.denied });
-        return add;
-      });
-    },
+    reconcile() { return store.transaction(model => reconcileModel(model)); },
+    reconcileModel,
+    onlineNotificationsForIds,
     // force_close must not rewrite the role bitmap. Mask the outgoing module 3
     // copy instead so revoking the override restores the prior bitmap exactly.
     maskLogin(modules) {

@@ -437,3 +437,61 @@ export function buildLineupAttrInfo({ model, lineupType = 1, heroTables, attribu
     }
   };
 }
+
+function heroStateKey(hero) {
+  return [
+    hero?.uid, hero?.tid, hero?.level, hero?.star, hero?.breakthrough_level,
+    hero?.quality, hero?.rare, hero?.mastery_level, hero?.mastery_break
+  ].map(value => value ?? '').join(':');
+}
+
+export function lineupAttributeStateKey({ model, lineupType = 1 }) {
+  const lineup = primaryLineup(model, lineupType);
+  if (!lineup) return null;
+  return JSON.stringify({
+    roleId: model?.state?.roleId,
+    roleLevel: Number(model?.role?.level ?? 0),
+    lineup,
+    heroes: lineupFighters(model, lineup).map(entry => heroStateKey(entry.hero))
+  });
+}
+
+/** Per-role 1316 attribute/power cache. Transaction events invalidate a role;
+ * the state key also prevents stale reads from direct writes that occurred
+ * before their domain event was introduced. */
+export function createLineupAttributeCache({ maxEntries = 512, compute = buildLineupAttrInfo } = {}) {
+  if (!Number.isSafeInteger(maxEntries) || maxEntries < 1) throw new TypeError('Attribute cache size is invalid');
+  if (typeof compute !== 'function') throw new TypeError('Attribute cache compute function is invalid');
+  const entries = new Map();
+  let computed = 0, hits = 0, invalidations = 0;
+  const rolePrefix = roleId => `${roleId}|`;
+  function invalidate(roleId) {
+    const prefix = rolePrefix(Number(roleId));
+    for (const key of entries.keys()) if (key.startsWith(prefix)) entries.delete(key);
+    invalidations += 1;
+  }
+  function get(options) {
+    const roleId = Number(options?.model?.state?.roleId);
+    const stateKey = lineupAttributeStateKey(options);
+    if (!Number.isSafeInteger(roleId) || !stateKey) return compute(options);
+    const key = rolePrefix(roleId) + stateKey;
+    if (entries.has(key)) {
+      hits += 1;
+      const value = entries.get(key);
+      entries.delete(key);
+      entries.set(key, value);
+      return value;
+    }
+    computed += 1;
+    const value = compute(options);
+    entries.set(key, value);
+    while (entries.size > maxEntries) entries.delete(entries.keys().next().value);
+    return value;
+  }
+  return {
+    get,
+    invalidate,
+    clear() { entries.clear(); },
+    stats() { return { size: entries.size, computed, hits, invalidations }; }
+  };
+}

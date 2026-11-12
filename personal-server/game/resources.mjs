@@ -9,6 +9,7 @@ import {
 } from './energy.mjs';
 import { GameError } from './hero-progression.mjs';
 import { addRoleExp } from './role-level.mjs';
+import { emitRoleLevelUp } from './event-bus.mjs';
 
 const ITEM_GROUP_HANDLERS = new Map([
   // Module 6 containers are selected by the exact client resource type and
@@ -249,7 +250,10 @@ function grantRoleExp(model, amount, tables, options) {
   const result = addRoleExp(model.role, amount, {
     tables,
     source: options.roleExpSource ?? 'resource_reward',
-    onLevelUp: options.onRoleLevelUp ?? null
+    onLevelUp: levelEvent => {
+      emitRoleLevelUp(model, levelEvent);
+      options.onRoleLevelUp?.(levelEvent);
+    }
   });
   return result;
 }

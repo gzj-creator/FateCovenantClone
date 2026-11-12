@@ -174,7 +174,7 @@ function assertLaunchProfile(db, expected) {
   }
 }
 
-export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt, launchProfile = null, now = Date.now }) {
+export function createGameStore({ databasePath, legacyStatePath, seed, codec, serverOpenedAt, launchProfile = null, eventBus = null, now = Date.now }) {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
@@ -947,11 +947,22 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     transaction(action, roleId) {
       const id = activeRoleId(roleId);
       db.exec('BEGIN IMMEDIATE');
+      let eventScope = null;
       try {
-        const model = read(id), result = action(model, db);
+        const model = read(id);
+        eventScope = eventBus?.begin(model) ?? null;
+        const result = action(model, db);
         if (result && typeof result.then === 'function') throw new Error('Game transactions must be synchronous');
-        writeModel(model); db.exec('COMMIT'); return result;
-      } catch (error) { db.exec('ROLLBACK'); throw error; }
+        if (eventScope) eventBus.flush(eventScope);
+        writeModel(model);
+        db.exec('COMMIT');
+        if (eventScope) eventBus.commit(eventScope);
+        return result;
+      } catch (error) {
+        if (eventScope) eventBus.abort(eventScope);
+        db.exec('ROLLBACK');
+        throw error;
+      }
     },
     empty: emptyRealm,
     close() { db.close(); }
