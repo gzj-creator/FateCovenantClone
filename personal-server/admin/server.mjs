@@ -9,7 +9,17 @@ const assets = new Map([
   ['/admin.css', ['admin.css', 'text/css;charset=utf-8']]
 ]);
 
-export function createAdminService({ wallet, mail, voucher, token = randomBytes(32).toString('hex') }) {
+export function createAdminService({
+  wallet, mail, voucher, activityStore = null, featureOverrides = null,
+  activityRuntime = null, scheduler = null,
+  token = randomBytes(32).toString('hex')
+}) {
+  const bad = message => { const error = new Error(message); error.code = 1; throw error; };
+  const serverId = value => {
+    const id = Number(value ?? 1);
+    if (!Number.isSafeInteger(id) || id <= 0) bad('Invalid server ID');
+    return id;
+  };
   const server = http.createServer(async (req, res) => {
     const send = (status, value) => {
       if (res.headersSent) return;
@@ -43,7 +53,29 @@ export function createAdminService({ wallet, mail, voucher, token = randomBytes(
         if (!voucher) return send(503, { error: 'Voucher service is not configured' });
         return send(200, voucher.snapshot());
       }
-      if (req.method !== 'POST' || !['/api/credit', '/api/purchase', '/api/vouchers/issue'].includes(url.pathname)) return send(404, { error: 'Not found' });
+      if (req.method === 'GET' && url.pathname === '/api/activity') {
+        if (!activityStore) return send(503, { error: 'Activity store is not configured' });
+        const id = serverId(url.searchParams.get('serverId'));
+        return send(200, {
+          instances: activityStore.listInstances(id),
+          overrides: activityStore.listOverrides(id),
+          settlements: activityStore.listSettlements(id)
+        });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/feature/overrides') {
+        if (!featureOverrides) return send(503, { error: 'Feature override store is not configured' });
+        return send(200, { overrides: featureOverrides.list(serverId(url.searchParams.get('serverId'))) });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/scheduler') {
+        if (!scheduler) return send(503, { error: 'Scheduler is not configured' });
+        return send(200, { jobs: scheduler.list() });
+      }
+      const postPaths = new Set([
+        '/api/credit', '/api/purchase', '/api/vouchers/issue',
+        '/api/activity/override', '/api/activity/override/revoke', '/api/activity/preview', '/api/activity/tick',
+        '/api/feature/override', '/api/feature/override/revoke', '/api/scheduler/run'
+      ]);
+      if (req.method !== 'POST' || !postPaths.has(url.pathname)) return send(404, { error: 'Not found' });
       if (req.headers.origin && req.headers.origin !== 'http://' + host) return send(403, { error: 'Invalid origin' });
       if (!/^application\/json(?:;|$)/.test(req.headers['content-type'] ?? '')) return send(415, { error: 'JSON required' });
       const parts = [];
@@ -59,6 +91,57 @@ export function createAdminService({ wallet, mail, voucher, token = randomBytes(
       if (url.pathname === '/api/vouchers/issue') {
         if (!mail) return send(503, { error: 'Mail service is not configured' });
         return send(200, mail.issueVoucher(input));
+      }
+      if (url.pathname === '/api/activity/override') {
+        if (!activityStore) return send(503, { error: 'Activity store is not configured' });
+        if (['close_early', 'force_open'].includes(input.kind) && input.confirm !== true) bad('This override requires confirm=true');
+        return send(200, { id: activityStore.recordOverride({ ...input, serverId: serverId(input.serverId), operator: input.operator ?? 'admin' }) });
+      }
+      if (url.pathname === '/api/activity/preview') {
+        if (!activityStore || !activityRuntime) return send(503, { error: 'Activity runtime is not configured' });
+        const id = serverId(input.serverId), actId = Number(input.actId);
+        if (!Number.isSafeInteger(actId) || actId <= 0) bad('Invalid activity ID');
+        const row = activityStore.instance(id, actId);
+        const window = row ? { start: Number(row.open_at ?? row.preview_at), end: Number(row.show_until ?? row.close_at) } : null;
+        return send(200, {
+          before: row?.stage ?? null,
+          after: activityRuntime.evaluate(actId, Math.floor(Date.now() / 1000), {
+            window,
+            override: { kind: input.kind, startAt: input.startAt, endAt: input.endAt, conditions: input.conditions ?? [] }
+          })
+        });
+      }
+      if (url.pathname === '/api/activity/override/revoke') {
+        if (!activityStore) return send(503, { error: 'Activity store is not configured' });
+        const id = Number(input.id);
+        if (!Number.isSafeInteger(id) || id <= 0) bad('Invalid override ID');
+        activityStore.revokeOverride(id, input.operator ?? 'admin', input.reason ?? '');
+        return send(200, { revoked: id });
+      }
+      if (url.pathname === '/api/activity/tick') {
+        if (!activityRuntime) return send(503, { error: 'Activity runtime is not configured' });
+        return send(200, { changes: activityRuntime.tick() });
+      }
+      if (url.pathname === '/api/feature/override') {
+        if (!featureOverrides) return send(503, { error: 'Feature override store is not configured' });
+        return send(200, { id: featureOverrides.set({ ...input, serverId: serverId(input.serverId), operator: input.operator ?? 'admin' }) });
+      }
+      if (url.pathname === '/api/feature/override/revoke') {
+        if (!featureOverrides) return send(503, { error: 'Feature override store is not configured' });
+        const id = Number(input.id);
+        if (!Number.isSafeInteger(id) || id <= 0) bad('Invalid override ID');
+        featureOverrides.revoke(id, input.operator ?? 'admin', input.reason ?? '');
+        return send(200, { revoked: id });
+      }
+      if (url.pathname === '/api/scheduler/run') {
+        if (!scheduler) return send(503, { error: 'Scheduler is not configured' });
+        return send(200, { processed: scheduler.runDue(job => {
+          if (job.key === 'activity.tick' && activityRuntime) {
+            activityRuntime.tick();
+            return { nextDueAt: Math.floor(Date.now() / 1000) + 60 };
+          }
+          return undefined;
+        }) });
       }
       send(200, url.pathname === '/api/credit' ? wallet.credit(input) : wallet.buy(input));
     } catch (error) {

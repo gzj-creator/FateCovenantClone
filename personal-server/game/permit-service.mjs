@@ -2,6 +2,7 @@ import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { rechargeHandleForType } from './recharge-rules.mjs';
 import { grantResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 const PERMIT_MODULE = 38;
 const PERMIT_PRODUCT_TYPE = 6;
@@ -80,7 +81,7 @@ export function createPermitService({ codec, tables, now = () => Math.floor(Date
       if (!Number.isSafeInteger(cycle) || cycle <= 0) throw new GameError(5, 'Permit cycle configuration is unavailable');
       const at = Number(now());
       if (!Number.isSafeInteger(at) || at <= 0) throw new GameError(1, 'Invalid permit claim time');
-      const currentDay = Math.floor((at + 10800) / 86400);
+      const currentDay = gameDayIndex(at);
       return Math.min(Math.max(currentDay - openDay + 1, 0), cycle);
     }
     return currentExperience({ model, permit });

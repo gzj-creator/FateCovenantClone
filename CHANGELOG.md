@@ -9,6 +9,25 @@
 
 ## [Unreleased]
 
+### Added
+
+- 新增统一时间基准 `personal-server/game/time.mjs`：自然日、业务日（05:00）、服务器日与周起点集中计算，业务代码不再裸写 `10800/18000/28800` 等偏移；新增源码扫描测试防止回退。
+- 新增唯一角色经验入口 `personal-server/game/role-level.mjs`：一次奖励可跨多级，满级经验封顶，主线与道具/奖励经验共用同一实现。
+- 新增功能开放规则引擎 `feature-rules.mjs` 与空规则资产 `config/fun-open-rules.json`：新号模块 3 从空位图开始，7000 申请在规则到位前记录、到位后逐条复核。
+- 新增活动生命周期引擎 `activity-lifecycle.mjs`：预告/进行/领奖/展示/关闭状态机，`read/operate/claim` 门禁，暂停、强开、延长、区服资格、玩家条件与父子活动判定。
+- 新增通用调度器 `scheduler.mjs`：`scheduler_job` 表、到期执行、失败重试计数与启动补跑基础。
+- 新增活动实例/覆盖/结算/审计持久化 `activity-store.mjs` 与运行时 `activity-runtime.mjs`：登录写入实例、每分钟推进阶段、离开进行态幂等结算，并支持活动窗口预演。
+- 新增功能开放运营覆盖 `feature-overrides.mjs`：区服级 `force_open` / `force_close` 持久化、撤销和 `ops_audit` 留痕；紧急关闭只屏蔽下发与门禁，不改角色位图。
+- 新增 1407 条命令目录 `config/command-catalog.json` 与注册表 `command-registry.mjs`：启动校验总数、type/name 唯一性和读写声明，支持按 `config/command-gate-rules.json` 对未开放功能执行写拒绝/读空态。
+- 管理端新增“活动与开放”页：活动实例、活动覆盖、功能覆盖、预演、二次确认、撤销、立即检查阶段；结算前用 `VACUUM INTO` 自动备份。
+- 新增 `scripts/measure-slow-files.mjs` 与 `npm run test:measure-slow`：逐文件计时并按阈值生成/增量更新慢测清单。
+
+### Changed
+
+- 测试分层进一步收紧：英雄技能校验、真实网关和多实例登录等 83 个耗时文件移入慢测清单，`npm test` 快速套件从 115 个文件降到 37 个，实测约 14 秒。
+- 调度器支持 recurring job：handler 返回 `nextDueAt` 时，在完成标记之后重新登记下一轮，避免完成更新覆盖新任务。
+- `serverDayNumber` 改为统一业务日口径：开服自然日锚定第 1 天，05:00 切换；18:00 开服次日 05:00 进入第 2 天，00:00 开服不再整体平移活动窗口。
+
 ### Fixed
 
 - 修复新账号只改角色等级却继承旧登录模块的问题：每次创建账号现在会生成完整的 1 级起始档，包括两名初始英雄、空任务/装备/战令进度、120 体力、初始编队和正确的通行证开服日；同服连续注册的账号保持独立角色。
@@ -43,6 +62,7 @@
 - 记录活动参考服开服、目标服开服、登录模板锚点三种时间基准，以及全部活动审计和 4 个无法静态还原配置项的边界。
 - 记录百抽奖券 `835802` 的领取、抽取与 SQLite 持久化真实 TCP 回归，以及缺失 `ActShopTable` 的明确拒绝边界。
 - 记录进入游戏双错误弹窗的日志证据、根因、修复边界、目标回归与部署后验收事件。
+- 新增 `docs/plans/full-service-p0-progress-20261112.md` 的实施状态与本轮完成证据，以及 `promot/2026-11-13-full-service-p0-next-agent.md` 的跨机器续接提示词。
 
 ### Chore
 

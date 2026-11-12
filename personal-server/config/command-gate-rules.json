@@ -1,0 +1,4 @@
+{
+  "description": "Command -> FunOpen gate overrides. Populated from E9-2 evidence; empty means commands keep their existing dispatch without a function gate.",
+  "rules": []
+}

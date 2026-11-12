@@ -1,6 +1,7 @@
 import { GameError } from './hero-progression.mjs';
 import { assembleHeroAttributes } from './attribute-service.mjs';
 import { readHeroRentTables } from '../config/hero-rent-tables.mjs';
+import { gameDayIndex } from './time.mjs';
 
 // HERO-HERO rent/share cluster: 627 req_rent_out_hero, 628 req_rent_out_off_hero,
 // 629 req_rent_in_hero, 630 req_query_rent_out_info, 631 req_rent_flush and
@@ -27,8 +28,6 @@ const CODE_CONTENT = 3001;
 const OUT_TABLE = 'hero_rent_out_state';
 const SHARE_TABLE = 'hero_share_cache';
 const MAX_UINT32 = 0xffffffff;
-// FlushTime day boundary is 05:00 Asia/Shanghai on the local server.
-const RESET_OFFSET_SECONDS = 10800;
 const DAY_SECONDS = 86400;
 
 const fail = (code, message) => { throw new GameError(code, message); };
@@ -63,7 +62,7 @@ function uidString(value, field) {
 }
 
 function dayIndex(seconds) {
-  return Math.floor((seconds + RESET_OFFSET_SECONDS) / DAY_SECONDS);
+  return gameDayIndex(seconds);
 }
 
 export function createHeroRentService({ store, codec, tables, heroTables, now = () => Date.now(), logger = () => {} }) {

@@ -7,10 +7,11 @@ import {
 } from '../config/wish-treasure-tables.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 export const WISH_TREASURE_MODULE = 172;
 const CLAIM_TYPE = 'wish_treasure';
-const dayIndex = milliseconds => Math.floor((Math.floor(milliseconds / 1000) + 10800) / 86400);
+const dayIndex = milliseconds => gameDayIndex(Math.floor(milliseconds / 1000));
 
 function emptyInfo() {
   return { data_list: [] };

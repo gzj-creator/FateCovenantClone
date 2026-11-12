@@ -1,6 +1,7 @@
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
+import { DEFAULT_TIMEZONE_OFFSET_SECONDS } from './time.mjs';
 import {
   arenaAwardPairs,
   arenaContestStateAt,
@@ -44,7 +45,7 @@ const CODE_STATE = 5;
 const SIGN_UP_BIG_STATE = 1;
 const RUNNING_BIG_STATE = 2;
 
-const DEFAULT_TIMEZONE_OFFSET = 28800; // login reply carries UTC+8
+const DEFAULT_TIMEZONE_OFFSET = DEFAULT_TIMEZONE_OFFSET_SECONDS; // login reply carries UTC+8
 
 function fail(code, message) { throw new GameError(code, message); }
 

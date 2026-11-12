@@ -160,7 +160,12 @@ const game = createLocalGame({
 });
 sdk.attachWallet(game.wallet);
 const tokenPath=path.join(directory,'admin-key.local-only.txt');
-const admin=createAdminService({wallet:game.wallet,mail:game.mail,voucher:game.voucher,...(fs.existsSync(tokenPath)?{token:fs.readFileSync(tokenPath,'utf8').trim()}:{})});
+const admin=createAdminService({
+  wallet:game.wallet, mail:game.mail, voucher:game.voucher,
+  activityStore:game.activityStore, featureOverrides:game.featureOverrides,
+  activityRuntime:game.activityRuntime, scheduler:game.scheduler,
+  ...(fs.existsSync(tokenPath)?{token:fs.readFileSync(tokenPath,'utf8').trim()}:{})
+});
 if(!fs.existsSync(tokenPath))fs.writeFileSync(tokenPath,admin.token,{mode:0o600});
 const services = [admin,sdk,startup,game];
 const boundPorts = {};

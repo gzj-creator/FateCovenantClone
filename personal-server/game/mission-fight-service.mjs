@@ -11,6 +11,7 @@ import { missionPosition } from './mission-progress.mjs';
 import { energyMaxForRole, refreshEnergyResources } from './energy.mjs';
 import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
 import { FAT_ACTION, PROMPT } from './effects/report-codes.mjs';
+import { addRoleExp } from './role-level.mjs';
 
 // Ordinary journey (mission) fights.
 // Evidence: FightCmd.fight_start sends pb_fight_request.req = Codec.EncodePB('mission_fight_req');
@@ -438,24 +439,12 @@ function grantMissionExperience(model, gameTables) {
   const levelConfig = gameTables.RoleLevel.get(level);
   const amount = Number(levelConfig?.mission_award_num);
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new GameError(5, 'Role mission experience configuration is missing');
-  let nextLevel = level, nextExp = exp + amount;
-  if (!Number.isSafeInteger(nextExp)) throw new GameError(1, 'Role experience limit reached');
-  const configuredMax = Number(gameTables.RoleLevelSetting.get(1)?.max_level ?? 0);
-  const maxLevel = configuredMax > 0 ? configuredMax : Math.max(...gameTables.RoleLevel.keys());
-  while (nextLevel < maxLevel) {
-    const reachExp = Number(gameTables.RoleLevel.get(nextLevel)?.reach_exp);
-    if (!Number.isSafeInteger(reachExp) || reachExp <= 0) throw new GameError(5, 'Role level experience configuration is missing');
-    if (nextExp < reachExp) break;
-    nextExp -= reachExp;
-    nextLevel++;
-  }
-  model.role.level = nextLevel;
-  model.role.exp = nextExp;
+  const result = addRoleExp(model.role, amount, { tables: gameTables, source: 'mission_settlement' });
   return {
     tid: '140000',
-    new_num: String(nextExp),
+    new_num: String(result.exp),
     diff_num: String(amount),
-    extra: encodeEtfIntegerTuple([nextLevel, nextExp]).toString('base64')
+    extra: encodeEtfIntegerTuple([result.level, result.exp]).toString('base64')
   };
 }
 

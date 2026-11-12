@@ -1,6 +1,7 @@
 import { GameError } from './hero-progression.mjs';
 import { encodeEtfInteger } from '../protocol/game-codec.mjs';
 import { grantResources } from './resources.mjs';
+import { DEFAULT_RESET_HOUR, DEFAULT_TIMEZONE_OFFSET_SECONDS, gameDayIndex } from './time.mjs';
 import {
   createFantasyEquipmentInventory,
   FANTASY_EQUIP_TYPE_NORMAL,
@@ -13,7 +14,7 @@ export const FANTASY_ACT_STATE_KEY = 'fantasyActState';
 export const FANTASY_ACT_STATE_VERSION = 1;
 export const ACTIVITY_LOGIN_MODULE_ID = 183;
 export const SERVER_DAY_SECONDS = 86400;
-export const SERVER_RESET_OFFSET_SECONDS = 10800;
+export const SERVER_RESET_OFFSET_SECONDS = DEFAULT_TIMEZONE_OFFSET_SECONDS - DEFAULT_RESET_HOUR * 3600;
 // Integration assumption: M6 owns the module-183 entry framing and may revise
 // this ordering once the client decoder order is independently proven.
 export const DEMIGOD_LOGIN_BLOCK_SCHEMAS = Object.freeze([
@@ -31,7 +32,7 @@ const clone = value => structuredClone(value);
 export function serverDay(seconds) {
   const value = Number(seconds);
   if (!Number.isSafeInteger(value) || value < 0) fail(5, 'Invalid server time');
-  return Math.floor((value + SERVER_RESET_OFFSET_SECONDS) / SERVER_DAY_SECONDS);
+  return gameDayIndex(value);
 }
 
 export function safeCount(value, field, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {

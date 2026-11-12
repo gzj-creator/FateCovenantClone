@@ -5,6 +5,7 @@ import { hasBit, setBit } from './bit-block.mjs';
 import { readHelpUpActTables } from '../config/help-up-act-tables.mjs';
 import { currentTaskProgress } from './task-service.mjs';
 import { dayZero } from './activity-calendar.mjs';
+import { localWeekday } from './time.mjs';
 
 // HundredDrawActCmd 117001-117005 are owned by hundred-draw-service.mjs.
 const reads = new Map();
@@ -835,7 +836,7 @@ export function createActivityReadService({ codec, store, tables, calendar, logg
   // 08:00 reset day and starts on Monday.
   function helpUpWeekStart(at) {
     const day = dayZero(at);
-    const weekday = new Date((day + 8 * 3600) * 1000).getUTCDay();
+    const weekday = localWeekday(day);
     return day - ((weekday + 6) % 7) * 86400;
   }
 

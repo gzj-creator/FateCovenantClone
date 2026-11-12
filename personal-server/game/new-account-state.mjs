@@ -1,4 +1,5 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { gameDayIndex } from './time.mjs';
 
 // The captured login fixture starts at role level 9. A new account must not
 // inherit that progression, so reset every player-owned login module that the
@@ -126,7 +127,7 @@ function resetResources(modules, codec, nowSeconds) {
 
 function resetPermits(modules, codec, nowSeconds) {
   const entry = readModule(modules, 38);
-  const openDay = String(Math.floor((nowSeconds + 10800) / 86400));
+  const openDay = String(gameDayIndex(nowSeconds));
   const values = entry.value.map(value => {
     try {
       const permit = codec.unpack('pb_permit_data', rawBinary(value));
@@ -148,7 +149,9 @@ function resetStaleProgress(modules, codec, nowSeconds) {
   // These modules contain account-bound progression rather than structural
   // configuration. Their protobuf shapes differ, and an empty message is valid
   // for both scalar and per-slot containers, so clear every existing slot.
-  for (const id of [12, 16, 21, 26, 29, 65, 90]) clearModule(modules, id);
+  // Feature unlocks are account progression too. A new role starts from an
+  // empty bitmap and the server-side rule engine fills the level-1 entries.
+  for (const id of [3, 12, 16, 21, 26, 29, 65, 90]) clearModule(modules, id);
   resetPermits(modules, codec, nowSeconds);
 }
 

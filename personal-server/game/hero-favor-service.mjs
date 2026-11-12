@@ -2,6 +2,7 @@ import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
+import { gameDayIndex } from './time.mjs';
 
 const HERO_MODULE_ID = 10;
 // HeroDataMgr.LoginParse decodes zero-based slot 4 (Lua login[5]) as
@@ -9,10 +10,6 @@ const HERO_MODULE_ID = 10;
 // handbook and currency data.
 const FAVOR_SLOT = 4;
 const DAY_SECONDS = 86400;
-// The client's FlushTime day cycle is 05:00 Asia/Shanghai for the local
-// server. A UTC epoch shifted by three hours therefore uses the conventional
-// day boundary.
-const RESET_OFFSET_SECONDS = 10800;
 const MAX_UINT32 = 0xffffffff;
 
 const fail = (code, message) => { throw new GameError(code, message); };
@@ -32,7 +29,7 @@ function positiveTid(value) {
 }
 
 function dayIndex(seconds) {
-  return Math.floor((seconds + RESET_OFFSET_SECONDS) / DAY_SECONDS);
+  return gameDayIndex(seconds);
 }
 
 function bytesField(value) {

@@ -1,6 +1,7 @@
 import { encodeEtfBinaryAndSmallIntegerTuple, encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mjs';
 import { GameError } from './hero-progression.mjs';
+import { gameDayIndex } from './time.mjs';
 import {
   RECRUIT_RULE_VERSION,
   SUPPORTED_RECRUIT_LIBS,
@@ -43,7 +44,7 @@ function dayKey(seconds) {
 }
 
 function statisticsDay(seconds) {
-  return Math.floor((seconds + 10800) / DAY_SECONDS);
+  return gameDayIndex(seconds);
 }
 
 function nonNegativeInteger(value) {

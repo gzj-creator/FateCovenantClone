@@ -1,7 +1,8 @@
 import { E, binary, encodeEtf, decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
-const dayIndex = now => Math.floor((now/1000+10800)/86400);
+import { gameDayIndex } from './time.mjs';
+const dayIndex = now => gameDayIndex(now);
 const ROLE_STATISTICS_TYPE = 0;
 
 function statisticProgress(model, taskConfig, statExpand, resetType, currentDay, codec, tables) {

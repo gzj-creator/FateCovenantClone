@@ -28,6 +28,7 @@
       <button id="vouchers-tab" class="tab" type="button">代金券</button>
       <button id="orders-tab" class="tab" type="button">充值订单</button>
       <button id="ledger-tab" class="tab" type="button">余额流水</button>
+      <button id="ops-tab" class="tab" type="button">活动与开放</button>
     </nav>
 
     <section id="wallet-view">
@@ -94,6 +95,36 @@
     <section id="ledger-view" hidden>
       <div class="section-title"><h2>余额流水</h2><span class="muted">最近 100 笔</span></div>
       <div class="table-scroll"><table><thead><tr><th>时间</th><th>类型</th><th>变动</th><th>余额</th><th>备注</th></tr></thead><tbody id="ledger"></tbody></table></div>
+    </section>
+
+    <section id="ops-view" hidden>
+      <div class="section-title"><h2>活动与功能开放</h2><span class="muted">区服级覆盖 · 全部写入审计</span></div>
+      <form id="ops-server-form" class="inline-form"><label>区服 ID<input id="ops-server" type="number" min="1" step="1" value="1" required></label><button type="submit" class="secondary">刷新运营数据</button><button type="button" id="ops-tick" class="secondary">立即检查活动阶段</button></form>
+      <div class="forms">
+        <form id="feature-form">
+          <h2>功能开放覆盖</h2>
+          <label>功能 ID<input id="feature-id" type="number" min="1001" step="1" placeholder="1039" required></label>
+          <label>模式<select id="feature-mode"><option value="force_open">强制开放</option><option value="force_close">紧急关闭</option></select></label>
+          <label>原因<input id="feature-reason" maxlength="200" placeholder="运营活动"></label>
+          <button type="submit" class="primary">写入覆盖</button>
+        </form>
+        <form id="activity-form">
+          <h2>活动覆盖</h2>
+          <label>活动 ID<input id="activity-id" type="number" min="1" step="1" required></label>
+          <label>类型<select id="activity-kind"><option value="force_open">强制开放</option><option value="close_early">提前结束</option><option value="pause">暂停</option><option value="resume">恢复</option><option value="extend">延长</option><option value="shift">平移</option><option value="condition">追加条件</option></select></label>
+          <div class="form-row"><label>开始时间<input id="activity-start" type="datetime-local"></label><label>结束时间<input id="activity-end" type="datetime-local"></label></div>
+          <label>原因<input id="activity-reason" maxlength="200" placeholder="事故处理"></label>
+          <label class="check"><input id="activity-confirm" type="checkbox"> 提前结束/强制开放需二次确认</label>
+          <div class="form-row"><button type="button" id="activity-preview" class="secondary">预演</button><button type="submit" class="primary">写入覆盖</button></div>
+          <p id="activity-preview-result" class="quote">尚未预演</p>
+        </form>
+      </div>
+      <div class="section-title table-title"><h2>活动实例</h2><span class="muted">最近 500 行</span></div>
+      <div class="table-scroll"><table><thead><tr><th>活动</th><th>期号</th><th>阶段</th><th>开始</th><th>结束</th><th>结算</th></tr></thead><tbody id="ops-instances"></tbody></table></div>
+      <div class="section-title table-title"><h2>活动覆盖</h2><span class="muted">含已撤销</span></div>
+      <div class="table-scroll"><table><thead><tr><th>ID</th><th>活动</th><th>类型</th><th>窗口</th><th>原因</th><th>状态</th></tr></thead><tbody id="ops-activity-overrides"></tbody></table></div>
+      <div class="section-title table-title"><h2>功能覆盖</h2><span class="muted">含已撤销</span></div>
+      <div class="table-scroll"><table><thead><tr><th>ID</th><th>功能</th><th>模式</th><th>原因</th><th>状态</th></tr></thead><tbody id="ops-feature-overrides"></tbody></table></div>
     </section>
 
     <p id="status" role="status" aria-live="polite"></p>

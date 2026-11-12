@@ -1,12 +1,12 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
+import { gameDayIndex } from './time.mjs';
 
 const MODULE_ID = 518;
 const DAY_SECONDS = 86400;
-const RESET_OFFSET_SECONDS = 10800;
 
-const dayIndex = seconds => Math.floor((seconds + RESET_OFFSET_SECONDS) / DAY_SECONDS);
+const dayIndex = seconds => gameDayIndex(seconds);
 const fail = (code, message) => { throw new GameError(code, message); };
 
 export function createFantasyDrawService({ store, codec, tables, now = () => Math.floor(Date.now() / 1000), logger = () => {} }) {

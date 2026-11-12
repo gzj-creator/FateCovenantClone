@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 const fromHash = new URLSearchParams(location.hash.slice(1)).get('key');
 let token = fromHash || sessionStorage.getItem('fc-admin-key') || '';
 let state;
+let ops = { instances: [], overrides: [], settlements: [], feature: [] };
 const pending = { credit: null, purchase: null, voucher: null };
 if (fromHash) {
   sessionStorage.setItem('fc-admin-key', token);
@@ -57,6 +58,66 @@ function rows(target, items, render, columns) {
     }
     body.append(row);
   }
+}
+
+function opsRows(target, items, render, columns, revoke = null) {
+  const body = $(target);
+  body.replaceChildren();
+  if (!items.length) {
+    const row = document.createElement('tr'), cell = document.createElement('td');
+    cell.colSpan = columns; cell.textContent = '暂无记录'; row.append(cell); body.append(row);
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement('tr');
+    for (const text of render(item)) {
+      const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
+    }
+    if (revoke) {
+      const cell = document.createElement('td');
+      if (!item.revoked_at) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'secondary'; button.textContent = '撤销';
+        button.onclick = () => revoke(item).catch(error => message(error.message, true));
+        cell.append(button);
+      } else cell.textContent = '已撤销';
+      row.append(cell);
+    }
+    body.append(row);
+  }
+}
+
+const epoch = value => value ? Math.floor(new Date(value).getTime() / 1000) : null;
+
+async function loadOps() {
+  const id = Number($('ops-server').value) || 1;
+  const [activity, feature] = await Promise.all([
+    api('/api/activity?serverId=' + id), api('/api/feature/overrides?serverId=' + id)
+  ]);
+  ops = { ...activity, feature: feature.overrides };
+  renderOps();
+}
+
+function renderOps() {
+  opsRows('ops-instances', ops.instances, item => [
+    '#' + item.act_id, item.period_no, item.stage,
+    time(item.open_at), time(item.show_until ?? item.close_at), item.settled_at ? time(item.settled_at) : '—'
+  ], 6);
+  opsRows('ops-activity-overrides', ops.overrides, item => [
+    '#' + item.id, '#' + item.act_id, item.kind,
+    item.start_at || item.end_at ? `${time(item.start_at)} → ${time(item.end_at)}` : '—',
+    item.reason || '—', item.revoked_at ? '已撤销' : '生效中'
+  ], 6, async item => {
+    await api('/api/activity/override/revoke', { id: item.id, reason: '管理端撤销' });
+    await loadOps(); message('活动覆盖已撤销');
+  });
+  opsRows('ops-feature-overrides', ops.feature, item => [
+    '#' + item.id, item.fun_id, item.mode === 'force_open' ? '强制开放' : '紧急关闭',
+    item.reason || '—', item.revoked_at ? '已撤销' : '生效中'
+  ], 5, async item => {
+    await api('/api/feature/override/revoke', { id: item.id, reason: '管理端撤销' });
+    await loadOps(); message('功能覆盖已撤销');
+  });
 }
 
 function fillAccounts(select) {
@@ -273,13 +334,64 @@ $('use-max-voucher').onclick = () => {
 for (const element of document.querySelectorAll('[data-amount]')) {
   element.onclick = () => { $('amount').value = Number(element.dataset.amount).toFixed(2); };
 }
-for (const name of ['wallet', 'vouchers', 'orders', 'ledger']) {
+for (const name of ['wallet', 'vouchers', 'orders', 'ledger', 'ops']) {
   $(name + '-tab').onclick = () => {
-    for (const other of ['wallet', 'vouchers', 'orders', 'ledger']) {
+    for (const other of ['wallet', 'vouchers', 'orders', 'ledger', 'ops']) {
       $(other + '-view').hidden = other !== name;
       $(other + '-tab').classList.toggle('active', other === name);
     }
+    if (name === 'ops') loadOps().catch(error => message(error.message, true));
   };
 }
+
+$('ops-server-form').addEventListener('submit', event => {
+  event.preventDefault(); loadOps().then(() => message('运营数据已刷新')).catch(error => message(error.message, true));
+});
+$('ops-tick').onclick = async () => {
+  try {
+    const result = await api('/api/activity/tick', {});
+    await loadOps();
+    message(`活动阶段检查完成，变更 ${result.changes.length} 项`);
+  } catch (error) { message(error.message, true); }
+};
+$('feature-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  try {
+    const result = await api('/api/feature/override', {
+      serverId: Number($('ops-server').value) || 1,
+      funId: Number($('feature-id').value),
+      mode: $('feature-mode').value,
+      reason: $('feature-reason').value
+    });
+    await loadOps(); message(`功能覆盖 #${result.id} 已写入`);
+  } catch (error) { message(error.message, true); }
+});
+$('activity-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  try {
+    const kind = $('activity-kind').value;
+    const result = await api('/api/activity/override', {
+      serverId: Number($('ops-server').value) || 1,
+      actId: Number($('activity-id').value),
+      kind,
+      startAt: epoch($('activity-start').value),
+      endAt: epoch($('activity-end').value),
+      reason: $('activity-reason').value,
+      confirm: $('activity-confirm').checked
+    });
+    await loadOps(); message(`活动覆盖 #${result.id} 已写入`);
+  } catch (error) { message(error.message, true); }
+});
+$('activity-preview').onclick = async () => {
+  try {
+    const result = await api('/api/activity/preview', {
+      serverId: Number($('ops-server').value) || 1,
+      actId: Number($('activity-id').value),
+      kind: $('activity-kind').value,
+      startAt: epoch($('activity-start').value), endAt: epoch($('activity-end').value)
+    });
+    $('activity-preview-result').textContent = `当前：${result.before ?? '无实例'} → 预演：${result.after.status}${result.after.reason ? '（' + result.after.reason + '）' : ''}`;
+  } catch (error) { message(error.message, true); }
+};
 
 refresh().catch(() => {});
