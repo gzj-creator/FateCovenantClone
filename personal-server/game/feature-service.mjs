@@ -113,9 +113,8 @@ export function createFeatureService({
       if (type !== 7000 || !Array.isArray(ids) || ids.length > 200 || ids.some(id => !Number.isSafeInteger(id) || id < 1001 || id >= 2000)) throw new GameError(1, 'Invalid client-validated feature IDs');
       const unique = [...new Set(ids)];
       if (!ruleList.length) {
-        // Evidence gap E9-1: the client FunOpen table has not been exported yet.
-        // Keep the existing acknowledgement path but record every application so
-        // its ids can be compared with the future rule asset.
+        // Compatibility fallback for an installation without the extracted
+        // rule asset. Record every application instead of inventing conditions.
         log({ event: 'feature_request_unruled', ids: unique });
         return commit(unique);
       }

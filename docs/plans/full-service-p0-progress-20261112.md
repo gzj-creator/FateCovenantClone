@@ -34,6 +34,7 @@
 
 - [x] P0-3-1 新号模块 3 从空位图开始，不再继承抓包角色。
 - [x] P0-3-2 功能规则资产 `fun-open-rules.json` 与纯函数 `evaluateFunOpen(role)`。
+  2026-11-13：已从客户端 FunOpen 表与 MethodScript/MethodTable 字节码导出全部 523 行；164 行条件可执行，359 行无充分证据并严格 fail closed。来源、复现命令与结论见 `agent/workflow/evidence/E9-1.md`。
 - [x] P0-3-3 7000 申请逐个复核规则；无规则时保留现状并记录申请。
 - [x] P0-3-4 功能覆盖表 `fun_open_override` 与登录/在线生效。
   `feature-overrides.mjs` 落表并审计；`feature-service` 支持 `force_open`（写入位图）与 `force_close`（不改位图，登录下发时屏蔽），管理端可增删；`feature-overrides.test.mjs` 覆盖撤销后恢复。在线主动推送仍等 E9-4 的 S2C 类型。

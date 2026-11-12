@@ -9,7 +9,23 @@ export function parseLuaJit(buffer, { allowMultipleRoots = false } = {}) {
   const need = size => { if (position + size > buffer.length || size < 0) throw new Error('Truncated LuaJIT dump'); };
   const byte = () => { need(1); return buffer[position++]; };
   const uleb = () => { let value = 0, factor = 1; for (let i = 0; i < 5; i++) { const b = byte(); value += (b & 127) * factor; if (!(b & 128)) return value; factor *= 128; } throw new Error('Invalid ULEB128'); };
-  const uleb33 = () => { let value = 0n, shift = 0n; for (let i = 0; i < 5; i++) { const b = byte(); value |= BigInt(b & 127) << shift; if (!(b & 128)) return value; shift += 7n; } throw new Error('Invalid 33-bit ULEB128'); };
+  // LuaJIT's 33-bit number encoding stores the int/num discriminator in the
+  // low bit of the first byte and the first six value bits in bits 1..6.
+  // Remaining bytes use a seven-bit continuation starting at bit 6.
+  const uleb33 = () => {
+    let value = byte() >> 1;
+    if (value >= 0x40) {
+      value &= 0x3f;
+      let shift = -1;
+      let current;
+      do {
+        shift += 7;
+        current = byte();
+        value |= (current & 0x7f) << shift;
+      } while (current & 0x80);
+    }
+    return value >>> 0;
+  };
   const string = count => { need(count); const text = buffer.subarray(position, position + count).toString('utf8'); position += count; return text; };
   const double = (low, high) => { const b = Buffer.alloc(8); b.writeUInt32LE(low >>> 0, 0); b.writeUInt32LE(high >>> 0, 4); return b.readDoubleLE(); };
 
@@ -88,8 +104,9 @@ export function parseLuaJit(buffer, { allowMultipleRoots = false } = {}) {
         }
         const numbers = [];
         for (let i = 0; i < numberCount; i++) {
-          const value = uleb33();
-          numbers.push((value & 1n) === 1n ? double(Number(value >> 1n), uleb()) : Number(BigInt.asIntN(32, value >> 1n)));
+          const isNumber = (buffer[position] & 1) === 1;
+          const low = uleb33();
+          numbers.push(isNumber ? double(low, uleb()) : (low | 0));
         }
         if (position + debugSize === end) attempts.push({ uv, constants: constants.reverse(), numbers, trialStack, debugStart: position });
       } catch {}
@@ -98,6 +115,11 @@ export function parseLuaJit(buffer, { allowMultipleRoots = false } = {}) {
     const requiredUv = proto.instructions.reduce((max, instruction) => Math.max(max,
       instruction.name === 'UGET' ? instruction.d + 1 : /^USET[VNSP]$/.test(instruction.name) ? instruction.a + 1 : 0), 0);
     let supported = attempts.filter(attempt => attempt.uv >= requiredUv);
+    // The LuaJIT header records the exact closure-upvalue count. Prefer it
+    // when it yields a valid constant boundary: uncommon debug payloads can
+    // otherwise create a second self-consistent boundary with fewer upvalues.
+    const headerMatches = supported.filter(attempt => attempt.uv === proto.headerUpvalueCount);
+    if (headerMatches.length === 1) supported = headerMatches;
     if (supported.length > 1) supported = supported.filter(attempt => attempt.uv === requiredUv);
     if (supported.length !== 1) throw new Error(`Constant boundary candidates: ${attempts.length}, supported: ${supported.length}, required UVs: ${requiredUv}`);
     const accepted = supported[0];

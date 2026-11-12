@@ -15,22 +15,40 @@ function roleNumber(role, key, fallback = 0) {
   return Number.isSafeInteger(value) ? value : fallback;
 }
 
+function compareNumbers(actual, expected, operator) {
+  if (!Number.isFinite(actual) || !Number.isFinite(expected)) return null;
+  switch (operator) {
+    case '>=': return actual >= expected;
+    case '>': return actual > expected;
+    case '<=': return actual <= expected;
+    case '<': return actual < expected;
+    case '==': return actual === expected;
+    case '!=': return actual !== expected;
+    default: return null;
+  }
+}
+
+function numericCondition(actual, args, condition) {
+  const expected = Number(args.level ?? args.day ?? args.missionId ?? args.value);
+  return compareNumbers(Number(actual), expected, condition?.operator ?? '>=');
+}
+
 function evaluateCondition(condition, role, context, open) {
   const type = String(condition?.type ?? '');
   const args = conditionArgs(condition);
   switch (type) {
     case 'role_level':
-      return roleNumber(role, 'level', 1) >= Number(args.level ?? args.value ?? 1);
+      return numericCondition(roleNumber(role, 'level', 1), args, condition);
     case 'mission':
-      return roleNumber(role, 'missionId', roleNumber(role, 'mission_id', 0)) >= Number(args.missionId ?? args.value ?? 0);
+      return numericCondition(roleNumber(role, 'missionId', roleNumber(role, 'mission_id', 0)), args, condition);
     case 'server_day':
-      return Number(context?.serverDay ?? 0) >= Number(args.day ?? args.value ?? 1);
+      return numericCondition(context?.serverDay, args, condition);
     case 'guide':
       return Number(role?.guides?.[args.step ?? args.value] ?? 0) >= Number(args.count ?? 1);
     case 'fun_open':
       return open.has(Number(args.funId ?? args.value));
     case 'create_day':
-      return Number(context?.createDay ?? 0) >= Number(args.day ?? args.value ?? 1);
+      return numericCondition(context?.createDay, args, condition);
     case 'hero': {
       const heroes = Array.isArray(role?.heroes) ? role.heroes : Array.isArray(role?.heroInfo?.hero_list) ? role.heroInfo.hero_list : [];
       const tid = Number(args.tid ?? args.heroId ?? args.value ?? 0);
@@ -47,6 +65,13 @@ function evaluateCondition(condition, role, context, open) {
 export function evaluateFunOpen(role, rules = [], context = {}) {
   const open = new Set();
   const denied = [];
+  const deniedKeys = new Set();
+  const deny = (funId, type, reason) => {
+    const key = `${funId}:${type}:${reason}`;
+    if (deniedKeys.has(key)) return;
+    deniedKeys.add(key);
+    denied.push({ funId, type, reason });
+  };
   const list = Array.isArray(rules) ? rules : [];
   let changed = true;
   while (changed) {
@@ -54,12 +79,24 @@ export function evaluateFunOpen(role, rules = [], context = {}) {
     for (const rule of list) {
       const id = Number(rule?.funId);
       if (!Number.isSafeInteger(id) || id <= 0 || open.has(id)) continue;
+      if ((rule?.status != null && rule.status !== 'ready') || (Array.isArray(rule?.evidenceGap) && rule.evidenceGap.length > 0)) {
+        deny(id, 'rule_status', 'evidence_gap');
+        continue;
+      }
       const conditions = Array.isArray(rule.conditions) ? rule.conditions : [];
+      if (!Array.isArray(rule.conditions)) {
+        deny(id, 'conditions', 'invalid_rule');
+        continue;
+      }
+      if (conditions.length === 0) {
+        deny(id, 'conditions', 'empty_conditions');
+        continue;
+      }
       let allowed = true;
       for (const condition of conditions) {
         const result = evaluateCondition(condition, role, context, open);
         if (result === null) {
-          denied.push({ funId: id, type: condition?.type, reason: 'unknown_condition' });
+          deny(id, condition?.type, 'unknown_condition');
           allowed = false;
           break;
         }

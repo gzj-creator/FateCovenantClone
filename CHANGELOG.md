@@ -13,7 +13,7 @@
 
 - 新增统一时间基准 `personal-server/game/time.mjs`：自然日、业务日（05:00）、服务器日与周起点集中计算，业务代码不再裸写 `10800/18000/28800` 等偏移；新增源码扫描测试防止回退。
 - 新增唯一角色经验入口 `personal-server/game/role-level.mjs`：一次奖励可跨多级，满级经验封顶，主线与道具/奖励经验共用同一实现。
-- 新增功能开放规则引擎 `feature-rules.mjs` 与空规则资产 `config/fun-open-rules.json`：新号模块 3 从空位图开始，7000 申请在规则到位前记录、到位后逐条复核。
+- 完善功能开放规则引擎与取证资产：`config/fun-open-rules.json` 现覆盖客户端 FunOpen 全 523 行并记录来源 SHA256，164 行由字节码证实为等级/创角天数/服务器日条件，359 行证据不足严格关闭；7000 申请按权威规则逐条复核。新增 `tools/extract-fun-open-rules.mjs` 与 LuaJIT 33-bit number/upvalue 边界回归测试。
 - 新增活动生命周期引擎 `activity-lifecycle.mjs`：预告/进行/领奖/展示/关闭状态机，`read/operate/claim` 门禁，暂停、强开、延长、区服资格、玩家条件与父子活动判定。
 - 新增通用调度器 `scheduler.mjs`：`scheduler_job` 表、到期执行、失败重试计数与启动补跑基础。
 - 新增活动实例/覆盖/结算/审计持久化 `activity-store.mjs` 与运行时 `activity-runtime.mjs`：登录写入实例、每分钟推进阶段、离开进行态幂等结算，并支持活动窗口预演。
