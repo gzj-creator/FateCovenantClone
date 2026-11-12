@@ -224,6 +224,7 @@ import { readJsonAsset, tableAsset } from '../assets.mjs';
 import { createNewAccountModules, readStarterConfig } from './new-account-state.mjs';
 
 export { encodeEtf, decodeEtf, binary, revive, loadGameSchemas } from '../protocol/game-codec.mjs';
+export const DEFAULT_MAX_CONNECTIONS = 8;
 export function createLocalGame({
   databasePath,
   statePath,
@@ -252,6 +253,7 @@ export function createLocalGame({
   martialClubRoster = null,
   tournamentRoster = null,
   guideAwards = readGuideAwards(),
+  maxConnections = DEFAULT_MAX_CONNECTIONS,
   now = Date.now,
   random = Math.random,
   logger = () => {}
@@ -267,6 +269,9 @@ export function createLocalGame({
     : parseActivityCalendarTimestamp(activityReferenceOpenedAt, 'activityReferenceOpenedAt');
   if (!Number.isSafeInteger(serverId) || serverId <= 0) throw new Error('serverId must be a positive integer');
   if (!Number.isSafeInteger(roleId) || roleId <= 0) throw new Error('roleId must be a positive integer');
+  if (!Number.isSafeInteger(maxConnections) || maxConnections <= 0) {
+    throw new Error('maxConnections must be a positive integer');
+  }
   if (resolveSession !== undefined && typeof resolveSession !== 'function') throw new TypeError('resolveSession must be a function');
   if (typeof serverName !== 'string' || !serverName.trim()) throw new Error('serverName must be nonempty');
   if (typeof roleName !== 'string' || !roleName.trim()) throw new Error('roleName must be nonempty');
@@ -1339,7 +1344,7 @@ export function createLocalGame({
   const sockets = new Set();
   const wireDumpDirectory = process.env.FATE_COVENANT_WIRE_DUMP_DIR;
   const server = net.createServer(socket => {
-    if (sockets.size >= 8) { socket.destroy(); return; }
+    if (sockets.size >= maxConnections) { socket.destroy(); return; }
     sockets.add(socket);
     const id = crypto.randomUUID();
     const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 });

@@ -118,8 +118,12 @@ docker compose start realm-3
 ```powershell
 $env:FC_LOCAL_DATA = Join-Path $env:TEMP 'fc-local-test'
 $env:FC_ACTIVITY_CALENDAR_CONFIG = 'D:\path\to\all-open-calendar.json'
+$env:FC_MAX_CONNECTIONS = 8
 npm start --prefix .\personal-server
 ```
+
+`FC_MAX_CONNECTIONS` 必须是正整数，省略时默认为 8。网关在达到上限后立即断开新连接，
+已有连接关闭后会释放容量。
 
 公网模式强制要求 `FC_LOCAL_DATA` 是源码树之外的绝对路径，并验证配置中的开服时间。
 

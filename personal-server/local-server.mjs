@@ -7,7 +7,7 @@ import { createSdkService } from './sdk-service.mjs';
 import { createServerListService } from './server-list.mjs';
 import { createProtobufJsCodec } from './server-list-codec.mjs';
 import { createStartupService } from './startup-service.mjs';
-import { createLocalGame } from './local-game.mjs';
+import { createLocalGame, DEFAULT_MAX_CONNECTIONS } from './local-game.mjs';
 import { createAdminService } from './admin/server.mjs';
 import { loadActivityCalendarConfig, parseActivityCalendarTimestamp } from './config/activity-calendar-config.mjs';
 import { loadPublicServerConfig } from './config/server-config.mjs';
@@ -26,6 +26,16 @@ function configuredHost(variable, fallback) {
   const raw = process.env[variable];
   if (raw === undefined || raw.trim() === '') return fallback;
   return raw.trim();
+}
+
+function configuredPositiveInteger(variable, fallback) {
+  const raw = process.env[variable];
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError(`${variable} must be a positive integer`);
+  }
+  return value;
 }
 
 function pathIsInside(parent, candidate) {
@@ -61,6 +71,7 @@ const requestedPorts = Object.freeze({
 });
 const publicListenHost = publicDeployment?.listen.publicHost ?? '127.0.0.1';
 const adminListenHost = configuredHost('FC_ADMIN_LISTEN_HOST', publicDeployment?.listen.adminHost ?? '127.0.0.1');
+const maxConnections = configuredPositiveInteger('FC_MAX_CONNECTIONS', DEFAULT_MAX_CONNECTIONS);
 const listenHosts = Object.freeze({ sdk: publicListenHost, list: publicListenHost, startup: publicListenHost,
   game: publicListenHost, admin: adminListenHost });
 
@@ -156,6 +167,7 @@ const game = createLocalGame({
   localWallet: true,
   emptyRealm: publicDeployment != null,
   missionFightPlayback: true,
+  maxConnections,
   logger
 });
 sdk.attachWallet(game.wallet);
