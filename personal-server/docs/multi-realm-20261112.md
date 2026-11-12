@@ -80,5 +80,16 @@ integrity_check=ok，区服三只有角色 100004（server_id=3）。
 （命运三服），游戏地址改为 140.143.142.251:19090；客户端仍使用
 18880/18881/18882 完成 SDK 登录、区服列表和更新检查。fate-covenant-realm-2.service
 保留在机器上但停止并禁用，fate-covenant-realm-3.service 改用这套端口并不再依赖二服的
-SDK 会话文件。三服数据迁移到全新的 data-realm-3-rollover 目录，避免把早期 9 级测试
-占位角色当成新服存档。旧目录在切换前完整备份。
+SDK 会话文件。三服最终上线在全新空目录 data-realm-3-live-20261112，避免把早期 9 级测试
+占位角色当成新服存档。旧目录和切换前数据库均完整保留。
+
+2026-11-12 21:12 CST，发布版本 release-20261112T131204Z（提交 7de7c72）上线。空服修正在
+公网模式仅写入 empty-realm-v1 建库标记，首位账号登录时才生成角色 1、等级 1 的完整新手
+存档；账号、钱包和活动启动任务都在有角色后才执行。发布档案校验区服、开服档案和开服时间，
+空服首角色不比较配置模板 ID。上线时 roles=0、accounts=0，真实手机 SDK 首次登录后 roles=1、
+accounts=1，角色 1 为 1 级、经验 0、148 个登录模块；重启后再次登录保持同一角色。
+
+切换前旧三服数据备份：
+/data/disk1/game/backups/pre-empty-realm-20261112T131204Z/data-realm-3-rollover.tar.gz，
+SHA256 e76ed1f0ffea27931f070afcc9db8d76011540c6300d9f49f7d42b556b0f637f。
+定向测试 15/15，部署测试 1/1，全量测试 1707 项（pass 1705、fail 0、skipped 2）。

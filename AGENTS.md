@@ -16,6 +16,15 @@
 
 ## 当前目标
 
+2026-11-12 命运三服生产切换完成：命运二服 service 已停止并禁用；命运三服独占原二服公网端口
+18880/18881/18882/19090，管理端口仅 127.0.0.1:18883。线上发布
+`/data/disk1/game/releases/release-20261112T131204Z`，提交 7de7c72；数据目录
+`/data/disk1/game/data-realm-3-live-20261112`。公网空服修复使空库先只有 roles=0/accounts=0，
+首个真实账号登录创建 roleId=1、等级1、经验0的完整新手存档；重开后仍可登录，二服 server_id=2
+被拒绝。真实链路验证 148 个登录模块、英雄 2010101/2010201 均1级、SQLite integrity ok。
+全量 npm test 1707项（pass 1705/fail 0/skipped 2），部署测试1/1。旧三服目录及切换前备份保留：
+`/data/disk1/game/backups/pre-empty-realm-20261112T131204Z/`。APK 大厅视觉验收仍待用户完成。
+
 2026-11-08 BLOCK-G2（探索与小游戏后半 #163–#179，17 卡 96 命令）：分支 `task/BLOCK-G2-20261108` 在 worktree `.worktree/gameplay-20261108/g2-exploration` 完成，提交 82c3e9d，以 24f90e9 合入 main；新增 `game/minigame-act-service.mjs`（96 type 统一服务，权威状态写 SQLite）、`config/minigame-act-tables.mjs`（15 张表逐族行数校验）、15 个表资产与 17 份逐卡记录，网关加 import/实例/派发与模块 92 登录同步。完整实现 6 卡（PUZZLEACT/TILESWAP/MUSHROOMMONSTER/GOPHERACT/MATCHINGGAMEACT/ALBUM），服务端完成含明确拒绝 8 卡（TOWERACT/SPIRITCOURTYARD/TRIPLEMATCH/MONOPOLYACT/DREAMTRIALACT/DIAMONDVEINACT/HOMELAND/BAKINGACT），SOURCEPOINT 仅明确拒绝，拒绝一律 GameError(5, 缺口说明)。随后 88219ca 让 `readGeneratedDump` 兼容行级表 dump（HomelandActTable），专项 17 项；main 88219ca 在干净 worktree 全量 2674（pass 2672 / fail 0 / skipped 2），日志 `analysis/test-runs/gameplay-20261106/block-g2-main-88219ca-full.log`。本轮未启停实时服务、未读写运行数据库、未操作模拟器/ADB/APK，无 APK 验收。
 
 2026-11-08 BLOCK-E1（社交前半 #87、#91–#106，总控）：分支 `task/BLOCK-E1-20261108` 在新 worktree 完成并以 --no-ff 合入 main。新增三个服务：`game/guild-society-service.mjs`（公会 171、21001–21031、85501–85505，31 type）、`game/social-community-service.mjs`（助力/实时地图/评论/关系/弹幕，18 type）、`game/guild-activity-service.mjs`（公会红包/试炼/探索/战/对决/竞速，79 type）；网关仅加 3 个 import、3 个实例与 3 个派发块。公会权威状态仍为 module 24，新增 SQLite 表存目录/申请/日志、社区账本与活动状态。共 128 type：82 条真实路径、46 条按 Guild*Table 等证据缺口 fail closed（code 5）；`21026/21030` 经 grantResources 真发资源。服务专项 26 + 真实临时 TCP 1，合并 main 并再并块 D 后全量 2673（pass 2671 / fail 0 / skipped 2），日志 `analysis/test-runs/gameplay-20261106/block-e1-full.log`。详情 `agent/workflow/gameplay-completion/BLOCK-E1/implementation.md`；本轮未操作模拟器/ADB/APK 与实时服务，无 APK 验收。
