@@ -41,9 +41,12 @@ FC_SDK_SESSION_SOURCE=/data/disk1/game/data/sdk-sessions.local-only.json
 | 当前 serverDay | 2 | 1 |
 | 数据库版本 | 20 | 20（首建） |
 
-发布版本 release-20261112T111827Z，RELEASE_COMMIT=fe86043。切换前数据库完整备份
- /data/disk1/game/backups/pre-realm-3-20261112T111827Z/data.tar.gz
-（SHA256 e6609df4f441a17c1ee2111a43c3bb542f07b58dc4e320db90557470fbaa1af9）。
+开服发布版本 release-20261112T111827Z，RELEASE_COMMIT=fe86043。随后在文档提交后部署
+release-20261112T113500Z，RELEASE_COMMIT=fbefeb0，当前两个进程均运行此版本。
+前一次切换的数据库备份为 /data/disk1/game/backups/pre-realm-3-20261112T111827Z/data.tar.gz
+（SHA256 e6609df4f441a17c1ee2111a43c3bb542f07b58dc4e320db90557470fbaa1af9）；
+fbefeb0 发布切换前备份为 /data/disk1/game/backups/pre-main-fbefeb0-20261112T113500Z/data.tar.gz
+（SHA256 d12539137b00906546191c376966ef65abc27131c701222d88dbf67964f95251）。
 
 ## 验证
 
