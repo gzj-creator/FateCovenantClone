@@ -1,0 +1,40 @@
+[Unit]
+Description=Fate Covenant Realm 2
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=20
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/data/disk1/game/current
+Environment=NODE_ENV=production
+Environment=TZ=Asia/Shanghai
+Environment=FC_LOCAL_DATA=/data/disk1/game/data
+Environment=FC_ADMIN_LISTEN_HOST=127.0.0.1
+ExecStart=/usr/bin/node /data/disk1/game/current/local-server.mjs --public
+Restart=always
+RestartSec=3s
+TimeoutStopSec=20s
+KillSignal=SIGTERM
+LimitNOFILE=65536
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/data/disk1/game/data
+
+[Install]
+WantedBy=multi-user.target
