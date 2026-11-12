@@ -98,12 +98,15 @@ import { readExplorationActTables } from '../config/exploration-act-tables.mjs';
 import { readSlotGameActTables } from '../config/slot-game-act-tables.mjs';
 import { createMinigameActService } from './minigame-act-service.mjs';
 import { readMinigameActTables } from '../config/minigame-act-tables.mjs';
+import { readActShopTables } from '../config/act-shop-tables.mjs';
+import { readUpStarGiftTables } from '../config/up-star-gift-tables.mjs';
 import { createHundredAccService } from './hundred-acc-service.mjs';
 import { createOverallPvpService } from './overall-pvp-service.mjs';
 import { readOverallPvpTables } from '../config/overall-pvp-tables.mjs';
 import { createPetActivityService } from './pet-activity-service.mjs';
 import { createPremiumActService } from './premium-act-service.mjs';
 import { readPremiumActTables } from '../config/premium-act-tables.mjs';
+import { createActShopService } from './act-shop-service.mjs';
 import { createUpStarGiftService } from './up-star-gift-service.mjs';
 import { createShopService } from './shop-service.mjs';
 import { createVoucherService } from './voucher-service.mjs';
@@ -738,7 +741,8 @@ export function createLocalGame({
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
   const benefitCommerce=createBenefitCommerceService({store,codec,tables,now:clock,logger});
-  const upStarGift=createUpStarGiftService({store,codec,tables,calendar,now:clock,logger});
+  const actShop=createActShopService({store,codec,tables,actShopTables:readActShopTables(),calendar,now:clock,logger});
+  const upStarGift=createUpStarGiftService({store,codec,tables,upStarTables:readUpStarGiftTables(),calendar,now:clock,logger});
   const tasks=createTaskService({store,codec,tables,logger});
   const everyTasks=createEveryTaskService({store,codec,tables,now:clock,logger});
   const sprint=createSprintService({store,codec,tables,calendar,now:clock});
@@ -991,6 +995,13 @@ export function createLocalGame({
     const drawActivityLogin = drawActivity.synchronizeLogin(
       activity, storedModules.get(RELIC_ACTIVITY_LOGIN_MODULE_ID) ?? null, loginSeconds
     );
+    // ActShopData parses pb_act_shop_db_info from an activity entry's
+    // module_login_data. The captured login snapshot has no ActShop payload,
+    // while the shipped table and ActFrame schedule define every usable store.
+    const actShopLogin = actShop.synchronizeLogin(activity, loginSeconds);
+    if (actShopLogin.activityIds.length || actShopLogin.missingConfiguration.length) {
+      logger({ event: 'act_shop_login_synced', ...actShopLogin });
+    }
     // UpStarGiftMgr parses pb_up_star_gift_master from the func 25 parallel
     // group's module_login_data. The captured snapshot carries 66 versions but
     // no selected version and misses versions opened by the live schedule
@@ -2257,8 +2268,9 @@ export function createLocalGame({
       }
       if (upStarGift.supports(type)) {
         // 31052 是 protobuf pb_up_star_gift_req，31053 是 ETF 版本号；分成两条
-        // 解码路径，避免把 protobuf 当 ETF 解析成 code 1。领奖缺少
-        // UpStarGiftTable 时由服务返回 code 5 与具体缺口。
+        // 解码路径，避免把 protobuf 当 ETF 解析成 code 1。免费任务奖励由
+        // UpStarGiftTable、玩家养成状态和模块 92 领取位共同结算；充值礼包行
+        // 仍走 RechargeMgr，不在 31052 中发放。
         try {
           const input = type === 31052
             ? unpackRequest('pb_up_star_gift_req', request.data)
@@ -2273,19 +2285,44 @@ export function createLocalGame({
         }
         return;
       }
+      if (actShop.supports(type)) {
+        try {
+          const input = unpackRequest('pb_act_shop_info_req', request.data);
+          const result = actShop.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'act_shop_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'act_shop_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (benefitCommerce.supports(type)) {
         // 块 I（PAY-*）的礼包/通行证/基金/拍卖命令入口。可结算的命令在这里真实
         // 扣发并写回登录模块；配置表缺失的命令返回 5 与具体原因，避免用固定空包
-        // 冒充已实现。
+        // 冒充已实现。请求编码按 tcp-commands.md：标为 protobuf 的命令先按 schema
+        // 解码，解不开时才回退 ETF 路径，避免真实客户端在进入拒绝分支前先拿到 code 1。
+        const schema = benefitCommerce.requestSchema(type);
+        const card = benefitCommerce.refusals.get(Number(type))?.card ?? null;
         try {
-          const input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
-          const result = benefitCommerce.execute(type, input);
+          let input;
+          if (schema) {
+            try {
+              input = unpackRequest(schema, request.data);
+            } catch {
+              input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
+            }
+          } else {
+            input = await etfArgument(request.data, 'Invalid benefit payload', { optional: true });
+          }
+          const result = benefitCommerce.execute(type, input, schema);
           send(seq, result.data);
           log({ event: 'benefit_command_committed', type, seq });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'benefit_command_rejected', type, seq, code, message: error.message });
+          log({ event: 'benefit_command_rejected', type, seq, code, card, schema, message: error.message });
         }
         return;
       }

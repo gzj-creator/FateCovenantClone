@@ -38,7 +38,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   const input = process.argv[2];
   if (!input) throw new Error('Usage: node dump-luajit-prototypes.mjs <input.lua.bin> [text-filter]');
   const filter = process.argv[3] ?? '';
-  const parsed = parseLuaJit(fs.readFileSync(input));
+  const parsed = parseLuaJit(fs.readFileSync(input), { allowMultipleRoots: true });
   const prototypes = describePrototypes(parsed);
   for (const prototype of prototypes) {
     const haystack = JSON.stringify(prototype);
