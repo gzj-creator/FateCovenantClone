@@ -34,6 +34,10 @@ export function createFeatureService({ store, codec, sprintPreview = false, logg
   // Leader-equipment draw 1348 must also be open or HeroDrawForm resolves an empty
   // current library and falls back to the ordinary adventure library.
   if (sprintPreview) {
+    if (store.empty && !store.hasRoles()) return {
+      supports: type => type === 7000,
+      execute() { throw new GameError(5, 'No player role exists yet'); }
+    };
     const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3)));
     const ids = [1039, 1322, 1348, 1537].filter(id => {
       const [targetId, index] = splitId(id);

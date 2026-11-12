@@ -235,6 +235,7 @@ export function createLocalGame({
   relicDrawGroupResolver,
   sprintPreview = false,
   localWallet = false,
+  emptyRealm = false,
   missionFightPlayback = false,
   eliteEnemies = null,
   martialClubRoster = null,
@@ -271,7 +272,8 @@ export function createLocalGame({
     roleName,
     launchProfileId,
     activityWindowAnchor: anchor,
-    serverOpenedAt: openedAt
+    serverOpenedAt: openedAt,
+    emptyRealm: emptyRealm === true
   });
   const starterConfig = readStarterConfig(readJsonAsset(tableAsset('RoleTable.data.lua.json')).tables);
   function seed({ freshAccount = false } = {}) {
@@ -314,6 +316,9 @@ export function createLocalGame({
     serverOpenedAt: openedAt,
     launchProfile: persistedLaunchProfile
   });
+  if (store.empty && launchProfileId == null) {
+    throw new Error('Empty public realms require a named launch profile');
+  }
   const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
   const attributeTables = readAttributeTables();
   const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
@@ -729,10 +734,14 @@ export function createLocalGame({
   const mail=voucher?createMailService({store,codec,tables,voucher,publish,logger}):undefined;
   const standardPermit=createPermitService({codec,tables,now:secondsClock});
   const monthPermit=createMonthPermitService({codec,tables});
-  const monthPermitRepair=store.transaction((model,db)=>monthPermit.repairLegacyTaskExperience({model,db}));
+  const monthPermitRepair=store.hasRoles()
+    ? store.transaction((model,db)=>monthPermit.repairLegacyTaskExperience({model,db}))
+    : { changed: false, repairs: [] };
   if(monthPermitRepair.changed) logger({event:'month_permit_task_exp_repaired',repairs:monthPermitRepair.repairs.map(({changes,...repair})=>repair)});
   const monthlyCard=createMonthlyCardService({codec,tables,now:secondsClock});
-  const monthlyCardRepair=store.transaction(model=>monthlyCard.repairLegacyClaimBits({model}));
+  const monthlyCardRepair=store.hasRoles()
+    ? store.transaction(model=>monthlyCard.repairLegacyClaimBits({model}))
+    : { changed: false, repaired: [] };
   if(monthlyCardRepair.changed) logger({event:'monthly_card_claim_bits_repaired',cards:monthlyCardRepair.repaired});
   const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const wallet=localWallet?createWalletService({

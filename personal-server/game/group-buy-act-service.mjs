@@ -237,6 +237,7 @@ export function createGroupBuyActService({
   }
 
   function releaseEligiblePendingRewards() {
+    if (store.empty) return;
     const roleId = store.state().roleId;
     const hasPending = store.inspect(db => Boolean(db.prepare(
       "SELECT 1 FROM pending_rewards WHERE role_id=? AND status='pending' AND source_key LIKE 'group_buy_act:%' LIMIT 1"

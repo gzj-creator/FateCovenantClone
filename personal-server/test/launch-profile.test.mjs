@@ -174,6 +174,50 @@ test('a persistent database refuses a different launch profile before migrations
   }), /launch profile mismatch.*serverOpenedAt/i);
 });
 
+test('an empty public realm creates level-one accounts and survives reopening', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-empty-realm-'));
+  const databasePath = path.join(directory, 'game.sqlite');
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const selected = Object.freeze({
+    roleId: 100004,
+    serverId: 3,
+    serverName: 'Realm 3',
+    roleName: 'Adventurer',
+    launchProfileId: 'empty-realm-3-launch',
+    activityWindowAnchor: ANCHOR,
+    serverOpenedAt: OPENED_AT,
+    emptyRealm: true
+  });
+  const seed = options => createSeed(codec, {
+    ...selected,
+    roleId: options?.freshAccount ? selected.roleId + 1 : selected.roleId,
+    ...options
+  });
+
+  const first = createGameStore({ databasePath, seed, codec, serverOpenedAt: OPENED_AT, launchProfile: selected });
+  assert.equal(first.empty, true);
+  assert.equal(first.hasRoles(), false);
+  assert.equal(first.accountCount(), 0);
+  const firstAccount = first.resolveAccount('first-account');
+  assert.equal(firstAccount.roleId, 1);
+  assert.equal(firstAccount.created, true);
+  assert.equal(first.hasRoles(), true);
+  assert.equal(first.accountCount(), 1);
+  assert.equal(first.inspect(db => db.prepare('SELECT source FROM migrations WHERE name=?').get('empty-realm-v1')).source, 'no-player-rows');
+  const firstState = first.state(firstAccount.roleId);
+  assert.equal(codec.unpack('to_client_role_info', Buffer.from(firstState.rolePb, 'base64')).level, 1);
+  first.close();
+
+  const reopened = createGameStore({ databasePath, seed, codec, serverOpenedAt: OPENED_AT, launchProfile: selected });
+  assert.equal(reopened.roleForAccount('first-account'), 1);
+  const secondAccount = reopened.resolveAccount('second-account');
+  assert.equal(secondAccount.roleId, 2);
+  assert.equal(secondAccount.created, true);
+  assert.notEqual(secondAccount.roleId, reopened.roleForAccount('first-account'));
+  assert.equal(reopened.accountCount(), 2);
+  reopened.close();
+});
+
 test('gateway seeding binds the configured realm, role and launch profile', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-launch-gateway-'));
   const game = createLocalGame({

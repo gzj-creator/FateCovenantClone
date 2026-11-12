@@ -154,6 +154,7 @@ const game = createLocalGame({
   currentFishingActivityId: activityCalendar.currentFishingActivityId,
   sprintPreview: true,
   localWallet: true,
+  emptyRealm: publicDeployment != null,
   missionFightPlayback: true,
   logger
 });

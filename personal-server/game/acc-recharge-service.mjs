@@ -115,6 +115,7 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
   // client reads it through Core.BitBlock, so legacy claims need a one-time
   // repair before login exposes the module again.
   function repairAwardStates() {
+    if (store.empty && !store.hasRoles()) return;
     const state = store.state();
     const modules = new Map(state.modules.value);
     const module = modules.get(MODULE_ID);
@@ -165,6 +166,7 @@ export function createAccRechargeService({ store, codec, tables, calendar, logge
   repairAwardStates();
 
   function releaseEligiblePendingRewards() {
+    if (store.empty && !store.hasRoles()) return;
     const hasPending = store.inspect(db => Boolean(db.prepare(
       "SELECT 1 FROM pending_rewards WHERE role_id=? AND status='pending' AND source_key LIKE 'acc_recharge:%' LIMIT 1"
     ).get(store.state().roleId)));

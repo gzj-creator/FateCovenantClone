@@ -242,6 +242,9 @@ export function createWalletService({
     setBuyGiftRecords(login, records);
   };
   function synchronizeAccount() {
+    // Public empty realms run this during construction, before an account has
+    // logged in. Login calls ensureAccount() again inside the role context.
+    if (store.empty && !store.hasRoles()) return { accountId: null, roleId: null };
     const currentAccountId = accountIdFor();
     return store.transaction((model, db) => {
     db.prepare('INSERT OR IGNORE INTO local_wallets(account_id,role_id) VALUES (?,?)').run(currentAccountId, model.state.roleId);

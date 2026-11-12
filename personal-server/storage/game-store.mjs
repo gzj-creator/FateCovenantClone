@@ -136,7 +136,13 @@ function remapRoleLineup(roleLineup, idMap) {
 
 function assertLaunchProfile(db, expected) {
   const rows = db.prepare('SELECT role_id,server_id,metadata_json FROM roles ORDER BY role_id').all();
-  if (!rows.length) return;
+  if (!rows.length) {
+    const marker = db.prepare('SELECT source FROM migrations WHERE name=?').get('empty-realm-v1');
+    if (expected.emptyRealm === true && marker?.source !== 'no-player-rows') {
+      throw new Error('Game database launch profile mismatch: empty realm marker is missing');
+    }
+    return;
+  }
   for (const [index, row] of rows.entries()) {
     let metadata;
     try { metadata = JSON.parse(row.metadata_json); }
@@ -148,11 +154,15 @@ function assertLaunchProfile(db, expected) {
     // A realm can now hold several accounts. The original launch-template role
     // is the lowest role id and keeps the configured id; later accounts get
     // their own role ids while sharing the realm launch metadata.
-    if (index === 0) compare('roleId', row.role_id, expected.roleId);
+    // An empty realm assigns player role ids from 1 instead of materializing the
+    // configured template role. Its profile is identified by the launch
+    // metadata and data directory rather than that template id.
+    if (index === 0 && expected.emptyRealm !== true) compare('roleId', row.role_id, expected.roleId);
     compare('serverId', row.server_id, expected.serverId);
     compare('serverName', metadata.serverName, expected.serverName);
     compare('roleName', metadata.roleName, expected.roleName);
     compare('launchProfileId', metadata.launchProfileId, expected.launchProfileId);
+    if (Object.hasOwn(metadata, 'emptyRealm')) compare('emptyRealm', metadata.emptyRealm, expected.emptyRealm);
     compare('activityWindowAnchor', Number(metadata.activityWindowAnchor), expected.activityWindowAnchor);
     compare('serverOpenedAt', Number(metadata.serverOpenedAt), expected.serverOpenedAt);
     if (mismatches.length) {
@@ -170,6 +180,9 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;');
   const clock = typeof now === 'function' ? now : () => now;
   const missionTables = readMissionTables();
+  // Public realms may intentionally open with no player rows. The first SDK
+  // account then creates the complete level-one starter save on login.
+  const emptyRealm = launchProfile?.emptyRealm === true;
   let version = db.prepare('PRAGMA user_version').get().user_version;
   if (version > 20) { db.close(); throw new Error('Unsupported game database schema: ' + version); }
   db.exec(`
@@ -274,10 +287,6 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
       PRIMARY KEY(role_id,version));
     CREATE INDEX IF NOT EXISTS battle_pass_records_lookup_idx ON battle_pass_records(pass_tid,business_id,pass_score);
   `);
-  if (launchProfile) {
-    try { assertLaunchProfile(db, launchProfile); }
-    catch (error) { db.close(); throw error; }
-  }
   const writeModel = model => {
     const { state, role, heroInfo, resources, lineups, playLineups } = model;
     const { modules, rolePb, guides = {}, lineups: ignored, ...metadata } = state;
@@ -303,6 +312,9 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
   try {
     if (!db.prepare('SELECT role_id FROM roles LIMIT 1').get()) {
       const hasLegacy = legacyStatePath && fs.existsSync(legacyStatePath);
+      if (emptyRealm && !hasLegacy) {
+        db.prepare('INSERT INTO migrations VALUES (?,?,?)').run('empty-realm-v1', 'no-player-rows', new Date(clock()).toISOString());
+      } else {
       const state = hasLegacy ? JSON.parse(fs.readFileSync(legacyStatePath, 'utf8')) : seed();
       if (hasLegacy) {
         const backup = legacyStatePath.replace(/\.json$/, '') + '.pre-sqlite-backup.local-only.json';
@@ -314,6 +326,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         db.prepare('INSERT INTO migrations VALUES (?,?,?)').run('initial-save-v1', hasLegacy ? path.basename(legacyStatePath) : 'offline-fixture', new Date().toISOString());
         db.exec('COMMIT');
       } catch (error) { db.exec('ROLLBACK'); throw error; }
+      }
     }
     if (version < 2) {
       db.exec('BEGIN IMMEDIATE');
@@ -826,9 +839,11 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         version = 20;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
+    if (launchProfile) assertLaunchProfile(db, launchProfile);
   } catch (error) { db.close(); throw error; }
 
   const roleContext = new AsyncLocalStorage();
+  const hasRoles = () => Boolean(db.prepare('SELECT 1 FROM roles LIMIT 1').get());
   function defaultRoleId() {
     const row = db.prepare('SELECT role_id FROM roles ORDER BY role_id LIMIT 1').get();
     if (!row) throw new Error('Game database has no role');
@@ -886,6 +901,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
       const state = seed({ freshAccount: true });
       state.roleId = nextRoleId;
       state.createdAt = Math.floor(clock() / 1000);
+      if (launchProfile) Object.assign(state, launchProfile, { roleId: nextRoleId });
       writeModel(modelFromState(state, codec));
       const timestamp = new Date(clock()).toISOString();
       db.prepare(`INSERT INTO accounts
@@ -907,7 +923,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     const row = db.prepare('SELECT account_id,login_code,phone FROM accounts WHERE role_id=?').get(activeRoleId(roleId));
     return row ? { accountId: row.account_id, loginCode: row.login_code, phone: row.phone } : null;
   }
-  const initialModel = read();
+  const initialModel = emptyRealm ? null : read();
   return {
     databasePath, read, resolveAccount, roleForAccount, accountForRole,
     runWithRole(roleId, action) {
@@ -918,8 +934,10 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     },
     currentRoleId() { return activeRoleId(); },
     currentAccountId() { return accountForRole(activeRoleId())?.accountId ?? null; },
-    serverId: Number(initialModel.state.serverId),
-    serverOpenedAt: Number(initialModel.state.serverOpenedAt),
+    hasRoles,
+    accountCount() { return Number(db.prepare('SELECT COUNT(*) AS count FROM accounts').get().count); },
+    serverId: Number(initialModel?.state.serverId ?? launchProfile?.serverId),
+    serverOpenedAt: Number(initialModel?.state.serverOpenedAt ?? launchProfile?.serverOpenedAt),
     inspect(action) { return action(db); },
     state(roleId) {
       const model = read(roleId);
@@ -935,6 +953,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
         writeModel(model); db.exec('COMMIT'); return result;
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },
+    empty: emptyRealm,
     close() { db.close(); }
   };
 }

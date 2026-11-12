@@ -17,7 +17,7 @@ export function createVoucherService({ store, tables, now = () => Math.floor(Dat
   const itemTid = integer(Number(parameter.coupon ?? DEFAULT_ITEM_TID), 1, 2147483647, 'Invalid voucher item configuration');
   const faceValueCents = FACE_VALUE_CENTS;
   const skuId = 'voucher-' + itemTid;
-  store.transaction((model, db) => {
+  const upsertSku = db => {
     db.prepare(`INSERT INTO voucher_skus VALUES (?,?,?,?,?,?)
       ON CONFLICT(sku_id) DO UPDATE SET
         item_tid=excluded.item_tid,
@@ -28,7 +28,11 @@ export function createVoucherService({ store, tables, now = () => Math.floor(Dat
     // Voucher mails are denominated in item count. Rebase existing grants so the
     // admin ledger and the patched client agree after upgrading from the old rate.
     db.prepare('UPDATE voucher_grants SET face_value_cents=? WHERE sku_id=?').run(faceValueCents, skuId);
-  });
+  };
+  // The SKU catalog is realm-wide. Empty public realms populate it before any
+  // player role exists; normal realms keep the historical transaction path.
+  if (store.empty && !store.hasRoles()) store.inspect(upsertSku);
+  else store.transaction((model, db) => upsertSku(db));
 
   function sku() {
     const row = store.inspect(db => db.prepare('SELECT * FROM voucher_skus WHERE sku_id=? AND active=1').get(skuId));
