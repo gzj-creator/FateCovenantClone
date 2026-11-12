@@ -28,8 +28,11 @@
 
 ## 活动运行时与在线同步
 
-- [ ] 模块 92/183 接回活动运行时可见性。
-- [ ] E9-4 推送类型取证后实现在线阶段同步。
+- [x] 模块 92/183 接回活动运行时可见性。
+  登录副本会移除生命周期判定为 `closed` 的活动，并写入权威 `cur_state_id`/`cur_stage_id`、当前状态进入时间与有效窗口；旧登录快照不回写。模块 183 同时应用 `extend/force_open` 的运行窗口。
+- [x] E9-4 推送类型取证后实现在线阶段同步。
+  已证实 ActFrame 使用 `3304/pb_act_frame_stage_push`、旧 `ActivityTable` 使用 `3301/pb_act_state_change_back`；在线可见阶段变化按配置来源发送真实 id/阶段/窗口。`closed` 没有客户端数值，严格跳过并记录 `closed_stage_not_mapped`。证据见 `agent/workflow/evidence/E9-4.md`。
+- [!] E9-4 运行验收：3301/3304 目前只有静态 wire/handler/schema 证据，尚无原服真实流量或 APK 视觉样本；3302/3303 因缺少可信变更输入保持不发。
 
 ## P0-2-3 等级升级后续动作
 

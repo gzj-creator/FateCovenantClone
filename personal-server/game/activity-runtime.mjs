@@ -1,5 +1,6 @@
 import { serverDayNumber } from './activity-calendar.mjs';
 import { activityGate, applyOverride, evaluateActivity } from './activity-lifecycle.mjs';
+import { applyActivityRuntimeLoginView } from './activity-online-sync.mjs';
 
 function seconds(value) {
   const number = Number(value);
@@ -72,7 +73,17 @@ export function createActivityRuntime({
         previewAt: effectiveWindow.start, openAt: effectiveWindow.start, closeAt: effectiveWindow.end,
         showUntil: effectiveWindow.end, stage: result.status
       });
-      changed.push({ actId, periodNo, stage: result.status, reason: result.reason ?? null });
+      const stateStart = Number(result.start ?? effectiveWindow.start);
+      changed.push({
+        actId,
+        periodNo,
+        stage: result.status,
+        reason: result.reason ?? null,
+        visible: result.visible === true,
+        stateId: Number(result.stateId) || null,
+        stateStart: Number.isSafeInteger(stateStart) && stateStart > 0 ? stateStart : null,
+        window: { start: Number(effectiveWindow.start), end: Number(effectiveWindow.end) }
+      });
     }
     return changed;
   }
@@ -94,7 +105,10 @@ export function createActivityRuntime({
       const result = evaluate(Number(row.act_id), at, { window, override });
       if (result.status === row.stage) continue;
       const previous = row.stage;
-      const change = { actId: Number(row.act_id), periodNo: Number(row.period_no), from: previous, to: result.status };
+      const change = {
+        actId: Number(row.act_id), periodNo: Number(row.period_no), from: previous,
+        to: result.status, at: Number(at)
+      };
       if (previous === 'running' && result.status !== 'running') {
         if (activityStore.settlementDone(srv, row.act_id, row.period_no, 0, 'lifecycle')) continue;
         try { onSettle?.({ ...change, row: result }); } catch (error) {
@@ -129,5 +143,9 @@ export function createActivityRuntime({
     return activityGate(row.stage, need);
   }
 
-  return { synchronizeLogin, tick, gate, evaluate, instanceFor };
+  function applyLoginVisibility(activity, states) {
+    return applyActivityRuntimeLoginView(activity, states);
+  }
+
+  return { synchronizeLogin, applyLoginVisibility, tick, gate, evaluate, instanceFor };
 }

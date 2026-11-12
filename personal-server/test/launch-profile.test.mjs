@@ -265,6 +265,23 @@ test('gateway login exposes white-ribbon at server day 16 with the same five-day
   });
   t.after(async () => { await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
 
+  const initial = await decodeEtf(await game.loginPayload());
+  const initialModules = new Map(initial[2].value.map(entry => [Number(entry[0]), entry[1]]));
+  const initialActivity = codec.unpack('pb_act_login', Buffer.from(initialModules.get(ACTIVITY_LOGIN_MODULE_ID).value));
+  const initialIds = new Set([
+    ...(initialActivity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
+    ...(initialActivity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
+  ]);
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, at), 16);
+  assert.equal(initialIds.has(1102010), false, 'function 30395 is not proven open for this role and must stay closed without an override');
+
+  for (const funId of [30395, 2463, 30302]) game.featureOverrides.set({
+    serverId: game.store.read().state.serverId,
+    funId,
+    mode: 'force_open',
+    reason: 'launch-profile regression fixture',
+    operator: 'test'
+  });
   const login = await decodeEtf(await game.loginPayload());
   const modules = new Map(login[2].value.map(entry => [Number(entry[0]), entry[1]]));
   const activity = codec.unpack('pb_act_login', Buffer.from(modules.get(ACTIVITY_LOGIN_MODULE_ID).value));
@@ -272,7 +289,6 @@ test('gateway login exposes white-ribbon at server day 16 with the same five-day
     ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
     ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
   ]);
-  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, at), 16);
   assert.equal(activityIds.has(1102010), true);
   assert.deepEqual(
     activity.act_custom_list.filter(row => Number(row.act_id) === 1102010)

@@ -1,4 +1,5 @@
 import { naturalDay, serverDay } from './time.mjs';
+import { activityClientStageId } from './activity-online-sync.mjs';
 
 const DAY_SECONDS = 86400;
 const FISHING_ACT_FIRST = 1074001;
@@ -414,10 +415,26 @@ export function createActivityCalendar({
     const serverByTid = new Map(server.act_stage_list
       .map(row => [Number(row?.act_id), row])
       .filter(([id]) => Number.isSafeInteger(id) && id > 0));
+    const runtimeById = new Map((options.runtimeStates ?? [])
+      .map(row => [Number(row?.actId), row])
+      .filter(([id, row]) => Number.isSafeInteger(id) && id > 0 && row));
+    const runtimeStage = id => activityClientStageId(runtimeById.get(Number(id))?.stateId ?? runtimeById.get(Number(id))?.stage);
+    const runtimeVisible = id => runtimeById.get(Number(id))?.stage !== 'closed';
+    const runtimeWindow = id => {
+      const state = runtimeById.get(Number(id));
+      const start = Number(state?.window?.start ?? state?.stateStart);
+      const end = Number(state?.window?.end);
+      return Number.isSafeInteger(start) && start > 0 && Number.isSafeInteger(end) && end > start
+        ? { start, end }
+        : null;
+    };
 
     function upsertLoginRow(id, config, start, end) {
       if (!config) return false;
+      if (!runtimeVisible(id)) return false;
       const type = Number(config.type ?? config.func) || 0;
+      const stageId = runtimeStage(id) ?? 50;
+      const enterTime = Number(runtimeById.get(id)?.stateStart) || start;
       let serverRow = serverByTid.get(id);
       if (!serverRow) {
         serverRow = { act_id: id };
@@ -429,10 +446,10 @@ export function createActivityCalendar({
         type,
         start_time: String(start),
         end_time: String(end),
-        cur_stage_id: 50,
+        cur_stage_id: stageId,
         is_pause: false,
         loop_count: 0,
-        stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+        stage_time_list: [{ stage_id: stageId, start_time: String(enterTime), end_time: String(end) }]
       });
 
       let playerRow = playerByTid.get(id);
@@ -446,9 +463,9 @@ export function createActivityCalendar({
         act_id: id,
         start_time: String(start),
         end_time: String(end),
-        cur_stage_id: 50,
+        cur_stage_id: stageId,
         loop_count: 0,
-        history_time: [{ stage_id: 50, enter_time: String(start) }]
+        history_time: [{ stage_id: stageId, enter_time: String(enterTime) }]
       });
       return true;
     }
@@ -480,7 +497,12 @@ export function createActivityCalendar({
       player.data_list = player.data_list.filter(row => {
         const id = Number(row?.act_stage?.act_id);
         const config = activityConfig(tables, id);
-        if (!config) return true;
+        if (!config) return runtimeVisible(id);
+        if (!runtimeVisible(id)) return false;
+        if (runtimeById.has(id)) {
+          activeIds.add(id);
+          return true;
+        }
         if (isRunning(id)) {
           activeIds.add(id);
           return true;
@@ -490,9 +512,11 @@ export function createActivityCalendar({
       server.act_stage_list = server.act_stage_list.filter(row => {
         const id = Number(row?.act_id);
         const config = activityConfig(tables, id);
-        if (!config) return true;
+        if (!config) return runtimeVisible(id);
+        if (!runtimeVisible(id)) return false;
+        if (runtimeById.has(id)) activeIds.add(id);
         if (isRunning(id)) activeIds.add(id);
-        return isRunning(id);
+        return runtimeById.has(id) || isRunning(id);
       });
       playerByTid.clear();
       for (const row of player.data_list) playerByTid.set(Number(row?.act_stage?.act_id), row);
@@ -528,7 +552,7 @@ export function createActivityCalendar({
 
       for (const id of activeIds) {
         const config = activityConfig(tables, id);
-        const window = explicitWindows.get(id) ?? scheduledWindow(id, activity);
+        const window = runtimeWindow(id) ?? explicitWindows.get(id) ?? scheduledWindow(id, activity);
         if (!config || !window || !Number(config.type ?? config.func)) continue;
         if (!upsertLoginRow(id, config, window.start, window.end)) continue;
         result.activityIds.push(id);
@@ -545,23 +569,26 @@ export function createActivityCalendar({
       .map(Number)
       .filter(id => Number.isSafeInteger(id) && id > 0));
     for (const id of materializeIds) {
+      if (!runtimeVisible(id)) continue;
       if (serverByTid.has(id) && playerByTid.has(id)) continue;
       const config = activityConfig(tables, id);
       const type = Number(config?.type) || 0;
       if (!config || type <= 0) continue;
-      const window = activityWindow(config, openedAt, referenceOpenedAt);
+      const window = runtimeWindow(id) ?? activityWindow(config, openedAt, referenceOpenedAt);
       const start = Math.min(window?.start ?? openedAt, current);
       const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
+      const stageId = runtimeStage(id) ?? 50;
+      const enterTime = Number(runtimeById.get(id)?.stateStart) || start;
       if (!serverByTid.has(id)) {
         const serverRow = {
           act_id: id,
           type,
           start_time: String(start),
           end_time: String(end),
-          cur_stage_id: 50,
+          cur_stage_id: stageId,
           is_pause: false,
           loop_count: 0,
-          stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+          stage_time_list: [{ stage_id: stageId, start_time: String(enterTime), end_time: String(end) }]
         };
         server.act_stage_list.push(serverRow);
         serverByTid.set(id, serverRow);
@@ -572,9 +599,9 @@ export function createActivityCalendar({
             act_id: id,
             start_time: String(start),
             end_time: String(end),
-            cur_stage_id: 50,
+            cur_stage_id: stageId,
             loop_count: 0,
-            history_time: [{ stage_id: 50, enter_time: String(start) }]
+            history_time: [{ stage_id: stageId, enter_time: String(enterTime) }]
           },
           module_login_data: Buffer.alloc(0)
         };
@@ -585,7 +612,7 @@ export function createActivityCalendar({
 
     for (const group of explicitGroups) {
       const parentConfig = activityConfig(tables, group.actId);
-      const parentWindow = activityWindow(parentConfig, openedAt, referenceOpenedAt);
+      const parentWindow = runtimeWindow(group.actId) ?? activityWindow(parentConfig, openedAt, referenceOpenedAt);
       const start = Math.min(parentWindow?.start ?? openedAt, current);
       const end = Math.max(parentWindow?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
       for (const id of [group.actId, ...group.companionIds]) {
@@ -613,29 +640,32 @@ export function createActivityCalendar({
       }
     }
     for (const id of companionIds) {
+      if (!runtimeVisible(id)) continue;
       if (serverByTid.has(id)) continue;
       const config = activityConfig(tables, id);
-      const window = activityWindow(config, openedAt, referenceOpenedAt);
+      const window = runtimeWindow(id) ?? activityWindow(config, openedAt, referenceOpenedAt);
       const start = Math.min(window?.start ?? openedAt, current);
       const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
+      const stageId = runtimeStage(id) ?? 50;
+      const enterTime = Number(runtimeById.get(id)?.stateStart) || start;
       const serverRow = {
         act_id: id,
         type: Number(config?.type) || 0,
         start_time: String(start),
         end_time: String(end),
-        cur_stage_id: 50,
+        cur_stage_id: stageId,
         is_pause: false,
         loop_count: 0,
-        stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+        stage_time_list: [{ stage_id: stageId, start_time: String(enterTime), end_time: String(end) }]
       };
       const playerRow = {
         act_stage: {
           act_id: id,
           start_time: String(start),
           end_time: String(end),
-          cur_stage_id: 50,
+          cur_stage_id: stageId,
           loop_count: 0,
-          history_time: [{ stage_id: 50, enter_time: String(start) }]
+          history_time: [{ stage_id: stageId, enter_time: String(enterTime) }]
         },
         module_login_data: Buffer.alloc(0)
       };
@@ -645,6 +675,13 @@ export function createActivityCalendar({
       playerByTid.set(id, playerRow);
     }
 
+    server.act_stage_list = server.act_stage_list.filter(row => runtimeVisible(Number(row?.act_id)));
+    player.data_list = player.data_list.filter(row => runtimeVisible(Number(row?.act_stage?.act_id)));
+    serverByTid.clear();
+    playerByTid.clear();
+    for (const row of server.act_stage_list) serverByTid.set(Number(row.act_id), row);
+    for (const row of player.data_list) playerByTid.set(Number(row.act_stage?.act_id), row);
+
     for (const [id, serverRow] of serverByTid) {
       const playerRow = playerByTid.get(id);
       const existingStart = Math.min(
@@ -653,23 +690,28 @@ export function createActivityCalendar({
       );
       const start = Math.min(existingStart === Number.MAX_SAFE_INTEGER ? openedAt : existingStart, current);
       const existingEnd = Math.max(seconds(serverRow.end_time), seconds(playerRow?.act_stage?.end_time));
-      const end = Math.max(current + ALL_OPEN_LOGIN_WINDOW_SECONDS, existingEnd, current + 1);
-      const stage = { stage_id: 50, start_time: String(start), end_time: String(end) };
+      const resolvedWindow = runtimeWindow(id);
+      const resolvedStart = resolvedWindow?.start ?? start;
+      const end = resolvedWindow?.end
+        ?? Math.max(current + ALL_OPEN_LOGIN_WINDOW_SECONDS, existingEnd, current + 1);
+      const stageId = runtimeStage(id) ?? 50;
+      const enterTime = Number(runtimeById.get(id)?.stateStart) || resolvedStart;
+      const stage = { stage_id: stageId, start_time: String(enterTime), end_time: String(end) };
       serverRow.act_id = id;
-      serverRow.start_time = String(start);
+      serverRow.start_time = String(resolvedStart);
       serverRow.end_time = String(end);
-      serverRow.cur_stage_id = 50;
+      serverRow.cur_stage_id = stageId;
       serverRow.is_pause = false;
       serverRow.loop_count = 0;
       serverRow.stage_time_list = [stage];
       if (playerRow) {
         playerRow.act_stage ??= {};
         playerRow.act_stage.act_id = id;
-        playerRow.act_stage.start_time = String(start);
+        playerRow.act_stage.start_time = String(resolvedStart);
         playerRow.act_stage.end_time = String(end);
-        playerRow.act_stage.cur_stage_id = 50;
+        playerRow.act_stage.cur_stage_id = stageId;
         playerRow.act_stage.loop_count = 0;
-        playerRow.act_stage.history_time = [{ stage_id: 50, enter_time: String(start) }];
+        playerRow.act_stage.history_time = [{ stage_id: stageId, enter_time: String(enterTime) }];
       }
       result.activityIds.push(id);
     }

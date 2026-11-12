@@ -48,6 +48,7 @@ import { createCommandRegistry, loadCommandCatalog, loadCommandGateRules } from 
 import { createActivityStore } from './activity-store.mjs';
 import { createActivityRuntime } from './activity-runtime.mjs';
 import { createActivitySettlementService } from './activity-settlement-service.mjs';
+import { createActivityOnlineSync } from './activity-online-sync.mjs';
 import { createScheduler } from './scheduler.mjs';
 import { backupSqlite } from './db-backup.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
@@ -694,6 +695,7 @@ export function createLocalGame({
   });
   const commandRegistryHasGates = commandRegistry.coverage().requires > 0;
   const activityStore = createActivityStore({ store });
+  const activityOnlineSync = createActivityOnlineSync({ codec, store, activityStore, tables, now: clock, logger });
   const scheduler = createScheduler({ store, now: clock, logger });
   let activitySettlement = null;
   const activityRuntime = createActivityRuntime({
@@ -709,7 +711,9 @@ export function createLocalGame({
     },
     onStageChanged: change => {
       activitySettlement.onStageChanged(change);
-      logger({ event: 'activity_stage_online_sync', ...change });
+      const pushed = activityOnlineSync.projectStageChange(change);
+      if (pushed) publish(pushed.type, pushed.data);
+      logger({ event: 'activity_stage_online_sync', ...change, pushType: pushed?.type ?? null, pushSource: pushed?.source ?? null });
     }
   });
   scheduler.schedule('activity.tick', secondsClock());
@@ -1085,7 +1089,8 @@ export function createLocalGame({
     // login snapshot. Run the calendar once more so those rows carry the same
     // rebased windows and state history as snapshot-backed activities.
     calendar.applyLoginSchedule(activity, loginSeconds);
-    activityRuntime.synchronizeLogin(activity, loginSeconds);
+    const runtimeLogin = activityRuntime.synchronizeLogin(activity, loginSeconds);
+    const runtimeLoginView = activityRuntime.applyLoginVisibility(activity, runtimeLogin);
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
@@ -1160,7 +1165,8 @@ export function createLocalGame({
           const normalization = calendar.normalizeActFrameLogin(player, server, loginSeconds, {
             activityIds: [...afterActivityIds],
             activityGroups: hundredDrawActFrameGroups,
-            activity
+            activity,
+            runtimeStates: runtimeLogin
           });
           premiumLogin = premiumAct.synchronizeLogin({ player, server }, loginSeconds);
           normalization.premiumActivityIds = premiumLogin.activityIds;
@@ -1202,7 +1208,9 @@ export function createLocalGame({
       explorationLoginModules: [...explorationLogin.modules.keys()],
       hundredDrawActFrameActivityIds: hundredDrawActFrameGroups.flatMap(group => [group.actId, ...group.companionIds]),
       removedActivityIds: [...beforeActivityIds].filter(id => !afterActivityIds.has(id)),
-      addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id))
+      addedActivityIds: [...afterActivityIds].filter(id => !beforeActivityIds.has(id)),
+      runtimeHiddenActivityIds: runtimeLoginView.hidden,
+      runtimeUpdatedActivityIds: runtimeLoginView.updated
     });
     return encodeEtf([1, [loginMilliseconds, DEFAULT_TIMEZONE_OFFSET_SECONDS, 1], new E.OtpErlangList([...modules], false), false]);
   }
@@ -3500,7 +3508,7 @@ export function createLocalGame({
     cms, guildNationAssist, guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap, guildNation,
     guildBargain, guildExpedition, channelEntry, guildHunt, guildCrusade, guildAuction, groupBuyAct,
     dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,
-    activityStore, activityRuntime, scheduler, commandRegistry, featureOverrides,
+    activityStore, activityRuntime, activityOnlineSync, scheduler, commandRegistry, featureOverrides,
     listen(port = 19090, host = '127.0.0.1') {
       if (typeof host !== 'string' || host.length === 0) return Promise.reject(new TypeError('Invalid host'));
       return new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => resolve(server.address())); });

@@ -707,3 +707,58 @@ test('all-open materializes the white-ribbon draw paid and exchange shops from t
   assert.equal(server.act_stage_list.filter(row => Number(row.act_id) === 1841010).length, 1);
   assert.equal(player.data_list.filter(row => Number(row.act_stage?.act_id) === 1841010).length, 1);
 });
+
+test('module 183 follows runtime visibility, stage and the effective override window', () => {
+  const openedAt = 1_000_000;
+  const at = openedAt + 6 * 3600;
+  const actId = 1102010;
+  const start = openedAt;
+  const end = start + 4 * DAY;
+  const runtimeTables = {
+    ActFrameAct: new Map([[actId, {
+      type: 1102, time_type: 0, refer_day: 1, refer_start_time: 0,
+      duration_day: 4, end_time: 0, state: [50], state_end_day: [4]
+    }]]),
+    Activity: new Map()
+  };
+  const calendar = createActivityCalendar({
+    tables: runtimeTables,
+    serverOpenedAt: openedAt,
+    now: () => at * 1000
+  });
+  const activity = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+  const player = {
+    data_list: [{
+      act_stage: {
+        act_id: actId, start_time: String(start), end_time: String(end), cur_stage_id: 50,
+        loop_count: 0, history_time: [{ stage_id: 50, enter_time: String(start) }]
+      },
+      module_login_data: Buffer.from('family-state')
+    }]
+  };
+  const server = { act_stage_list: [] };
+  const runtimeStates = [
+    {
+      actId, stage: 'claim', stateId: 60, stateStart: at - 60,
+      window: { start, end }
+    },
+    { actId: 1102009, stage: 'closed', visible: false }
+  ];
+  const normalized = calendar.normalizeActFrameLogin(player, server, at, {
+    activityIds: [actId, 1102009], activity, runtimeStates
+  });
+  assert.deepEqual(normalized.activityIds, [actId]);
+  assert.equal(player.data_list.length, 1);
+  assert.equal(server.act_stage_list.length, 1);
+  assert.equal(player.data_list[0].module_login_data.toString(), 'family-state');
+  assert.equal(Number(player.data_list[0].act_stage.cur_stage_id), 60);
+  assert.equal(Number(player.data_list[0].act_stage.start_time), start);
+  assert.equal(Number(player.data_list[0].act_stage.end_time), end);
+  assert.equal(Number(player.data_list[0].act_stage.history_time.at(-1).enter_time), at - 60);
+  assert.equal(Number(server.act_stage_list[0].cur_stage_id), 60);
+  assert.equal(Number(server.act_stage_list[0].start_time), start);
+  assert.equal(Number(server.act_stage_list[0].end_time), end);
+  assert.deepEqual(server.act_stage_list[0].stage_time_list.map(row => [
+    Number(row.stage_id), Number(row.start_time), Number(row.end_time)
+  ]), [[60, at - 60, end]]);
+});

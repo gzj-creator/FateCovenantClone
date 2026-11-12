@@ -28,7 +28,11 @@ test('login records an instance and the tick settles it exactly once', t => {
     onStageChanged: change => changes.push(change)
   });
   const login = runtime.synchronizeLogin({ act_list: [{ state_data: { act_id: 1 } }] }, 1_000_150);
-  assert.deepEqual(login, [{ actId: 1, periodNo: 1, stage: 'running', reason: null }]);
+  assert.equal(login.length, 1);
+  assert.deepEqual(
+    (({ actId, periodNo, stage, reason, visible, stateId }) => ({ actId, periodNo, stage, reason, visible, stateId }))(login[0]),
+    { actId: 1, periodNo: 1, stage: 'running', reason: null, visible: true, stateId: 50 }
+  );
   assert.equal(activityStore.instance(1, 1).stage, 'running');
 
   runtime.tick(1_000_250);
