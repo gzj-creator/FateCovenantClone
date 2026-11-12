@@ -236,10 +236,18 @@ export function createChatService({
       ensureChannel(db, channelId, type, targetId, isoString(milliseconds));
       const idx = appendMessage(db, channelId, actor.roleId, seconds, content.type, content.bytes);
       const data = pushFor(channelId, actor.roleId, seconds, idx, content.type, content.bytes, extraBin);
+      const pushTargets = type === CHANNEL_TYPES.world
+        ? [{ kind: 'server' }]
+        : type === CHANNEL_TYPES.guild
+          ? [{ kind: 'guild', guildId: targetId }]
+          : type === CHANNEL_TYPES.private
+            ? [{ kind: 'role', roleId: actor.roleId }, { kind: 'role', roleId: targetId }]
+            : [];
+      if (!pushTargets.length) fail(CHAT_CODES.unavailable, 'Chat push target is not recovered');
       log({ event: 'chat_message_sent', roleId: actor.roleId, channelId, type, idx, msgType: content.type, bytes: content.bytes.length });
       return {
         data: Buffer.alloc(0),
-        pushes: [{ type: CHAT_PUSH_TYPES.newMessage, data }],
+        pushes: pushTargets.map(target => ({ type: CHAT_PUSH_TYPES.newMessage, data, target })),
         value: { roleId: actor.roleId, channelId, idx, msgType: content.type }
       };
     });

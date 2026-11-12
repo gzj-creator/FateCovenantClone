@@ -234,7 +234,7 @@ function client(socket) {
       Buffer.from('1.55.090365')
     ]));
   }
-  return { next, request, handshake, close: () => socket.destroy() };
+  return { next, request, handshake, pending: () => queue.length, close: () => socket.destroy() };
 }
 
 test('multiple simultaneous gateway sessions resolve different starter accounts and mail stays isolated', async t => {
@@ -306,6 +306,9 @@ test('multiple simultaneous gateway sessions resolve different starter accounts 
   assert.equal(issued.quantity, 1_000_000);
   const push = codec.unpack('pb_s2c', await phone.peer.next());
   assert.equal(push.type, 900);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(legacy.peer.pending(), 0, 'role-targeted mail must not reach another online account');
+  assert.equal(secondPhone.peer.pending(), 0, 'role-targeted mail must not reach another online account');
 
   const phoneClaim = await phone.peer.request(3002, 2, await encodeEtf([issued.mail_id]));
   assert.equal(phoneClaim.err, undefined);
@@ -314,4 +317,16 @@ test('multiple simultaneous gateway sessions resolve different starter accounts 
   assert.equal(game.store.read(phone.roleId).resources.get('701500').num, '1000000');
   assert.equal(game.store.read(legacy.roleId).resources.get('701500')?.num ?? '0', '0');
   assert.equal(game.store.read(secondPhone.roleId).resources.get('701500')?.num ?? '0', '0');
+
+  const joinedWorld = await legacy.peer.request(10507, 3, await encodeEtf([1, []]));
+  assert.equal(joinedWorld.err, undefined);
+  const worldReply = await legacy.peer.request(11000, 4, codec.pack('pb_chat_msg_content', {
+    text_content: 'server push', msg_type: 1, link_params: [], be_reply_content: ''
+  }));
+  assert.equal(worldReply.err, undefined);
+  for (const peer of [legacy.peer, phone.peer, secondPhone.peer]) {
+    const push = codec.unpack('pb_s2c', await peer.next());
+    assert.equal(Number(push.type), 1400);
+  }
+
 });

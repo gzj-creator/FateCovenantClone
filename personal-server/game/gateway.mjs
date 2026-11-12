@@ -12,6 +12,7 @@ import { createHeroSupportService } from './hero-support-service.mjs';
 import { createHeroRentService } from './hero-rent-service.mjs';
 import { createHeroMasteryService } from './hero-mastery-service.mjs';
 import { createLineupAttributeCache } from './attribute-service.mjs';
+import { createRealtimePublisher } from './realtime-publisher.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
@@ -721,7 +722,7 @@ export function createLocalGame({
     onStageChanged: change => {
       activitySettlement.onStageChanged(change);
       const pushed = activityOnlineSync.projectStageChange(change);
-      if (pushed) publish(pushed.type, pushed.data);
+      if (pushed) publish(pushed.type, pushed.data, { kind: 'server' });
       logger({ event: 'activity_stage_online_sync', ...change, pushType: pushed?.type ?? null, pushSource: pushed?.source ?? null });
     }
   });
@@ -795,11 +796,25 @@ export function createLocalGame({
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });
   const subscribers=new Map();
-  const publish=(type,data,targetRoleId=null)=>{
-    const targets = targetRoleId == null
-      ? [...subscribers.values()].flatMap(group => [...group])
-      : [...(subscribers.get(Number(targetRoleId)) ?? [])];
-    for(const send of targets){try{send(type,data);}catch{logger({event:'wallet_subscriber_disconnected'});}}
+  const guildIdForRole = roleId => {
+    const model = store.read(Number(roleId));
+    const module = new Map(model.state.modules.value).get(24);
+    if (!module) return null;
+    const login = codec.unpack('pb_res_guild_login', rawBinary(module));
+    const guildId = Number(login.guildId ?? 0);
+    return Number.isSafeInteger(guildId) && guildId > 0 ? guildId : null;
+  };
+  const realtimePublisher = createRealtimePublisher({
+    subscribers,
+    currentRoleId: () => store.currentRoleId(),
+    guildIdForRole,
+    logger
+  });
+  const publish = (type, data, target) => realtimePublisher.publish(type, data, target);
+  const publishResultPushes = (pushes, fallbackTarget) => {
+    for (const pushed of pushes ?? []) {
+      publish(pushed?.type, pushed?.data, pushed?.target ?? fallbackTarget);
+    }
   };
   eventBus.on('role.levelUp', event => {
     const model = eventBus.currentModel();
@@ -809,7 +824,7 @@ export function createLocalGame({
     const notifications = features.onlineNotificationsForIds(added, model);
     if (notifications.length) {
       eventBus.afterCommit(() => {
-        for (const notification of notifications) publish(notification.type, notification.data, event.roleId);
+        for (const notification of notifications) publish(notification.type, notification.data, { kind: 'role', roleId: event.roleId });
         logger({
           event: 'role_level_up_feature_push', roleId: event.roleId, from: event.from, to: event.to,
           funOpenIds: added, pushTypes: notifications.map(item => item.type), targetRoleId: event.roleId
@@ -1566,7 +1581,7 @@ export function createLocalGame({
         try {
           const result = await chat.execute(type, request.data ?? Buffer.alloc(0));
           send(seq, result.data);
-          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          publishResultPushes(result.pushes, { kind: 'role', roleId: connectionRoleId });
           log({ event: 'chat_command_committed', type, seq, ...result.value });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -1583,7 +1598,7 @@ export function createLocalGame({
             : await etfInput(request.data);
           const result = guildSociety.execute(type, input);
           send(seq, result.data);
-          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          publishResultPushes(result.pushes, { kind: 'guild', guildId: result.value?.guildId });
           log({ event: 'guild_society_command_committed', type, seq, ...result.value });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -1600,7 +1615,7 @@ export function createLocalGame({
             : await etfInput(request.data);
           const result = community.execute(type, input);
           send(seq, result.data);
-          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          publishResultPushes(result.pushes, { kind: 'role', roleId: connectionRoleId });
           log({ event: 'community_command_committed', type, seq, ...result.value });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -1617,7 +1632,7 @@ export function createLocalGame({
             : await etfInput(request.data);
           const result = guildActivity.execute(type, input);
           send(seq, result.data);
-          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          publishResultPushes(result.pushes, { kind: 'guild', guildId: result.value?.guildId });
           log({ event: 'guild_activity_command_committed', type, seq, ...result.value });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -1980,7 +1995,7 @@ export function createLocalGame({
           send(seq, result.data);
           // The activity statistic belongs to the claiming role; broadcasting
           // it would overwrite other players' local progress.
-          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data, connectionRoleId);
+          publishResultPushes(result.pushes, { kind: 'role', roleId: connectionRoleId });
           everyTasks.logClaim(result);
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -2860,7 +2875,7 @@ export function createLocalGame({
           const input = unpack('pb_rank_achieve_award_req', request.data);
           const result = rankAchieve.execute(input);
           send(seq, result.data);
-          for (const pushed of result.pushes) publish(pushed.type, pushed.data);
+          publishResultPushes(result.pushes, { kind: 'role', roleId: connectionRoleId });
           log({ event: 'rank_achieve_committed', type, seq, ...result.value });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -2907,7 +2922,7 @@ export function createLocalGame({
           const input = decoded?.value ?? decoded;
           const result = await guildRoster.execute(type, input);
           send(seq, result.data);
-          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          publishResultPushes(result.pushes, { kind: 'guild', guildId: result.value?.guildId });
           log({ event: 'guild_roster_committed', type, seq, memberCount: result.value?.members?.length ?? result.value?.member_list?.length ?? null });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -2985,7 +3000,7 @@ export function createLocalGame({
                 logger({ event: 'realtime_push_skipped', sourceType: type, pushType: event?.pushType ?? null });
                 continue;
               }
-              publish(Number(event.pushType), event.data);
+              publish(Number(event.pushType), event.data, { kind: 'role', roleId: connectionRoleId });
             }
             log({ event: 'fantasy_shared_draw_committed', type, seq, pool: result.pool, pushTypes: pushes.map(event => Number(event.pushType)), ...result.valueForLog });
           } catch (error) {
@@ -3176,7 +3191,7 @@ export function createLocalGame({
           }
           const result = recruit.execute(type, input);
           send(seq, result.data);
-          for (const pushed of result.pushes ?? []) publish(pushed.type, pushed.data);
+          publishResultPushes(result.pushes, { kind: 'role', roleId: connectionRoleId });
           log({ event: 'recruit_committed', type, seq, responseBytes: result.data.length, pushCount: result.pushes?.length ?? 0, ...result.valueForLog });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
@@ -3237,13 +3252,7 @@ export function createLocalGame({
             : undefined;
           const result = heroCommand.execute(type, input);
           send(seq, result.data);
-          for (const pushed of result.pushes ?? []) {
-            if (!Number.isSafeInteger(Number(pushed?.type)) || !Buffer.isBuffer(pushed?.data)) {
-              logger({ event: 'realtime_push_skipped', sourceType: type, pushType: pushed?.type ?? null });
-              continue;
-            }
-            publish(Number(pushed.type), pushed.data);
-          }
+          publishResultPushes(result.pushes, { kind: 'role', roleId: connectionRoleId });
           log({ event: 'hero_command_committed', type, seq, responseBytes: result.data.length, pushCount: result.pushes?.length ?? 0, ...result.valueForLog });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;

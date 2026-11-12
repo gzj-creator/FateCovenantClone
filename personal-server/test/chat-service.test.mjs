@@ -106,6 +106,7 @@ test('11000 persists a world message and pushes pb_res_new_msg with ordered fiel
   assert.equal(result.data.length, 0);
   assert.equal(result.pushes.length, 1);
   assert.equal(result.pushes[0].type, 1400);
+  assert.deepEqual(result.pushes[0].target, { kind: 'server' });
   const push = codec.unpack('pb_res_new_msg', result.pushes[0].data);
   assert.equal(push.channel_id, String(WORLD));
   assert.equal(push.msg.sender, String(ACTOR));
@@ -143,6 +144,10 @@ test('11002 persists a private message with the target ETF extra', async t => {
   const env = setup(t);
   joinPrivate(env);
   const result = await env.service.execute(CHAT_COMMANDS.sendRole, privateBytes(PEER, 'private hello'));
+  assert.deepEqual(result.pushes.map(push => push.target), [
+    { kind: 'role', roleId: ACTOR },
+    { kind: 'role', roleId: PEER }
+  ]);
   const push = codec.unpack('pb_res_new_msg', result.pushes[0].data);
   assert.equal(push.channel_id, String(PRIVATE));
   assert.equal(push.msg.sender, String(ACTOR));

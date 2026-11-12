@@ -195,7 +195,15 @@ export function createGuildRosterService({ store, codec, now = () => Math.floor(
 
       writeModule(model, codec, login);
       const members = structuredClone(guild.member_list);
-      return { data: Buffer.alloc(0), value: { members }, pushes: [{ type: 2305, data: codec.pack('pb_res_guild_member_change', { member_list: members, log_list: [] }) }] };
+      return {
+        data: Buffer.alloc(0),
+        value: { guildId, members },
+        pushes: [{
+          type: 2305,
+          data: codec.pack('pb_res_guild_member_change', { member_list: members, log_list: [] }),
+          target: { kind: 'guild', guildId }
+        }]
+      };
     });
   }
 
@@ -217,6 +225,8 @@ export function createGuildRosterService({ store, codec, now = () => Math.floor(
     login.guild_applies = [];
     const members = structuredClone(guild.member_list);
     return {
+      guildId,
+      roleId: actorId,
       leaveInfo,
       members,
       sourceBytes,
@@ -241,6 +251,8 @@ export function createGuildRosterService({ store, codec, now = () => Math.floor(
         if (!current.sourceBytes.equals(planned.sourceBytes)) return null;
         writeModuleBytes(model, current.loginBytes);
         return {
+          guildId: current.guildId,
+          roleId: current.roleId,
           leaveInfo: current.leaveInfo,
           members: current.members,
           pushData: current.pushData
@@ -249,8 +261,11 @@ export function createGuildRosterService({ store, codec, now = () => Math.floor(
       if (!commit) continue;
       return {
         data: responseData,
-        value: { leave_info: commit.leaveInfo, members: commit.members },
-        pushes: [{ type: 2305, data: commit.pushData }]
+        value: { guildId: commit.guildId, leave_info: commit.leaveInfo, members: commit.members },
+        pushes: [
+          { type: 2305, data: commit.pushData, target: { kind: 'guild', guildId: commit.guildId } },
+          { type: 2305, data: commit.pushData, target: { kind: 'role', roleId: commit.roleId } }
+        ]
       };
     }
     fail(5, 'Guild state changed concurrently');
