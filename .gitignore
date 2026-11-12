@@ -45,3 +45,13 @@ analysis/experiments/private-server-*/p0/backup/
 /$out
 /backup.ab
 /tmp-*.json
+/tmp-*.mjs
+
+# Local gameplay investigation outputs and one-off extractors kept outside Git.
+/assets/Android/script/lua/*.bundle
+/*.log
+/personal-server/*.log
+/personal-server/assets/tables/*.g1-untracked-backup
+/tools/extract-table-rows.mjs
+/tools/strip-luajit-debug.mjs
+/.tmp/

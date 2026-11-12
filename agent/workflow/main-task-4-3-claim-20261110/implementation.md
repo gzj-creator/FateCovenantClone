@@ -78,3 +78,12 @@ npm test --prefix personal-server
 ## 当前边界
 
 修复代码只在新 worktree 分支完成和验证。实时服务仍加载修复前代码，运行数据库未被修复写入；要让当前客户端立即生效，需要另行备份运行数据库、部署该提交并重启服务，再由用户重新登录后做 APK 视觉验收。
+
+## 2026-11-10 12:36 部署
+
+- 部署前全量回归：`npm test --prefix personal-server`，2807 项、pass 2805、fail 0、skipped 2，耗时 468554 ms；日志 `analysis/test-runs/deploy-20261110/full-test.log`。
+- 运行库在停服状态下用 `VACUUM INTO` 做一致性备份：`analysis/experiments/private-server-20261025/p3/deploy-20261110/game.before-deploy.local-only.sqlite`，1,466,368 字节，SHA256 `21C2774F7AD2FF45ABEAED18ABE24783A7F8F9F31787ACCD87664ABE420EDC69`，`PRAGMA integrity_check=ok`、`user_version=18`。
+- 从 `main@e5a4f11` 启动新实例，PID `2952`，`startedAt=2026-11-10T04:35:58.442Z`；入口 `personal-server/local-server.mjs`，启动日志 `server-20261110-123556.local-only.out.log`，stderr 为 0 字节。
+- 五端口 `18880/18881/18882/18883/19090` 均监听 `127.0.0.1` 并可建立 TCP 连接；管理页根路径 HTTP 200，启动版本接口返回 `1.55.090365.364110`。完整部署证据 `analysis/experiments/private-server-20261025/p3/deploy-20261110/verification.local-only.json`。
+- 模拟器 `127.0.0.1:16448` 的四项 ADB reverse（18880/18881/18882/19090）和 `FC_LOCAL_NAT` 回环映射链已恢复，UID 仍为 10046。
+- 本次未启动隔离客户端，因此 `9010/10003` 的重复点击与主线 4-3 任务页仍需用户重新登录后在 APK 中做视觉验收；服务端部署与健康检查已完成。
