@@ -119,7 +119,8 @@ export function evaluateActivity({
   funOpen = null,
   role = null,
   parent = null,
-  windowOverride = null
+  windowOverride = null,
+  ignorePlayerAccess = false
 } = {}) {
   if (!config) return closed('missing_config');
   if (parent && !parent.visible) return closed('parent_hidden');
@@ -152,10 +153,12 @@ export function evaluateActivity({
   const state = activityStateAt(config, window, at);
   if (!state.visible) return state;
 
-  const funId = Number(config.jump_func ?? config.func ?? 0);
-  if (!overrideResult.forcedOpen && funId > 0 && funOpen && !funOpen.has(funId)) return closed('function_locked');
-  if (!playerCondition(config.asserts, role)) return closed('player_condition');
-  if (override?.conditions && !playerCondition(override.conditions, role)) return closed('override_condition');
+  if (!ignorePlayerAccess) {
+    const funId = Number(config.jump_func ?? config.func ?? 0);
+    if (!overrideResult.forcedOpen && funId > 0 && funOpen && !funOpen.has(funId)) return closed('function_locked');
+    if (!playerCondition(config.asserts, role)) return closed('player_condition');
+    if (override?.conditions && !playerCondition(override.conditions, role)) return closed('override_condition');
+  }
   return { ...state, window };
 }
 

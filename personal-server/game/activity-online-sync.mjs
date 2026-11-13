@@ -68,40 +68,47 @@ export function applyActivityRuntimeLoginView(activity, states) {
   if (!activity || typeof activity !== 'object') throw new GameError(5, 'Activity login payload is invalid');
   const byId = runtimeStatesById(states);
   const hidden = new Set([...byId].filter(([, state]) => state.stage === 'closed').map(([actId]) => actId));
+  const structured = new Set();
   let updated = 0;
 
   function applyState(state) {
     const actId = Number(state?.act_id);
     const runtime = byId.get(actId);
     if (!runtime) return true;
-    if (hidden.has(actId)) return false;
+    structured.add(actId);
+    // `closed` has no proven client stage id. Keep its snapshot row so the
+    // surrounding activity container remains structurally complete and expose
+    // the closure through act_pause_list instead of deleting protocol data.
+    if (hidden.has(actId)) return true;
     const stageId = activityClientStageId(runtime.stateId ?? runtime.stage);
-    if (stageId == null) return false;
+    if (stageId == null) return true;
     state.cur_state_id = stageId;
     updateHistory(state, stageId, Number(runtime.stateStart ?? runtime.window?.start));
     updated += 1;
     return true;
   }
 
-  activity.act_list = (activity.act_list ?? []).filter(entry => applyState(entry?.state_data));
-  activity.act_parallel_list = (activity.act_parallel_list ?? []).flatMap(group => {
-    const statesData = (group?.states_data ?? []).filter(applyState);
-    return statesData.length ? [{ ...group, states_data: statesData }] : [];
-  });
-  activity.act_pause_list = (activity.act_pause_list ?? []).filter(actId => !hidden.has(Number(actId)));
-  activity.act_custom_list = (activity.act_custom_list ?? []).flatMap(custom => {
+  for (const entry of activity.act_list ?? []) applyState(entry?.state_data);
+  for (const group of activity.act_parallel_list ?? []) {
+    for (const state of group?.states_data ?? []) applyState(state);
+  }
+  const existingPause = new Set((activity.act_pause_list ?? []).map(Number));
+  for (const custom of activity.act_custom_list ?? []) {
     const actId = Number(custom?.act_id);
-    if (hidden.has(actId)) return [];
+    if (byId.has(actId)) structured.add(actId);
+    if (hidden.has(actId)) continue;
     const runtimeWindow = validWindow(byId.get(actId)?.window);
     if (runtimeWindow) {
       custom.start_time = runtimeWindow.start;
       custom.end_time = runtimeWindow.end;
     }
-    return [custom];
-  });
+  }
+  const paused = [...hidden].filter(actId => structured.has(actId) || existingPause.has(actId));
+  activity.act_pause_list = [...new Set([...existingPause, ...paused])].sort((a, b) => a - b);
 
   return {
     hidden: [...hidden].sort((a, b) => a - b),
+    paused,
     updated,
     visible: [...byId.keys()].filter(actId => !hidden.has(actId)).sort((a, b) => a - b)
   };

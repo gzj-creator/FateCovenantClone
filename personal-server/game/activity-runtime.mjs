@@ -30,7 +30,10 @@ export function createActivityRuntime({
     }
   };
 
-  function evaluate(actId, at, { activity = null, window = null, funOpen = null, role = null, override = null } = {}) {
+  function evaluate(actId, at, {
+    activity = null, window = null, funOpen = null, role = null, override = null,
+    ignorePlayerAccess = false
+  } = {}) {
     const config = configFor(actId);
     if (!config) return { status: 'closed', visible: false, reason: 'missing_config' };
     return evaluateActivity({
@@ -41,7 +44,8 @@ export function createActivityRuntime({
       windowOverride: window ?? calendar.windowFor?.(actId, activity) ?? null,
       override,
       funOpen,
-      role
+      role,
+      ignorePlayerAccess
     });
   }
 
@@ -65,22 +69,32 @@ export function createActivityRuntime({
       const window = calendar.windowFor?.(actId, activity) ?? null;
       if (!window) continue;
       const override = activityStore.activeOverride?.(srv, actId, at) ?? null;
-      const result = evaluate(actId, at, { activity, window, funOpen: open, role, override });
+      // Server lifecycle and per-role access are separate concerns. A low-level
+      // role must not roll a server-wide instance back to `closed`, and a
+      // function lock is presented through pause state instead of deleting the
+      // surrounding activity protocol container.
+      const timeline = evaluate(actId, at, {
+        activity, window, override, ignorePlayerAccess: true
+      });
+      const access = evaluate(actId, at, {
+        activity, window, funOpen: open, role, override
+      });
       const periodNo = Math.max(1, serverDayNumber(calendar.serverOpenedAt, window.start));
-      const effectiveWindow = result.window ?? window;
+      const effectiveWindow = timeline.window ?? access.window ?? window;
       activityStore.observeInstance({
         serverId: srv, actId, periodNo, family: String(config.type ?? config.func ?? ''),
         previewAt: effectiveWindow.start, openAt: effectiveWindow.start, closeAt: effectiveWindow.end,
-        showUntil: effectiveWindow.end, stage: result.status
+        showUntil: effectiveWindow.end, stage: timeline.status
       });
-      const stateStart = Number(result.start ?? effectiveWindow.start);
+      const stateStart = Number(access.start ?? effectiveWindow.start);
       changed.push({
         actId,
         periodNo,
-        stage: result.status,
-        reason: result.reason ?? null,
-        visible: result.visible === true,
-        stateId: Number(result.stateId) || null,
+        stage: access.status,
+        timelineStage: timeline.status,
+        reason: access.reason ?? null,
+        visible: access.visible === true,
+        stateId: Number(access.stateId) || null,
         stateStart: Number.isSafeInteger(stateStart) && stateStart > 0 ? stateStart : null,
         window: { start: Number(effectiveWindow.start), end: Number(effectiveWindow.end) }
       });
@@ -102,7 +116,7 @@ export function createActivityRuntime({
       // Pause and force-close are visibility switches, not lifecycle closure.
       // Keep the running instance intact so progress survives resume.
       if (override?.kind === 'pause' || override?.kind === 'force_close') continue;
-      const result = evaluate(Number(row.act_id), at, { window, override });
+      const result = evaluate(Number(row.act_id), at, { window, override, ignorePlayerAccess: true });
       if (result.status === row.stage) continue;
       const previous = row.stage;
       const change = {

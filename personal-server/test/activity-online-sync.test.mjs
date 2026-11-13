@@ -141,7 +141,7 @@ test('online sync fails closed for closed stages, missing config and missing ins
   assert.deepEqual(logs.map(event => [event.event, event.reason]), [['activity_stage_push_skipped', 'invalid_instance_window']]);
 });
 
-test('runtime login view removes closed rows and publishes the exact visible stage in modules 92 and 183', () => {
+test('runtime login view preserves closed protocol rows and pauses their activity ids', () => {
   const activity = {
     act_list: [
       { state_data: { act_id: 1, cur_state_id: 50, history_time: [{ state_id: 50, enter_time: '1000' }] }, module_login_data: Buffer.from('one') },
@@ -169,11 +169,12 @@ test('runtime login view removes closed rows and publishes the exact visible sta
   ];
   const view = applyActivityRuntimeLoginView(activity, states);
   assert.deepEqual(view.hidden, [2, 4]);
-  assert.deepEqual(activity.act_list.map(row => Number(row.state_data.act_id)), [1]);
-  assert.deepEqual(activity.act_parallel_list.flatMap(group => group.states_data.map(row => [Number(row.act_id), Number(row.cur_state_id)])), [[3, 60]]);
+  assert.deepEqual(view.paused, [2, 4]);
+  assert.deepEqual(activity.act_list.map(row => [Number(row.state_data.act_id), Number(row.state_data.cur_state_id)]), [[1, 50], [2, 50]]);
+  assert.deepEqual(activity.act_parallel_list.flatMap(group => group.states_data.map(row => [Number(row.act_id), Number(row.cur_state_id)])), [[3, 60], [4, 50]]);
   assert.equal(Number(activity.act_parallel_list[0].states_data[0].history_time.at(-1).enter_time), 1_400);
-  assert.deepEqual(activity.act_pause_list, [3]);
+  assert.deepEqual(activity.act_pause_list, [2, 3, 4]);
   assert.deepEqual(activity.act_custom_list.map(row => [Number(row.act_id), Number(row.start_time), Number(row.end_time)]), [
-    [1, 1_000, 2_000], [3, 1_000, 2_100]
+    [1, 1_000, 2_000], [2, 1, 2], [3, 1_000, 2_100]
   ]);
 });

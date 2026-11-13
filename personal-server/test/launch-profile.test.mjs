@@ -273,7 +273,9 @@ test('gateway login exposes white-ribbon at server day 16 with the same five-day
     ...(initialActivity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
   ]);
   assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, at), 16);
-  assert.equal(initialIds.has(1102010), false, 'function 30395 is not proven open for this role and must stay closed without an override');
+  assert.equal(initialIds.has(1102010), true, 'the protocol row is retained for structural compatibility');
+  assert.equal((initialActivity.act_pause_list ?? []).map(Number).includes(1102010), true,
+    'an unproven function lock must present the activity as paused');
 
   for (const funId of [30395, 2463, 30302]) game.featureOverrides.set({
     serverId: game.store.read().state.serverId,
@@ -290,6 +292,7 @@ test('gateway login exposes white-ribbon at server day 16 with the same five-day
     ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))
   ]);
   assert.equal(activityIds.has(1102010), true);
+  assert.equal((activity.act_pause_list ?? []).map(Number).includes(1102010), false);
   assert.deepEqual(
     activity.act_custom_list.filter(row => Number(row.act_id) === 1102010)
       .map(row => [Number(row.start_time), Number(row.end_time)]),

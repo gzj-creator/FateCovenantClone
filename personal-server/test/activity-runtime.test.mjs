@@ -50,3 +50,26 @@ test('gate reads the persisted stage and rejects after the window', t => {
   assert.equal(runtime.gate(1, 'operate', 1_000_150), true);
   assert.equal(runtime.gate(1, 'operate', 1_000_250), false);
 });
+
+test('role-level function locks pause login visibility without closing the server instance', t => {
+  const { store, activityStore, calendar } = fixture(t);
+  const tables = {
+    ActFrameAct: new Map([[1, {
+      duration_day: 1, refer_day: 1, end_time: 0, jump_func: 77,
+      state: [50], state_end_day: [1]
+    }]]),
+    Activity: new Map()
+  };
+  const runtime = createActivityRuntime({
+    store, calendar, tables, activityStore,
+    featureService: { openIds: () => new Set() },
+    now: () => 1_000_150_000
+  });
+  const login = runtime.synchronizeLogin({ act_list: [{ state_data: { act_id: 1 } }] }, 1_000_150);
+  assert.equal(login[0].stage, 'closed');
+  assert.equal(login[0].timelineStage, 'running');
+  assert.equal(login[0].reason, 'function_locked');
+  assert.equal(activityStore.instance(1, 1).stage, 'running');
+  runtime.tick(1_000_160);
+  assert.equal(activityStore.instance(1, 1).stage, 'running');
+});

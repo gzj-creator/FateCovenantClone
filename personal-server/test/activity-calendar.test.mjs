@@ -715,10 +715,20 @@ test('module 183 follows runtime visibility, stage and the effective override wi
   const start = openedAt;
   const end = start + 4 * DAY;
   const runtimeTables = {
-    ActFrameAct: new Map([[actId, {
-      type: 1102, time_type: 0, refer_day: 1, refer_start_time: 0,
-      duration_day: 4, end_time: 0, state: [50], state_end_day: [4]
-    }]]),
+    ActFrameAct: new Map([
+      [actId, {
+        type: 1102, time_type: 0, refer_day: 1, refer_start_time: 0,
+        duration_day: 4, end_time: 0, state: [50], state_end_day: [4]
+      }],
+      [1102009, {
+        type: 1102, time_type: 0, refer_day: 1, refer_start_time: 0,
+        duration_day: 4, end_time: 0, state: [50], state_end_day: [4]
+      }],
+      [1102008, {
+        type: 1102, time_type: 0, refer_day: 1, refer_start_time: 0,
+        duration_day: 4, end_time: 0, state: [50], state_end_day: [4]
+      }]
+    ]),
     Activity: new Map()
   };
   const calendar = createActivityCalendar({
@@ -726,7 +736,13 @@ test('module 183 follows runtime visibility, stage and the effective override wi
     serverOpenedAt: openedAt,
     now: () => at * 1000
   });
-  const activity = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+  const activity = {
+    act_list: [{
+      state_data: { act_id: 1102008, cur_state_id: 50, history_time: [{ state_id: 50, enter_time: String(start) }] },
+      module_login_data: Buffer.alloc(0)
+    }],
+    act_parallel_list: [], act_pause_list: [1102008], act_custom_list: []
+  };
   const player = {
     data_list: [{
       act_stage: {
@@ -734,31 +750,48 @@ test('module 183 follows runtime visibility, stage and the effective override wi
         loop_count: 0, history_time: [{ stage_id: 50, enter_time: String(start) }]
       },
       module_login_data: Buffer.from('family-state')
+    }, {
+      act_stage: {
+        act_id: 1102009, start_time: String(start), end_time: String(end), cur_stage_id: 50,
+        loop_count: 0, history_time: [{ stage_id: 50, enter_time: String(start) }]
+      },
+      module_login_data: Buffer.from('paused-family-state')
     }]
   };
-  const server = { act_stage_list: [] };
+  const server = { act_stage_list: [{
+    act_id: 1102009, type: 1102, start_time: String(start), end_time: String(end),
+    cur_stage_id: 50, is_pause: false, ignore_fix_time: false, loop_count: 0,
+    stage_time_list: [{ stage_id: 50, start_time: String(start), end_time: String(end) }]
+  }] };
   const runtimeStates = [
     {
       actId, stage: 'claim', stateId: 60, stateStart: at - 60,
       window: { start, end }
     },
-    { actId: 1102009, stage: 'closed', visible: false }
+    { actId: 1102009, stage: 'closed', visible: false },
+    { actId: 1102008, stage: 'closed', visible: false, window: { start, end } }
   ];
   const normalized = calendar.normalizeActFrameLogin(player, server, at, {
-    activityIds: [actId, 1102009], activity, runtimeStates
+    activityIds: [actId, 1102009, 1102008], activity, runtimeStates
   });
   assert.deepEqual(normalized.activityIds, [actId]);
-  assert.equal(player.data_list.length, 1);
-  assert.equal(server.act_stage_list.length, 1);
+  assert.equal(player.data_list.length, 3);
+  assert.equal(server.act_stage_list.length, 3);
   assert.equal(player.data_list[0].module_login_data.toString(), 'family-state');
   assert.equal(Number(player.data_list[0].act_stage.cur_stage_id), 60);
   assert.equal(Number(player.data_list[0].act_stage.start_time), start);
   assert.equal(Number(player.data_list[0].act_stage.end_time), end);
   assert.equal(Number(player.data_list[0].act_stage.history_time.at(-1).enter_time), at - 60);
-  assert.equal(Number(server.act_stage_list[0].cur_stage_id), 60);
-  assert.equal(Number(server.act_stage_list[0].start_time), start);
-  assert.equal(Number(server.act_stage_list[0].end_time), end);
-  assert.deepEqual(server.act_stage_list[0].stage_time_list.map(row => [
+  const visibleServer = server.act_stage_list.find(row => Number(row.act_id) === actId);
+  const pausedServer = server.act_stage_list.find(row => Number(row.act_id) === 1102009);
+  assert.equal(Number(visibleServer.cur_stage_id), 60);
+  assert.equal(Number(visibleServer.start_time), start);
+  assert.equal(Number(visibleServer.end_time), end);
+  assert.deepEqual(visibleServer.stage_time_list.map(row => [
     Number(row.stage_id), Number(row.start_time), Number(row.end_time)
   ]), [[60, at - 60, end]]);
+  assert.equal(player.data_list[1].module_login_data.toString(), 'paused-family-state');
+  assert.equal(Number(player.data_list[1].act_stage.cur_stage_id), 50);
+  assert.equal(pausedServer.is_pause, true);
+  assert.equal(server.act_stage_list.find(row => Number(row.act_id) === 1102008).is_pause, true);
 });

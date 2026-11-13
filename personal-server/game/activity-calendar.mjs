@@ -418,6 +418,9 @@ export function createActivityCalendar({
     const runtimeById = new Map((options.runtimeStates ?? [])
       .map(row => [Number(row?.actId), row])
       .filter(([id, row]) => Number.isSafeInteger(id) && id > 0 && row));
+    const requestedIds = new Set((options.activityIds ?? [])
+      .map(Number)
+      .filter(id => Number.isSafeInteger(id) && id > 0));
     const runtimeStage = id => activityClientStageId(runtimeById.get(Number(id))?.stateId ?? runtimeById.get(Number(id))?.stage);
     const runtimeVisible = id => runtimeById.get(Number(id))?.stage !== 'closed';
     const runtimeWindow = id => {
@@ -485,24 +488,20 @@ export function createActivityCalendar({
       .filter(group => Number.isSafeInteger(group.actId) && group.actId > 0);
     if (mode === 'schedule') {
       const activity = options.activity ?? null;
+      const pausedIds = new Set((activity?.act_pause_list ?? []).map(Number));
       const isRunning = id => isActivityRunning(id, null, activity, current);
-      const activeIds = new Set((options.activityIds ?? [])
-        .map(Number)
-        .filter(id => Number.isSafeInteger(id) && id > 0 && isRunning(id)));
+      const activeIds = new Set([...requestedIds].filter(isRunning));
       const explicitWindows = new Map();
 
       // Existing module-183 rows can outlive the corresponding module-92
-      // state. Keep active configured rows, but remove expired ones so a stale
-      // absolute stage window cannot keep an old activity reachable.
+      // state. Runtime rows are retained even when closed: the client has a
+      // proven pause representation, while deleting rows can invalidate the
+      // surrounding ActFrame login container on a new server.
       player.data_list = player.data_list.filter(row => {
         const id = Number(row?.act_stage?.act_id);
         const config = activityConfig(tables, id);
-        if (!config) return runtimeVisible(id);
-        if (!runtimeVisible(id)) return false;
-        if (runtimeById.has(id)) {
-          activeIds.add(id);
-          return true;
-        }
+        if (!config) return true;
+        if (runtimeById.has(id) || requestedIds.has(id)) return true;
         if (isRunning(id)) {
           activeIds.add(id);
           return true;
@@ -512,11 +511,13 @@ export function createActivityCalendar({
       server.act_stage_list = server.act_stage_list.filter(row => {
         const id = Number(row?.act_id);
         const config = activityConfig(tables, id);
-        if (!config) return runtimeVisible(id);
-        if (!runtimeVisible(id)) return false;
-        if (runtimeById.has(id)) activeIds.add(id);
+        if (!config) return true;
+        if (runtimeById.has(id) || requestedIds.has(id)) {
+          if (!runtimeVisible(id) || pausedIds.has(id)) row.is_pause = true;
+          return true;
+        }
         if (isRunning(id)) activeIds.add(id);
-        return runtimeById.has(id) || isRunning(id);
+        return isRunning(id);
       });
       playerByTid.clear();
       for (const row of player.data_list) playerByTid.set(Number(row?.act_stage?.act_id), row);
@@ -556,6 +557,70 @@ export function createActivityCalendar({
         if (!config || !window || !Number(config.type ?? config.func)) continue;
         if (!upsertLoginRow(id, config, window.start, window.end)) continue;
         result.activityIds.push(id);
+      }
+
+      // The client's ActFrame parser still expects one player/server pair for
+      // rows carried by module 92. Materialize unavailable rows with the
+      // existing pause bit so a new-server schedule can stay closed without
+      // making the surrounding login container sparse.
+      const stateById = new Map([
+        ...(activity?.act_list ?? []).map(entry => [Number(entry?.state_data?.act_id), entry.state_data]),
+        ...(activity?.act_parallel_list ?? []).flatMap(group =>
+          (group?.states_data ?? []).map(state => [Number(state?.act_id), state]))
+      ].filter(([id]) => Number.isSafeInteger(id) && id > 0));
+      for (const id of requestedIds) {
+        if (runtimeVisible(id) && !pausedIds.has(id)) continue;
+        const config = activityConfig(tables, id);
+        const type = Number(config?.type ?? config?.func) || 0;
+        const state = stateById.get(id) ?? null;
+        let serverRow = serverByTid.get(id);
+        let playerRow = playerByTid.get(id);
+        const existingStart = Math.min(
+          seconds(serverRow?.start_time) || Number.MAX_SAFE_INTEGER,
+          seconds(playerRow?.act_stage?.start_time) || Number.MAX_SAFE_INTEGER
+        );
+        const existingEnd = Math.max(seconds(serverRow?.end_time), seconds(playerRow?.act_stage?.end_time));
+        const window = runtimeWindow(id) ?? scheduledWindow(id, activity);
+        const start = window?.start
+          ?? (existingStart === Number.MAX_SAFE_INTEGER ? 0 : existingStart);
+        const end = window?.end ?? existingEnd;
+        if (!config || type <= 0 || !(start > 0 && end > start)) continue;
+        const stateId = activityClientStageId(state?.cur_state_id)
+          ?? activityClientStageId(playerRow?.act_stage?.cur_stage_id)
+          ?? 50;
+        const enterTime = Number(state?.history_time?.at(-1)?.enter_time)
+          || Number(playerRow?.act_stage?.history_time?.at(-1)?.enter_time)
+          || start;
+        if (!serverRow) {
+          serverRow = { act_id: id };
+          server.act_stage_list.push(serverRow);
+          serverByTid.set(id, serverRow);
+        }
+        Object.assign(serverRow, {
+          act_id: id,
+          type,
+          start_time: String(start),
+          end_time: String(end),
+          cur_stage_id: stateId,
+          is_pause: true,
+          loop_count: Number(serverRow.loop_count ?? 0),
+          stage_time_list: [{ stage_id: stateId, start_time: String(enterTime), end_time: String(end) }]
+        });
+        if (!playerRow) {
+          playerRow = {
+            act_stage: {
+              act_id: id,
+              start_time: String(start),
+              end_time: String(end),
+              cur_stage_id: stateId,
+              loop_count: 0,
+              history_time: [{ stage_id: stateId, enter_time: String(enterTime) }]
+            },
+            module_login_data: Buffer.alloc(0)
+          };
+          player.data_list.push(playerRow);
+          playerByTid.set(id, playerRow);
+        }
       }
       result.adjusted = result.activityIds.length;
       return result;
