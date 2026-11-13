@@ -11,6 +11,10 @@
 
 ### Added
 
+- 新增 1407 条命令的实际派发审计与启动校验：逐条记录服务 owner、网关直达、多重 owner、
+  未路由以及请求编码/回包 schema 证据缺口；审计摘要或 source hash 漂移时注册表拒绝启动。
+  当前结果为 1316 条服务路由、18 条网关直达、6 条多重 owner、67 条未路由，owner
+  缺 `supports`、owner 无目录 type、目录外支持均为 0。
 - 新增实时推送目标约束：仅允许角色、公会、全服三类目标。世界聊天定向全服，私聊定向
   发送者与接收者，公会成员变化定向公会；缺失目标只回落到当前认证角色，无角色上下文或
   目标无效时 fail closed，不再向所有在线连接广播。
@@ -74,6 +78,8 @@
 
 ### Docs
 
+- 新增 `agent/workflow/evidence/P0-command-dispatch.md`，记录命令派发审计的输入 hash、
+  1407 条逐条分类、编码/回包证据缺口、复现命令和启动校验边界。
 - 新增 `docs/plans/full-service-p1-progress-20261113.md` 与
   `agent/workflow/evidence/P0-2-3.md`，记录 E9-1/E9-2、活动结算/在线同步、等级事务事件和
   剩余 P0 横切项；属性/战力专用 S2C 与 APK 视觉仍明确标记证据缺口。

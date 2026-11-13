@@ -69,7 +69,7 @@
 - [~] P0-6-1 每条命令声明 `requires: funId` 与读写类型。
   `config/command-catalog.json` 为 1407 条命令逐条写入 `access`（read/write）与 `requires` 字段；2026-11-13 E9-2 已在 `config/command-gate-rules.json` 落入 185 条有静态证据的 type→funId 规则（14 条同 prototype、171 条同管理器唯一 id），并把 `21008/84410` 修正为 write。246 个发送点因多候选/无可归因 id 或模块解析缺口保持未声明，证据见 `agent/workflow/evidence/E9-2.md`。
 - [x] P0-6-2 启动对账 1407 条目录，缺失即失败。
-  `game/command-registry.mjs` 启动时校验总数、type/name 唯一性和 access 声明；非 1407 条、重复或未知规则引用都会抛错。
+  `game/command-registry.mjs` 启动时校验总数、type/name 唯一性和 access 声明；非 1407 条、重复或未知规则引用都会抛错。2026-11-13 又接入派发审计：每条命令必须有且仅有一个目录行，实际 owner、summary 和 source set 必须与运行时 `supports()` 快照一致；1316 条服务路由、18 条网关直达、6 条多重 owner、67 条未路由逐条留档，owner 缺 `supports`、目录外 type 和 gateway 边界缺失均会启动失败。
 - [~] P0-6-3 未开功能：写命令拒绝、读命令空态、登录模块空态。
   网关已接入门禁：写命令返回 309，读命令返回空成功，并记录 `fun_open_command_denied`；`command-gate-gateway.test.mjs` 用真实 TCP 登录验证 636/106。完整 1407 条映射和各功能登录模块空态仍待 E9-2/E9-1。
 

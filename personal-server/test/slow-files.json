@@ -32,6 +32,7 @@
     "chat-gateway.test.mjs",
     "chat-service.test.mjs",
     "command-gate-gateway.test.mjs",
+    "command-dispatch-runtime.test.mjs",
     "demigod-act-service.test.mjs",
     "destiny-service.test.mjs",
     "diamond-bank-act-service.test.mjs",

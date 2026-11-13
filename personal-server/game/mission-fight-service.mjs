@@ -510,6 +510,8 @@ function combinedChanges(...groups) {
   return [...changes.values()];
 }
 
+export const MISSION_FIGHT_COMMAND_TYPES = Object.freeze([201, 202, 203, 204, 207, 213, 503, 506]);
+
 export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {}, playbackEnabled = false, eliteBattle = null, onSettlementCommitted = null }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, lastSettlement = null, fightIds = 0;
@@ -904,7 +906,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
   }
 
   return {
-    supports: type => [201, 202, 203, 204, 207, 213, 503, 506].includes(type),
+    supports: type => MISSION_FIGHT_COMMAND_TYPES.includes(type),
     passStory,
     prepareBoxClaim,
     applyBoxClaim,
