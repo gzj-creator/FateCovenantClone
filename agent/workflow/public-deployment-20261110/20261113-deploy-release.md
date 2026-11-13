@@ -1,6 +1,34 @@
 # 2026-11-13 个人服务器自动发布记录
 
-## 最新修复：登录恢复引导进度（19:34 CST）
+## 最新修复：引导保存回包标记完成（19:54 CST）
+
+上一轮把 `guides` 表投影进登录模块 16 后，客户端能重登并进入大厅，但按钮点击仍没有业务命令到达
+服务器。继续对照协议后确认，type `8000` 的请求 schema（`pb_req_save_process`）没有 `is_over`
+字段，旧实现直接回显请求参数后再按 `pb_req_save_process_back` 编码，客户端收到的是默认
+`is_over=false`。因此当次上报的 4 条引导记录虽然已经持久化，客户端仍可能把引导视为未结束并锁住
+主界面交互。
+
+修复提交为 `7b49086`（`fix: mark saved guide steps complete`）：type `8000` 写入 SQLite 后，
+逐条生成带 `is_over=true` 的 `pb_guide_process` 回包。登录模块 16 的投影修复仍保留，活动排期和
+未开放活动的暂停状态没有改变。记录提交为 `651510b`。
+
+发布目录为 `/data/disk1/game/releases/release-20261113T115419Z`，`RELEASE_COMMIT` 为
+`651510b30b25c33675725bda635d8e3db2bf83e4`，服务 PID `1442334`，`NRestarts=0`。停服备份为
+`/data/disk1/game/backups/pre-20261113T115419Z/data.tar.gz`，SHA256
+`89a690b1b9a705693901c7a61a34edd030d4723025cf9841885ecb0cddd74a0a`，校验通过。
+
+验证结果：
+
+- 引导专项 9/9 通过；全量 fast 测试 252 项，pass 250、fail 0、skipped 2；部署测试 1/1。
+- 活动排期审计 errors 0、`Result: PASS`；未开放活动继续按现有排期暂停。
+- 使用发布目录和线上数据库一致性副本重放登录：148 个模块，模块 16 含 4 条
+  `is_over=true` 引导记录；type `8000` 的回包路径带完成标记。
+- `games.local-only.sqlite` 的 `integrity_check=ok`、`user_version=20`，accounts 1、roles 1。
+- 18880/18881/18882/19090 公网监听，18883 仅回环监听。
+- 发布后日志最初只有部署健康检查连接，尚无真实客户端 `login_sent`；因此新的引导回包仍需实机重登
+  和点击验收，服务端重放不记为 APK 验收完成。
+
+## 上一轮修复：登录恢复引导进度（19:34 CST）
 
 活动登录行修复发布后，新角色可以进入大厅，但按钮点击仍没有业务命令到达服务器。线上日志显示客户端
 每次重登都会上报 4 条引导完成记录（type `8000`，35 字节），随后只完成模块 92/183 等初始化；点击前
