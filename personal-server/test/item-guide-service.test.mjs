@@ -193,6 +193,7 @@ test('gateway saves guide progress then awards, probes the network and rejects a
   assert.equal(saved.err, undefined);
   const savedBack = codec.unpack('pb_req_save_process_back', Buffer.from(saved.data, 'base64'));
   assert.deepEqual(savedBack.process_list.map(row => [row.process_id, row.key_id]), [[PROCESS_ID, KEY_ID]]);
+  assert.equal(savedBack.process_list[0].is_over, true);
 
   // The following login must expose the durable guides row through module 16.
   const nextLogin = await decodeEtf(await game.loginPayload());

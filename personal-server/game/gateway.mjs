@@ -3411,9 +3411,16 @@ export function createLocalGame({
       if (type === 8000) {
         const requestData = unpack('pb_req_save_process', request.data);
         store.transaction(model => { for (const process of requestData.req_list ?? []) model.state.guides[process.key_id] = process.process_id; });
-        // Return the evidenced response schema, with the requested process records.
+        // Every accepted save request is a completed client guide step. The
+        // response uses pb_guide_process, whose is_over field must be true;
+        // echoing the request params directly leaves the field false.
         const responseType = root.lookupType('pb_req_save_process_back');
-        send(seq, pack(responseType.name, { process_list: requestData.req_list })); return;
+        const processList = (requestData.req_list ?? []).map(process => ({
+          process_id: process.process_id,
+          key_id: process.key_id,
+          is_over: true
+        }));
+        send(seq, pack(responseType.name, { process_list: processList })); return;
       }
       if (shop.supports(type)) {
         try {
