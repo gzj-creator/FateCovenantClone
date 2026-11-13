@@ -133,6 +133,7 @@ import { createGuildSocietyService } from './guild-society-service.mjs';
 import { createSocialCommunityService } from './social-community-service.mjs';
 import { createGuildActivityService } from './guild-activity-service.mjs';
 import { createHeroFavorService } from './hero-favor-service.mjs';
+import { createHeroLeaseService } from './hero-lease-service.mjs';
 import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createTeamGenreService } from './team-genre-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
@@ -598,7 +599,8 @@ export function createLocalGame({
   const heroBond = createHeroBondService({ store, codec, tables, heroTables, now: clock, logger });
   const heroSupport = createHeroSupportService({ store, codec, tables, heroTables, now: clock, logger });
   const heroRent = createHeroRentService({ store, codec, tables, heroTables, now: clock, logger });
-  const heroCommandServices = [heroDevelop, heroBond, heroSupport, heroRent];
+  const heroLease = createHeroLeaseService({ store, codec, heroTables, now: clock, logger });
+  const heroCommandServices = [heroDevelop, heroBond, heroSupport, heroRent, heroLease];
   const heroMastery = createHeroMasteryService({ store, codec, heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
@@ -3546,7 +3548,7 @@ export function createLocalGame({
   return {
     root, loginPayload, store, wallet, mail, voucher, onlineGift, monthPermit, monthlyCard, calendar, handbook, petActivity, premiumAct, heroDrawActivity,
     fantasyDraw, fantasyEquipment, fantasySharedDraw, artifactDrawAct, demigodAct, fantasyEquipAct, tables,
-    guildRoster, heroFavor, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
+    guildRoster, heroFavor, heroLease, teamSuggest, teamGenre, destiny, wishTreasure, wishTree, timeTemple, magicCircle, norseRune, cabin, houseAssistant, rankAchieve,
     cms, guildNationAssist, guildBoss, guildJoint, guildRuneStone, guildGvg, guildVote, slgMap, guildNation,
     guildBargain, guildExpedition, channelEntry, guildHunt, guildCrusade, guildAuction, groupBuyAct,
     dragonLandAct, diamondBankAct, freePrivilegeAct, slotGameAct, minigameAct, message, hundredDraw,

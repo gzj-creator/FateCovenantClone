@@ -3,7 +3,7 @@
   "source": {
     "gateway": {
       "path": "personal-server/game/gateway.mjs",
-      "sha256": "FAAFD733C5A9A64328E5EC3E30697C8E4910E04D8654A4A72476ECAACF9BAE27"
+      "sha256": "741E27DE1E7EA7C766B2FAB951F6A1ED31AFAECA07E06082661860C8B26F1AE0"
     },
     "catalog": {
       "path": "personal-server/config/command-catalog.json",
@@ -17,12 +17,12 @@
   "method": "runtime supports() snapshot + ordered top-level gateway type conditions + static C2S metadata",
   "summary": {
     "total": 1407,
-    "serviceRoute": 1318,
+    "serviceRoute": 1323,
     "gatewayRoute": 18,
     "multiOwner": 6,
-    "unrouted": 65,
+    "unrouted": 60,
     "requestEncodingMismatch": 172,
-    "requestEncodingUnverified": 987,
+    "requestEncodingUnverified": 982,
     "responseRuntimeUnverified": 1407,
     "responseSchemaMissing": 223
   },
@@ -12348,21 +12348,21 @@
       "module": "HeroLeaseCmd",
       "task": "HERO-HEROLEASE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[4]",
+      "owners": [
+        "heroCommandServices[4]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_lease_hero_place_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_role_lease_hero",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 87202,
@@ -12370,21 +12370,21 @@
       "module": "HeroLeaseCmd",
       "task": "HERO-HEROLEASE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[4]",
+      "owners": [
+        "heroCommandServices[4]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_lease_hero_lease_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_role_lease_hero",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 87203,
@@ -12392,21 +12392,21 @@
       "module": "HeroLeaseCmd",
       "task": "HERO-HEROLEASE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[4]",
+      "owners": [
+        "heroCommandServices[4]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_lease_hero_give_back_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_role_lease_hero",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 87204,
@@ -12414,21 +12414,21 @@
       "module": "HeroLeaseCmd",
       "task": "HERO-HEROLEASE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[4]",
+      "owners": [
+        "heroCommandServices[4]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_lease_hero_take_back_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_role_lease_hero",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 87205,
@@ -12436,21 +12436,21 @@
       "module": "HeroLeaseCmd",
       "task": "HERO-HEROLEASE",
       "access": "read",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[4]",
+      "owners": [
+        "heroCommandServices[4]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_lease_hero_list_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_lease_hero_list_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 87301,
