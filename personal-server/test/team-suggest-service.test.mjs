@@ -9,7 +9,12 @@ import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } fr
 import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
-import { createTeamSuggestService, calculateTeamSuggestProgress } from '../game/team-suggest-service.mjs';
+import {
+  calculateTeamSuggestProgress,
+  collectTeamSuggest,
+  createTeamSuggestService,
+  parseTeamSuggestActivePayload
+} from '../game/team-suggest-service.mjs';
 import { hasBit } from '../game/bit-block.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
@@ -145,7 +150,47 @@ test('claims stay ordered, reject duplicates and require the displayed collectio
   assert.throws(() => env.make().claim([101, TEAM_TID]), /already claimed/);
 });
 
-test('the real gateway accepts 88801 and returns pb_res_to_client changes', async t => {
+test('activation validates requested heroes and returns authoritative full progress', t => {
+  const env = setup(t);
+  setTeamStars(env, 3);
+  env.make().ensureLoginState();
+  const request = {
+    type: TEAM_TID,
+    heroes: [{ hero_tid: TEAM_HEROES[0], target_star: 3 }]
+  };
+  const active = env.make().active(request);
+  assert.equal(active.value.teamTid, TEAM_TID);
+  assert.deepEqual(active.value.progress, collectTeamSuggest(heroTables.TeamSuggest.get(TEAM_TID), new Map(TEAM_HEROES.map(tid => [tid, 3]))).progress);
+  const response = codec.unpack('pb_hero_team_suggest_collect', active.data);
+  assert.deepEqual(response, { type: TEAM_TID, progress: active.value.progress });
+  const stored = teamSuggestFromState(env.store.state()).collects.find(row => row.type === TEAM_TID);
+  assert.deepEqual(stored, { type: TEAM_TID, progress: active.value.progress });
+
+  assert.throws(() => env.make().active({ type: TEAM_TID, heroes: [] }), /requires heroes/);
+  assert.throws(() => env.make().active({ type: TEAM_TID, heroes: [{ hero_tid: 9999999, target_star: 0 }] }), /not part/);
+  assert.throws(() => env.make().active({ type: TEAM_TID, heroes: [{ hero_tid: TEAM_HEROES[0], target_star: 99 }] }), /target star/);
+  assert.throws(() => env.make().active({ type: 999999, heroes: request.heroes }), /not configured/);
+  assert.throws(() => parseTeamSuggestActivePayload({
+    type: TEAM_TID,
+    heroes: [{ hero_tid: TEAM_HEROES[0], target_star: 0 }, { hero_tid: TEAM_HEROES[0], target_star: 0 }]
+  }, heroTables), /Duplicate/);
+});
+
+test('selection persists the configured team and returns the complete login value', t => {
+  const env = setup(t);
+  const selected = env.make().select(200);
+  assert.equal(selected.value.teamTid, 200);
+  const response = codec.unpack('pb_hero_team_suggest', selected.data);
+  assert.equal(response.select, 200);
+  assert.equal(response.collects.length, 12);
+  assert.throws(() => env.make().select(999999), /not configured/);
+
+  env.reopen();
+  env.make().ensureLoginState();
+  assert.equal(teamSuggestFromState(env.store.state()).select, 200);
+});
+
+test('the real gateway accepts 88801-88803 and returns their configured schemas', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-team-suggest-gateway-'));
   const databasePath = path.join(directory, 'game.sqlite'), statePath = path.join(directory, 'legacy.json');
   fs.writeFileSync(statePath, JSON.stringify(fixture()));
@@ -158,6 +203,13 @@ test('the real gateway accepts 88801 and returns pb_res_to_client changes', asyn
   const env = {
     get store() { return game.store; }
   };
+  game.featureOverrides.set({
+    serverId: game.store.read().state.serverId,
+    funId: 1165,
+    mode: 'force_open',
+    reason: 'team suggestion gateway fixture',
+    operator: 'test'
+  });
   setTeamStars(env, 3);
 
   const address = await game.listen(0);
@@ -199,4 +251,20 @@ test('the real gateway accepts 88801 and returns pb_res_to_client changes', asyn
   assert.deepEqual(result.changes.map(change => [change.tid, change.diff_num]), [['31002', '2']]);
   const repeated = await request(88801, 3, await encodeEtf([101, TEAM_TID]));
   assert.equal(repeated.err.err, 310);
+
+  const active = await request(88802, 4, codec.pack('pb_hero_team_suggest_active', {
+    type: TEAM_TID,
+    heroes: [{ hero_tid: TEAM_HEROES[0], target_star: 3 }]
+  }));
+  assert.equal(active.err, undefined);
+  const activeResult = codec.unpack('pb_hero_team_suggest_collect', Buffer.from(active.data, 'base64'));
+  assert.equal(activeResult.type, TEAM_TID);
+  assert.equal(activeResult.progress.length, TEAM_HEROES.length);
+
+  const selected = await request(88803, 5, await encodeEtf([200]));
+  assert.equal(selected.err, undefined);
+  const selectResult = codec.unpack('pb_hero_team_suggest', Buffer.from(selected.data, 'base64'));
+  assert.equal(selectResult.select, 200);
+  assert.equal(selectResult.collects.length, 12);
+  assert.equal(teamSuggestFromState(game.store.state()).select, 200);
 });

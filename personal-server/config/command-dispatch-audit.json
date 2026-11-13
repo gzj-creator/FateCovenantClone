@@ -3,7 +3,7 @@
   "source": {
     "gateway": {
       "path": "personal-server/game/gateway.mjs",
-      "sha256": "DCDE2AC6AB8EC0E708B45FCBB1697F4A7DA0A90280CE979AE5AAD37BFC57AA30"
+      "sha256": "FAAFD733C5A9A64328E5EC3E30697C8E4910E04D8654A4A72476ECAACF9BAE27"
     },
     "catalog": {
       "path": "personal-server/config/command-catalog.json",
@@ -17,12 +17,12 @@
   "method": "runtime supports() snapshot + ordered top-level gateway type conditions + static C2S metadata",
   "summary": {
     "total": 1407,
-    "serviceRoute": 1316,
+    "serviceRoute": 1318,
     "gatewayRoute": 18,
     "multiOwner": 6,
-    "unrouted": 67,
+    "unrouted": 65,
     "requestEncodingMismatch": 172,
-    "requestEncodingUnverified": 986,
+    "requestEncodingUnverified": 987,
     "responseRuntimeUnverified": 1407,
     "responseSchemaMissing": 223
   },
@@ -5243,14 +5243,15 @@
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "etf",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "etf",
       "responseSchema": null,
       "responseDefinitionPresent": null,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "response_schema_missing"
+        "response_schema_missing",
+        "request_encoding_unverified"
       ]
     },
     {
@@ -13943,13 +13944,15 @@
       "module": "TeamSuggestCmd",
       "task": "HERO-TEAMSUGGEST",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "teamSuggest",
+      "owners": [
+        "teamSuggest"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hero_team_suggest_active",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_team_suggest_collect",
@@ -13965,13 +13968,15 @@
       "module": "TeamSuggestCmd",
       "task": "HERO-TEAMSUGGEST",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "teamSuggest",
+      "owners": [
+        "teamSuggest"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_team_suggest",

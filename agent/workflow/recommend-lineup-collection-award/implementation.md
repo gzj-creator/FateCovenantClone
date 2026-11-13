@@ -51,6 +51,30 @@
 ## 边界
 
 - 本次没有部署到运行中的服务，也没有操作模拟器或 APK；因此只完成服务组件与真实 TCP 集成验收，不记为 APK 实机验收。
-- `88802 req_team_suggest_active` 和 `88803 req_team_suggest_select` 不在本次范围，仍未实现。
+- `88802 req_team_suggest_active` 和 `88803 req_team_suggest_select` 当时不在本次范围，
+  后于 2026-11-13 补齐，见下节。
 - 奖励内容严格取 `TeamSuggestAward.award` 配置；当前 20% 档（`awardTid=102`）配置为 `[[31002,3]]`，没有硬编码“20 星钻”。
 - worktree 内的 `analysis/` 和 `personal-server/fixtures/login-modules.local-only.json` 是本地测试前置，不提交。
+
+## 2026-11-13 补齐激活与选择
+
+本轮在 `.worktree/full-service-p1-20261113` 补齐上节遗留的两条命令：
+
+- `88802 req_team_suggest_active` 按 `pb_hero_team_suggest_active` 解码。服务端读取
+  `TeamSuggest.tid`，拒绝未配置队伍、空英雄列表、非本推荐队伍英雄、重复英雄和超过
+  `Hero.max_star` 的目标星级；随后忽略客户端自报进度，按 SQLite 角色英雄真实星级重算
+  完整 `pb_hero_team_suggest_collect`，同事务更新模块 10 下标 7 的收集度。
+- `88803 req_team_suggest_select` 按 ETF 单整数队伍 id 解码，校验 `TeamSuggest` 行后保存
+  `select`，返回完整 `pb_hero_team_suggest`；重开 SQLite 后选择仍保留。
+- `88801` 保持原有 ETF `{awardTid, teamTid}` 领奖行为，因此三条命令共用同一登录快照和
+  领取位状态。
+
+验证使用临时 SQLite、源码和真实本机 TCP，不读写线上数据库：
+
+- `node --test test/team-suggest-service.test.mjs`：7/7 通过，覆盖服务校验、权威进度、
+  SQLite 重开和 `88801–88803` 的真实网关往返。
+- `npm run audit:command-dispatch`：服务路由由 1316 增至 1318，未路由由 67 降至 65。
+- `npm run check:command-dispatch`：1407 条目录与 checked-in 审计一致。
+
+仍未操作线上服务、模拟器/ADB/APK，因此只记为服务端与真实 TCP 验收，不记为 APK 视觉
+验收。

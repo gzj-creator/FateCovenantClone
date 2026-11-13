@@ -42,6 +42,12 @@ function heroStars(model) {
   return result;
 }
 
+function suggestionHeroTids(teamRow) {
+  return new Set((teamRow?.suggest_hero ?? [])
+    .map(suggestion => Number(suggestion?.[0]))
+    .filter(Number.isSafeInteger));
+}
+
 export function calculateTeamSuggestProgress(teamRow, stars) {
   const suggestions = Array.isArray(teamRow?.suggest_hero) ? teamRow.suggest_hero : [];
   let maximum = 0, current = 0;
@@ -60,6 +66,46 @@ export function calculateTeamSuggestProgress(teamRow, stars) {
     maximum,
     percent: maximum > 0 ? Math.floor(current * 100 / maximum) : 0
   };
+}
+
+export function collectTeamSuggest(teamRow, stars) {
+  return {
+    type: Number(teamRow.tid),
+    progress: (teamRow.suggest_hero ?? []).map(suggestion => {
+      const targetStar = Math.max(0, Number(suggestion?.[1] ?? 0));
+      return Math.min(Math.max(0, stars.get(Number(suggestion?.[0])) ?? 0), targetStar) + 1;
+    })
+  };
+}
+
+export function parseTeamSuggestActivePayload(payload, heroTables) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new GameError(1, 'Invalid team suggestion activation payload');
+  }
+  const teamTid = integer(payload.type, 'team type');
+  const team = heroTables.TeamSuggest?.get(teamTid);
+  if (!team) throw new GameError(5, 'Team suggestion is not configured');
+  if (!Array.isArray(payload.heroes) || payload.heroes.length === 0) {
+    throw new GameError(1, 'Team suggestion activation requires heroes');
+  }
+  const configuredHeroes = suggestionHeroTids(team);
+  const seen = new Set();
+  const heroes = payload.heroes.map(entry => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new GameError(1, 'Invalid team suggestion activation hero');
+    }
+    const heroTid = integer(entry.hero_tid ?? entry.heroTid, 'hero id');
+    const targetStar = integer(entry.target_star ?? entry.targetStar, 'hero target star');
+    const hero = heroTables.Hero?.get(heroTid);
+    if (!hero || !configuredHeroes.has(heroTid)) throw new GameError(5, 'Hero is not part of this team suggestion');
+    if (targetStar > Math.max(0, Number(hero.max_star ?? 0))) {
+      throw new GameError(1, 'Invalid team suggestion hero target star');
+    }
+    if (seen.has(heroTid)) throw new GameError(1, 'Duplicate team suggestion hero');
+    seen.add(heroTid);
+    return { hero_tid: heroTid, target_star: targetStar };
+  });
+  return { type: teamTid, heroes };
 }
 
 function readTeamSuggest(model, codec) {
@@ -170,13 +216,7 @@ export function createTeamSuggestService({ store, codec, tables, heroTables, now
   function buildLoginValue(model, db) {
     const previous = readTeamSuggest(model, codec);
     const stars = heroStars(model);
-    const collects = configuredRows(heroTables).map(row => ({
-      type: Number(row.tid),
-      progress: (row.suggest_hero ?? []).map(suggestion => {
-        const targetStar = Math.max(0, Number(suggestion?.[1] ?? 0));
-        return Math.min(Math.max(0, stars.get(Number(suggestion?.[0])) ?? 0), targetStar) + 1;
-      })
-    }));
+    const collects = configuredRows(heroTables).map(row => collectTeamSuggest(row, stars));
     const claims = claimedAwards(db, model.state.roleId);
     return {
       select: Number(previous.select ?? 0),
@@ -246,5 +286,36 @@ export function createTeamSuggestService({ store, codec, tables, heroTables, now
     });
   }
 
-  return { supports: type => type === 88801, ensureLoginState, claim };
+  function active(payload) {
+    const request = parseTeamSuggestActivePayload(payload, heroTables);
+    const team = heroTables.TeamSuggest.get(request.type);
+    return store.transaction((model, db) => {
+      const previous = buildLoginValue(model, db);
+      const collect = collectTeamSuggest(team, heroStars(model));
+      const collects = previous.collects.filter(entry => Number(entry.type) !== request.type);
+      collects.push(collect);
+      collects.sort((left, right) => Number(left.type) - Number(right.type));
+      const updated = { ...previous, collects };
+      writeTeamSuggest(model, codec, updated);
+      return {
+        value: { teamTid: request.type, progress: collect.progress, heroes: request.heroes },
+        data: codec.pack('pb_hero_team_suggest_collect', collect)
+      };
+    });
+  }
+
+  function select(teamTid) {
+    const id = integer(teamTid, 'team id');
+    if (!heroTables.TeamSuggest?.has(id)) throw new GameError(5, 'Team suggestion is not configured');
+    return store.transaction((model, db) => {
+      const updated = { ...buildLoginValue(model, db), select: id };
+      writeTeamSuggest(model, codec, updated);
+      return {
+        value: { teamTid: id },
+        data: codec.pack('pb_hero_team_suggest', updated)
+      };
+    });
+  }
+
+  return { supports: type => type === 88801 || type === 88802 || type === 88803, ensureLoginState, claim, active, select };
 }

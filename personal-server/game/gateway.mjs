@@ -2541,14 +2541,21 @@ export function createLocalGame({
       }
       if (teamSuggest.supports(type)) {
         try {
-          const decoded = await decodeEtf(request.data);
-          const result = teamSuggest.claim(decoded?.value ?? decoded);
+          let result;
+          if (type === 88802) {
+            result = teamSuggest.active(unpackRequest('pb_hero_team_suggest_active', request.data));
+          } else if (type === 88803) {
+            result = teamSuggest.select(await singleIdArgument(request.data, 'Invalid team suggestion selection'));
+          } else {
+            const decoded = await decodeEtf(request.data);
+            result = teamSuggest.claim(decoded?.value ?? decoded);
+          }
           send(seq, result.data);
-          log({ event: 'team_suggest_award_committed', type, seq, ...result.value });
+          log({ event: 'team_suggest_command_committed', type, seq, ...result.value });
         } catch (error) {
           const code = error instanceof GameError ? error.code : 2;
           send(seq, Buffer.alloc(0), { err: code });
-          log({ event: 'team_suggest_award_rejected', type, seq, code, message: error.message });
+          log({ event: 'team_suggest_command_rejected', type, seq, code, message: error.message });
         }
         return;
       }
