@@ -210,7 +210,11 @@ import { createRechargeRebateResetService } from './recharge-rebate-reset-servic
 import { createRechargeExtraAwardService } from './recharge-extra-award-service.mjs';
 import { createTimeTempleService } from './time-temple-service.mjs';
 import { createBenefitCommerceService } from './benefit-commerce-service.mjs';
-import { createGuideService } from './guide-service.mjs';
+import {
+  createGuideService,
+  GUIDE_LOGIN_MODULE_ID,
+  projectGuideLoginModule
+} from './guide-service.mjs';
 import { createRoleService } from './role-service.mjs';
 import { createStoryService } from './story-service.mjs';
 import { createCdkeyService } from './cdkey-service.mjs';
@@ -993,6 +997,20 @@ export function createLocalGame({
     const list = revive(state.modules);
     const modules = new Map(list.value);
     features.maskLogin(modules);
+    const guideLogin = projectGuideLoginModule({
+      entry: storedModules.get(GUIDE_LOGIN_MODULE_ID),
+      guides: state.guides,
+      codec
+    });
+    modules.set(GUIDE_LOGIN_MODULE_ID, binary(guideLogin.data));
+    if (guideLogin.added || guideLogin.overridden) {
+      logger({
+        event: 'guide_login_projected',
+        added: guideLogin.added,
+        overridden: guideLogin.overridden,
+        total: guideLogin.total
+      });
+    }
     const loginMilliseconds = clock();
     const loginSeconds = Math.floor(loginMilliseconds / 1000);
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });

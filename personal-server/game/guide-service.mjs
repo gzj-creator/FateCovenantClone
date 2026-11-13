@@ -7,6 +7,7 @@ import { grantResources } from './resources.mjs';
 // process_id/key_id/is_over, so a step counts as passed once its key is saved
 // under the process the client is running.
 export const GUIDE_CLAIM_TYPE = 'guide_award';
+export const GUIDE_LOGIN_MODULE_ID = 16;
 
 const AWARD_ID_KEYS = ['award_tid', 'awardTid', 'award_id', 'awardId'];
 const MODULE_KEYS = ['module', 'module_id', 'moduleId', 'guide_module', 'guideModule'];
@@ -56,6 +57,57 @@ export function guideModuleOf(value) {
   if (keyed !== null) return keyed;
   const scalar = asInteger(value);
   return scalar !== null && scalar > 0 ? scalar : null;
+}
+
+function binaryBytes(entry) {
+  const value = entry && typeof entry === 'object' && 'value' in entry ? entry.value : entry;
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (value?.type === 'Buffer' && Array.isArray(value.data)) return Buffer.from(value.data);
+  throw new TypeError('Guide login module is not a binary value');
+}
+
+// req_save_guide_process is the durable write path for guide progress. Its rows
+// live in the guides table, while module 16 is the snapshot the client consumes
+// on login. Project the saved rows into that snapshot without discarding older
+// fixture-backed history, which is still present on established characters.
+export function projectGuideLoginModule({ entry, guides = {}, codec }) {
+  if (typeof codec?.pack !== 'function' || typeof codec?.unpack !== 'function') {
+    throw new TypeError('codec is required');
+  }
+
+  const current = entry == null
+    ? { process_list: [], award: '' }
+    : codec.unpack('pb_guide', binaryBytes(entry));
+  const rows = new Map();
+  for (const row of current.process_list ?? []) {
+    const processId = asInteger(row?.process_id);
+    const keyId = asInteger(row?.key_id);
+    if (processId === null || processId <= 0 || keyId === null || keyId <= 0) continue;
+    rows.set(String(keyId), { process_id: processId, key_id: keyId, is_over: row.is_over === true });
+  }
+
+  let added = 0;
+  let overridden = 0;
+  for (const [key, value] of Object.entries(guides ?? {})) {
+    const processId = asInteger(value);
+    const keyId = asInteger(key);
+    if (processId === null || processId <= 0 || keyId === null || keyId <= 0) continue;
+    const rowKey = String(keyId);
+    if (rows.has(rowKey)) overridden += 1;
+    else added += 1;
+    rows.set(rowKey, { process_id: processId, key_id: keyId, is_over: true });
+  }
+
+  return {
+    data: codec.pack('pb_guide', {
+      process_list: [...rows.values()],
+      award: current.award ?? ''
+    }),
+    added,
+    overridden,
+    total: rows.size
+  };
 }
 
 export function createGuideService({ store, codec, tables, awards = {}, now = Date.now, logger = () => {} }) {

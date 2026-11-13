@@ -6,7 +6,7 @@ import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
 import { createGameCodec, decodeEtf, encodeEtf } from '../protocol/game-codec.mjs';
-import { createGuideService, awardTidOf } from '../game/guide-service.mjs';
+import { createGuideService, awardTidOf, GUIDE_LOGIN_MODULE_ID } from '../game/guide-service.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 import { createLocalGame } from '../local-game.mjs';
@@ -147,6 +147,12 @@ const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.u
 const SERVER_OPENED_AT = 1792789200;
 const GAME_NOW = (SERVER_OPENED_AT + 3600) * 1000;
 
+function loginModuleBytes(login, moduleId) {
+  const entry = login[2].value.find(value => Number(value[0]) === moduleId);
+  assert.ok(entry, `login module ${moduleId} is present`);
+  return Buffer.from(entry[1].value);
+}
+
 test('gateway saves guide progress then awards, probes the network and rejects a repeat over TCP', { timeout: 20000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-guide-tcp-'));
   const game = createLocalGame({
@@ -176,13 +182,33 @@ test('gateway saves guide progress then awards, probes the network and rejects a
   send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
   const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
-  assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+  const initialLogin = await decodeEtf(Buffer.from(login.data, 'base64'));
+  assert.equal(initialLogin[0], 1);
+  const guideBeforeSave = codec.unpack('pb_guide', loginModuleBytes(initialLogin, GUIDE_LOGIN_MODULE_ID));
+  assert.ok(guideBeforeSave.process_list.length > 0);
+  const historicalGuide = guideBeforeSave.process_list[0];
 
   const saved = await request(8000, 2, codec.pack('pb_req_save_process', { req_list: [{ process_id: PROCESS_ID, key_id: KEY_ID }] }));
   assert.equal(saved.seq, 2);
   assert.equal(saved.err, undefined);
   const savedBack = codec.unpack('pb_req_save_process_back', Buffer.from(saved.data, 'base64'));
   assert.deepEqual(savedBack.process_list.map(row => [row.process_id, row.key_id]), [[PROCESS_ID, KEY_ID]]);
+
+  // The following login must expose the durable guides row through module 16.
+  const nextLogin = await decodeEtf(await game.loginPayload());
+  const projectedGuide = codec.unpack('pb_guide', loginModuleBytes(nextLogin, GUIDE_LOGIN_MODULE_ID));
+  assert.deepEqual(
+    projectedGuide.process_list.find(row => Number(row.process_id) === PROCESS_ID && Number(row.key_id) === KEY_ID),
+    { process_id: PROCESS_ID, key_id: KEY_ID, is_over: true }
+  );
+  assert.equal(projectedGuide.process_list.length, guideBeforeSave.process_list.length + 1);
+  assert.deepEqual(
+    projectedGuide.process_list.find(row => Number(row.key_id) === Number(historicalGuide.key_id)),
+    historicalGuide
+  );
+  const persistentAgain = codec.unpack('pb_guide', loginModuleBytes(await decodeEtf(await game.loginPayload()), GUIDE_LOGIN_MODULE_ID));
+  assert.deepEqual(persistentAgain.process_list, projectedGuide.process_list);
+  assert.equal(persistentAgain.award, projectedGuide.award);
 
   const before = BigInt(game.store.read().resources.get('101500')?.num ?? 0);
   const awarded = await request(8001, 3, Buffer.from(await encodeEtf(AWARD_TID)));
