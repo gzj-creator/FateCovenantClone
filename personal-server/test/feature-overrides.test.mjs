@@ -37,7 +37,7 @@ test('force overrides are audited and revocable', t => {
   assert.throws(() => overrides.set({ serverId: 3, funId: 1039, mode: 'open' }), error => error.code === 1);
 });
 
-test('feature service applies force_open, force_close and masks the login bitmap', t => {
+test('client-confirmed target 1 requests commit even with an evidence gap; force_close masks the login bitmap', t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-feature-override-'));
   const databasePath = path.join(directory, 'game.sqlite');
   const seed = () => ({
@@ -50,25 +50,27 @@ test('feature service applies force_open, force_close and masks the login bitmap
   const overrideStore = createFeatureOverrideStore({ store });
   const service = createFeatureService({
     store, codec,
-    rules: [{ funId: 1002, conditions: [{ type: 'role_level', args: { level: 99 } }] }],
+    rules: [{
+      funId: 1054,
+      status: 'evidence_gap',
+      conditions: [{ type: 'role_level', args: { level: 99 } }],
+      evidenceGap: [{ reason: 'expression_not_supported' }]
+    }],
     overrides: serverId => overrideStore.activeFor(serverId)
   });
 
-  service.execute(7000, { value: [1002] });
-  assert.equal(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3)))).has(1002), false);
-  overrideStore.set({ serverId: 1, funId: 1002, mode: 'force_open', reason: 'test', operator: 'ops' });
-  service.execute(7000, { value: [1002] });
+  service.execute(7000, { value: [1054] });
   const state = store.state();
   const modules = new Map(state.modules.value);
-  assert.ok(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(modules.get(3)))).has(1002));
+  assert.ok(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(modules.get(3)))).has(1054));
 
-  overrideStore.set({ serverId: 1, funId: 1002, mode: 'force_close', reason: 'test', operator: 'ops' });
+  overrideStore.set({ serverId: 1, funId: 1054, mode: 'force_close', reason: 'test', operator: 'ops' });
   service.maskLogin(modules);
-  assert.equal(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(modules.get(3)))).has(1002), false);
+  assert.equal(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(modules.get(3)))).has(1054), false);
   // The persisted bitmap is untouched; revoking restores the original view.
-  assert.ok(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3)))).has(1002));
+  assert.ok(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3)))).has(1054));
   for (const row of overrideStore.activeFor(1)) overrideStore.revoke(row.id, 'ops', 'test');
   const restored = new Map(store.state().modules.value);
   service.maskLogin(restored);
-  assert.ok(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(restored.get(3)))).has(1002));
+  assert.ok(openFeatureIds(codec.unpack('res_fun_open_login', rawBinary(restored.get(3)))).has(1054));
 });

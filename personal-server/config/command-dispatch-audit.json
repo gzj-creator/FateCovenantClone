@@ -3,15 +3,15 @@
   "source": {
     "gateway": {
       "path": "personal-server/game/gateway.mjs",
-      "sha256": "741E27DE1E7EA7C766B2FAB951F6A1ED31AFAECA07E06082661860C8B26F1AE0"
+      "sha256": "C462722BF8D1ECB02CBF02656BA066606963C70344D393B34BCCC991D2C6C9AA"
     },
     "catalog": {
       "path": "personal-server/config/command-catalog.json",
-      "sha256": "38FE0BD8D080010A315B4C6CBA25B9C3859F017B90702785ACCBAF875E004F80"
+      "sha256": "005C7527E2EC55AD061A3ADD178EFE30E34ABEE2E5D029DC4F23A7DF20F6DAB9"
     },
     "staticInterfaces": {
       "path": "agent/workflow/interface-catalog/static-interfaces.json",
-      "sha256": "B36BD2A0E6DB5A8C725FD242E3F1FFD3E13585CA5F78C7197C00E9001A53822F"
+      "sha256": "F7F44ACFA103B30658AF95B7FE7BEC133126C95D2E7AEBBDB9265F86206F7E55"
     }
   },
   "method": "runtime supports() snapshot + ordered top-level gateway type conditions + static C2S metadata",

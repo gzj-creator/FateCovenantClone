@@ -176,17 +176,21 @@ export function createFeatureService({
         return commit(unique);
       }
       const model = store.read();
-      const evaluation = evaluateFunOpen({
-        ...model.role,
-        guides: model.guides,
-        heroInfo: model.heroInfo
-      }, ruleList, modelContext(model));
       const overrideMap = overridesFor(model.state.serverId);
-      const isAllowed = id => overrideMap.get(id) === 'force_open'
-        || (overrideMap.get(id) !== 'force_close' && evaluation.open.has(id));
-      const allowed = unique.filter(isAllowed);
-      const denied = unique.filter(id => !isAllowed(id));
-      if (denied.length) log({ event: 'fun_open_denied', ids: denied, denied: evaluation.denied });
+      // E9-1 recovered FunOpenTable semantics: type 7000 only accepts target 1,
+      // whose rows declare client_req_to_open=true. The client has already run
+      // the condition and asks the server to commit the successful result.
+      // Applying the evidence-gap evaluator here breaks that acknowledgement
+      // (notably 1054) and leaves the client waiting even though every later
+      // command would otherwise be allowed. Operations can still force-close a
+      // target; target 2 remains server-owned through reconciliation below.
+      const allowed = unique.filter(id => overrideMap.get(id) !== 'force_close');
+      const denied = unique.filter(id => overrideMap.get(id) === 'force_close');
+      if (denied.length) log({
+        event: 'fun_open_denied',
+        ids: denied,
+        denied: denied.map(funId => ({ funId, type: 'override', reason: 'force_close' }))
+      });
       log({ event: 'feature_request', ids: unique, allowed });
       return commit(allowed);
     },
