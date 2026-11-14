@@ -150,12 +150,15 @@ test('expedition, channel and guild nation commands expose real state', async t 
 
   const nilChannel = Buffer.from('836400036e696c', 'hex');
   const channel = await env.services.channel.execute(102801, nilChannel);
-  assert.equal(codec.unpack('pb_channel_entry', channel.data).channel_id, 1);
-  assert.equal(codec.unpack('pb_channel_entry', channel.data).is_open, true);
+  assert.equal(channel.data.length, 0);
+  assert.equal(channel.value.channel.channel_id, 1);
+  assert.equal(channel.value.channel.is_open, true);
   const legacyChannel = await env.services.channel.execute(102801, empty);
-  assert.equal(codec.unpack('pb_channel_entry', legacyChannel.data).channel_id, 1);
+  assert.equal(legacyChannel.data.length, 0);
+  assert.equal(legacyChannel.value.channel.channel_id, 1);
   const channelTwo = await env.services.channel.execute(102801, await encodeEtf([2]));
-  assert.equal(codec.unpack('pb_channel_entry', channelTwo.data).channel_id, 2);
+  assert.equal(channelTwo.data.length, 0);
+  assert.equal(channelTwo.value.channel.channel_id, 2);
   await assert.rejects(
     env.services.channel.execute(102801, await encodeEtf([99])),
     error => error.code === 5
@@ -217,6 +220,7 @@ test('temporary TCP gateway routes cooperation commands and decodes client respo
   const joint = await request(91612, 5, empty);
   assert.equal(codec.unpack('pb_guild_joint_enter_map_back', Buffer.from(joint.data, 'base64')).map.monster_list.length, 3);
   const channel = await request(102801, 6, Buffer.from('836400036e696c', 'hex'));
-  assert.equal(codec.unpack('pb_channel_entry', Buffer.from(channel.data, 'base64')).channel_id, 1);
-  assert.equal(codec.unpack('pb_channel_entry', Buffer.from(channel.data, 'base64')).is_open, true);
+  assert.equal(channel.seq, 6);
+  assert.equal(channel.err, undefined);
+  assert.equal(Buffer.from(channel.data ?? '', 'base64').length, 0);
 });

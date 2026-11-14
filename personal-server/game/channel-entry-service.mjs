@@ -51,7 +51,19 @@ export function createChannelEntryService({ store, codec, coopTables, now = Date
           server_open_max_day: Number(entry.maxDay ?? 0),
           str_channel_id: String(entry.channelId)
         };
-        const result = { data: codec.pack('pb_channel_entry', value), value: { channelId: entry.channelId, opens: doc.opens } };
+        // The original client capture pairs this request with an empty success
+        // response. ChannelEntry data is delivered through rev_channel_entry
+        // (push 9804); putting pb_channel_entry in the request reply makes the
+        // client decode a payload its request callback does not own and can
+        // leave hall initialization blocked.
+        const result = {
+          data: Buffer.alloc(0),
+          value: {
+            channelId: entry.channelId,
+            opens: doc.opens,
+            channel: value
+          }
+        };
         log({ event: 'channel_entry_command', type: CHANNEL_ENTRY_COMMAND, ...result.value });
         return result;
       });
