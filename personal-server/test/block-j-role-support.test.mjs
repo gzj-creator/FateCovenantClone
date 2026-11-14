@@ -171,6 +171,7 @@ test('role names use ChangeName, reject occupied names, persist, and decode rand
 
   const veteran = await role.execute(111, {});
   assert.equal(veteran.value.eligible, false);
+  assert.equal(veteran.data.length, 0);
   await assert.rejects(() => role.execute(112, {}), error => error.code === 1);
 
   const level = await role.execute(1303, {});
@@ -205,7 +206,7 @@ test('veteran commands use an explicit local policy without an undefined configu
 test('support commands commit client diagnostics, cdkeys and audited GM state', async t => {
   const env = setup(t);
   const role = env.role();
-  assert.equal((await role.execute(109, {})).data, null);
+  assert.equal((await role.execute(109, {})).data.length, 0);
   assert.equal((await role.execute(78901, { etf: Buffer.from('client diagnostics') })).data, null);
 
   const gmInput = new E.OtpErlangMap(new Map([

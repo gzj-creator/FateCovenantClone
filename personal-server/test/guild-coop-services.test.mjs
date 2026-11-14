@@ -223,4 +223,13 @@ test('temporary TCP gateway routes cooperation commands and decodes client respo
   assert.equal(channel.seq, 6);
   assert.equal(channel.err, undefined);
   assert.equal(Buffer.from(channel.data ?? '', 'base64').length, 0);
+
+  const veteran = await request(111, 7, empty);
+  assert.equal(veteran.seq, 7);
+  assert.equal(veteran.err, undefined);
+  assert.equal(Buffer.from(veteran.data ?? '', 'base64').length, 0);
+  const netOk = await request(109, 8, empty);
+  assert.equal(netOk.seq, 8);
+  assert.equal(netOk.err, undefined);
+  assert.equal(Buffer.from(netOk.data ?? '', 'base64').length, 0);
 });

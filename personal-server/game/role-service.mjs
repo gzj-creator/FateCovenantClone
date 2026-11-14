@@ -372,7 +372,10 @@ export function createRoleService(options) {
         && days >= Number(veteranConfig.min_days ?? 7);
       const state = { eligible, level: Number(model.role.level ?? 1), days, checked_at: currentSeconds() };
       writeExtra(db, model.state.roleId, { veteran: state });
-      return { value: state, data: null };
+      // The client sends this as a sequenced request and keeps the hall loading
+      // until that sequence is acknowledged. The request has no recovered
+      // response schema, so reply with the protocol's empty success payload.
+      return { value: state, data: Buffer.alloc(0) };
     });
   }
 
@@ -929,7 +932,13 @@ export function createRoleService(options) {
       case 104: return recordSundry(context.etf);
       case 105: return recordPassAllMission(context.etf);
       case 106: return requestRoleList();
-      case 109: log({ event: 'role_net_checked', type: command }); return { value: { ok: true }, data: null };
+      case 109:
+        log({ event: 'role_net_checked', type: command });
+        // req_ensure_net_ok is the final connectivity gate after hall
+        // initialization. Returning null data suppressed the reply entirely,
+        // leaving the client spinner waiting for seq 18. An empty frame is the
+        // successful application-level acknowledgement for this ETF command.
+        return { value: { ok: true }, data: Buffer.alloc(0) };
       case 110: return setRecommendLevel(context.etf);
       case 111: return checkVeteran();
       case 112: return veteranSkip();
