@@ -123,7 +123,7 @@ export function readIntelliTables(file = defaultPath) {
     gameplayReady: false,
     gameplayBlockers: Object.freeze([
       'Intelli rows omit award, award_n, hero_star, hero_quality and conditions',
-      'MethodScript is empty, so Type.unlock scripts cannot be evaluated',
+      'MethodScript.data.lua.bin registers only MethodTable.Method and MethodTable.DynamicArgs, so the Type.unlock scripts cannot be evaluated',
       'Campsite feature/place eligibility and hero selection authority are not recovered',
       'Refresh/day rollover and finish-to-claim transition are not recovered'
     ]),
