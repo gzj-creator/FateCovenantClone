@@ -46,7 +46,17 @@ function handshakeClient(socket) {
 
 test('a second realm accepts the primary realm login session and keeps realm 2 credentials out', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-multi-realm-'));
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  // Windows keeps the SQLite files locked until every game, server and socket
+  // is closed, so cleanup runs in reverse creation order and only removes the
+  // directory afterwards. Registering the disposer before any resource is
+  // created makes a mid-test assertion failure clean up instead of hanging.
+  const disposers = [];
+  t.after(async () => {
+    for (const dispose of disposers.reverse()) {
+      try { await dispose(); } catch {}
+    }
+    await fs.promises.rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  });
   let now = SERVER_OPENED_AT + 3600;
 
   // Primary realm issues the SDK session the public client logs in with.
@@ -58,7 +68,7 @@ test('a second realm accepts the primary realm login session and keeps realm 2 c
     appId: 'fc-local', appKey: APP_KEY,
     nowSeconds: () => now
   });
-  t.after(() => sdk.close());
+  disposers.push(() => sdk.close());
   const sdkAddress = await sdk.listen(0);
   const form = new URLSearchParams({ loginCode: ACCOUNT.loginCode, password: ACCOUNT.passwordMd5, appid: 'fc-local' });
   const loginResponse = await fetch(sdkAddress.url + '/user/login', {
@@ -81,7 +91,7 @@ test('a second realm accepts the primary realm login session and keeps realm 2 c
     roleName: '命运旅者',
     now: () => now * 1000
   });
-  t.after(() => realmTwo.close());
+  disposers.push(() => realmTwo.close());
 
   const realmThree = createLocalGame({
     databasePath: path.join(directory, 'realm-3.sqlite'),
@@ -96,13 +106,13 @@ test('a second realm accepts the primary realm login session and keeps realm 2 c
     roleName: '命运旅者',
     now: () => now * 1000
   });
-  t.after(() => realmThree.close());
+  disposers.push(() => realmThree.close());
 
   const twoAddress = await realmTwo.listen(0), threeAddress = await realmThree.listen(0);
 
   async function loginRealm(address, serverId, token) {
     const socket = net.connect(address.port, '127.0.0.1');
-    t.after(() => socket.destroy());
+    disposers.push(() => socket.destroy());
     await once(socket, 'connect');
     const peer = handshakeClient(socket);
     await peer.open('CovenantKey12345');

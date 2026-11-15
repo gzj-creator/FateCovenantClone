@@ -85,7 +85,6 @@ test('delivered APK activity tables are described by their unresolved state cont
   const delivered = {
     'PAY-LINKGIFT': /custom_list/,
     'PAY-APPEARANCERELEASEACT': /interact_state/,
-    'PAY-BUYSKINACT': /unlock_day/,
     'PAY-VICKREYAUCTIONACT': /密封出价/,
     'PAY-GIFTBOXACT': /box_bought_list/,
     'PAY-SUBSCRIPTIONACT': /全服 round/,
@@ -106,6 +105,14 @@ test('delivered APK activity tables are described by their unresolved state cont
     assert.match(family.reason, contract);
     assert.doesNotMatch(family.reason, /Table 未导出/);
   }
+  // PAY-BUYSKINACT moved out of the refusal table when R1 implemented the
+  // version-1 free award (104001) in buy-skin-act-service; the remaining SKU
+  // unlocks are paid 16004 products and are no longer part of this contract.
+  assert.equal(
+    [...new Set(service.refusals.values())].some(item => item.card === 'PAY-BUYSKINACT'),
+    false,
+    'PAY-BUYSKINACT must not reappear in the unresolved-state contract'
+  );
   const redEnvelope = [...new Set(service.refusals.values())].find(item => item.card === 'PAY-REDENVELOPE');
   assert.match(redEnvelope.reason, /RedEnvelopeTable 未导出.*pb_red_envelope/);
   assert.doesNotMatch(redEnvelope.reason, /pb_client_red_envelope 定义缺失/);

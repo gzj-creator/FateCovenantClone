@@ -36,6 +36,16 @@ test('draw activities complete over temporary TCP and persist against SQLite', {
     await game.close();
     fs.rmSync(directory, { recursive: true, force: true });
   });
+  // The FunOpen command gate denies writes whose function id is absent from the
+  // captured account bitmap. This capture never opened the thousand-draw (1531)
+  // or pray-act (1540) features, so open them explicitly to exercise the
+  // recovered command contracts instead of bypassing the gate itself.
+  for (const funId of [1531, 1540]) {
+    game.featureOverrides.set({
+      serverId: 1, funId, mode: 'force_open',
+      reason: 'test: draw-activity command contract', operator: 'test'
+    });
+  }
   game.store.transaction(model => grantResources(model, [[820202, 50], [816002, 100]], tables));
 
   const address = await game.listen(0);

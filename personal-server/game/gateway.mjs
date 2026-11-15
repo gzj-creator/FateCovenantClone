@@ -1645,7 +1645,12 @@ export function createLocalGame({
       // bitmap before that point disconnects a genuinely empty realm.
       const commandGate = phase === 'ready' && commandRegistryHasGates
         ? commandRegistry.gate(type, features.openIds()) : null;
-      if (commandGate && !commandGate.allowed) {
+      // Block I refusal families describe a missing original rule. Checking them
+      // before FunOpen keeps that documented refusal reachable instead of
+      // masking it with 309; the branch neither reads nor mutates state, so it
+      // cannot expose a closed feature.
+      const benefitRefusalOnly = benefitCommerce.refusals.has(Number(type));
+      if (commandGate && !commandGate.allowed && !benefitRefusalOnly) {
         log({
           event: 'fun_open_command_denied', type, access: commandGate.access,
           requires: commandGate.requires, missing: commandGate.missing

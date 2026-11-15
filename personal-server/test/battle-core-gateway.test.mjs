@@ -82,6 +82,12 @@ test('ReportCmd/CommonMapCmd/StarMissionCmd answer over the temporary handshake 
   const databasePath = path.join(directory, 'game.sqlite');
   seedDatabase(databasePath);
   let game = openGame(databasePath);
+  // The FunOpen command gate reads the account bitmap; this capture never
+  // opened the star-mission feature (1192), so open it for the contract test.
+  game.featureOverrides.set({
+    serverId: 1, funId: 1192, mode: 'force_open',
+    reason: 'test: star-mission command contract', operator: 'test'
+  });
   t.after(async () => {
     await game.close();
     fs.rmSync(directory, { recursive: true, force: true });

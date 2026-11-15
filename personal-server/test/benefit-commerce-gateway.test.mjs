@@ -97,6 +97,13 @@ test('87301 permanent card award settles daily rewards and survives a database r
     if (instance) await instance.close();
     fs.rmSync(directory, { recursive: true, force: true });
   });
+  // The FunOpen command gate reads the account bitmap; the captured account
+  // never opened the permanent-card feature (1135), so open it explicitly so
+  // the recovered 87301 settlement is exercised through the real gateway.
+  instance.featureOverrides.set({
+    serverId: 1, funId: 1135, mode: 'force_open',
+    reason: 'test: permanent-card command contract', operator: 'test'
+  });
   instance.store.transaction(model => {
     const modules = new Map(model.state.modules.value);
     modules.set(62, serializedBinary(codec.pack('pb_permanent_card', {

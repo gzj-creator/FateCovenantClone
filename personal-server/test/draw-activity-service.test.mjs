@@ -375,9 +375,13 @@ test('pray login payload restores persisted state and uses the table-relative wi
     ACTIVITY_REFERENCE_OPENED_AT
   );
   const at = expected.start + 60;
+  // R1 dropped the old world_time -> server-open rebasing, so the absolute
+  // table window only runs for a server that opened before the activity and is
+  // still inside the row's server_day_limit (29 for 183013).
+  const scheduledOpenedAt = at - 10 * 86400;
   const calendar = createActivityCalendar({
     tables,
-    serverOpenedAt: SERVER_OPENED_AT,
+    serverOpenedAt: scheduledOpenedAt,
     activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
     now: () => at * 1000
   });
@@ -390,7 +394,7 @@ test('pray login payload restores persisted state and uses the table-relative wi
   const closedAt = expected.end + 1;
   const closedCalendar = createActivityCalendar({
     tables,
-    serverOpenedAt: SERVER_OPENED_AT,
+    serverOpenedAt: scheduledOpenedAt,
     activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
     now: () => closedAt * 1000
   });

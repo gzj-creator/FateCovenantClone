@@ -99,6 +99,15 @@ test('block J role/support commands survive real loopback framing and SQLite reo
     if (game) await game.close();
     fs.rmSync(directory, { recursive: true, force: true });
   });
+  // The FunOpen command gate reads the account bitmap; this capture never
+  // opened the skin-exchange (1122) or skin-increase (1107) features, so open
+  // them for the contract test instead of bypassing the gate itself.
+  for (const funId of [1122, 1107]) {
+    game.featureOverrides.set({
+      serverId: 1, funId, mode: 'force_open',
+      reason: 'test: block-J skin command contract', operator: 'test'
+    });
+  }
 
   connection = await connectAndLogin(game);
   const roleId = String(game.store.read().state.roleId);

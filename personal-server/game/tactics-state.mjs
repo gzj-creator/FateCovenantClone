@@ -1,7 +1,12 @@
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 
-export const TACTICS_MODULE_ID = 19;
+// The shipped ModuleTable binds TacticsMgr to tid 125 (project/tactics), and the
+// verified Mgr login slots follow the table tid (152 HeroBlazon, 154
+// HeroLegendBook, 162 MysteryShop). Slot 19 is res_recharge_login: writing
+// tactics there replaced the wallet's cumulative-recharge payload and made the
+// next login reject the module, so tactics moved to its own table row.
+export const TACTICS_MODULE_ID = 125;
 const TACTICS_MASTER_SCHEMA = 'pb_tactics_master';
 const CODE_STATE = 5;
 

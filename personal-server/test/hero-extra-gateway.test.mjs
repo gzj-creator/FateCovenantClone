@@ -89,6 +89,12 @@ test('hero extra commands answer through the real gateway with login-module pers
   assert.equal(response.err.err, 5);
 
   addHero(game.store, REFORGE_HERO);
+  // The FunOpen command gate reads the account bitmap; this capture never
+  // opened the hero-reforge feature (1451), so open it for the contract test.
+  game.featureOverrides.set({
+    serverId: 1, funId: 1451, mode: 'force_open',
+    reason: 'test: hero-reforge command contract', operator: 'test'
+  });
   response = await request(663, 4, codec.pack('pb_hero_reforge_req', { hero_tid: REFORGE_HERO, use_currency: false, lock_idx_list: [] }));
   assert.equal(response.err, undefined);
   const rolled = codec.unpack('pb_hero_reforge_back', Buffer.from(response.data, 'base64'));

@@ -116,6 +116,12 @@ test('hero bond commands answer through the real gateway with login-module persi
 
   addHero(game.store, DIFF_HERO);
   game.store.transaction(model => grantResources(model, [[DIFF_ITEM, 10]], tables));
+  // The FunOpen command gate reads the account bitmap; this capture never
+  // opened the all-hero-diff feature (1321), so open it for the contract test.
+  game.featureOverrides.set({
+    serverId: 1, funId: 1321, mode: 'force_open',
+    reason: 'test: hero-diff command contract', operator: 'test'
+  });
   response = await request(661, 4, await encodeEtf([DIFF_HERO]));
   assert.equal(response.err, undefined);
   const diffed = codec.unpack('pb_hero_diff_back', Buffer.from(response.data, 'base64'));
