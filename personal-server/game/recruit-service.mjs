@@ -1,4 +1,4 @@
-import { encodeEtfBinaryAndSmallIntegerTuple, encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { encodeEtfBinaryList, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mjs';
 import { GameError } from './hero-progression.mjs';
 import { gameDayIndex } from './time.mjs';
@@ -33,6 +33,7 @@ const DEMIGOD_FORMATION_INDEX = 1;
 const DEMIGOD_DRAW_INDEX = 2;
 const LEADER_EQUIP_MODULE_ID = 175;
 const LEADER_EQUIP_DRAW_TYPE = 1031;
+export const GUIDE_FIRST_RECRUIT_HERO_TID = 4030801;
 const supportedLibs = new Set(SUPPORTED_RECRUIT_LIBS);
 
 function startOfUtcDay(seconds) {
@@ -185,12 +186,19 @@ export function createRecruitService({
   fantasyEquipTables,
   leaderEquipTables,
   recruitHeroExclusionGroups = null,
+  firstRecruitHeroTid = null,
   random = Math.random,
   now = () => Math.floor(Date.now() / 1000),
   onDraw = null
 }) {
   const heroExclusionGroups = recruitHeroExclusionGroups ?? readRecruitHeroExclusionGroups().groups;
   const pools = buildRecruitPoolCatalog(heroTables, { excludedHeroGroups: heroExclusionGroups });
+  const firstRecruitHero = firstRecruitHeroTid === null
+    ? null
+    : pools.get(1)?.byTid.get(integer(Number(firstRecruitHeroTid), 1, 999999999, 'Invalid first-recruit hero'));
+  if (firstRecruitHeroTid !== null && !firstRecruitHero) {
+    throw new Error('Configured first-recruit hero is not eligible for draw library 1');
+  }
   const drawConfigs = new Map();
   for (const [lib, pool] of pools) {
     const drawConfig = heroTables.Draw.get(lib);
@@ -366,7 +374,7 @@ export function createRecruitService({
         stat_tid: TID_COUNT_DRAW
       }]
     };
-    return { type: 2000, data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', value)) };
+    return { type: 2000, data: codec.pack('pb_count_statics_send_list', value) };
   }
 
   function drawAchievementData(state, seconds) {
@@ -385,9 +393,9 @@ export function createRecruitService({
   function drawAchievementPush(data) {
     return {
       type: 2000,
-      data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', {
+      data: codec.pack('pb_count_statics_send_list', {
         data_list: [{ data, expand_id_list: [0], stat_tid: TID_COUNT_DRAW_ACHIEVE }]
-      }))
+      })
     };
   }
 
@@ -698,16 +706,16 @@ export function createRecruitService({
     };
   }
 
-  function drawOne(state, lib, progress) {
+  function drawOne(state, lib, progress, forcedHero = null) {
     const pool = pools.get(lib);
     const { guaranteedConfig } = drawConfigs.get(lib);
     const threshold = Number(guaranteedConfig.guaranteed_num);
     const nextCount = Number(state.guaranteed_count ?? 0) + 1;
     const guaranteed = threshold > 0 && nextCount >= threshold;
-    const quality = pickQuality(pool.rule, progress, guaranteed, random);
+    const quality = forcedHero?.quality ?? pickQuality(pool.rule, progress, guaranteed, random);
     let wishHero = false;
     let candidates = null;
-    if (isWishUnlocked(pool.rule, progress) && (quality === 50 || quality === 60)) {
+    if (!forcedHero && isWishUnlocked(pool.rule, progress) && (quality === 50 || quality === 60)) {
       candidates = [];
       for (const field of pool.rule.wish.fields) {
         for (const item of state[field] ?? []) {
@@ -724,7 +732,7 @@ export function createRecruitService({
       }
       wishHero = candidates.length > 0;
     }
-    const hero = choosePoolHero(pool, quality, random, wishHero ? candidates : null);
+    const hero = forcedHero ?? choosePoolHero(pool, quality, random, wishHero ? candidates : null);
     if (wishHero) {
       for (const field of pool.rule.wish.fields) {
         const selected = (state[field] ?? []).find(item => Number(item.tid) === hero.tid);
@@ -746,7 +754,7 @@ export function createRecruitService({
     if (state.latest_more_draw_list.length > 10) state.latest_more_draw_list.shift();
     state.is_guaranteed_wish_hero = wishHero;
     state.draw_count = Number(state.draw_count ?? 0) + 1;
-    return { ...hero, guaranteed, wishHero, lib };
+    return { ...hero, guaranteed, wishHero, lib, firstRecruit: Boolean(forcedHero) };
   }
 
   function drawLeaderEquip(model, request, seconds, lib, leaderDraw) {
@@ -853,6 +861,10 @@ export function createRecruitService({
     const info = state.byLib.get(lib);
     refreshDailyState(info, lib, seconds);
     const progress = completedDrawCounts(state.byLib);
+    // This is the novice-guide draw. Requiring zero progress across every
+    // recruitment library keeps later draws, and old accounts that already
+    // used another banner, on the normal configured pool.
+    const firstRecruit = Boolean(firstRecruitHero && lib === 1 && progress.total === 0);
     if (!isPoolUnlocked(pools.get(lib).rule, info, progress)) fail(305, 'Draw library is not unlocked');
     if (heroTables.DrawNumLimit.has(lib) && Number(info.daily_can_draw_num ?? 0) < count) fail(305, 'Daily draw limit reached');
     const spent = consumeResources(model, costs.map(cost => [cost.tid, cost.amount]), 301);
@@ -860,7 +872,12 @@ export function createRecruitService({
     const newHeroes = [];
     const results = [];
     for (let index = 0; index < count; index++) {
-      const result = drawOne(info, lib, completedDrawCounts(state.byLib));
+      const result = drawOne(
+        info,
+        lib,
+        completedDrawCounts(state.byLib),
+        firstRecruit && index === 0 ? firstRecruitHero : null
+      );
       results.push(result);
       const owned = model.heroInfo.hero_list.some(hero => Number(hero.tid) === result.tid);
       // The client's HeroDrawUILogic.FilterAwards splits one chip award into
@@ -919,7 +936,13 @@ export function createRecruitService({
         ruleVersion: RECRUIT_RULE_VERSION,
         newHeroes: newHeroes.map(hero => hero.tid),
         activityProgress,
-        results: results.map(result => ({ tid: result.tid, quality: result.quality, guaranteed: result.guaranteed, wishHero: result.wishHero }))
+        results: results.map(result => ({
+          tid: result.tid,
+          quality: result.quality,
+          guaranteed: result.guaranteed,
+          wishHero: result.wishHero,
+          ...(result.firstRecruit ? { firstRecruit: true } : {})
+        }))
       }
     };
   }

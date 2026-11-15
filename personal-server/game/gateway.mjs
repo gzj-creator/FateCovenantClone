@@ -132,7 +132,7 @@ import { createPermitService } from './permit-service.mjs';
 import { createMonthPermitService } from './month-permit-service.mjs';
 import { createMonthlyCardService } from './monthly-card-service.mjs';
 import { createMailService } from './mail-service.mjs';
-import { createRecruitService } from './recruit-service.mjs';
+import { createRecruitService, GUIDE_FIRST_RECRUIT_HERO_TID } from './recruit-service.mjs';
 import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createGuildRosterService } from './guild-roster-service.mjs';
 import { createGuildSocietyService } from './guild-society-service.mjs';
@@ -786,6 +786,7 @@ export function createLocalGame({
     rules: loadFunOpenRules(),
     overrides: serverId => featureOverrides.activeFor(serverId),
     context: ({ model }) => ({
+      serverOpenTime: calendar.serverOpenedAt,
       serverDay: serverDayNumber(calendar.serverOpenedAt, Math.floor(clock() / 1000)),
       createDay: Math.max(1, Math.floor((Math.floor(clock() / 1000) - Number(model.role.create_time ?? 0)) / 86400) + 1)
     }),
@@ -837,6 +838,7 @@ export function createLocalGame({
     heroTables,
     fantasyEquipTables,
     leaderEquipTables,
+    firstRecruitHeroTid: GUIDE_FIRST_RECRUIT_HERO_TID,
     now: () => Math.floor(clock() / 1000),
     onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
   });

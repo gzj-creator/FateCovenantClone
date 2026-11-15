@@ -29,7 +29,7 @@ function compareNumbers(actual, expected, operator) {
 }
 
 function numericCondition(actual, args, condition) {
-  const expected = Number(args.level ?? args.day ?? args.missionId ?? args.value);
+  const expected = Number(args.level ?? args.day ?? args.missionId ?? args.openTime ?? args.value);
   return compareNumbers(Number(actual), expected, condition?.operator ?? '>=');
 }
 
@@ -37,12 +37,28 @@ function evaluateCondition(condition, role, context, open) {
   const type = String(condition?.type ?? '');
   const args = conditionArgs(condition);
   switch (type) {
+    case 'all': {
+      const conditions = condition?.conditions;
+      if (!Array.isArray(conditions) || conditions.length === 0) return null;
+      const values = conditions.map(item => evaluateCondition(item, role, context, open));
+      if (values.some(value => value === null)) return null;
+      return values.every(Boolean);
+    }
+    case 'any': {
+      const conditions = condition?.conditions;
+      if (!Array.isArray(conditions) || conditions.length === 0) return null;
+      const values = conditions.map(item => evaluateCondition(item, role, context, open));
+      if (values.some(value => value === null)) return null;
+      return values.some(Boolean);
+    }
     case 'role_level':
       return numericCondition(roleNumber(role, 'level', 1), args, condition);
     case 'mission':
       return numericCondition(roleNumber(role, 'missionId', roleNumber(role, 'mission_id', 0)), args, condition);
     case 'server_day':
       return numericCondition(context?.serverDay, args, condition);
+    case 'server_open_time':
+      return numericCondition(context?.serverOpenTime, args, condition);
     case 'guide':
       return Number(role?.guides?.[args.step ?? args.value] ?? 0) >= Number(args.count ?? 1);
     case 'fun_open':

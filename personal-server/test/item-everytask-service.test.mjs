@@ -169,8 +169,7 @@ test('daily claims feed the activity vitality statistic and push it', async t =>
   const first = env.service.execute(9000, 2002);
   assert.equal(activityVitalityTotal(env.store), 100);
   assert.equal(first.pushes.length, 1);
-  const tuple = await decodeEtf(first.pushes[0].data);
-  const pushed = codec.unpack('pb_count_statics_send_list', Buffer.from(tuple[0].value));
+  const pushed = codec.unpack('pb_count_statics_send_list', Buffer.from(first.pushes[0].data));
   assert.equal(pushed.data_list.length, 1);
   assert.equal(Number(pushed.data_list[0].stat_tid), 29);
   assert.deepEqual(pushed.data_list[0].expand_id_list.map(Number), [2]);

@@ -21,11 +21,11 @@
   },
   "summary": {
     "rules": 523,
-    "ready": 177,
-    "evidenceGap": 346,
+    "ready": 181,
+    "evidenceGap": 342,
     "uniqueAsserts": 271,
     "mappedAsserts": 271,
-    "readyAsserts": 91,
+    "readyAsserts": 94,
     "dynamicArgs": {
       "1": "GetRoleLv",
       "2": "GetPassedSection",
@@ -196,8 +196,42 @@
         "CALL",
         "RET1"
       ],
-      "status": "evidence_gap",
-      "reason": "expression_not_supported"
+      "status": "ready",
+      "condition": {
+        "type": "all",
+        "conditions": [
+          {
+            "type": "mission",
+            "operator": ">=",
+            "args": {
+              "missionId": 30203
+            }
+          },
+          {
+            "type": "server_open_time",
+            "operator": "<=",
+            "args": {
+              "openTime": 1744318799
+            }
+          }
+        ]
+      },
+      "comparisons": [
+        {
+          "methodId": 3,
+          "comparator": "EGreaterThan",
+          "dynamicArg": 2,
+          "getter": "GetPassedSection",
+          "threshold": 30203
+        },
+        {
+          "methodId": 8,
+          "comparator": "ELessThan",
+          "dynamicArg": 356,
+          "getter": "GetServerOpenTime",
+          "threshold": 1744318799
+        }
+      ]
     },
     {
       "scriptId": 955132601007,
@@ -249,8 +283,21 @@
         "KNUM",
         "CALLT"
       ],
-      "status": "evidence_gap",
-      "reason": "expression_not_supported"
+      "status": "ready",
+      "condition": {
+        "type": "mission",
+        "operator": ">=",
+        "args": {
+          "missionId": 80208
+        }
+      },
+      "comparison": {
+        "methodId": 3,
+        "comparator": "EGreaterThan",
+        "dynamicArg": 2,
+        "getter": "GetPassedSection",
+        "threshold": 80208
+      }
     },
     {
       "scriptId": 955132601022,
@@ -2159,8 +2206,80 @@
         "CALL",
         "RET1"
       ],
-      "status": "evidence_gap",
-      "reason": "expression_not_supported"
+      "status": "ready",
+      "condition": {
+        "type": "any",
+        "conditions": [
+          {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "role_level",
+                "operator": ">=",
+                "args": {
+                  "level": 60
+                }
+              },
+              {
+                "type": "server_open_time",
+                "operator": "<=",
+                "args": {
+                  "openTime": 107266
+                }
+              }
+            ]
+          },
+          {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "server_day",
+                "operator": ">=",
+                "args": {
+                  "day": 24
+                }
+              },
+              {
+                "type": "server_open_time",
+                "operator": ">=",
+                "args": {
+                  "openTime": 1757451600
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "comparisons": [
+        {
+          "methodId": 3,
+          "comparator": "EGreaterThan",
+          "dynamicArg": 1,
+          "getter": "GetRoleLv",
+          "threshold": 60
+        },
+        {
+          "methodId": 8,
+          "comparator": "ELessThan",
+          "dynamicArg": 356,
+          "getter": "GetServerOpenTime",
+          "threshold": 107266
+        },
+        {
+          "methodId": 3,
+          "comparator": "EGreaterThan",
+          "dynamicArg": 4,
+          "getter": "GetServerOpenDay",
+          "threshold": 24
+        },
+        {
+          "methodId": 3,
+          "comparator": "EGreaterThan",
+          "dynamicArg": 356,
+          "getter": "GetServerOpenTime",
+          "threshold": 1757451600
+        }
+      ]
     },
     {
       "scriptId": 230114840301,
@@ -8667,16 +8786,30 @@
       "switch": 0,
       "sysSwitch": 19,
       "funName": 6025,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "all",
+          "conditions": [
+            {
+              "type": "mission",
+              "operator": ">=",
+              "args": {
+                "missionId": 30203
+              }
+            },
+            {
+              "type": "server_open_time",
+              "operator": "<=",
+              "args": {
+                "openTime": 1744318799
+              }
+            }
+          ]
+        }
+      ],
       "asserts": [
         955132601006
-      ],
-      "evidenceGap": [
-        {
-          "scriptId": 955132601006,
-          "reason": "expression_not_supported"
-        }
       ]
     },
     {
@@ -8869,16 +9002,18 @@
       "switch": 0,
       "sysSwitch": 14,
       "funName": 6165,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "mission",
+          "operator": ">=",
+          "args": {
+            "missionId": 80208
+          }
+        }
+      ],
       "asserts": [
         955132601017
-      ],
-      "evidenceGap": [
-        {
-          "scriptId": 955132601017,
-          "reason": "expression_not_supported"
-        }
       ]
     },
     {
@@ -9672,7 +9807,7 @@
       "evidenceGap": [
         {
           "scriptId": 955132601017,
-          "reason": "expression_not_supported"
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -10796,16 +10931,54 @@
       "switch": 0,
       "sysSwitch": 519,
       "funName": 14694,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "any",
+          "conditions": [
+            {
+              "type": "all",
+              "conditions": [
+                {
+                  "type": "role_level",
+                  "operator": ">=",
+                  "args": {
+                    "level": 60
+                  }
+                },
+                {
+                  "type": "server_open_time",
+                  "operator": "<=",
+                  "args": {
+                    "openTime": 107266
+                  }
+                }
+              ]
+            },
+            {
+              "type": "all",
+              "conditions": [
+                {
+                  "type": "server_day",
+                  "operator": ">=",
+                  "args": {
+                    "day": 24
+                  }
+                },
+                {
+                  "type": "server_open_time",
+                  "operator": ">=",
+                  "args": {
+                    "openTime": 1757451600
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
       "asserts": [
         955132601155
-      ],
-      "evidenceGap": [
-        {
-          "scriptId": 955132601155,
-          "reason": "expression_not_supported"
-        }
       ]
     },
     {
@@ -15275,16 +15448,18 @@
       "switch": 0,
       "sysSwitch": 547,
       "funName": 6025,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "mission",
+          "operator": ">=",
+          "args": {
+            "missionId": 30203
+          }
+        }
+      ],
       "asserts": [
         955132601007
-      ],
-      "evidenceGap": [
-        {
-          "scriptId": 955132601007,
-          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
-        }
       ]
     },
     {

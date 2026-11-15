@@ -39,6 +39,66 @@ test('supports the explicit comparators emitted by the FunOpen extractor', () =>
   assert.deepEqual([...result.open], [1001]);
 });
 
+test('evaluates recovered AND/OR groups and server-open-time boundaries', () => {
+  const rules = [
+    {
+      funId: 1006,
+      status: 'ready',
+      conditions: [{ type: 'all', conditions: [
+        { type: 'mission', operator: '>=', args: { missionId: 30203 } },
+        { type: 'server_open_time', operator: '<=', args: { openTime: 1744318799 } }
+      ] }]
+    },
+    {
+      funId: 1155,
+      status: 'ready',
+      conditions: [{ type: 'any', conditions: [
+        { type: 'all', conditions: [
+          { type: 'role_level', operator: '>=', args: { level: 60 } },
+          { type: 'server_open_time', operator: '<=', args: { openTime: 107266 } }
+        ] },
+        { type: 'all', conditions: [
+          { type: 'server_day', operator: '>=', args: { day: 24 } },
+          { type: 'server_open_time', operator: '>=', args: { openTime: 1757451600 } }
+        ] }
+      ] }]
+    }
+  ];
+
+  const legacy = evaluateFunOpen(
+    { level: 60, missionId: 30204 },
+    rules,
+    { serverDay: 1, serverOpenTime: 1744318799 }
+  );
+  assert.deepEqual([...legacy.open], [1006]);
+
+  const current = evaluateFunOpen(
+    { level: 1, missionId: 0 },
+    rules,
+    { serverDay: 24, serverOpenTime: 1757451600 }
+  );
+  assert.deepEqual([...current.open], [1155]);
+
+  const beforeBoundary = evaluateFunOpen(
+    { level: 1, missionId: 0 },
+    rules,
+    { serverDay: 24, serverOpenTime: 1757451599 }
+  );
+  assert.deepEqual([...beforeBoundary.open], []);
+});
+
+test('malformed nested groups and unknown leaves fail closed', () => {
+  const result = evaluateFunOpen({ level: 1 }, [
+    { funId: 1001, status: 'ready', conditions: [{ type: 'all', conditions: [] }] },
+    { funId: 1002, status: 'ready', conditions: [{ type: 'any', conditions: [{ type: 'unknown', args: {} }] }] }
+  ]);
+  assert.deepEqual([...result.open], []);
+  assert.deepEqual(result.denied, [
+    { funId: 1001, type: 'all', reason: 'unknown_condition' },
+    { funId: 1002, type: 'any', reason: 'unknown_condition' }
+  ]);
+});
+
 test('evidence gaps never become unconditional opens', () => {
   const result = evaluateFunOpen({ level: 1 }, [
     { funId: 1001, status: 'evidence_gap', conditions: [], evidenceGap: [{ reason: 'multiple_assert_combination_unproven' }] },

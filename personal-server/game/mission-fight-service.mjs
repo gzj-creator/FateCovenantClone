@@ -490,7 +490,7 @@ function grantMissionExperience(model, gameTables) {
     onLevelUp: levelEvent => emitRoleLevelUp(model, levelEvent)
   });
   return {
-    tid: '140000',
+    tid: '1140000',
     new_num: String(result.exp),
     diff_num: String(amount),
     extra: encodeEtfIntegerTuple([result.level, result.exp]).toString('base64')

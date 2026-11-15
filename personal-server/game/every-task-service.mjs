@@ -1,4 +1,4 @@
-import { encodeEtfBinaryAndSmallIntegerTuple, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { setBit } from './bit-block.mjs';
 import { GameError } from './hero-progression.mjs';
 import { grantResources } from './resources.mjs';
@@ -292,9 +292,9 @@ export function createEveryTaskService({ store, codec, tables, now = Date.now, l
       }
       const pushes = recorded ? [{
         type: 2000,
-        data: encodeEtfBinaryAndSmallIntegerTuple(codec.pack('pb_count_statics_send_list', {
+        data: codec.pack('pb_count_statics_send_list', {
           data_list: [{ data: recorded.data, expand_id_list: activityVitality.ids.map(Number), stat_tid: activityVitality.slot }]
-        }))
+        })
       }] : [];
       let data;
       if (scope === 'daily') {

@@ -9,8 +9,9 @@ import { readGameTables } from '../config/game-tables.mjs';
 import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mjs';
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
-import { createRecruitService } from '../game/recruit-service.mjs';
+import { createRecruitService, GUIDE_FIRST_RECRUIT_HERO_TID } from '../game/recruit-service.mjs';
 import { createLineupService } from '../game/lineup-service.mjs';
+import { createGameFixture } from './helpers/game-fixture.mjs';
 import {
   NEW_HERO_EXCLUSIVE_GROUP,
   RECRUIT_POOL_RULES,
@@ -122,10 +123,7 @@ async function customStatistics(env) {
 }
 
 async function statisticsPush(push) {
-  const decoded = await decodeEtf(push.data);
-  assert.equal(decoded.length, 2);
-  assert.equal(decoded[1], 0);
-  return codec.unpack('pb_count_statics_send_list', Buffer.from(decoded[0].value));
+  return codec.unpack('pb_count_statics_send_list', Buffer.from(push.data));
 }
 
 function statisticsTid75(data) {
@@ -189,6 +187,36 @@ function leaderEquipData(env) {
 }
 
 const rejected = (action, code) => assert.throws(action, error => error.code === code);
+
+test('fresh accounts do not inherit recruitment counters from the captured template', t => {
+  const fixture = createGameFixture(t, codec, {
+    prefix: 'fc-recruit-fresh-',
+    seed: { freshAccount: true }
+  });
+  const heroModule = new Map(fixture.store.state().modules.value).get(10);
+  assert.equal(rawBinary(heroModule.value[2]).length, 0);
+
+  const service = createRecruitService({
+    store: fixture.store,
+    codec,
+    tables,
+    heroTables,
+    fantasyEquipTables,
+    leaderEquipTables,
+    firstRecruitHeroTid: GUIDE_FIRST_RECRUIT_HERO_TID,
+    random: () => 0,
+    now
+  });
+  service.ensureLoginState();
+  const draw = codec.unpack('pb_hero_draw_info', rawBinary(new Map(fixture.store.state().modules.value).get(10).value[2]));
+  for (const lib of [1, 2, 3, 10]) {
+    const info = draw.recruit_list.find(entry => Number(entry.draw_lib) === lib);
+    assert.ok(info, `library ${lib} must exist`);
+    for (const field of ['free_count', 'draw_count', 'guaranteed_count', 'high_guaranteed_count', 'daily_draw_count', 'daily_ssr_draw_num']) {
+      assert.equal(Number(info[field] ?? 0), 0, `library ${lib} ${field} must start at zero`);
+    }
+  }
+});
 
 test('ticket purchases deduct diamonds, persist limits and reject insufficient funds', t => {
   const env = setup(t);
@@ -387,6 +415,49 @@ test('all four local draw libraries consume configured prices and return recruit
   assert.equal(multi.res.changes[0].diff_num, '-10');
   rejected(() => env.service.execute(601, { draw_lib: 99, draw_type: 0 }), 5);
   rejected(() => env.service.execute(601, { draw_lib: 1, point_draw_num: 11 }), 1);
+});
+
+test('novice first adventure draw is fixed to Weier and only applies once per account', async t => {
+  const env = setup(t, () => 0);
+  setDrawCounts(env, { 1: 0, 2: 0, 3: 0, 10: 0 });
+  env.seed(2002, 12);
+  const service = env.make({ firstRecruitHeroTid: GUIDE_FIRST_RECRUIT_HERO_TID });
+
+  const first = service.execute(601, { draw_lib: 1, point_draw_num: 1 });
+  assert.equal(first.valueForLog.results[0].tid, GUIDE_FIRST_RECRUIT_HERO_TID);
+  assert.equal(first.valueForLog.results[0].quality, 50);
+  assert.equal(first.valueForLog.results[0].firstRecruit, true);
+  assert.equal(Number(recruitInfo(env, 1).draw_count), 1);
+  assert.equal(env.store.read().heroInfo.hero_list.some(hero => Number(hero.tid) === GUIDE_FIRST_RECRUIT_HERO_TID), true);
+
+  const second = service.execute(601, { draw_lib: 1, point_draw_num: 1 });
+  assert.equal(second.valueForLog.results[0].firstRecruit ?? false, false);
+  assert.equal(Number(recruitInfo(env, 1).draw_count), 2);
+
+  env.reopen();
+  const afterReopen = env.make({ firstRecruitHeroTid: GUIDE_FIRST_RECRUIT_HERO_TID });
+  const third = afterReopen.execute(601, { draw_lib: 1, point_draw_num: 1 });
+  assert.equal(third.valueForLog.results[0].firstRecruit ?? false, false);
+  assert.equal(Number(recruitInfo(env, 1).draw_count), 3);
+});
+
+test('first-recruit rule is limited to an untouched adventure account and the first card of a ten draw', t => {
+  const untouched = setup(t, () => 0);
+  setDrawCounts(untouched, { 1: 0, 2: 0, 3: 0, 10: 0 });
+  untouched.seed(2002, 20);
+  const service = untouched.make({ firstRecruitHeroTid: GUIDE_FIRST_RECRUIT_HERO_TID });
+  const ten = service.execute(601, { draw_lib: 1, point_draw_num: 10 });
+  assert.equal(ten.valueForLog.results.length, 10);
+  assert.deepEqual(ten.valueForLog.results.map(result => result.firstRecruit ?? false), [true, false, false, false, false, false, false, false, false, false]);
+  assert.equal(ten.valueForLog.results[0].tid, GUIDE_FIRST_RECRUIT_HERO_TID);
+  assert.equal(Number(recruitInfo(untouched, 1).draw_count), 10);
+
+  const usedOtherBanner = setup(t, () => 0);
+  setDrawCounts(usedOtherBanner, { 1: 0, 2: 0, 3: 0, 10: 1 });
+  usedOtherBanner.seed(2002, 2);
+  const normal = usedOtherBanner.make({ firstRecruitHeroTid: GUIDE_FIRST_RECRUIT_HERO_TID })
+    .execute(601, { draw_lib: 1, point_draw_num: 1 });
+  assert.equal(normal.valueForLog.results[0].firstRecruit ?? false, false);
 });
 
 test('leader-equipment ten draw consumes tickets, returns real equipment and survives reopen', t => {

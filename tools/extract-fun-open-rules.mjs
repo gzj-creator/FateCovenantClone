@@ -20,7 +20,8 @@ const CONDITION_BY_GETTER = new Map([
   ['GetRoleLv', { type: 'role_level', arg: 'level' }],
   ['GetPassedSection', { type: 'mission', arg: 'missionId' }],
   ['GetCreateRoleDays', { type: 'create_day', arg: 'day' }],
-  ['GetServerOpenDay', { type: 'server_day', arg: 'day' }]
+  ['GetServerOpenDay', { type: 'server_day', arg: 'day' }],
+  ['GetServerOpenTime', { type: 'server_open_time', arg: 'openTime' }]
 ]);
 
 // 955132601007 is shared by 44 FunOpen rows. The assertion itself is proven,
@@ -28,7 +29,27 @@ const CONDITION_BY_GETTER = new Map([
 // it to every row would enable unrelated features whose sys_switch source is
 // still absent, so keep those rows fail-closed until each rule is reviewed.
 const CONDITION_BINDINGS = new Map([
+  [1017, new Set([955132601017])],
+  [1413, new Set([955132601007])],
   [1514, new Set([955132601007])]
+]);
+
+// These two assertion bodies have had their short-circuit truth tables checked
+// instruction by instruction. Other visually similar bodies remain closed until
+// their branch targets and negative cases are reviewed independently.
+const COMPOUND_CONDITION_BINDINGS = new Set([
+  955132601006,
+  955132601155
+]);
+
+// KNUM thresholds were listed as unsupported by the first extractor even when
+// the comparator and getter were fully recovered. Bind only the scripts whose
+// complete input/output cases are reviewed rather than silently promoting all
+// 41 KNUM-shaped assertions.
+const NUMBER_THRESHOLD_BINDINGS = new Set([
+  955132601006,
+  955132601017,
+  955132601155
 ]);
 
 function sha256(buffer) {
@@ -71,6 +92,19 @@ export function extractDynamicArgGetters(methodTable) {
         break;
       }
     }
+    // ServerInfo.OpenTime is a two-part field access rather than a method call:
+    // DynamicArgs 356 is encoded beside TDUP key 6 but its getter is the
+    // following GGET ServerInfo / KSTR OpenTime / TGETV sequence.
+    const synthetic = constants[metadata.d];
+    const syntheticKey = Number(synthetic?.type === 'table' ? synthetic.array?.[1] : null);
+    const relation = instructions[index + 1], field = instructions[index + 2], access = instructions[index + 3];
+    const relationName = constants[relation?.d]?.value ?? constants[relation?.c]?.value;
+    if (Number.isSafeInteger(syntheticKey) && syntheticKey > 0
+      && relation?.name === 'GGET' && relationName === 'ServerInfo'
+      && field?.name === 'KSTR' && constants[field.d]?.value === 'OpenTime'
+      && access?.name === 'TGETV') {
+      if (!getters.has(syntheticKey)) getters.set(syntheticKey, 'GetServerOpenTime');
+    }
   }
   return getters;
 }
@@ -104,25 +138,69 @@ function instructionNumber(prototype, instruction) {
   return null;
 }
 
-function directComparison(prototype) {
+function comparisonAt(prototype, start, allowNumberThreshold = false) {
   const instructions = prototype.instructions;
-  if (instructions.length !== 9) return null;
+  if (start + 9 > instructions.length) return null;
   const expected = [
     ['UGET', 1], ['KSHORT', 3], ['CALL', 1], ['UGET', 3], ['MOV', 5],
     ['KSHORT', 6], ['CALL', 3], ['KSHORT', 4], ['CALLT', 1]
   ];
   for (let index = 0; index < expected.length; index += 1) {
-    if (instructions[index].name !== expected[index][0] || instructions[index].a !== expected[index][1]) return null;
+    const instruction = instructions[start + index];
+    const nameMatches = index === 7
+      ? instruction.name === 'KSHORT' || (allowNumberThreshold && instruction.name === 'KNUM')
+      : index === 8
+        ? instruction.name === 'CALLT' || instruction.name === 'CALL'
+        : instruction.name === expected[index][0];
+    if (!nameMatches || instruction.a !== expected[index][1]) return null;
   }
-  if (instructions[2].c !== 2 || instructions[2].d !== 514
-    || instructions[4].c !== 0
-    || instructions[6].c !== 3 || instructions[6].d !== 515
-    || instructions[8].c !== 3 || instructions[8].d !== 3) return null;
-  const methodId = instructionNumber(prototype, instructions[1]);
-  const dynamicArg = instructionNumber(prototype, instructions[5]);
-  const threshold = instructionNumber(prototype, instructions[7]);
+  const call = instructions[start + 2], argument = instructions[start + 4];
+  const getterCall = instructions[start + 6], thresholdInstruction = instructions[start + 7];
+  const comparisonCall = instructions[start + 8];
+  const comparisonCallValid = (comparisonCall.name === 'CALLT' && comparisonCall.c === 3 && comparisonCall.d === 3)
+    || (comparisonCall.name === 'CALL' && comparisonCall.c === 3 && comparisonCall.d === 515);
+  if (call.c !== 2 || call.d !== 514 || argument.c !== 0
+    || getterCall.c !== 3 || getterCall.d !== 515
+    || !comparisonCallValid) return null;
+  const methodId = instructionNumber(prototype, instructions[start + 1]);
+  const dynamicArg = instructionNumber(prototype, instructions[start + 5]);
+  const threshold = instructionNumber(prototype, thresholdInstruction);
   if (!Number.isSafeInteger(methodId) || !Number.isSafeInteger(dynamicArg) || !Number.isFinite(threshold)) return null;
   return { methodId, dynamicArg, threshold };
+}
+
+function conditionForComparison(comparison, dynamicArgGetters) {
+  const comparator = COMPARATORS.get(comparison.methodId);
+  if (!comparator) return { reason: `unknown_comparator_${comparison.methodId}` };
+  const getter = dynamicArgGetters.get(comparison.dynamicArg);
+  const condition = getter ? CONDITION_BY_GETTER.get(getter) : null;
+  if (!condition) return { reason: getter ? `unmapped_dynamic_arg_${getter}` : `unknown_dynamic_arg_${comparison.dynamicArg}` };
+  return {
+    getter,
+    comparator,
+    condition: {
+      type: condition.type,
+      operator: comparator.operator,
+      args: { [condition.arg]: comparison.threshold }
+    }
+  };
+}
+
+function compoundExpression(prototype, scriptId, dynamicArgGetters) {
+  if (!COMPOUND_CONDITION_BINDINGS.has(scriptId)) return null;
+  const instructions = prototype.instructions;
+  const connector = (index, opcode) => instructions[index]?.name === opcode
+    && instructions[index + 1]?.name === 'JMP';
+
+  // The reviewed two-expression form is `a AND b`.
+  if (instructions.length === 21 && connector(9, 'ISF')) {
+    return { shape: 'all', starts: [0, 11] };
+  }
+  // The reviewed four-expression form is `(a AND b) OR (c AND d)`.
+  if (instructions.length === 43 && connector(9, 'ISF') && connector(20, 'IST') && connector(31, 'ISF')) {
+    return { shape: 'any_all', starts: [0, 11, 22, 33] };
+  }
+  return null;
 }
 
 export function classifyAssertion(scriptId, scripts, methodScript, dynamicArgGetters) {
@@ -135,32 +213,51 @@ export function classifyAssertion(scriptId, scripts, methodScript, dynamicArgGet
     dynamicArgs: script.dynamicArgs,
     opcodes: prototype.instructions.map(instruction => instruction.name)
   };
-  const comparison = directComparison(prototype);
-  if (!comparison) return { ...result, status: 'evidence_gap', reason: 'expression_not_supported' };
-  const comparator = COMPARATORS.get(comparison.methodId);
-  if (!comparator) return { ...result, status: 'evidence_gap', reason: `unknown_comparator_${comparison.methodId}` };
-  const getter = dynamicArgGetters.get(comparison.dynamicArg);
-  const condition = getter ? CONDITION_BY_GETTER.get(getter) : null;
-  if (!condition) {
+  const compound = compoundExpression(prototype, scriptId, dynamicArgGetters);
+  if (compound) {
+    const allowNumberThreshold = NUMBER_THRESHOLD_BINDINGS.has(scriptId);
+    const comparisons = compound.starts.map(start => comparisonAt(prototype, start, allowNumberThreshold));
+    if (comparisons.some(value => value === null)) {
+      return { ...result, status: 'evidence_gap', reason: 'compound_expression_malformed' };
+    }
+    const leaves = comparisons.map(value => conditionForComparison(value, dynamicArgGetters));
+    const invalid = leaves.find(value => !value.condition);
+    if (invalid) return { ...result, status: 'evidence_gap', reason: invalid.reason };
+    const groups = compound.shape === 'all'
+      ? [{ type: 'all', conditions: leaves.map(value => value.condition) }]
+      : [
+          { type: 'all', conditions: leaves.slice(0, 2).map(value => value.condition) },
+          { type: 'all', conditions: leaves.slice(2).map(value => value.condition) }
+        ];
     return {
       ...result,
-      status: 'evidence_gap',
-      reason: getter ? `unmapped_dynamic_arg_${getter}` : `unknown_dynamic_arg_${comparison.dynamicArg}`
+      status: 'ready',
+      condition: groups.length === 1 ? groups[0] : { type: 'any', conditions: groups },
+      comparisons: comparisons.map((value, index) => ({
+        methodId: value.methodId,
+        comparator: leaves[index].comparator.name,
+        dynamicArg: value.dynamicArg,
+        getter: leaves[index].getter,
+        threshold: value.threshold
+      }))
     };
   }
+  if (prototype.instructions.length !== 9) {
+    return { ...result, status: 'evidence_gap', reason: 'expression_not_supported' };
+  }
+  const comparison = comparisonAt(prototype, 0, NUMBER_THRESHOLD_BINDINGS.has(scriptId));
+  if (!comparison) return { ...result, status: 'evidence_gap', reason: 'expression_not_supported' };
+  const leaf = conditionForComparison(comparison, dynamicArgGetters);
+  if (!leaf.condition) return { ...result, status: 'evidence_gap', reason: leaf.reason };
   return {
     ...result,
     status: 'ready',
-    condition: {
-      type: condition.type,
-      operator: comparator.operator,
-      args: { [condition.arg]: comparison.threshold }
-    },
+    condition: leaf.condition,
     comparison: {
       methodId: comparison.methodId,
-      comparator: comparator.name,
+      comparator: leaf.comparator.name,
       dynamicArg: comparison.dynamicArg,
-      getter,
+      getter: leaf.getter,
       threshold: comparison.threshold
     }
   };

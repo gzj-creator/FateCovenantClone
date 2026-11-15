@@ -324,7 +324,7 @@ test('ordinary mission fight previews at start and commits once at 207', async t
     { tid: '122802', diff_num: '2' },
     { tid: '201500', diff_num: '190' },
     { tid: '101800', diff_num: '100' },
-    { tid: '140000', diff_num: '45' }
+    { tid: '1140000', diff_num: '45' }
   ]);
   const energyChange = settlement.res.changes.find(change => change.tid === '100012900');
   assert.ok(energyChange.new_bin?.length);
@@ -364,7 +364,7 @@ test('ordinary mission fight previews at start and commits once at 207', async t
   ).stm.stm_data, 'base64'));
   assert.deepEqual(restartedSettlement.res.changes.map(change => ({ tid: change.tid, diff_num: change.diff_num })), [
     { tid: '100012900', diff_num: '-5' },
-    { tid: '140000', diff_num: '45' }
+    { tid: '1140000', diff_num: '45' }
   ]);
   assert.deepEqual(await decodeEtf(Buffer.from(restartedSettlement.res.changes.at(-1).extra, 'base64')), [10, 0]);
   assert.equal(BigInt(env.store.read().resources.get('201500').num), beforeRewards['201500'] + 190n);
