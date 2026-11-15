@@ -161,3 +161,10 @@ GuildWarMgr.GetRealTimeMap <- GuildWarMgr event callback
 
 本轮未修改 APK，因此不新增 APK 快照。仍不能据此宣称剩余 25 条 R1 P0/P1 或全部原版玩法已闭合。
 
+### 部署记录
+
+- 旧服务 PID `8108` 已停止；新服务 PID `24700`，继续使用 `analysis/experiments/launch-20261115/server-data-fixed`、开服时间 `1794690000` 和 `schedule` / `absolute` 活动模式。
+- SDK `18880`、列表 `18881`、启动 `18882`、游戏 `19090`、管理 `18883` 五端口均由新 PID 仅监听 `127.0.0.1`。
+- 启动日志为 `analysis/experiments/launch-20261115/server-login-contracts-20261115T163020Z.out.log`；stderr 为 `0` 字节，管理页 `http://127.0.0.1:18883/` 返回 HTTP `200`。
+- 切换前一致备份为 `analysis/experiments/launch-20261115/backups/pre-login-contracts-20261115T162846Z/game.local-only.sqlite`，大小 `1,675,264` 字节，SHA256 `cf72addc31d17791f802bef4bcb4acce1f4cd71d4a39076551a3a37a238bf2f0`，`PRAGMA integrity_check=ok`；备份内有 `2` 个角色、`1` 个账号。
+
