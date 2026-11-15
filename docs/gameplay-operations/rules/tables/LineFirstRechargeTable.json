@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "table": "LineFirstRechargeTable",
+  "assetPath": "personal-server/assets/tables/LineFirstRechargeTable.data.json.gz",
+  "assetSha256": "13b0f44ffb5928931b39fcd53e0d04140dc7cdd6d7ff7e4bc5859c537aa87b79",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/LineFirstRechargeTable.data.json.gz",
+      "sha256": "13b0f44ffb5928931b39fcd53e0d04140dc7cdd6d7ff7e4bc5859c537aa87b79"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Group":{"status":"rows-with-external-references","count":4,"externalReferenceCount":4,"rows":[
+{"anim_time":13000,"start_tid":1,"jump_func":{"reference":"LineFirstRechargeForm.StaticOpen"},"tid":1,"end_time":1758488400,"start_time":0,"style":9302600,"fight":90001,"sky_prefab":"Display_water.prefab"},
+{"anim_time":13000,"start_tid":11,"jump_func":{"reference":"LineFirstRechargeForm.StaticOpen"},"tid":2,"end_time":1774817999,"start_time":1758488400,"style":9302600,"fight":90001,"sky_prefab":"Display_water.prefab"},
+{"anim_time":9050,"start_tid":21,"jump_func":{"reference":"LineFirstRechargeFormTuTu.StaticOpen"},"tid":3,"end_time":1789073999,"start_time":1774818000,"style":2040201,"fight":90058,"sky_prefab":"Display_Dark.prefab"},
+{"anim_time":9050,"start_tid":31,"jump_func":{"reference":"LineFirstRechargeFormSuSu.StaticOpen"},"tid":4,"end_time":0,"start_time":1789074000,"style":5040201,"fight":90059,"sky_prefab":"Display_Dark.prefab"}
+]},
+"Choose":{"status":"decoded-rows","count":18,"externalReferenceCount":0,"rows":[
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":101,"belong":1,"gift":600001},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":1101,"belong":11,"gift":600001},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":1102,"belong":12,"gift":600011},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":1103,"belong":13,"gift":600021},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":1104,"belong":14,"gift":600031},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":2101,"belong":21,"gift":600075},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":2102,"belong":22,"gift":600076},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":2103,"belong":23,"gift":600077},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3101,"belong":31,"gift":600078},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3102,"belong":32,"gift":600079},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3103,"belong":33,"gift":600080},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3104,"belong":34,"gift":600081},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3105,"belong":35,"gift":600082},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3106,"belong":36,"gift":600083},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3107,"belong":37,"gift":600084},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3108,"belong":38,"gift":600085},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3109,"belong":39,"gift":600086},
+{"desc_text_id":0,"desc":0,"bg":"","is_core_hero":[],"tid":3110,"belong":40,"gift":600087}
+]},
+"LineFirstRecharge":{"status":"decoded-rows","count":18,"externalReferenceCount":0,"rows":[
+{"entrance_name":6025,"entrance_prefab":"LineFirstRechargeIcon1.prefab","award":[[2002,5],[2002,5]],"entrance_icon":"","preview":0,"duration":0,"tid":1},
+{"entrance_name":6025,"entrance_prefab":"LineFirstRechargeIcon1.prefab","award":[[2002,6],[2002,8]],"entrance_icon":"","preview":0,"duration":14,"tid":11},
+{"entrance_name":677214,"entrance_prefab":"LineFirstRechargeIcon1.prefab","award":[[2002,6],[2002,10]],"entrance_icon":"","preview":1,"duration":14,"tid":12},
+{"entrance_name":677214,"entrance_prefab":"LineFirstRechargeIcon1.prefab","award":[[2002,10],[3002,5]],"entrance_icon":"","preview":1,"duration":14,"tid":13},
+{"entrance_name":677214,"entrance_prefab":"LineFirstRechargeIcon1.prefab","award":[[3002,5],[3002,10]],"entrance_icon":"","preview":0,"duration":14,"tid":14},
+{"entrance_name":6025,"entrance_prefab":"LineFirstRechargeIcon2.prefab","award":[[2002,10],[2002,10]],"entrance_icon":"","preview":0,"duration":14,"tid":21},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon2.prefab","award":[[20400504,40],[1151200,4]],"entrance_icon":"","preview":1,"duration":14,"tid":22},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon2.prefab","award":[[3051200,2],[1012002,1]],"entrance_icon":"","preview":1,"duration":14,"tid":23},
+{"entrance_name":6025,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[[2002,10],[2002,10]],"entrance_icon":"","preview":0,"duration":28,"tid":31},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[[25400204,40],[3002,10]],"entrance_icon":"","preview":1,"duration":28,"tid":32},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[[25400204,50],[4071200,1]],"entrance_icon":"","preview":1,"duration":28,"tid":33},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[[25400204,70],[1151200,2]],"entrance_icon":"","preview":1,"duration":28,"tid":34},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[[3051200,3],[1151200,2]],"entrance_icon":"","preview":0,"duration":28,"tid":35},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[],"entrance_icon":"","preview":0,"duration":28,"tid":36},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[],"entrance_icon":"","preview":0,"duration":28,"tid":37},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[],"entrance_icon":"","preview":0,"duration":28,"tid":38},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[],"entrance_icon":"","preview":0,"duration":28,"tid":39},
+{"entrance_name":682958,"entrance_prefab":"LineFirstRechargeIcon3.prefab","award":[],"entrance_icon":"","preview":0,"duration":28,"tid":40}
+]}
+}
+}

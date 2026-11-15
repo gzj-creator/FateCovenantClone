@@ -104,7 +104,15 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   send(Buffer.from('verify'));
   const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
   send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
-  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const request = async (type, seq, data) => {
+    send(codec.pack('pb_c2s', { type, seq, data }));
+    for (;;) {
+      const response = codec.unpack('pb_s2c', await next());
+      // Server-initiated pushes have no request seq. Do not let an asynchronous
+      // activity/fame push be mistaken for the next command response.
+      if (response.seq === seq) return response;
+    }
+  };
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
   const scheduledActivity = await loginActivities(Buffer.from(login.data, 'base64'));
@@ -137,7 +145,12 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(fight.report.finish ?? false, false);
   assert.equal(fight.report.type, 1);
   assert.equal(fight.report.battle_list.length, 1);
-  assert.equal(fight.report.battle_list[0].fighter_list.length, 7);
+  // Four requested heroes plus the four Fight301/Team301 NPCs. The client's
+  // virtual captain is a fifth report row used by the relic HUD; it is not a
+  // player fighter and does not participate in combat.
+  assert.equal(fight.report.battle_list[0].fighter_list.length, 9);
+  assert.equal(fight.report.battle_list[0].fighter_list.filter(unit => unit.role_type === 1).length, 4);
+  assert.equal(fight.report.battle_list[0].fighter_list.filter(unit => unit.role_type === 2).length, 4);
   assert.equal(fight.report.battle_list[0].fighter_list.filter(unit => unit.role_type === 3).length, 1);
   const fightActions = fight.report.battle_list[0].action_list.map(bytes => codec.unpack('pb_generic', Buffer.from(bytes, 'base64')).proto);
   assert.deepEqual(fightActions.slice(0, 5), [107, 101, 109, 102, 101]);
@@ -425,7 +438,11 @@ test('gateway serves mission fights, box opening and activity reads on a tempora
   assert.equal(codec.unpack('mission_to_client', Buffer.from(missionOnly.stm.stm_data, 'base64')).mission.mission_id, '30201');
   assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30201');
   response = await request(207, 32, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
-  assert.equal(codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64')).stm.result, 1);
+  assert.equal(response.seq, 32, JSON.stringify(response));
+  assert.equal(response.err, undefined, JSON.stringify(response.err));
+  const missionOnlySettlement = codec.unpack('pb_fight_settlement_response', Buffer.from(response.data, 'base64'));
+  assert.ok(missionOnlySettlement.stm, Buffer.from(response.data, 'base64').toString('hex'));
+  assert.equal(missionOnlySettlement.stm.result, 1);
   assert.equal(codec.unpack('pb_mission', rawBinary(new Map(game.store.state().modules.value).get(8).value[0])).mission_id, '30202');
   assert.equal(game.store.read().resources.get('100012900').num, '110');
 
@@ -897,7 +914,21 @@ test('gateway draws WishTree rebates over real TCP, persists them, and rejects a
     model.state.modules.value = [...modules];
   });
 
-  let response = await request(91701, 90, await encodeEtf([2]));
+  // WishTreeCmd is guarded by Fun1223. Its original condition still has an
+  // evidence gap, so the formal command gate must fail closed by default.
+  let response = await request(91701, 89, await encodeEtf([2]));
+  assert.equal(response.err.err, 309);
+
+  // A deliberate operator override is the only path that exercises the
+  // recovered draw service while the original FunOpen condition is pending.
+  game.featureOverrides.set({
+    serverId: game.store.read().state.serverId,
+    funId: 1223,
+    mode: 'force_open',
+    reason: 'wish-tree service regression with unresolved original Fun1223 condition',
+    operator: 'test'
+  });
+  response = await request(91701, 90, await encodeEtf([2]));
   assert.equal(response.err, undefined);
   const drawn = codec.unpack('pb_wish_tree_draw_back', Buffer.from(response.data, 'base64'));
   assert.equal(drawn.award_tid, 2003);

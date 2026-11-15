@@ -1,5 +1,8 @@
 # 图鉴与后期系统补全执行计划
 
+<!-- r1-rule-status -->
+> 历史专项记录，按文内日期理解。“当前”“正式”和测试数量均指当时快照。现行规则统一按[最终R1基线](gameplay-operations/12-final-rule-baseline.md)和[逐任务裁定](gameplay-operations/rules/final-rule-register.md)，不将旧平移政策、占位算法或服务端测试视为原版已恢复。
+
 更新：2026-11-01。七个模块已在独立 worktree 中完成有客户端证据的部分、专项测试和模块文档，并合成 `feature/system-integration-20261031`。最终合并态全量测试 402/402。验收仍止于代码、组件、真实登录 ETF、临时 TCP/SQLite；本轮不部署运行服务、不操作模拟器、不点击 APK，也不生成或替换 APK 快照。
 
 ## 基线与边界

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "table": "HouseAssistantTable",
+  "assetPath": "personal-server/assets/tables/HouseAssistantTable.data.lua.json.gz",
+  "assetSha256": "1aa0b5c748b50d49131f4fbd7c5b002f42797619ceca01fd0ee6d72e4b0ad60b",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HouseAssistantTable.data.lua.json.gz",
+      "sha256": "1aa0b5c748b50d49131f4fbd7c5b002f42797619ceca01fd0ee6d72e4b0ad60b"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Scene":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1},
+{"tid":2}
+]},
+"Trial":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":10163200,"duration":259200,"act_tid":1006001,"id":1},
+{"tid":10163200,"duration":259200,"act_tid":1006002,"id":3},
+{"tid":20133200,"duration":259200,"act_tid":1006001,"id":2},
+{"tid":20133200,"duration":259200,"act_tid":1006002,"id":4}
+]}
+}
+}

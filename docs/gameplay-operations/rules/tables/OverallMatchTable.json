@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "table": "OverallMatchTable",
+  "assetPath": "personal-server/assets/tables/OverallMatchTable.data.lua.json.gz",
+  "assetSha256": "13ef3ef6248512e09a6f0f3874d3947e09019ba716483e62ca6b52b00937ebcd",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/OverallMatchTable.data.lua.json.gz",
+      "sha256": "13ef3ef6248512e09a6f0f3874d3947e09019ba716483e62ca6b52b00937ebcd"
+    }
+  ],
+  "sourceMetadata": "9245895789050410000-OverallMatchTable.data.lua.bin",
+"families":{
+"Type":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1}
+]},
+"Rule":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"max_rank_diff":4,"history_match_count":10,"power_rate_min":90,"power_rate_max":120,"streak_start_count":3,"streak_rate_step":10,"online_wait_time":8,"fight":5}
+]}
+}
+}

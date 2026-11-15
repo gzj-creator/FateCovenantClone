@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "table": "RoleBackTable",
+  "assetPath": "personal-server/assets/tables/RoleBackTable.data.lua.json.gz",
+  "assetSha256": "dc8a09b90e95f616be6a987de4e3a9c1163fac05ef85b4f5baafb3301aae4e12",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/RoleBackTable.data.lua.json.gz",
+      "sha256": "dc8a09b90e95f616be6a987de4e3a9c1163fac05ef85b4f5baafb3301aae4e12"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"New":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"award":[[209708,1],[3002,20],[2002,50],[101500,8888]],"keep_time":864000,"money":100,"min_recharge":98,"tid":1,"money_item":601500,"is_monthly_discount":false}
+]},
+"Old":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"keep_time":864000,"e_time":1791665999,"leave_hours":360,"s_time":1789074000,"level":30}
+]}
+}
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "table": "DiamondBankActTable",
+  "assetPath": "personal-server/assets/tables/DiamondBankActTable.data.lua.json.gz",
+  "assetSha256": "826d81baace4c278c3df190caf439f07ceac3e4440aaf51f1ff01208288f2114",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/DiamondBankActTable.data.lua.json.gz",
+      "sha256": "826d81baace4c278c3df190caf439f07ceac3e4440aaf51f1ff01208288f2114"
+    }
+  ],
+  "sourceMetadata": "DiamondBankActTable.data.lua.bin",
+"families":{
+"VerRecharge":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"tid":1,"version":1,"recharge_id":138001,"day_buy_times":1,"is_buy_additionally":false,"batch_update":[]},
+{"tid":2,"version":1,"recharge_id":138002,"day_buy_times":1,"is_buy_additionally":true,"batch_update":[]},
+{"tid":3,"version":1,"recharge_id":138003,"day_buy_times":1,"is_buy_additionally":true,"batch_update":[]},
+{"tid":4,"version":1,"recharge_id":138004,"day_buy_times":1,"is_buy_additionally":true,"batch_update":[]},
+{"tid":5,"version":1,"recharge_id":138005,"day_buy_times":1,"is_buy_additionally":false,"batch_update":[2,3,4]}
+]},
+"LiveTask":{"status":"decoded-rows","count":14,"externalReferenceCount":0,"rows":[
+{"tid":101,"ver":1,"type":4701,"keep_type":0,"target_count":50,"task_param":0,"award":[[820902,50]],"priority":101,"group":1},
+{"tid":102,"ver":1,"type":4701,"keep_type":0,"target_count":150,"task_param":0,"award":[[820902,100]],"priority":102,"group":1},
+{"tid":103,"ver":1,"type":1,"keep_type":0,"target_count":500,"task_param":0,"award":[[820902,50]],"priority":103,"group":1},
+{"tid":104,"ver":1,"type":1,"keep_type":0,"target_count":1000,"task_param":0,"award":[[820902,100]],"priority":104,"group":1},
+{"tid":105,"ver":1,"type":2604,"keep_type":0,"target_count":600,"task_param":0,"award":[[820902,200]],"priority":105,"group":1},
+{"tid":106,"ver":1,"type":2604,"keep_type":0,"target_count":3000,"task_param":0,"award":[[820902,500]],"priority":106,"group":1},
+{"tid":107,"ver":1,"type":2603,"keep_type":1,"target_count":1,"task_param":0,"award":[[820902,1000]],"priority":107,"group":2},
+{"tid":108,"ver":1,"type":2603,"keep_type":1,"target_count":3,"task_param":0,"award":[[820902,1500]],"priority":108,"group":2},
+{"tid":109,"ver":1,"type":2603,"keep_type":1,"target_count":5,"task_param":0,"award":[[820902,2000]],"priority":109,"group":2},
+{"tid":110,"ver":1,"type":2603,"keep_type":1,"target_count":7,"task_param":0,"award":[[820902,3000]],"priority":110,"group":2},
+{"tid":111,"ver":1,"type":1802,"keep_type":1,"target_count":1,"task_param":0,"award":[[820902,100]],"priority":111,"group":2},
+{"tid":112,"ver":1,"type":1802,"keep_type":1,"target_count":3,"task_param":0,"award":[[820902,150]],"priority":112,"group":2},
+{"tid":113,"ver":1,"type":1802,"keep_type":1,"target_count":5,"task_param":0,"award":[[820902,200]],"priority":113,"group":2},
+{"tid":114,"ver":1,"type":1802,"keep_type":1,"target_count":7,"task_param":0,"award":[[820902,300]],"priority":114,"group":2}
+]},
+"Ver":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"open_use_item":[[101500,1000]],"open_add_num":1000,"gift":1,"act_item":820902,"add_item":101500,"rage":10000,"max_limit":10000,"recharge_rage":1000,"show_duo_value":3000,"bank_kong_res":"icon_zscxg_zhu_kong.png","bank_shao_res":"icon_zscxg_zhu_shao.png","bank_duo_res":"icon_zscxg_zhu_duo.png","bank_man_res":"icon_zscxg_zhu_man.png","bank_yilingqu_res":"icon_zscxg_zhu_yilingqu.png"}
+]}
+}
+}

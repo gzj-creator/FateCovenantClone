@@ -389,7 +389,8 @@ export function createMartialClubService({
   gameTables = null,
   now = Date.now,
   logger = () => {},
-  enemyRoster = null
+  enemyRoster = null,
+  globalAttrsForModel = () => ({})
 }) {
   const log = event => { try { logger(event); } catch { /* logging must never fail a command */ } };
   const resourceTables = () => gameTables ?? readGameTables();
@@ -900,7 +901,7 @@ export function createMartialClubService({
       const humans = team.members.filter(member => !member.isBot);
       if (humans.some(member => !member.isReady)) fail(CODE_STATE, 'Martial club team member is not ready');
       if (!team.members.length) fail(CODE_STATE, 'Martial club team is empty');
-      const attacker = rosterFor({ model, lineupType: 1 });
+      const attacker = rosterFor({ model, lineupType: 1, globalAttrsForModel });
       let supplied = null;
       if (enemyRoster) supplied = enemyRoster({ bossTid: team.bossTid, fightTid: config.fightId, team: teamPacket(team, state) });
       const entries = Array.isArray(supplied) ? supplied : supplied?.entries;

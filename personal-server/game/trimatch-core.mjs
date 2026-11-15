@@ -77,7 +77,7 @@ function nowText(nowMs) {
 export function readIdent(db, roleId, nowMs) {
   const row = db.prepare('SELECT * FROM trimatch_ident WHERE role_id=?').get(roleId);
   if (row) return { roleId, nextUid: Number(row.next_lineup_uid ?? 1) };
-  db.prepare('INSERT INTO trimatch_ident VALUES (?,?,?)').run(roleId, 2, nowText(nowMs));
+  db.prepare('INSERT INTO trimatch_ident VALUES (?,?,?)').run(roleId, 1, nowText(nowMs));
   return { roleId, nextUid: 1 };
 }
 

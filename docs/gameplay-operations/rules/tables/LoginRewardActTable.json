@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "table": "LoginRewardActTable",
+  "assetPath": "personal-server/assets/tables/LoginRewardActTable.data.lua.json.gz",
+  "assetSha256": "1eb5d85eb2436fa5a8fa2f5db1fbe98597dc2afa698515d37a54a06b6d3b1bff",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/LoginRewardActTable.data.lua.json.gz",
+      "sha256": "1eb5d85eb2436fa5a8fa2f5db1fbe98597dc2afa698515d37a54a06b6d3b1bff"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Award":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"tid":101,"item":101500,"belong_act":82001,"count":500},
+{"tid":102,"item":101500,"belong_act":82001,"count":1888},
+{"tid":103,"item":174002,"belong_act":82001,"count":1},
+{"tid":104,"item":174002,"belong_act":82001,"count":1},
+{"tid":105,"item":1040101,"belong_act":82001,"count":1}
+]},
+"LoginRewardAct":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":82001,"mail_id":2571400}
+]}
+}
+}

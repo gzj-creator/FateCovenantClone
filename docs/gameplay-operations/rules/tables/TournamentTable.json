@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "table": "TournamentTable",
+  "assetPath": "personal-server/assets/tables/TournamentTable.data.lua.json.gz",
+  "assetSha256": "f6dff7452ebf0bcff35a6fdd14b3d0b8a43d0f14df86aa5edf2b2a185bb61428",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/TournamentTable.data.lua.json.gz",
+      "sha256": "f6dff7452ebf0bcff35a6fdd14b3d0b8a43d0f14df86aa5edf2b2a185bb61428"
+    }
+  ],
+  "sourceMetadata": "5050560901896864000-TournamentTable.data.lua.bin",
+"families":{
+"PromoteState":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1},
+{"tid":2},
+{"tid":3}
+]}
+}
+}

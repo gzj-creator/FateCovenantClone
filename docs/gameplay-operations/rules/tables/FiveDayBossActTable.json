@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "table": "FiveDayBossActTable",
+  "assetPath": "personal-server/assets/tables/FiveDayBossActTable.data.lua.json.gz",
+  "assetSha256": "f7a5e70aee78a85eacb6bfffc54bc5dd998163b1f4be80303fbb8398195acf34",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/FiveDayBossActTable.data.lua.json.gz",
+      "sha256": "f7a5e70aee78a85eacb6bfffc54bc5dd998163b1f4be80303fbb8398195acf34"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Task":{"status":"decoded-rows","count":25,"externalReferenceCount":0,"rows":[
+{"jump":0,"priority":101,"award":[[391002,300]],"type":1802,"tid":101,"target_count":1,"task_param":0,"day":1},
+{"jump":0,"priority":102,"award":[[391002,400]],"type":8302,"tid":102,"target_count":300,"task_param":0,"day":1},
+{"jump":0,"priority":103,"award":[[157002,5000]],"type":1002,"tid":103,"target_count":10,"task_param":0,"day":1},
+{"jump":0,"priority":104,"award":[[101500,50]],"type":1002,"tid":104,"target_count":20,"task_param":0,"day":1},
+{"jump":0,"priority":105,"award":[[17002,500]],"type":1002,"tid":105,"target_count":30,"task_param":0,"day":1},
+{"jump":0,"priority":201,"award":[[391002,300]],"type":1802,"tid":201,"target_count":2,"task_param":0,"day":2},
+{"jump":0,"priority":202,"award":[[391002,400]],"type":8302,"tid":202,"target_count":600,"task_param":0,"day":2},
+{"jump":0,"priority":203,"award":[[157002,5000]],"type":2202,"tid":203,"target_count":20,"task_param":8,"day":2},
+{"jump":0,"priority":204,"award":[[17002,500]],"type":2202,"tid":204,"target_count":20,"task_param":12,"day":2},
+{"jump":0,"priority":205,"award":[[101800,20000]],"type":2202,"tid":205,"target_count":20,"task_param":16,"day":2},
+{"jump":0,"priority":301,"award":[[391002,300]],"type":1802,"tid":301,"target_count":3,"task_param":0,"day":3},
+{"jump":0,"priority":302,"award":[[391002,400]],"type":8302,"tid":302,"target_count":900,"task_param":0,"day":3},
+{"jump":0,"priority":303,"award":[[157002,5000]],"type":1602,"tid":303,"target_count":80,"task_param":0,"day":3},
+{"jump":0,"priority":304,"award":[[101500,50]],"type":1602,"tid":304,"target_count":120,"task_param":0,"day":3},
+{"jump":0,"priority":305,"award":[[17002,500]],"type":1602,"tid":305,"target_count":180,"task_param":0,"day":3},
+{"jump":0,"priority":401,"award":[[391002,300]],"type":1802,"tid":401,"target_count":4,"task_param":0,"day":4},
+{"jump":0,"priority":402,"award":[[391002,400]],"type":8302,"tid":402,"target_count":1200,"task_param":0,"day":4},
+{"jump":0,"priority":403,"award":[[157002,5000]],"type":1002,"tid":403,"target_count":10,"task_param":0,"day":4},
+{"jump":0,"priority":404,"award":[[17002,500]],"type":1002,"tid":404,"target_count":20,"task_param":0,"day":4},
+{"jump":0,"priority":405,"award":[[101800,20000]],"type":1002,"tid":405,"target_count":30,"task_param":0,"day":4},
+{"jump":0,"priority":501,"award":[[391002,300]],"type":1802,"tid":501,"target_count":5,"task_param":0,"day":5},
+{"jump":0,"priority":502,"award":[[391002,400]],"type":8302,"tid":502,"target_count":1500,"task_param":0,"day":5},
+{"jump":0,"priority":503,"award":[[101500,100]],"type":1201,"tid":503,"target_count":240210,"task_param":0,"day":5},
+{"jump":0,"priority":504,"award":[[101500,100]],"type":1201,"tid":504,"target_count":260210,"task_param":0,"day":5},
+{"jump":0,"priority":505,"award":[[101500,200]],"type":1602,"tid":505,"target_count":320,"task_param":0,"day":5}
+]},
+"Medal":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"attr":[[6,2000],[5,2000]],"apply_layer":1,"img":"icon_q5rtz_boss03.png","showAttrDes":680058,"tid":1,"showName":680019,"need_day":1},
+{"attr":[[6,2000],[5,2000]],"apply_layer":2,"img":"icon_q5rtz_boss04.png","showAttrDes":680058,"tid":2,"showName":680020,"need_day":2},
+{"attr":[[6,2000],[5,2000]],"apply_layer":3,"img":"icon_q5rtz_boss01.png","showAttrDes":680058,"tid":3,"showName":680021,"need_day":3},
+{"attr":[[6,2000],[5,2000]],"apply_layer":4,"img":"icon_q5rtz_boss02.png","showAttrDes":680058,"tid":4,"showName":680022,"need_day":4},
+{"attr":[[6,2000],[5,2000]],"apply_layer":5,"img":"icon_q5rtz_boss05.png","showAttrDes":680058,"tid":5,"showName":680042,"need_day":5}
+]},
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1}
+]},
+"Layer":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"tid":1,"icon":"yq_q5rtz_03.png","name":680045},
+{"tid":2,"icon":"yq_q5rtz_04.png","name":680046},
+{"tid":3,"icon":"yq_q5rtz_01.png","name":680047},
+{"tid":4,"icon":"yq_q5rtz_02.png","name":680048},
+{"tid":5,"icon":"yq_q5rtz_05.png","name":680049}
+]},
+"Level":{"status":"decoded-rows","count":30,"externalReferenceCount":0,"rows":[
+{"fight_tid":11010001,"style":3030501,"fight_award":[[2002,1],[101500,20],[201500,30000]],"show_power":157300,"tid":101,"min_power":143000,"unlock_day":1,"layer":1},
+{"fight_tid":11010002,"style":3030501,"fight_award":[[2002,1],[101500,20],[201500,30000]],"show_power":220220,"tid":102,"min_power":200200,"unlock_day":1,"layer":1},
+{"fight_tid":11010003,"style":3030501,"fight_award":[[2002,1],[101500,20],[201500,30000]],"show_power":314600,"tid":103,"min_power":286000,"unlock_day":1,"layer":1},
+{"fight_tid":11010004,"style":3030501,"fight_award":[[2002,2],[101500,50],[201500,30000]],"show_power":471900,"tid":104,"min_power":429000,"unlock_day":1,"layer":1},
+{"fight_tid":11010005,"style":3030501,"fight_award":[[2002,1],[101500,20],[201500,30000]],"show_power":786500,"tid":105,"min_power":715000,"unlock_day":1,"layer":1},
+{"fight_tid":11010006,"style":3030501,"fight_award":[[2002,3],[101500,50],[201500,50000]],"show_power":1195480,"tid":106,"min_power":1086800,"unlock_day":1,"layer":1},
+{"fight_tid":11020001,"style":1030501,"fight_award":[[157002,25000],[101500,20],[201500,30000]],"show_power":316800,"tid":201,"min_power":288000,"unlock_day":2,"layer":2},
+{"fight_tid":11020002,"style":1030501,"fight_award":[[17002,500],[101500,20],[201500,30000]],"show_power":506880,"tid":202,"min_power":460800,"unlock_day":2,"layer":2},
+{"fight_tid":11020003,"style":1030501,"fight_award":[[157002,25000],[101500,20],[201500,30000]],"show_power":696960,"tid":203,"min_power":633600,"unlock_day":2,"layer":2},
+{"fight_tid":11020004,"style":1030501,"fight_award":[[157002,50000],[101500,50],[201500,30000]],"show_power":950400,"tid":204,"min_power":864000,"unlock_day":2,"layer":2},
+{"fight_tid":11020005,"style":1030501,"fight_award":[[17002,500],[101500,20],[201500,30000]],"show_power":1425600,"tid":205,"min_power":1296000,"unlock_day":2,"layer":2},
+{"fight_tid":11020006,"style":1030501,"fight_award":[[157002,80000],[101500,100],[201500,50000]],"show_power":2059200,"tid":206,"min_power":1872000,"unlock_day":2,"layer":2},
+{"fight_tid":11030001,"style":2030301,"fight_award":[[391002,500],[101500,20],[201500,30000]],"show_power":629200,"tid":301,"min_power":572000,"unlock_day":3,"layer":3},
+{"fight_tid":11030002,"style":2030301,"fight_award":[[391002,500],[101500,20],[201500,30000]],"show_power":849420,"tid":302,"min_power":772200,"unlock_day":3,"layer":3},
+{"fight_tid":11030003,"style":2030301,"fight_award":[[391002,500],[101500,20],[201500,30000]],"show_power":1069640,"tid":303,"min_power":972400,"unlock_day":3,"layer":3},
+{"fight_tid":11030004,"style":2030301,"fight_award":[[392002,10],[101500,50],[201500,30000]],"show_power":1258400,"tid":304,"min_power":1144000,"unlock_day":3,"layer":3},
+{"fight_tid":11030005,"style":2030301,"fight_award":[[391002,500],[101500,20],[201500,30000]],"show_power":1887600,"tid":305,"min_power":1716000,"unlock_day":3,"layer":3},
+{"fight_tid":11030006,"style":2030301,"fight_award":[[392002,15],[101500,100],[201500,50000]],"show_power":3146000,"tid":306,"min_power":2860000,"unlock_day":3,"layer":3},
+{"fight_tid":11040001,"style":3030201,"fight_award":[[2002,2],[201500,30000],[201500,30000]],"show_power":862400,"tid":401,"min_power":784000,"unlock_day":4,"layer":4},
+{"fight_tid":11040002,"style":3030201,"fight_award":[[2002,2],[201500,30000],[201500,30000]],"show_power":1108800,"tid":402,"min_power":1008000,"unlock_day":4,"layer":4},
+{"fight_tid":11040003,"style":3030201,"fight_award":[[2002,2],[201500,30000],[201500,30000]],"show_power":1478400,"tid":403,"min_power":1344000,"unlock_day":4,"layer":4},
+{"fight_tid":11040004,"style":3030201,"fight_award":[[2002,3],[201500,30000],[201500,30000]],"show_power":1694000,"tid":404,"min_power":1540000,"unlock_day":4,"layer":4},
+{"fight_tid":11040005,"style":3030201,"fight_award":[[2002,2],[201500,30000],[201500,30000]],"show_power":3080000,"tid":405,"min_power":2800000,"unlock_day":4,"layer":4},
+{"fight_tid":11040006,"style":3030201,"fight_award":[[2002,5],[201500,50000],[201500,50000]],"show_power":4928000,"tid":406,"min_power":4480000,"unlock_day":4,"layer":4},
+{"fight_tid":11050001,"style":4030401,"fight_award":[[3002,2],[201500,30000],[201500,30000]],"show_power":1128600,"tid":501,"min_power":1026000,"unlock_day":5,"layer":5},
+{"fight_tid":11050002,"style":4030401,"fight_award":[[3002,2],[201500,30000],[201500,30000]],"show_power":1425600,"tid":502,"min_power":1296000,"unlock_day":5,"layer":5},
+{"fight_tid":11050003,"style":4030401,"fight_award":[[3002,2],[201500,30000],[201500,30000]],"show_power":1900800,"tid":503,"min_power":1728000,"unlock_day":5,"layer":5},
+{"fight_tid":11050004,"style":4030401,"fight_award":[[3002,3],[201500,30000],[201500,30000]],"show_power":2376000,"tid":504,"min_power":2160000,"unlock_day":5,"layer":5},
+{"fight_tid":11050005,"style":4030401,"fight_award":[[3002,2],[201500,30000],[201500,30000]],"show_power":3861000,"tid":505,"min_power":3510000,"unlock_day":5,"layer":5},
+{"fight_tid":11050006,"style":4030401,"fight_award":[[3002,5],[201500,50000],[201500,50000]],"show_power":6237000,"tid":506,"min_power":5670000,"unlock_day":5,"layer":5}
+]},
+"TimePass":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"tid":106,"award":[[2002,10]],"need_day":2},
+{"tid":206,"award":[[157002,150000]],"need_day":3},
+{"tid":306,"award":[[392002,35]],"need_day":4},
+{"tid":406,"award":[[3002,5]],"need_day":5},
+{"tid":506,"award":[[22002,1]],"need_day":5}
+]}
+}
+}

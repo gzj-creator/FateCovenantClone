@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "table": "WishTreeTable",
+  "assetPath": "personal-server/assets/tables/WishTreeTable.data.lua.json.gz",
+  "assetSha256": "5fb61b12e23a99ce4d5a63d0d9ce9202f2503ba898704d574d7b9b34794c4354",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/WishTreeTable.data.lua.json.gz",
+      "sha256": "5fb61b12e23a99ce4d5a63d0d9ce9202f2503ba898704d574d7b9b34794c4354"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Global":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"max_accrue_day":14,"tid":1,"treasure_need_times":10}
+]},
+"SelectAward":{"status":"decoded-rows","count":8,"externalReferenceCount":0,"rows":[
+{"tid":1001,"award_num":2,"award":22002,"join_day":13},
+{"tid":1002,"award_num":1,"award":390002,"join_day":13},
+{"tid":1003,"award_num":1,"award":472002,"join_day":13},
+{"tid":1004,"award_num":1,"award":496002,"join_day":25},
+{"tid":2001,"award_num":4,"award":22002,"join_day":13},
+{"tid":2002,"award_num":2,"award":390002,"join_day":13},
+{"tid":2003,"award_num":2,"award":472002,"join_day":13},
+{"tid":2004,"award_num":2,"award":496002,"join_day":25}
+]},
+"Award":{"status":"decoded-rows","count":18,"externalReferenceCount":0,"rows":[
+{"special":true,"item":2002,"count":10,"extra_item":22002,"tid":1001,"extra_count":2,"select_award":[1001,1002,1003,1004]},
+{"special":false,"item":33002,"count":10,"extra_item":0,"tid":1002,"extra_count":0,"select_award":[]},
+{"special":false,"item":2002,"count":10,"extra_item":0,"tid":1003,"extra_count":0,"select_award":[]},
+{"special":false,"item":33002,"count":10,"extra_item":421200,"tid":1004,"extra_count":1,"select_award":[]},
+{"special":false,"item":101500,"count":888,"extra_item":0,"tid":1005,"extra_count":0,"select_award":[]},
+{"special":false,"item":2002,"count":5,"extra_item":0,"tid":1006,"extra_count":0,"select_award":[]},
+{"special":false,"item":101500,"count":666,"extra_item":3002,"tid":1007,"extra_count":10,"select_award":[]},
+{"special":false,"item":2002,"count":5,"extra_item":0,"tid":1008,"extra_count":0,"select_award":[]},
+{"special":false,"item":101500,"count":388,"extra_item":0,"tid":1009,"extra_count":0,"select_award":[]},
+{"special":true,"item":3002,"count":10,"extra_item":22002,"tid":2001,"extra_count":4,"select_award":[2001,2002,2003,2004]},
+{"special":false,"item":33002,"count":15,"extra_item":0,"tid":2002,"extra_count":0,"select_award":[]},
+{"special":false,"item":3002,"count":5,"extra_item":0,"tid":2003,"extra_count":0,"select_award":[]},
+{"special":false,"item":33002,"count":15,"extra_item":1321200,"tid":2004,"extra_count":1,"select_award":[]},
+{"special":false,"item":101500,"count":1288,"extra_item":0,"tid":2005,"extra_count":0,"select_award":[]},
+{"special":false,"item":2002,"count":10,"extra_item":0,"tid":2006,"extra_count":0,"select_award":[]},
+{"special":false,"item":101500,"count":888,"extra_item":3002,"tid":2007,"extra_count":10,"select_award":[]},
+{"special":false,"item":2002,"count":10,"extra_item":0,"tid":2008,"extra_count":0,"select_award":[]},
+{"special":false,"item":101500,"count":588,"extra_item":0,"tid":2009,"extra_count":0,"select_award":[]}
+]},
+"Type":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"gift":[46003,46002,40009]},
+{"tid":2,"gift":[40010,40008]}
+]}
+}
+}

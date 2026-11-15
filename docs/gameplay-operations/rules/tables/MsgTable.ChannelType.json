@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "table": "MsgTable.ChannelType",
+  "assetPath": "personal-server/assets/tables/MsgTable.ChannelType.json.gz",
+  "assetSha256": "213568e3e8622aec96c27574ca7ee42292310b490528d6406fe343e94fab334d",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/MsgTable.ChannelType.json.gz",
+      "sha256": "213568e3e8622aec96c27574ca7ee42292310b490528d6406fe343e94fab334d"
+    }
+  ],
+  "sourceMetadata": "MsgTable.data.lua.bin",
+"families":{
+"ChannelType":{"status":"decoded-rows","count":17,"externalReferenceCount":0,"rows":[
+{"tid":1,"forbid_msg_sync":false,"word_leagle_source":4,"default_in_channel":true,"is_cross":false,"need_log":true,"is_chat":true},
+{"tid":2,"forbid_msg_sync":false,"word_leagle_source":5,"default_in_channel":true,"is_cross":false,"need_log":true,"is_chat":true},
+{"tid":3,"forbid_msg_sync":false,"word_leagle_source":6,"default_in_channel":true,"is_cross":false,"need_log":true,"is_chat":true},
+{"tid":4,"forbid_msg_sync":false,"word_leagle_source":3,"default_in_channel":true,"is_cross":true,"need_log":true,"is_chat":true},
+{"tid":5,"forbid_msg_sync":false,"word_leagle_source":0,"default_in_channel":true,"is_cross":false,"need_log":false,"is_chat":false},
+{"tid":7,"forbid_msg_sync":false,"word_leagle_source":0,"default_in_channel":true,"is_cross":false,"need_log":false,"is_chat":false},
+{"tid":8,"forbid_msg_sync":false,"word_leagle_source":10,"default_in_channel":true,"is_cross":false,"need_log":true,"is_chat":true},
+{"tid":10,"forbid_msg_sync":false,"word_leagle_source":0,"default_in_channel":false,"is_cross":false,"need_log":false,"is_chat":false},
+{"tid":12,"forbid_msg_sync":false,"word_leagle_source":4,"default_in_channel":false,"is_cross":false,"need_log":true,"is_chat":false},
+{"tid":13,"forbid_msg_sync":false,"word_leagle_source":0,"default_in_channel":false,"is_cross":false,"need_log":true,"is_chat":false},
+{"tid":14,"forbid_msg_sync":false,"word_leagle_source":1,"default_in_channel":false,"is_cross":false,"need_log":true,"is_chat":false},
+{"tid":15,"forbid_msg_sync":false,"word_leagle_source":6,"default_in_channel":true,"is_cross":true,"need_log":true,"is_chat":true},
+{"tid":16,"forbid_msg_sync":false,"word_leagle_source":5,"default_in_channel":true,"is_cross":true,"need_log":true,"is_chat":true},
+{"tid":17,"forbid_msg_sync":false,"word_leagle_source":5,"default_in_channel":false,"is_cross":false,"need_log":true,"is_chat":false},
+{"tid":18,"forbid_msg_sync":false,"word_leagle_source":0,"default_in_channel":false,"is_cross":false,"need_log":true,"is_chat":false},
+{"tid":19,"forbid_msg_sync":false,"word_leagle_source":4,"default_in_channel":false,"is_cross":false,"need_log":true,"is_chat":false},
+{"tid":20,"forbid_msg_sync":false,"word_leagle_source":6,"default_in_channel":true,"is_cross":false,"need_log":true,"is_chat":true}
+]}
+}
+}

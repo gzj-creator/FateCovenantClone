@@ -217,9 +217,10 @@ test('ordinary mission fight previews at start and commits once at 207', async t
   assert.equal(Number(response.report.type), 1);
   assert.equal(response.report.battle_list.length, 1);
   const battle = response.report.battle_list[0];
-  assert.equal(battle.fighter_list.length, 7);
+  assert.equal(battle.fighter_list.length, 9);
   assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 1).map(unit => unit.role ?? '0'), ['0', '2010101', '2010201', '1020601', '2020601']);
-  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9002100', '9002600']);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9301500', '9100500', '9301500', '9105000']);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => Number(unit.loc)), [1, 2, 3, 5]);
   assert.equal(Number(battle.atk_team_index), 1);
   assert.equal(Number(battle.def_team_index), 1);
   assert.ok(battle.fighter_list.every(unit => Number(unit.team_index) === 1));
@@ -228,7 +229,7 @@ test('ordinary mission fight previews at start and commits once at 207', async t
   // role_type 3 is CaptainFighter (an artifact-based VirtualFighter), not a
   // player hero. Ordinary heroes stay 1 and NPCs stay 2.
   assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 1).map(unit => Number(unit.role_type)), [3, 1, 1, 1, 1]);
-  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => Number(unit.role_type)), [2, 2]);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => Number(unit.role_type)), [2, 2, 2, 2]);
   assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 1 && Number(unit.role_type) === 3).map(unit => unit.ability_list.length), [0]);
   assert.ok(battle.fighter_list.filter(unit => unit.team === 1 && Number(unit.role_type) === 1).every(unit => unit.ability_list.length > 0));
   assert.ok(battle.fighter_list.filter(unit => Number(unit.role_type) !== 3).every(unit => {
@@ -237,7 +238,7 @@ test('ordinary mission fight previews at start and commits once at 207', async t
   }));
   assert.equal(Number(battle.fighter_list.find(unit => Number(unit.role_type) === 3).style), Number(battle.fighter_list.find(unit => Number(unit.role_type) === 1).style));
   assert.deepEqual(battle.atk_brief_lineup.team_list[0].fighter_list.map(unit => unit.tid), ['2010101', '2010201', '1020601', '2020601']);
-  assert.deepEqual(battle.def_brief_lineup.team_list[0].fighter_list.map(unit => unit.tid), ['9002100', '9002600']);
+  assert.deepEqual(battle.def_brief_lineup.team_list[0].fighter_list.map(unit => unit.tid), ['9301500', '9100500', '9301500', '9105000']);
   assert.ok(battle.over_round >= 1);
   assert.ok(battle.action_list.length > 3);
   const actionMessages = actions(response.report);
@@ -422,8 +423,8 @@ test('non-mission fights are refused without touching saved state', t => {
   const before = env.store.state();
   assert.throws(() => env.service.execute(201, fightRequest(30201, { req: Buffer.from([1, 2, 3, 4]) })), error => error.code === 5);
   assert.throws(() => env.service.execute(201, fightRequest(30201, { req: codec.pack('mission_fight_req', {}) })), error => error.code === 5);
-  // BOSS/story rows without a configured ordinary enemy list remain refused before state changes.
-  assert.throws(() => env.service.execute(201, fightRequest(20205)), error => error.code === 5);
+  // A story-only section has no battle even though map data is present.
+  assert.throws(() => env.service.execute(201, fightRequest(30205)), error => error.code === 5);
   assert.throws(() => env.service.execute(207, Buffer.alloc(0)), error => error.code === 1);
   assert.deepEqual(env.store.state(), before);
 });
@@ -445,40 +446,40 @@ test('the real MissionUIMgr encoder only sends mission_id (and auto-fight state)
   assert.equal(missionModule(env.store).mission_id, '30202');
 });
 
-test('30204 uses the documented local pursuer fallback and commits at 207', t => {
+test('30204 uses the original four pursuers and commits at 207', t => {
   const env = setup(t);
   setMission(env.store, 30203);
   const result = env.service.execute(201, fightRequest(30204, { fight_tid: 304 }));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '304');
   assert.equal(response.report.finish ?? false, false);
-  assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9002600', '9002600']);
+  assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9301500', '9100500', '9301500', '9100500']);
   assert.equal(missionModule(env.store).mission_id, '30203');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '30204');
 });
 
-test('40203 uses the local chapter-four boss fallback and commits at 207', t => {
+test('40203 uses its own original boss team and commits at 207', t => {
   const env = setup(t);
   setMission(env.store, 40202);
   const result = env.service.execute(201, fightRequest(40203, { fight_tid: 403 }));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '403');
   assert.equal(response.report.finish ?? false, false);
-  assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9003300', '9003300']);
+  assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9102100', '9102100', '3030400']);
   assert.equal(missionModule(env.store).mission_id, '40202');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '40203');
 });
 
-test('40210 uses the documented local chapter-boss fallback and records the completed node', t => {
+test('40210 uses its own original Michelle team and records the completed node', t => {
   const env = setup(t);
   setMission(env.store, 40209);
   const result = env.service.execute(201, fightRequest(40210, { fight_tid: 410 }));
   const response = codec.unpack('pb_fight_response', result.data);
   assert.equal(response.report.tid, '410');
   assert.equal(response.report.finish ?? false, false);
-  assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['1030401', '9002400']);
+  assert.deepEqual(response.report.battle_list[0].fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9102100', '9102100', '3030500']);
   assert.equal(missionModule(env.store).mission_id, '40209');
   env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
   assert.equal(missionModule(env.store).mission_id, '40210');

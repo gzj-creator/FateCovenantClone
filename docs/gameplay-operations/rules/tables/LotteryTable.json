@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "table": "LotteryTable",
+  "assetPath": "personal-server/assets/tables/LotteryTable.data.lua.json.gz",
+  "assetSha256": "3c4670cf03974f7706914b916a00a33146f2d1efcb63724adade892cc62194b0",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/LotteryTable.data.lua.json.gz",
+      "sha256": "3c4670cf03974f7706914b916a00a33146f2d1efcb63724adade892cc62194b0"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"PrizeType":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"name":665492},
+{"tid":2,"name":665493},
+{"tid":3,"name":665494},
+{"tid":4,"name":665495}
+]},
+"Item":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"period_img":"img_llk_1qi.png","award_show":12001,"guarantee_tid":1,"draw_lib":3901,"tid":100013400,"period":1,"server_open_time":[8,14],"expire_time":28},
+{"period_img":"img_llk_2qi.png","award_show":12002,"guarantee_tid":1,"draw_lib":3901,"tid":100023400,"period":2,"server_open_time":[15,22],"expire_time":36},
+{"period_img":"img_llk_3qi.png","award_show":12003,"guarantee_tid":1,"draw_lib":3901,"tid":100033400,"period":3,"server_open_time":[23,30],"expire_time":44},
+{"period_img":"img_llk_4qi.png","award_show":12004,"guarantee_tid":1,"draw_lib":3901,"tid":100043400,"period":4,"server_open_time":[31,9999],"expire_time":9999}
+]}
+}
+}

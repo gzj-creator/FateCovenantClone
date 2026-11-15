@@ -12,6 +12,10 @@ function listedValue(attrList, attrId) {
 }
 
 function mergeAttrList(target, attrList) {
+  if (attrList instanceof Map) {
+    for (const [id, value] of attrList) target.set(Number(id), (target.get(Number(id)) ?? 0) + Number(value));
+    return;
+  }
   for (const pair of Array.isArray(attrList) ? attrList : []) {
     if (!Array.isArray(pair) || !Number.isFinite(Number(pair[0])) || !Number.isFinite(Number(pair[1]))) continue;
     const attrId = Number(pair[0]);
@@ -19,16 +23,21 @@ function mergeAttrList(target, attrList) {
   }
 }
 
-function buildNpcBaseValues({ npcTid, npcAttr, ratios, ratioContext, fixedContext, abilityValues }) {
+function buildNpcBaseValues({ fighterNpcTid, npcAttr, ratios, ratioContext, fixedContext, abilityValues }) {
   const result = new Map();
-  const fighterRatio = valueFromTable(ratios, npcTid)?.attr_list;
+  // NpcAttr.NpcAttrRatio multiplies its CalcAttr argument by ten. Do not
+  // confuse this NPC identity with FightTable.Fighter's presentation id.
+  const fighterRatio = valueFromTable(ratios, fighterNpcTid * 10)?.attr_list;
   const contextRatio = Array.isArray(ratioContext) ? ratioContext : ratioContext?.attr_list;
   for (const pair of Array.isArray(npcAttr?.attr_list) ? npcAttr.attr_list : []) {
     if (!Array.isArray(pair) || !Number.isFinite(Number(pair[0])) || !Number.isFinite(Number(pair[1]))) continue;
     const attrId = Number(pair[0]);
     const fighterScale = listedValue(fighterRatio, attrId) / ATTR_SCALE;
     const contextScale = listedValue(contextRatio, attrId) / ATTR_SCALE;
-    const fixed = listedValue(fixedContext, attrId) / ATTR_SCALE;
+    // FixAttr's fourth argument uses {type,value}, and value is a direct
+    // multiplier (unlike the two pair lists above).
+    const fixedEntry = (Array.isArray(fixedContext) ? fixedContext : []).find(entry => Number(entry?.type) === attrId);
+    const fixed = Number(fixedEntry?.value ?? 1);
     const value = Math.floor(Number(pair[1]) * fighterScale * contextScale * fixed);
     result.set(attrId, (result.get(attrId) ?? 0) + value);
   }
@@ -42,17 +51,19 @@ function buildNpcBaseValues({ npcTid, npcAttr, ratios, ratioContext, fixedContex
 // fail-closed reason for the caller.
 export function resolveFightTeam({
   fight,
+  side = 'def',
   teams,
   npcAttrs,
   ratios = new Map(),
   npcTable = new Map(),
+  fighters = new Map(),
   ratioContext = [],
   fixedContext = [],
   abilityValues = new Map(),
   attributeTables
 }) {
-  const teamIds = Array.isArray(fight?.def_team) ? fight.def_team.map(Number) : [];
-  if (!teamIds.length) return { resolved: false, reason: 'fight-def-team-missing', fightTid: Number(fight?.tid ?? 0), teams: [] };
+  const teamIds = Array.isArray(fight?.[side + '_team']) ? fight[side + '_team'].map(Number) : [];
+  if (!teamIds.length) return { resolved: false, reason: 'fight-' + side + '-team-missing', fightTid: Number(fight?.tid ?? 0), teams: [] };
   if (!attributeTables) throw new TypeError('attributeTables is required');
 
   const resolvedTeams = [];
@@ -61,7 +72,9 @@ export function resolveFightTeam({
     if (!team) return { resolved: false, reason: 'fight-team-missing', fightTid: Number(fight?.tid ?? 0), teamTid, teams: [] };
     const npcTids = Array.isArray(team.npc) ? team.npc.map(Number) : [];
     const locations = Array.isArray(team.loc) ? team.loc.map(Number) : [];
-    if (!npcTids.length || npcTids.length !== locations.length) {
+    if (!npcTids.length || npcTids.length !== locations.length || npcTids.length > 6
+      || locations.some(loc => !Number.isSafeInteger(loc) || loc < 1 || loc > 7)
+      || new Set(locations).size !== locations.length) {
       return { resolved: false, reason: 'team-fighter-layout-invalid', fightTid: Number(fight?.tid ?? 0), teamTid, teams: [] };
     }
     const attrTid = Number(team.team_lv);
@@ -72,13 +85,16 @@ export function resolveFightTeam({
 
     const entries = npcTids.map((npcTid, index) => {
       const npc = valueFromTable(npcTable, npcTid);
+      const fighterTid = teamTid * 100 + locations[index];
       const baseValues = buildNpcBaseValues({
-        npcTid, npcAttr, ratios, ratioContext, fixedContext,
+        fighterNpcTid: npcTid, npcAttr, ratios, ratioContext, fixedContext,
         abilityValues: abilityValues instanceof Map ? abilityValues.get(npcTid) : abilityValues?.[npcTid]
       });
       const values = calcAttrValues(baseValues, attributeTables);
       return {
         npcTid,
+        fighterTid,
+        fighter: valueFromTable(fighters, fighterTid) ?? null,
         role: Number(npc?.relation_hero ?? npcTid),
         loc: locations[index],
         level: 1,

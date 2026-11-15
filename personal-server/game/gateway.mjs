@@ -12,8 +12,11 @@ import { createHeroSupportService } from './hero-support-service.mjs';
 import { createHeroRentService } from './hero-rent-service.mjs';
 import { createHeroMasteryService } from './hero-mastery-service.mjs';
 import { createLineupAttributeCache } from './attribute-service.mjs';
+import { collectTacticsBaseValues } from './tactics-state.mjs';
 import { createRealtimePublisher } from './realtime-publisher.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
+import { readTacticsTables } from '../config/tactics-tables.mjs';
+import { readFavourIntimacyTables } from '../config/favour-intimacy-tables.mjs';
 import { createLineupService } from './lineup-service.mjs';
 import { createLeaderEquipService } from './leader-equip-service.mjs';
 import { createEquipService } from './equip-service.mjs';
@@ -46,8 +49,10 @@ import { createFeatureService } from './feature-service.mjs';
 import { createFeatureOverrideStore } from './feature-overrides.mjs';
 import { loadFunOpenRules } from './feature-rules.mjs';
 import { createCommandRegistry, loadCommandCatalog, loadCommandGateRules } from './command-registry.mjs';
+import { createR1FailClosedCommandService } from './r1-fail-closed-command-service.mjs';
 import { createActivityStore } from './activity-store.mjs';
 import { createActivityRuntime } from './activity-runtime.mjs';
+import { resolveR1ActivityOccurrences } from '../config/activity-explicit-occurrences.mjs';
 import { createActivitySettlementService } from './activity-settlement-service.mjs';
 import { createActivityOnlineSync } from './activity-online-sync.mjs';
 import { createScheduler } from './scheduler.mjs';
@@ -96,6 +101,7 @@ import { DEFAULT_TIMEZONE_OFFSET_SECONDS } from './time.mjs';
 import { createAccRechargeService } from './acc-recharge-service.mjs';
 import { createGroupBuyActService } from './group-buy-act-service.mjs';
 import { readGroupBuyActTables } from '../config/group-buy-act-tables.mjs';
+import { createBuySkinActService } from './buy-skin-act-service.mjs';
 import { createDragonLandActService } from './dragon-land-act-service.mjs';
 import { readDragonLandTables } from '../config/dragon-land-tables.mjs';
 import { createDiamondBankActService } from './diamond-bank-act-service.mjs';
@@ -134,6 +140,20 @@ import { createSocialCommunityService } from './social-community-service.mjs';
 import { createGuildActivityService } from './guild-activity-service.mjs';
 import { createHeroFavorService } from './hero-favor-service.mjs';
 import { createHeroLeaseService } from './hero-lease-service.mjs';
+import { createLeaserStarUpService } from './leaser-starup-service.mjs';
+import { createCampHaloService } from './camp-halo-service.mjs';
+import { createCombatPowerService } from './combat-power-service.mjs';
+import { createPreLineupPowerService } from './pre-lineup-power-service.mjs';
+import { createHeroBlazonService } from './hero-blazon-service.mjs';
+import { createHeroIntimacyService } from './hero-intimacy-service.mjs';
+import { createTacticsService } from './tactics-service.mjs';
+import { createHeroLegendService } from './hero-legend-service.mjs';
+import { createLinearLevelService } from './linear-level-service.mjs';
+import { createOpenServerBoxService } from './open-server-box-service.mjs';
+import { createGrowthTargetService } from './growth-target-service.mjs';
+import { createTaskAwardService } from './task-award-service.mjs';
+import { createCareerLifeService } from './career-life-service.mjs';
+import { createMysteryShopService } from './mystery-shop-service.mjs';
 import { createTeamSuggestService } from './team-suggest-service.mjs';
 import { createTeamGenreService } from './team-genre-service.mjs';
 import { createDestinyService } from './destiny-service.mjs';
@@ -182,6 +202,7 @@ import { readCampTowerTables, readDestinyPveTables } from '../config/dungeon-act
 import { createTriMatchFightService } from './trimatch-fight-service.mjs';
 import { createTriMatchTowerService } from './trimatch-tower-service.mjs';
 import { createTriMatchPvpService } from './trimatch-pvp-service.mjs';
+import { createTriMatchService, TRI_MATCH_LOGIN_MODULES } from './trimatch-service.mjs';
 import { readTriMatchTables } from '../config/trimatch-tables.mjs';
 import { readDestinyTables } from '../config/destiny-tables.mjs';
 import { createMagicCircleService } from './magic-circle-service.mjs';
@@ -213,6 +234,7 @@ import { createBenefitCommerceService } from './benefit-commerce-service.mjs';
 import {
   createGuideService,
   GUIDE_LOGIN_MODULE_ID,
+  saveGuideProcesses,
   projectGuideLoginModule
 } from './guide-service.mjs';
 import { createRoleService } from './role-service.mjs';
@@ -246,6 +268,7 @@ export function createLocalGame({
   activityWindowAnchor = null,
   activityReferenceOpenedAt = null,
   activityMode = 'schedule',
+  activityWindowPolicy = activityMode === 'all-open' ? 'rebase' : 'absolute',
   currentFishingActivityId,
   currentArtifactActivityId,
   currentDemigodActivityId,
@@ -273,6 +296,9 @@ export function createLocalGame({
   const referenceOpenedAt = activityReferenceOpenedAt == null
     ? null
     : parseActivityCalendarTimestamp(activityReferenceOpenedAt, 'activityReferenceOpenedAt');
+  if (!['absolute', 'rebase'].includes(activityWindowPolicy)) {
+    throw new Error('activityWindowPolicy must be absolute or rebase');
+  }
   if (!Number.isSafeInteger(serverId) || serverId <= 0) throw new Error('serverId must be a positive integer');
   if (!Number.isSafeInteger(roleId) || roleId <= 0) throw new Error('roleId must be a positive integer');
   if (!Number.isSafeInteger(maxConnections) || maxConnections <= 0) {
@@ -281,8 +307,8 @@ export function createLocalGame({
   if (resolveSession !== undefined && typeof resolveSession !== 'function') throw new TypeError('resolveSession must be a function');
   if (typeof serverName !== 'string' || !serverName.trim()) throw new Error('serverName must be nonempty');
   if (typeof roleName !== 'string' || !roleName.trim()) throw new Error('roleName must be nonempty');
-  if (launchProfileId != null && activityWindowAnchor == null) {
-    throw new Error('launchProfileId requires activityWindowAnchor');
+  if (launchProfileId != null && activityWindowPolicy === 'rebase' && activityWindowAnchor == null) {
+    throw new Error('rebase launch profiles require activityWindowAnchor');
   }
   if (launchProfileId != null && (typeof launchProfileId !== 'string' || !launchProfileId.trim() || openedAt == null)) {
     throw new Error('A named launch profile requires a launchProfileId and serverOpenedAt');
@@ -303,7 +329,7 @@ export function createLocalGame({
     const template = capture.privateFlows.find(x => x.messageId === 'game:tcp-69:s2c:103')?.decoded;
     if (!template || template[0] !== 1) throw new Error('Verified login structure missing');
     let modules = new Map(template[2].value);
-    if (persistedLaunchProfile) modules = relocateLaunchActivityWindows({
+    if (persistedLaunchProfile && activityWindowPolicy === 'rebase') modules = relocateLaunchActivityWindows({
       modules,
       codec,
       activityWindowAnchor: persistedLaunchProfile.activityWindowAnchor,
@@ -345,18 +371,29 @@ export function createLocalGame({
   }
   const heroTables = readHeroTables(), fantasyEquipTables = readFantasyEquipTables();
   const attributeTables = readAttributeTables();
+  const tacticsTables = readTacticsTables();
+  const tacticsGlobalAttrs = model => collectTacticsBaseValues({ model, codec, tables: tacticsTables });
   const attributePowerCache = createLineupAttributeCache();
   const leaderEquipTables = readLeaderEquipTables(), tables = readGameTables();
   const onlineGiftTables = readOnlineGiftTables();
   const fantasyActTables = loadFantasyActTables();
   const relicTables = { ...tables, ...fantasyActTables };
+  const explicitOccurrences = activityMode === 'schedule'
+    ? resolveR1ActivityOccurrences({
+      tables,
+      serverId,
+      serverOpenedAt: openedAt ?? store.serverOpenedAt
+    })
+    : [];
   const calendar = createActivityCalendar({
     tables,
     serverOpenedAt: serverOpenedAt ?? store.serverOpenedAt,
     activityReferenceOpenedAt: referenceOpenedAt,
     activityWindowAnchor: anchor,
-    activityWindowsAlreadyRebased: persistedLaunchProfile != null,
+    activityWindowsAlreadyRebased: activityWindowPolicy === 'rebase' && persistedLaunchProfile != null,
     mode: activityMode,
+    windowPolicy: activityWindowPolicy,
+    explicitOccurrences,
     currentFishingActivityId,
     now: clock
   });
@@ -575,6 +612,7 @@ export function createLocalGame({
   // same ActivityTable version. Create it before the wallet so product lists,
   // closed-activity checks and recharge flags use the same live state.
   const groupBuyAct=createGroupBuyActService({store,codec,tables,groupBuyTables:readGroupBuyActTables(),calendar,now:clock,logger});
+  const buySkinAct=createBuySkinActService({store,codec,tables,calendar,now:clock,logger});
   const shop = createShopService({
     store,
     codec,
@@ -604,7 +642,60 @@ export function createLocalGame({
   const heroSupport = createHeroSupportService({ store, codec, tables, heroTables, now: clock, logger });
   const heroRent = createHeroRentService({ store, codec, tables, heroTables, now: clock, logger });
   const heroLease = createHeroLeaseService({ store, codec, heroTables, now: clock, logger });
-  const heroCommandServices = [heroDevelop, heroBond, heroSupport, heroRent, heroLease];
+  const leaserStarUp = createLeaserStarUpService({
+    store, codec, heroTables, resourceTables: tables, now: clock, logger
+  });
+  const campHalo = createCampHaloService({ store, codec, logger });
+  const combatPower = createCombatPowerService({ store, codec, gameTables: tables, logger });
+  const preLineupPower = createPreLineupPowerService({
+    store, codec, heroTables, attributeTables, globalAttrsForModel: tacticsGlobalAttrs, logger
+  });
+  const heroBlazon = createHeroBlazonService({ store, codec, logger });
+  const heroIntimacy = createHeroIntimacyService({
+    store,
+    codec,
+    heroTables,
+    tables,
+    intimacyTables: readFavourIntimacyTables(),
+    now: () => Math.floor(clock() / 1000),
+    logger
+  });
+  const tactics = createTacticsService({
+    store, codec, tables: tacticsTables, resourceTables: tables, now: clock, logger
+  });
+  const heroLegend = createHeroLegendService({ store, codec, heroTables, logger });
+  const heroCommandServices = [heroDevelop, heroBond, heroSupport, heroRent, heroLease, leaserStarUp, campHalo, combatPower, preLineupPower, heroBlazon, heroIntimacy, tactics, heroLegend];
+  const linearLevel = createLinearLevelService({ store, codec, gameTables: tables, logger });
+  const openServerBox = createOpenServerBoxService({
+    store,
+    codec,
+    gameTables: tables,
+    serverOpenedAt: openedAt ?? store.serverOpenedAt,
+    activityReferenceOpenedAt: referenceOpenedAt,
+    now: clock,
+    logger
+  });
+  const growthTarget = createGrowthTargetService({
+    store,
+    codec,
+    gameTables: tables,
+    serverOpenedAt: openedAt ?? store.serverOpenedAt,
+    activityReferenceOpenedAt: referenceOpenedAt,
+    now: clock,
+    logger
+  });
+  const taskAward = createTaskAwardService({
+    store,
+    codec,
+    gameTables: tables,
+    serverOpenedAt: openedAt ?? store.serverOpenedAt,
+    activityReferenceOpenedAt: referenceOpenedAt,
+    now: clock,
+    logger
+  });
+  const careerLife = createCareerLifeService({ store, codec, logger });
+  const mysteryShop = createMysteryShopService({ store, codec, gameTables: tables, now: clock, logger });
+  const itemCommandServices = [linearLevel, openServerBox, growthTarget, taskAward, careerLife, mysteryShop];
   const heroMastery = createHeroMasteryService({ store, codec, heroTables });
   const lineups = createLineupService({ store, codec });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
@@ -634,7 +725,7 @@ export function createLocalGame({
     tables: readHouseAssistantTables(),
     now: clock
   });
-  const ranks = createRankService({ codec, store, now: clock, logger });
+  const ranks = createRankService({ codec, store, globalAttrsForModel: tacticsGlobalAttrs, now: clock, logger });
   const rankAchieve = createRankAchieveService({
     store, codec, tables: readRankAchieveTables(), resourceTables: tables, now: clock, logger
   });
@@ -710,6 +801,7 @@ export function createLocalGame({
     logger
   });
   const commandRegistryHasGates = commandRegistry.coverage().requires > 0;
+  const r1FailClosed = createR1FailClosedCommandService({ logger });
   const activityStore = createActivityStore({ store });
   const activityOnlineSync = createActivityOnlineSync({ codec, store, activityStore, tables, now: clock, logger });
   const scheduler = createScheduler({ store, now: clock, logger });
@@ -767,11 +859,29 @@ export function createLocalGame({
   const playMatch = createPlayMatchService({ store, codec, tables: readPlayMatchTables(), logger, now: clock });
   const overallMatch = createOverallMatchService({ store, codec, tables: readOverallMatchTables(), logger, now: clock });
   // Card BATTLE-MARTIALCLUB: 84401 / 84404-84426, authoritative state in SQLite.
-  const martialClub = createMartialClubService({ store, codec, tables: readMartialClubTables(), gameTables: tables, logger, now: clock, enemyRoster: martialClubRoster });
+  const martialClub = createMartialClubService({
+    store,
+    codec,
+    tables: readMartialClubTables(),
+    gameTables: tables,
+    logger,
+    now: clock,
+    enemyRoster: martialClubRoster,
+    globalAttrsForModel: tacticsGlobalAttrs
+  });
   // Card BATTLE-MARTIALCLUBACT: 84431-84432, awards driven by MartialClubActTable.
   const martialClubAct = createMartialClubActService({ store, codec, tables: readMartialClubActTables(), gameTables: tables, logger, now: clock });
   // Card BATTLE-TOURNAMENT: 88501-88511, MatchPvpTable type 1 (位面锦标赛).
-  const tournament = createTournamentService({ store, codec, tables: readMatchPvpTables(), gameTables: tables, logger, now: clock, enemyRoster: tournamentRoster });
+  const tournament = createTournamentService({
+    store,
+    codec,
+    tables: readMatchPvpTables(),
+    gameTables: tables,
+    logger,
+    now: clock,
+    enemyRoster: tournamentRoster,
+    globalAttrsForModel: tacticsGlobalAttrs
+  });
   // Card BATTLE-TOPARENA: 98500-98602, TopArenaTable local season frame.
   const topArena = createTopArenaService({ store, codec, tables: readTopArenaTables(), gameTables: tables, logger, now: clock });
   const generalDungeon = createGeneralDungeonService({ store, codec, tables: readGeneralDungeonTables(), gameTables: tables, logger, now: clock });
@@ -793,6 +903,7 @@ export function createLocalGame({
   // match tables. A won tower fight advances the tower through the fight
   // settlement hook instead of a client claim.
   const triMatchTables = readTriMatchTables();
+  const triMatch = createTriMatchService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
   const triMatchTower = createTriMatchTowerService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
   const triMatchFight = createTriMatchFightService({
     store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock,
@@ -856,7 +967,7 @@ export function createLocalGame({
   if(monthlyCardRepair.changed) logger({event:'monthly_card_claim_bits_repaired',cards:monthlyCardRepair.repaired});
   const minigameAct=createMinigameActService({store,codec,tables,minigameTables:readMinigameActTables(),calendar,now:clock,random,logger});
   const wallet=localWallet?createWalletService({
-    store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,premiumActivity:premiumAct,heroDrawActivity,groupBuyActivity:groupBuyAct,wishTreasure,wishTree,weekHunt,
+    store,codec,tables,voucher,monthPermit,monthlyCard,permitService:standardPermit,publish,logger,petActivity,premiumActivity:premiumAct,heroDrawActivity,groupBuyActivity:groupBuyAct,buySkinActivity:buySkinAct,wishTreasure,wishTree,weekHunt,
     rechargeBonus,lineFirstRecharge,rechargeExtraAward,minigameActivity:minigameAct,now:() => Math.floor(clock() / 1000)
   }):undefined;
   const welfare=createWelfareService({store,codec,tables,wallet,calendar,now:clock,logger});
@@ -966,6 +1077,7 @@ export function createLocalGame({
     heroExtra.ensureLoginState();
     artifact.ensureLoginState();
     for (const service of heroCommandServices) service.ensureLoginState?.();
+    for (const service of itemCommandServices) service.ensureLoginState?.();
     teamSuggest.ensureLoginState();
     teamGenre.ensureLoginState();
     wishTreasure.ensureLoginState();
@@ -1038,6 +1150,10 @@ export function createLocalGame({
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
+    const triMatchLogin = triMatch.loginPayload(state.roleId);
+    modules.set(TRI_MATCH_LOGIN_MODULES.hero, binary(triMatchLogin.hero));
+    modules.set(TRI_MATCH_LOGIN_MODULES.equip, binary(triMatchLogin.equip));
+    modules.set(TRI_MATCH_LOGIN_MODULES.lineup, binary(triMatchLogin.lineup));
     // Card BATTLE-MARTIALCLUB: login module 123 carries pb_martial_club_role and
     // pb_martial_club_employ_role, the two blocks MartialClubMgr.LoginParse decodes.
     martialClub.ensureLoginState();
@@ -1092,6 +1208,7 @@ export function createLocalGame({
       logger({ event: 'task_activity_login_synced', actIds: taskActivityLoginIds });
     }
     const groupBuyActLogin = groupBuyAct.synchronizeLogin(activity, loginSeconds);
+    const buySkinLogin = buySkinAct.synchronizeLogin(activity, loginSeconds);
     // DragonLandActData parses pb_dragon_land_role_data from the activity entry's
     // module_login_data (ActFrameTable type 1036/1037/1044/1045/1046).
     const dragonLandLogin = dragonLandAct.synchronizeLogin(activity, loginSeconds);
@@ -1146,6 +1263,7 @@ export function createLocalGame({
     if (upStarGiftLogin.activityIds.length) {
       logger({ event: 'up_star_gift_login_synced', ...upStarGiftLogin });
     }
+    for (const service of itemCommandServices) service.synchronizeLogin?.(activity, loginSeconds);
     // Activity services above can add rows that were absent from the captured
     // login snapshot. Run the calendar once more so those rows carry the same
     // rebased windows and state history as snapshot-backed activities.
@@ -1264,6 +1382,7 @@ export function createLocalGame({
       dragonLandActId: dragonLandLogin.actId,
       diamondBankActId: diamondBankLogin.actId,
       freePrivilegeActId: freePrivilegeLogin.actId,
+      buySkinActId: buySkinLogin.actId,
       slotGameActIds: slotGameLoginIds,
       explorationActActivityIds: explorationLogin.activityIds,
       explorationLoginModules: [...explorationLogin.modules.keys()],
@@ -1288,6 +1407,11 @@ export function createLocalGame({
   }
   function rechargeOptions(value) {
     if (Number.isSafeInteger(value) && value > 0) return { activity_id: value, activity_version: value };
+    const direct = value?.value ?? value;
+    if (Array.isArray(direct) && direct.length >= 2
+      && Number.isSafeInteger(Number(direct[0])) && Number.isSafeInteger(Number(direct[1]))) {
+      return { activity_id: Number(direct[0]), buy_skin_tid: Number(direct[1]) };
+    }
     let bytes = null;
     if (Buffer.isBuffer(value)) bytes = value;
     else if (value?.value?.type === 'Buffer' && Array.isArray(value.value.data)) bytes = Buffer.from(value.value.data);
@@ -1298,6 +1422,10 @@ export function createLocalGame({
     if (!bytes?.length) return {};
     try {
       const parsed = JSON.parse(bytes.toString('utf8'));
+      if (Array.isArray(parsed) && parsed.length >= 2
+        && Number.isSafeInteger(Number(parsed[0])) && Number.isSafeInteger(Number(parsed[1]))) {
+        return { activity_id: Number(parsed[0]), buy_skin_tid: Number(parsed[1]) };
+      }
       const tuple = Array.isArray(parsed) && Array.isArray(parsed[1]) ? parsed[1] : [];
       return {
         is_extra_buy: tuple[0] === true,
@@ -1365,6 +1493,16 @@ export function createLocalGame({
   // Triple match commands: the protobuf ones are unpacked, the rest (fight retry,
   // giveup and record, pvp giveup) arrive as a bare Erlang term.
   const triMatchSchemas = Object.freeze({
+    112001: 'pb_battle_tri_match_hero_up_lv_req',
+    112002: 'pb_battle_tri_match_hero_up_star_req',
+    113001: 'pb_battle_tri_match_equip_up_req',
+    113002: 'pb_battle_tri_match_equip_swap_req',
+    113003: 'pb_battle_tri_match_equip_multiple_up_req',
+    114001: 'pb_battle_tri_match_lineup_add_req',
+    114002: 'pb_battle_tri_match_lineup_edit_req',
+    114003: 'pb_battle_tri_match_lineup_set_name_req',
+    114004: 'pb_battle_tri_match_lineup_delete_req',
+    114005: 'pb_battle_tri_match_edit_playing_lineup_req',
     115001: 'pb_triple_match_fight_request',
     115002: 'pb_triple_match_fight_swap_tile_req',
     115004: 'pb_triple_match_fight_ready_req',
@@ -1489,7 +1627,24 @@ export function createLocalGame({
         send(seq, Buffer.alloc(0), { err: -1, stacktrace: 'Login required' });
         return;
       }
-      const commandGate = commandRegistryHasGates ? commandRegistry.gate(type, features.openIds()) : null;
+      // R1's unresolved command set must reach the same business refusal even
+      // when the command catalog also has an incomplete FunOpen rule. These
+      // commands perform no read or mutation, so handling them before gates
+      // cannot expose a feature; it only prevents a misleading 309 response.
+      if (r1FailClosed.supports(type)) {
+        try {
+          r1FailClosed.execute(type, request.data);
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'r1_command_refused', type, seq, code, message: error.message });
+        }
+        return;
+      }
+      // A first login creates the account/role below. Looking up its function
+      // bitmap before that point disconnects a genuinely empty realm.
+      const commandGate = phase === 'ready' && commandRegistryHasGates
+        ? commandRegistry.gate(type, features.openIds()) : null;
       if (commandGate && !commandGate.allowed) {
         log({
           event: 'fun_open_command_denied', type, access: commandGate.access,
@@ -1759,7 +1914,9 @@ export function createLocalGame({
               if (Number.isSafeInteger(argument) && argument > 0) lineupType = argument;
             } catch {}
           }
-          const value = attributePowerCache.get({ model: store.read(), lineupType, heroTables, attributeTables });
+          const model = store.read();
+          const globalAttrs = tacticsGlobalAttrs(model);
+          const value = attributePowerCache.get({ model, lineupType, heroTables, attributeTables, globalAttrs });
           send(seq, pack('pb_attr_lineup_all_info', value));
           log({ event: 'role_attr_info_sent', type, seq, lineupType, lineupPower: value.lineup_attr.lineup_power, entities: value.lineup_attr.attr_list.length });
         } catch (error) {
@@ -2449,6 +2606,19 @@ export function createLocalGame({
         }
         return;
       }
+      if (buySkinAct.supports(type)) {
+        try {
+          const input = unpackRequest('pb_buy_skin_free_req', request.data);
+          const result = buySkinAct.execute(type, input);
+          send(seq, result.data);
+          log({ event: 'buy_skin_free_award_committed', type, seq, ...result.value });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'buy_skin_free_award_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (benefitCommerce.supports(type)) {
         // 块 I（PAY-*）的礼包/通行证/基金/拍卖命令入口。可结算的命令在这里真实
         // 扣发并写回登录模块；配置表缺失的命令返回 5 与具体原因，避免用固定空包
@@ -2530,11 +2700,13 @@ export function createLocalGame({
           const options = rechargeOptions(args[1]);
           const itemTid = Number(args[2]);
           if (!Number.isSafeInteger(itemTid) || itemTid < 0) throw new GameError(1, 'Invalid recharge payment item');
-          wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
+          if (!wallet.isBuySkinProduct(productId)) {
+            wallet.assertPurchaseAvailable({ product_id: productId, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index, buy_skin_tid: options.buy_skin_tid });
+          }
           let order;
           if (itemTid === 0) {
             // RechargeMgr sends zero for normal balance payment.
-            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index, buy_skin_tid: options.buy_skin_tid });
           } else {
             const product = wallet.snapshot().products.find(value => value.id === productId);
             if (!product) throw new GameError(5, 'Unsupported voucher recharge product');
@@ -2546,7 +2718,7 @@ export function createLocalGame({
             const maximum = voucher.autoCount(product.price_cents);
             const voucherCount = Math.min(available, maximum);
             if (voucherCount <= 0) throw new GameError(302, 'Voucher balance is insufficient');
-            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index });
+            order = wallet.buy({ account_id: wallet.accountId, product_id: productId, request_id: 'native:' + id + ':' + seq, voucher_count: voucherCount, extra_buy: options.is_extra_buy, activity_id: options.activity_id, activity_version: options.activity_version, period: options.period, day_index: options.day_index, buy_skin_tid: options.buy_skin_tid });
           }
           send(seq, Buffer.from(order.notification, 'base64'));
           log({ event: 'voucher_recharge_committed', type, seq, productId, itemTid, orderId: order.order_id, voucherQuantity: order.voucher_quantity, voucherAmountCents: order.voucher_amount_cents, balancePaidCents: order.balance_paid_cents, extraBuy: options.is_extra_buy, period: options.period, dayIndex: options.day_index, additionalPurchase: order.daily_discount_additional });
@@ -2913,9 +3085,9 @@ export function createLocalGame({
       }
       // BATTLE-TRIPLEMATCHFIGHT (115001-115006), BATTLE-TRIMATCHTOWER
       // (119001-119003) and BATTLE-TRIMATCHPVP (121001-121004).
-      if (triMatchFight.supports(type) || triMatchTower.supports(type) || triMatchPvp.supports(type)) {
+      if (triMatch.supports(type) || triMatchFight.supports(type) || triMatchTower.supports(type) || triMatchPvp.supports(type)) {
         try {
-          const service = triMatchFight.supports(type) ? triMatchFight : triMatchTower.supports(type) ? triMatchTower : triMatchPvp;
+          const service = triMatch.supports(type) ? triMatch : triMatchFight.supports(type) ? triMatchFight : triMatchTower.supports(type) ? triMatchTower : triMatchPvp;
           const schema = triMatchSchemas[type];
           const input = schema
             ? unpack(schema, request.data)
@@ -3288,6 +3460,27 @@ export function createLocalGame({
         }
         return;
       }
+      const itemCommand = itemCommandServices.find(service => service.supports(type));
+      if (itemCommand) {
+        try {
+          const input = itemCommand.decode
+            ? await itemCommand.decode(type, request.data, {
+              unpack: unpackRequest,
+              etf: async data => { const decoded = await decodeEtf(data); return decoded?.value ?? decoded; },
+              singleId: singleIdArgument
+            })
+            : undefined;
+          const result = itemCommand.execute(type, input);
+          send(seq, result.data);
+          publishResultPushes(result.pushes, { kind: 'role', roleId: connectionRoleId });
+          log({ event: 'item_command_committed', type, seq, responseBytes: result.data.length, ...result.valueForLog });
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'item_command_rejected', type, seq, code, message: error.message });
+        }
+        return;
+      }
       if (progression.supports(type)) {
         try {
           const input = type === 636 ? unpack('pb_hero_up_lv_req', request.data) : type === 640 ? unpack('pb_hero_wake_req', request.data) : await decodeEtf(request.data);
@@ -3409,18 +3602,18 @@ export function createLocalGame({
         return;
       }
       if (type === 8000) {
-        const requestData = unpack('pb_req_save_process', request.data);
-        store.transaction(model => { for (const process of requestData.req_list ?? []) model.state.guides[process.key_id] = process.process_id; });
-        // Every accepted save request is a completed client guide step. The
-        // response uses pb_guide_process, whose is_over field must be true;
-        // echoing the request params directly leaves the field false.
-        const responseType = root.lookupType('pb_req_save_process_back');
-        const processList = (requestData.req_list ?? []).map(process => ({
-          process_id: process.process_id,
-          key_id: process.key_id,
-          is_over: true
-        }));
-        send(seq, pack(responseType.name, { process_list: processList })); return;
+        try {
+          const requestData = unpack('pb_req_save_process', request.data);
+          const data = store.transaction(model => pack('pb_req_save_process_back', saveGuideProcesses({
+            model, codec, reqList: requestData.req_list ?? []
+          })));
+          send(seq, data);
+        } catch (error) {
+          const code = error instanceof GameError ? error.code : 2;
+          send(seq, Buffer.alloc(0), { err: code });
+          log({ event: 'guide_process_rejected', type, seq, code, message: error.message });
+        }
+        return;
       }
       if (shop.supports(type)) {
         try {
@@ -3589,6 +3782,7 @@ export function createLocalGame({
       artifactDrawAct,
       battleRecords,
       benefitCommerce,
+      buySkinAct,
       bonusDraw,
       cabin,
       campTower,
@@ -3629,6 +3823,7 @@ export function createLocalGame({
       guildSociety,
       handbook,
       heroCommandServices,
+      itemCommandServices,
       heroDrawActivity,
       heroExtra,
       heroFavor,
@@ -3661,6 +3856,7 @@ export function createLocalGame({
       rechargeBonus,
       rechargeRebateReset,
       recruit,
+      r1FailClosed,
       redCliff,
       relic,
       roleService,
@@ -3680,6 +3876,7 @@ export function createLocalGame({
       topArena,
       tournament,
       towerDefense,
+      triMatch,
       triMatchFight,
       triMatchPvp,
       triMatchTower,

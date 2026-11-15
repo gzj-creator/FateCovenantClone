@@ -16,11 +16,11 @@ test('the exported FunOpen table covers all client rows with source hashes', () 
   assert.equal(new Set(config.rules.map(rule => rule.funId)).size, 523);
   assert.deepEqual(config.summary, {
     rules: 523,
-    ready: 164,
-    evidenceGap: 359,
+    ready: 177,
+    evidenceGap: 346,
     uniqueAsserts: 271,
-    mappedAsserts: 262,
-    readyAsserts: 85,
+    mappedAsserts: 271,
+    readyAsserts: 91,
     dynamicArgs: {
       1: 'GetRoleLv',
       2: 'GetPassedSection',
@@ -41,15 +41,23 @@ test('bytecode-proven row conditions retain their exact comparator and threshold
     && rule.conditions[0]?.type === 'server_day');
   assert.ok(serverDays.length > 0);
   assert.ok(serverDays.every(rule => rule.conditions[0].operator === '>='));
+  assert.deepEqual(byId.get(1514).conditions, [
+    { type: 'mission', operator: '>=', args: { missionId: 30203 } }
+  ]);
 });
 
-test('unproven expressions, empty assert lists and non-client targets stay evidence gaps', () => {
+test('unproven expressions, dynamic Show lists, empty asserts and non-client targets stay evidence gaps', () => {
   assert.equal(byId.get(1005).status, 'evidence_gap');
-  assert.match(byId.get(1005).evidenceGap[0].reason, /^unmapped_dynamic_arg_/);
+  assert.equal(byId.get(1005).evidenceGap[0].reason,
+    'assert_condition_mapping_not_enabled_for_business_rule');
   assert.equal(byId.get(1006).status, 'evidence_gap');
   assert.equal(byId.get(1006).evidenceGap[0].reason, 'expression_not_supported');
   assert.equal(byId.get(1215).status, 'evidence_gap');
   assert.equal(byId.get(1215).evidenceGap[0].reason, 'assert_list_missing_or_table_empty');
+  for (const id of [1105, 1263, 1286, 1299, 1319, 1321, 1322, 1447]) {
+    assert.equal(byId.get(id).status, 'evidence_gap');
+    assert.ok(byId.get(id).evidenceGap.some(gap => gap.reason === 'dynamic_show_asserts_unproven'));
+  }
   for (const rule of config.rules.filter(rule => rule.target !== 1)) {
     assert.equal(rule.status, 'evidence_gap');
     assert.ok(rule.evidenceGap.some(gap => gap.reason.endsWith('_not_client_requested')));
@@ -57,7 +65,7 @@ test('unproven expressions, empty assert lists and non-client targets stay evide
 });
 
 test('only proven numeric condition families and comparators are executable', () => {
-  const allowedTypes = new Set(['role_level', 'create_day', 'server_day']);
+  const allowedTypes = new Set(['role_level', 'create_day', 'server_day', 'mission']);
   const allowedOperators = new Set(['>=', '>', '<=', '<', '==', '!=']);
   for (const rule of config.rules) {
     assert.ok(['ready', 'evidence_gap'].includes(rule.status));
@@ -65,10 +73,12 @@ test('only proven numeric condition families and comparators are executable', ()
       assert.deepEqual(rule.conditions, []);
       assert.ok(rule.evidenceGap.length > 0);
     } else {
-      assert.equal(rule.asserts.length, 1);
-      assert.equal(rule.conditions.length, 1);
-      assert.ok(allowedTypes.has(rule.conditions[0].type));
-      assert.ok(allowedOperators.has(rule.conditions[0].operator));
+      assert.ok(rule.asserts.length >= 1);
+      assert.equal(rule.conditions.length, rule.asserts.length);
+      for (const condition of rule.conditions) {
+        assert.ok(allowedTypes.has(condition.type));
+        assert.ok(allowedOperators.has(condition.operator));
+      }
     }
   }
 });

@@ -3,11 +3,11 @@
   "source": {
     "gateway": {
       "path": "personal-server/game/gateway.mjs",
-      "sha256": "C462722BF8D1ECB02CBF02656BA066606963C70344D393B34BCCC991D2C6C9AA"
+      "sha256": "02AF58E74DC6E13E789A15FC87C2D22A7FA5EE99453CBED15B6E53EDD5B937CA"
     },
     "catalog": {
       "path": "personal-server/config/command-catalog.json",
-      "sha256": "005C7527E2EC55AD061A3ADD178EFE30E34ABEE2E5D029DC4F23A7DF20F6DAB9"
+      "sha256": "38FE0BD8D080010A315B4C6CBA25B9C3859F017B90702785ACCBAF875E004F80"
     },
     "staticInterfaces": {
       "path": "agent/workflow/interface-catalog/static-interfaces.json",
@@ -17,12 +17,12 @@
   "method": "runtime supports() snapshot + ordered top-level gateway type conditions + static C2S metadata",
   "summary": {
     "total": 1407,
-    "serviceRoute": 1323,
+    "serviceRoute": 1383,
     "gatewayRoute": 18,
     "multiOwner": 6,
-    "unrouted": 60,
-    "requestEncodingMismatch": 172,
-    "requestEncodingUnverified": 982,
+    "unrouted": 0,
+    "requestEncodingMismatch": 186,
+    "requestEncodingUnverified": 933,
     "responseRuntimeUnverified": 1407,
     "responseSchemaMissing": 223
   },
@@ -917,21 +917,21 @@
       "module": "ResCompleteCmd",
       "task": "ITEM-RESCOMPLETE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 304,
@@ -2194,21 +2194,21 @@
       "module": "FavourIntimacyCmd",
       "task": "HERO-FAVOURINTIMACY",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[10]",
+      "owners": [
+        "heroCommandServices[10]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hero_intimacy_add_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_intimacy_add_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 670,
@@ -2216,21 +2216,21 @@
       "module": "FavourIntimacyCmd",
       "task": "HERO-FAVOURINTIMACY",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[10]",
+      "owners": [
+        "heroCommandServices[10]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hero_intimacy_date_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_intimacy_date_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 671,
@@ -2238,21 +2238,21 @@
       "module": "FavourIntimacyCmd",
       "task": "HERO-FAVOURINTIMACY",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[10]",
+      "owners": [
+        "heroCommandServices[10]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hero_intimacy_story_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_intimacy_story_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 672,
@@ -2308,20 +2308,22 @@
       "module": "IntelliCmd",
       "task": "HERO-INTELLI",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_intelli_unlock_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "intelli_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -2330,20 +2332,22 @@
       "module": "IntelliCmd",
       "task": "HERO-INTELLI",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_intelli_batch_handle",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "intelli_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -2352,9 +2356,11 @@
       "module": "CombatPowerCmd",
       "task": "HERO-COMBATPOWER",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[7]",
+      "owners": [
+        "heroCommandServices[7]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
@@ -2374,21 +2380,22 @@
       "module": "CombatPowerCmd",
       "task": "HERO-COMBATPOWER",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[8]",
+      "owners": [
+        "heroCommandServices[8]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "etf",
       "responseSchema": null,
       "responseDefinitionPresent": null,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "response_schema_missing",
-        "request_encoding_unverified"
+        "response_schema_missing"
       ]
     },
     {
@@ -6403,15 +6410,13 @@
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_up_star_gift_req",
-      "runtimeRequestEncoding": "conditional",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_up_star_gift_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 31053,
@@ -6427,15 +6432,15 @@
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "conditional",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "protobuf",
+      "requestEncodingDifference": true,
       "responseEncoding": "etf",
       "responseSchema": null,
       "responseDefinitionPresent": null,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
         "response_schema_missing",
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -7961,21 +7966,21 @@
       "module": "GrowthTargetCmd",
       "task": "ITEM-GROWTHTARGET",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[2]",
+      "owners": [
+        "itemCommandServices[2]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_growth_target_phase_award_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_growth_target_phase_award_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 69007,
@@ -7983,21 +7988,21 @@
       "module": "GrowthTargetCmd",
       "task": "ITEM-GROWTHTARGET",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[2]",
+      "owners": [
+        "itemCommandServices[2]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_growth_target_task_award_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_growth_target_task_award_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 69101,
@@ -8005,21 +8010,21 @@
       "module": "TaskAwardCmd",
       "task": "ITEM-TASKAWARD",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[3]",
+      "owners": [
+        "itemCommandServices[3]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_task_award_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 69102,
@@ -8027,21 +8032,21 @@
       "module": "TaskAwardCmd",
       "task": "ITEM-TASKAWARD",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[3]",
+      "owners": [
+        "itemCommandServices[3]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_task_award_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 69301,
@@ -8049,21 +8054,21 @@
       "module": "OpenServerBoxCmd",
       "task": "ITEM-OPENSERVERBOX",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[1]",
+      "owners": [
+        "itemCommandServices[1]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_open_server_box_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 69302,
@@ -8071,21 +8076,21 @@
       "module": "OpenServerBoxCmd",
       "task": "ITEM-OPENSERVERBOX",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[1]",
+      "owners": [
+        "itemCommandServices[1]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 75001,
@@ -9221,20 +9226,22 @@
       "module": "HookCmd",
       "task": "ITEM-HOOK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hook_gather_or_preview_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hook_gather_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -9243,20 +9250,22 @@
       "module": "HookCmd",
       "task": "ITEM-HOOK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hook_gather_or_preview_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hook_preview_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -9265,20 +9274,22 @@
       "module": "HookCmd",
       "task": "ITEM-HOOK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hook_fast_gather_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hook_fast_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -9287,20 +9298,22 @@
       "module": "HookCmd",
       "task": "ITEM-HOOK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hook_item_fast_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hook_item_fast_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -9309,21 +9322,21 @@
       "module": "HookCmd",
       "task": "ITEM-HOOK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 78901,
@@ -11667,21 +11680,21 @@
       "module": "TacticsCmd",
       "task": "HERO-TACTICS",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[11]",
+      "owners": [
+        "heroCommandServices[11]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_tactics_level_up_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 84502,
@@ -11689,21 +11702,21 @@
       "module": "TacticsCmd",
       "task": "HERO-TACTICS",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[11]",
+      "owners": [
+        "heroCommandServices[11]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_tactics_reset_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 84601,
@@ -11805,20 +11818,22 @@
       "module": "TaskGroupCmd",
       "task": "ITEM-TASKGROUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_task_group_task_award_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_task_group_task_award_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -11827,20 +11842,22 @@
       "module": "TaskGroupCmd",
       "task": "ITEM-TASKGROUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_task_group_group_award_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_task_group_group_award_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -12183,21 +12200,21 @@
       "module": "CareerLifeCmd",
       "task": "ITEM-CAREERLIFE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[4]",
+      "owners": [
+        "itemCommandServices[4]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_career_life_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 85901,
@@ -12943,21 +12960,21 @@
       "module": "LineupSnapshotCmd",
       "task": "HERO-LINEUPSNAPSHOT",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_lineup_hero_server",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 87702,
@@ -12965,20 +12982,22 @@
       "module": "LineupSnapshotCmd",
       "task": "HERO-LINEUPSNAPSHOT",
       "access": "read",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_lineup_snapshot_list_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_lineup_snapshot_list",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -13511,20 +13530,22 @@
       "module": "ResRollbackCmd",
       "task": "ITEM-RESROLLBACK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_res_rollback_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_rollback_preview_ret",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -13533,20 +13554,22 @@
       "module": "ResRollbackCmd",
       "task": "ITEM-RESROLLBACK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_res_rollback_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_rollback_ret",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -14366,20 +14389,22 @@
       "module": "HeroBlazonCmd",
       "task": "HERO-HEROBLAZON",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hero_blazon_up",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_blazon_up_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -14388,20 +14413,22 @@
       "module": "HeroBlazonCmd",
       "task": "HERO-HEROBLAZON",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_hero_blazon_update_talent_req",
-      "runtimeRequestEncoding": "unverified",
-      "requestEncodingDifference": false,
+      "runtimeRequestEncoding": "etf",
+      "requestEncodingDifference": true,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_blazon_update_talent_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
       "evidenceGaps": [
-        "request_encoding_unverified"
+        "request_encoding_mismatch"
       ]
     },
     {
@@ -14410,21 +14437,21 @@
       "module": "HeroBlazonCmd",
       "task": "HERO-HEROBLAZON",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[9]",
+      "owners": [
+        "heroCommandServices[9]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_blazon_update_skill_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 88956,
@@ -14432,21 +14459,21 @@
       "module": "HeroBlazonCmd",
       "task": "HERO-HEROBLAZON",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 88957,
@@ -14454,21 +14481,21 @@
       "module": "HeroBlazonCmd",
       "task": "HERO-HEROBLAZON",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[9]",
+      "owners": [
+        "heroCommandServices[9]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_blazon_bond_up_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 88961,
@@ -14520,21 +14547,21 @@
       "module": "NewHeroExclusiveCmd",
       "task": "HERO-NEWHEROEXCLUSIVE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_shop_info",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 88964,
@@ -14542,21 +14569,21 @@
       "module": "NewHeroExclusiveCmd",
       "task": "HERO-NEWHEROEXCLUSIVE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 88965,
@@ -14610,21 +14637,21 @@
       "module": "NewHeroExclusiveCmd",
       "task": "HERO-NEWHEROEXCLUSIVE",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 89001,
@@ -15846,21 +15873,21 @@
       "module": "HeroLegendCmd",
       "task": "HERO-HEROLEGEND",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[12]",
+      "owners": [
+        "heroCommandServices[12]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_legend_book_active",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 89802,
@@ -15868,21 +15895,21 @@
       "module": "HeroLegendCmd",
       "task": "HERO-HEROLEGEND",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[12]",
+      "owners": [
+        "heroCommandServices[12]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_legend_book_active",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 89803,
@@ -15890,21 +15917,21 @@
       "module": "HeroLegendCmd",
       "task": "HERO-HEROLEGEND",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[12]",
+      "owners": [
+        "heroCommandServices[12]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_legend_book_active_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 89804,
@@ -15912,21 +15939,21 @@
       "module": "HeroLegendCmd",
       "task": "HERO-HEROLEGEND",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[12]",
+      "owners": [
+        "heroCommandServices[12]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_hero_legend_book_active",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 89901,
@@ -18794,21 +18821,21 @@
       "module": "MysteryShopCmd",
       "task": "ITEM-MYSTERYSHOP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_mystery_shop",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 91502,
@@ -18816,21 +18843,21 @@
       "module": "MysteryShopCmd",
       "task": "ITEM-MYSTERYSHOP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_mystery_shop_manual_refresh_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 91503,
@@ -18838,21 +18865,21 @@
       "module": "MysteryShopCmd",
       "task": "ITEM-MYSTERYSHOP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[5]",
+      "owners": [
+        "itemCommandServices[5]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 91601,
@@ -20649,21 +20676,21 @@
       "module": "LinearLevelCmd",
       "task": "ITEM-LINEARLEVEL",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "itemCommandServices[0]",
+      "owners": [
+        "itemCommandServices[0]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_linear_level_box_award_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_linear_level_box_award_rsp",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 93601,
@@ -26032,21 +26059,21 @@
       "module": "LeaserStarUpCmd",
       "task": "HERO-LEASERSTARUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[5]",
+      "owners": [
+        "heroCommandServices[5]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_leaser_star_up_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_leaser_star_up_rev",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 101202,
@@ -26054,21 +26081,21 @@
       "module": "LeaserStarUpCmd",
       "task": "HERO-LEASERSTARUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[5]",
+      "owners": [
+        "heroCommandServices[5]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_leaser_star_up_reset_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "protobuf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_leaser_star_up_reset_rev",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 101301,
@@ -26076,21 +26103,21 @@
       "module": "PeriodTaskCmd",
       "task": "ITEM-PERIODTASK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_period_task_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 101302,
@@ -26098,21 +26125,21 @@
       "module": "PeriodTaskCmd",
       "task": "ITEM-PERIODTASK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_period_task_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 101303,
@@ -26120,21 +26147,21 @@
       "module": "PeriodTaskCmd",
       "task": "ITEM-PERIODTASK",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "r1FailClosed",
+      "owners": [
+        "r1FailClosed"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "etf",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_period_task_back",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": [
-        "request_encoding_unverified"
-      ]
+      "evidenceGaps": []
     },
     {
       "type": 101401,
@@ -27629,9 +27656,11 @@
       "module": "CampHaloCmd",
       "task": "HERO-CAMPHALO",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "heroCommandServices[6]",
+      "owners": [
+        "heroCommandServices[6]"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "etf",
       "requestSchema": null,
@@ -28449,20 +28478,22 @@
       "task": "PAY-BUYSKINACT",
       "access": "write",
       "status": "service_route",
-      "reachableOwner": "benefitCommerce",
+      "reachableOwner": "buySkinAct",
       "owners": [
-        "benefitCommerce"
+        "buySkinAct"
       ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_buy_skin_free_req",
-      "runtimeRequestEncoding": "protobuf",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_res_to_client",
       "responseDefinitionPresent": true,
       "responseRuntimeVerification": "unverified",
-      "evidenceGaps": []
+      "evidenceGaps": [
+        "request_encoding_unverified"
+      ]
     },
     {
       "type": 104101,
@@ -32541,13 +32572,15 @@
       "module": "BattleTriMatchHeroCmd",
       "task": "BATTLE-BATTLETRIMATCHHERO",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_hero_up_lv_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_hero_up_lv_rsp",
@@ -32563,13 +32596,15 @@
       "module": "BattleTriMatchHeroCmd",
       "task": "BATTLE-BATTLETRIMATCHHERO",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_hero_up_star_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_hero_up_star_rsp",
@@ -32585,13 +32620,15 @@
       "module": "BattleTriMatchEquipCmd",
       "task": "BATTLE-BATTLETRIMATCHEQUIP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_equip_up_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_equip_up_rsp",
@@ -32607,13 +32644,15 @@
       "module": "BattleTriMatchEquipCmd",
       "task": "BATTLE-BATTLETRIMATCHEQUIP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_equip_swap_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_equip_swap_rsp",
@@ -32629,13 +32668,15 @@
       "module": "BattleTriMatchEquipCmd",
       "task": "BATTLE-BATTLETRIMATCHEQUIP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_equip_multiple_up_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_equip_multiple_up_rsp",
@@ -32651,13 +32692,15 @@
       "module": "BattleTriMatchLineupCmd",
       "task": "BATTLE-BATTLETRIMATCHLINEUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_lineup_add_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_lineup_add_rsp",
@@ -32673,13 +32716,15 @@
       "module": "BattleTriMatchLineupCmd",
       "task": "BATTLE-BATTLETRIMATCHLINEUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_lineup_edit_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_lineup_edit_rsp",
@@ -32695,13 +32740,15 @@
       "module": "BattleTriMatchLineupCmd",
       "task": "BATTLE-BATTLETRIMATCHLINEUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_lineup_set_name_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_lineup_set_name_rsp",
@@ -32717,13 +32764,15 @@
       "module": "BattleTriMatchLineupCmd",
       "task": "BATTLE-BATTLETRIMATCHLINEUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_lineup_delete_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_lineup_delete_rsp",
@@ -32739,13 +32788,15 @@
       "module": "BattleTriMatchLineupCmd",
       "task": "BATTLE-BATTLETRIMATCHLINEUP",
       "access": "write",
-      "status": "unrouted",
-      "reachableOwner": null,
-      "owners": [],
+      "status": "service_route",
+      "reachableOwner": "triMatch",
+      "owners": [
+        "triMatch"
+      ],
       "shadowedOwners": [],
       "requestEncoding": "protobuf",
       "requestSchema": "pb_battle_tri_match_edit_playing_lineup_req",
-      "runtimeRequestEncoding": "unverified",
+      "runtimeRequestEncoding": "conditional",
       "requestEncodingDifference": false,
       "responseEncoding": "protobuf",
       "responseSchema": "pb_battle_tri_match_edit_playing_lineup_rsp",

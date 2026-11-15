@@ -1,5 +1,8 @@
 # 招募、抽取、翻牌与转盘活动
 
+<!-- r1-rule-status -->
+> 历史任务/实施快照：本页不是现行规则或实时状态。2026-11-15起规划按[统一路线](../../gameplay-operations/11-project-roadmap.md)，规则按[最终R1基线](../../gameplay-operations/12-final-rule-baseline.md)及[297任务裁定](../../gameplay-operations/rules/final-rule-register.md)。旧卡号、证据和当时验证保留；不能继承旧完成状态或以旧源码建议覆盖R1。
+
 本分区 31 个模块任务，74 条未路由/明确拒绝/占位命令。优先级：P1/P2。
 
 共同依赖：CORE-EVENTS、CORE-DRAW-POOLS；每个奖池独立持久化保底/轮次，库存和消耗在同一事务。

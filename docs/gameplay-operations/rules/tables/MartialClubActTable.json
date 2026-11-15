@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "table": "MartialClubActTable",
+  "assetPath": "personal-server/assets/tables/MartialClubActTable.data.lua.json.gz",
+  "assetSha256": "3590cabae87ed86e91b23902e06951d067250dc01f6cc408622349ed985143b7",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/MartialClubActTable.data.lua.json.gz",
+      "sha256": "3590cabae87ed86e91b23902e06951d067250dc01f6cc408622349ed985143b7"
+    }
+  ],
+  "sourceMetadata": "16600860113874618000-MartialClubActTable.data.lua.bin",
+"families":{
+"MartialClubAct":{"status":"decoded-rows","count":10,"externalReferenceCount":0,"rows":[
+{"tid":4,"first_award":{"global":"TableEmpty"},"server_award":[[1241200,2]]},
+{"tid":8,"first_award":{"global":"TableEmpty"},"server_award":[[1251200,1]]},
+{"tid":12,"first_award":{"global":"TableEmpty"},"server_award":[[1251200,1]]},
+{"tid":16,"first_award":{"global":"TableEmpty"},"server_award":[[1261200,1]]},
+{"tid":20,"first_award":{"global":"TableEmpty"},"server_award":[[1261200,1]]},
+{"tid":24,"first_award":{"global":"TableEmpty"},"server_award":[[1271200,1]]},
+{"tid":28,"first_award":{"global":"TableEmpty"},"server_award":[[1271200,1]]},
+{"tid":32,"first_award":{"global":"TableEmpty"},"server_award":[[1271200,1]]},
+{"tid":36,"first_award":{"global":"TableEmpty"},"server_award":[[1271200,1]]},
+{"tid":40,"first_award":{"global":"TableEmpty"},"server_award":[[1271200,1]]}
+]}
+}
+}

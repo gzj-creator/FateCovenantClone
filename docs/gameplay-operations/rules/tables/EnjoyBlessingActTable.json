@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "table": "EnjoyBlessingActTable",
+  "assetPath": "personal-server/assets/tables/EnjoyBlessingActTable.data.lua.json.gz",
+  "assetSha256": "e5dda58bca93ab699e365da70b4d2bfb40ccd5a2432f2025c964a9b3fdb4a2ca",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/EnjoyBlessingActTable.data.lua.json.gz",
+      "sha256": "e5dda58bca93ab699e365da70b4d2bfb40ccd5a2432f2025c964a9b3fdb4a2ca"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Version":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"rebate_library":1,"stop_day":18,"gift_library":1,"back_item":601500,"tid":1,"shake_active":250,"recharge_library":1},
+{"rebate_library":1,"stop_day":18,"gift_library":2,"back_item":601500,"tid":2,"shake_active":250,"recharge_library":1}
+]},
+"Purchase":{"status":"decoded-rows","count":14,"externalReferenceCount":0,"rows":[
+{"jump_func":38,"back_limit":1,"back_item":600,"type":1,"tid":1,"gift":140002},
+{"jump_func":141,"back_limit":1,"back_item":1000,"type":1,"tid":2,"gift":490003},
+{"jump_func":2856,"back_limit":1,"back_item":600,"type":1,"tid":3,"gift":1300061},
+{"jump_func":2856,"back_limit":1,"back_item":1000,"type":1,"tid":4,"gift":1300062},
+{"jump_func":2856,"back_limit":1,"back_item":2000,"type":1,"tid":5,"gift":1300063},
+{"jump_func":2856,"back_limit":1,"back_item":3000,"type":1,"tid":6,"gift":1300064},
+{"jump_func":2855,"back_limit":1,"back_item":1200,"type":1,"tid":7,"gift":1300082},
+{"jump_func":38,"back_limit":1,"back_item":600,"type":2,"tid":11,"gift":140002},
+{"jump_func":141,"back_limit":1,"back_item":1000,"type":2,"tid":12,"gift":490003},
+{"jump_func":2856,"back_limit":1,"back_item":600,"type":2,"tid":13,"gift":1300061},
+{"jump_func":2856,"back_limit":1,"back_item":1000,"type":2,"tid":14,"gift":1300062},
+{"jump_func":2856,"back_limit":1,"back_item":2000,"type":2,"tid":15,"gift":1300063},
+{"jump_func":2856,"back_limit":1,"back_item":3000,"type":2,"tid":16,"gift":1300064},
+{"jump_func":3068,"back_limit":1,"back_item":1200,"type":2,"tid":17,"gift":1300082}
+]},
+"Recharge":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"back_item":100,"tid":1,"back_limit":10,"type":1,"acc_cnt_new":10},
+{"back_item":200,"tid":2,"back_limit":20,"type":1,"acc_cnt_new":30},
+{"back_item":500,"tid":3,"back_limit":30,"type":1,"acc_cnt_new":68},
+{"back_item":1000,"tid":4,"back_limit":40,"type":1,"acc_cnt_new":128},
+{"back_item":8800,"tid":5,"back_limit":50,"type":1,"acc_cnt_new":1000}
+]},
+"Show":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"txt_rebate_tips":685037,"txt_rebate_title":685025,"txt_deposit_title":685024},
+{"tid":2,"txt_rebate_tips":692233,"txt_rebate_title":692229,"txt_deposit_title":692228}
+]},
+"Rebate":{"status":"decoded-rows","count":9,"externalReferenceCount":0,"rows":[
+{"back_weight":[1],"tid":1,"back_num":[100],"type":1,"have":[100,599]},
+{"back_weight":[1,30],"tid":2,"back_num":[100,600],"type":1,"have":[600,2999]},
+{"back_weight":[1,30,50],"tid":3,"back_num":[100,600,3000],"type":1,"have":[3000,6799]},
+{"back_weight":[30,50,19],"tid":4,"back_num":[600,3000,6800],"type":1,"have":[6800,9799]},
+{"back_weight":[20,20,20],"tid":5,"back_num":[3000,6800,9800],"type":1,"have":[9800,12799]},
+{"back_weight":[20,20,20],"tid":6,"back_num":[6800,9800,12800],"type":1,"have":[12800,32799]},
+{"back_weight":[20,20,20],"tid":7,"back_num":[9800,12800,32800],"type":1,"have":[32800,64799]},
+{"back_weight":[20,20,19],"tid":8,"back_num":[12800,32800,64800],"type":1,"have":[64800,100000]},
+{"back_weight":[10,15,69],"tid":9,"back_num":[12800,32800,64800],"type":1,"have":[100001,500000]}
+]}
+}
+}

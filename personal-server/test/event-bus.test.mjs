@@ -57,7 +57,7 @@ test('domain events run inside the transaction and defer callbacks until commit 
   assert.equal(fixture.store.read().role.level, 10);
 });
 
-test('a resource experience award opens functions and schedules one targeted 7201 notification after commit', t => {
+test('a resource experience award sends each full function ID in a targeted 7201 after commit', t => {
   const eventBus = createEventBus({ now: clock });
   const fixture = createGameFixture(t, codec, {
     prefix: 'fc-level-events-', eventBus, now: clock,
@@ -114,14 +114,14 @@ test('a resource experience award opens functions and schedules one targeted 720
   assert.ok(pushes.length >= 1);
   assert.deepEqual(pushLevels, [20], 'online notifications are emitted only after COMMIT');
   assert.equal(pushes.every(push => push.type === 7201 && push.roleId === fixture.store.read().state.roleId), true);
-  const notification = codec.unpack('res_notify_fun_open', pushes.find(push => push.targetTid === 1).data);
-  assert.equal(Number(notification.target_tid), 1);
-  assert.equal(notification.extra_ret_list.length, 1);
-  assert.equal(notification.extra_ret_list[0].flag, 1);
+  const notification = codec.unpack('res_notify_fun_open', pushes.find(push => push.funId === 1001).data);
+  assert.equal(Number(notification.target_tid), 1001);
+  assert.deepEqual(notification.extra_ret_list, []);
   const login = codec.unpack('res_fun_open_login', rawBinary(new Map(fixture.store.state().modules.value).get(3)));
   const target = login.target_list.find(value => Number(value.target_tid) === 1);
   assert.ok(target, `target 1 is present: ${JSON.stringify(login.target_list)}`);
-  const authoritative = Buffer.from(target.fun_open_state, 'base64');
-  assert.deepEqual(Buffer.from(notification.extra_ret_list[0].data, 'base64'), authoritative);
+  assert.equal(pushes.length, new Set(addedFeatures).size);
+  assert.deepEqual(pushes.map(push => Number(codec.unpack('res_notify_fun_open', push.data).target_tid)).sort((a, b) => a - b),
+    [...new Set(addedFeatures)].sort((a, b) => a - b));
   assert.equal(openFeatureIds(login).has(1001), true);
 });

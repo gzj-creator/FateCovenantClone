@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "table": "AnniversaryGameActTable",
+  "assetPath": "personal-server/assets/tables/AnniversaryGameActTable.data.lua.json.gz",
+  "assetSha256": "b59fc8c5ad601371c722c35b3ad30fc2daadd75a49ca37ae594323c7e907e9f4",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/AnniversaryGameActTable.data.lua.json.gz",
+      "sha256": "b59fc8c5ad601371c722c35b3ad30fc2daadd75a49ca37ae594323c7e907e9f4"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"AnniversaryGameAct":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"score_range":[0,10000],"skip_score":[4000,5000],"game_time":0,"rank_type":236,"tid":58},
+{"score_range":[10000,30000],"skip_score":[25000,30000],"game_time":30000,"rank_type":235,"tid":59},
+{"score_range":[0,10000],"skip_score":[4000,5000],"game_time":0,"rank_type":236,"tid":60},
+{"score_range":[10000,30000],"skip_score":[25000,30000],"game_time":30000,"rank_type":235,"tid":61}
+]},
+"Award":{"status":"decoded-rows","count":6,"externalReferenceCount":0,"rows":[
+{"tid":15801,"award":[[8801900,1000],[101500,100]]},
+{"tid":15901,"award":[[8801900,1000],[101500,100]]},
+{"tid":25901,"award":[[6821900,600],[101500,100]]},
+{"tid":35901,"award":[[6821900,600],[101500,100]]},
+{"tid":46001,"award":[[6821900,600],[101500,100]]},
+{"tid":56101,"award":[[6821900,600],[101500,100]]}
+]},
+"Version":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"award_times":1,"card_count":30,"open_type":0,"tid":1,"games":[59,58]},
+{"award_times":1,"card_count":30,"open_type":1,"tid":2,"games":[59]},
+{"award_times":1,"card_count":30,"open_type":1,"tid":3,"games":[59]},
+{"award_times":1,"card_count":30,"open_type":1,"tid":4,"games":[60]},
+{"award_times":1,"card_count":30,"open_type":1,"tid":5,"games":[61]}
+]},
+"PlayCard":{"status":"decoded-rows","count":12,"externalReferenceCount":0,"rows":[
+{"game":59,"icon":"img_hd_bbt.png","tid":1},
+{"game":59,"icon":"img_hd_dg.png","tid":2},
+{"game":59,"icon":"img_hd_ttq.png","tid":3},
+{"game":59,"icon":"img_hd_zsdg.png","tid":4},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu1.png","tid":5},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu2.png","tid":6},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu3.png","tid":7},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu4.png","tid":8},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu5.png","tid":9},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu6.png","tid":10},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu7.png","tid":11},
+{"game":61,"icon":"icon_hd_kzgj_fp_guaiwu8.png","tid":12}
+]}
+}
+}

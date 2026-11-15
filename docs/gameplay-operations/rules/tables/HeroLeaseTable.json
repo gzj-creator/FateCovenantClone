@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "table": "HeroLeaseTable",
+  "assetPath": "personal-server/assets/tables/HeroLeaseTable.data.lua.json.gz",
+  "assetSha256": "07aa6df9720d3659004042e7fdc7ffe0def9c7c91c6d477d936b6de2717bf21f",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HeroLeaseTable.data.lua.json.gz",
+      "sha256": "07aa6df9720d3659004042e7fdc7ffe0def9c7c91c6d477d936b6de2717bf21f"
+    }
+  ],
+  "sourceMetadata": "13468504342652654000-HeroLeaseTable.data.lua.bin",
+"families":{
+"HeroLease":{"status":"decoded-rows","count":7,"externalReferenceCount":0,"rows":[
+{"tid":1,"max_lease_num":3,"max_place_num":3,"cache_flush_time":60,"day_refresh":true,"lua_module":{"global":"GuildEmployMgr"},"lease_award_id":401900,"lease_award_num":20,"lease_award_max":10},
+{"tid":3,"max_lease_num":0,"max_place_num":0,"cache_flush_time":0,"day_refresh":false,"lua_module":null,"lease_award_id":0,"lease_award_num":0,"lease_award_max":0},
+{"tid":4,"max_lease_num":0,"max_place_num":0,"cache_flush_time":0,"day_refresh":false,"lua_module":null,"lease_award_id":0,"lease_award_num":0,"lease_award_max":0},
+{"tid":5,"max_lease_num":0,"max_place_num":0,"cache_flush_time":0,"day_refresh":false,"lua_module":null,"lease_award_id":0,"lease_award_num":0,"lease_award_max":0},
+{"tid":6,"max_lease_num":0,"max_place_num":0,"cache_flush_time":0,"day_refresh":false,"lua_module":null,"lease_award_id":0,"lease_award_num":0,"lease_award_max":0},
+{"tid":7,"max_lease_num":0,"max_place_num":0,"cache_flush_time":0,"day_refresh":false,"lua_module":null,"lease_award_id":0,"lease_award_num":0,"lease_award_max":0},
+{"tid":900008,"max_lease_num":0,"max_place_num":0,"cache_flush_time":0,"day_refresh":false,"lua_module":null,"lease_award_id":0,"lease_award_num":0,"lease_award_max":0}
+]},
+"Hook":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":17,"lease":1,"index":1},
+{"tid":18,"lease":1,"index":2},
+{"tid":19,"lease":1,"index":3}
+]},
+"Lineup":{"status":"decoded-rows","count":31,"externalReferenceCount":0,"rows":[
+{"tid":2,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":640609800002,"tips":3931,"tip_params":[9,7],"can_remove":true},
+{"tid":26,"use_times":0,"lose_use_times":false,"use_lease":3,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":28,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":640609800002,"tips":3931,"tip_params":[9,7],"can_remove":true},
+{"tid":29,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":640609800002,"tips":3931,"tip_params":[9,7],"can_remove":true},
+{"tid":42,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":43,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":640609800002,"tips":3931,"tip_params":[9,7],"can_remove":true},
+{"tid":44,"use_times":0,"lose_use_times":false,"use_lease":4,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":47,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":640609800002,"tips":3931,"tip_params":[9,7],"can_remove":true},
+{"tid":48,"use_times":0,"lose_use_times":false,"use_lease":5,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":false},
+{"tid":57,"use_times":0,"lose_use_times":false,"use_lease":6,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":61,"use_times":0,"lose_use_times":false,"use_lease":6,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":76,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":77,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":92,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":93,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":94,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":95,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":96,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":107,"use_times":0,"lose_use_times":false,"use_lease":7,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":108,"use_times":0,"lose_use_times":false,"use_lease":7,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":109,"use_times":0,"lose_use_times":false,"use_lease":7,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":110,"use_times":0,"lose_use_times":false,"use_lease":7,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":129,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":130,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":131,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":132,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":143,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":144,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":true},
+{"tid":145,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":640609800002,"tips":3931,"tip_params":[9,7],"can_remove":true},
+{"tid":146,"use_times":1,"lose_use_times":false,"use_lease":1,"filter_hero":null,"show_condition":640609800002,"tips":3931,"tip_params":[9,7],"can_remove":true},
+{"tid":900001,"use_times":0,"lose_use_times":false,"use_lease":900008,"show_condition":null,"tips":0,"tip_params":{"global":"TableEmpty"},"can_remove":false}
+]}
+}
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "table": "MonthlyCardTable",
+  "assetPath": "personal-server/assets/tables/MonthlyCardTable.data.lua.json.gz",
+  "assetSha256": "babcde539be88cfc171b0c9e5bdad859fc5af2d993d0c332d0bc04b69470270d",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/MonthlyCardTable.data.lua.json.gz",
+      "sha256": "babcde539be88cfc171b0c9e5bdad859fc5af2d993d0c332d0bc04b69470270d"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Period":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":4,"start_day":3}
+]},
+"Award":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":4007,"reward":[[178002,15]]}
+]},
+"MonthlyCard":{"status":"decoded-rows","count":7,"externalReferenceCount":0,"rows":[
+{"reward":[[122702,1],[8501900,2],[101500,300]],"bg":"img_ffrk_diancangyuekan.png","show_name":23001,"img_name":"img_ffrk_diancangyuekanzi.png","tid":1,"recharge":140001,"reward_period":30,"rebate":0,"role_back_recharge":150019,"addition":0,"display_type":1,"sever_open_day":0,"active_icon":"img_bjjh_yxxingzuanyueka.png","addition_award":0,"item_recharge":150021},
+{"reward":[[122702,2],[8501900,4],[101500,600]],"bg":"img_ffrk_dashiyuekan.png","show_name":23004,"img_name":"img_ffrk_dashiyuekanzi.png","tid":2,"recharge":140002,"reward_period":30,"rebate":0,"role_back_recharge":150020,"addition":0,"display_type":2,"sever_open_day":0,"active_icon":"img_bjjh_zxxingzuanyueka.png","addition_award":0,"item_recharge":0},
+{"reward":[[101500,688]],"bg":"img_ffrk_xingzuanzhoukan.png","show_name":62671,"img_name":"img_ffrk_xingzuanzhoukanzi.png","tid":3,"recharge":140003,"reward_period":7,"rebate":0,"role_back_recharge":0,"addition":0,"display_type":0,"sever_open_day":0,"active_icon":"","addition_award":0,"item_recharge":0},
+{"reward":[[101500,10]],"bg":"img_ffrk_xingzuanzhoukan.png","show_name":65435,"img_name":"img_ffrk_xingzuanzhoukanzi.png","tid":4,"recharge":140004,"reward_period":7,"rebate":23,"role_back_recharge":0,"addition":0,"display_type":0,"sever_open_day":0,"active_icon":"","addition_award":0,"item_recharge":0},
+{"reward":[[101500,600]],"bg":"img_ffrk_diancangyuekan.png","show_name":665917,"img_name":"img_ffrk_diancangyuekanzi.png","tid":5,"recharge":140005,"reward_period":90,"rebate":0,"role_back_recharge":0,"addition":0,"display_type":1,"sever_open_day":12,"active_icon":"img_bjjh_yxxingzuanjika.png","addition_award":0,"item_recharge":0},
+{"reward":[[101500,60]],"bg":"img_ffrk_diancangyuekan.png","show_name":665917,"img_name":"img_ffrk_diancangyuekanzi.png","tid":6,"recharge":140006,"reward_period":90,"rebate":0,"role_back_recharge":0,"addition":0,"display_type":0,"sever_open_day":0,"active_icon":"","addition_award":0,"item_recharge":0},
+{"reward":[[101500,200],[1581200,4]],"bg":"img_ffrk_diancangyuekan.png","show_name":680063,"img_name":"img_ffrk_diancangyuekanzi.png","tid":7,"recharge":140007,"reward_period":30,"rebate":0,"role_back_recharge":0,"addition":0,"display_type":0,"sever_open_day":0,"active_icon":"","addition_award":0,"item_recharge":0}
+]}
+}
+}

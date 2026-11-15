@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "table": "RechargeBonusTable",
+  "assetPath": "personal-server/assets/tables/14863431925290164000-RechargeBonusTable.data.json.gz",
+  "assetSha256": "66ff5f54505d7f7fb085192438b0ad6c100b90d37d013dc89ddffc9af296c0e6",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/14863431925290164000-RechargeBonusTable.data.json.gz",
+      "sha256": "66ff5f54505d7f7fb085192438b0ad6c100b90d37d013dc89ddffc9af296c0e6"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Group":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"title":14795},
+{"tid":2,"title":14796}
+]},
+"Award":{"status":"decoded-rows","count":24,"externalReferenceCount":0,"rows":[
+{"tid":101,"is_big_award":false,"award_list":[[101500,666],[17002,500]],"belong_group":1},
+{"tid":102,"is_big_award":false,"award_list":[[2002,5],[17002,600]],"belong_group":1},
+{"tid":103,"is_big_award":false,"award_list":[[19002,2],[18002,20]],"belong_group":1},
+{"tid":104,"is_big_award":false,"award_list":[[101500,666],[17002,500]],"belong_group":1},
+{"tid":105,"is_big_award":true,"award_list":[[131200,30],[201500,2]],"belong_group":1},
+{"tid":106,"is_big_award":false,"award_list":[[201500,2],[901900,30]],"belong_group":1},
+{"tid":107,"is_big_award":true,"award_list":[[11200,1],[32002,20]],"belong_group":1},
+{"tid":108,"is_big_award":false,"award_list":[[231200,2],[201500,2]],"belong_group":1},
+{"tid":109,"is_big_award":false,"award_list":[[221200,1],[231200,2]],"belong_group":1},
+{"tid":110,"is_big_award":false,"award_list":[[4002,5],[20002,10]],"belong_group":1},
+{"tid":111,"is_big_award":false,"award_list":[[201500,2],[201500,2]],"belong_group":1},
+{"tid":112,"is_big_award":true,"award_list":[[22002,2],[33002,8]],"belong_group":1},
+{"tid":201,"is_big_award":false,"award_list":[[101500,666],[17002,500]],"belong_group":2},
+{"tid":202,"is_big_award":false,"award_list":[[2002,5],[17002,600]],"belong_group":2},
+{"tid":203,"is_big_award":false,"award_list":[[19002,2],[18002,20]],"belong_group":2},
+{"tid":204,"is_big_award":false,"award_list":[[101500,666],[17002,500]],"belong_group":2},
+{"tid":205,"is_big_award":true,"award_list":[[131200,30],[201500,2]],"belong_group":2},
+{"tid":206,"is_big_award":false,"award_list":[[201500,2],[901900,30]],"belong_group":2},
+{"tid":207,"is_big_award":true,"award_list":[[11200,1],[32002,20]],"belong_group":2},
+{"tid":208,"is_big_award":false,"award_list":[[231200,2],[201500,2]],"belong_group":2},
+{"tid":209,"is_big_award":false,"award_list":[[221200,1],[231200,2]],"belong_group":2},
+{"tid":210,"is_big_award":false,"award_list":[[4002,5],[20002,10]],"belong_group":2},
+{"tid":211,"is_big_award":false,"award_list":[[201500,2],[201500,2]],"belong_group":2},
+{"tid":212,"is_big_award":true,"award_list":[[22002,2],[33002,8]],"belong_group":2}
+]},
+"RechargeBonus":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"open_day":1,"tid":1,"group":[1]},
+{"open_day":35,"tid":2,"group":[1,2]}
+]}
+}
+}

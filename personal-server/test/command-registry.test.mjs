@@ -15,12 +15,12 @@ test('loads the complete 1407-command catalog with access declarations', () => {
   assert.equal(registry.command(7000).name, 'req_open_fun');
   assert.deepEqual(registry.dispatchCoverage(), {
     total: 1407,
-    serviceRoute: 1323,
+    serviceRoute: 1383,
     gatewayRoute: 18,
     multiOwner: 6,
-    unrouted: 60,
-    requestEncodingMismatch: 172,
-    requestEncodingUnverified: 982,
+    unrouted: 0,
+    requestEncodingMismatch: 186,
+    requestEncodingUnverified: 933,
     responseRuntimeUnverified: 1407,
     responseSchemaMissing: 223
   });

@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { ACTOR_ATTR } from '../game/attribute-service.mjs';
 import { resolveFightTeam } from '../game/fight-team-resolver.mjs';
+import { readJourneyFightTables } from '../config/journey-fight-tables.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
 
 const attributeTables = readAttributeTables();
 
-test('Fight403 fail-closes because its shipped def_team is empty', () => {
+test('an incomplete fight fails without fabricating a team', () => {
   const result = resolveFightTeam({
     fight: { tid: 403, type: 1, scene: 9, lineup: 76, def_team: null },
     teams: new Map(), npcAttrs: attributeTables.NpcAttr,
@@ -28,13 +30,13 @@ test('complete Fight -> Team -> NpcAttr chain selects exact rows and scales attr
         [ACTOR_ATTR.CRIT, 500], [ACTOR_ATTR.CRIT_HARM, 15000]
       ]
     }]]),
-    ratios: new Map([[1010100, { attr_list: [[ACTOR_ATTR.HP, 12000], [ACTOR_ATTR.ATTACK, 9000]] }]]),
+    ratios: new Map([[10101000, { attr_list: [[ACTOR_ATTR.HP, 12000], [ACTOR_ATTR.ATTACK, 9000]] }]]),
     npcTable: new Map([
       [1010100, { tid: 1010100, relation_hero: 1010101 }],
       [1020300, { tid: 1020300, relation_hero: 1020301 }]
     ]),
     ratioContext: [[ACTOR_ATTR.HP, 5000]],
-    fixedContext: [[ACTOR_ATTR.ATTACK, 20000]],
+    fixedContext: [{ type: ACTOR_ATTR.ATTACK, value: 2 }],
     attributeTables
   });
 
@@ -53,6 +55,26 @@ test('complete Fight -> Team -> NpcAttr chain selects exact rows and scales attr
   assert.equal(result.teams[0].entries[0].skillLv, 5001);
   assert.equal(result.teams[0].entries[0].tablePower, 4321);
   assert.ok(result.teams[0].entries[0].calculatedPower > 0);
+});
+
+test('original Fight403 and Michelle resolve their actual teams and locations', () => {
+  const journey = readJourneyFightTables();
+  const resolve = id => resolveFightTeam({
+    fight: journey.Fight.get(id), teams: journey.Team, fighters: journey.Fighter,
+    npcAttrs: attributeTables.NpcAttr, ratios: attributeTables.NpcAttrRatio,
+    npcTable: readHeroTables().Npc, attributeTables
+  });
+  const boss = resolve(105);
+  assert.equal(boss.resolved, true);
+  const entry = boss.teams[0].entries[0];
+  assert.deepEqual([entry.npcTid, entry.role, entry.loc, entry.fighterTid, entry.attrTid], [3030500, 3030501, 5, 10505, 20]);
+  assert.equal(entry.values.get(ACTOR_ATTR.HP), 864);
+  assert.equal(entry.values.get(ACTOR_ATTR.ATTACK), 216);
+  assert.equal(entry.fighter.is_boss, true);
+  assert.equal(entry.fighter.view_custom, 120);
+  const middleBoss = resolve(403);
+  assert.equal(middleBoss.resolved, true);
+  assert.deepEqual(middleBoss.teams[0].entries.map(unit => [unit.npcTid, unit.loc]), [[9102100, 1], [9102100, 3], [3030400, 5]]);
 });
 
 test('resolver rejects a missing Team or NpcAttr row instead of choosing a neighbour', () => {

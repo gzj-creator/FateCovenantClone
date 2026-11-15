@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "table": "HeroBlazonDrawTable",
+  "assetPath": "personal-server/assets/tables/HeroBlazonDrawTable.data.lua.json.gz",
+  "assetSha256": "093e8dc7710854d64a31907c8dded7377cec924a5886b61fb5d65c6347e65be2",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HeroBlazonDrawTable.data.lua.json.gz",
+      "sha256": "093e8dc7710854d64a31907c8dded7377cec924a5886b61fb5d65c6347e65be2"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"one_draw":1,"tid":1,"red_dot_show_num":10,"many_draw":5}
+]},
+"HeroBlazonDraw":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"draw_lib":3201,"can_more_draw":true,"replace_consume_list":[],"box_name":5875,"mark_key":30,"positive_guarantee":60,"big_imgIcon":"img_xh_baoxia3.png","probability_detail":11711,"consume_list":[[395002,1]],"max_daily_draw":1000,"order":0,"probability_type":11701,"imgIcon":"img_xh_baoxia3.png","tid":1,"max_daily_replace":0,"replace_way":0,"counter_guarantee":[20,3],"unlock_many_draw_num":25},
+{"draw_lib":3202,"can_more_draw":true,"replace_consume_list":[],"box_name":5876,"mark_key":30,"positive_guarantee":30,"big_imgIcon":"img_xh_baoxia2.png","probability_detail":11712,"consume_list":[[396002,1]],"max_daily_draw":1000,"order":1,"probability_type":11702,"imgIcon":"img_xh_baoxia2.png","tid":2,"max_daily_replace":0,"replace_way":0,"counter_guarantee":[10,2],"unlock_many_draw_num":25},
+{"draw_lib":3203,"can_more_draw":true,"replace_consume_list":[],"box_name":5877,"mark_key":30,"positive_guarantee":20,"big_imgIcon":"img_xh_baoxia.png","probability_detail":11713,"consume_list":[[397002,1]],"max_daily_draw":1000,"order":2,"probability_type":11703,"imgIcon":"img_xh_baoxia.png","tid":3,"max_daily_replace":0,"replace_way":397002,"counter_guarantee":[10,2],"unlock_many_draw_num":25},
+{"draw_lib":3204,"can_more_draw":false,"replace_consume_list":[],"box_name":5878,"mark_key":30,"positive_guarantee":8,"big_imgIcon":"img_xh_baoxia4.png","probability_detail":11714,"consume_list":[[398002,1]],"max_daily_draw":1000,"order":3,"probability_type":11704,"imgIcon":"img_xh_baoxia4.png","tid":4,"max_daily_replace":0,"replace_way":398002,"counter_guarantee":[10,5],"unlock_many_draw_num":25}
+]}
+}
+}

@@ -1,0 +1,718 @@
+{
+  "schemaVersion": 1,
+  "baseline": "R1-20261115",
+  "executionStatus": "decided-for-implementation; not deployed",
+  "originalServerSchedulerRecovered": false,
+  "authoritativeOriginalInstancesObserved": false,
+  "timeInputPriority": [
+    "verified-current-authoritative-instance",
+    "frozen-verified-instance-snapshot",
+    "versioned-r1-explicit-calendar"
+  ],
+  "conflictPolicy": "New dream instances choose v11 from opening day 90; keep frozen older instances, defer the new start to the first 05:00 at/after their end. No same-scope/type overlap.",
+  "recurrencePolicy": "Finite explicit R1 list: exactly one first occurrence per listed activity; no implicit recurrence. Later releases must add separately versioned occurrences before creating more instances.",
+  "sources": [
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/report.md",
+      "sha256": "eb00b370c07796780bc59c5608d9a4aa96b7fa0f46dfbd546189561224ee6055"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/method-461-462-evidence.json",
+      "sha256": "af596f068932b4eba50a3f939a1473b16457e43ac0d68ad0c61188f42ea37fdf"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/exact-time-fun-scan.json",
+      "sha256": "39f302c4532adc6f8ddf4bb933ef94da5c4c7b61ea71529f7dcf5505740d20f8"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/client-time-chain.json",
+      "sha256": "c15ad246f0e2e5398d31514b05f7f8d6d130bde5344a122eb8c126d885d067a3"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/report.md",
+      "sha256": "cac57c6cce7a97cd9b76668c8acf6813db4986ee7d07ec6a0b687004da67a8df"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/selected-evidence.json",
+      "sha256": "eb6f326185036b4d8030a4f79235026aea443d33ee12fa7c7f807793a2420b6a"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/instances/report.md",
+      "sha256": "9c65d5c9285882c8d7258f4229949438e3636bfc75ab9f36a8fd6769c99ce6c8"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/instances/source-manifest.json",
+      "sha256": "fbe8e266181e7f018ab3bac44074ebfa76f0fa8a8708ef5050805a765ff3cf22"
+    }
+  ],
+  "serverOpeningInput": "2026-11-12T18:00:00+08:00",
+  "exampleGroupPolicy": "real local singleton; not an observed original cross group",
+  "rows": [
+    {
+      "actId": 175001,
+      "decisionId": "R1-DYN-175001",
+      "originalFact": "CREATE_TIME枚举值0，但ActType175.data_type=1为服务器作用域；空stage、duration_day=0没有自身可用窗口。SummerActTable关联175001，原跳转2082硬传此ID。",
+      "decision": "继承174001父实例整体S/E，显式下发50段覆盖同一窗口；解锁日以子50段S起算。正式绝对日期已过则不开放，晚创角不重开也不补已过日奖。",
+      "identity": "复刻推定",
+      "scope": "server",
+      "parentActId": 174001,
+      "automaticRecurrence": false,
+      "sourceTable": "ActFrameTable",
+      "version": 1,
+      "rawTimeFields": {
+        "time_type": 0,
+        "time_fun": 0,
+        "time_fun_args": [],
+        "world_time": 0,
+        "refer_day": 0,
+        "duration_day": 0,
+        "end_time": 0,
+        "stage": [],
+        "stage_duration_day": [],
+        "stage_end_time": []
+      },
+      "rawType": {
+        "is_sort_handler": false,
+        "lua_entity": {
+          "reference": "BuySkinData"
+        },
+        "show_name": 6024,
+        "cross_type": 0,
+        "tid": 175,
+        "big_type": 0,
+        "data_type": 1,
+        "lua_module": {
+          "reference": "BuySkinActMgr"
+        },
+        "ref_name": "直购皮肤活动",
+        "func_open": 1514
+      },
+      "remainingFunctionArgumentsInterpretation": "not-applicable",
+      "originalServerFunctionRecovered": false,
+      "authoritativeOriginalInstanceObserved": false,
+      "exampleInput": {
+        "localOpenedAt": 1794477600,
+        "groupMasterOpenedAt": 1794477600,
+        "realmId": "3",
+        "groupId": "r1-local-singleton:3",
+        "groupKind": "r1-local-singleton-example"
+      },
+      "decidedFirstInstance": {
+        "start": 1750971600,
+        "end": 1756587600,
+        "basis": "r1-inferred-parent-init-window-original-absolute-clock",
+        "stages": [
+          {
+            "stageId": 50,
+            "start": 1750971600,
+            "end": 1756587600,
+            "source": "r1-explicit-server-stage-override"
+          }
+        ],
+        "occurrenceId": "R1-DYN-175001/first",
+        "scopeId": "3",
+        "instanceKey": "R1-20261115/server/3/175001/1/first/1750971600"
+      },
+      "qualification": "Fun1514原断言：PassedSection>=30203；角色拥有皮肤/商品限购另行检查。",
+      "evidenceStatus": "original-fields-and-client-consumer-confirmed; scheduler-decision-is-inferred"
+    },
+    {
+      "actId": 1036008,
+      "decisionId": "R1-DYN-1036008",
+      "originalFact": "FUNC_TIME=5；461,[79,1,0]；14天、04:50结束；type1046为cross_type9。原客户端只读服务端实例，未找到461原计算函数。",
+      "decision": "R1显式首期取跨服组主服第79业务日05:00，整体至第93日04:50，显式50段；仅登记这一期，不从duration或尾参推导自动复发。",
+      "identity": "复刻推定",
+      "scope": "cross-group",
+      "minimumOpeningDay": 79,
+      "automaticRecurrence": false,
+      "sourceTable": "ActFrameTable",
+      "version": 3,
+      "rawTimeFields": {
+        "time_type": 5,
+        "time_fun": 461,
+        "time_fun_args": [
+          79,
+          1,
+          0
+        ],
+        "world_time": 0,
+        "refer_day": 0,
+        "duration_day": 14,
+        "end_time": 17400,
+        "stage": [],
+        "stage_duration_day": [],
+        "stage_end_time": []
+      },
+      "rawType": {
+        "is_sort_handler": false,
+        "lua_entity": {
+          "reference": "DragonLandActData"
+        },
+        "show_name": 6024,
+        "cross_type": 9,
+        "tid": 1046,
+        "big_type": 8,
+        "data_type": 2,
+        "lua_module": {
+          "reference": "DragonLandActMgr"
+        },
+        "ref_name": "龙息之地_神域",
+        "func_open": 1174
+      },
+      "remainingFunctionArgumentsInterpretation": "opaque-do-not-infer-weekday-or-cycle",
+      "originalServerFunctionRecovered": false,
+      "authoritativeOriginalInstanceObserved": false,
+      "exampleInput": {
+        "localOpenedAt": 1794477600,
+        "groupMasterOpenedAt": 1794477600,
+        "realmId": "3",
+        "groupId": "r1-local-singleton:3",
+        "groupKind": "r1-local-singleton-example"
+      },
+      "decidedFirstInstance": {
+        "start": 1801170000,
+        "end": 1802379000,
+        "basis": "r1-explicit-first-instance-using-inferred-master-server-opening-day",
+        "stages": [
+          {
+            "stageId": 50,
+            "start": 1801170000,
+            "end": 1802379000,
+            "source": "r1-explicit-server-stage-override"
+          }
+        ],
+        "occurrenceId": "R1-DYN-1036008/first",
+        "scopeId": "r1-local-singleton:3",
+        "instanceKey": "R1-20261115/cross-group/r1-local-singleton%3A3/1036008/3/first/1801170000"
+      },
+      "qualification": "实例绑定真实cross-group/master opening；功能门槛与个人参与条件照原规则。",
+      "evidenceStatus": "original-fields-and-client-consumer-confirmed; scheduler-decision-is-inferred"
+    },
+    {
+      "actId": 1037001,
+      "decisionId": "R1-DYN-1037001",
+      "originalFact": "461,[29,1,0]；version10；50/90段为3/1天，结束22:00/05:00。assert确证为DynamicArg462<=90，但462没有已取到的getter。",
+      "decision": "R1显式首期取跨服组主服第29业务日05:00；进行至第32日22:00，公示至第33日05:00。462推定按同一主服服龄；仅新建期在day<=90时合格，旧期按冻结窗口收尾。",
+      "identity": "复刻推定",
+      "scope": "cross-group",
+      "minimumOpeningDay": 29,
+      "maximumNewInstanceOpeningDay": 90,
+      "automaticRecurrence": false,
+      "sourceTable": "ActFrameTable",
+      "version": 10,
+      "rawTimeFields": {
+        "time_type": 5,
+        "time_fun": 461,
+        "time_fun_args": [
+          29,
+          1,
+          0
+        ],
+        "world_time": 0,
+        "refer_day": 0,
+        "duration_day": 4,
+        "end_time": 18000,
+        "stage": [
+          50,
+          90
+        ],
+        "stage_duration_day": [
+          3,
+          1
+        ],
+        "stage_end_time": [
+          79200,
+          18000
+        ],
+        "asserts": 563333437001
+      },
+      "rawType": {
+        "is_sort_handler": false,
+        "lua_entity": {
+          "reference": "DreamTrialData"
+        },
+        "show_name": 6024,
+        "cross_type": 11,
+        "tid": 1038,
+        "big_type": 9,
+        "data_type": 2,
+        "lua_module": {
+          "reference": "DreamTrialMgr"
+        },
+        "ref_name": "梦境试炼活动_战区",
+        "func_open": 1573
+      },
+      "remainingFunctionArgumentsInterpretation": "opaque-do-not-infer-weekday-or-cycle",
+      "originalServerFunctionRecovered": false,
+      "authoritativeOriginalInstanceObserved": false,
+      "exampleInput": {
+        "localOpenedAt": 1794477600,
+        "groupMasterOpenedAt": 1794477600,
+        "realmId": "3",
+        "groupId": "r1-local-singleton:3",
+        "groupKind": "r1-local-singleton-example"
+      },
+      "decidedFirstInstance": {
+        "start": 1796850000,
+        "end": 1797195600,
+        "basis": "r1-explicit-first-instance-using-inferred-master-server-opening-day",
+        "stages": [
+          {
+            "stageId": 50,
+            "stageName": "进行",
+            "start": 1796850000,
+            "end": 1797170400,
+            "source": "client-fallback",
+            "status": "client-fallback"
+          },
+          {
+            "stageId": 90,
+            "stageName": "公示",
+            "start": 1797170400,
+            "end": 1797195600,
+            "source": "client-fallback",
+            "status": "client-fallback"
+          }
+        ],
+        "occurrenceId": "R1-DYN-1037001/first",
+        "scopeId": "r1-local-singleton:3",
+        "instanceKey": "R1-20261115/cross-group/r1-local-singleton%3A3/1037001/10/first/1796850000"
+      },
+      "qualification": "实例绑定真实cross-group/master opening；功能门槛与个人参与条件照原规则。",
+      "evidenceStatus": "original-fields-and-client-consumer-confirmed; scheduler-decision-is-inferred"
+    },
+    {
+      "actId": 1037002,
+      "decisionId": "R1-DYN-1037002",
+      "originalFact": "461,[90,1,0]；version11；50/90段同前，无1037001的assert。",
+      "decision": "R1显式首期取跨服组主服第90业务日05:00；进行至第93日22:00，公示至第94日05:00。day90新建期选择v11；若同type旧期未结束，推迟到旧期结束后的首个05:00，不重置旧期。",
+      "identity": "复刻推定",
+      "scope": "cross-group",
+      "minimumOpeningDay": 90,
+      "automaticRecurrence": false,
+      "sourceTable": "ActFrameTable",
+      "version": 11,
+      "rawTimeFields": {
+        "time_type": 5,
+        "time_fun": 461,
+        "time_fun_args": [
+          90,
+          1,
+          0
+        ],
+        "world_time": 0,
+        "refer_day": 0,
+        "duration_day": 4,
+        "end_time": 18000,
+        "stage": [
+          50,
+          90
+        ],
+        "stage_duration_day": [
+          3,
+          1
+        ],
+        "stage_end_time": [
+          79200,
+          18000
+        ]
+      },
+      "rawType": {
+        "is_sort_handler": false,
+        "lua_entity": {
+          "reference": "DreamTrialData"
+        },
+        "show_name": 6024,
+        "cross_type": 11,
+        "tid": 1038,
+        "big_type": 9,
+        "data_type": 2,
+        "lua_module": {
+          "reference": "DreamTrialMgr"
+        },
+        "ref_name": "梦境试炼活动_战区",
+        "func_open": 1573
+      },
+      "remainingFunctionArgumentsInterpretation": "opaque-do-not-infer-weekday-or-cycle",
+      "originalServerFunctionRecovered": false,
+      "authoritativeOriginalInstanceObserved": false,
+      "exampleInput": {
+        "localOpenedAt": 1794477600,
+        "groupMasterOpenedAt": 1794477600,
+        "realmId": "3",
+        "groupId": "r1-local-singleton:3",
+        "groupKind": "r1-local-singleton-example"
+      },
+      "decidedFirstInstance": {
+        "start": 1802120400,
+        "end": 1802466000,
+        "basis": "r1-explicit-first-instance-using-inferred-master-server-opening-day",
+        "stages": [
+          {
+            "stageId": 50,
+            "stageName": "进行",
+            "start": 1802120400,
+            "end": 1802440800,
+            "source": "client-fallback",
+            "status": "client-fallback"
+          },
+          {
+            "stageId": 90,
+            "stageName": "公示",
+            "start": 1802440800,
+            "end": 1802466000,
+            "source": "client-fallback",
+            "status": "client-fallback"
+          }
+        ],
+        "occurrenceId": "R1-DYN-1037002/first",
+        "scopeId": "r1-local-singleton:3",
+        "instanceKey": "R1-20261115/cross-group/r1-local-singleton%3A3/1037002/11/first/1802120400"
+      },
+      "qualification": "实例绑定真实cross-group/master opening；功能门槛与个人参与条件照原规则。",
+      "evidenceStatus": "original-fields-and-client-consumer-confirmed; scheduler-decision-is-inferred"
+    }
+  ],
+  "buySkinVersion1": [
+    {
+      "row": {
+        "title_bg": "",
+        "skin": 156912,
+        "award_list": [
+          [
+            101500,
+            50
+          ]
+        ],
+        "preview_str_style": 2049,
+        "btn_tag_light": "img_hd_xrj_qyicon_mxr.png",
+        "title": 0,
+        "title_des_style": 1004,
+        "gift": 1180001,
+        "buy_btn_img": "",
+        "gift_icon": "",
+        "title_img": "img_hd_xrj_cxcjbiz_duoyy.png",
+        "title_des_bg": "img_hd_zhqy_biaotidi.png",
+        "buy_small_icon": "",
+        "title_style": 0,
+        "preview_di": "",
+        "preview_small_icon": "",
+        "unlock_day": 1,
+        "red": 175032431131,
+        "skin_img": "",
+        "spine": "ui_summer_mixueer.prefab",
+        "tid": 1,
+        "bg": "img_hd_xrj_cxcjbejtu.png",
+        "buy_btn_str_style": 0,
+        "spine_scale": 0,
+        "btn_tag_dark": "img_hd_xrj_qyicon_mxr_an.png",
+        "con_time": 3,
+        "title_des": 678966,
+        "privilege_item": 1054000,
+        "version": 1,
+        "show_effect": true
+      },
+      "product": {
+        "steep_discount": 0,
+        "effect_level": 1,
+        "show_discount": false,
+        "type": 120,
+        "iap_id": "com.woobest.mysq_328",
+        "sync_handle": 0,
+        "can_buy_times": 1,
+        "reward_tid": [
+          156912,
+          1054000
+        ],
+        "pay_type": 0,
+        "reward_count": [
+          1,
+          1
+        ],
+        "reward_icon": [],
+        "icon": "icon_xinyingxiong_01.png",
+        "price": 32800,
+        "cost_item": 0,
+        "buy_cycle_limit": 5,
+        "show_name": 808706,
+        "tid": 1180001,
+        "recharge_stall": 328,
+        "original_price": 0,
+        "discount": 0,
+        "recharge_name": 808706
+      }
+    },
+    {
+      "row": {
+        "title_bg": "",
+        "skin": 157012,
+        "award_list": [
+          [
+            101500,
+            50
+          ]
+        ],
+        "preview_str_style": 2049,
+        "btn_tag_light": "img_hd_xrj_qyicon_mxr2x2.png",
+        "title": 0,
+        "title_des_style": 1004,
+        "gift": 1180002,
+        "buy_btn_img": "",
+        "gift_icon": "",
+        "title_img": "img_hd_xrj_haitanyouxia_duoyy.png",
+        "title_des_bg": "img_hd_zhqy_biaotidi.png",
+        "buy_small_icon": "",
+        "title_style": 0,
+        "preview_di": "",
+        "preview_small_icon": "",
+        "unlock_day": 3,
+        "red": 175032431131,
+        "skin_img": "",
+        "spine": "ui_summer_leinaputong.prefab",
+        "tid": 2,
+        "bg": "img_hd_xrj_leinadibanpeizhi.png",
+        "buy_btn_str_style": 0,
+        "spine_scale": 0,
+        "btn_tag_dark": "img_hd_xrj_qyicon_mxr2x_an.png",
+        "con_time": 3,
+        "title_des": 678966,
+        "privilege_item": 1014000,
+        "version": 1,
+        "show_effect": true
+      },
+      "product": {
+        "steep_discount": 0,
+        "effect_level": 1,
+        "show_discount": false,
+        "type": 120,
+        "iap_id": "com.woobest.mysq_328",
+        "sync_handle": 0,
+        "can_buy_times": 1,
+        "reward_tid": [
+          157012,
+          1014000
+        ],
+        "pay_type": 0,
+        "reward_count": [
+          1,
+          1
+        ],
+        "reward_icon": [],
+        "icon": "icon_xinyingxiong_01.png",
+        "price": 32800,
+        "cost_item": 0,
+        "buy_cycle_limit": 5,
+        "show_name": 808707,
+        "tid": 1180002,
+        "recharge_stall": 328,
+        "original_price": 0,
+        "discount": 0,
+        "recharge_name": 808707
+      }
+    },
+    {
+      "row": {
+        "title_bg": "",
+        "skin": 157212,
+        "award_list": [
+          [
+            101500,
+            50
+          ]
+        ],
+        "preview_str_style": 2049,
+        "btn_tag_light": "img_hd_xrj_qyicon_mxr3x2.png",
+        "title": 0,
+        "title_des_style": 1004,
+        "gift": 1180003,
+        "buy_btn_img": "",
+        "gift_icon": "",
+        "title_img": "img_hd_zglb_zlsg_duoyy.png",
+        "title_des_bg": "img_hd_zhqy_biaotidi.png",
+        "buy_small_icon": "",
+        "title_style": 0,
+        "preview_di": "",
+        "preview_small_icon": "",
+        "unlock_day": 17,
+        "red": 175032431131,
+        "skin_img": "",
+        "spine": "ui_summer_lunaier1.prefab",
+        "tid": 3,
+        "bg": "img_hd_xrj_zlsgdb.png",
+        "buy_btn_str_style": 0,
+        "spine_scale": 0,
+        "btn_tag_dark": "img_hd_xrj_qyicon_mxr3x_an.png",
+        "con_time": 3,
+        "title_des": 678966,
+        "privilege_item": 1024000,
+        "version": 1,
+        "show_effect": true
+      },
+      "product": {
+        "steep_discount": 0,
+        "effect_level": 1,
+        "show_discount": false,
+        "type": 120,
+        "iap_id": "com.woobest.mysq_328",
+        "sync_handle": 0,
+        "can_buy_times": 1,
+        "reward_tid": [
+          157212,
+          1024000
+        ],
+        "pay_type": 0,
+        "reward_count": [
+          1,
+          1
+        ],
+        "reward_icon": [],
+        "icon": "icon_xinyingxiong_01.png",
+        "price": 32800,
+        "cost_item": 0,
+        "buy_cycle_limit": 5,
+        "show_name": 808750,
+        "tid": 1180003,
+        "recharge_stall": 328,
+        "original_price": 0,
+        "discount": 0,
+        "recharge_name": 808750
+      }
+    },
+    {
+      "row": {
+        "title_bg": "",
+        "skin": 157412,
+        "award_list": [
+          [
+            101500,
+            50
+          ]
+        ],
+        "preview_str_style": 2049,
+        "btn_tag_light": "img_hd_xrj_qyicon_mxr1x.png",
+        "title": 0,
+        "title_des_style": 1004,
+        "gift": 1180004,
+        "buy_btn_img": "",
+        "gift_icon": "",
+        "title_img": "img_hd_xrj_mgxsbiaoti_duoyy.png",
+        "title_des_bg": "img_hd_zhqy_biaotidi.png",
+        "buy_small_icon": "",
+        "title_style": 0,
+        "preview_di": "",
+        "preview_small_icon": "",
+        "unlock_day": 31,
+        "red": 175032431131,
+        "skin_img": "",
+        "spine": "ui_summer_lan.prefab",
+        "tid": 4,
+        "bg": "img_hd_xrj_lanbeijingtu.png",
+        "buy_btn_str_style": 0,
+        "spine_scale": 0,
+        "btn_tag_dark": "img_hd_xrj_qyicon_mxr1x_an.png",
+        "con_time": 3,
+        "title_des": 678966,
+        "privilege_item": 1034000,
+        "version": 1,
+        "show_effect": true
+      },
+      "product": {
+        "steep_discount": 0,
+        "effect_level": 1,
+        "show_discount": false,
+        "type": 120,
+        "iap_id": "com.woobest.mysq_328",
+        "sync_handle": 0,
+        "can_buy_times": 1,
+        "reward_tid": [
+          157412,
+          1034000
+        ],
+        "pay_type": 0,
+        "reward_count": [
+          1,
+          1
+        ],
+        "reward_icon": [],
+        "icon": "icon_xinyingxiong_01.png",
+        "price": 32800,
+        "cost_item": 0,
+        "buy_cycle_limit": 5,
+        "show_name": 808754,
+        "tid": 1180004,
+        "recharge_stall": 328,
+        "original_price": 0,
+        "discount": 0,
+        "recharge_name": 808754
+      }
+    },
+    {
+      "row": {
+        "title_bg": "",
+        "skin": 157612,
+        "award_list": [
+          [
+            101500,
+            50
+          ]
+        ],
+        "preview_str_style": 2049,
+        "btn_tag_light": "img_hd_xrj_qyicon4_mxr2x.png",
+        "title": 0,
+        "title_des_style": 1004,
+        "gift": 1180005,
+        "buy_btn_img": "",
+        "gift_icon": "",
+        "title_img": "img_hd_xrj_qbfm_duoyy.png",
+        "title_des_bg": "img_hd_zhqy_biaotidi.png",
+        "buy_small_icon": "",
+        "title_style": 0,
+        "preview_di": "",
+        "preview_small_icon": "",
+        "unlock_day": 45,
+        "red": 175032431131,
+        "skin_img": "",
+        "spine": "ui_lilisipifu.prefab",
+        "tid": 5,
+        "bg": "img_hd_xrj_zglbqbfm.png",
+        "buy_btn_str_style": 0,
+        "spine_scale": 0,
+        "btn_tag_dark": "img_hd_xrj_qyicon4_mxr2x_an.png",
+        "con_time": 3,
+        "title_des": 678966,
+        "privilege_item": 1044000,
+        "version": 1,
+        "show_effect": true
+      },
+      "product": {
+        "steep_discount": 0,
+        "effect_level": 0,
+        "show_discount": false,
+        "type": 120,
+        "iap_id": "com.woobest.mysq_328",
+        "sync_handle": 0,
+        "can_buy_times": 1,
+        "reward_tid": [
+          157612,
+          1044000
+        ],
+        "pay_type": 0,
+        "reward_count": [
+          1,
+          1
+        ],
+        "reward_icon": [],
+        "icon": "icon_xinyingxiong_01.png",
+        "price": 32800,
+        "cost_item": 0,
+        "buy_cycle_limit": 5,
+        "show_name": 808758,
+        "tid": 1180005,
+        "recharge_stall": 328,
+        "original_price": 0,
+        "discount": 0,
+        "recharge_name": 808758
+      }
+    }
+  ]
+}

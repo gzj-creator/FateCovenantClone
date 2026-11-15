@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ACTIVITY_CALENDAR_MODES = new Set(['schedule', 'all-open']);
+export const ACTIVITY_WINDOW_POLICIES = new Set(['absolute', 'rebase']);
 export const DEFAULT_ACTIVITY_CALENDAR_CONFIG_PATH = fileURLToPath(new URL('./activity-calendar.json', import.meta.url));
 
 export function parseActivityCalendarTimestamp(value, name = 'serverOpenedAt') {
@@ -20,6 +21,8 @@ export function parseActivityCalendarConfig(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Activity calendar config must be an object');
   const mode = String(value.mode ?? 'schedule').trim();
   if (!ACTIVITY_CALENDAR_MODES.has(mode)) throw new Error(`Unsupported activity calendar mode: ${mode}`);
+  const windowPolicy = String(value.windowPolicy ?? (mode === 'all-open' ? 'rebase' : 'absolute')).trim();
+  if (!ACTIVITY_WINDOW_POLICIES.has(windowPolicy)) throw new Error(`Unsupported activity window policy: ${windowPolicy}`);
   const serverOpenedAt = parseActivityCalendarTimestamp(value.serverOpenedAt);
   const activityWindowAnchor = value.activityWindowAnchor == null
     ? null
@@ -40,7 +43,7 @@ export function parseActivityCalendarConfig(value) {
       throw new Error('currentFishingActivityId must be a positive integer');
     }
   }
-  return { mode, serverOpenedAt, activityReferenceOpenedAt, activityWindowAnchor, currentFishingActivityId };
+  return { mode, windowPolicy, serverOpenedAt, activityReferenceOpenedAt, activityWindowAnchor, currentFishingActivityId };
 }
 
 export function loadActivityCalendarConfig(configPath = DEFAULT_ACTIVITY_CALENDAR_CONFIG_PATH) {

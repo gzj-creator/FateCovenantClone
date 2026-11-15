@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "table": "WeekendBonusTable",
+  "assetPath": "personal-server/assets/tables/WeekendBonusTable.data.lua.json.gz",
+  "assetSha256": "5bb9ab53821f25706847fd174d8f5d2fedfd367b230fddede5eb18955e37b8c9",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/WeekendBonusTable.data.lua.json.gz",
+      "sha256": "5bb9ab53821f25706847fd174d8f5d2fedfd367b230fddede5eb18955e37b8c9"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Func":{"status":"rows-with-external-references","count":2,"externalReferenceCount":2,"rows":[
+{"tid":1,"func_pb":"pb_act_pin_ball_role","lua_module":{"reference":"PinBallMgr"}},
+{"tid":2,"func_pb":"pb_grand_tourer","lua_module":{"reference":"GrandTourerMgr"}}
+]},
+"Shop":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"shop_group":5080001},
+{"tid":2,"shop_group":5080002},
+{"tid":3,"shop_group":5080003},
+{"tid":4,"shop_group":5080004}
+]},
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"racing_left_time":3600,"award_num":150,"progress":[60,120],"tid":1,"award_item":101500,"open_day_limit":5,"exchange_cost":4001900,"open_week_day_range":[6,7],"bubble_time":3000}
+]},
+"WeekendBonus":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"add":[],"simple_title":62276,"title_icon":"img_zmkh_tb_renwu.png","award":[101500],"tid":1,"title":62276,"skip_func":16,"count":[388],"item_sort":1,"simple_icon":"img_btslm_jiangli2.png","des":62279},
+{"add":[],"simple_title":62277,"title_icon":"img_zmkh_tb_renwu.png","award":[2002],"tid":2,"title":62277,"skip_func":98,"count":[2],"item_sort":1,"simple_icon":"img_btslm_jiangli1.png","des":62280}
+]},
+"ProgressAward":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"need_progress":1,"tid":1,"item":4001900,"count":40},
+{"need_progress":2,"tid":2,"item":4001900,"count":50},
+{"need_progress":3,"tid":3,"item":4001900,"count":50},
+{"need_progress":4,"tid":4,"item":4001900,"count":60}
+]}
+}
+}

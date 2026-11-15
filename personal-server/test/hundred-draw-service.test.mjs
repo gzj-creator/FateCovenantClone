@@ -8,7 +8,7 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createHundredDrawService } from '../game/hundred-draw-service.mjs';
-import { activityWindow, createActivityCalendar } from '../game/activity-calendar.mjs';
+import { createActivityCalendar } from '../game/activity-calendar.mjs';
 import { readModuleData, writeModuleData } from '../game/develop-support.mjs';
 import { decodeModuleLoginBlocks } from '../game/relic-divine-login.mjs';
 
@@ -90,7 +90,7 @@ test('legacy ActivityTable func 20 uses the same version pool and draw item as A
   assert.ok(Array.isArray(marquee.value.data.data));
 });
 
-test('modern HundredDraw login groups fall back to the reference-relative activity window', t => {
+test('formal scheduling closes an expired absolute modern HundredDraw window', t => {
   const serverOpenedAt = 1794326400;
   const activityReferenceOpenedAt = 1790784000;
   const at = 1795640400 + 60;
@@ -102,10 +102,26 @@ test('modern HundredDraw login groups fall back to the reference-relative activi
   });
   const e = setup(t, () => 0, codec, calendar);
   const groups = e.service.loginActFrameGroups({ act_list: [], act_custom_list: [] }, at);
-  const group = groups.find(row => row.actId === 1102010);
-  const expected = activityWindow(tables.ActFrameAct.get(1102010), serverOpenedAt, activityReferenceOpenedAt);
+  assert.equal(groups.some(row => row.actId === 1102010), false);
+});
 
-  assert.deepEqual([group.startTime, group.endTime], [expected.start, expected.end]);
+test('explicit historical rebase keeps the modern HundredDraw instance window', t => {
+  const serverOpenedAt = 1794326400;
+  const activityReferenceOpenedAt = 1790784000;
+  const at = 1795640400 + 60;
+  const calendar = createActivityCalendar({
+    tables,
+    serverOpenedAt,
+    activityReferenceOpenedAt,
+    windowPolicy: 'rebase',
+    now: () => at * 1000
+  });
+  const e = setup(t, () => 0, codec, calendar);
+  const groups = e.service.loginActFrameGroups({ act_list: [], act_custom_list: [] }, at);
+  const group = groups.find(row => row.actId === 1102010);
+  assert.ok(group, 'the explicitly rebased instance is present');
+
+  assert.deepEqual([group.startTime, group.endTime], [1795640400, 1796072400]);
 });
 
 test('117002 enforces the draw threshold, grants once and survives a reopen', async t => {

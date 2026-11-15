@@ -20,12 +20,19 @@ const ITEM_GROUP_HANDLERS = new Map([
   ['2:FantasyEquipChip', 0], ['2:SpRelicItem', 0], ['2:FuCard', 0], ['2:ItemRoleSkin', 0],
   ['2:PetMutantItem', 0], ['2:ElvesMutantItem', 0], ['2:ItemChip', 0],
   ['4:HeroChip', 2],
+  // MatchHeroChip targets are MatchHero resources but the chip itself is an
+  // ordinary module 6 group 2 inventory item. Without this row, composing a
+  // hero card consumes the chips and then fails when granting the match hero.
+  ['4700:MatchHeroChip', 2],
   ['14:PetChip', 8],
   ['21:ElvesChip', 12],
   ['1000:ItemBase', 1], ['1000:ItemProp', 1],
   ['1200:ItemBox', 1], ['1200:ItemSuitBox', 1], ['1200:ItemTimeBox', 1],
   ['1900:ItemBase', 3],
   ['3300:ItemBase', 9],
+  // BuySkin privilege items (1054000/1014000/1024000/1034000/1044000)
+  // are ordinary ItemBase resources with res_type=4000 in ItemTypeTable.
+  ['4000:ItemBase', 0],
   ['4200:ItemBase', 0],
   ['4800:ItemBase', 0],
   ['4100:ItemSpiritCourtyard', 19],

@@ -110,7 +110,6 @@ const REFUSAL_FAMILIES = [
   { card: 'PAY-BONUSSHOP', types: [101903], reason: 'BonusShopTable 未导出：奖励商店商品与货币配置无证据' },
   { card: 'PAY-AUCTION', types: [102701, 102702, 102703, 102704, 102705], reason: 'AuctionTable 未导出：拍卖场次、底价、分红与流拍规则无证据' },
   { card: 'PAY-SKINRECHARGE', types: [103601], reason: 'SkinRechargeTable 未导出：皮肤充值角色/档位配置无证据' },
-  { card: 'PAY-BUYSKINACT', types: [104001], reason: 'BuySkinActTable 与 pb_buy_skin_person 已导出，但 item_id 对应的免费条目、unlock_day/gift 条件、每次领取时间窗及无补领规则仍无运行契约' },
   // 104801 由 act-shop-service.mjs 读取当前 ActFrame 与 pb_act_shop_db_info；
   // 购买与多层等级领奖仍需证明 times/history_tid/claimed_tid_list 的写入事务。
   { card: 'PAY-ACTSHOP', types: [104802, 104803], reason: 'ActShopTable 已导出，104801 读路径由独立服务实现；104802 的购买计数/货币扣除与 104803 的多层奖励领取事务尚未由 Lua 和样本完整证明' },

@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 3,
+  "snapshotDate": "2026-11-15",
+  "auditSnapshotDate": "2026-11-14",
+  "baseline": "R1-20261115",
+  "codeBaseline": "8135c8a20c34aa10fa89b4f99d72f71bd289099d",
+  "scope": "当前工作树源码与原表证据快照；不证明线上部署或 APK 验收",
+  "commandAudit": {
+    "total": 1407,
+    "serviceRoute": 1383,
+    "gatewayRoute": 18,
+    "multiOwner": 6,
+    "unrouted": 0,
+    "requestEncodingMismatch": 186,
+    "requestEncodingUnverified": 933,
+    "responseRuntimeUnverified": 1407,
+    "responseSchemaMissing": 223
+  },
+  "moduleTaskGroups": 297,
+  "encoderModules": 297,
+  "guideCounts": {
+    "Process": 141,
+    "Award": 16,
+    "Step": 718,
+    "Const": 1
+  },
+  "fightShardCounts": {
+    "Fight": 3566,
+    "Team": 10744,
+    "Fighter": 4518,
+    "AttrAbility": 1099
+  },
+  "fightSourceShards": 26,
+  "skillCounts": {
+    "heroes": 76,
+    "skillReferences": 1076,
+    "requiresInvestigation": 277,
+    "projectFallback": 75
+  },
+  "featureSummary": {
+    "rules": 523,
+    "ready": 177,
+    "evidenceGap": 346,
+    "uniqueAsserts": 271,
+    "mappedAsserts": 271,
+    "readyAsserts": 91,
+    "dynamicArgs": {
+      "1": "GetRoleLv",
+      "2": "GetPassedSection",
+      "3": "GetCreateRoleDays",
+      "4": "GetServerOpenDay"
+    }
+  },
+  "documentedFeatureSummary": {
+    "rules": 523,
+    "conditionsProved": 220,
+    "remainingGap": 303,
+    "newlyProvedRows": 44
+  },
+  "earlyMissionRows": 26,
+  "sources": [
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/inventory.json",
+      "sha256": "6826248f340cafde4f9f4d4dea663434c2de88ad451b25004f005ca25c7669db"
+    },
+    {
+      "path": "personal-server/config/command-dispatch-audit.json",
+      "sha256": "17a74457747e7f688c0096a0b68ee1bf8ee6125f3b5f603fa8ebd60ebc442b8e"
+    },
+    {
+      "path": "personal-server/config/fun-open-rules.json",
+      "sha256": "8661a36674ad4bde45ead8ddd0304279d2f0de65f8ee1d95b80f7aa6c99d0523"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/424837726185043140-GuideTable.data.lua.bin",
+      "sha256": "80a9fa31ede999bc2b5b071f8e6db29c5d4b36f6fe0bac0cd395d4304cca94b3"
+    },
+    {
+      "path": "personal-server/assets/tables/JourneyFightTable.data.json.gz",
+      "sha256": "f57f8faf8611dd3ee14341c96e6e33cc4b2783d05e0ba4fdbab3a24adc5b6038"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/12324766054510731000-FightTable.Fight.0.data.lua.bin",
+      "sha256": "87f48a50526b29184ad9a6e0508a636f65dc805a40335df3275ec531ed943f50"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/13702815658256691000-FightTable.Fight.2.data.lua.bin",
+      "sha256": "f5648cfbdb62aab81159fc6a9bee881b2131bd1eb6398eea061872aa038de421"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/14090029984233030000-FightTable.Fight.1.data.lua.bin",
+      "sha256": "92977ca72b5434ab5ca331122f45a296ecc4b2170bf812714b94ce86420b60e3"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/15136593503375110000-FightTable.Fight.3.data.lua.bin",
+      "sha256": "7872a30789b9d50ff89ad080f74b26aa8c35c47281e57f8db666b949ec51c48b"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/8675453096414540000-FightTable.Fight.9.data.lua.bin",
+      "sha256": "26de90d928ba3154b749881f896b7fa6ac4bf58d198c1ac6191604d0c11694b3"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/1155134436642376200-FightTable.Team.41.data.lua.bin",
+      "sha256": "154e0b8bb3c89c62d4bf9b95b3e08f11b43a0e3ca47a0436969f308780917eee"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/11636854007069061000-FightTable.Team.43.data.lua.bin",
+      "sha256": "5c6e096f505964f1bb97ac6fc39d403d702d2b30f38e3f1a6abed319839f5a02"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/17291430841688533000-FightTable.Team.1.data.lua.bin",
+      "sha256": "773222181781d822802760691789f32929e5cb6a1bad189e9488b9a061e2720a"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/17873637269684930000-FightTable.Team.3.data.lua.bin",
+      "sha256": "f30ca7e0a6351c0494a7f86bb4afc1695c0794da00326c5cc8db4c0076bad594"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/17944887135760919000-FightTable.Team.32.data.lua.bin",
+      "sha256": "ebd3868a2d8700f81c7c9466fe2f3601fe796b7ce0ff3a20137733227fca583b"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/17963216856675774000-FightTable.Team.22.data.lua.bin",
+      "sha256": "2c143878611d1d3f1535a18e7d9de47b1577cf6e012d5c559313b07497ddd1bc"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/1879999098001760500-FightTable.Team.0.data.lua.bin",
+      "sha256": "5be239251ea7f7e60c866a3f3b755a212a87209637d13200236792e1f275c5e5"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/287984108061975100-FightTable.Team.20.data.lua.bin",
+      "sha256": "8eb250bd27a1bb248ce74457cb1b0540b2c7a7fd3cf56623213fec40c712d427"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/3382528770829475300-FightTable.Team.21.data.lua.bin",
+      "sha256": "1cecbfe2b9b494f5a5dc3dc4438a28c01c92017ddf255b7e305de3056629da7d"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/4029775251943714300-FightTable.Team.31.data.lua.bin",
+      "sha256": "7b2dce370d7949f1ca8d8a8bbef1cbf061c7f039fd50c569808ba621c882651a"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/5626889432206924000-FightTable.Team.9.data.lua.bin",
+      "sha256": "1c6d0bb18531f1321e12f26f4b2c38483d99d2f2be9dd8213390b049786ad3bf"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/6134676661256587000-FightTable.Team.33.data.lua.bin",
+      "sha256": "326ee2f0b762ebcb0da5a00137d6e47ed33d57227ae4380c8d0ff848778d7abe"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/663129675171251600-FightTable.Team.2.data.lua.bin",
+      "sha256": "91e23b308bd9b2553977598d4023868d076ae04fa8ea00a1b8eb117c28285930"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/6639702221166401000-FightTable.Team.23.data.lua.bin",
+      "sha256": "84909a4c79a089f0e6b03ee262f488fe46d17f0646939727ffa95146d93c970b"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/8513797570232538000-FightTable.Team.42.data.lua.bin",
+      "sha256": "c1bacbd56c986fdbb69f52026e99b2cd5c2bb78da7bbb42018bd42864ad50b8a"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/9029798891059552000-FightTable.Team.5.data.lua.bin",
+      "sha256": "38d27b9875a4b561406ab7ed45849a6e97b815edfec98cbf49be75f47f9a8257"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/7000868013837048000-FightTable.Fighter.0.data.lua.bin",
+      "sha256": "f1b33034fe2f80363d9e18ac98614d4f39b042762d71e2c884f6e780b19800fd"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/2701512824859981300-FightTable.AttrAbility.0.data.lua.bin",
+      "sha256": "b489b3392772649e1e145a9f30bbdb19f8f1e78630703f958e5b60176fda0095"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/6600248570044003000-FightTable.AttrAbility.2.data.lua.bin",
+      "sha256": "4f8e26254577cb4a4e4fc83e6a6b8d9e0257172a0d9cca7b9f73fffbec52217e"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/8807524392978960000-FightTable.AttrAbility.4.data.lua.bin",
+      "sha256": "5558ba77ac727ce77ec63eef6fdef929674fbda88e36a9fea84cd940dd672222"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/9431633927062480000-FightTable.AttrAbility.3.data.lua.bin",
+      "sha256": "5e0eff822d330d75c3722440ac5549af441ec602edacc44c0fbefb12e8a78127"
+    },
+    {
+      "path": "personal-server/assets/tables/GuideTable.data.json.gz",
+      "sha256": "d938da8b9b11e011ea15bd5a7f42da32f6a280e1fbb1aabccee11dbfe4485632"
+    },
+    {
+      "path": "personal-server/config/public-server.json",
+      "sha256": "39f018039b1707cda0464e6cbe77871b94dc98388564dfcbc52369297246d7d5"
+    },
+    {
+      "path": "personal-server/config/activity-calendar-realm-3.json",
+      "sha256": "ba5d1c005b2f31e560ec15740a11582ddf6caebb02b841e9d8b7a0aba0a57d62"
+    },
+    {
+      "path": "personal-server/config/guide-awards.mjs",
+      "sha256": "5f09692fe7e27668b81c462a2442b218376b14bfc5ca43b872b45e02bf45fe07"
+    },
+    {
+      "path": "personal-server/config/guide-tables.mjs",
+      "sha256": "ab5d233c82655fa95fb4de3b0ba3d52a348ee95b6145df0e409d134d8fb26106"
+    },
+    {
+      "path": "personal-server/config/journey-fight-tables.mjs",
+      "sha256": "ed797714d4da08f9937d2aa61fb7685f1ccea8a8eef3dba085711b0ef7764b0f"
+    },
+    {
+      "path": "personal-server/config/mission-tables.mjs",
+      "sha256": "d5550e8d20164d78c11e9fe3ae0546d29e5f8b8c6066a9e1e1dc96971d7dfbb2"
+    },
+    {
+      "path": "personal-server/game/guide-service.mjs",
+      "sha256": "4f417e41b73c2f0f1865d705c60d5a22d72bc831700019cd4a6ae409aca92d64"
+    },
+    {
+      "path": "personal-server/game/guide-award-repair.mjs",
+      "sha256": "e5e1b3acedb58a9c5a4d5a57fbc1de1c488847790891e05640c8fca6ef469b3b"
+    },
+    {
+      "path": "personal-server/scripts/repair-guide-awards.mjs",
+      "sha256": "e9d57fe7820a17042102972deb5ed3a950d7624781cb5ed7ad2a60073be2f7e7"
+    },
+    {
+      "path": "personal-server/game/new-account-state.mjs",
+      "sha256": "7e06ba30c930d8bc309b896e879379ae0d55b983c1e121036ebdffb3d2cfdf95"
+    },
+    {
+      "path": "personal-server/game/mission-fight-service.mjs",
+      "sha256": "63cd529d4acfc8fca71f31690c303ab57330b8fca481477b035f71f5dff242ce"
+    },
+    {
+      "path": "personal-server/game/fight-team-resolver.mjs",
+      "sha256": "aae75682395cf65abb0f5102b56470f650b193a12f32f2fa1e50713e4e971b02"
+    },
+    {
+      "path": "personal-server/game/feature-service.mjs",
+      "sha256": "99019d5d9370a362a27b48f242b2c8aeb583c43d9010f0ce280ae6b5a5bf7446"
+    },
+    {
+      "path": "personal-server/game/gateway.mjs",
+      "sha256": "02af58e74dc6e13e789a15fc87c2d22a7fa5ee99453cbed15b6e53edd5b937ca"
+    },
+    {
+      "path": "personal-server/config/skill-database.json",
+      "sha256": "a7257247db76978671a1e5cea086f71955f8aef08cbb93cca5c853fb34261a5d"
+    },
+    {
+      "path": "personal-server/test/journey-fidelity.test.mjs",
+      "sha256": "fb4c3682fcd540c9eeb359be08d3fbf9f1729c7d2fe9fa4b7507f890469fea33"
+    },
+    {
+      "path": "tools/read-fight-shard.mjs",
+      "sha256": "b2d311f4496fe779181baec68e7146e12ddc90457080ec7ca3b8e7735311db66"
+    },
+    {
+      "path": "tools/extract-journey-rules.mjs",
+      "sha256": "ae0d14a6d6008fc0bb0edad01f2137f78576c1e41438ca382ebe616bff0558c2"
+    },
+    {
+      "path": "tools/extract-fun-open-rules.mjs",
+      "sha256": "13a81b3aa087398fa9f493ac6e01b2587486dbc865a9d957c8be6be36e638724"
+    },
+    {
+      "path": "tools/build-gameplay-doc-evidence.mjs",
+      "sha256": "e7712003d899c5428e854bc9921666d501a890cb5d6c6e84726c828cab48ec7d"
+    },
+    {
+      "path": "tools/documented-rule-decisions.mjs",
+      "sha256": "47255db2581a78ba51bccf1bdc9b78a0e7ae56b7cb60a7a8fab299c4322ebb74"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/selected-evidence.json",
+      "sha256": "eb6f326185036b4d8030a4f79235026aea443d33ee12fa7c7f807793a2420b6a"
+    },
+    {
+      "path": "tools/patch-defeat-power-lua.mjs",
+      "sha256": "4b220eb0129a300b9ce29dee09397dfcad505fe8fabdd7d1bf82b30eba4ac0a7"
+    },
+    {
+      "path": "tools/test-defeat-power-lua.mjs",
+      "sha256": "d2c25f053877decd0b9b8b5bd67bef41006c7bf1a11c353e312b982704dbdcbd"
+    },
+    {
+      "path": "tools/build-defeat-power-bundle.mjs",
+      "sha256": "8b35e0a6e8193b634b9b6a37849031f75fad01f4cc8a39250a801609b457575b"
+    }
+  ],
+  "generatedFiles": [
+    {
+      "path": "docs/gameplay-operations/appendices/modules.md",
+      "sha256": "e188b538e1c1efd9eb0a705898452e804ae5b2e04045f0e6de69d68135501150"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/commands.md",
+      "sha256": "7fe91c9545b13881ff8fe0a44885fc446c2a8ea23a7a3fbbe9f19069a5b37aed"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/guide-source-rows.json",
+      "sha256": "6cb96e04ad06df0585c7eaa6e0e62658808547d68b32b89a429affe501f3d5ac"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/guide-processes-and-steps.md",
+      "sha256": "e7eb9f48347edfb95d938b6f978246b79681701999f7b830a6db1edb0f9f755d"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/guide-awards.md",
+      "sha256": "9b29c6998245fd812d725d13acdf01e688a3aed949e81c69fa3670c7c8e2e54c"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/early-missions.json",
+      "sha256": "16d58154b541f7b367d370722551ac4cbcccd92a23d3e03fcfabef7bccb5b3b5"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/early-missions.md",
+      "sha256": "da6a442e16ddaefb457da64e10140ec5e2bc2d713b0afb0824048262567b76a6"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/feature-unlocks.md",
+      "sha256": "a29146358fe903914bb00e28dbff1dede8535cb8ef88baec527236e790a20fc5"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/feature-rule-decisions.json",
+      "sha256": "b5180e6c6166fa6c30e6063e0ab4a6c79ddbc24712d1295706363865ff6a5fad"
+    }
+  ]
+}

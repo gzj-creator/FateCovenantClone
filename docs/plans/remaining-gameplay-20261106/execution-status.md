@@ -1,5 +1,8 @@
 # 执行状态
 
+<!-- r1-rule-status -->
+> 历史任务/实施快照：本页不是现行规则或实时状态。2026-11-15起规划按[统一路线](../../gameplay-operations/11-project-roadmap.md)，规则按[最终R1基线](../../gameplay-operations/12-final-rule-baseline.md)及[297任务裁定](../../gameplay-operations/rules/final-rule-register.md)。旧卡号、证据和当时验证保留；不能继承旧完成状态或以旧源码建议覆盖R1。
+
 2026-11-06 建表。2026-11-07 第一轮并行实施与集成验收，同日第二轮续接 CORE-BATTLE-A、SOC-FRIEND 并新增 PLAY-FISHINGACT。
 
 2026-11-08 新增[子卡划分](14-subtask-cards.md)：01–10 的 272 张任务卡按命令功能族拆成 381 张可独立派发的子卡，供多路 agent 并行领取；本表继续记录任务卡粒度的交付与缺口。

@@ -1,5 +1,8 @@
 # 共享缺口与先行任务
 
+<!-- r1-rule-status -->
+> 历史任务/实施快照：本页不是现行规则或实时状态。2026-11-15起规划按[统一路线](../../gameplay-operations/11-project-roadmap.md)，规则按[最终R1基线](../../gameplay-operations/12-final-rule-baseline.md)及[297任务裁定](../../gameplay-operations/rules/final-rule-register.md)。旧卡号、证据和当时验证保留；不能继承旧完成状态或以旧源码建议覆盖R1。
+
 这七项不适合仅按未路由命令统计：有些使用已经存在的命令，有些尚未恢复数字命令。模块任务的依赖指向本文件。主线战斗和大量养成、充值服务已经存在，本轮实施应补齐集成，而不是重新造一套状态。
 
 ## CORE-BATTLE：战斗效果、特殊机制与客户端报告

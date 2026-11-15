@@ -1,10 +1,13 @@
 # 活动修复与验收清单
 
+<!-- r1-rule-status -->
+> 历史专项记录，按文内日期理解。“当前”“正式”和测试数量均指当时快照。现行规则统一按[最终R1基线](gameplay-operations/12-final-rule-baseline.md)和[逐任务裁定](gameplay-operations/rules/final-rule-register.md)，不将旧平移政策、占位算法或服务端测试视为原版已恢复。
+
 更新时间：2026-11-12（Asia/Shanghai）
 
 本清单按“用户实际触发的活动入口”逐项推进。每项只有同时完成协议取证、配置映射、事务实现和相关测试后才勾选；APK 请求与用户视觉验收单独记录，不能用组件测试代替。模块 92 的基线见 `analysis/experiments/private-server-20261025/p3/wallet-admin-20261025/handoff-game.local-only.sqlite` 中 `login_modules.module_id=92` 的 `pb_act_login` 快照。
 
-当前结论（2026-11-12）：正式配置使用 `schedule`，目标二服开服为 `2026-11-11 00:00 +08:00`，参考服开服为 `2026-10-01 00:00 +08:00`。所有活动统一按开服相对时间计算；白绫 `1102010` 在第 16 天 `2026-11-26 05:00` 开启。全表审计结果见 [activity-relative-time-20261111.md](../agent/workflow/fixes/activity-relative-time-20261111.md)。独立升星与 ActShop 读取已按新 APK 表实现；43 个拒绝家族的逐项资产/状态机矩阵见 [activity-asset-audit-20261112.md](../agent/workflow/fixes/activity-asset-audit-20261112.md)。`all-open` 只保留为临时逐项测试能力。旧百抽 `20001` 在开服零点由模块 92 自定义窗口开放，早于静态表五点窗口，服务端仍沿用该父窗口。
+当前结论（2026-11-12）：正式配置使用 `schedule`，目标二服开服为 `2026-11-11 00:00 +08:00`，参考服开服为 `2026-10-01 00:00 +08:00`。当时本服实现曾把世界活动也平移；此政策现已撤回，正式world_time保留原绝对日期；白绫 `1102010` 在第 16 天 `2026-11-26 05:00` 开启。全表审计结果见 [activity-relative-time-20261111.md](../agent/workflow/fixes/activity-relative-time-20261111.md)。独立升星与 ActShop 读取已按新 APK 表实现；43 个拒绝家族的逐项资产/状态机矩阵见 [activity-asset-audit-20261112.md](../agent/workflow/fixes/activity-asset-audit-20261112.md)。`all-open` 只保留为临时逐项测试能力。旧百抽 `20001` 在开服零点由模块 92 自定义窗口开放，早于静态表五点窗口，服务端仍沿用该父窗口。
 
 2026-11-11 真实事件 `117005` 的兼容性回归已修复：旧 `ActivityTable` 中 `func=20` 的 `20001` 现在与现代 `ActFrameAct.type=1102` 百抽共用服务；登录会按 `HundredDrawActTable.Version` 同步父活动、`type=184` 礼包商城和 `type=182` 兑换商店。正式排期临时 TCP 已验证 `1270963 -> 835802 x30 -> 117001`，并确认 SQLite 抽数。完整审计见 `agent/workflow/fixes/activity-ticket-audit-20261111.md`。
 

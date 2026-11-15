@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "table": "PrincessTable",
+  "assetPath": "personal-server/assets/tables/PrincessTable.data.lua.json.gz",
+  "assetSha256": "00a3e2f23b4d83c48abce58e75135ce01c7d4c826282a33ade2a5c7f019ca18d",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/PrincessTable.data.lua.json.gz",
+      "sha256": "00a3e2f23b4d83c48abce58e75135ce01c7d4c826282a33ade2a5c7f019ca18d"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"EnergyAward":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"free_day":1,"award_item":122702,"tips_title":5840,"reissue_item":101500,"tid":1,"reissue_count":50,"end_time":57600,"start_time":43200,"unlock_cond":649496900001,"tips":5841,"tip_params":[5,6],"talk_key":"noon_award_talk","award_count":3,"tittle":60815},
+{"free_day":1,"award_item":122702,"tips_title":5840,"reissue_item":101500,"tid":2,"reissue_count":50,"end_time":75600,"start_time":64800,"unlock_cond":649496900001,"tips":5841,"tip_params":[5,6],"talk_key":"night_award_talk","award_count":3,"tittle":60816}
+]},
+"Gift":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1,"title":60812},
+{"tid":2,"title":60813},
+{"tid":3,"title":60814}
+]},
+"LoginAward":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]},
+"HolidayAward":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]}
+}
+}

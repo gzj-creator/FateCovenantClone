@@ -33,10 +33,19 @@ export function battleSeed(text) {
 }
 
 // One side of a PvP battle: a role's persisted heroes for a play lineup.
-export function rosterFor({ model, lineupType = 1, heroTables = readHeroTables(), attributeTables = readAttributeTables() }) {
+export function rosterFor({
+  model,
+  lineupType = 1,
+  heroTables = readHeroTables(),
+  attributeTables = readAttributeTables(),
+  globalAttrsForModel = () => ({})
+}) {
   let assembled;
   try {
-    assembled = assembleLineup({ model, lineupType, heroTables, attributeTables });
+    const globalAttrs = typeof globalAttrsForModel === 'function'
+      ? globalAttrsForModel(model)
+      : globalAttrsForModel;
+    assembled = assembleLineup({ model, lineupType, heroTables, attributeTables, globalAttrs });
   } catch (error) {
     if (error instanceof GameError) throw error;
     throw new GameError(5, 'PvP lineup could not be assembled');

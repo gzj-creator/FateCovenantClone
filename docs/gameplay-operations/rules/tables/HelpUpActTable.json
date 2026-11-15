@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "table": "HelpUpActTable",
+  "assetPath": "personal-server/assets/tables/HelpUpActTable.data.lua.json.gz",
+  "assetSha256": "e548f4dd622b28bff69b40ae6f2ae114912dca609537d49ba76c98e193f91df3",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HelpUpActTable.data.lua.json.gz",
+      "sha256": "e548f4dd622b28bff69b40ae6f2ae114912dca609537d49ba76c98e193f91df3"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Task":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"jump_func":30203,"award":[[834102,5]],"task_type":100816,"belonging_version":1,"tid":101,"task_name":689047,"cycle_type":1,"target_count":1,"task_param":0,"sort":1},
+{"jump_func":3121,"award":[[834102,5]],"task_type":6712,"belonging_version":1,"tid":102,"task_name":692636,"cycle_type":1,"target_count":1,"task_param":0,"sort":2},
+{"jump_func":17,"award":[[834102,5]],"task_type":4701,"belonging_version":1,"tid":103,"task_name":57884,"cycle_type":1,"target_count":100,"task_param":0,"sort":3},
+{"jump_func":11,"award":[[834102,5]],"task_type":8301,"belonging_version":1,"tid":104,"task_name":60919,"cycle_type":1,"target_count":100,"task_param":0,"sort":4}
+]},
+"Show":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"fake_channel":1,"envelope_title":691014,"fake_item_num_multi":5,"envelope_signature":691016,"tid":1,"help_times_interval":20,"envelope_content":691015,"txt_preview_desc":691059,"fake_group":1,"fake_channel_count":200,"fake_official_count":1397,"txt_slogan":[691002,691003],"img_slogan":"icon_cfzl_ka.png","img_bg":"bg_cfzl.png"}
+]},
+"Version":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"award_group":1,"cost_item":834102,"stage_library":1,"fake_gen_end_time":79200,"tid":1,"help_times":1,"fake_gen_interval":1,"fake_gen_num":60,"recycle_mail_tid":9501400,"fake_gen_start_time":28800,"task_library":1,"cost_item_max":10}
+]},
+"FakeChannel":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"group":1,"prefix":"S","tid":101,"channel_count":1429},
+{"group":1,"prefix":"Y","tid":102,"channel_count":1215},
+{"group":1,"prefix":"H","tid":103,"channel_count":22},
+{"group":1,"prefix":"X","tid":104,"channel_count":17}
+]},
+"FakeShow":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"group":1,"tid":101,"weight":6,"multi":1},
+{"group":1,"tid":102,"weight":3,"multi":2},
+{"group":1,"tid":103,"weight":1,"multi":3}
+]},
+"Stage":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"ani_pendant_thanks":"","ani_thanks":"timeline_hero_ysz_HanShuangZhiWen_3xiuxi_1.playable","award":[[5111200,5],[3401200,1]],"img_stage":"icon_cfzl_touxiang1.png","tid":101,"hero":3030501,"effect_bg":"","star":5,"ani_interact":"timeline_hero_ysz_HanShuangZhiWen_7mingyun_1.playable","ani_pendant_interact":"","stage":1,"stage_name":691006,"img_bg":"bg_cfzl.png","belonging_version":1,"time_ani_interact":3.5,"talk_style":400010,"txt_interact":691019,"txt_thanks":691018,"stage_num":5000000},
+{"ani_pendant_thanks":"","ani_thanks":"timeline_hero_ChaoFanMiXueEr_show_talk3.playable","award":[[3021200,3],[10064100,5]],"img_stage":"icon_cfzl_touxiang2.png","tid":102,"hero":5040701,"effect_bg":"Effect_HelpUpActMainForm_fenwei2.prefab","star":4,"ani_interact":"timeline_hero_ChaoFanMiXueEr_show_talk1.playable","ani_pendant_interact":"jiaohu01","stage":2,"stage_name":691007,"img_bg":"bg_cfzl2.png","belonging_version":1,"time_ani_interact":3.5,"talk_style":400074,"txt_interact":691033,"txt_thanks":691032,"stage_num":10000000},
+{"ani_pendant_thanks":"daxie02","ani_thanks":"timeline_hero_ChaoFanMiXueEr_show_talk4.playable","award":[[25500704,20],[835702,1]],"img_stage":"icon_cfzl_touxiang3.png","tid":103,"hero":5040701,"effect_bg":"Effect_HelpUpActMainForm_fenwei3.prefab","star":6,"ani_interact":"timeline_hero_ChaoFanMiXueEr_show_talk2.playable","ani_pendant_interact":"jiaohu02","stage":3,"stage_name":691008,"img_bg":"bg_cfzl3.png","belonging_version":1,"time_ani_interact":3.5,"talk_style":400077,"txt_interact":691035,"txt_thanks":691034,"stage_num":15000000}
+]},
+"Award":{"status":"decoded-rows","count":16,"externalReferenceCount":0,"rows":[
+{"group":1,"tid":101,"weight":100,"award":[[101500,88]]},
+{"group":1,"tid":102,"weight":100,"award":[[392002,1]]},
+{"group":1,"tid":103,"weight":100,"award":[[20002,1]]},
+{"group":1,"tid":104,"weight":100,"award":[[21002,8]]},
+{"group":1,"tid":105,"weight":100,"award":[[901900,88]]},
+{"group":1,"tid":106,"weight":100,"award":[[17002,88]]},
+{"group":1,"tid":107,"weight":100,"award":[[18002,3]]},
+{"group":1,"tid":108,"weight":100,"award":[[179002,8]]},
+{"group":1,"tid":109,"weight":100,"award":[[493002,8]]},
+{"group":1,"tid":110,"weight":100,"award":[[501002,88]]},
+{"group":1,"tid":111,"weight":100,"award":[[101800,8888]]},
+{"group":1,"tid":112,"weight":100,"award":[[157002,8888]]},
+{"group":1,"tid":113,"weight":100,"award":[[31002,8]]},
+{"group":1,"tid":114,"weight":100,"award":[[139002,8]]},
+{"group":1,"tid":115,"weight":100,"award":[[391002,88]]},
+{"group":1,"tid":116,"weight":100,"award":[[201500,8888]]}
+]}
+}
+}

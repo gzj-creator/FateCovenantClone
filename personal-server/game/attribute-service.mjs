@@ -34,6 +34,22 @@ const DISPLAY_ATTR = Object.freeze({
   hp_rate: 5, attack_rate: 6, physical_def_rate: 26, magic_def_rate: 27
 });
 
+// AttrType.exchange values are actor-attribute ids. These are the subset that
+// can change the final combat stats assembled below. Other exchanged ids still
+// contribute to calcAttrPower and remain visible in the source ledger.
+const EXCHANGED_FIGHT_ATTR = Object.freeze({
+  1: FIGHT_ATTR.HP,
+  2: FIGHT_ATTR.ATTACK,
+  5: FIGHT_ATTR.HP_RATE,
+  6: FIGHT_ATTR.ATTACK_RATE,
+  11: FIGHT_ATTR.CRIT_RATE,
+  12: FIGHT_ATTR.CRIT_HARM,
+  24: FIGHT_ATTR.PHYSICAL_DEFENSE,
+  25: FIGHT_ATTR.MAGIC_DEFENSE,
+  26: FIGHT_ATTR.PHYSICAL_DEFENSE_RATE,
+  27: FIGHT_ATTR.MAGIC_DEFENSE_RATE
+});
+
 // AttrCalculator/PowerCalculator are recovered from the shipped LuaJIT. The
 // formulas below retain their original fixed-point semantics: AttrType rows
 // whose value_type is VT_PTT (1) are divided by 10000 before use, while flat
@@ -121,6 +137,40 @@ function addSource(sources, flat, rate, tables, play, displayKey, value) {
   const target = mapping.rate ? rate : flat;
   target.set(mapping.key, (target.get(mapping.key) ?? 0) + numeric);
   sources.push({ play, displayAttr: Number(displayKey), key: mapping.key, value: numeric, kind: mapping.rate ? 'rate' : 'flat' });
+}
+
+function addExchangedSources(sources, flat, rate, tables, play, attrs) {
+  const entries = attrs instanceof Map ? attrs.entries() : Object.entries(attrs ?? {}).map(([key, value]) => [Number(key), value]);
+  for (const [sourceAttrValue, rawValue] of entries) {
+    const sourceAttr = Number(sourceAttrValue);
+    const sourceRow = tables?.AttrType?.get(sourceAttr);
+    if (!sourceRow) fail(5, 'Exchanged attribute mapping missing for ' + sourceAttr);
+    const exchange = Array.isArray(sourceRow.exchange) ? sourceRow.exchange : [];
+    if (!exchange.length) fail(5, 'Exchanged attribute target missing for ' + sourceAttr);
+    const value = Number(rawValue ?? 0);
+    if (!Number.isFinite(value) || value === 0) continue;
+    for (const rawTarget of exchange) {
+      const targetAttr = Number(rawTarget);
+      const targetRow = tables?.AttrType?.get(targetAttr);
+      if (!Number.isSafeInteger(targetAttr) || targetAttr <= 0 || !targetRow) {
+        fail(5, 'Exchanged attribute target is invalid for ' + sourceAttr);
+      }
+      const isRate = Number(targetRow.value_type) === 1;
+      const fightAttr = EXCHANGED_FIGHT_ATTR[targetAttr];
+      if (fightAttr !== undefined) {
+        const target = isRate ? rate : flat;
+        target.set(fightAttr, (target.get(fightAttr) ?? 0) + value);
+      }
+      sources.push({
+        play,
+        displayAttr: targetAttr,
+        sourceAttr,
+        key: fightAttr ?? 0,
+        value,
+        kind: isRate ? 'rate' : 'flat'
+      });
+    }
+  }
 }
 
 function eachDisplayStat(tables, sources, flat, rate, play, row, columns) {
@@ -249,7 +299,9 @@ export function powerFromStats(stats, attributeTables = readAttributeTables()) {
 
 // Assemble one persisted hero into final fight attributes. Every contribution is
 // recorded in sources so an operator can explain a single number end to end.
-export function assembleHeroAttributes({ hero, heroTables, attributeTables = readAttributeTables(), overrides = {} }) {
+export function assembleHeroAttributes({
+  hero, heroTables, attributeTables = readAttributeTables(), overrides = {}, globalAttrs = {}
+}) {
   if (!hero) fail(5, 'Hero state missing');
   const tid = Number(hero.tid);
   const config = configuredHero(heroTables, tid);
@@ -321,6 +373,7 @@ export function assembleHeroAttributes({ hero, heroTables, attributeTables = rea
     if (!Array.isArray(pair) || pair.length !== 2) continue;
     addSource(sources, flat, rate, attributeTables, 'battle', pair[0], pair[1]);
   }
+  addExchangedSources(sources, flat, rate, attributeTables, 'global:tactics', globalAttrs);
 
   const fightAttrs = {
     [FIGHT_ATTR.HP]: finalStat(flat, rate, FIGHT_ATTR.HP, FIGHT_ATTR.HP_RATE, 1, 0),
@@ -394,11 +447,13 @@ export function lineupFighters(model, lineup) {
   return result;
 }
 
-export function assembleLineup({ model, lineupType = 1, heroTables, attributeTables = readAttributeTables(), lineup = null }) {
+export function assembleLineup({
+  model, lineupType = 1, heroTables, attributeTables = readAttributeTables(), lineup = null, globalAttrs = {}
+}) {
   const target = lineup ?? primaryLineup(model, lineupType);
   if (!target) fail(5, 'Lineup state missing');
   const entries = lineupFighters(model, target).map(({ hero, teamId, loc }) => ({
-    ...assembleHeroAttributes({ hero, heroTables, attributeTables }),
+    ...assembleHeroAttributes({ hero, heroTables, attributeTables, globalAttrs }),
     hero, teamId, loc
   }));
   const totalPower = entries.reduce((sum, entry) => sum + entry.power, 0);
@@ -410,8 +465,10 @@ export function assembleLineup({ model, lineupType = 1, heroTables, attributeTab
 // pb_attr_lineup_all_info payload for req_role_attr_info (1316). The raw
 // pb_attr_obj list stays empty because the play_type taxonomy is not recovered;
 // the final per-entity attributes, skills and lineup power are authoritative.
-export function buildLineupAttrInfo({ model, lineupType = 1, heroTables, attributeTables = readAttributeTables() }) {
-  const assembled = assembleLineup({ model, lineupType, heroTables, attributeTables });
+export function buildLineupAttrInfo({
+  model, lineupType = 1, heroTables, attributeTables = readAttributeTables(), globalAttrs = {}
+}) {
+  const assembled = assembleLineup({ model, lineupType, heroTables, attributeTables, globalAttrs });
   const attrList = assembled.entries.map(entry => {
     const loadout = buildHeroSkillLoadout({ hero: entry.hero, heroTables });
     return {
@@ -445,14 +502,18 @@ function heroStateKey(hero) {
   ].map(value => value ?? '').join(':');
 }
 
-export function lineupAttributeStateKey({ model, lineupType = 1 }) {
+export function lineupAttributeStateKey({ model, lineupType = 1, globalAttrs = {} }) {
   const lineup = primaryLineup(model, lineupType);
   if (!lineup) return null;
+  const normalizedGlobalAttrs = (globalAttrs instanceof Map ? [...globalAttrs] : Object.entries(globalAttrs ?? {}))
+    .map(([key, value]) => [Number(key), Number(value)])
+    .sort((left, right) => left[0] - right[0]);
   return JSON.stringify({
     roleId: model?.state?.roleId,
     roleLevel: Number(model?.role?.level ?? 0),
     lineup,
-    heroes: lineupFighters(model, lineup).map(entry => heroStateKey(entry.hero))
+    heroes: lineupFighters(model, lineup).map(entry => heroStateKey(entry.hero)),
+    globalAttrs: normalizedGlobalAttrs
   });
 }
 

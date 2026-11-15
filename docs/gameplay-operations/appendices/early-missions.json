@@ -1,0 +1,2277 @@
+{
+  "source": "personal-server/assets/tables/JourneyFightTable.data.json.gz",
+  "note": "静态原表及服务端资产逐行一致；atk_team 是否覆盖玩家出战需运行证据，不能仅据预览表断言。is_discard=true 不进入当前主线顺序。",
+  "rows": [
+    {
+      "section": {
+        "scene_state": 1,
+        "random_award": [],
+        "award_n": [],
+        "index": 1,
+        "show_desc": 0,
+        "is_discard": true,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 1,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 1,
+        "monster_type": 0,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [
+          9002600,
+          9002600
+        ],
+        "award": [],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 101,
+        "btn_text": 61657,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 10201,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 101,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          101
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": true,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 101,
+          "tid": 101,
+          "loc": [
+            2
+          ],
+          "team_lv": 1,
+          "npc": [
+            9100500
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          360,
+          200
+        ],
+        "index": 2,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 1,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 1,
+        "monster_type": 0,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [
+          9002200,
+          9002200
+        ],
+        "award": [
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 102,
+        "btn_text": 61655,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 10202,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 102,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          102
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [
+          91102
+        ],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 0,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 102,
+          "tid": 102,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 1,
+          "npc": [
+            9100500,
+            9100500,
+            9100500,
+            9100500
+          ]
+        }
+      ],
+      "attackTeams": [
+        {
+          "id": 91102,
+          "tid": 91102,
+          "loc": [
+            2,
+            5
+          ],
+          "team_lv": 1,
+          "npc": [
+            9005500,
+            9005600
+          ]
+        }
+      ]
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [],
+        "index": 3,
+        "show_desc": 0,
+        "is_discard": true,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 1,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 1,
+        "monster_type": 0,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [
+          9002600,
+          9002600
+        ],
+        "award": [],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 103,
+        "btn_text": 61658,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 10203,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 103,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          103
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 103,
+          "tid": 103,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 1,
+          "npc": [
+            9100400,
+            9100400,
+            9100100,
+            9100400
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          360,
+          200
+        ],
+        "index": 4,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 1,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [
+          9002600,
+          9002600
+        ],
+        "award": [
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 104,
+        "btn_text": 61659,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 10204,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 104,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          104
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 104,
+          "tid": 104,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 9,
+          "npc": [
+            9100100,
+            9100100,
+            9301600,
+            9100100
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          2,
+          50000,
+          2000
+        ],
+        "index": 5,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 1,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60992,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 2,
+        "monster_head": "Icon_Hero_TYTX_HanShuangZhiWen.png",
+        "enemy": [
+          9002600,
+          9002600
+        ],
+        "award": [
+          25002,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 105,
+        "btn_text": 61659,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 10205,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 105,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          105
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 34,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 105,
+          "tid": 105,
+          "loc": [
+            5
+          ],
+          "team_lv": 20,
+          "npc": [
+            3030500
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [],
+        "index": 6,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 1,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60993,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 3,
+        "monster_head": "",
+        "enemy": [
+          9003500,
+          9003600
+        ],
+        "award": [],
+        "assert_tips": 0,
+        "story": 71,
+        "game": 0,
+        "fight": 0,
+        "btn_text": 61660,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 10206,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": null,
+      "teams": [],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          185,
+          100
+        ],
+        "index": 7,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 2,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [
+          2020401,
+          2020401
+        ],
+        "award": [
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 201,
+        "btn_text": 61694,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 20201,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 201,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          201
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 201,
+          "tid": 201,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 12,
+          "npc": [
+            9301600,
+            9301600,
+            9301600,
+            9105000
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          185,
+          100
+        ],
+        "index": 8,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 2,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [
+          9002200,
+          9002200
+        ],
+        "award": [
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 202,
+        "btn_text": 61694,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 20202,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 202,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          202
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 202,
+          "tid": 202,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 16,
+          "npc": [
+            9301500,
+            9301500,
+            9105000,
+            9301500
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [],
+        "index": 9,
+        "show_desc": 0,
+        "is_discard": true,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 2,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 1,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [
+          9002200,
+          9002200
+        ],
+        "award": [],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 203,
+        "btn_text": 61694,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 20203,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 203,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          203
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 203,
+          "tid": 203,
+          "loc": [
+            1,
+            3,
+            5
+          ],
+          "team_lv": 17,
+          "npc": [
+            9301600,
+            9301600,
+            9105000
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          1,
+          370,
+          1050
+        ],
+        "index": 10,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 2,
+        "hero_ani": "",
+        "ani_time": 0,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60991,
+        "assert_jump": 0,
+        "enemy_ani": "",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "Icon_Hero_TYTX_MaoXianQiShi.png",
+        "enemy": [],
+        "award": [
+          122802,
+          122802,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 204,
+        "btn_text": 61694,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 20204,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 204,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          204
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 33,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 204,
+          "tid": 204,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 18,
+          "npc": [
+            9301500,
+            9301600,
+            9301500,
+            9105100
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          2,
+          1,
+          50000,
+          3000
+        ],
+        "index": 11,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 2,
+        "hero_ani": "",
+        "ani_time": 0,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 60992,
+        "assert_jump": 0,
+        "enemy_ani": "",
+        "skip_show": 0,
+        "monster_type": 2,
+        "monster_head": "Icon_Hero_TYTX_HanShuangZhiWen.png",
+        "enemy": [],
+        "award": [
+          25002,
+          122802,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 205,
+        "btn_text": 20526,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 20205,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 205,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          205
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 34,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 205,
+          "tid": 205,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 20,
+          "npc": [
+            9105100,
+            9105100,
+            9105100,
+            3030500
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          2,
+          190,
+          100
+        ],
+        "index": 12,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 3,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9002100,
+          9002600
+        ],
+        "award": [
+          122802,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 301,
+        "btn_text": 61661,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 30201,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 301,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          301
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 53,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 301,
+          "tid": 301,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 22,
+          "npc": [
+            9301500,
+            9100500,
+            9301500,
+            9105000
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          2,
+          190,
+          100
+        ],
+        "index": 13,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 3,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9002100,
+          9002100
+        ],
+        "award": [
+          122802,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 302,
+        "btn_text": 61661,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 30202,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 302,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          302
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 53,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 302,
+          "tid": 302,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 24,
+          "npc": [
+            9100500,
+            9301600,
+            9100500,
+            9100500
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          5,
+          190,
+          100
+        ],
+        "index": 14,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 3,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9002600,
+          9002600
+        ],
+        "award": [
+          2002,
+          122802,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 303,
+        "btn_text": 61661,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 30203,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 303,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          303
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 53,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 303,
+          "tid": 303,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 24,
+          "npc": [
+            9105000,
+            9301500,
+            9105000,
+            4010200
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          2,
+          2,
+          3,
+          300,
+          3100
+        ],
+        "index": 15,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 3,
+        "hero_ani": "",
+        "ani_time": 0,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [],
+        "award": [
+          25002,
+          123102,
+          123002,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 304,
+        "btn_text": 61661,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 30204,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 304,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          304
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 53,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 304,
+          "tid": 304,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 24,
+          "npc": [
+            9301500,
+            9100500,
+            9301500,
+            9100500
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [],
+        "index": 16,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 3,
+        "hero_ani": "",
+        "ani_time": 0,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "",
+        "skip_show": 0,
+        "monster_type": 3,
+        "monster_head": "",
+        "enemy": [],
+        "award": [],
+        "assert_tips": 0,
+        "story": 78,
+        "game": 0,
+        "fight": 305,
+        "btn_text": 61661,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 30205,
+        "assert_desc": 0,
+        "need_level": 0,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 305,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          305
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 53,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 305,
+          "tid": 305,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 24,
+          "npc": [
+            9100500,
+            9105000,
+            9003100,
+            9105000
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          100
+        ],
+        "index": 17,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9003300,
+          9003300
+        ],
+        "award": [
+          123102,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 401,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40201,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 401,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          401
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": false,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 401,
+          "tid": 401,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 48,
+          "npc": [
+            9104100,
+            9200100,
+            9200100,
+            9200100
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          100
+        ],
+        "index": 18,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9003300,
+          9003300
+        ],
+        "award": [
+          123002,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 402,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40202,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 402,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          402
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 402,
+          "tid": 402,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 48,
+          "npc": [
+            9104300,
+            9104300,
+            9104300,
+            9200300
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          1500
+        ],
+        "index": 19,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "",
+        "ani_time": 0,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "",
+        "skip_show": 0,
+        "monster_type": 1,
+        "monster_head": "",
+        "enemy": [],
+        "award": [
+          123102,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 403,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40203,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 403,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          403
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 403,
+          "tid": 403,
+          "loc": [
+            1,
+            3,
+            5
+          ],
+          "team_lv": 48,
+          "npc": [
+            9102100,
+            9102100,
+            3030400
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          100
+        ],
+        "index": 20,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9003300,
+          9003300
+        ],
+        "award": [
+          123002,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 404,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40204,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 404,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          404
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 404,
+          "tid": 404,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 100,
+          "npc": [
+            9200300,
+            9200300,
+            9200100,
+            9200300
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          100
+        ],
+        "index": 21,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9003300,
+          9003300
+        ],
+        "award": [
+          123102,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 405,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40205,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 405,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          405
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 405,
+          "tid": 405,
+          "loc": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "team_lv": 100,
+          "npc": [
+            9104100,
+            9200200,
+            9200400,
+            9200200
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          60,
+          1,
+          194,
+          2000
+        ],
+        "index": 22,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 1,
+        "monster_head": "",
+        "enemy": [
+          9003300,
+          9003300
+        ],
+        "award": [
+          22300204,
+          123002,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 406,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40206,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 406,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          406
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 406,
+          "tid": 406,
+          "loc": [
+            1,
+            3,
+            5
+          ],
+          "team_lv": 100,
+          "npc": [
+            9102100,
+            9102100,
+            3030300
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          100
+        ],
+        "index": 23,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 2049,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9003300,
+          9003300
+        ],
+        "award": [
+          123102,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 407,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40207,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": [
+          1,
+          5,
+          40207
+        ]
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 407,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          407
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 407,
+          "tid": 407,
+          "loc": [
+            1,
+            3,
+            5
+          ],
+          "team_lv": 100,
+          "npc": [
+            9104000,
+            9104000,
+            9200100
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          100
+        ],
+        "index": 24,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          9003300,
+          9003300
+        ],
+        "award": [
+          123002,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 408,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40208,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 408,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          408
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 408,
+          "tid": 408,
+          "loc": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "team_lv": 100,
+          "npc": [
+            9104000,
+            9104100,
+            9104000,
+            9200400
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          100
+        ],
+        "index": 25,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "idle",
+        "ani_time": 2,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "idle",
+        "skip_show": 0,
+        "monster_type": 0,
+        "monster_head": "",
+        "enemy": [
+          1030401,
+          9002400
+        ],
+        "award": [
+          123102,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 409,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40209,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 2,
+        "tid": 409,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          409
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 409,
+          "tid": 409,
+          "loc": [
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
+          "team_lv": 100,
+          "npc": [
+            9200400,
+            9200400,
+            9200400,
+            9200300,
+            9200300
+          ]
+        }
+      ],
+      "attackTeams": []
+    },
+    {
+      "section": {
+        "scene_state": 2,
+        "random_award": [],
+        "award_n": [
+          1,
+          194,
+          5000
+        ],
+        "index": 26,
+        "show_desc": 0,
+        "is_discard": false,
+        "figure": "",
+        "assert_promote_tips": 0,
+        "belong_chapter": 4,
+        "hero_ani": "",
+        "ani_time": 0,
+        "assistant_param": 8000,
+        "assert_promote_tips_param": 0,
+        "show_name": 2245,
+        "assert_jump": 0,
+        "enemy_ani": "",
+        "skip_show": 0,
+        "monster_type": 2,
+        "monster_head": "",
+        "enemy": [],
+        "award": [
+          123002,
+          201500,
+          101800
+        ],
+        "assert_tips": 0,
+        "story": 0,
+        "game": 0,
+        "fight": 410,
+        "btn_text": 0,
+        "extra_award": [],
+        "extra_award_n": [],
+        "tid": 40210,
+        "assert_desc": 0,
+        "need_level": 1,
+        "assert_jump_param": 0
+      },
+      "fight": {
+        "skip_result": false,
+        "skip_all_battle": false,
+        "form": 1,
+        "type": 1,
+        "skip": 4,
+        "tid": 410,
+        "def_loc_sign": true,
+        "atk_team_lv": [],
+        "def_team": [
+          410
+        ],
+        "show_skip_all_btn": false,
+        "lineup_rule": [],
+        "atk_team": [],
+        "mask_def_power": false,
+        "skip_lineup": false,
+        "exit": true,
+        "result_rule": 0,
+        "disable_one_key_lineup": false,
+        "scene": 9,
+        "lineup": 76,
+        "def_team_lv": []
+      },
+      "teams": [
+        {
+          "id": 410,
+          "tid": 410,
+          "loc": [
+            1,
+            3,
+            5
+          ],
+          "team_lv": 101,
+          "npc": [
+            9102100,
+            9102100,
+            3030500
+          ]
+        }
+      ],
+      "attackTeams": []
+    }
+  ]
+}

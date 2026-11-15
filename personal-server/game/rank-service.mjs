@@ -63,8 +63,14 @@ function valueText(value, label = 'rank value') {
   invalid(`Invalid ${label}`);
 }
 
-function isoSeconds(milliseconds) {
-  return Math.floor(milliseconds / 1000);
+function eventMilliseconds(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number >= 0 ? number : 0;
+}
+
+function normalizeEventMilliseconds(value) {
+  const number = eventMilliseconds(value);
+  return number > 0 && number < 100_000_000_000 ? number * 1000 : number;
 }
 
 function safeJson(value) {
@@ -97,6 +103,22 @@ function ensureTables(db) {
     );
     CREATE INDEX IF NOT EXISTS rank_backups_latest_idx
       ON rank_backups(rank_id,scope_key,period_key,backup_id DESC);
+    CREATE TABLE IF NOT EXISTS rank_score_reached (
+      rank_id INTEGER NOT NULL,
+      scope_key TEXT NOT NULL,
+      period_key TEXT NOT NULL,
+      participant_id TEXT NOT NULL,
+      value TEXT NOT NULL,
+      first_reached_at INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      PRIMARY KEY(rank_id,scope_key,period_key,participant_id,value)
+    );
+    CREATE INDEX IF NOT EXISTS rank_score_reached_order_idx
+      ON rank_score_reached(rank_id,scope_key,period_key,participant_id,first_reached_at);
+    CREATE TABLE IF NOT EXISTS rank_schema_meta (
+      meta_key TEXT PRIMARY KEY,
+      meta_value TEXT NOT NULL
+    );
   `);
 }
 
@@ -145,20 +167,38 @@ function heroStarCount(model) {
 // the same assembled lineup power (attribute-service compatibility formula).
 // A hero whose configuration is missing is skipped by the assembler so ranking
 // keeps working on partially seeded saves.
-function localCombatPower(model, heroTables, attributeTables) {
+function localCombatPower(model, heroTables, attributeTables, globalAttrsForModel = () => ({})) {
   const lineup = primaryLineup(model);
   if (!lineup) return 0;
   try {
-    return assembleLineup({ model, lineup, heroTables, attributeTables }).totalPower;
+    const globalAttrs = typeof globalAttrsForModel === 'function'
+      ? globalAttrsForModel(model)
+      : globalAttrsForModel;
+    return assembleLineup({ model, lineup, heroTables, attributeTables, globalAttrs }).totalPower;
   } catch {
     return 0;
   }
 }
 
-export const rankPower = (model, { heroTables = readHeroTables(), attributeTables = readAttributeTables() } = {}) => localCombatPower(model, heroTables, attributeTables);
-export function createRankService({ codec, store, tables = readRankTables(), heroTables = readHeroTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {} }) {
+export const rankPower = (model, {
+  heroTables = readHeroTables(), attributeTables = readAttributeTables(), globalAttrs = {}
+} = {}) => localCombatPower(model, heroTables, attributeTables, globalAttrs);
+export function createRankService({
+  codec,
+  store,
+  tables = readRankTables(),
+  heroTables = readHeroTables(),
+  attributeTables = readAttributeTables(),
+  globalAttrsForModel = () => ({}),
+  now = Date.now,
+  logger = () => {}
+}) {
   const log = event => { try { logger(event); } catch {} };
-  if (store?.inspect) store.inspect(ensureTables);
+  const initializeTables = (db, migrationTimestamp = eventMilliseconds(now())) => {
+    ensureTables(db);
+    backfillScoreReached(db, migrationTimestamp);
+  };
+  if (store?.inspect) store.inspect(db => initializeTables(db));
 
   function bubbles() {
     const bubble = store?.read?.()?.state?.rankBubble;
@@ -188,7 +228,7 @@ export function createRankService({ codec, store, tables = readRankTables(), her
     if (Number.isSafeInteger(cleared) && cleared > 0) scores.set(RANK_IDS.MISSION, BigInt(cleared));
     const stars = heroStarCount(model);
     if (Number.isSafeInteger(stars) && stars > 0) scores.set(RANK_IDS.HERO_STAR_COUNT, BigInt(stars));
-    const power = localCombatPower(model, heroTables, attributeTables);
+    const power = localCombatPower(model, heroTables, attributeTables, globalAttrsForModel);
     if (Number.isSafeInteger(power) && power > 0) scores.set(RANK_IDS.POWER, BigInt(power));
     const tower = peakTowerMaxLayer(db, model.state.roleId);
     if (Number.isSafeInteger(tower) && tower > 0) scores.set(RANK_IDS.PEAK_TOWER, BigInt(tower));
@@ -209,10 +249,46 @@ export function createRankService({ codec, store, tables = readRankTables(), her
     return true;
   }
 
+  function backfillScoreReached(db, migrationTimestamp) {
+    const marker = db.prepare(`SELECT meta_value FROM rank_schema_meta WHERE meta_key='score-reached-v1'`).get();
+    if (marker) return;
+
+    // Existing rows predate the R1 tie-break ledger. Reuse the earliest trusted
+    // pre-update backup for a value when it exists; otherwise every migrated row
+    // receives the same migration snapshot time and falls back to role_id.
+    const historical = new Map();
+    const backups = db.prepare(`SELECT rank_id,scope_key,period_key,entries_json,created_at
+      FROM rank_backups ORDER BY created_at ASC,backup_id ASC`).all();
+    for (const backup of backups) {
+      let entries;
+      try { entries = JSON.parse(backup.entries_json); } catch { continue; }
+      for (const entry of entries) {
+        const key = [backup.rank_id, backup.scope_key, backup.period_key, entry.participantId, entry.value].join('\u0000');
+        const at = normalizeEventMilliseconds(backup.created_at);
+        if (!Number.isSafeInteger(at) || at < 0) continue;
+        const previous = historical.get(key);
+        if (previous == null || at < previous) historical.set(key, at);
+      }
+    }
+
+    const rows = db.prepare(`SELECT rank_id,scope_key,period_key,participant_id,value FROM rank_entries`).all();
+    const insert = db.prepare(`INSERT OR IGNORE INTO rank_score_reached
+      (rank_id,scope_key,period_key,participant_id,value,first_reached_at,source) VALUES (?,?,?,?,?,?,?)`);
+    for (const row of rows) {
+      const key = [row.rank_id, row.scope_key, row.period_key, row.participant_id, row.value].join('\u0000');
+      const trusted = historical.get(key);
+      insert.run(row.rank_id, row.scope_key, row.period_key, row.participant_id, row.value,
+        trusted ?? migrationTimestamp, trusted == null ? 'migration-snapshot' : 'trusted-backup-event');
+    }
+    db.prepare(`INSERT OR REPLACE INTO rank_schema_meta(meta_key,meta_value) VALUES (?,?)`).run(
+      'score-reached-v1', 'R1-20261115:value-primary-first-reached-at-role-id'
+    );
+  }
+
   function writeEntry(db, {
     rankId, participantId, value, extra = Buffer.alloc(0), serverId = 1,
     scopeKey = DEFAULT_SCOPE, periodKey = DEFAULT_PERIOD,
-    reason = 'score-updated', timestamp = isoSeconds(now())
+    reason = 'score-updated', timestamp = eventMilliseconds(now())
   }) {
     configFor(tables, rankId);
     const participant = int64(participantId, 'participant ID');
@@ -224,6 +300,11 @@ export function createRankService({ codec, store, tables = readRankTables(), her
       .get(rankId, scopeKey, periodKey, participant);
     if (previous && String(previous.value) === canonicalValue
         && Number(previous.server_id) === normalizedServer && Buffer.from(previous.extra).equals(bytes)) return false;
+    db.prepare(`INSERT OR IGNORE INTO rank_score_reached
+      (rank_id,scope_key,period_key,participant_id,value,first_reached_at,source)
+      VALUES (?,?,?,?,?,?,?)`).run(
+      rankId, scopeKey, periodKey, participant, canonicalValue, timestamp, 'submitted-event'
+    );
     if (previous) captureBackup(db, rankId, scopeKey, periodKey, reason, timestamp);
     db.prepare(`INSERT INTO rank_entries
       (rank_id,scope_key,period_key,participant_id,server_id,value,extra,updated_at)
@@ -248,8 +329,14 @@ export function createRankService({ codec, store, tables = readRankTables(), her
   }
 
   function currentRows(db, rankId, scopeKey = DEFAULT_SCOPE, periodKey = DEFAULT_PERIOD) {
-    return db.prepare(`SELECT participant_id,server_id,value,extra FROM rank_entries
-      WHERE rank_id=? AND scope_key=? AND period_key=?`).all(rankId, scopeKey, periodKey);
+    return db.prepare(`SELECT e.participant_id,e.server_id,e.value,e.extra,
+        COALESCE(r.first_reached_at,0) AS first_reached_at,
+        COALESCE(r.source,'migration-snapshot') AS first_reached_source
+      FROM rank_entries e
+      LEFT JOIN rank_score_reached r
+        ON r.rank_id=e.rank_id AND r.scope_key=e.scope_key AND r.period_key=e.period_key
+       AND r.participant_id=e.participant_id AND r.value=e.value
+      WHERE e.rank_id=? AND e.scope_key=? AND e.period_key=?`).all(rankId, scopeKey, periodKey);
   }
 
   function rankSorted(rows, rules) {
@@ -258,6 +345,8 @@ export function createRankService({ codec, store, tables = readRankTables(), her
       .sort((left, right) => {
         const a = BigInt(String(left.value)), b = BigInt(String(right.value));
         if (a !== b) return rules.reverse ? (a < b ? -1 : 1) : (a > b ? -1 : 1);
+        const leftReached = Number(left.first_reached_at ?? 0), rightReached = Number(right.first_reached_at ?? 0);
+        if (leftReached !== rightReached) return leftReached < rightReached ? -1 : 1;
         const leftId = BigInt(String(left.participant_id)), rightId = BigInt(String(right.participant_id));
         return leftId < rightId ? -1 : leftId > rightId ? 1 : 0;
       });
@@ -282,13 +371,17 @@ export function createRankService({ codec, store, tables = readRankTables(), her
   }
 
   function backupRows(db, rankId, scopeKey = DEFAULT_SCOPE, periodKey = DEFAULT_PERIOD) {
-    const row = db.prepare(`SELECT entries_json FROM rank_backups
+    const row = db.prepare(`SELECT entries_json,created_at FROM rank_backups
       WHERE rank_id=? AND scope_key=? AND period_key=? ORDER BY backup_id DESC LIMIT 1`)
       .get(rankId, scopeKey, periodKey);
     if (!row) return null;
+    const reached = new Map(db.prepare(`SELECT participant_id,value,first_reached_at
+      FROM rank_score_reached WHERE rank_id=? AND scope_key=? AND period_key=?`)
+      .all(rankId, scopeKey, periodKey).map(entry => [entry.participant_id + '\u0000' + entry.value, entry.first_reached_at]));
     return JSON.parse(row.entries_json).map(entry => ({
       participant_id: entry.participantId, server_id: entry.serverId, value: entry.value,
-      extra: Buffer.from(entry.extra, 'base64')
+      extra: Buffer.from(entry.extra, 'base64'),
+      first_reached_at: reached.get(entry.participantId + '\u0000' + entry.value) ?? normalizeEventMilliseconds(row.created_at)
     }));
   }
 
@@ -306,7 +399,7 @@ export function createRankService({ codec, store, tables = readRankTables(), her
   function withRankTransaction(action) {
     if (!store?.transaction) return action(null, null);
     return store.transaction((model, db) => {
-      ensureTables(db);
+      initializeTables(db);
       synchronizeInTransaction(model, db);
       return action(model, db);
     });
@@ -394,12 +487,12 @@ export function createRankService({ codec, store, tables = readRankTables(), her
     execute,
     synchronize() {
       if (!store?.transaction) return 0;
-      return store.transaction((model, db) => { ensureTables(db); return synchronizeInTransaction(model, db); });
+      return store.transaction((model, db) => { initializeTables(db); return synchronizeInTransaction(model, db); });
     },
     recordScore(entry) {
       if (!store?.transaction) invalid('Ranking store is unavailable');
       return store.transaction((model, db) => {
-        ensureTables(db);
+        initializeTables(db);
         const scopeKey = entry.scopeKey ?? `server:${Number(model.state.serverId ?? 1)}`;
         return writeEntry(db, { ...entry, scopeKey });
       });

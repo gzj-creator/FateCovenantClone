@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "table": "InviteOldActTable",
+  "assetPath": "personal-server/assets/tables/InviteOldActTable.data.lua.json.gz",
+  "assetSha256": "e541eb1094dfb8aaa711e6248119559292d6753a2d1c067a7e11a720c59c64c0",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/InviteOldActTable.data.lua.json.gz",
+      "sha256": "e541eb1094dfb8aaa711e6248119559292d6753a2d1c067a7e11a720c59c64c0"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"InviteOldTask":{"status":"decoded-rows","count":24,"externalReferenceCount":0,"rows":[
+{"award_list":[[25400204,80],[10064100,1],[101500,500]],"task_type":1,"type":100602,"tid":101001,"task_des":13236,"period":1,"target_count":28000000,"task_param":0,"limit_get_count":1},
+{"award_list":[[25400204,80],[10074100,3],[101500,500]],"task_type":1,"type":100602,"tid":101002,"task_des":13237,"period":1,"target_count":38000000,"task_param":0,"limit_get_count":1},
+{"award_list":[[3002,10],[10054100,1],[101500,50]],"task_type":1,"type":100601,"tid":101003,"task_des":13233,"period":1,"target_count":20,"task_param":0,"limit_get_count":3},
+{"award_list":[[3002,10],[10054100,1],[101500,200]],"task_type":1,"type":100601,"tid":101004,"task_des":13234,"period":1,"target_count":35,"task_param":0,"limit_get_count":2},
+{"award_list":[[390002,1],[10064100,1],[101500,500]],"task_type":1,"type":100601,"tid":101005,"task_des":13235,"period":1,"target_count":70,"task_param":0,"limit_get_count":2},
+{"award_list":[[23002,1],[10054100,1],[101500,200]],"task_type":1,"type":100602,"tid":101006,"task_des":13238,"period":1,"target_count":8000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[3891200,1],[10064100,1],[101500,200]],"task_type":1,"type":100602,"tid":101007,"task_des":13239,"period":1,"target_count":16000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[3901200,1],[1030122,1],[101500,500]],"task_type":1,"type":100602,"tid":101008,"task_des":13240,"period":1,"target_count":32000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[4441200,1],[10064100,1],[101500,500]],"task_type":1,"type":100602,"tid":101009,"task_des":13305,"period":2,"target_count":12000000,"task_param":0,"limit_get_count":1},
+{"award_list":[[4441200,1],[10074100,3],[101500,500]],"task_type":1,"type":100602,"tid":101010,"task_des":13306,"period":2,"target_count":15000000,"task_param":0,"limit_get_count":1},
+{"award_list":[[3002,10],[10054100,1],[101500,50]],"task_type":1,"type":100601,"tid":101011,"task_des":13233,"period":2,"target_count":20,"task_param":0,"limit_get_count":3},
+{"award_list":[[3002,10],[10054100,1],[101500,200]],"task_type":1,"type":100601,"tid":101012,"task_des":13234,"period":2,"target_count":35,"task_param":0,"limit_get_count":2},
+{"award_list":[[390002,1],[10064100,1],[101500,500]],"task_type":1,"type":100601,"tid":101013,"task_des":13309,"period":2,"target_count":50,"task_param":0,"limit_get_count":2},
+{"award_list":[[23002,1],[10054100,1],[101500,200]],"task_type":1,"type":100602,"tid":101014,"task_des":13307,"period":2,"target_count":3000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[3891200,1],[10064100,1],[101500,200]],"task_type":1,"type":100602,"tid":101015,"task_des":13308,"period":2,"target_count":5000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[3901200,1],[1030122,1],[101500,500]],"task_type":1,"type":100602,"tid":101016,"task_des":13238,"period":2,"target_count":8000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[4441200,1],[10064100,1],[101500,500]],"task_type":1,"type":100602,"tid":101017,"task_des":13305,"period":3,"target_count":12000000,"task_param":0,"limit_get_count":1},
+{"award_list":[[4441200,1],[10074100,3],[101500,500]],"task_type":1,"type":100602,"tid":101018,"task_des":13306,"period":3,"target_count":15000000,"task_param":0,"limit_get_count":1},
+{"award_list":[[3002,10],[10054100,1],[101500,50]],"task_type":1,"type":100601,"tid":101019,"task_des":13233,"period":3,"target_count":20,"task_param":0,"limit_get_count":3},
+{"award_list":[[3002,10],[10054100,1],[101500,200]],"task_type":1,"type":100601,"tid":101020,"task_des":13234,"period":3,"target_count":35,"task_param":0,"limit_get_count":2},
+{"award_list":[[390002,1],[10064100,1],[101500,500]],"task_type":1,"type":100601,"tid":101021,"task_des":13309,"period":3,"target_count":50,"task_param":0,"limit_get_count":2},
+{"award_list":[[23002,1],[10054100,1],[101500,200]],"task_type":1,"type":100602,"tid":101022,"task_des":13307,"period":3,"target_count":3000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[3891200,1],[10064100,1],[101500,200]],"task_type":1,"type":100602,"tid":101023,"task_des":13308,"period":3,"target_count":5000000,"task_param":0,"limit_get_count":2},
+{"award_list":[[3901200,1],[1030122,1],[101500,500]],"task_type":1,"type":100602,"tid":101024,"task_des":13238,"period":3,"target_count":8000000,"task_param":0,"limit_get_count":2}
+]},
+"InviteOldAct":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"invite_code_text_id":5015,"tips_text_id":2005,"bust_portrait":"img_yaoqinglibao_weier2.png","tid":1,"bg":"img_yaoqinglibao_beijing2.png","act_title_text_id":5084},
+{"invite_code_text_id":5015,"tips_text_id":2005,"bust_portrait":"img_yaoqinglibao_anhunshi.png","tid":2,"bg":"img_yaoqinglibao_beijing2.png","act_title_text_id":5084},
+{"invite_code_text_id":5015,"tips_text_id":2005,"bust_portrait":"img_yaoqinglibao_anhunshi.png","tid":3,"bg":"img_yaoqinglibao_beijing2.png","act_title_text_id":5084}
+]}
+}
+}

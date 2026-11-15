@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "table": "PreheatActTable",
+  "assetPath": "personal-server/assets/tables/PreheatActTable.data.lua.json.gz",
+  "assetSha256": "fa553e062bf56ebcaaedb0e8c40aca465380bb057a8df1cdde5672c30be8c51f",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/PreheatActTable.data.lua.json.gz",
+      "sha256": "fa553e062bf56ebcaaedb0e8c40aca465380bb057a8df1cdde5672c30be8c51f"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Award":{"status":"decoded-rows","count":10,"externalReferenceCount":0,"rows":[
+{"tid":1001101,"effect":"","award":[[101500,666]],"icon":"","available_sec":86400,"version":1,"server_range":11},
+{"tid":1001102,"effect":"","award":[[206308,1],[7401900,300]],"icon":"","available_sec":172800,"version":1,"server_range":11},
+{"tid":2001101,"effect":"Effect_GodDomainTransitionMainForm_mofang1.prefab","award":[[101500,200]],"icon":"img_hd_yssy_mofang1.png","available_sec":86400,"version":2,"server_range":11},
+{"tid":2001102,"effect":"Effect_GodDomainTransitionMainForm_mofang2.prefab","award":[[101500,666]],"icon":"img_hd_yssy_mofang2.png","available_sec":172800,"version":2,"server_range":11},
+{"tid":2001103,"effect":"Effect_GodDomainTransitionMainForm_mofang3.prefab","award":[[206508,1]],"icon":"img_hd_yssy_mofang3.png","available_sec":259200,"version":2,"server_range":11},
+{"tid":3001101,"effect":"Effect_GodDomainTransitionMainForm_mofang2.prefab","award":[[101500,200]],"icon":"img_hd_yssy_mofang2.png","available_sec":57600,"version":3,"server_range":11},
+{"tid":3001102,"effect":"Effect_GodDomainTransitionMainForm_mofang3.prefab","award":[[101500,666]],"icon":"img_hd_yssy_mofang3.png","available_sec":115200,"version":3,"server_range":11},
+{"tid":3001103,"effect":"Effect_GodDomainTransitionMainForm_mofang3.prefab","award":[[206508,1]],"icon":"img_hd_yssy_mofang3.png","available_sec":172800,"version":3,"server_range":11},
+{"tid":5001101,"effect":"","award":[[101500,666]],"icon":"","available_sec":86400,"version":5,"server_range":11},
+{"tid":5001102,"effect":"","award":[[209208,1],[7401900,300]],"icon":"","available_sec":172800,"version":5,"server_range":11}
+]},
+"DailyAward":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"daily_award":[[638002,1]]},
+{"tid":2,"daily_award":[[643002,1]]},
+{"tid":3,"daily_award":[[643002,1]]},
+{"tid":5,"daily_award":[[806002,1]]}
+]},
+"PreheatAct":{"status":"rows-with-external-references","count":4,"externalReferenceCount":4,"rows":[
+{"jump_func":{"reference":"PreheatActForm.StaticOpen"},"cost_num":1,"cost_tid":638002,"award":[[2981200,1]],"divide_sec":172800,"tid":1,"popup_func":{"reference":"PreheatActPopupForm.StaticOpen"},"danmaku_id":150001,"award_red":174158680535,"max_draw_cnt":999,"preheat_red":174192202665},
+{"cost_num":1,"cost_tid":643002,"award":[[101500,20]],"divide_sec":259200,"tid":2,"danmaku_id":154001,"award_red":174254550418,"max_draw_cnt":999,"preheat_red":174254549333},
+{"cost_num":1,"cost_tid":643002,"award":[[101500,20]],"divide_sec":172800,"tid":3,"danmaku_id":154002,"award_red":174254550418,"max_draw_cnt":999,"preheat_red":174254549333},
+{"jump_func":{"reference":"PreheatActYearForm.StaticOpen"},"cost_num":1,"cost_tid":806002,"award":[[101500,20]],"divide_sec":172800,"tid":5,"popup_func":{"reference":"PreheatActYearPopupForm.StaticOpen"},"danmaku_id":150001,"award_red":175575452635,"max_draw_cnt":999,"preheat_red":175582665348}
+]}
+}
+}

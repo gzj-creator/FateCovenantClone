@@ -414,7 +414,8 @@ export function createTournamentService({
   gameTables = null,
   now = Date.now,
   logger = () => {},
-  enemyRoster = null
+  enemyRoster = null,
+  globalAttrsForModel = () => ({})
 }) {
   const log = event => { try { logger(event); } catch { /* logging must not fail a command */ } };
   const resourceTables = () => gameTables ?? readGameTables();
@@ -660,7 +661,7 @@ export function createTournamentService({
       const state = readState(db, model.state.roleId, nowMs, type);
       const minScore = Number(type.minScore);
       if (state.score < minScore) state.score = minScore;
-      const attacker = rosterFor({ model, lineupType: 1 });
+      const attacker = rosterFor({ model, lineupType: 1, globalAttrsForModel });
       const opponent = resolveOpponent({ score: state.score, stage: state.stage, fightTid: type.fightTid, botTid: 0 });
       const oldScore = state.score;
       const oldRank = rankOf(db, state.roleId, oldScore);
@@ -886,7 +887,7 @@ export function createTournamentService({
       if (Number(target.state) === PROMOTE_WON) fail(CODE_LIMIT, 'Tournament promote opponent was already defeated');
       const bot = tables.bots.get(Math.abs(Number(target.roleId)));
       const fightTid = Number(bot?.fightTid ?? type.fightTid);
-      const attacker = rosterFor({ model, lineupType: 1 });
+      const attacker = rosterFor({ model, lineupType: 1, globalAttrsForModel });
       const opponent = resolveOpponent({
         score: Number(bot?.score ?? target.score),
         stage: Number(target.score),

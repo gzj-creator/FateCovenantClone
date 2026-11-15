@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "table": "LeaseTable",
+  "assetPath": "personal-server/assets/tables/LeaseTable.data.lua.json.gz",
+  "assetSha256": "b66237e75b7373d18d69fca041c2efee476288d9a3b42e795faf2a4fac4ada02",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/LeaseTable.data.lua.json.gz",
+      "sha256": "b66237e75b7373d18d69fca041c2efee476288d9a3b42e795faf2a4fac4ada02"
+    }
+  ],
+  "sourceMetadata": "11778682613892690000-LeaseTable.data.lua.bin",
+"families":{
+"Func":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"day_refresh":false}
+]},
+"Extra":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]},
+"Unit":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"pb":"pb_lease_hero"},
+{"tid":2,"pb":"pb_lease_artifact"},
+{"tid":3,"pb":"pb_lease_pet"},
+{"tid":4,"pb":"pb_lease_elves"}
+]},
+"Lineup":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":107,"use_times":{"global":"TableEmpty"},"lose_use_times":false,"use_lease":1,"filter_hero":null,"can_remove":false},
+{"tid":108,"use_times":{"global":"TableEmpty"},"lose_use_times":false,"use_lease":1,"filter_hero":null,"can_remove":false},
+{"tid":109,"use_times":{"global":"TableEmpty"},"lose_use_times":false,"use_lease":1,"filter_hero":null,"can_remove":false},
+{"tid":110,"use_times":{"global":"TableEmpty"},"lose_use_times":false,"use_lease":1,"filter_hero":null,"can_remove":false}
+]}
+}
+}

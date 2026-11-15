@@ -1,0 +1,3248 @@
+{
+  "schemaVersion": 2,
+  "snapshotDate": "2026-11-15",
+  "baseline": "R1-20261115",
+  "scope": "documentation and extracted configuration only",
+  "generator": {
+    "path": "tools/build-detailed-rule-docs.mjs",
+    "sha256": "69a3e466c971daef7cd2c520fde52797b3d22089057e4e4d45e182a5e724089c"
+  },
+  "inventory": {
+    "path": "docs/plans/remaining-gameplay-20261106/inventory.json",
+    "sha256": "6826248f340cafde4f9f4d4dea663434c2de88ad451b25004f005ca25c7669db"
+  },
+  "summary": {
+    "sourceAssets": 199,
+    "tableDocuments": 197,
+    "registeredFamilies": 2013,
+    "recoveredRows": 276725,
+    "unresolvedFamilies": 3,
+    "activityRows": 1993,
+    "activityTypes": 192,
+    "activityPhaseRows": 1993,
+    "moduleGroups": 297,
+    "commandCount": 1407,
+    "products": 6657,
+    "drawLibraries": 589,
+    "calendarDays": 90
+  },
+  "sources": [
+    {
+      "path": "personal-server/assets/tables/14863431925290164000-RechargeBonusTable.data.json.gz",
+      "sha256": "66ff5f54505d7f7fb085192438b0ad6c100b90d37d013dc89ddffc9af296c0e6"
+    },
+    {
+      "path": "personal-server/assets/tables/7289607387164353000-FirstRechargeTable.data.json.gz",
+      "sha256": "697c88198f1d6d16ac6c85c459bc83c739d707cf093e96da8fcabecb8562e405"
+    },
+    {
+      "path": "personal-server/assets/tables/7806056895365336000-RechargeRebateResetTable.data.json.gz",
+      "sha256": "b5ed43b21c7cca0fbf301376ece2415711ffffdc38275cecfc69eafa8a2436a5"
+    },
+    {
+      "path": "personal-server/assets/tables/AccRechargeActTable.data.lua.json.gz",
+      "sha256": "cc697a5ad6690ddae544421766724949b117dd2f5738929bf398edf76661ee49"
+    },
+    {
+      "path": "personal-server/assets/tables/ActFrameTable.data.lua.json.gz",
+      "sha256": "728aef9e134741e4aecdee779dcf7f8a57a5723df437a6b934338410eee6c7df"
+    },
+    {
+      "path": "personal-server/assets/tables/ActShopTable.data.lua.json.gz",
+      "sha256": "8b5ecd392d568f1f52258a167a25096652b48275ea062889e621329c846cef66"
+    },
+    {
+      "path": "personal-server/assets/tables/ActivityTable.data.lua.json.gz",
+      "sha256": "2b9b7814f793248cffd72029bc330f77275ee51c3865e1c5897935c91867a234"
+    },
+    {
+      "path": "personal-server/assets/tables/AnniversaryBanquetActTable.data.lua.json.gz",
+      "sha256": "f63473a16ce130b9ac691770ae1179640d31ce25f833f61c1c5d2a7af0822dbb"
+    },
+    {
+      "path": "personal-server/assets/tables/AnniversaryGameActTable.data.lua.json.gz",
+      "sha256": "b59fc8c5ad601371c722c35b3ad30fc2daadd75a49ca37ae594323c7e907e9f4"
+    },
+    {
+      "path": "personal-server/assets/tables/ArenaContestTable.data.lua.json.gz",
+      "sha256": "3d01441d179330d9206face941b6b79a16a106d02188f73bf415311c6058024d"
+    },
+    {
+      "path": "personal-server/assets/tables/ArtifactDrawActTable.data.json.gz",
+      "sha256": "f980da3dbbe4886f5aee0c3f1a03b7a3f4e0e327251ae91f9f59c19744c29eb1"
+    },
+    {
+      "path": "personal-server/assets/tables/ArtifactLevelUp.data.json.gz",
+      "sha256": "576a2fdc3822b491068153d5b4f33fb7f68de3c6bcf6baab061e7652c1398729"
+    },
+    {
+      "path": "personal-server/assets/tables/ArtifactTable.data.lua.json.gz",
+      "sha256": "c648e4bc8f382d660290596d31240863cb9ed2c8573865dfbd021da494bd1909"
+    },
+    {
+      "path": "personal-server/assets/tables/BakingActTable.data.lua.json.gz",
+      "sha256": "2dc17b38d048709305d84cfc1bd389fe4c7e419d19ce890a67ae9a6422cc44cb"
+    },
+    {
+      "path": "personal-server/assets/tables/BattleTriMatchEquipTable.data.lua.json.gz",
+      "sha256": "8db0f559c4ccb48785fc2f6d2e57c5f73e8222e8cf4a635e894516af4efda4db"
+    },
+    {
+      "path": "personal-server/assets/tables/BattleTriMatchHeroTable.data.lua.json.gz",
+      "sha256": "cc21c5a91b837b292355319482ba909fdee36ce9874c9dc6a8ab018a303739d0"
+    },
+    {
+      "path": "personal-server/assets/tables/BattleTriMatchLineupTable.data.lua.json.gz",
+      "sha256": "2f316adb59fdb4ca48cc9d7117ad0041856d13ad898ef8163c74403a9f639204"
+    },
+    {
+      "path": "personal-server/assets/tables/BeatGopherActTable.data.lua.json.gz",
+      "sha256": "70ff0f173ee2c70904f79007181955d466c071b1cc133ebfcdfb0ae68c633307"
+    },
+    {
+      "path": "personal-server/assets/tables/BonusDrawTable.data.lua.json.gz",
+      "sha256": "be9c8066f2e6b34cc16c46421f05ca7d9dc194ffd2e56e4e83be84ef75fe5a27"
+    },
+    {
+      "path": "personal-server/assets/tables/CampHaloTable.data.json.gz",
+      "sha256": "eed7cacf7db14829d728b5a8cbb35801aaaa1b0e055da36938c69a48c0fc2c62"
+    },
+    {
+      "path": "personal-server/assets/tables/CampTowerTable.data.lua.json.gz",
+      "sha256": "c2e5352ef8b5bb544c358cd4135a1fefc19964385f0a9c58c407cf195101b58f"
+    },
+    {
+      "path": "personal-server/assets/tables/CapsuleToyTable.data.lua.json.gz",
+      "sha256": "6613a266f26d2bc9e78236f01f5b4aab9942774844cb5e62e61113cd7a06930e"
+    },
+    {
+      "path": "personal-server/assets/tables/CarnivalTable.data.lua.json.gz",
+      "sha256": "3fe6424a336143e8543adf3987177a44ddd9c019b3c65317efb26ec1671619a7"
+    },
+    {
+      "path": "personal-server/assets/tables/CashbackDrawTable.data.lua.json.gz",
+      "sha256": "9275198ee5530881c4c20aa66de7523deb4ae8f276b5130b99e4b1cb494dfe5a"
+    },
+    {
+      "path": "personal-server/assets/tables/ChatTable.Param.json.gz",
+      "sha256": "d0894c6dae1050266933a06dbca5bd3c934203a25ae669bbe1658a1204a404d8"
+    },
+    {
+      "path": "personal-server/assets/tables/ChatTable.ReportConst.json.gz",
+      "sha256": "013bc9315c9e9ebf8782dc0203d0427bb519fd4d3dfa46cba33cfe6243d6f404"
+    },
+    {
+      "path": "personal-server/assets/tables/ChessRevertTable.data.lua.json.gz",
+      "sha256": "6312c0688817f37be10d6af1a67cbefa8bc66450a4dc714e39e5a81ac4813210"
+    },
+    {
+      "path": "personal-server/assets/tables/ChessTable.data.lua.json.gz",
+      "sha256": "c7a53d01eb06983db2f1d02ae39e80362b9c11e164b5793db476276b61cfa037"
+    },
+    {
+      "path": "personal-server/assets/tables/ChildPuzzleActTable.data.lua.json.gz",
+      "sha256": "e1b576d45e4baa5d84db8c9832401ea5b3856a9377694df4d8e789a909565055"
+    },
+    {
+      "path": "personal-server/assets/tables/ChoiceStoryTable.data.lua.json.gz",
+      "sha256": "56cea59b016b8eb06a954277187f0a38a3532f66a3017d04c49e6d6d4af88ba5"
+    },
+    {
+      "path": "personal-server/assets/tables/ChristmasActTable.data.lua.json.gz",
+      "sha256": "257df4a974c979c85496ba8bbfd427e142150a0a50fa728dabfb1dfc80b4510e"
+    },
+    {
+      "path": "personal-server/assets/tables/CmsTable.data.lua.json.gz",
+      "sha256": "0486d0f1e4aebe123dd6fe5d876b03c5d8ce43484e8848cdc6b8f29a523de47b"
+    },
+    {
+      "path": "personal-server/assets/tables/CollectExchangeActTable.data.lua.json.gz",
+      "sha256": "055d6f6ef833d42a5f45178806d40227d4106be8a8824b9a53a5ce2cec043dd8"
+    },
+    {
+      "path": "personal-server/assets/tables/CombatPowerTable.rows.json.gz",
+      "sha256": "5bfba02e55eddd265f691426e8346a454bcf875dca7ae22e91f7db1e03ac15be"
+    },
+    {
+      "path": "personal-server/assets/tables/CommonMapTable.data.lua.json.gz",
+      "sha256": "1075dddfeec8d5304c1463405f8e884457336afe71cbcfad7eb82130e730a112"
+    },
+    {
+      "path": "personal-server/assets/tables/CommonSignTable.data.lua.json.gz",
+      "sha256": "ec1a303adc9864d53ae0c7c753eb1c36246b4bd1cb2bd6483f761bb7a15bd739"
+    },
+    {
+      "path": "personal-server/assets/tables/CountStatisticsTable.data.lua.json.gz",
+      "sha256": "ea6909bf562a384d1952282a42ba94907180bbcec26cb8175eafb47dd494b641"
+    },
+    {
+      "path": "personal-server/assets/tables/DailyDiscountTable.data.lua.json.gz",
+      "sha256": "c56560837c274854f0b4dd3d1f2d416b54f84762d8fb7950fdb445bdf9593ca4"
+    },
+    {
+      "path": "personal-server/assets/tables/DemigodActTable.data.json.gz",
+      "sha256": "08e71b67bf002d54bd82893c28fc3d57b37c4f6799f0792e266131e2e7abd803"
+    },
+    {
+      "path": "personal-server/assets/tables/DestinyPveTable.data.lua.json.gz",
+      "sha256": "18a9e32cae1e8427dd0615c7fe9dedd0a235f6f77c29a3f95f81165bbe5e63bc"
+    },
+    {
+      "path": "personal-server/assets/tables/DestinyTable.data.json.gz",
+      "sha256": "9b1c3682809b845a825f3bbdb5a8a1d9599f10d8a390491b70981920f0f27935"
+    },
+    {
+      "path": "personal-server/assets/tables/DiamondBankActTable.data.lua.json.gz",
+      "sha256": "826d81baace4c278c3df190caf439f07ceac3e4440aaf51f1ff01208288f2114"
+    },
+    {
+      "path": "personal-server/assets/tables/DiamondFundTable.data.lua.json.gz",
+      "sha256": "dda6ff4ffd9be5aab028af4d6cb3a9581abddfa58397840ddd90198b7e9f4f3c"
+    },
+    {
+      "path": "personal-server/assets/tables/DiamondVeinActTable.data.lua.json.gz",
+      "sha256": "9d6a98c35d61744f5b4be0fa322d491c68f4cdee563ed27d036026c4624cf903"
+    },
+    {
+      "path": "personal-server/assets/tables/DragonLandActTable.data.lua.json.gz",
+      "sha256": "68dadd7b04798a2848299274e5a49509e5bd2b84a3e7ff82a0bdfd1c361e3e11"
+    },
+    {
+      "path": "personal-server/assets/tables/DrawTable.data.lua.json.gz",
+      "sha256": "0e5974286da5d19a7811b24a0c020f2f8c3772ca762eddc704662b60e924df53"
+    },
+    {
+      "path": "personal-server/assets/tables/DreamTable.data.lua.json.gz",
+      "sha256": "b542b90f9d03540fc1abad14e4192c138074e1c4c3a41bf0218bcbb2dcd45b1a"
+    },
+    {
+      "path": "personal-server/assets/tables/DreamTrialActTable.data.lua.json.gz",
+      "sha256": "365fcf7ce21356b82b6e9d2e253cc8e63d68a0fd190998d8eaf80fed8822bd47"
+    },
+    {
+      "path": "personal-server/assets/tables/EliteMissionTable.data.lua.json.gz",
+      "sha256": "85c18d97e6d4cdc62f22a9df0163c0038810dc0e8a71ad914856e75b6ac74c45"
+    },
+    {
+      "path": "personal-server/assets/tables/ElvesActTable.data.lua.json.gz",
+      "sha256": "1c5211ed9a7c2d891616ba8d6e19359d1cd6286a2a38044fdb1e984c7d8ecd13"
+    },
+    {
+      "path": "personal-server/assets/tables/EnjoyBlessingActTable.data.lua.json.gz",
+      "sha256": "e5dda58bca93ab699e365da70b4d2bfb40ccd5a2432f2025c964a9b3fdb4a2ca"
+    },
+    {
+      "path": "personal-server/assets/tables/EquipTable.data.lua.json.gz",
+      "sha256": "153d0be7c2f8bde17af17401321d931e4bd5d6576386a7e2bc013b1f1959daed"
+    },
+    {
+      "path": "personal-server/assets/tables/ExperienceActTable.data.lua.json.gz",
+      "sha256": "0a301469ac1a30353eabe213117cb817c0382b7f2c0205e254084af948c08ed7"
+    },
+    {
+      "path": "personal-server/assets/tables/FameHallTable.data.lua.json.gz",
+      "sha256": "e02e815a501b17c41396e8fd3c666898d55b7c91cd9a9d2d2bfd40d52c0f2fa3"
+    },
+    {
+      "path": "personal-server/assets/tables/FantasyEquipActTable.data.json.gz",
+      "sha256": "d86f7aed825a28c6132f83e0de81006615940d44da55d9e35b10a1137d4461c7"
+    },
+    {
+      "path": "personal-server/assets/tables/FantasyEquipTable.data.json.gz",
+      "sha256": "14d3842a0cbcf3725a448df7a40ff53ca98472f663a0efee351544065cc638a8"
+    },
+    {
+      "path": "personal-server/assets/tables/FestivalMonsterActTable.data.lua.json.gz",
+      "sha256": "23036198044dede9ea9a834ec75ee662a30b3e81db65f7542a304f7710c8c740"
+    },
+    {
+      "path": "personal-server/assets/tables/FestivalSignActTable.data.lua.json.gz",
+      "sha256": "c28fd6746f9ca4fdca64d14b70202815eb8baaff11e9a59ad68da9e9c2997d93"
+    },
+    {
+      "path": "personal-server/assets/tables/FirecrackerActTable.data.lua.json.gz",
+      "sha256": "7abf5c1dde5b2588943fd527f67c2aeb5e19b659a828bfc7787f8d249dc71385"
+    },
+    {
+      "path": "personal-server/assets/tables/FirstWeekGoalTable.data.lua.json.gz",
+      "sha256": "3c59043217df260b01f2e9ac7b24dcbf75fd914a186ac8a292a49bd4a99f15a4"
+    },
+    {
+      "path": "personal-server/assets/tables/FishingActTable.data.lua.json.gz",
+      "sha256": "7ca1353b85044174870c7c23a576f8ceee1929426211768e54028b7247e63e0b"
+    },
+    {
+      "path": "personal-server/assets/tables/FiveDayBossActTable.data.lua.json.gz",
+      "sha256": "f7a5e70aee78a85eacb6bfffc54bc5dd998163b1f4be80303fbb8398195acf34"
+    },
+    {
+      "path": "personal-server/assets/tables/FlipCardTable.data.lua.json.gz",
+      "sha256": "e3ef0e55cf208eb46bdb54d72ed4246a38c12e931cd8e8087ce39e6f675dd689"
+    },
+    {
+      "path": "personal-server/assets/tables/FlopCardActTable.data.lua.json.gz",
+      "sha256": "6273b968a8403035279e14f34e160adf4e72147c6728972668b5d9dd2461dc63"
+    },
+    {
+      "path": "personal-server/assets/tables/FreePrivilegeActTable.data.lua.json.gz",
+      "sha256": "70e8c993411c907fdd579c569b71924b2edfe2335f6928046c490d6443bdc548"
+    },
+    {
+      "path": "personal-server/assets/tables/FriendTable.data.lua.json.gz",
+      "sha256": "87429568757c5c31e88858a50f1eae18088cfb471cfefeea2be56eb785d86f56"
+    },
+    {
+      "path": "personal-server/assets/tables/FruitDrawActTable.data.lua.json.gz",
+      "sha256": "11f1e4595528c102d2bfae8ff8ffadc7e4d54b54321a0c6f5ac47e5327eab7f6"
+    },
+    {
+      "path": "personal-server/assets/tables/FunctionManualTable.rows.json.gz",
+      "sha256": "bb6482fefffed921502a864bea65ac2d87741999cd031c072fb54714114a1d8d"
+    },
+    {
+      "path": "personal-server/assets/tables/GameTable.data.lua.json.gz",
+      "sha256": "fd7cb270cdff9c85142ae922342c6c2abe7b8129667bf34caf732ee64549a109"
+    },
+    {
+      "path": "personal-server/assets/tables/GeneralDungeonTable.data.lua.json.gz",
+      "sha256": "b7c40fdb752eb561a4de0474e3a22497f3d350315c30d20e054b7dd5086595f0"
+    },
+    {
+      "path": "personal-server/assets/tables/GrandTourerTable.data.lua.json.gz",
+      "sha256": "e3b9e88524ee560d65a8f823b80ac4a87350dc1c468de67e2d42c211a49f278b"
+    },
+    {
+      "path": "personal-server/assets/tables/GroupBuyActTable.data.lua.json.gz",
+      "sha256": "dd95c78b24a6aebff2a04ab5dca83da3a6c8e614a1fe8d9b1d737834d109754e"
+    },
+    {
+      "path": "personal-server/assets/tables/GrowthRoadTable.data.lua.json.gz",
+      "sha256": "7abcb7098863c53fc5da4fd38c4596de40b463e741ef30c01038257f4efe6672"
+    },
+    {
+      "path": "personal-server/assets/tables/GrowthTargetTable.data.json.gz",
+      "sha256": "1aa4a2ab611550480c74f6899238db5e9b77e4c7ca4cf184c86e99671fbf353d"
+    },
+    {
+      "path": "personal-server/assets/tables/GuideTable.data.json.gz",
+      "sha256": "d938da8b9b11e011ea15bd5a7f42da32f6a280e1fbb1aabccee11dbfe4485632"
+    },
+    {
+      "path": "personal-server/assets/tables/HelpUpActTable.data.lua.json.gz",
+      "sha256": "e548f4dd622b28bff69b40ae6f2ae114912dca609537d49ba76c98e193f91df3"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroBlazonBondTable.data.json.gz",
+      "sha256": "6729895073bab75ee34e0c489c88a249555754c451b9cf6d197ad468427b2fd9"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroBlazonDrawTable.data.lua.json.gz",
+      "sha256": "093e8dc7710854d64a31907c8dded7377cec924a5886b61fb5d65c6347e65be2"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroBlazonTable.data.json.gz",
+      "sha256": "36d259a3d50aa8f051eaa6d166871087a3b4315d10d2ce67baa99d59297ac19e"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroDrawActTable.data.lua.json.gz",
+      "sha256": "48d954e29bde34514ec4482f48f3a57d2149767347a1c01091f89b40cf8ac2fc"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroLeaseTable.data.lua.json.gz",
+      "sha256": "07aa6df9720d3659004042e7fdc7ffe0def9c7c91c6d477d936b6de2717bf21f"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroLegendTable.data.json.gz",
+      "sha256": "11123d825ae2e2411707d29022a5bd52b3e54bf27b5536305700e42c7210d658"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroSignActTable.data.lua.json.gz",
+      "sha256": "2acc0f5b77cc38f3dcbfdd7e6085191ad15384ab48bcee90e0aad854db47ad36"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroTable.data.lua.json.gz",
+      "sha256": "03e95433be6d5af3d0aa17fb0c4d4224e67e7f342b502fdc3a3b65abf27f2561"
+    },
+    {
+      "path": "personal-server/assets/tables/HeroTableNpcAttr.data.lua.json.gz",
+      "sha256": "45c0d0c7ae0aeb2f29459443a7bfe0ebaf89f96c5f3ca3ed43585cb8645a4fc0"
+    },
+    {
+      "path": "personal-server/assets/tables/HoardWheelActTable.data.lua.json.gz",
+      "sha256": "6765c606b951a60c1b1d7d4125fee94fda4e4485bf6bf93c2e71ab36f9999ce6"
+    },
+    {
+      "path": "personal-server/assets/tables/HomePuzzleActTable.data.lua.json.gz",
+      "sha256": "af80bb637c9674b055eb1eb3f1bb70ed7f1320df665944d21445eaa26ba10047"
+    },
+    {
+      "path": "personal-server/assets/tables/HomelandActTable.data.lua.json.gz",
+      "sha256": "4acf1eec939d3333c77ff04cd13497ab56e592efd964e4b454e78f920d1e3a0d"
+    },
+    {
+      "path": "personal-server/assets/tables/HomelandTable.data.lua.json.gz",
+      "sha256": "c883025a9ccc4c13b6e709e392a208316c50ebee842636e95f082670f183b5b2"
+    },
+    {
+      "path": "personal-server/assets/tables/HookTable.data.json.gz",
+      "sha256": "38ed372ab14c4524174bbbdcc6874c631859e5bbfcca4faf28f36e2908bfc466"
+    },
+    {
+      "path": "personal-server/assets/tables/HouseAssistantTable.data.lua.json.gz",
+      "sha256": "1aa0b5c748b50d49131f4fbd7c5b002f42797619ceca01fd0ee6d72e4b0ad60b"
+    },
+    {
+      "path": "personal-server/assets/tables/HundredAccTable.data.lua.json.gz",
+      "sha256": "2b9b2853731398e0593eacce51f47dbaf76fd309a317caba18adb5df7064178d"
+    },
+    {
+      "path": "personal-server/assets/tables/HundredBonusTable.data.lua.json.gz",
+      "sha256": "bea6d3bceb0b6b7336e49d4117596b53d235dc5a9d7b63d7111885784fda8e98"
+    },
+    {
+      "path": "personal-server/assets/tables/HundredDrawActTable.data.lua.json.gz",
+      "sha256": "157c2df26c1f0617e1b35ed0725a29c0204d04f404de0d18d8833124da1a3d5c"
+    },
+    {
+      "path": "personal-server/assets/tables/HunterArenaTable.data.lua.json.gz",
+      "sha256": "361ec6778534e3c01d8ebf8894491ac312efde6b5314b75d81972a0a595ff429"
+    },
+    {
+      "path": "personal-server/assets/tables/IntelliTable.data.json.gz",
+      "sha256": "a7c599e55a3e1c85485081b8216ff11377eeb0dc6deb95b1979c13c5db335cc0"
+    },
+    {
+      "path": "personal-server/assets/tables/InviteActTable.data.lua.json.gz",
+      "sha256": "affc48d6fdf878ad67150f5a3d213f2acaf66249127e29bca29821f35ef03524"
+    },
+    {
+      "path": "personal-server/assets/tables/InviteOldActTable.data.lua.json.gz",
+      "sha256": "e541eb1094dfb8aaa711e6248119559292d6753a2d1c067a7e11a720c59c64c0"
+    },
+    {
+      "path": "personal-server/assets/tables/ItemTable.data.lua.json.gz",
+      "sha256": "7e1b0ae39cb8ff01d5d16cad0c14534938e98a54ecb18cfce8433ff7ceb8a474"
+    },
+    {
+      "path": "personal-server/assets/tables/JourneyFightTable.data.json.gz",
+      "sha256": "f57f8faf8611dd3ee14341c96e6e33cc4b2783d05e0ba4fdbab3a24adc5b6038"
+    },
+    {
+      "path": "personal-server/assets/tables/LeaderEquipTable.data.lua.json.gz",
+      "sha256": "d0b0af00ce7a03fa395c38ee1d90bc766a913c46877f4269f5bee7edab330566"
+    },
+    {
+      "path": "personal-server/assets/tables/LeaseTable.data.lua.json.gz",
+      "sha256": "b66237e75b7373d18d69fca041c2efee476288d9a3b42e795faf2a4fac4ada02"
+    },
+    {
+      "path": "personal-server/assets/tables/LeaserStarUpTable.data.json.gz",
+      "sha256": "67e0c2d27a811a1e1bb4fd85c457dbccc1954e41076c676cb134a485af99fab4"
+    },
+    {
+      "path": "personal-server/assets/tables/LineFirstRechargeTable.data.json.gz",
+      "sha256": "13b0f44ffb5928931b39fcd53e0d04140dc7cdd6d7ff7e4bc5859c537aa87b79"
+    },
+    {
+      "path": "personal-server/assets/tables/LinearLevelTable.data.json.gz",
+      "sha256": "83ecd016ce5d64124622a84d414e9543ab4bc75b8179d61a2eab00eb5826ebd5"
+    },
+    {
+      "path": "personal-server/assets/tables/LoginRewardActTable.data.lua.json.gz",
+      "sha256": "1eb5d85eb2436fa5a8fa2f5db1fbe98597dc2afa698515d37a54a06b6d3b1bff"
+    },
+    {
+      "path": "personal-server/assets/tables/LotteryActTable.data.lua.json.gz",
+      "sha256": "ae98e5dc7d2226d0fcfeb46d9bf8f7fdd5eaadf5d03ab528512dce13c0c4ff26"
+    },
+    {
+      "path": "personal-server/assets/tables/LotteryTable.data.lua.json.gz",
+      "sha256": "3c4670cf03974f7706914b916a00a33146f2d1efcb63724adade892cc62194b0"
+    },
+    {
+      "path": "personal-server/assets/tables/MagicDrawTable.data.lua.json.gz",
+      "sha256": "de067eda9e7abd46d5aac8f63fd2023e4cf2f70f55d6fcc7aaca6d8c0b74e70a"
+    },
+    {
+      "path": "personal-server/assets/tables/MagicalJourneyTable.data.lua.json.gz",
+      "sha256": "1fc14d826580f28cd499061cd561e5b40e1c9785c5d0c9e2bc1d128bbfea0942"
+    },
+    {
+      "path": "personal-server/assets/tables/MartialClubActTable.data.lua.json.gz",
+      "sha256": "3590cabae87ed86e91b23902e06951d067250dc01f6cc408622349ed985143b7"
+    },
+    {
+      "path": "personal-server/assets/tables/MartialClubTable.data.lua.json.gz",
+      "sha256": "13a0a022e6b4b64c819d71b4b89cb312312ec51bac8b98a2a7366f4c6a03a405"
+    },
+    {
+      "path": "personal-server/assets/tables/MatchPvpTable.data.lua.json.gz",
+      "sha256": "917f824c24d0661f14b4e2d8a2569cfd8e6ac59abcfee1412a4d311416b6972f"
+    },
+    {
+      "path": "personal-server/assets/tables/MatchingGameActTable.data.lua.json.gz",
+      "sha256": "ea64f0fa099ae10268ccf0604064b17912f174a256beb64cb49da8c68fa2317c"
+    },
+    {
+      "path": "personal-server/assets/tables/MiniGameTable.data.json.gz",
+      "sha256": "c9d812e1aab7a137d8ce4eb7eb60c3898957ce3b7d8850083350c689d65c2def"
+    },
+    {
+      "path": "personal-server/assets/tables/MiniGameTable.data.lua.json.gz",
+      "sha256": "690ab9e85d1f095452d5bc846c6d33d88ce454954cd489c9be56a75e7a8fb4b8"
+    },
+    {
+      "path": "personal-server/assets/tables/MissionTable.data.lua.json.gz",
+      "sha256": "56d31fbc7452b113d8759e767858b9a3a877afb768c6f73c53143cd1af3ffb25"
+    },
+    {
+      "path": "personal-server/assets/tables/MonopolyActTable.data.lua.json.gz",
+      "sha256": "45cd1ca82f3cb09144f981519fb92fd32803514c5006533472ed16ea700c2ed7"
+    },
+    {
+      "path": "personal-server/assets/tables/MonthPermitTable.data.lua.json.gz",
+      "sha256": "550c77b9604e8a148eef462e422ccaa2c6834d2ed99ab84250e97ee28ce98848"
+    },
+    {
+      "path": "personal-server/assets/tables/MonthlyCardTable.data.lua.json.gz",
+      "sha256": "babcde539be88cfc171b0c9e5bdad859fc5af2d993d0c332d0bc04b69470270d"
+    },
+    {
+      "path": "personal-server/assets/tables/MsgTable.ChannelType.json.gz",
+      "sha256": "213568e3e8622aec96c27574ca7ee42292310b490528d6406fe343e94fab334d"
+    },
+    {
+      "path": "personal-server/assets/tables/MultiLoginTable.data.lua.json.gz",
+      "sha256": "cbcc394c9c5ce0189c6fabef00f09bb69cfe092ffdb8cd9e6923d4bdd0c71211"
+    },
+    {
+      "path": "personal-server/assets/tables/MushroomMonsterTable.data.lua.json.gz",
+      "sha256": "9718561ab2f97b0bf5ff6fc99cc2c40447519dcc8fe04f968ced96c079615c9e"
+    },
+    {
+      "path": "personal-server/assets/tables/MysteryShopTable.data.json.gz",
+      "sha256": "808a38cba85759e0e8e9a2de4c8660eaa8415d74680840483b7402ee89cd6459"
+    },
+    {
+      "path": "personal-server/assets/tables/MysteryWishTable.data.lua.json.gz",
+      "sha256": "4682fc09996c01b73df3c79dbf4cd6849352ab9d4a54cb81f9c1e3e6529a6560"
+    },
+    {
+      "path": "personal-server/assets/tables/OnesRewardTable.data.lua.json.gz",
+      "sha256": "cd26e368335f5911a52c38a741bad73a6c10dbd0a141b502223cde86047ac7b6"
+    },
+    {
+      "path": "personal-server/assets/tables/OnlineGiftTable.data.lua.json.gz",
+      "sha256": "92c8298f39de5e6037ce6284004893965eaea814b2a34554d94a2f9f69de3b63"
+    },
+    {
+      "path": "personal-server/assets/tables/OpenServerBoxTable.data.json.gz",
+      "sha256": "d2bd3d7ca0c5a00212638a02acfdfdf95d8626da42795013138648fbbc8a1cdf"
+    },
+    {
+      "path": "personal-server/assets/tables/OpenServerSprintTable.data.lua.json.gz",
+      "sha256": "374445cc2fab6b15d3587afbf1169fc1a9b7882b69e4f8f6c1c69963b4ddcbe7"
+    },
+    {
+      "path": "personal-server/assets/tables/OverallMatchTable.data.lua.json.gz",
+      "sha256": "13ef3ef6248512e09a6f0f3874d3947e09019ba716483e62ca6b52b00937ebcd"
+    },
+    {
+      "path": "personal-server/assets/tables/OverallPvpTable.data.lua.json.gz",
+      "sha256": "ff33c71f4b482d7aed3783fcdccc5a8692724ac2daa2f648b2db346750f79ed8"
+    },
+    {
+      "path": "personal-server/assets/tables/PeakTowerTable.data.lua.json.gz",
+      "sha256": "4671531d2a1bf01dd9c428be36b5734b4bd52331fb864b584ed8d2dfded6cae2"
+    },
+    {
+      "path": "personal-server/assets/tables/PermanentCardTable.data.lua.json.gz",
+      "sha256": "5b5aa7043277745750d5bab51ca3dfb47e1e1766c20314dc34c52b043b7eebfb"
+    },
+    {
+      "path": "personal-server/assets/tables/PermitTable.data.lua.json.gz",
+      "sha256": "6c515d2c29829fb82d9d8c8a50a6630b515bee54e790aaf62a5ce248e3379269"
+    },
+    {
+      "path": "personal-server/assets/tables/PermitTable.data.bytecode.json.gz",
+      "sha256": "6c515d2c29829fb82d9d8c8a50a6630b515bee54e790aaf62a5ce248e3379269"
+    },
+    {
+      "path": "personal-server/assets/tables/PetActivityTable.data.lua.json.gz",
+      "sha256": "b73fb53eff94f083cf4a2b24826dd2ab7dd81c74aa8c77a468c3266d5a13e2a9"
+    },
+    {
+      "path": "personal-server/assets/tables/PitLordTable.data.lua.json.gz",
+      "sha256": "997c2a7f78449ff046733f2e2fb3180c5063507f8075b724f43b2653d05083cf"
+    },
+    {
+      "path": "personal-server/assets/tables/PlayMatchTable.data.lua.json.gz",
+      "sha256": "ee902fb6a6e8d3a7660ec0f49ee8dc6c79e0687dd1f3e341d4a6731c381438ca"
+    },
+    {
+      "path": "personal-server/assets/tables/PlayerDataTable.data.lua.json.gz",
+      "sha256": "db8e42f1b7f67484211bd8ef5759c1a0a124dce58e3d0f0fcf84ee668d449b45"
+    },
+    {
+      "path": "personal-server/assets/tables/PrayActTable.data.lua.json.gz",
+      "sha256": "fb33a959b577c2b7c787fd9901649566bff26c82086a4e3263f6669440ee3dd3"
+    },
+    {
+      "path": "personal-server/assets/tables/PreheatActTable.data.lua.json.gz",
+      "sha256": "fa553e062bf56ebcaaedb0e8c40aca465380bb057a8df1cdde5672c30be8c51f"
+    },
+    {
+      "path": "personal-server/assets/tables/PremiumActTable.data.lua.json.gz",
+      "sha256": "99b52be41f3f8105cbe0112bc1d97622cc8c218e6fd23c89076d1f8b3dca3a6a"
+    },
+    {
+      "path": "personal-server/assets/tables/PrincessTable.data.lua.json.gz",
+      "sha256": "00a3e2f23b4d83c48abce58e75135ce01c7d4c826282a33ade2a5c7f019ca18d"
+    },
+    {
+      "path": "personal-server/assets/tables/PuzzleActTable.data.lua.json.gz",
+      "sha256": "eed6df06da0afc3b0be381393af5e1973323a11549499ca5139e543e47cabd2f"
+    },
+    {
+      "path": "personal-server/assets/tables/PyramidTable.data.lua.json.gz",
+      "sha256": "ab9c87df9bcd4a7a8e7079f55359a00b5660c8b9c936e99e7e9aed7f23525bc8"
+    },
+    {
+      "path": "personal-server/assets/tables/QiXiActTable.data.lua.json.gz",
+      "sha256": "2f195ce4e7888001ff63502eccbd5ccb79c054275ad041d636c82e14ae6ff57c"
+    },
+    {
+      "path": "personal-server/assets/tables/QuestionActTable.data.lua.json.gz",
+      "sha256": "a08d77154fe3daf14eb680e5768d4a572a229cb6b38e58ab34051067ed2368e2"
+    },
+    {
+      "path": "personal-server/assets/tables/QuestionnaireTable.data.lua.json.gz",
+      "sha256": "adcb22e03f6bf81b796c499ce238322ba811d98114836bddd3e45eb87c5eb5e8"
+    },
+    {
+      "path": "personal-server/assets/tables/RadishFarmTable.data.lua.json.gz",
+      "sha256": "cdc5fd8ef5cf3d7bc36266d72699067829f49964a01393537c321c945914ba6b"
+    },
+    {
+      "path": "personal-server/assets/tables/RaffleTicketTable.data.lua.json.gz",
+      "sha256": "b0713b92423eee6918bdb135822f0ed94989cc0c5161da0e361352f1b86d1da2"
+    },
+    {
+      "path": "personal-server/assets/tables/RankAchieveTable.data.json.gz",
+      "sha256": "e5e3e0ee84e7dd8f72ab680f8c7cebe1ccb82bd0824a19a89d97dc526307cc94"
+    },
+    {
+      "path": "personal-server/assets/tables/RankTable.data.lua.json.gz",
+      "sha256": "b882310cc8cc1f72d2dfb94e1a90464995fcd257952a2a8bbc365095ea367135"
+    },
+    {
+      "path": "personal-server/assets/tables/RechargeTable.data.lua.json.gz",
+      "sha256": "7026b162246c961086c593dcbd9329933b4b06efceb0b8d7e5976df299479d70"
+    },
+    {
+      "path": "personal-server/assets/tables/RedCliffTable.data.lua.json.gz",
+      "sha256": "a2e977215be528114ac4a23e231040352cc5963f4db40f4a09e2ff9cda880ab7"
+    },
+    {
+      "path": "personal-server/assets/tables/RegularGiftTable.data.lua.json.gz",
+      "sha256": "471a42b9171de367100e0196dd3cd794ff9298ae0351171640df04bc15d800e9"
+    },
+    {
+      "path": "personal-server/assets/tables/RelicTable.data.lua.json.gz",
+      "sha256": "c4e78da4a88967ca8db1ab7afd75b026b129af5f1215cf063a214f7df76bfc29"
+    },
+    {
+      "path": "personal-server/assets/tables/RoleBackTable.data.lua.json.gz",
+      "sha256": "dc8a09b90e95f616be6a987de4e3a9c1163fac05ef85b4f5baafb3301aae4e12"
+    },
+    {
+      "path": "personal-server/assets/tables/RoleTable.data.lua.json.gz",
+      "sha256": "c1c80ba77746710993f5701ab02eaf32106201c84b6ea0aab00a304a24cc8570"
+    },
+    {
+      "path": "personal-server/assets/tables/ScarletTrialTable.data.lua.json.gz",
+      "sha256": "9c265ed0530223dc23bfcfa68dd793c1500bba366bc3c85ebfc8639ca4797b45"
+    },
+    {
+      "path": "personal-server/assets/tables/ShopTable.data.lua.json.gz",
+      "sha256": "745e5557ad81b5f65c5565a903f28de57c2fad2fafffb918c33b70b19074b6d0"
+    },
+    {
+      "path": "personal-server/assets/tables/SignActTable.data.lua.json.gz",
+      "sha256": "4fecb7f1eadd0fc8e7ef3f3cb4f0953a00e2f63c32a0a1d6612d8c3086ed90cc"
+    },
+    {
+      "path": "personal-server/assets/tables/SkinTable.data.lua.json.gz",
+      "sha256": "6de30f0366a8249631490af1ceef3a1d490a8ddd11f32078a8b8a5a61ddb04f6"
+    },
+    {
+      "path": "personal-server/assets/tables/SlotGameActTable.data.lua.json.gz",
+      "sha256": "4d55659cfbf1b44f53dec1638fa45f902c3d50e49b96482431f3fb6ab34bf10e"
+    },
+    {
+      "path": "personal-server/assets/tables/SoulTrialTable.data.lua.json.gz",
+      "sha256": "f9bc2a69eef376a78a626362fd1339959d941b21de67ca37ff6833d5e958d465"
+    },
+    {
+      "path": "personal-server/assets/tables/SourcePointTable.data.lua.json.gz",
+      "sha256": "9504e104b54c60314208d976e071f47979dddbf3cb0df78d5790192dda8e3b76"
+    },
+    {
+      "path": "personal-server/assets/tables/SpiritCourtyardTable.data.lua.json.gz",
+      "sha256": "3cc1a1d91444e75097a34acd9b055368d5afb49ef6be9a4dd8b1af85d68068ae"
+    },
+    {
+      "path": "personal-server/assets/tables/SpringFestivalActTable.data.lua.json.gz",
+      "sha256": "dd0a7347adb94058ee6a1a762d630cef4207fc30eb31c1b4ed88b1fdd93e0458"
+    },
+    {
+      "path": "personal-server/assets/tables/StarMissionTable.data.lua.json.gz",
+      "sha256": "2d3151eacd3b546148959f34ad151d5b61e4a6b598834ffab6b0e71ae6927e48"
+    },
+    {
+      "path": "personal-server/assets/tables/StockUpActTable.data.lua.json.gz",
+      "sha256": "e9e308b0ef0923a213c1340dfe4bacd273041a64620cbbb62031c2a5a9fa3f60"
+    },
+    {
+      "path": "personal-server/assets/tables/SummerActTable.data.lua.json.gz",
+      "sha256": "76c6a52253bff0645bf743cba6f360bede9b64001fa1b509416c7c5999790dc1"
+    },
+    {
+      "path": "personal-server/assets/tables/SwapArenaTable.data.lua.json.gz",
+      "sha256": "87bebdf5b6891757c647cc0edde089e8ad7a16506f6c34adba0a0de5653db3d1"
+    },
+    {
+      "path": "personal-server/assets/tables/TacticsTable.data.json.gz",
+      "sha256": "8129af5c0c23b25b1086b7a15addaddc417c6ca36c0abc92731c0d63466c1e7c"
+    },
+    {
+      "path": "personal-server/assets/tables/TaskActivityTable.rows.json.gz",
+      "sha256": "e2f9ddbc3e8d9d8c8f08717367f99f1e6eba57265b82f709c9e92b9d58ff2908"
+    },
+    {
+      "path": "personal-server/assets/tables/TaskTable.data.lua.json.gz",
+      "sha256": "ae2f8ccae9084e25958f5439c0c424314c69505bed52bfd4e9376ab306edface"
+    },
+    {
+      "path": "personal-server/assets/tables/ThemeTreasureTable.data.lua.json.gz",
+      "sha256": "d1b7e8001e765fe51e52acf68674258351744e88a25cb14d86663465156689b0"
+    },
+    {
+      "path": "personal-server/assets/tables/ThousandDrawTable.data.lua.json.gz",
+      "sha256": "bffbaca106daf54ac2be8d53b60b7e4d36b1c5b1814d591831ce0fdaa031f776"
+    },
+    {
+      "path": "personal-server/assets/tables/ThreeAdmonitionTable.data.lua.json.gz",
+      "sha256": "58ec12b02f84c512351dbd12920dc74283cdd61387a661761aa49dfd43de966e"
+    },
+    {
+      "path": "personal-server/assets/tables/TicketDrawTable.data.lua.json.gz",
+      "sha256": "e8c8df788f8649bab7185858319f66813ccc68e5fb38614a32d8f1466b587761"
+    },
+    {
+      "path": "personal-server/assets/tables/TileSwapTable.data.lua.json.gz",
+      "sha256": "fe791fc971e9992354d432732501b85440274b93eaaa02268d9139ba5dec6629"
+    },
+    {
+      "path": "personal-server/assets/tables/TopArenaTable.data.lua.json.gz",
+      "sha256": "42e9f486731630fe34df374cd95521cabddc99007beb9d266a349902b8593c4a"
+    },
+    {
+      "path": "personal-server/assets/tables/TournamentTable.data.lua.json.gz",
+      "sha256": "f6dff7452ebf0bcff35a6fdd14b3d0b8a43d0f14df86aa5edf2b2a185bb61428"
+    },
+    {
+      "path": "personal-server/assets/tables/TowerActTable.data.lua.json.gz",
+      "sha256": "780451633d758621f5c2b97d1d22aacf3188f962f137fe82bd5311877691f548"
+    },
+    {
+      "path": "personal-server/assets/tables/TowerDefenseTable.data.lua.json.gz",
+      "sha256": "ad888ced18dd3aa1285828410287e4b43dfb864fbc067fbb643f4ee23a3d3fa7"
+    },
+    {
+      "path": "personal-server/assets/tables/TreasureHuntTable.data.lua.json.gz",
+      "sha256": "b2debf3273e52f3886a39aab1d2157b447ea3b2cfbbefaf2c2870b1746026193"
+    },
+    {
+      "path": "personal-server/assets/tables/TriMatchPvpTable.data.lua.json.gz",
+      "sha256": "6c10f23bd979aa4dfe161daa358e82dbda864abfe009a7f273052283c783db7f"
+    },
+    {
+      "path": "personal-server/assets/tables/TriMatchTowerTable.data.lua.json.gz",
+      "sha256": "ffb63b49c73222aea1fc4217de7fd56eb60b72c4e1b415036227e01e6adec1fc"
+    },
+    {
+      "path": "personal-server/assets/tables/TripleMatchFightNpcAttr.data.lua.json.gz",
+      "sha256": "b82c33f933f2c095de7d3ffae2f839f362094a610b7422a351dfb7f39122f7af"
+    },
+    {
+      "path": "personal-server/assets/tables/TripleMatchFightTable.data.lua.json.gz",
+      "sha256": "886c642a1f512a68f02a26ef08b6d8fe9e83a94352529181a8fe4bf2a604d512"
+    },
+    {
+      "path": "personal-server/assets/tables/TripleMatchTable.data.lua.json.gz",
+      "sha256": "af64562fdcc4f22b232863b6af2d49a2d1390deafb11773b2370773af7b5858a"
+    },
+    {
+      "path": "personal-server/assets/tables/TurntableActTable.data.lua.json.gz",
+      "sha256": "77f25271ac7ece1a83bd3beaedf08e9c4af233ae44f0da2c7b76b254dfb1682f"
+    },
+    {
+      "path": "personal-server/assets/tables/UpStarGiftTable.data.lua.json.gz",
+      "sha256": "3cba6b25d8a9fdab300b830c46656940b601bcd8f7f863e355f1c42e5e3a394c"
+    },
+    {
+      "path": "personal-server/assets/tables/ValentineDayActTable.data.lua.json.gz",
+      "sha256": "0d9531200c484468419575568584db44046bbfba0352d86fe5dbe338b51a31fd"
+    },
+    {
+      "path": "personal-server/assets/tables/VoteActTable.data.lua.json.gz",
+      "sha256": "ce18f519f8646e3ae6d4042bbe187382d92b957ad95b4cbb95b857eb95ff37bc"
+    },
+    {
+      "path": "personal-server/assets/tables/WeekHuntTable.data.bytecode.json.gz",
+      "sha256": "09d1ba3c4264c0be1a86b527e5818ff8c9de1f19f1815f01d6125be477c9f501"
+    },
+    {
+      "path": "personal-server/assets/tables/WeekendBonusTable.data.lua.json.gz",
+      "sha256": "5bb9ab53821f25706847fd174d8f5d2fedfd367b230fddede5eb18955e37b8c9"
+    },
+    {
+      "path": "personal-server/assets/tables/WishTreeTable.data.lua.json.gz",
+      "sha256": "5fb61b12e23a99ce4d5a63d0d9ce9202f2503ba898704d574d7b9b34794c4354"
+    },
+    {
+      "path": "personal-server/assets/tables/WorldBossTable.data.lua.json.gz",
+      "sha256": "9b948266bd59b9d2d30faeb44e66362b3c8980c419434989ccf925587098e235"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/1574497428085298200-BuySkinActTable.data.lua.bin",
+      "sha256": "fd16a150a332cddd643f23b83d56aa3c5e35e47eb92bcd97abbc9a21049ebae1"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/7484041058600332000-CrossTable.data.lua.bin",
+      "sha256": "56630cca7f040fe54beba528596b04556ae2af96f1897f6b3316c8e1f0955c1d"
+    }
+  ],
+  "projectionSources": [
+    {
+      "path": "personal-server/config/activity-calendar-realm-3.json",
+      "sha256": "ba5d1c005b2f31e560ec15740a11582ddf6caebb02b841e9d8b7a0aba0a57d62"
+    },
+    {
+      "path": "personal-server/game/activity-calendar.mjs",
+      "sha256": "0a7bfc3b17a53c909fb9b8c66da83e95960c40acc41dcf36f3d268fc2cd56683"
+    },
+    {
+      "path": "personal-server/game/activity-lifecycle.mjs",
+      "sha256": "54f1f3cea62374320a83d38121f97b1833ec29bc2a761aa774837a423af6dda2"
+    },
+    {
+      "path": "personal-server/game/time.mjs",
+      "sha256": "1d073b414d0e63ee3073ca30914f821b1a3810b5974980066124edaf8cbdf6b5"
+    },
+    {
+      "path": "tools/documented-activity-time.mjs",
+      "sha256": "d61f7bcdf7c23afda930c99878d413b77ccf6e16ba9bf9ba3ba511a206ac88d2"
+    },
+    {
+      "path": "tools/documented-rule-decisions.mjs",
+      "sha256": "47255db2581a78ba51bccf1bdc9b78a0e7ae56b7cb60a7a8fab299c4322ebb74"
+    },
+    {
+      "path": "personal-server/config/hero-tables.mjs",
+      "sha256": "c948001089955a3011ec0f054a834a6fc0f7d964badd0bdeb366e39a7a1e5668"
+    },
+    {
+      "path": "personal-server/assets.mjs",
+      "sha256": "1d88e7a6a2cbeeeaf2eed50aa6237609ed09b900096306e76a99959ef5c413b4"
+    },
+    {
+      "path": "docs/gameplay-operations/activity-rulebooks/time-and-stages.md",
+      "sha256": "6dfb096488dedd9dca85088a04c235e4a5c4f796c42ab84da1f7594246a49d7f"
+    }
+  ],
+  "documentationSources": [
+    {
+      "path": "docs/README.md",
+      "sha256": "07e0c7946a3929d3b04a32f6f04a634002e739199316a740fca306920a8df70a"
+    },
+    {
+      "path": "docs/gameplay-operations/README.md",
+      "sha256": "42187e52856a65cee908f845e66d64643c52d5b6dc59b8ce8c94612dc2f81d26"
+    },
+    {
+      "path": "docs/gameplay-operations/11-project-roadmap.md",
+      "sha256": "ff14234bf16f128ffe69907bf22940ce0813468c7e851bd025ac86146da9dca2"
+    },
+    {
+      "path": "docs/gameplay-operations/08-operations-runbook.md",
+      "sha256": "7bf2230be70ae0ea569a5ce0e7ae40cf4e5080a8513156b65799260568666699"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/worked-examples.md",
+      "sha256": "52c6423c81ac5fa439a625fedf94393838f468695f54defbe8e84832c8df7a67"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "f8e771918a54b830fe0238359d4963048762eecc039a7c7096a1a4d89af91873"
+    },
+    {
+      "path": "personal-server/README.md",
+      "sha256": "275a8080bf0fba7aedfe55ea95f74244538b913853dc51dc20d33293e44fb7fe"
+    },
+    {
+      "path": "agent/workflow/rule-baseline-20261115/implementation.md",
+      "sha256": "85d6d08ead120897bf3481d3ceb488d0ba2983919ca1867f2531b49dfe4bb2d0"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/evidence-manifest.json",
+      "sha256": "03718cf305659fe9283b145232cc1f16243e83c437852fec165de692de2f586f"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/feature-unlocks.md",
+      "sha256": "a29146358fe903914bb00e28dbff1dede8535cb8ef88baec527236e790a20fc5"
+    },
+    {
+      "path": "docs/gameplay-operations/appendices/feature-rule-decisions.json",
+      "sha256": "b5180e6c6166fa6c30e6063e0ab4a6c79ddbc24712d1295706363865ff6a5fad"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/01-battle.md",
+      "sha256": "bfc1c265c2384602504fc7e6aad61baa5ec495907ab5621fc025c164a6c33e80"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/02-heroes-lineups.md",
+      "sha256": "ba0f5878a983b78ea7362c634f10614d0731efc66f212fb6093d0fbb58133f5b"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/03-equipment-development.md",
+      "sha256": "7081435576aec623d44e4ab0b49a77faffe2c421990be3081671bbb8c26ff77f"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/04-items-tasks-shops.md",
+      "sha256": "d245a0b7c9b1d8ff18f2e579f00c777a7df528962342df0e736c1b99ab5fd3a8"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/05-social-guild.md",
+      "sha256": "5c8cdb2f3b86af09fa912a9d740dfff07be1b7db661db4fea8ec08179a51772d"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/06-draw-activities.md",
+      "sha256": "37413d6965115e1bdf4f49778cb30de16df35802647bbce59469c980bdbdfc4d"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/07-exploration-minigames.md",
+      "sha256": "20cfed0a3ae3fa4a94cf89fb84e80a6fa542fb455b7867740dc13eb9becdb1c8"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/08-festivals-tasks.md",
+      "sha256": "1f7058e3103a0ea93c97cfe7d8e0c6fa037b4c6702f969670f879c04b2bf33a8"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/09-commerce-benefits.md",
+      "sha256": "ae7737da77ca04d0c0d816caf5ff837fc7c6b8cdfa446c04eea2614ba7115c6a"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/10-role-and-supporting.md",
+      "sha256": "8298c2abd602755013eebb79835ead41bd59f1412df888e644a88e36e6afb04f"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/11-dispatch-and-acceptance.md",
+      "sha256": "ea7165f4329de99043df7fb4d6ebf7907b358ce5fa557f078199d5f2211fe866"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/12-shared-gaps.md",
+      "sha256": "2d7d07f60b175dd58f5cd78e0409a8ae27a51922104d2e68326c3f7ca95c8669"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/13-special-skills.md",
+      "sha256": "1252ad3c480158b15c1a14acb0bc954296501a24f85124857e0f00bbd013d054"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/14-subtask-cards.md",
+      "sha256": "c049c339aefbb2c8b0c6f52c2d9fca7213c918f324496079a72626d013c781de"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/15-three-work-blocks.md",
+      "sha256": "0ee27654ee91fdd64660e1833a8b0c79a288abf5ae561eecc7d450eaa123adaf"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/16-block-a2-dispatch.md",
+      "sha256": "a9d3911ba4d722806267cf2694abea4c79189d234a5b7ac685ad6400f6c7bee6"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/execution-status.md",
+      "sha256": "5a61a00851d3ace1fddaefc7b2c8be95fe68e47e78ab4aec92fbc17831465aab"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/README.md",
+      "sha256": "bc1468cc7f10202179685b9d95666939f10c23e076cee3759bf2226d5b563520"
+    },
+    {
+      "path": "docs/plans/remaining-gameplay-20261106/task-index.md",
+      "sha256": "c6c2d13db67ccf4b14fefa73d6c53ae387bc62cc47241b555fc1ccce6167c530"
+    },
+    {
+      "path": "docs/08-activity-fix-checklist.md",
+      "sha256": "323f5ad1d1690ad8ddd2355d5c82533ab3a2ab41873e0b40c9b891b49ae931e4"
+    },
+    {
+      "path": "docs/09-system-completion-plan.md",
+      "sha256": "90265f8c85a183c8e5720e179aed4da52cc290b7e5fe3039efa790576eac8f13"
+    },
+    {
+      "path": "docs/10-store-product-flow-remediation-plan.md",
+      "sha256": "e61409912ce994d72368a2717260837119b2ab8ea2f7647fe33861e134e4bab5"
+    },
+    {
+      "path": "docs/gameplay-operations/01-fidelity-and-evidence.md",
+      "sha256": "f64e6cd37f2c9e92cace2a925331738d069c8f4ce53de90e1b45ed058b2dfa27"
+    },
+    {
+      "path": "docs/gameplay-operations/02-onboarding-and-journey.md",
+      "sha256": "4359f2ec5afbaf18911befa6fcea7c6b696c9975bd3f7b4c223c545509e5f4c5"
+    },
+    {
+      "path": "docs/gameplay-operations/03-combat-and-attributes.md",
+      "sha256": "18cd8d0929abe94ba4a6ffef039d3f797ded22c6061027a9bece03a86f8fa20f"
+    },
+    {
+      "path": "docs/gameplay-operations/04-heroes-and-development.md",
+      "sha256": "5a1e281b4af274d1360e8afccd5cc6d383cc70b06fdb04b2a7d04694b5b3182b"
+    },
+    {
+      "path": "docs/gameplay-operations/05-economy-and-commerce.md",
+      "sha256": "b336a22419856f0f3a303129b023fa451e69d6f3c5f2c6f0f506ed6fe912584d"
+    },
+    {
+      "path": "docs/gameplay-operations/06-modes-social-and-guild.md",
+      "sha256": "51f0a1b955916f508216001b0523a5515e5d8d006c3836e54433d3d78bb19910"
+    },
+    {
+      "path": "docs/gameplay-operations/07-activities-and-calendar.md",
+      "sha256": "fe9f701ae679a094c54aaf6f5937294413a849cc744a02123b36082f1a95d954"
+    },
+    {
+      "path": "docs/gameplay-operations/09-defects-and-acceptance.md",
+      "sha256": "a70ef79c7d6ca6bde10d0a21d17b88c6a76c29e34c3f3e2565c63c8e99507400"
+    },
+    {
+      "path": "docs/gameplay-operations/10-data-and-change-control.md",
+      "sha256": "01951b17674425ff3fd2c2bba00b050cb0b8aca487596719cd660b53c3ec6555"
+    },
+    {
+      "path": "docs/gameplay-operations/12-final-rule-baseline.md",
+      "sha256": "f148cf50412751616a771d365fa3bf4fea2011c2070ff9447f12c6da01dc5dd9"
+    },
+    {
+      "path": "docs/gameplay-operations/system-rulebooks/README.md",
+      "sha256": "2813f8e6992c5bbc26b4a07f7b5bc8066018e296554ce8dc13a247c44c59d3c8"
+    },
+    {
+      "path": "docs/gameplay-operations/system-rulebooks/onboarding-combat.md",
+      "sha256": "5203d96d60408a15733d3ab3a7666e2dbb667cd404f9553420bffb2d28c59659"
+    },
+    {
+      "path": "docs/gameplay-operations/system-rulebooks/heroes-equipment.md",
+      "sha256": "a6748aaebccb620bf6cebab01419be8720dcd7653ac375f287db1c44d32dd007"
+    },
+    {
+      "path": "docs/gameplay-operations/system-rulebooks/economy-tasks-shops.md",
+      "sha256": "460d9c30389d3d9051da8ef96d4717348e1d44321c752fcffdafa16a8fb92a53"
+    },
+    {
+      "path": "docs/gameplay-operations/system-rulebooks/modes-guild-social.md",
+      "sha256": "06c679ec460bbcc6b10f82718ff108577d1d16f5d0828a72742d389301fbda75"
+    },
+    {
+      "path": "docs/gameplay-operations/activity-rulebooks/README.md",
+      "sha256": "f67bfd6f7f2a87879001b1aaf0fd7e53de558885d333217c799eefb14ccd0bda"
+    },
+    {
+      "path": "docs/gameplay-operations/activity-rulebooks/draw-and-recruit.md",
+      "sha256": "00540e16185984944b86936ced32cac24058ffa8919539fd6efa2a3b70acdf21"
+    },
+    {
+      "path": "docs/gameplay-operations/activity-rulebooks/exploration-and-minigames.md",
+      "sha256": "a6adc65208a49aa74b719521f9e79e51b699188ae2100227572507c326e06555"
+    },
+    {
+      "path": "docs/gameplay-operations/activity-rulebooks/festivals-and-social.md",
+      "sha256": "d8f37f7a06da3c45dc25655dafd17048bf288ca0c5841a1aad75c474f7cb7080"
+    },
+    {
+      "path": "docs/gameplay-operations/activity-rulebooks/commerce-and-benefits.md",
+      "sha256": "60d9bb270f1dcc25bf76e7b899ad772685214022aa70cd808f7b6835dd990866"
+    }
+  ],
+  "decisionSources": [
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/report.md",
+      "sha256": "eb00b370c07796780bc59c5608d9a4aa96b7fa0f46dfbd546189561224ee6055"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/method-461-462-evidence.json",
+      "sha256": "af596f068932b4eba50a3f939a1473b16457e43ac0d68ad0c61188f42ea37fdf"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/exact-time-fun-scan.json",
+      "sha256": "39f302c4532adc6f8ddf4bb933ef94da5c4c7b61ea71529f7dcf5505740d20f8"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/client-time-chain.json",
+      "sha256": "c15ad246f0e2e5398d31514b05f7f8d6d130bde5344a122eb8c126d885d067a3"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/report.md",
+      "sha256": "cac57c6cce7a97cd9b76668c8acf6813db4986ee7d07ec6a0b687004da67a8df"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/selected-evidence.json",
+      "sha256": "eb6f326185036b4d8030a4f79235026aea443d33ee12fa7c7f807793a2420b6a"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/instances/report.md",
+      "sha256": "9c65d5c9285882c8d7258f4229949438e3636bfc75ab9f36a8fd6769c99ce6c8"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/instances/source-manifest.json",
+      "sha256": "fbe8e266181e7f018ab3bac44074ebfa76f0fa8a8708ef5050805a765ff3cf22"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/instances/decisions.json",
+      "sha256": "42459bc2073b346f66fe429a8d3521424353efcdcf6924f0cfc435d90bf514e6"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/decisions.json",
+      "sha256": "de572c69a7d0bfe5e9befc5a6bcd4b8c0af70e7ee6b6f9aa0bc03b861c95837c"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/decisions.md",
+      "sha256": "24f69c6029f7d4c7a72b84a803e4535d5a985b18129b579d04eeb564b82574e3"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/decision-sources.json",
+      "sha256": "5e5176e71c30698cf8a828081eb287e62ca283cf445a817762184bab130dba5a"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/instances/decisions.md",
+      "sha256": "8ee265e13075e76cf4f53981dc0df81a0e1ed16146ec963dfb008ddfad84d805"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/instances/decision-source-manifest.json",
+      "sha256": "a7f8508294a5f6cf5abf1911d839872539b39894a220a0b260e44fcf65a44eea"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/method461/assets/manifest.json",
+      "sha256": "919744ae7c742914a0145306d57fdba8e53737442e7f398eea5a5902b7ca6aab"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/buyskin175001/source-manifest.json",
+      "sha256": "c78c55c079c67447e337ffa67e99c3e0697ea338a22846fb19fa4023c203c70c"
+    },
+    {
+      "path": "tools/verify-detailed-rule-docs.mjs",
+      "sha256": "c7963760e031b50abfdd45cd646a115e2e2eabf390c8d7d175c0d139aef8b735"
+    },
+    {
+      "path": "tools/build-gameplay-doc-evidence.mjs",
+      "sha256": "e7712003d899c5428e854bc9921666d501a890cb5d6c6e84726c828cab48ec7d"
+    },
+    {
+      "path": "analysis/scratchpad/activity-schedule-20261115/normalize-doc-status.mjs",
+      "sha256": "f0aba3733d391d767a8a6bdb728ad5e8f2f9b4c14c741f73043b3669e5d0d8ee"
+    }
+  ],
+  "evidenceSources": [
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/16510616264917154000-ActivityTimeUtil.lua.bin",
+      "sha256": "2a8ec5cd9f54023ec4e44db31a1819a1ee0fd593c526683d9d5d8bfda0f12b25"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/17268122440433684000-Activity.lua.bin",
+      "sha256": "f694219f8bb409aaff2c22f5bbcfb36bf0a427d5091d4f6f2f9cc8fbc391fc5b"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/6615133135189614000-ActivityTable.lua.bin",
+      "sha256": "6063430c71abfb3f5b82858eb5d93bdaa514e705c7a5d34927d5a545e0cc1ac3"
+    },
+    {
+      "path": "analysis/scratchpad/time-temple-20261108/project/11089512760612760000-ActFrameTable.lua.bin",
+      "sha256": "60b17a3ee94336fda79571f86a3fd165d1f209129a20e2b63b4b754aa46411cd"
+    },
+    {
+      "path": "analysis/scratchpad/game-rules-20261114/time-assets/2608048538802469000-FlushTime.lua.bin",
+      "sha256": "c4e637fdcf7299ec53c835bc0c4723d9e7b3fa25630a513dc3030ac8c5d81711"
+    },
+    {
+      "path": "analysis/scratchpad/game-rules-20261114/time-assets/3862134482850994700-TimeKit.lua.bin",
+      "sha256": "9fbc074edd8194e1e741e0bb7ebd1580dd4124e64fa4667c4d44f917cecf6fe8"
+    },
+    {
+      "path": "analysis/scratchpad/game-rules-20261114/time-assets/424803492374703360-FlushTimeTable.lua.bin",
+      "sha256": "6bfbdcb3960828706d21e34ed001849f7f308dc81df791a9fb57793ea767e3fd"
+    },
+    {
+      "path": "analysis/scratchpad/game-rules-20261114/time-stage-evidence.json",
+      "sha256": "1116b8f23b95f7b248808c9d499b14568bfe61db292589626a9dfee646be5df2"
+    }
+  ],
+  "generatedFiles": [
+    {
+      "path": "docs/gameplay-operations/rules/tables/RechargeBonusTable.json",
+      "size": 3085,
+      "sha256": "24f1a1c272cb447824da4ddab28c8da3e72ae78e771bf8efd5742ba58fee597c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RechargeBonusTable.md",
+      "size": 4473,
+      "sha256": "913213697cc671e185ddda27b5b0e9fbca379d2d5e8fcc0f7016b0842c3420ee"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FirstRechargeTable.json",
+      "size": 1597,
+      "sha256": "32075cc670acc6787d0ade4323cecb30e43efa32ef3733d3ee0f56a0031fd001"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FirstRechargeTable.md",
+      "size": 3402,
+      "sha256": "6bac1d95a0bdad2d6469ed8b4995f2a08535be7ba630e0ee1b50509a8251ba1f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RechargeRebateResetTable.json",
+      "size": 1085,
+      "sha256": "67793c23eea19232cc022e0bc2f408b795e4a7649b0ba2392390e13a450af502"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RechargeRebateResetTable.md",
+      "size": 1869,
+      "sha256": "ea306716105ae628db5208ceca5e806d743ee8e263a43856f1d1610dcc32a692"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/AccRechargeActTable.json",
+      "size": 117602,
+      "sha256": "f80316aa726f33469fd10c336e91714ae20ca9e7d2948878e168f806bef4e0ce"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/AccRechargeActTable.md",
+      "size": 9587,
+      "sha256": "4f5eb88da604ee51a109ade2dd1022cb0365a01b08adf1dcffecbbe1d972be37"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ActFrameTable.json",
+      "size": 322237,
+      "sha256": "d207116b66b3737e54d0fae72f8f494f603071b77c9340edcc3fe3b60e057bf4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ActFrameTable.md",
+      "size": 23117,
+      "sha256": "e83522858869a34c103c61acf8293fa46a1bace6fca1bbb4e25da5ed78f9f640"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ActShopTable.json",
+      "size": 372536,
+      "sha256": "c3d602168977e0c9bdb8ae1dd7a5e037eb4b507b1c044dbfac1d2ab249d9cbb4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ActShopTable.md",
+      "size": 26409,
+      "sha256": "bf4ec6bb65ab4a55bb38e5e00b88cfab4b6329bc7814ab55a42102ffe68bdbd0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ActivityTable.json",
+      "size": 537411,
+      "sha256": "db3f8bb03ba6f60d9c3741603704d92ba1cd95d9c386eee66d9d5810d2fdcd15"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ActivityTable.md",
+      "size": 60200,
+      "sha256": "271fbfcadec308de4aa61cb471d80862581848970ae6283886cd159337b201c5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/AnniversaryBanquetActTable.json",
+      "size": 11295,
+      "sha256": "b9bbba4424841040aab5ce49dbc020be5ef9ad136fd4b22d75feea9959ba2645"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/AnniversaryBanquetActTable.md",
+      "size": 11138,
+      "sha256": "0b28fb47a0d26d68e94aee904579364ecb17a1a292a4988d3e6fd5f720cda126"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/AnniversaryGameActTable.json",
+      "size": 2623,
+      "sha256": "fc49bdebf8756b5a276f7e7a744a42092e66f7d88048b0ff066661e6fe44a720"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/AnniversaryGameActTable.md",
+      "size": 4272,
+      "sha256": "e575d8d111576458419d5fe816482d6beeb4db68e3d8ec4097428b107d6a1439"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArenaContestTable.json",
+      "size": 24827,
+      "sha256": "fc097e580fc51cbaa7984ebb40f786b16b30aa864050ecd11e4e40e603bb635d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArenaContestTable.md",
+      "size": 33200,
+      "sha256": "fb1f04cc8e6fea3274a4ae7332a7e1551d8175020fa2fa9bd705e559448e8e98"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArtifactDrawActTable.json",
+      "size": 129110,
+      "sha256": "0b4453b3d3c5e3a51c2a853e17cbaa5db722af407ae67e11e74cb45f969929d9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArtifactDrawActTable.md",
+      "size": 78721,
+      "sha256": "0ecdf0ba6b2da640e09627014cbf6458139ff7b0f040222b76cd3e6c13388649"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArtifactLevelUp.json",
+      "size": 393382,
+      "sha256": "634e96c79077713daf91cecba83611526ee92335b0f2a91dd568268ec9f5d647"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArtifactLevelUp.md",
+      "size": 1961,
+      "sha256": "2c14b9a3834399eb171359cf3de38c4b217614337a2991b7ef9d17a4e3d1bd0b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArtifactTable.json",
+      "size": 108454,
+      "sha256": "a15f715c2fd53117812b4d3f793b9531a92cf94937ba1e7edfb66d125e6c0270"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ArtifactTable.md",
+      "size": 101889,
+      "sha256": "1c204a9e21dac1bdf7f4bdb8db4bfba182f91e1214145a0f348c3edb888039c4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BakingActTable.json",
+      "size": 150992,
+      "sha256": "b31d32b89a05d2070b7883addd0886e34cc1eba10e601424142a97dab859bcdb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BakingActTable.md",
+      "size": 147510,
+      "sha256": "698f6c0fa7a5ef8b7eaef6515da8868c1e738268d1d3196f55ba40c3539b3adb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BattleTriMatchEquipTable.json",
+      "size": 445326,
+      "sha256": "0ffb93b12a01653c5fd1556f7298e96a8892e1eb0a632ce2037f46985c84eeb4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BattleTriMatchEquipTable.md",
+      "size": 3814,
+      "sha256": "f9d3f1e33adcacea25b9c248ceb24c12f6f907d411f5a37c5479e4b7e95d3ef9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BattleTriMatchHeroTable.json",
+      "size": 151174,
+      "sha256": "9d1e48d837103eaa07251673d3125572bcfccaf7538f201360dacb91d2ef8d15"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BattleTriMatchHeroTable.md",
+      "size": 28225,
+      "sha256": "0e286fde287e9e8995d850dfca3ce9000039bd80edc2c212e98ec046aac7b58c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BattleTriMatchLineupTable.json",
+      "size": 1523,
+      "sha256": "6fe8c96ef8090e374d5f7b89c93a25f857e933c1699f403cddb32f1d189c0dd9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BattleTriMatchLineupTable.md",
+      "size": 3003,
+      "sha256": "f4ec2bb2b8777804a90f24680191bea228bb59b48e01dcde5b43275c066b5277"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BeatGopherActTable.json",
+      "size": 2249,
+      "sha256": "d0455f6194d5a383c816c4ed356cf66d24f63a6fb5d25d3ac0236027a13aa127"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BeatGopherActTable.md",
+      "size": 5568,
+      "sha256": "e2291d7caef0564c11b0686ce4a11e8caf29ceef463b2ac419ad8868268295ce"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BonusDrawTable.json",
+      "size": 24041,
+      "sha256": "85f3364904e9505316b86279b762455ed70a8e8c7add8552e7d700bd2690c8eb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BonusDrawTable.md",
+      "size": 7595,
+      "sha256": "d99fab8e279b73078da9c743adb32e751f17583a267d079657f11162ee7508a5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CampHaloTable.json",
+      "size": 5131,
+      "sha256": "abd9bd8dace688223f3de4d6195ef1563b40e7ac6668049edd386c74687d25aa"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CampHaloTable.md",
+      "size": 5852,
+      "sha256": "c41d0d43b48ee534483b2158bdf0fb3339b2e6f3c83fa8c7d37a6dff8b1938b4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CampTowerTable.json",
+      "size": 17149,
+      "sha256": "55ca667e656d40d7da166b702bede06a47f8944f0b656cf3eb4485eca3e7d3db"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CampTowerTable.md",
+      "size": 11551,
+      "sha256": "f01404a0e6d427fa091006a575aa1af6c49774caaf6b8adb0b56f922211d77bc"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CapsuleToyTable.json",
+      "size": 13224,
+      "sha256": "063be8adaf9ababd29e58c4059fb5d77197b6b7bf458e7e5138010b0995a9762"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CapsuleToyTable.md",
+      "size": 17621,
+      "sha256": "c83139355479177c3af4696ba1c2efb299f7aa99d6d112f150b1f7f9b40166be"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CarnivalTable.json",
+      "size": 63628,
+      "sha256": "c5a0738270190e343fd56806196f9d054581611565bb538122efb6e0d06442e0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CarnivalTable.md",
+      "size": 67767,
+      "sha256": "28b9503dbd55c81106a12036bf84b65d1e105739e4506e8be4dee87bf4e3414a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CashbackDrawTable.json",
+      "size": 15182,
+      "sha256": "a5059d63636307e0a0929cd95d8ccdbcdbd27bc7c3831e2649f641097ad32900"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CashbackDrawTable.md",
+      "size": 17218,
+      "sha256": "a531fb29be8dab72179cce1836d9d33b821248e494dff5a4eed48ae331984d58"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChatTable.Param.json",
+      "size": 1404,
+      "sha256": "7817bc7f67afe6dfa19ed301d215a5806021011e18fba4459912ddee7952b764"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChatTable.Param.md",
+      "size": 5131,
+      "sha256": "7fd9f7a088cc7926d82ab1d5162e7331b96dff5a0e100834445fdb1f521dfe34"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChatTable.ReportConst.json",
+      "size": 737,
+      "sha256": "f7aa8c4fa46c4e3b192d4808bd8f5d6d82675a1c62f609dc616c9b1cb519725e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChatTable.ReportConst.md",
+      "size": 1434,
+      "sha256": "12c6e1f400df0ffbf8d389bc0c95a384770531eec1a4201c8eba52d91c0787b8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChessRevertTable.json",
+      "size": 3262,
+      "sha256": "0649b9d52c98e3c474e8eddb3651729ddbcea002085bff4b2d34616955249a68"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChessRevertTable.md",
+      "size": 5165,
+      "sha256": "5a54144ae8bfab66ae16fca47e81cb6547f6fe4b86684139ea275e359c0e86db"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChessTable.json",
+      "size": 44443,
+      "sha256": "26bf250d4a4f364ffae76811c6763575040e2c5ba7aeddda1e65b51af5a96b76"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChessTable.md",
+      "size": 41966,
+      "sha256": "b2fec1e743a295e6431edcb353ac5e7ad0bea863167f17d3a04cd8a2fbfa19aa"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChildPuzzleActTable.json",
+      "size": 13608,
+      "sha256": "96fce441372f7d9d84ed011f256ef0343727e74617826134cd7ba8636131c9f0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChildPuzzleActTable.md",
+      "size": 16764,
+      "sha256": "94ce78a8c7da2bb41d7b481ee3780844dea43626f5bd20dc8f74e129c29f4621"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChoiceStoryTable.json",
+      "size": 11519,
+      "sha256": "687591e049d2d0b5612a22c9480abbe3dd6a0142b6ddc793d0d08c71b8683c97"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChoiceStoryTable.md",
+      "size": 8139,
+      "sha256": "8911297228401020b5794eebf042934aef936fc48dc457344cf820f499ef22a7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChristmasActTable.json",
+      "size": 10861,
+      "sha256": "c161932ec8612d7a7ddcf9306f43cbf14fb25ed6c6cebee4750c184309a83e11"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ChristmasActTable.md",
+      "size": 15878,
+      "sha256": "72fb3889618e140fc84b0aa5ef88ec8659bc10f755a331c66e9ac53af95c11c2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CmsTable.json",
+      "size": 688,
+      "sha256": "f66f3c99df18eb631234534392b6ecfd36876b81a9063ff8e5a78840cffe0773"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CmsTable.md",
+      "size": 1326,
+      "sha256": "ba609370a8b77eb51a1a3b20ff7c38957801c98fd53a448c7963745e9def71d3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CollectExchangeActTable.json",
+      "size": 7631,
+      "sha256": "785ad0c2812b24869de1666a5d497cabe4996fd44b6158f02c4b3595fba1d052"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CollectExchangeActTable.md",
+      "size": 4394,
+      "sha256": "2f61109e84e9db2fff24efd7ac79e361acbd1bbc8889fa24eb3b5fa78708ef0c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CombatPowerTable.json",
+      "size": 89768,
+      "sha256": "0210b17b21bbf621bed2e13dce6a9fcec3fb965a3431cb4de428e60d2f21c1eb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CombatPowerTable.md",
+      "size": 22220,
+      "sha256": "45daa37855ae13f80aa57cf606e191f8171097ab35aa13f1f207b92a4fa97622"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CommonMapTable.json",
+      "size": 17014,
+      "sha256": "ade8195816a19b4c60f239b293468aa2f18575be4789de69e9b8eac1034d0486"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CommonMapTable.md",
+      "size": 21656,
+      "sha256": "c871d94a491ad967d4515955afaeb10cf40096376f0050223fa13572728902b8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CommonSignTable.json",
+      "size": 10222,
+      "sha256": "247e3eeb3a65802c66e246b586e1c118a01dd2390fb9851846fa151dbf50fb1b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CommonSignTable.md",
+      "size": 9861,
+      "sha256": "0b117ae9535901c7e1e3cf721a71034faa6cdd70436cec1da57fb3f1788d0587"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CountStatisticsTable.json",
+      "size": 13094,
+      "sha256": "15689a46179410639f7b2677aeb6c57b310cbfc373581dce6cadc83a59a3d8c1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CountStatisticsTable.md",
+      "size": 8836,
+      "sha256": "cb132eadfd38bae40498e10acc9deff96f48fd352b3a8ee81016125bd1d273c3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DailyDiscountTable.json",
+      "size": 4546,
+      "sha256": "17e21eb928413aefece95c73e951cca39f89ddc092701bbf97e14f98ca0a29e1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DailyDiscountTable.md",
+      "size": 6980,
+      "sha256": "efee0de82e333d1e7e82c923b4cfe20d3f6b6b5f7f9efbe49aa60720f75e93c7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DemigodActTable.json",
+      "size": 148575,
+      "sha256": "46203e2e7ed27ed2fc943ec2829a8b3c5456bb9614859bd3aebbb59815c87e5e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DemigodActTable.md",
+      "size": 44163,
+      "sha256": "1923ffd783bf47532d8f15c7e940b1f16dfc9109dbc40688a99ab1325ee3257c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DestinyPveTable.json",
+      "size": 215315,
+      "sha256": "be2dd13af6ef0e6b3bffc077b64d2ed07ae3f202fb5da1db54fbf9faad0d6a68"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DestinyPveTable.md",
+      "size": 36825,
+      "sha256": "3ca3c7870bf8c87667855742373acb70a48ba5d32784fb8ae06c610983fa76f0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DestinyTable.json",
+      "size": 143999,
+      "sha256": "88eb52ccefd542889d76e8f11f82ebd5d358be6407932dce6777b4a5526d4ded"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DestinyTable.md",
+      "size": 5155,
+      "sha256": "0b62a363378cfa7a8d20d37d1f8544e41019bb46ee448d0fd2f5a8ec6da38f31"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DiamondBankActTable.json",
+      "size": 3575,
+      "sha256": "b6db53fb57ce6217ab8b10f08ecd80e40a07e03ec025badae88069adc3975af7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DiamondBankActTable.md",
+      "size": 6583,
+      "sha256": "9e981b64e2f1bb3ba57577cfbc93cded13484a738acbcbfd24e90f0e4faea08e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DiamondFundTable.json",
+      "size": 4512,
+      "sha256": "f2603df627d3195b8c1874cf3becef9e57db986b7e834cad8059436cc8c9912a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DiamondFundTable.md",
+      "size": 5956,
+      "sha256": "4d5a8e0eff5942f5407399f33d68161f1bcb82081d17d6f2403c2a1599d40d42"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DiamondVeinActTable.json",
+      "size": 56116,
+      "sha256": "4290bc55c8e86e0d49827d65d3e9de6f5faa39914b4c541a8c069f35d44025f5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DiamondVeinActTable.md",
+      "size": 41084,
+      "sha256": "098579e0de7f9408a0ba3b61bb5b473510f1feed13059f46c4a55bc73c85a117"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DragonLandActTable.json",
+      "size": 49741,
+      "sha256": "9feded7327bebf486cb77d3a16efe6275d9bc2fc25cbe7a94d5ba3a32b9c8f88"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DragonLandActTable.md",
+      "size": 43365,
+      "sha256": "3053d4e904b3865e97a05350daee69bdf1dc9f2f8a95e119316b0a57c899984f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DrawTable.json",
+      "size": 327496,
+      "sha256": "9f10200fdfe65b6a4edfe99b3999f5f9fbc4e94dc14bdf29666cdd5788a9fd4f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DrawTable.md",
+      "size": 6999,
+      "sha256": "9b0321cbe866a3af54fdc61069bdad3e9211fba84d6945c6bbe2bc7bb1f8d3b0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DreamTable.json",
+      "size": 18705,
+      "sha256": "1bc103c63edf6d66920eecfe9c9f3e9279dff6c5622e8a9b84b6b5cdf9ec5f25"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DreamTable.md",
+      "size": 26446,
+      "sha256": "18cba0ad3c84bbb1c5b67caf53ee13d83cccaa43c944f4688d9ea0c8ccaa008d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DreamTrialActTable.json",
+      "size": 30739,
+      "sha256": "2dbee3694f17554d9786e452edd793b0ee293240d21c4b35cb34d2cc928e6f66"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/DreamTrialActTable.md",
+      "size": 32686,
+      "sha256": "4ceb93421899dc375f47fb723c17b9ef243eb20adfc13f68a71eb52c80a2655b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/EliteMissionTable.json",
+      "size": 2054598,
+      "sha256": "43affaf3fc41ee60c5fed3cf8ff5aa5d363fe57aef1c27c03ab2127be81c7105"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/EliteMissionTable.md",
+      "size": 34544,
+      "sha256": "714865c1e0d1cc8bbd5beeb9e4adab965c1e9db84e3cbb997c32d8c47fdbf877"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ElvesActTable.json",
+      "size": 35411,
+      "sha256": "b221eccd4fb44bd727742bc08c467dcb33774f37375b81e1842b89c264ede6e2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ElvesActTable.md",
+      "size": 26338,
+      "sha256": "02524ba120d1b74261408182eb2b7f004b8c310c792f53999b8ace4e01e233e8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/EnjoyBlessingActTable.json",
+      "size": 3741,
+      "sha256": "69d6136041b5673ca9694c01604799bc3b862cd4126d5f38092ed860d4a55496"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/EnjoyBlessingActTable.md",
+      "size": 6740,
+      "sha256": "ad0eaa4a00b834e8f6eeabcdac08825fb73cd17824c5077be65e52a4505981df"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/EquipTable.json",
+      "size": 397240,
+      "sha256": "f006a61f1255fee04f85b4ba7217cda637d84ae0c9af0d8540eefa8262eea452"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/EquipTable.md",
+      "size": 74656,
+      "sha256": "520c68f89640bfaeedfeb05064c020a5e0a224ccf7967f155928ff9389521a74"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ExperienceActTable.json",
+      "size": 5686,
+      "sha256": "de93b81c3c2cde7cd4415d1c769aff24c96a18aeac5d30912ce326b6045873ac"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ExperienceActTable.md",
+      "size": 6713,
+      "sha256": "82f5cbc702ae1e06176738a7fbfaa2e5955d882f54402b5663d1b734e7cc0f69"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FameHallTable.json",
+      "size": 113072,
+      "sha256": "ba9cf280aa0e42d16c209b6d16de353f7659974564fb9c9d02011aed48441621"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FameHallTable.md",
+      "size": 31899,
+      "sha256": "ba3347fda4349c3017a193b0f7957cc3547e5ee6004da10702f7de180d3ef042"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FantasyEquipActTable.json",
+      "size": 36159,
+      "sha256": "f06445a5ead56e02c3ac1ef08e736dd76fbd2fa0f20161823e209cfa81fdfdfa"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FantasyEquipActTable.md",
+      "size": 19615,
+      "sha256": "50d8714257aa5a56ef9075483dc434a8a9cd5134f077759bbf88e7fad303e21e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FantasyEquipTable.json",
+      "size": 242485,
+      "sha256": "b31664d5e4156ab996c223c6458c90fdb5ff6ac0af92b05087603426859226fd"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FantasyEquipTable.md",
+      "size": 55885,
+      "sha256": "0085410538f23f85c209d72f85f7b2c246d0f779cdff860337b213887236b0f2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FestivalMonsterActTable.json",
+      "size": 1534,
+      "sha256": "2fa4291b1a1f2c4806c9c5ac0a75b39a3fb52645f8551fb3fa210248968c36a5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FestivalMonsterActTable.md",
+      "size": 4669,
+      "sha256": "5d5301d70b82db6f525a579782d7a74d04dccf0a728f812ccd0f7cdb5927d082"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FestivalSignActTable.json",
+      "size": 12080,
+      "sha256": "b864d84d5d9a99b2fcdab8b75f5c55f1128c4f572867889e398fc3610dc38ae3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FestivalSignActTable.md",
+      "size": 11139,
+      "sha256": "53832baf4a30976acd255c2ef0bf4135c3467f7fa0ebcc6b4c9eb75e5d906e1e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FirecrackerActTable.json",
+      "size": 33669,
+      "sha256": "be808b29693f116c2dcba7bc7f48529e9eaff136b573c6ba169434f109892964"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FirecrackerActTable.md",
+      "size": 37126,
+      "sha256": "3de88b2d3891a08046180862ccf63436b7a85b5d96f1e0b867d7a94497c801d9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FirstWeekGoalTable.json",
+      "size": 48230,
+      "sha256": "112a5fd97525e9a8fda9fc704d13573f6e8744eb37feda9fc33fe80237492cd0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FirstWeekGoalTable.md",
+      "size": 18966,
+      "sha256": "bdf3cc16f26b3e75c96a3d1ccc4cc2789580ec9d0683673d6619a8eb1d5b71f5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FishingActTable.json",
+      "size": 145162,
+      "sha256": "5ba40b3367b6cb2b79617a154ac78253a7929b391abf0e4c7679ea932f6cc7d6"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FishingActTable.md",
+      "size": 51267,
+      "sha256": "d81cf2dee69c8e4527dfc88498603ac132b438897f1399838701033dc6be7a26"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FiveDayBossActTable.json",
+      "size": 10187,
+      "sha256": "965e0b5627551359bd74eca77a6715e31165e1cba12cc9d8e95d7adbba762d7c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FiveDayBossActTable.md",
+      "size": 12243,
+      "sha256": "d86f6461d0b922b62ffa12f40798e003cf5845645bfa6a871a57cf7c9716d453"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FlipCardTable.json",
+      "size": 9202,
+      "sha256": "466cdc6cf20feb2a418b446d61b687d494400d759d89ec383312e5a7980d0a18"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FlipCardTable.md",
+      "size": 10599,
+      "sha256": "2d47190fc13969f597b294548edd6450e32008c6713ba51f60fa34bb043bcbfc"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FlopCardActTable.json",
+      "size": 25643,
+      "sha256": "bf48c39898e0bd7e1f7e3cbfdc3daae3df60cb24a45aeda72db9cffbb04a4cbb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FlopCardActTable.md",
+      "size": 28504,
+      "sha256": "d2eb32d3f0f105fea05a3a259e73dd80fc73bd0b9743e5d50079468310097f4e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FreePrivilegeActTable.json",
+      "size": 1153,
+      "sha256": "dedf8f064fe3cfe1f4a57d86c3c8ca61fffc1892c7c404d304b781ecfa9028d1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FreePrivilegeActTable.md",
+      "size": 2340,
+      "sha256": "e239df362bbe4e587e5f6a901d5d25b4f9d5e8717dff9c3a9d9e4fa1143e222f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FriendTable.json",
+      "size": 1927,
+      "sha256": "12623b595fd6492ab47b299eac9a92708290fb2aa1461f89fb4b427314b95da1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FriendTable.md",
+      "size": 5168,
+      "sha256": "4b7f4552b2832d99beae2f3b69658c42ce445849b48335f0104d66fa50ca431e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FruitDrawActTable.json",
+      "size": 21384,
+      "sha256": "f32bc961207f51df0dd2ca10c9e31d2e666155adf0736b300a57050ce4c129e3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FruitDrawActTable.md",
+      "size": 20128,
+      "sha256": "4084b17792927f1e50d7a57e123e02fa40544d471bd796209edf26673e17a351"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FunctionManualTable.json",
+      "size": 8636,
+      "sha256": "9a325c5983e8c7c22f6b7e1879a7a812beed46e1ad8f224458bcc7048f590c4c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/FunctionManualTable.md",
+      "size": 6870,
+      "sha256": "e27998bf55fa44cd6f2748379f9f7f90307583b022591ed2616969c070cb947f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GameTable.json",
+      "size": 1093,
+      "sha256": "61e877ff93c424fe6b4baac7b8e18b99a8babf4d5ad9a7e7a1f946c05d507479"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GameTable.md",
+      "size": 2227,
+      "sha256": "8bb2ac2abb4f86bc8fb42864ada31f0e4ddc8ff44e9ed45e36444644d9721122"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GeneralDungeonTable.json",
+      "size": 100026,
+      "sha256": "f62952cc12e3b3ea7e28b87aae76dfe1b291f7b9733a8e59e7288ccb44444f61"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GeneralDungeonTable.md",
+      "size": 81102,
+      "sha256": "4156d7109a6aa1c3c200686a94a3b895dff428fa492575b49f6388e86e63997a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GrandTourerTable.json",
+      "size": 825,
+      "sha256": "24e62b82c992b34cdb6f774baba4982f08913a09dc61120e8ef9787e4a0f4bc5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GrandTourerTable.md",
+      "size": 2176,
+      "sha256": "274838479c7626dcec7f2850a1e555486959091a74fec91491b866f48556777e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GroupBuyActTable.json",
+      "size": 94221,
+      "sha256": "fd9ff50407f4e2dd5c4443b5ecfb2dbc3cc43b325c1a8bc7a2df2b0b14d979f1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GroupBuyActTable.md",
+      "size": 51201,
+      "sha256": "fd55efef277451ac9e303edf329cbffe4e83a77c9efbf18103b2fc8ca36abe5b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GrowthRoadTable.json",
+      "size": 37755,
+      "sha256": "32c8884273b8d0752bac5dcb09add0357cea46f2afe80e5a23d02c202c742d45"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GrowthRoadTable.md",
+      "size": 6587,
+      "sha256": "25c126aecc4306120dc793852a6c2e23d396647d6004be6266965e3ddf2a5d20"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GrowthTargetTable.json",
+      "size": 147272,
+      "sha256": "019dc1fc0e86d10752aef57afa1539437153366077c2b2a9dc8eaac310f01bf4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GrowthTargetTable.md",
+      "size": 18893,
+      "sha256": "8a75c3f9ccaf94917f0f26b8896fc42cf21f06d91c7ce13e5a66a74c6de67f18"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GuideTable.json",
+      "size": 361130,
+      "sha256": "20ca7ff7034f0aba3e8671814cdd04b2c756c08e7b12911c89ea15ebb8adfc35"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/GuideTable.md",
+      "size": 33137,
+      "sha256": "b820143c6428ede4255ac644cfdae64f0c62e77e5f75c365a3d9b608275fae7d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HelpUpActTable.json",
+      "size": 5211,
+      "sha256": "3423551b33469fbb511496501bad7bf1a13ff4335136844fba54e7d693449d89"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HelpUpActTable.md",
+      "size": 12375,
+      "sha256": "a618decb752e12305843d6eb75960adb46587e3d2c865dc83d404da4726d74a4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroBlazonBondTable.json",
+      "size": 373306,
+      "sha256": "936a9d35bacd3b78a662d7b13897bf4632242c47589326af74090565abb2da04"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroBlazonBondTable.md",
+      "size": 5987,
+      "sha256": "94a28a661723b1ca284dec266c0b818eedac44f741939174bef3f43bf6397d43"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroBlazonDrawTable.json",
+      "size": 2395,
+      "sha256": "5937f159e7dfd71a1ab1ce15f4ac91dc2ff82acdcff2d38b8c714d6cf8850f4d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroBlazonDrawTable.md",
+      "size": 4715,
+      "sha256": "9af6c0d75b5901471c0108494770ee67f4740a22f3d33cfec26591737eb6d780"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroBlazonTable.json",
+      "size": 515447,
+      "sha256": "9b1d776de5c21a72f7e4bb75ba02bc2a1b1d0a3076ca546c7ee1ec917b0d9e4a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroBlazonTable.md",
+      "size": 42803,
+      "sha256": "58da32ece17ab6d2b8cde20d668fa7851bb586dd59216178b679a2f50c9e3bc2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroDrawActTable.json",
+      "size": 7996,
+      "sha256": "535b82df39c55e4ad4a35a31b595041bf351443a91e9566d43f1bd9ad2100b8a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroDrawActTable.md",
+      "size": 10349,
+      "sha256": "eb38101a059be4f9eea802461403589371b9777f91c227d8b9a11d19ca1e073b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroLeaseTable.json",
+      "size": 7277,
+      "sha256": "4019f700ba8b0bf7dc99b15c283f34f72c48b64d1aef4d42b8be0b5dfee1bf11"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroLeaseTable.md",
+      "size": 8482,
+      "sha256": "81444f04d5d82c0cf2888cccbb76009a900bef5a7299f77a459c074fc92e3e72"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroLegendTable.json",
+      "size": 14001,
+      "sha256": "0c1b9dcd38452cb54d55064292e2f9212a6f164164321a0bcf05a359f76f29e8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroLegendTable.md",
+      "size": 12739,
+      "sha256": "b480f2f6949e7b91e1f55e84acef583599cdbd1a699e7b1934138990e289ecf3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroSignActTable.json",
+      "size": 3144,
+      "sha256": "b61c55c7b4091c1c0de684b6c8b130381cb97201305c0ac17d4069176aec102c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroSignActTable.md",
+      "size": 4761,
+      "sha256": "40c499a832e6d569953c696be8657402504d937635bc77daa6ce8d955d5b3e99"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroTable.json",
+      "size": 2450039,
+      "sha256": "0df5ce2fbabd9b4341cbdc5f0be62611b5aaebbdc9dcf22a7576bb30e2446cce"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroTable.md",
+      "size": 640441,
+      "sha256": "44b1c6550b8031cae202d60658d64a54a24f7c78a03a63f6431130f9627bc8e1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroTableNpcAttr.json",
+      "size": 2433167,
+      "sha256": "f882f41ff481daad772a7fb2b4c3d21e0e764ab8f76ccaed383f5b1e78ee4010"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HeroTableNpcAttr.md",
+      "size": 1934,
+      "sha256": "bddbaf8aff92de96edbcdb8c80651892f7229793c39ea54fbc33b36b914521c6"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HoardWheelActTable.json",
+      "size": 66203,
+      "sha256": "42a6f882a32e13be542cd62d0a75e607115b2d90487aa3ab8eb680a127ed29ff"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HoardWheelActTable.md",
+      "size": 66005,
+      "sha256": "2b8775d0b50f9f492d8d2976dfcd14eed21ed0df381cc5c84ff315db2019acd3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HomePuzzleActTable.json",
+      "size": 66828,
+      "sha256": "141206c3b8aa4804a3f737b35b6ba0be44bbfc6fd718b7d44a80ddd8127edb8f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HomePuzzleActTable.md",
+      "size": 23625,
+      "sha256": "0d724777d78f224d93e3f50f943efdd9933eda5c7b1ddfdf575e6e783f5a92c5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HomelandActTable.json",
+      "size": 50204,
+      "sha256": "24b757c07d8ce7ed845ac2587a1adad15ed2df0ba08ca75529458f2c563737b4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HomelandActTable.md",
+      "size": 50885,
+      "sha256": "144f0adf343ec8da1cf4f83774a9c8ab51e913a9f542e2ea656dd101968bb042"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HomelandTable.json",
+      "size": 50283,
+      "sha256": "e76e8e7d08e8c274405a7f20e0f67b5a735fc877b327b900a7b71903035f45fc"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HomelandTable.md",
+      "size": 39823,
+      "sha256": "a21e53547488b2fd17f4f11f500e8729550c0aa97fce9fa598875b775ce784bd"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HookTable.json",
+      "size": 669607,
+      "sha256": "e9e4e41c597e77572e13606ac67e91eed638bf3b4bc73f3364bf8c13d4fca443"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HookTable.md",
+      "size": 20312,
+      "sha256": "4bbeb2a00906a249d502b6652552262c7900a3f41a65dcc01c49f6fca8fdfee4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HouseAssistantTable.json",
+      "size": 996,
+      "sha256": "d2866016cb2d2ba61c5aba37181995924615655af5ed4cee58540dea4d2ccd90"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HouseAssistantTable.md",
+      "size": 1783,
+      "sha256": "2831618fea599236d7477727cb98e4f7fe35ebe71bcfa1227c6f7f621075de6e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HundredAccTable.json",
+      "size": 5454,
+      "sha256": "56ebde1c90cd32d4ec96935952cad94cfee3de7ba07c3d7e89518b9017f5202f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HundredAccTable.md",
+      "size": 6740,
+      "sha256": "da9519cdda7508b7c81b44967de83b7f37adb04a4f08cb31c9b6fffae578090b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HundredBonusTable.json",
+      "size": 1217,
+      "sha256": "9199623584b35f3e129d5f2c47e978ec16af690b01fd35e63ff243270e239315"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HundredBonusTable.md",
+      "size": 3162,
+      "sha256": "9ccfb5a8bd77c2a971a5705c5863a7b815b96d88889808f8146b22caad70323f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HundredDrawActTable.json",
+      "size": 58794,
+      "sha256": "fb58e2b699b59cfcd1f705d7a78b40f5f99a7d51986d999927446bd0760bc475"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HundredDrawActTable.md",
+      "size": 61377,
+      "sha256": "0f3c6e5877f3219180c401237de358e6563ad821b575c2be8496d11469ae95e1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HunterArenaTable.json",
+      "size": 18976,
+      "sha256": "2bce76d3dbd736126ee02bced6439ef659ed1f8b09d5156db97a129944af669b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/HunterArenaTable.md",
+      "size": 22291,
+      "sha256": "52502b78cbd466265a826c1d1f1bb320274e355f577d030e1bdfe4b10c8dbb56"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/IntelliTable.json",
+      "size": 13574,
+      "sha256": "7c471fe7a07b4232a6f584a5085ecec7413fa0f76ac4b7c491cfadb50039a88c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/IntelliTable.md",
+      "size": 15336,
+      "sha256": "4ecdd1b118392ea3310a081c485cd3543356224a68e283cc2e0de6c1a9b3b97e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/InviteActTable.json",
+      "size": 8117,
+      "sha256": "6249c7ca034ee26c6be81f24af5ded5d2f23f7ae9ff780ae6d7ba8b29d04542a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/InviteActTable.md",
+      "size": 9353,
+      "sha256": "2942107629cc4598703857b020550775d5b40792677a209e6653fe948c38d78c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/InviteOldActTable.json",
+      "size": 5574,
+      "sha256": "b2f1ed88624ea2082e5d29e83f34e86213db707e6c799f4263b50ca611bdbbea"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/InviteOldActTable.md",
+      "size": 6861,
+      "sha256": "949ce46a9014e03498c2ae080e5a5e49fadfc56fdd5b8daa77b6b61c11ae9d8a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ItemTable.json",
+      "size": 1796775,
+      "sha256": "ab39cd1a340c952606c78f7a057dd4882715d4e6e8f9264b63468519a080481c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ItemTable.md",
+      "size": 108482,
+      "sha256": "ab5c1b5ed581b67d716648fde660578d13ee1be8139f7b8e2a54c311f151a6ff"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/JourneyFightTable.json",
+      "size": 2822371,
+      "sha256": "d6c344fe67dce37297a0416415506622b3168862e5e5b00d20f6cb9be6df173f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/JourneyFightTable.md",
+      "size": 6438,
+      "sha256": "5d0c90a620eafe7f0bf07bd6a3a3dc04f698fe3c31569fc9beccfb011df3fdd2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LeaderEquipTable.json",
+      "size": 473314,
+      "sha256": "4327fec3acd94202a8c61f2ba0fb1a26960833da0e08a84669343467ec1cc456"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LeaderEquipTable.md",
+      "size": 41803,
+      "sha256": "73fe93b418a90491f71ce1423505bfbcad68dfc8ad9ff5e4da3f255b29bc773d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LeaseTable.json",
+      "size": 1569,
+      "sha256": "b791cdb6b91f837e552d7b18b14823ed3233cc106d8977d043f593bb74503597"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LeaseTable.md",
+      "size": 3059,
+      "sha256": "6ee8d4a6b7ee1fcc0ee7b50fbb7588dbf16901af6c923c2c52cc0ee1f5094681"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LeaserStarUpTable.json",
+      "size": 253269,
+      "sha256": "5fb5cb33e1229bb0c3d15a1388e6b6df5e3b679ef063054080c0947a5a72f6dc"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LeaserStarUpTable.md",
+      "size": 48955,
+      "sha256": "6c0e06791a80a2ee45383c9f1ddd4c2ab7e50b380a416b2b41e74c557fa75b3f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LineFirstRechargeTable.json",
+      "size": 6150,
+      "sha256": "9d73f5ecc909e0011a05568e4ba0ba563647e5650312130df83be3d2d0e01f0b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LineFirstRechargeTable.md",
+      "size": 5863,
+      "sha256": "f0e2824d80c486a4eeebae60e46fc949f5f1adadcd0ef6ea6a47974ca0f626d5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LinearLevelTable.json",
+      "size": 1004424,
+      "sha256": "7aa617b30e6a00c0f6ddc8ca93a22703d81362802c7744891a4f003c03c1915a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LinearLevelTable.md",
+      "size": 12860,
+      "sha256": "fe34297e90f878396418a1b06dc4137c6b92f999044faf31908dc622ddd54149"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LoginRewardActTable.json",
+      "size": 1058,
+      "sha256": "95da8dd24db01a4fdd2aeef6594d687bef4e3aa45d7e03fb4827bb3094de073d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LoginRewardActTable.md",
+      "size": 1962,
+      "sha256": "674c1018821fc1ed42b9f158bf2329bac98fbe91c2a570c512d37fcbdd667c0c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LotteryActTable.json",
+      "size": 41213,
+      "sha256": "48ceff41cd47c377f7fa106e4328f67a4cb3492c4115eb22dc1e56952db69345"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LotteryActTable.md",
+      "size": 39353,
+      "sha256": "ab7463a73a59eaa37a2ecc65adb491cb12fae161f509bd084d584a05c59a5b4b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LotteryTable.json",
+      "size": 1447,
+      "sha256": "522a9f5a7615201c2464d7284d88c50091924117567e53e3303da1b0ce56c2a5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/LotteryTable.md",
+      "size": 2690,
+      "sha256": "911c22d900ec7d934012c2c8ca583fc0a48d6aaffd60d6a0ebaeb2dd98c22b20"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MagicDrawTable.json",
+      "size": 19717,
+      "sha256": "48e231cb13e1743d258e206ba0368b0570d338dd6c15b0a1d269c3592a339dcc"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MagicDrawTable.md",
+      "size": 18094,
+      "sha256": "058e8704a5fe4245a3381134ee46782da487398b0b257cef0b0076b337502f06"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MagicalJourneyTable.json",
+      "size": 535200,
+      "sha256": "118082291ac1c91a138fffb6548c3e8445046853dbafac3afceefb59365bd3b7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MagicalJourneyTable.md",
+      "size": 132198,
+      "sha256": "30596f377f58a2db8db7bfa0f276a7ca06aac4574cc0cf49d2bd37c9397aec63"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MartialClubActTable.json",
+      "size": 1497,
+      "sha256": "eecfbe111e979164f66a1543f52b122ca8aee2bbedf919a23b5566d6a8c627d5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MartialClubActTable.md",
+      "size": 2027,
+      "sha256": "3dcb98041f4696cbc65d173fd87d7d1c79f4e368416f8fb9351a16ab079e82d4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MartialClubTable.json",
+      "size": 451616,
+      "sha256": "4c09f7e44804b6af5efacadae694d2b18e4afe1e48a1a28e7b792f6080b5b05f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MartialClubTable.md",
+      "size": 128321,
+      "sha256": "64e8036aef6c048a55e0276247235cd370c918eeac40dd2d6ee74cfdf35c574a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MatchPvpTable.json",
+      "size": 19121,
+      "sha256": "855fa5fa1140e3da2eefa7fb9b075ed612913179f17f3896c61e1c8424e1b9e5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MatchPvpTable.md",
+      "size": 25305,
+      "sha256": "8beec12c13606a30abd5bfd25e7773c965131b40752017d4f2718d47b7be1e3d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MatchingGameActTable.json",
+      "size": 41757,
+      "sha256": "6063084483d89f48eb852ce7f99461b99934d2a3d2543b6510d54a325b40bf6e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MatchingGameActTable.md",
+      "size": 36292,
+      "sha256": "0d5eca0c521c726cbec7bbe4c6e8d9b7b30efa18f619d42174a9a5ae40e11472"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MiniGameTable.json",
+      "size": 28138,
+      "sha256": "f0ecfdbb4893fffe63cd1940ba50229c14162faa15001dfd8798f0f08a400430"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MiniGameTable.md",
+      "size": 41303,
+      "sha256": "aada9836106b385ece221dc40adff777beca419becc0a0890ae48b302e1142e0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MissionTable.json",
+      "size": 2340561,
+      "sha256": "9ad7974915d5ce6c840301dbba8be4239a12662e3428db62a959e3b7d3b5de28"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MissionTable.md",
+      "size": 72043,
+      "sha256": "b3bfa969d8d2947106436eeb0dd6244243960c354086aa783394fdfe7564e3c6"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MonopolyActTable.json",
+      "size": 168697,
+      "sha256": "7def670269af163f3ab82ecc30fb4c3b371772f2f714d0502cfcdea99b2a8d81"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MonopolyActTable.md",
+      "size": 75230,
+      "sha256": "6cf8c69e227f4cdba5f747be7f1d43cd7b77225c08d4fca04900a8443141b20d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MonthPermitTable.json",
+      "size": 114380,
+      "sha256": "bac7d24b05a3c2059aea6a44df0e852310863702b4b3ab574cbf54b3396d58ef"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MonthPermitTable.md",
+      "size": 34667,
+      "sha256": "46dbf34d07e24f71727457aaf33e75de5ab67188d829f0412e744dc494cbcd56"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MonthlyCardTable.json",
+      "size": 3162,
+      "sha256": "ca2fb03cc7162e57b7b0d18a01aacc4a0352a59b76fc616d7d3efdf14a6bfb29"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MonthlyCardTable.md",
+      "size": 4315,
+      "sha256": "69cd419744aa4cd15d84243bd7b9819d6b1bdd215f6557f4e85039289b3af502"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MsgTable.ChannelType.json",
+      "size": 2930,
+      "sha256": "6a4b6a006c311e96595f691a1091543ba5838016ea34acf8f29c1ac2ed06e558"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MsgTable.ChannelType.md",
+      "size": 2684,
+      "sha256": "74a8e9fa25cb94ccdbe70dab966c91826d9950d4949b45a02c20429a16efbc18"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MultiLoginTable.json",
+      "size": 40474,
+      "sha256": "6d52c9ea40a6b9f082c550e1f411ea44aabb2a5df5baee124830223dcf1a44da"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MultiLoginTable.md",
+      "size": 22771,
+      "sha256": "37ceee31a104df5a9481a8062227aaba882bef83896f96a3ce3f4a49016bced7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MushroomMonsterTable.json",
+      "size": 2052,
+      "sha256": "36675027362a633fcf003e803bf8793a10a014e116d0c9d2be54015eb37b3aeb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MushroomMonsterTable.md",
+      "size": 5651,
+      "sha256": "49f8d9cefa45cfa204366c5e3cef0e1e160b0814724fc43181eda4f61b03a2a2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MysteryShopTable.json",
+      "size": 70587,
+      "sha256": "d333fdbf21373050fd33eef5412a94d1f6d1336d8457912eff78069f531b02de"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MysteryShopTable.md",
+      "size": 12094,
+      "sha256": "cdcaeb3a6f3fa78537fd3726dc3999e40e2f909daca034e9db648683de5c077e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MysteryWishTable.json",
+      "size": 6398,
+      "sha256": "36e02aa693796db56fcc435514d6780864a7d780209a1615d7b13c7b55bab0f9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/MysteryWishTable.md",
+      "size": 7926,
+      "sha256": "9e6aa5fbc506e674e530df439b6221e00324ab41f692a886edb753ee5ad45580"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OnesRewardTable.json",
+      "size": 760,
+      "sha256": "5b10d1464d2aae4008f51df6f67b684447f34945e9fd1d94a5c40b0247c98d7d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OnesRewardTable.md",
+      "size": 1222,
+      "sha256": "7a82ab87a61838cc7ca118b582305bfd29bbfadbcafe188cdcc8a198dd04ec9f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OnlineGiftTable.json",
+      "size": 57408,
+      "sha256": "f2127124b20c32173410046ef5b2f20ada5ef80209335dc880c587527d665ac9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OnlineGiftTable.md",
+      "size": 12185,
+      "sha256": "ec330412a15b2f553436b829bd97fa91ee6461ef857ed022a6f4b47df0db0e81"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OpenServerBoxTable.json",
+      "size": 20633,
+      "sha256": "cb880f25f411f8ec813357fa07b5dd4000ac41da223428a69ee0793e70c7ac5d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OpenServerBoxTable.md",
+      "size": 23315,
+      "sha256": "20f5d08caa976724f0568632301574f052b6ae3ff9d82c1d5f694f09c4be31c2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OpenServerSprintTable.json",
+      "size": 542872,
+      "sha256": "703678ca30325cf518e23c57c3feaf94dfe7f7c5147c8cc0cb99ef2e60d7c8cb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OpenServerSprintTable.md",
+      "size": 70651,
+      "sha256": "7f67f8a2d9d4cac9f3ab98b80f8a6d147611ee106ea3cc427f00aeb701a54364"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OverallMatchTable.json",
+      "size": 952,
+      "sha256": "bb5afd8ade110dc51ffec703cbea994999436bd48ba147aef17ff64cf6b8edb7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OverallMatchTable.md",
+      "size": 2408,
+      "sha256": "57019c9123e3d09e49f63f32683edbe93ed50f943de3c4d38ad40f651704d446"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OverallPvpTable.json",
+      "size": 81963,
+      "sha256": "4fc131d3a4e95b70612be8ff1181fa3281723d8dadb86c22b399daf4429c9bc6"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/OverallPvpTable.md",
+      "size": 53334,
+      "sha256": "8abc0aecc4b9b5cf78beb4ab73dd9399b2811c2fdac1aa6d1b69b40151d105b8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PeakTowerTable.json",
+      "size": 2027058,
+      "sha256": "597afa2ae9f203adb7e32e3dbeec32f1e7314b6a73de4b48db280e0f6b4ef7a6"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PeakTowerTable.md",
+      "size": 31393,
+      "sha256": "a6c7779b02e84ad6a1bd4cf79d67adb6ff1a1d873c65a99ac1c31cea82a3b395"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PermanentCardTable.json",
+      "size": 1199,
+      "sha256": "56e0c7efbec33ec9efe4ed90769ea96fc0a94f73f953a13923e4bcff4f496067"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PermanentCardTable.md",
+      "size": 2792,
+      "sha256": "21fe0e5995d6e5ca2816375233eb5a42207596734cc069ec76d9ee130a2d81a0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PermitTable.json",
+      "size": 741703,
+      "sha256": "2d0061b764b8dc3aa60f6be1ab1d704667b336f5a71794273a496a727111bbde"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PermitTable.md",
+      "size": 113098,
+      "sha256": "c556f761dec0544182ae496612800f536549d3f0fecfc689a7646b2b6564073f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PetActivityTable.json",
+      "size": 174287,
+      "sha256": "5e0e3ced4d0e6305e5325797b2aefe9751a73b7519d61ce89ff0a02af01e1280"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PetActivityTable.md",
+      "size": 95748,
+      "sha256": "de52a7a9313d30c6baad4dfccc57a6e63be30002ce1338e75a45d4a2d75cbd48"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PitLordTable.json",
+      "size": 35139,
+      "sha256": "bb319c7d6072bca112296b7275e77090d48520e0adc1faf47c0401158494b81d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PitLordTable.md",
+      "size": 40410,
+      "sha256": "069cc6881f1dbac6b0e76c7ceaaa39b5d0f570c0a8dc26d86c5b64d8834b9f59"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PlayMatchTable.json",
+      "size": 1658,
+      "sha256": "fd414c5b2c52904f3c3181913d7f849cd8036a61212dd739d74df238ded86758"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PlayMatchTable.md",
+      "size": 3798,
+      "sha256": "6e3f2c95514047a9be33481682c47c123c81ca108776f36b4927bbe587273f85"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PlayerDataTable.json",
+      "size": 14831,
+      "sha256": "67084bcfe0589770de5586a9b817da42bcd14df9970b9d4a80f708981287d288"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PlayerDataTable.md",
+      "size": 11195,
+      "sha256": "1da57bc06ebdb54cd015d700f32fe07f895e83c0a4eac13a24631a4af2409bb8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PrayActTable.json",
+      "size": 44895,
+      "sha256": "30030f73d037944fae5b17d1075070628c6e7a868b8d2221147040ce0ad9e83b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PrayActTable.md",
+      "size": 14787,
+      "sha256": "62943719a4e108b24c0dafaed4f2e5905a693382cadf47c3da02170c9e14e2c2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PreheatActTable.json",
+      "size": 3514,
+      "sha256": "e3e5809b2dbda07661398a2b22eed77384063d36651faab666fe8ebbb29b956a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PreheatActTable.md",
+      "size": 4897,
+      "sha256": "8959dba9a3f84502aa62b3e07c9461fdddaa29c660e4a38ea0d436c5b44cda7c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PremiumActTable.json",
+      "size": 82631,
+      "sha256": "7a4a427494a5c6c377c03dc48a0de8643b6f5d9601e9e2b5dfd9e79225fe97e4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PremiumActTable.md",
+      "size": 14619,
+      "sha256": "c9025ed0dc907cce4376256b437cfc6e1c6b0b263b99b13b875dca36f738b869"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PrincessTable.json",
+      "size": 1487,
+      "sha256": "db4aa146724174d84f8794904b97914c4a9e4ca5bea8d639e88cbb2a95ed9be5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PrincessTable.md",
+      "size": 3645,
+      "sha256": "ea8a3dc4c8625ec26f35c8f47d3ec84a3b6f21b623329965a10a7ed435de69b4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PuzzleActTable.json",
+      "size": 13944,
+      "sha256": "939ba9f82f60d18adb8be6bfe25b0d1ccc79e333fc72d0809b5d35627e160fcd"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PuzzleActTable.md",
+      "size": 14637,
+      "sha256": "d91f03584bf91456867da8e564079ee921ded3526017fd6f7e07c0563f5c5712"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PyramidTable.json",
+      "size": 40128,
+      "sha256": "94f8a640d3a42a5de0a2aeedffabb9a8ba295ace08a120d163f09a6b244d2d3e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/PyramidTable.md",
+      "size": 34720,
+      "sha256": "5f6a7a443c2476bbd8d4ec592f00cb15a583d03238dbdafe1da64927f6b1f232"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/QiXiActTable.json",
+      "size": 5123,
+      "sha256": "50ade0389375c1457db60d733ba820eca7926d0bd11d3949cc34d6d351108a63"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/QiXiActTable.md",
+      "size": 6469,
+      "sha256": "6decbf044b7507105b905b283cdd350010bfee56c10b69378124c39d50cd6735"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/QuestionActTable.json",
+      "size": 6545,
+      "sha256": "900243b9f075393f2406b39b0ae3b8643f0d8da5293433f2b109d80743fd402f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/QuestionActTable.md",
+      "size": 6049,
+      "sha256": "54e4b9233e4af08a061b85a5a076681f1883a57f90b66c6e475a2d232cfb822a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/QuestionnaireTable.json",
+      "size": 9322,
+      "sha256": "ee008fe88c29069a21f69b93c7950c0f485861a7b6c5c7bbf65e68c35d8f8cbd"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/QuestionnaireTable.md",
+      "size": 6807,
+      "sha256": "6893ca521c9cc335a7d8ce55471690428c723d88efbaa5aa0aae0ad5f950e8ea"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RadishFarmTable.json",
+      "size": 13908,
+      "sha256": "7706db947703c829d83981b05ae8ec0ea173d020c12e6bd39b2f31821e40f0e4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RadishFarmTable.md",
+      "size": 14650,
+      "sha256": "15cd2da0ed4cdcdb22323f4b64a8744cd63d729482e2e9248a522a87a6e5a911"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RaffleTicketTable.json",
+      "size": 2568,
+      "sha256": "b78f7eae80c58f1e7e09ea0ae609c0de1a1155eca73b624f3e247ae2324141f4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RaffleTicketTable.md",
+      "size": 5096,
+      "sha256": "c95cd956082451a6bbe94966152b9fae58c14fae543d6d1e5082988e31c55308"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RankAchieveTable.json",
+      "size": 23126,
+      "sha256": "36679678271dd2cff1e6cac14f129dc2f79df75fa34bb307c6a7392734e00e7b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RankAchieveTable.md",
+      "size": 16537,
+      "sha256": "48d4dab448651ab2d39b4842a259e2f74a7bbf14390324b27ffb074ef9d6b51b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RankTable.json",
+      "size": 206690,
+      "sha256": "8d5efb06b908b8ac63eefe3c7eb7760d7fed49c5af729ef7b38ed074794e9651"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RankTable.md",
+      "size": 71769,
+      "sha256": "11e78ac60ef4f5afab92a3580743a571da6dbdcda4235e827eecf05488f4f602"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RechargeTable.json",
+      "size": 2609298,
+      "sha256": "b38b81d675b649e0963e002a261c36b842599e53bba73dd6e2d883cb11e2459b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RechargeTable.md",
+      "size": 64545,
+      "sha256": "8867ba8c0de38c05a57a4b15c2af2c23960530b950f5209a0bc245c94c7b0bdb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RedCliffTable.json",
+      "size": 7632,
+      "sha256": "a81e1f90676ad5a818655b5835a419ef1e4cb0e140c4251233a9fdec88a6c6fb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RedCliffTable.md",
+      "size": 8143,
+      "sha256": "14299316af9b1fb1289b04fdc229fa4917b00e4a43c64b69f1b813a6dc0d1824"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RegularGiftTable.json",
+      "size": 18232,
+      "sha256": "106725b92442a0220a63d76ee67e3353e86457cc3e1c7015d33148c1742eb38e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RegularGiftTable.md",
+      "size": 14293,
+      "sha256": "07387d0baeed545dd40f01a1aab73b28ca867294eba060e1e282fdb9dce8decb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RelicTable.json",
+      "size": 143618,
+      "sha256": "5ce6e000cf1394d52e17322e9f110b223310bd133051c59676171e5cd0d73d54"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RelicTable.md",
+      "size": 85680,
+      "sha256": "3a984a20fcfaebb2a215c2390250569ebb946996fd1c3f8176023fb93b0f551b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RoleBackTable.json",
+      "size": 970,
+      "sha256": "5ea7e65c19d0017562ef922ea277ae88c36316713fa5830ed35d3352637bf222"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RoleBackTable.md",
+      "size": 2746,
+      "sha256": "0176261d5d55a722b5bb13aa4600a01b072d2f666351ffe86f1996b6ae81f612"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RoleTable.json",
+      "size": 223003,
+      "sha256": "1b85b5685010a1f86aa6068c1690350d78524dc4a851ab9100b4a729e6de2353"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/RoleTable.md",
+      "size": 160516,
+      "sha256": "337d44e2d96cfdbd2469e99297dd8f075971e4af69081864d2e1188f43b6be87"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ScarletTrialTable.json",
+      "size": 367336,
+      "sha256": "3c1512f309c5242390207db55d2c7f6569968f7ec9396b08b70653e63fcc96b9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ScarletTrialTable.md",
+      "size": 47594,
+      "sha256": "62fb190fd6942c41210572936dc7efed05cfe9d84041f7b505d26b1707a62dc8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ShopTable.json",
+      "size": 413556,
+      "sha256": "0dc8bf03546e17d348a356dda9b0c45291aef47de5bfef69f408bd49d140bc48"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ShopTable.md",
+      "size": 76654,
+      "sha256": "8aaa890408f4c970a16be29282d53d19c8903601e505f3620cf2eb9061eba026"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SignActTable.json",
+      "size": 9087,
+      "sha256": "3371ce717112753205a50fe96c220aec162e35ea46d30eb640b69454805e33ce"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SignActTable.md",
+      "size": 9797,
+      "sha256": "ce05c129ec87b78f4e119b390733af6296f6a1520a265604fee45a723d66b2e5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SkinTable.json",
+      "size": 52817,
+      "sha256": "a19a3e5c5c986b51e1b89a77c4c5cc70716fc1a9f7c608e0aaf071995e62c182"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SkinTable.md",
+      "size": 28522,
+      "sha256": "e191746edac9b8cf6358d630262c01343a7754de0d3e4095ab524a6962dff21d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SlotGameActTable.json",
+      "size": 2344,
+      "sha256": "6fb0d1b1938e0b6977f23b16c6683ac9f031dfd6194f37b475d81d1e30fd8042"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SlotGameActTable.md",
+      "size": 4940,
+      "sha256": "0301f5ad08f5e518cd60a62bedd79bb430236f5ca23538ffb531f4bc84642a23"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SoulTrialTable.json",
+      "size": 1029463,
+      "sha256": "51ffcc94649c301b8062cb5c2ad640299a800609551c9a41812570bf0efb9b24"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SoulTrialTable.md",
+      "size": 26292,
+      "sha256": "75f0ce39c774aabeb2d394d602d0ed36dc9b2cb6f1360cbd2ab0cf3711678336"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SourcePointTable.json",
+      "size": 14509,
+      "sha256": "55bddfc8bbde78a2d5bed6101c76c64ec68b9fdc9c9a73f81b9e5f8fac2d5e8e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SourcePointTable.md",
+      "size": 14515,
+      "sha256": "8bf473f0e14480300aa4e0a71cd247ff5f63ddc0c5d2d8c17d3cbbf33826b88d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SpiritCourtyardTable.json",
+      "size": 65407,
+      "sha256": "15d61bae231389d4e325e1e2b105c50ca5b330a8e8dc2069f2041364ea9566f7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SpiritCourtyardTable.md",
+      "size": 66460,
+      "sha256": "fd6aa5b2069e035c1fc833bce796c07e961424da991ec241a3493a24f6eff925"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SpringFestivalActTable.json",
+      "size": 11927,
+      "sha256": "08b49137530ad3b023421a6e9df91925198728d2957d221d5551647713fb542d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SpringFestivalActTable.md",
+      "size": 16472,
+      "sha256": "ab113d79e7242039b0c7edb4120f85ca3de820f2975c412dc61edf709b648277"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/StarMissionTable.json",
+      "size": 470334,
+      "sha256": "2bc01b75025e35edac98bb8a868c3b14933d0344d39a0357d4e4f7536d2fe941"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/StarMissionTable.md",
+      "size": 13404,
+      "sha256": "5ca3ba612e11a58dfec06c1115b2075ce15cde14ad206cd8f7492c50fdfa96b1"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/StockUpActTable.json",
+      "size": 119548,
+      "sha256": "f8c73df6283f704e9a1b1c396dcf8c4763c72bcc6eca15a8408e51d7b18c95df"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/StockUpActTable.md",
+      "size": 36117,
+      "sha256": "a09dd6d8de0b2ee13cb0a1f02dfc15e799dfb7b3f8f4810c1e2905a53b25d6e3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SummerActTable.json",
+      "size": 1220266,
+      "sha256": "b07ef7739ac72f258cd8451a1f8da128ae48d8f90eec97378321b38914755fa9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SummerActTable.md",
+      "size": 246864,
+      "sha256": "28e094f328c0557b1f2685536181946795d4a061a459ac87b167cdac637b9c3b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SwapArenaTable.json",
+      "size": 49162,
+      "sha256": "fd5aee99decd18700678f98ec799b134b0e7ac98e50b930da7adaa0131b73f37"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/SwapArenaTable.md",
+      "size": 46250,
+      "sha256": "faa92504e373a3f9357adebda4bb3728d9c3ca3a2b78e348fe8b9f2eda63bc66"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TacticsTable.json",
+      "size": 27558,
+      "sha256": "319c9e1077b2a2664b3132b59e482b5623b9ab73107efadcc6a9a8a5462ef23b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TacticsTable.md",
+      "size": 24210,
+      "sha256": "d4c106b9f34b4dc5cd76fe522d4a5375a9435a2095107121abdae95a2f653bba"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TaskActivityTable.json",
+      "size": 27854,
+      "sha256": "5dd42d1f4b7a47b48543f465ff5ec3e68dcdb60e0f6c02632337b13095296ca0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TaskActivityTable.md",
+      "size": 22832,
+      "sha256": "45731413d1cceb810eb2d1195ca99334f57882d36148622710b33f17135594f5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TaskTable.json",
+      "size": 2443676,
+      "sha256": "b990f34cc11de29b5789ac6a35f71619bd3962c9f19029da1164241bdcf90387"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TaskTable.md",
+      "size": 78760,
+      "sha256": "6f0dd4810cf3813ca1ac6cfe4e6dcc916fdbf22689b0d04364257fc0ea7260b7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ThemeTreasureTable.json",
+      "size": 377657,
+      "sha256": "026599bc1abc9012a4d8f125221d03cf91e7ae916646a9e66d88028259ca046e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ThemeTreasureTable.md",
+      "size": 91734,
+      "sha256": "38a8aa3e98884fb2d12541e52c434da0d7b313f2ab7dd0a718f238628ec14f31"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ThousandDrawTable.json",
+      "size": 25075,
+      "sha256": "23e6f2fede81f7f5530ef1774132e925966452b67fe4fd564983589f01673044"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ThousandDrawTable.md",
+      "size": 24872,
+      "sha256": "b0fd9a811bfec210d90e5730fc53e4d54f3e3b996d1486df63a1d0c72a9291a5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ThreeAdmonitionTable.json",
+      "size": 9960,
+      "sha256": "6e46520eada825102d2e320477e7fea0080094cf5d0f4c7e7b1358a7ce0053fb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ThreeAdmonitionTable.md",
+      "size": 10054,
+      "sha256": "c83654e8d3618bc1c670ac60c86102ab60f81f72d7986fc02d891d5e9ee35905"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TicketDrawTable.json",
+      "size": 10215,
+      "sha256": "e53b879aa3afb74eadd9c933d894a708931d79d2ba24cf548e0d8702858e1ef7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TicketDrawTable.md",
+      "size": 10291,
+      "sha256": "960c3e5f863e428616bf2369f817d1ef1366eb6f51117529b2cd17b07edfae41"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TileSwapTable.json",
+      "size": 5493,
+      "sha256": "508b3f7186179c426a9153b7fab48551f2a99110dec656c342773ac50fd98e6a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TileSwapTable.md",
+      "size": 4789,
+      "sha256": "edfccea7ad298123ef0526c36252ac38a448fac663a5a8efc4386867f4fbc228"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TopArenaTable.json",
+      "size": 82328,
+      "sha256": "7da63a669396aee4e52bd9ba36db61ba37369572874d57ab38b32edb984cb07b"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TopArenaTable.md",
+      "size": 76604,
+      "sha256": "f5d4eaa4f538e7df0bb507dbd46c2abbcc3871376353317e72d1f1417a34d7b3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TournamentTable.json",
+      "size": 722,
+      "sha256": "c8b80e2cefaf4a2ad9cba5201e1d106ba68fd012602c0d275379ca6f0540cadb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TournamentTable.md",
+      "size": 1030,
+      "sha256": "f70f96f6dd8aa64a13994aa05484d18d81be4726d2a02848a6debb2aa76b8409"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TowerActTable.json",
+      "size": 13159,
+      "sha256": "238cbe562ee6f56262a7b3d7afe98927a1fcb6e542df78d58e7ca33cf717c669"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TowerActTable.md",
+      "size": 16203,
+      "sha256": "75cf46a246465c1471f3bdebf93c9a8e7680043be0bc59628913a8cadab7e8e3"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TowerDefenseTable.json",
+      "size": 90883,
+      "sha256": "875c3f7c4193cb3c2082e200416a744fc9aab5a360ede00415bcf9fa95b4c239"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TowerDefenseTable.md",
+      "size": 14598,
+      "sha256": "d2eaa8285960fd5bf13e797c47fc33fbbdd74361e72f772736b7e748ef95d2c5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TreasureHuntTable.json",
+      "size": 104819,
+      "sha256": "2cd0d255f787f0bac8aa900c39de61613ffe818d1e19e70130eedfa581a3293a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TreasureHuntTable.md",
+      "size": 13776,
+      "sha256": "aafe258a7b4d435207cc93686a77fe2c904946baf9e0db52a44a131e91d65324"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TriMatchPvpTable.json",
+      "size": 19479,
+      "sha256": "ca995f77a32e62a7079e61e47f78a8e611e361b5e4fb16e218cc5c6cb46fb672"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TriMatchPvpTable.md",
+      "size": 18519,
+      "sha256": "2cab0d5ad32cd59132853fd29ab0abd30798f89adeca36d7f7cc4977a36f95cd"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TriMatchTowerTable.json",
+      "size": 94080,
+      "sha256": "062ef942609a4a015e009f309177cb96e04dc4ece76e54f34b395a019f45ff1f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TriMatchTowerTable.md",
+      "size": 10403,
+      "sha256": "c2515cad3892d834151cfeb87f9dc9f5699d2abb82513a5d18404154ae97f58c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TripleMatchFightNpcAttr.json",
+      "size": 1912719,
+      "sha256": "b0d1d4010660a2eb6b72a7fbf698314fe29a73a9603aa6bc4ad723ffff9e136f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TripleMatchFightNpcAttr.md",
+      "size": 1507,
+      "sha256": "f51185ef2f6cae0f3e7865aa4f782d15ebea33e860470940f3801e62f649d2fd"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TripleMatchFightTable.json",
+      "size": 188920,
+      "sha256": "ee7363e054d2acee92c0103da3d33dbe98eb35ecca61ca95111ebf9c3cb8f7a7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TripleMatchFightTable.md",
+      "size": 63024,
+      "sha256": "6a043e429cfdb1f4f2a2b3ab8a72295118323ce4b0730cb52e490872b9e7890f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TripleMatchTable.json",
+      "size": 224936,
+      "sha256": "815e008f00f06af8132cacda0dd6bf0806614d97bfe14ea676a0a86ab949dec0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TripleMatchTable.md",
+      "size": 89844,
+      "sha256": "9603e335bd04cc34cd985a9bc6b8e45f13d1079584d3d704a18f15c1e074e892"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TurntableActTable.json",
+      "size": 12114,
+      "sha256": "ce97561ed04713195dc7d72d987e957969dacb21e66bac4465f89ee8051c5699"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/TurntableActTable.md",
+      "size": 13015,
+      "sha256": "25b26d3280efa706f911d0649c7df13c4dc2d3334df10fd477d868af7653b0d8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/UpStarGiftTable.json",
+      "size": 185456,
+      "sha256": "2011fca3d58843c0336252f1aef1f5cd0a76925428c899450982b8f24d0b6db7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/UpStarGiftTable.md",
+      "size": 50242,
+      "sha256": "c83cd3e3d0b6b62baad0ad3cc3bb2ff07c35283c38528baad9bd28eb5f82b6a5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ValentineDayActTable.json",
+      "size": 36326,
+      "sha256": "b1cf29c0bcb1e8de381bef42e58326dd92db95e5ab1a777428ceb0a8a985370f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/ValentineDayActTable.md",
+      "size": 22310,
+      "sha256": "a5bfeaf36a6d68825c24eb5c79239b580db3bc51a52f5449abec56c151f98bba"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/VoteActTable.json",
+      "size": 12464,
+      "sha256": "0e3494b97961c09a76998a042f77874d9d33faf9ccad5e4bae9ee291769679b4"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/VoteActTable.md",
+      "size": 14706,
+      "sha256": "0f93b3223f789ff20d56875b713a211cae72029eb535a28dfd873ddd518c3df9"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WeekHuntTable.json",
+      "size": 808244,
+      "sha256": "5e33a8c882b1c00104dbaf085ecd72cfeea5daf4ce0d90ffa7e3e46e0cc2db09"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WeekHuntTable.md",
+      "size": 30425,
+      "sha256": "3400a9c75a9ae544e8e136a7c85b21b2c9e6fc71a6c429c21ad66bda8ca918df"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WeekendBonusTable.json",
+      "size": 2098,
+      "sha256": "26ee06d9275ed9e4c7a32ed55ebcfb34c2178f60f143723506589b925274e2fa"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WeekendBonusTable.md",
+      "size": 5691,
+      "sha256": "e3f5e9ffc20a969811682ad1a71660454ba4545f899ac9952d6e4574f0aa1ee6"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WishTreeTable.json",
+      "size": 3382,
+      "sha256": "4e499f44b69cfffe9cd0ea9fdc77347bf7debd228dd8060311d4dd83a956c971"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WishTreeTable.md",
+      "size": 5362,
+      "sha256": "6cee19ca7f7716f7897d329d5ba931306b80b87a32bb4f2f5b970db4403beff0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WorldBossTable.json",
+      "size": 303687,
+      "sha256": "9c02a2a32c1ccc95579a3d857175e815c7512b2d70567450a41485486b9393ee"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/WorldBossTable.md",
+      "size": 31166,
+      "sha256": "589b7a80a27903f1a95dc940fed5055a58ad625bc94afcd55de3675e6b94b23e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BuySkinActTable.json",
+      "size": 10105,
+      "sha256": "f18fb39ad662b356bd9fbc9934a4253a48a4a58df4d5dafe7b6b227e3270a1be"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/BuySkinActTable.md",
+      "size": 6730,
+      "sha256": "df493721695af2898c1b9d7fefd95a868e6e3c4023cf1d3ee1a984e03c68d5cf"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CrossTable.json",
+      "size": 31857,
+      "sha256": "f00284e467c79ff2b68c870e515579d279ecab90f0aea6261cab073cde1ee1f7"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/CrossTable.md",
+      "size": 28649,
+      "sha256": "41ec113868c348a313733ebc3a8d15e940272b3b333d0994ab75f4bd814f4a06"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/products.md",
+      "size": 676953,
+      "sha256": "f38e964ab20252fbe66b3dd45c9948cc70ad4157b44b082d32463110e3ed451e"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/draw-pools.json",
+      "size": 1848722,
+      "sha256": "6aef74fcff9329cd36d918f0b85626d8d2c9db25164111e074edf06af8ad020f"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/draw-pools.md",
+      "size": 145869,
+      "sha256": "6c89746d01b9012b24203a0340aed26468dec1a54a133e9efcb912ad70a92316"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/module-rule-index.md",
+      "size": 73660,
+      "sha256": "520c50898edf1bd88ef568bbded25b2ac37571c85db1e82a62adb6461f022eb8"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/module-rule-index.json",
+      "size": 241022,
+      "sha256": "cfc6d83a0527a0b49626172ea8be6900e961787ae205983dcf11a3e3fb6faacb"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/final-rule-register.json",
+      "size": 1021826,
+      "sha256": "053f14421753bae15f51977ba2050c00413cdc0a11ca83983c4e86e72709189d"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/final-rule-register.md",
+      "size": 264199,
+      "sha256": "9df163cd226d38c7fe24be5d85fefa57f5c0b9c8cbb324414e268b9f6e1db199"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/dynamic-schedule-decisions.json",
+      "size": 22486,
+      "sha256": "caad7402ef1e83f8bf890b0bd945b0e482bf28249f7537c36413af5f3e487756"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/dynamic-schedule-decisions.md",
+      "size": 8948,
+      "sha256": "7bc1cb3286de6c0ac1e15bba9e0c4d84ed324fde2d2b13f4a55e0176ebc61f70"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/activities.json",
+      "size": 2837951,
+      "sha256": "38e18a24c4324a7acedecdd4031b93c84a319b6a7deec8f4e102173a59fbc5a0"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/activity-phases.json",
+      "size": 2993091,
+      "sha256": "0d6d9bffbe467410317fddd88b411ddd7463cd312b90002f92ad586822db484a"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/activity-phases.md",
+      "size": 443020,
+      "sha256": "d4a662801ea3b499a0884b2fdc439649695ef6998db4f4aca6d885ebfbd1170c"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/activities.md",
+      "size": 1001388,
+      "sha256": "09e0a41096885031b149dd4d59b8dedd6ca49e687581130f5bb3ef3ffe443f68"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/activity-calendar.md",
+      "size": 67276,
+      "sha256": "94ee26cd9c0c6fb194f02d7a0c8b6b839dbd0311db68d696c5ccad4cc57049a5"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/tables/README.md",
+      "size": 17763,
+      "sha256": "fe619b3f40c8c5c26792b51d5696b571dae68811ecf18da2b9e1716288fe62fe"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/unresolved.md",
+      "size": 3683,
+      "sha256": "278a95f006b9fbe1d95bf5ab96c33ed7920cf790af1eb9282d142e3e5c6fc4e2"
+    },
+    {
+      "path": "docs/gameplay-operations/rules/README.md",
+      "size": 3042,
+      "sha256": "a283112aed5bd6620ab744b6128a894054255efafea5f73c9bfcb179c39e1222"
+    }
+  ]
+}

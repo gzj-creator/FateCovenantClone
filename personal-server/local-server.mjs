@@ -95,11 +95,11 @@ if (publicDeployment) {
     throw new Error('FC_SERVER_OPENED_AT cannot override the active server launchAt in public mode');
   }
 }
-if (activityCalendar.mode === 'schedule' && activityCalendar.activityWindowAnchor == null) {
-  throw new Error('Schedule mode requires activityWindowAnchor for captured absolute windows');
+if (activityCalendar.mode === 'schedule' && activityCalendar.windowPolicy === 'rebase' && activityCalendar.activityWindowAnchor == null) {
+  throw new Error('Rebase schedule mode requires activityWindowAnchor');
 }
-if (activityCalendar.mode === 'schedule' && activityCalendar.activityReferenceOpenedAt == null) {
-  throw new Error('Schedule mode requires activityReferenceOpenedAt for relative world-time activities');
+if (activityCalendar.mode === 'schedule' && activityCalendar.windowPolicy === 'rebase' && activityCalendar.activityReferenceOpenedAt == null) {
+  throw new Error('Rebase schedule mode requires activityReferenceOpenedAt');
 }
 const serverOpenedAt = publicDeployment ? activeServer.launchAt : (environmentOpenedAt ?? activityCalendar.serverOpenedAt);
 const directory = publicDeployment ? publicDataDirectory() : path.resolve(process.env.FC_LOCAL_DATA ?? defaultDataDirectory);
@@ -162,6 +162,7 @@ const game = createLocalGame({
   activityWindowAnchor: activityCalendar.activityWindowAnchor,
   activityReferenceOpenedAt: activityCalendar.activityReferenceOpenedAt,
   activityMode: activityCalendar.mode,
+  activityWindowPolicy: activityCalendar.windowPolicy,
   currentFishingActivityId: activityCalendar.currentFishingActivityId,
   sprintPreview: true,
   localWallet: true,
@@ -204,7 +205,7 @@ try {
     activityReferenceOpenedAt: activityCalendar.activityReferenceOpenedAt,
     serverDay: serverDayNumber(serverOpenedAt, Math.floor(Date.now() / 1000))
   };
-  fs.writeFileSync(path.join(directory, 'server.local-only.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), ...launch, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId, servers, listenHosts, ports, boundPorts }, null, 2));
-  logger({ event: 'local_server_ready', ...launch, servers, listenHosts, ports, boundPorts, serverOpenedAt, activityMode: activityCalendar.mode, currentFishingActivityId: activityCalendar.currentFishingActivityId });
+  fs.writeFileSync(path.join(directory, 'server.local-only.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), ...launch, serverOpenedAt, activityMode: activityCalendar.mode, activityWindowPolicy: activityCalendar.windowPolicy, currentFishingActivityId: activityCalendar.currentFishingActivityId, servers, listenHosts, ports, boundPorts }, null, 2));
+  logger({ event: 'local_server_ready', ...launch, servers, listenHosts, ports, boundPorts, serverOpenedAt, activityMode: activityCalendar.mode, activityWindowPolicy: activityCalendar.windowPolicy, currentFishingActivityId: activityCalendar.currentFishingActivityId });
 } catch (error) { for (const service of services) await service.close(); throw error; }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => { for (const service of services) await service.close(); });

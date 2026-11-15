@@ -57,7 +57,7 @@ function reviveJsonBuffers(value) {
 const parseStoredPayload = json => reviveJsonBuffers(JSON.parse(json ?? '{}'));
 export function createWalletService({
   store, codec, tables, voucher, monthPermit, permitService, monthlyCard, diamondFund, permanentCard, petActivity, premiumActivity, heroDrawActivity,
-  groupBuyActivity, wishTreasure, wishTree, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward, minigameActivity,
+  groupBuyActivity, buySkinActivity, wishTreasure, wishTree, weekHunt, rechargeBonus, lineFirstRecharge, rechargeExtraAward, minigameActivity,
   regularGift,
   accountId = 'local-1', phone = '19900000000', publish = () => {}, logger = () => {}, now = () => Math.floor(Date.now() / 1000)
 }) {
@@ -367,6 +367,7 @@ export function createWalletService({
     if (premiumActivity?.isConfiguredGift(row.tid)) {
       return Boolean(premiumActivity.isGiftRunning?.(row.tid)) && ordinaryCashProduct(row);
     }
+    if (buySkinActivity?.isConfiguredProduct?.(row)) return Boolean(buySkinActivity.isRunning());
     if (Number(row.type) === 107 && groupBuyActivity) {
       return Boolean(groupBuyActivity.isGiftRunning?.(row.tid)) && ordinaryCashProduct(row);
     }
@@ -451,9 +452,12 @@ export function createWalletService({
         voucher_redeemed_cents: db.prepare('SELECT coalesce(sum(amount_cents),0) n FROM voucher_redemptions').get().n,
         voucher_order_count: db.prepare('SELECT count(*) n FROM voucher_redemptions').get().n },
       products: supportedProducts().map(row => {
-        const purchaseCount = store.inspect(db => {
-          return db.prepare('SELECT count(*) AS purchase_count FROM recharge_orders WHERE account_id=? AND product_id=?').get(currentAccountId, row.tid).purchase_count;
-        });
+        const buySkinProduct = buySkinActivity?.isConfiguredProduct?.(row);
+        const purchaseCount = buySkinProduct
+          ? buySkinActivity.productInfo(row, currentAccountId)?.purchased ?? 0
+          : store.inspect(db => {
+            return db.prepare('SELECT count(*) AS purchase_count FROM recharge_orders WHERE account_id=? AND product_id=?').get(currentAccountId, row.tid).purchase_count;
+          });
         return {
           id: row.tid,
           price_cents: row.price,
@@ -481,9 +485,16 @@ export function createWalletService({
       return { balance_cents: balance, duplicate: false };
     }, ownerRoleId);
   }
-  function assertPurchaseAvailable({ account_id = accountIdFor(), product_id, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0 } = {}) {
+  function assertPurchaseAvailable({ account_id = accountIdFor(), product_id, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0, buy_skin_tid = null } = {}) {
     const product = tables.Recharge.get(product_id);
-    if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
+    if (!product) throw new GameError(5, 'This product needs an additional gameplay handler');
+    if (buySkinActivity?.isConfiguredProduct?.(product)) {
+      buySkinActivity.assertPurchaseAvailable({
+        productId: product_id, buySkinTid: buy_skin_tid, activityId: activity_id, at: now()
+      });
+      return;
+    }
+    if (!supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
     if (Number(product.type) === 107 && groupBuyActivity) {
       const groupBuyGift = groupBuyActivity.assertGiftAvailable(product_id, activity_id);
       const purchaseCount = groupBuyActivity.giftPurchaseCount(product_id, null, groupBuyGift.activityId);
@@ -562,10 +573,12 @@ export function createWalletService({
     if (store.currentRoleId() !== ownerRoleId) {
       return store.runWithRole(ownerRoleId, () => buy({ ...options, account_id }));
     }
-    const { product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0 } = options;
+    const { product_id, request_id, voucher_count = 0, voucher_amount_cents, voucher_item_tid, extra_buy = false, activity_id, activity_version, period = 0, day_index = 0, buy_skin_tid = null } = options;
     if (typeof account_id !== 'string' || !key(request_id) || !Number.isSafeInteger(product_id)) throw new GameError(1, 'Invalid local purchase');
     const product = tables.Recharge.get(product_id);
-    if (!product || !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
+    if (!product) throw new GameError(5, 'This product needs an additional gameplay handler');
+    const buySkinProduct = Boolean(buySkinActivity?.isConfiguredProduct?.(product));
+    if (!buySkinProduct && !supported(product)) throw new GameError(5, 'This product needs an additional gameplay handler');
     const heroGift = heroGiftForPurchase(product_id, activity_version);
     const heroShadowGift = heroGift ? null : heroGiftShadowForDailyPurchase(product_id);
     const petGift = !heroGift && product.type === 76 ? petActivity.assertGiftAvailable(product_id, activity_id) : null;
@@ -607,6 +620,12 @@ export function createWalletService({
       }
       const limitModules = new Map(model.state.modules.value);
       let dailyPlan = null;
+      const buySkinPurchase = buySkinProduct
+        ? buySkinActivity.assertPurchaseAvailable({
+          productId: product_id, buySkinTid: buy_skin_tid, activityId: activity_id,
+          at: purchasedAt, model, db
+        })
+        : null;
       const diamondFundPurchase = diamondFunds.supports(product)
         ? diamondFunds.purchase({ model, product, at: purchasedAt })
         : null;
@@ -621,6 +640,9 @@ export function createWalletService({
       if (product.can_buy_times > 0) {
         if (lineFirstRecharge?.supportsProduct(product)) {
           lineFirstRecharge.assertPurchaseAvailable({ modules: limitModules, product, at: purchasedAt });
+        } else if (buySkinProduct) {
+          // BuySkin is checked above against activity_purchases inside this
+          // transaction; recharge_orders is a different account-scoped store.
         } else if (heroGift) {
           if (!heroDrawActivity.giftPurchaseAllowed(product_id, 1, db, purchasedAt)) throw new GameError(307, 'Product purchase limit reached');
         } else if (product.type === 76) {
@@ -672,6 +694,12 @@ export function createWalletService({
         ...product.reward_tid.map((tid,i) => [tid, product.reward_count[i]]),
         ...dailyAwards
       ], purchasedAt).changes);
+      const buySkinPurchaseRecord = buySkinPurchase
+        ? buySkinActivity.recordPurchase({
+          model, db, productId: product_id, requestId: request_id, buySkinTid: buy_skin_tid,
+          activityId: activity_id, at: purchasedAt
+        })
+        : null;
       const monthlyCardPurchase = monthlyCards.supports(product)
         ? monthlyCards.purchase({ model, product, at: purchasedAt })
         : null;
@@ -714,6 +742,9 @@ export function createWalletService({
           payload: { product_id, activity_id: premiumGift.activityId, wallet_purchase: true }
         });
         extraRetList.push(premiumActivity.rechargeExtra(premiumGift.activityId, db));
+      }
+      if (buySkinPurchaseRecord) {
+        extraRetList.push(buySkinActivity.purchaseExtra(product_id, db, activity_id, purchasedAt));
       }
       if (groupBuyGift) extraRetList.push(groupBuyActivity.purchaseExtra(product_id));
       let heroShadowRecorded = false;
@@ -775,6 +806,7 @@ export function createWalletService({
       // without a relogin. Daily-discount controls keep their tuple context.
       const activityExtraId = petGift?.activityId
         ?? premiumGift?.activityId
+        ?? buySkinPurchaseRecord?.activityId
         ?? groupBuyGift?.activityId
         ?? (product.type !== DAILY_DISCOUNT_RECHARGE ? requestedActivityId : 0);
       // RegularGiftMgr reads the purchased group ID from extra_params[1]. The
@@ -810,6 +842,7 @@ export function createWalletService({
         ...(petGift ? { pet_activity_id: petGift.activityId } : {}),
         ...(heroGift || heroShadowRecorded ? { hero_activity_id: (heroGift ?? heroShadowGift).activityId } : {}),
         ...(premiumGift ? { premium_activity_id: premiumGift.activityId } : {}),
+        ...(buySkinPurchaseRecord ? { buy_skin_activity_id: buySkinPurchaseRecord.activityId } : {}),
         ...(groupBuyGift ? { group_buy_activity_id: groupBuyGift.activityId } : {}),
         ...(regularGiftGroupId > 0 ? { regular_gift_group_id: regularGiftGroupId } : {})
       };
@@ -1140,6 +1173,7 @@ export function createWalletService({
     snapshot, credit, assertPurchaseAvailable, buy, purchaseGift, acknowledge, findOrder, ensureAccount: synchronizeAccount,
     get accountId() { return accountIdFor(); },
     isPetGift: productId => Boolean(petActivity?.isConfiguredGift?.(productId)),
-    isPremiumGift: productId => Boolean(premiumActivity?.isConfiguredGift(productId))
+    isPremiumGift: productId => Boolean(premiumActivity?.isConfiguredGift(productId)),
+    isBuySkinProduct: productId => Boolean(buySkinActivity?.isConfiguredProduct?.(tables.Recharge.get(productId)))
   };
 }

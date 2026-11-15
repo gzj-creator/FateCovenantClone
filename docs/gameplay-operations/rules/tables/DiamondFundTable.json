@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "table": "DiamondFundTable",
+  "assetPath": "personal-server/assets/tables/DiamondFundTable.data.lua.json.gz",
+  "assetSha256": "dda6ff4ffd9be5aab028af4d6cb3a9581abddfa58397840ddd90198b7e9f4f3c",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/DiamondFundTable.data.lua.json.gz",
+      "sha256": "dda6ff4ffd9be5aab028af4d6cb3a9581abddfa58397840ddd90198b7e9f4f3c"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Type":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"recharge_tid":155001},
+{"tid":2,"recharge_tid":155002}
+]},
+"SteadyFundAward":{"status":"decoded-rows","count":15,"externalReferenceCount":0,"rows":[
+{"tid":1,"count":[1200],"award":[101500],"earning":120},
+{"tid":2,"count":[1200],"award":[101500],"earning":120},
+{"tid":3,"count":[1200],"award":[101500],"earning":120},
+{"tid":4,"count":[1200],"award":[101500],"earning":120},
+{"tid":5,"count":[1200],"award":[101500],"earning":120},
+{"tid":6,"count":[1200],"award":[101500],"earning":120},
+{"tid":7,"count":[1200],"award":[101500],"earning":120},
+{"tid":8,"count":[1200],"award":[101500],"earning":120},
+{"tid":9,"count":[1200],"award":[101500],"earning":120},
+{"tid":10,"count":[1200],"award":[101500],"earning":120},
+{"tid":11,"count":[1200],"award":[101500],"earning":120},
+{"tid":12,"count":[1200],"award":[101500],"earning":120},
+{"tid":13,"count":[1200],"award":[101500],"earning":120},
+{"tid":14,"count":[1200],"award":[101500],"earning":120},
+{"tid":15,"count":[2],"award":[22002],"earning":600}
+]},
+"FortuneFundAward":{"status":"decoded-rows","count":15,"externalReferenceCount":0,"rows":[
+{"minimum_award":101500,"tid":1,"award":[101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,400,500,600],"weight":[1,200000,150000,150000]},
+{"minimum_award":101500,"tid":2,"award":[101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,300,400,500,600],"weight":[1,200000,200000,150000,100]},
+{"minimum_award":101500,"tid":3,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":4,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":5,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":6,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":7,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":8,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":9,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":10,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":11,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":12,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":13,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":101500,"tid":14,"award":[101500,101500,101500,101500,101500,101500],"earning":0,"minimum_count":900,"count":[100,200,300,400,500,600],"weight":[1500,1500,2000,2000,1500,1500]},
+{"minimum_award":22002,"tid":15,"award":[],"earning":600,"minimum_count":2,"count":[],"weight":[]}
+]}
+}
+}

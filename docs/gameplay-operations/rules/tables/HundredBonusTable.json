@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "table": "HundredBonusTable",
+  "assetPath": "personal-server/assets/tables/HundredBonusTable.data.lua.json.gz",
+  "assetSha256": "bea6d3bceb0b6b7336e49d4117596b53d235dc5a9d7b63d7111885784fda8e98",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HundredBonusTable.data.lua.json.gz",
+      "sha256": "bea6d3bceb0b6b7336e49d4117596b53d235dc5a9d7b63d7111885784fda8e98"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"jump":[43,43,43],"show_mission":30205,"seq_cd":60,"robot_num":15,"tid":1,"role_num":15}
+]},
+"Robot":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"money":[2368,2468,2588,1998,1888,3288,3688,5888]},
+{"tid":2,"money":[5688,5689,5586,6288,6888,5546,5266,5869]}
+]},
+"HundredBonus":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"limit_num":3,"free_num":2,"base_value":6,"tid":1,"need_amount_list":[0],"bonus":101500},
+{"limit_num":3,"free_num":1,"base_value":10,"tid":2,"need_amount_list":[3000,6800],"bonus":101500}
+]}
+}
+}

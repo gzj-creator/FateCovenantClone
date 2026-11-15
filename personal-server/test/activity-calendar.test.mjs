@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readGameTables } from '../config/game-tables.mjs';
 import { activityDurationDays, activityWindow, createActivityCalendar, dayZero, serverDayNumber } from '../game/activity-calendar.mjs';
+import { gameDay } from '../game/time.mjs';
 
 const SERVER_OPENED_AT = 1792789200;
 const ACTIVITY_REFERENCE_OPENED_AT = 1790784000;
@@ -9,11 +10,12 @@ const PUBLIC_SERVER_OPENED_AT = 1794326400;
 const DAY = 86400;
 const tables = readGameTables();
 
-function calendarAt(seconds) {
+function calendarAt(seconds, windowPolicy = 'absolute') {
   return createActivityCalendar({
     tables,
     serverOpenedAt: SERVER_OPENED_AT,
     activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
+    windowPolicy,
     now: () => seconds * 1000
   });
 }
@@ -24,20 +26,28 @@ test('maps the local opening epoch to activity days and 05:00 boundaries', () =>
   assert.equal(serverDayNumber(SERVER_OPENED_AT, SERVER_OPENED_AT + DAY - 1), 1);
   assert.equal(serverDayNumber(SERVER_OPENED_AT, SERVER_OPENED_AT + DAY), 2);
   assert.equal(serverDayNumber(SERVER_OPENED_AT, SERVER_OPENED_AT + 7 * DAY), 8);
+  assert.equal(
+    dayZero(Date.parse('2026-11-14T04:59:59+08:00') / 1000),
+    Date.parse('2026-11-13T00:00:00+08:00') / 1000
+  );
+  assert.equal(
+    dayZero(Date.parse('2026-11-14T05:00:00+08:00') / 1000),
+    Date.parse('2026-11-14T00:00:00+08:00') / 1000
+  );
 });
 
-test('rebases world-time activities from the reference server open to the target server open', () => {
+test('keeps world-time activities on their original absolute date', () => {
   const whiteRibbon = tables.ActFrameAct.get(1102010);
   const window = activityWindow(whiteRibbon, PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
   assert.deepEqual(window, {
-    start: 1795640400,
-    end: 1796072400,
-    kind: 'server-relative-world'
+    start: 1792098000,
+    end: 1792530000,
+    kind: 'world-time'
   });
 
   const at = seconds => createActivityCalendar({
     tables,
-    serverOpenedAt: PUBLIC_SERVER_OPENED_AT,
+    serverOpenedAt: window.start,
     activityReferenceOpenedAt: ACTIVITY_REFERENCE_OPENED_AT,
     now: () => seconds * 1000
   });
@@ -45,34 +55,48 @@ test('rebases world-time activities from the reference server open to the target
   assert.equal(at(window.start).isActivityRunning(1102010, null), true);
   assert.equal(at(window.end - 1).isActivityRunning(1102010, null), true);
   assert.equal(at(window.end).isActivityRunning(1102010, null), false);
-  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.start), 16);
+});
+
+test('rebases world-time activities only for an explicit historical replay', () => {
+  const whiteRibbon = tables.ActFrameAct.get(1102010);
+  const window = activityWindow(
+    whiteRibbon,
+    PUBLIC_SERVER_OPENED_AT,
+    ACTIVITY_REFERENCE_OPENED_AT,
+    'rebase'
+  );
+  assert.deepEqual(window, {
+    start: 1795640400,
+    end: 1796072400,
+    kind: 'server-relative-world'
+  });
 });
 
 test('prefers an explicit world time over redundant server-day defaults', () => {
   const config = tables.ActFrameAct.get(182001);
   const window = activityWindow(config, PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
   assert.equal(config.refer_day, 1);
-  assert.equal(window.kind, 'server-relative-world');
-  assert.equal(window.start, Number(config.world_time) + PUBLIC_SERVER_OPENED_AT - ACTIVITY_REFERENCE_OPENED_AT);
+  assert.equal(window.kind, 'world-time');
+  assert.equal(window.start, Number(config.world_time));
   assert.notEqual(window.start, PUBLIC_SERVER_OPENED_AT + 5 * 3600);
 });
 
 test('keeps the table-defined duration sequence and non-default end times', () => {
   const expectedHundredDraws = [
-    [1102008, 1, 6, 5],
-    [1102009, 6, 11, 5],
-    [1102002, 8, 15, 7],
-    [1102005, 10, 15, 5],
-    [1102003, 15, 22, 7],
-    [1102010, 16, 21, 5],
-    [1102004, 22, 29, 7],
-    [1102006, 24, 29, 5]
-  ].map(([actId, startDay, endDay, durationDays]) => ({
+    [1102008, null, null, 5, 1790802000, 1791234000],
+    [1102009, null, null, 5, 1791234000, 1791666000],
+    [1102002, 7, 14, 7, 1794862800, 1795467600],
+    [1102005, 9, 14, 5, 1795035600, 1795467600],
+    [1102003, 14, 21, 7, 1795467600, 1796072400],
+    [1102010, null, null, 5, 1792098000, 1792530000],
+    [1102004, 21, 28, 7, 1796072400, 1796677200],
+    [1102006, 23, 28, 5, 1796245200, 1796677200]
+  ].map(([actId, startDay, endDay, durationDays, start, end]) => ({
     actId,
     startDay,
     endDay,
-    start: PUBLIC_SERVER_OPENED_AT + (startDay - 1) * DAY + 18000,
-    end: PUBLIC_SERVER_OPENED_AT + (endDay - 1) * DAY + 18000,
+    start,
+    end,
     durationDays
   }));
 
@@ -84,8 +108,10 @@ test('keeps the table-defined duration sequence and non-default end times', () =
     );
     assert.equal(window.start, expected.start, `activity ${expected.actId} start`);
     assert.equal(window.end, expected.end, `activity ${expected.actId} end`);
-    assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.start), expected.startDay);
-    assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.end), expected.endDay);
+    if (expected.startDay != null) {
+      assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.start), expected.startDay);
+      assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, window.end), expected.endDay);
+    }
     assert.equal((window.end - window.start) / DAY, expected.durationDays);
   }
 
@@ -94,8 +120,10 @@ test('keeps the table-defined duration sequence and non-default end times', () =
     PUBLIC_SERVER_OPENED_AT,
     ACTIVITY_REFERENCE_OPENED_AT
   );
-  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, sprint.start), 1);
-  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, sprint.end), 8);
+  // A 00:00 opening on day 1 already belongs to the preceding 05:00 business
+  // day. The first-day check therefore includes this pre-opening start.
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, sprint.start), 0);
+  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, sprint.end), 7);
   assert.equal(sprint.end - sprint.start, 7 * DAY + 18 * 3600);
 
   const fishing = activityWindow(
@@ -103,8 +131,7 @@ test('keeps the table-defined duration sequence and non-default end times', () =
     PUBLIC_SERVER_OPENED_AT,
     ACTIVITY_REFERENCE_OPENED_AT
   );
-  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, fishing.start), 6);
-  assert.equal(serverDayNumber(PUBLIC_SERVER_OPENED_AT, fishing.end), 10);
+  assert.equal(fishing.start, 1791234000);
   assert.equal(fishing.end - fishing.start, 4 * DAY + 18 * 3600 + 59 * 60);
 });
 
@@ -125,7 +152,7 @@ test('preserves explicit zero-day windows as one-minute activities', () => {
   assert.equal(activityDurationDays({ duration_day: 'invalid' }, 7), 7);
 });
 
-test('opens only the fishing generation assigned to the current server day', () => {
+test('opens only relative fishing generations and keeps expired world-time fishing closed', () => {
   const at = seconds => calendarAt(seconds);
   assert.deepEqual(at(SERVER_OPENED_AT - 1).activeFishingActivityIds(), []);
   assert.deepEqual(at(SERVER_OPENED_AT).activeFishingActivityIds(), [1074003]);
@@ -133,15 +160,18 @@ test('opens only the fishing generation assigned to the current server day', () 
 
   assert.deepEqual(at(SERVER_OPENED_AT + 5 * DAY - 1).activeFishingActivityIds(), [1074003]);
   assert.deepEqual(at(SERVER_OPENED_AT + 5 * DAY).activeFishingActivityIds(), []);
-  assert.deepEqual(at(SERVER_OPENED_AT + 7 * DAY).activeFishingActivityIds(), [1074011]);
+  assert.deepEqual(at(SERVER_OPENED_AT + 7 * DAY).activeFishingActivityIds(), []);
 
   assert.deepEqual(at(SERVER_OPENED_AT + 10 * DAY).activeFishingActivityIds(), [1074005]);
   assert.deepEqual(at(SERVER_OPENED_AT + 20 * DAY).activeFishingActivityIds(), [1074007]);
   assert.deepEqual(at(SERVER_OPENED_AT + 21 * DAY).activeFishingActivityIds(), [1074007, 1074010]);
   assert.equal(at(SERVER_OPENED_AT + 21 * DAY).activeFishingActivityId(), 1074010);
+
+  const replay = calendarAt(SERVER_OPENED_AT + 7 * DAY, 'rebase');
+  assert.deepEqual(replay.activeFishingActivityIds(), [1074011]);
 });
 
-test('filters expired custom activities while preserving a live parallel group payload', () => {
+test('filters expired absolute activities while preserving a live parallel group payload', () => {
   const at = SERVER_OPENED_AT + 7 * DAY;
   const activity = {
     act_list: [],
@@ -163,7 +193,7 @@ test('filters expired custom activities while preserving a live parallel group p
   };
 
   const result = calendarAt(at).applyLoginSchedule(activity, at);
-  assert.deepEqual(result.fishingActivityIds, [1074011]);
+  assert.deepEqual(result.fishingActivityIds, []);
   assert.deepEqual(activity.act_parallel_list.map(group => ({
     ids: group.states_data.map(state => Number(state.act_id)),
     payload: group.module_login_data
@@ -337,7 +367,7 @@ test('all-open realigns the sprint period so module 92 accepts the current login
   assert.ok(custom.start_time <= at && at < custom.end_time);
   assert.equal(custom.end_time - custom.start_time, template.end - template.start);
 
-  let endDayBegin = dayZero(custom.start_time);
+  let endDayBegin = gameDay(custom.start_time);
   for (const dayOffset of config.state_end_day) endDayBegin += Number(dayOffset) * DAY;
   const computedStateEnd = dayZero(endDayBegin) + Number(config.state_end_time.at(-1));
   // The captured 23:00 start put this end at 1794150000; the reported login
@@ -496,7 +526,7 @@ test('all-open mode makes every ActFrame server row active for the current login
   assert.deepEqual(player.data_list, []);
 });
 
-test('schedule mode rewrites the client custom window from the relative server day', () => {
+test('schedule mode rewrites relative custom windows and rejects expired absolute rows', () => {
   const at = PUBLIC_SERVER_OPENED_AT + 17 * DAY + 6 * 3600;
   const calendar = createActivityCalendar({
     tables,
@@ -519,18 +549,16 @@ test('schedule mode rewrites the client custom window from the relative server d
 
   calendar.applyLoginSchedule(activity, at);
 
-  assert.deepEqual(activity.act_list.map(entry => Number(entry.state_data.act_id)).sort((a, b) => a - b), [1102003, 1102010]);
+  assert.deepEqual(activity.act_list.map(entry => Number(entry.state_data.act_id)).sort((a, b) => a - b), [1102003]);
   const qianqianWindow = activityWindow(tables.ActFrameAct.get(1102003), PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
   const qianqianCustom = activity.act_custom_list.find(row => Number(row.act_id) === 1102003);
   assert.equal(qianqianCustom.start_time, qianqianWindow.start);
   assert.equal(qianqianCustom.end_time, qianqianWindow.end);
-  const whiteWindow = activityWindow(tables.ActFrameAct.get(1102010), PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);
-  const whiteCustom = activity.act_custom_list.find(row => Number(row.act_id) === 1102010);
-  assert.equal(whiteCustom.start_time, whiteWindow.start);
-  assert.equal(whiteCustom.end_time, whiteWindow.end);
+  assert.equal(activity.act_custom_list.some(row => Number(row.act_id) === 1102010), false);
+  assert.equal(calendar.isActivityRunning(1102010, null, activity, at), false);
 });
 
-test('dynamic activities fall back to a login custom window and fail closed without one', () => {
+test('time function 461 fails closed until an explicit occurrence is configured', () => {
   const actId = 900009;
   const dynamicTables = {
     Activity: new Map(),
@@ -565,22 +593,12 @@ test('dynamic activities fall back to a login custom window and fail closed with
   };
 
   calendar.applyLoginSchedule(activity, at);
-  const custom = activity.act_custom_list.find(row => Number(row.act_id) === actId);
-  assert.deepEqual([custom.start_time, custom.end_time], [PUBLIC_SERVER_OPENED_AT, PUBLIC_SERVER_OPENED_AT + 4 * DAY]);
-  assert.equal(activity.act_list[0].state_data.history_time[0].enter_time, String(PUBLIC_SERVER_OPENED_AT));
-  assert.equal(calendar.isActivityRunning(actId, activity.act_list[0].state_data, activity, at), true);
-
-  const player = { data_list: [] };
-  const server = { act_stage_list: [] };
-  calendar.normalizeActFrameLogin(player, server, at, { activityIds: [actId], activity });
-  assert.equal(Number(server.act_stage_list[0].start_time), PUBLIC_SERVER_OPENED_AT);
-  assert.equal(Number(server.act_stage_list[0].end_time), PUBLIC_SERVER_OPENED_AT + 4 * DAY);
-
-  const withoutWindow = { act_list: [], act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
-  assert.equal(calendar.isActivityRunning(actId, { act_id: actId, cur_state_id: 50 }, withoutWindow, at), false);
+  assert.equal(activity.act_list.some(entry => Number(entry.state_data?.act_id) === actId), false);
+  assert.equal(activity.act_custom_list.some(row => Number(row.act_id) === actId), false);
+  assert.equal(calendar.isActivityRunning(actId, { act_id: actId, cur_state_id: 50 }, activity, at), false);
 });
 
-test('schedule mode materializes relative module-183 windows and matching draw shops', () => {
+test('schedule mode keeps an expired absolute module-183 parent closed', () => {
   const at = PUBLIC_SERVER_OPENED_AT + 16 * DAY + 6 * 3600;
   const calendar = createActivityCalendar({
     tables,
@@ -596,13 +614,9 @@ test('schedule mode materializes relative module-183 windows and matching draw s
     activityIds: [1102010],
     activity
   });
-  const ids = new Set(result.activityIds);
-  for (const id of [1102010, 182819, 1841010]) assert.equal(ids.has(id), true);
-  for (const row of server.act_stage_list) {
-    assert.equal(row.start_time, '1795640400');
-    assert.equal(row.end_time, '1796072400');
-  }
-  assert.equal(player.data_list.length, server.act_stage_list.length);
+  assert.deepEqual(result.activityIds, []);
+  assert.deepEqual(server.act_stage_list, []);
+  assert.deepEqual(player.data_list, []);
 });
 
 test('all-open materializes module-92 activities missing from act-frame login rows', () => {

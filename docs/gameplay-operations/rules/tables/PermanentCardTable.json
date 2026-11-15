@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "table": "PermanentCardTable",
+  "assetPath": "personal-server/assets/tables/PermanentCardTable.data.lua.json.gz",
+  "assetSha256": "5b5aa7043277745750d5bab51ca3dfb47e1e1766c20314dc34c52b043b7eebfb",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/PermanentCardTable.data.lua.json.gz",
+      "sha256": "5b5aa7043277745750d5bab51ca3dfb47e1e1766c20314dc34c52b043b7eebfb"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"PermanentCard":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"reward":[[101500,200]],"day_limit":15,"active_num":1,"buy_day_limit":0,"tid":1,"recharge":490001,"weekend_item":0,"weekend_num":0,"active_icon":"img_bjjh_qihangka.png","active_item":431002,"display_type":1,"discount_recharge":0,"ext_award_date":[]},
+{"reward":[[101500,500],[3002,2],[393002,3]],"day_limit":30,"active_num":0,"buy_day_limit":10,"tid":2,"recharge":490002,"weekend_item":0,"weekend_num":0,"active_icon":"img_bjjh_linghangka.png","active_item":0,"display_type":2,"discount_recharge":490003,"ext_award_date":[[393002,1753045200]]}
+]}
+}
+}

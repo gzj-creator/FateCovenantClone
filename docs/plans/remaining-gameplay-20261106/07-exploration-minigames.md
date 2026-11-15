@@ -1,5 +1,8 @@
 # 探索、家园、休闲与小游戏活动
 
+<!-- r1-rule-status -->
+> 历史任务/实施快照：本页不是现行规则或实时状态。2026-11-15起规划按[统一路线](../../gameplay-operations/11-project-roadmap.md)，规则按[最终R1基线](../../gameplay-operations/12-final-rule-baseline.md)及[297任务裁定](../../gameplay-operations/rules/final-rule-register.md)。旧卡号、证据和当时验证保留；不能继承旧完成状态或以旧源码建议覆盖R1。
+
 本分区 29 个模块任务，194 条未路由/明确拒绝/占位命令。优先级：P2。
 
 共同依赖：CORE-EVENTS；涉及战斗的分支依赖 CORE-BATTLE；访客/赠送/助力依赖 SOC-FRIEND/SOC-GUILD。

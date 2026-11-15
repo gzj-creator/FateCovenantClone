@@ -41,7 +41,7 @@ export function createActivityRuntime({
       at,
       serverOpenedAt: calendar.serverOpenedAt,
       activityReferenceOpenedAt: calendar.activityReferenceOpenedAt,
-      windowOverride: window ?? calendar.windowFor?.(actId, activity) ?? null,
+      windowOverride: window ?? calendar.windowFor?.(actId, activity, at) ?? null,
       override,
       funOpen,
       role,
@@ -57,16 +57,48 @@ export function createActivityRuntime({
   // write-only with respect to login: the existing calendar still decides which
   // rows the captured client accepts, while the instance table gives the
   // scheduler a durable target for later stage changes.
-  function synchronizeLogin(activity, at = clock()) {
+  function synchronizeLogin(activity, at = clock(), {
+    // all-open is an explicit replay/test mode: retain every activity row and
+    // do not turn unrelated function-lock gaps into 400+ pause markers.
+    ignorePlayerAccess = calendar?.mode === 'all-open'
+  } = {}) {
     const srv = serverId();
     const model = store.read();
     const role = { ...model.role, createDay: Number(model.role?.createDay ?? 1) };
     const open = featureService?.openIds ? featureService.openIds() : null;
     const changed = [];
+    const allOpen = calendar?.mode === 'all-open';
     for (const actId of activityIds(activity)) {
       const config = configFor(actId);
       if (!config) continue;
-      const window = calendar.windowFor?.(actId, activity) ?? null;
+      const occurrence = calendar.occurrenceFor?.(actId, at) ?? null;
+      let window = occurrence ?? calendar.windowFor?.(actId, activity, at) ?? null;
+      if (allOpen) {
+        const start = Number(window?.start);
+        const end = Number(window?.end);
+        window = Number.isSafeInteger(start) && start > 0 && start <= at
+          ? { start, end: Number.isSafeInteger(end) && end > at ? end : at + 365 * 86400 }
+          : { start: at, end: at + 365 * 86400 };
+        const periodNo = Math.max(1, serverDayNumber(calendar.serverOpenedAt, window.start));
+        activityStore.observeInstance({
+          serverId: srv, actId, periodNo, family: String(config.type ?? config.func ?? ''),
+          previewAt: window.start, openAt: window.start, closeAt: window.end,
+          showUntil: window.end, stage: 'running', parentActId: Number(config.parent_act_id) || null,
+          baseline: occurrence?.baseline, scope: occurrence?.scope, scopeId: occurrence?.scopeId,
+          actVersion: occurrence?.version, occurrenceId: occurrence?.occurrenceId,
+          instanceKey: occurrence?.instanceKey, group: occurrence?.group, stages: occurrence?.stages
+        });
+        changed.push({
+          actId, periodNo, stage: 'running', timelineStage: 'running', reason: null,
+          visible: true, stateId: 50, stateStart: window.start, window, stages: occurrence?.stages ?? null,
+          occurrence: occurrence ? {
+            baseline: occurrence.baseline, scope: occurrence.scope, scopeId: occurrence.scopeId,
+            version: occurrence.version, occurrenceId: occurrence.occurrenceId,
+            instanceKey: occurrence.instanceKey, group: occurrence.group
+          } : null
+        });
+        continue;
+      }
       if (!window) continue;
       const override = activityStore.activeOverride?.(srv, actId, at) ?? null;
       // Server lifecycle and per-role access are separate concerns. A low-level
@@ -77,14 +109,18 @@ export function createActivityRuntime({
         activity, window, override, ignorePlayerAccess: true
       });
       const access = evaluate(actId, at, {
-        activity, window, funOpen: open, role, override
+        activity, window, funOpen: open, role, override, ignorePlayerAccess
       });
-      const periodNo = Math.max(1, serverDayNumber(calendar.serverOpenedAt, window.start));
+      const periodNo = Number(occurrence?.periodNo)
+        || Math.max(1, serverDayNumber(calendar.serverOpenedAt, window.start));
       const effectiveWindow = timeline.window ?? access.window ?? window;
       activityStore.observeInstance({
         serverId: srv, actId, periodNo, family: String(config.type ?? config.func ?? ''),
         previewAt: effectiveWindow.start, openAt: effectiveWindow.start, closeAt: effectiveWindow.end,
-        showUntil: effectiveWindow.end, stage: timeline.status
+        showUntil: effectiveWindow.end, stage: timeline.status, parentActId: occurrence?.parentActId ?? null,
+        baseline: occurrence?.baseline, scope: occurrence?.scope, scopeId: occurrence?.scopeId,
+        actVersion: occurrence?.version, occurrenceId: occurrence?.occurrenceId,
+        instanceKey: occurrence?.instanceKey, group: occurrence?.group, stages: occurrence?.stages
       });
       const stateStart = Number(access.start ?? effectiveWindow.start);
       changed.push({
@@ -96,7 +132,13 @@ export function createActivityRuntime({
         visible: access.visible === true,
         stateId: Number(access.stateId) || null,
         stateStart: Number.isSafeInteger(stateStart) && stateStart > 0 ? stateStart : null,
-        window: { start: Number(effectiveWindow.start), end: Number(effectiveWindow.end) }
+        window: { start: Number(effectiveWindow.start), end: Number(effectiveWindow.end) },
+        stages: occurrence?.stages ?? null,
+        occurrence: occurrence ? {
+          baseline: occurrence.baseline, scope: occurrence.scope, scopeId: occurrence.scopeId,
+          version: occurrence.version, occurrenceId: occurrence.occurrenceId,
+          instanceKey: occurrence.instanceKey, group: occurrence.group
+        } : null
       });
     }
     return changed;
@@ -110,7 +152,14 @@ export function createActivityRuntime({
     const changes = [];
     for (const row of activityStore.listInstances(srv)) {
       if (row.show_until == null && row.close_at == null) continue;
-      const window = { start: Number(row.open_at ?? row.preview_at), end: Number(row.show_until ?? row.close_at) };
+      const occurrence = calendar.occurrenceFor?.(Number(row.act_id), at) ?? null;
+      let storedStages = [];
+      try { storedStages = JSON.parse(row.stage_windows_json ?? '[]'); } catch {}
+      const window = occurrence ?? {
+        start: Number(row.open_at ?? row.preview_at),
+        end: Number(row.show_until ?? row.close_at),
+        ...(Array.isArray(storedStages) && storedStages.length ? { stages: storedStages } : {})
+      };
       if (!(window.start > 0 && window.end > window.start)) continue;
       const override = activityStore.activeOverride?.(srv, Number(row.act_id), at) ?? null;
       // Pause and force-close are visibility switches, not lifecycle closure.
@@ -121,7 +170,11 @@ export function createActivityRuntime({
       const previous = row.stage;
       const change = {
         actId: Number(row.act_id), periodNo: Number(row.period_no), from: previous,
-        to: result.status, at: Number(at)
+        to: result.status, at: Number(at),
+        window: { start: Number(window.start), end: Number(window.end) },
+        stages: occurrence?.stages ?? storedStages,
+        occurrenceId: row.occurrence_id ?? occurrence?.occurrenceId ?? null,
+        instanceKey: row.instance_key ?? occurrence?.instanceKey ?? null
       };
       if (previous === 'running' && result.status !== 'running') {
         if (activityStore.settlementDone(srv, row.act_id, row.period_no, 0, 'lifecycle')) continue;

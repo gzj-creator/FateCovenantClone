@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "table": "SlotGameActTable",
+  "assetPath": "personal-server/assets/tables/SlotGameActTable.data.lua.json.gz",
+  "assetSha256": "4d55659cfbf1b44f53dec1638fa45f902c3d50e49b96482431f3fb6ab34bf10e",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/SlotGameActTable.data.lua.json.gz",
+      "sha256": "4d55659cfbf1b44f53dec1638fa45f902c3d50e49b96482431f3fb6ab34bf10e"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"MultiplierLibDraw":{"status":"decoded-rows","count":19,"externalReferenceCount":0,"rows":[
+{"lib":1,"multiplier":120,"weight":20,"tid":101},
+{"lib":1,"multiplier":150,"weight":20,"tid":102},
+{"lib":1,"multiplier":200,"weight":20,"tid":103},
+{"lib":1,"multiplier":250,"weight":30,"tid":104},
+{"lib":1,"multiplier":300,"weight":30,"tid":105},
+{"lib":2,"multiplier":50,"weight":5,"tid":201},
+{"lib":2,"multiplier":80,"weight":10,"tid":202},
+{"lib":2,"multiplier":100,"weight":15,"tid":203},
+{"lib":2,"multiplier":150,"weight":40,"tid":204},
+{"lib":2,"multiplier":200,"weight":20,"tid":205},
+{"lib":2,"multiplier":250,"weight":5,"tid":206},
+{"lib":2,"multiplier":300,"weight":5,"tid":207},
+{"lib":3,"multiplier":50,"weight":2,"tid":301},
+{"lib":3,"multiplier":80,"weight":3,"tid":302},
+{"lib":3,"multiplier":100,"weight":5,"tid":303},
+{"lib":3,"multiplier":150,"weight":35,"tid":304},
+{"lib":3,"multiplier":200,"weight":35,"tid":305},
+{"lib":3,"multiplier":250,"weight":15,"tid":306},
+{"lib":3,"multiplier":300,"weight":5,"tid":307}
+]},
+"MultiplierLib":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"lib":1,"num":0,"tid":101,"draw_lib":1},
+{"lib":1,"num":1,"tid":102,"draw_lib":2},
+{"lib":1,"num":30,"tid":103,"draw_lib":3}
+]},
+"AwardMapLib":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"lib":1,"award_lib":1,"item":6921900,"tid":101}
+]},
+"AwardLib":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"lib":1,"tid":101,"weight":100,"award":[[101500,300]]},
+{"lib":1,"tid":102,"weight":0,"award":[[101500,300]]},
+{"lib":1,"tid":103,"weight":0,"award":[[101500,300]]}
+]},
+"Version":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"award_map_lib":1,"multiplier_lib":1,"help_id":294}
+]}
+}
+}

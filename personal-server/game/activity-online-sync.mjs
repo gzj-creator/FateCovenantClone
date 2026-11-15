@@ -139,6 +139,19 @@ export function buildActivityStagePush({ codec, tables, instance, change, at }) 
   if (!Number.isSafeInteger(enterTime) || enterTime <= 0) return { ok: false, reason: 'invalid_enter_time' };
 
   if (frameConfig) {
+    let storedStages = [];
+    try { storedStages = JSON.parse(instance?.stage_windows_json ?? '[]'); } catch {}
+    const sourceStages = Array.isArray(change?.stages) && change.stages.length
+      ? change.stages
+      : Array.isArray(storedStages) ? storedStages : [];
+    const stageTimeList = sourceStages.map(stage => ({
+      stage_id: Number(stage.stageId),
+      start_time: String(Number(stage.start)),
+      end_time: String(Number(stage.end))
+    })).filter(stage => stage.stage_id > 0 && Number(stage.end_time) > Number(stage.start_time));
+    if (!stageTimeList.length) {
+      stageTimeList.push({ stage_id: enterStage, start_time: String(enterTime), end_time: String(window.end) });
+    }
     const row = {
       act_id: actId,
       type: Number(frameConfig.type ?? frameConfig.func) || 0,
@@ -148,7 +161,7 @@ export function buildActivityStagePush({ codec, tables, instance, change, at }) 
       is_pause: false,
       ignore_fix_time: false,
       loop_count: 0,
-      stage_time_list: [{ stage_id: enterStage, start_time: String(enterTime), end_time: String(window.end) }]
+      stage_time_list: stageTimeList
     };
     return {
       ok: true,

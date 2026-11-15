@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "table": "ChessRevertTable",
+  "assetPath": "personal-server/assets/tables/ChessRevertTable.data.lua.json.gz",
+  "assetSha256": "6312c0688817f37be10d6af1a67cbefa8bc66450a4dc714e39e5a81ac4813210",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/ChessRevertTable.data.lua.json.gz",
+      "sha256": "6312c0688817f37be10d6af1a67cbefa8bc66450a4dc714e39e5a81ac4813210"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"ActActive":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":101,"version":1,"cnt":100},
+{"tid":102,"version":1,"cnt":200},
+{"tid":201,"version":2,"cnt":100},
+{"tid":202,"version":2,"cnt":200}
+]},
+"ActVersion":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"shop_award":[[668002,25],[667002,15]],"tile_swap":1},
+{"tid":2,"shop_award":[[668002,25],[667002,15]],"tile_swap":2}
+]},
+"Gift":{"status":"decoded-rows","count":17,"externalReferenceCount":0,"rows":[
+{"tid":101,"version":1,"is_top":true,"gift":1160001},
+{"tid":102,"version":1,"is_top":false,"gift":1160002},
+{"tid":103,"version":1,"is_top":false,"gift":1160003},
+{"tid":104,"version":1,"is_top":false,"gift":1160004},
+{"tid":105,"version":1,"is_top":false,"gift":1160005},
+{"tid":106,"version":1,"is_top":false,"gift":1160006},
+{"tid":107,"version":1,"is_top":false,"gift":1160007},
+{"tid":108,"version":1,"is_top":false,"gift":1160008},
+{"tid":201,"version":2,"is_top":true,"gift":1160001},
+{"tid":202,"version":2,"is_top":false,"gift":1160002},
+{"tid":203,"version":2,"is_top":false,"gift":1160003},
+{"tid":204,"version":2,"is_top":false,"gift":1160004},
+{"tid":205,"version":2,"is_top":false,"gift":1160005},
+{"tid":206,"version":2,"is_top":false,"gift":1160006},
+{"tid":207,"version":2,"is_top":false,"gift":1160007},
+{"tid":208,"version":2,"is_top":false,"gift":1160009},
+{"tid":209,"version":2,"is_top":false,"gift":1160010}
+]},
+"ActRecharge":{"status":"decoded-rows","count":6,"externalReferenceCount":0,"rows":[
+{"tid":101,"version":1,"cnt":30},
+{"tid":102,"version":1,"cnt":98},
+{"tid":103,"version":1,"cnt":198},
+{"tid":201,"version":2,"cnt":30},
+{"tid":202,"version":2,"cnt":98},
+{"tid":203,"version":2,"cnt":198}
+]},
+"ActTurn":{"status":"decoded-rows","count":18,"externalReferenceCount":0,"rows":[
+{"tid":101,"version":1,"award":[[8401900,50]]},
+{"tid":102,"version":1,"award":[[8401900,50]]},
+{"tid":103,"version":1,"award":[[8401900,50]]},
+{"tid":104,"version":1,"award":[[8401900,50]]},
+{"tid":105,"version":1,"award":[[8401900,50]]},
+{"tid":106,"version":1,"award":[[8401900,50]]},
+{"tid":107,"version":1,"award":[[8401900,150]]},
+{"tid":108,"version":1,"award":[[8401900,150]]},
+{"tid":109,"version":1,"award":[[8401900,150]]},
+{"tid":201,"version":2,"award":[[8401900,50]]},
+{"tid":202,"version":2,"award":[[8401900,50]]},
+{"tid":203,"version":2,"award":[[8401900,50]]},
+{"tid":204,"version":2,"award":[[8401900,50]]},
+{"tid":205,"version":2,"award":[[8401900,50]]},
+{"tid":206,"version":2,"award":[[8401900,50]]},
+{"tid":207,"version":2,"award":[[8401900,150]]},
+{"tid":208,"version":2,"award":[[8401900,150]]},
+{"tid":209,"version":2,"award":[[8401900,150]]}
+]}
+}
+}

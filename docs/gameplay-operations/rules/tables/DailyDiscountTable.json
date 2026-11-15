@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "table": "DailyDiscountTable",
+  "assetPath": "personal-server/assets/tables/DailyDiscountTable.data.lua.json.gz",
+  "assetSha256": "c56560837c274854f0b4dd3d1f2d416b54f84762d8fb7950fdb445bdf9593ca4",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/DailyDiscountTable.data.lua.json.gz",
+      "sha256": "c56560837c274854f0b4dd3d1f2d416b54f84762d8fb7950fdb445bdf9593ca4"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Recharge":{"status":"decoded-rows","count":6,"externalReferenceCount":0,"rows":[
+{"is_buy_additionally":false,"award":[],"is_sellout_hide":false,"title":53503,"tid":1,"day_buy_times":1,"batch_update":[],"end_day":999999,"recharge_id":40006,"start_day":1},
+{"is_buy_additionally":true,"award":[],"is_sellout_hide":false,"title":59674,"tid":2,"day_buy_times":1,"batch_update":[],"end_day":999999,"recharge_id":40009,"start_day":1},
+{"is_buy_additionally":true,"award":[[5971200,10]],"is_sellout_hide":true,"title":16090,"tid":3,"day_buy_times":1,"batch_update":[],"end_day":999999,"recharge_id":40010,"start_day":1},
+{"is_buy_additionally":true,"award":[[5971200,25]],"is_sellout_hide":true,"title":16159,"tid":4,"day_buy_times":1,"batch_update":[],"end_day":999999,"recharge_id":40008,"start_day":1},
+{"is_buy_additionally":true,"award":[[1581200,10]],"is_sellout_hide":false,"title":59675,"tid":5,"day_buy_times":1,"batch_update":[],"end_day":999999,"recharge_id":46002,"start_day":1},
+{"is_buy_additionally":false,"award":[],"is_sellout_hide":false,"title":668041,"tid":6,"day_buy_times":1,"batch_update":[2,5],"end_day":999999,"recharge_id":46003,"start_day":1}
+]},
+"Select":{"status":"rows-with-external-references","count":3,"externalReferenceCount":3,"rows":[
+{"tid":3,"lua_interface":{"reference":"DailyDiscountUIMgr.GetSelectAwardL"},"gift":40010},
+{"tid":5,"lua_interface":{"reference":"DailyDiscountUIMgr.GetSelectAwardL"},"gift":40008},
+{"tid":7,"lua_interface":{"reference":"DailyDiscountUIMgr.GetSelectAwardL"},"gift":46002}
+]},
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"show_two_line":[3,4],"max_buy_additionally":30,"optional_server_open_day":1,"optional_server_open_time":1748552400,"tid":1,"show_one_line":[1,2,5],"shop_gift":[1,2,3,4,5,6]}
+]},
+"DailyGiftAward":{"status":"decoded-rows","count":17,"externalReferenceCount":0,"rows":[
+{"tid":2001,"open_day":1,"award":[[5971200,10],[2002,10]],"gift":40010},
+{"tid":2002,"open_day":5,"award":[[5971200,10],[10064100,2],[710002,60],[2002,10],[808002,6]],"gift":40010},
+{"tid":2003,"open_day":8,"award":[[5991200,10],[10064100,2],[710002,60],[2002,10],[808002,6]],"gift":40010},
+{"tid":2004,"open_day":10,"award":[[5991200,10],[6011200,10],[10064100,2],[710002,60],[2002,10],[808002,6],[807002,6]],"gift":40010},
+{"tid":2005,"open_day":22,"award":[[5991200,10],[6011200,10],[6021200,10],[10064100,2],[710002,60],[475002,10],[2002,10],[808002,6],[807002,6],[810002,6]],"gift":40010},
+{"tid":2006,"open_day":29,"award":[[4371200,10],[4471200,10],[4481200,10],[10064100,2],[710002,60],[475002,10],[2002,10],[808002,6],[807002,6],[810002,6]],"gift":40010},
+{"tid":3001,"open_day":1,"award":[[5971200,25],[3002,10]],"gift":40008},
+{"tid":3002,"open_day":5,"award":[[5971200,25],[10064100,5],[710002,120],[3002,10],[808002,14]],"gift":40008},
+{"tid":3003,"open_day":8,"award":[[5991200,25],[10064100,5],[710002,120],[3002,10],[808002,14]],"gift":40008},
+{"tid":3004,"open_day":10,"award":[[5991200,25],[6011200,25],[10064100,5],[710002,120],[3002,10],[808002,14],[807002,14]],"gift":40008},
+{"tid":3005,"open_day":22,"award":[[5991200,25],[6011200,25],[6021200,25],[10064100,5],[710002,120],[475002,20],[476002,5],[3002,10],[808002,14],[807002,14],[810002,14]],"gift":40008},
+{"tid":3006,"open_day":29,"award":[[4371200,25],[4471200,25],[4481200,25],[10064100,5],[710002,120],[475002,20],[476002,5],[3002,10],[808002,14],[807002,14],[810002,14]],"gift":40008},
+{"tid":4001,"open_day":8,"award":[[5991200,5],[10064100,1],[710002,30]],"gift":46002},
+{"tid":4002,"open_day":10,"award":[[5991200,5],[6011200,5],[10064100,1],[710002,30]],"gift":46002},
+{"tid":4003,"open_day":22,"award":[[5991200,5],[6011200,5],[6021200,5],[10064100,1],[710002,30]],"gift":46002},
+{"tid":4004,"open_day":29,"award":[[4371200,5],[4471200,5],[4481200,5],[10064100,1],[710002,30]],"gift":46002},
+{"tid":4005,"open_day":44,"award":[[4371200,5],[4471200,5],[4481200,5],[10064100,1],[710002,30]],"gift":46002}
+]}
+}
+}

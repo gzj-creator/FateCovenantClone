@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "table": "RaffleTicketTable",
+  "assetPath": "personal-server/assets/tables/RaffleTicketTable.data.lua.json.gz",
+  "assetSha256": "b0713b92423eee6918bdb135822f0ed94989cc0c5161da0e361352f1b86d1da2",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/RaffleTicketTable.data.lua.json.gz",
+      "sha256": "b0713b92423eee6918bdb135822f0ed94989cc0c5161da0e361352f1b86d1da2"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Award":{"status":"decoded-rows","count":19,"externalReferenceCount":0,"rows":[
+{"award_n":20,"award":4371200,"type":4,"tid":23,"banner":""},
+{"award_n":5,"award":3002,"type":4,"tid":24,"banner":""},
+{"award_n":20,"award":4371200,"type":4,"tid":25,"banner":""},
+{"award_n":5,"award":3002,"type":4,"tid":26,"banner":""},
+{"award_n":40,"award":4371200,"type":4,"tid":27,"banner":""},
+{"award_n":80,"award":5001200,"type":0,"tid":1001,"banner":"img_yfs_tedengjiang.png"},
+{"award_n":1,"award":23002,"type":1,"tid":1101,"banner":""},
+{"award_n":1,"award":22002,"type":1,"tid":1102,"banner":""},
+{"award_n":2,"award":3002,"type":2,"tid":1201,"banner":""},
+{"award_n":5,"award":2002,"type":2,"tid":1202,"banner":""},
+{"award_n":888,"award":101500,"type":2,"tid":1203,"banner":""},
+{"award_n":10,"award":179002,"type":3,"tid":1301,"banner":""},
+{"award_n":2,"award":18002,"type":3,"tid":1302,"banner":""},
+{"award_n":5,"award":21002,"type":3,"tid":1303,"banner":""},
+{"award_n":100,"award":17002,"type":3,"tid":1304,"banner":""},
+{"award_n":50,"award":391002,"type":3,"tid":1305,"banner":""},
+{"award_n":5000,"award":157002,"type":3,"tid":1306,"banner":""},
+{"award_n":10000,"award":101800,"type":3,"tid":1307,"banner":""},
+{"award_n":10000,"award":201500,"type":3,"tid":1308,"banner":""}
+]},
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"sec_award":112,"show_best_award":1001,"special_award":110,"draw_lib":23,"tid":1,"show_sec_award":[1201,1202,1203],"help_id":69,"third_award":113,"show_first_award":[1101,1102],"first_award":111,"show_third_award":[1301,1302,1303,1304,1305,1306,1307,1308],"show_group":[110],"show_spec_award":[23,24,25,26,27]}
+]},
+"Achievement":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"tid":1,"award":[[4371200,20]],"condition":25},
+{"tid":2,"award":[[3002,5]],"condition":50},
+{"tid":3,"award":[[4371200,20]],"condition":80},
+{"tid":4,"award":[[3002,5]],"condition":110},
+{"tid":5,"award":[[4371200,40]],"condition":150}
+]}
+}
+}

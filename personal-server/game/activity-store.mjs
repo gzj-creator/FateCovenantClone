@@ -13,10 +13,33 @@ export function ensureActivitySchema(db) {
     claim_until INTEGER,
     show_until INTEGER,
     stage TEXT NOT NULL DEFAULT 'closed',
+    baseline TEXT,
+    scope TEXT,
+    scope_id TEXT,
+    act_version INTEGER,
+    occurrence_id TEXT,
+    instance_key TEXT,
+    group_id TEXT,
+    group_master_server_id INTEGER,
+    group_master_opened_at INTEGER,
+    group_member_server_ids_json TEXT NOT NULL DEFAULT '[]',
+    stage_windows_json TEXT NOT NULL DEFAULT '[]',
     settled_at INTEGER,
     updated_at TEXT NOT NULL,
     PRIMARY KEY (server_id, act_id, period_no)
   )`);
+  const instanceColumns = new Set(db.prepare('PRAGMA table_info(activity_instance)').all().map(column => column.name));
+  for (const [name, definition] of [
+    ['baseline', 'TEXT'], ['scope', 'TEXT'], ['scope_id', 'TEXT'], ['act_version', 'INTEGER'],
+    ['occurrence_id', 'TEXT'], ['instance_key', 'TEXT'], ['group_id', 'TEXT'],
+    ['group_master_server_id', 'INTEGER'], ['group_master_opened_at', 'INTEGER'],
+    ['group_member_server_ids_json', "TEXT NOT NULL DEFAULT '[]'"],
+    ['stage_windows_json', "TEXT NOT NULL DEFAULT '[]'"]
+  ]) {
+    if (!instanceColumns.has(name)) db.exec(`ALTER TABLE activity_instance ADD COLUMN ${name} ${definition}`);
+  }
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS activity_instance_key_unique
+    ON activity_instance(instance_key) WHERE instance_key IS NOT NULL`);
   db.exec(`CREATE TABLE IF NOT EXISTS activity_override (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     server_id INTEGER NOT NULL,
@@ -96,13 +119,57 @@ function jsonObject(value, field) {
   return structuredClone(value);
 }
 
+function jsonArray(value, field) {
+  if (value == null) return [];
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value); } catch { throw new GameError(5, `${field} is invalid JSON`); }
+  }
+  if (!Array.isArray(value)) throw new GameError(1, `${field} must be an array`);
+  return structuredClone(value);
+}
+
+function optionalText(value) {
+  if (value == null || value === '') return null;
+  return String(value);
+}
+
 export function createActivityStore({ store, now = Date.now }) {
   if (!store?.inspect) throw new TypeError('store.inspect is required');
   store.inspect(ensureActivitySchema);
   const stamp = () => new Date(Number(now())).toISOString();
   const at = () => Math.floor(Number(now()) / 1000);
 
+  function occurrenceMetadata(instance) {
+    const group = instance.group ?? {};
+    return {
+      baseline: optionalText(instance.baseline),
+      scope: optionalText(instance.scope),
+      scopeId: optionalText(instance.scopeId),
+      actVersion: optionalInteger(instance.actVersion ?? instance.version, 'actVersion'),
+      occurrenceId: optionalText(instance.occurrenceId),
+      instanceKey: optionalText(instance.instanceKey),
+      groupId: optionalText(instance.groupId ?? group.groupId),
+      groupMasterServerId: optionalInteger(instance.groupMasterServerId ?? group.masterServerId, 'groupMasterServerId'),
+      groupMasterOpenedAt: optionalInteger(instance.groupMasterOpenedAt ?? group.masterOpenedAt, 'groupMasterOpenedAt'),
+      groupMemberServerIds: jsonArray(instance.groupMemberServerIds ?? group.memberServerIds, 'groupMemberServerIds'),
+      stageWindows: jsonArray(instance.stages ?? instance.stageWindows, 'stageWindows').map(stage => ({
+        stageId: integer(stage?.stageId, 'stageId', { min: 1 }),
+        start: integer(stage?.start, 'stage start', { min: 1 }),
+        end: integer(stage?.end, 'stage end', { min: 1 })
+      }))
+    };
+  }
+
+  function assertFrozenIdentity(existing, metadata) {
+    if (!existing || !metadata.instanceKey) return;
+    const existingKey = optionalText(existing.instance_key);
+    if (existingKey && existingKey !== metadata.instanceKey) {
+      throw new GameError(5, `Activity instance key ${metadata.instanceKey} conflicts with frozen ${existingKey}`);
+    }
+  }
+
   function upsertInstance(instance) {
+    const metadata = occurrenceMetadata(instance);
     const row = {
       serverId: integer(instance.serverId, 'serverId', { min: 1 }),
       actId: integer(instance.actId, 'actId', { min: 1 }),
@@ -115,17 +182,38 @@ export function createActivityStore({ store, now = Date.now }) {
       claimUntil: optionalInteger(instance.claimUntil, 'claimUntil'),
       showUntil: optionalInteger(instance.showUntil, 'showUntil'),
       stage: String(instance.stage ?? 'closed'),
-      settledAt: optionalInteger(instance.settledAt, 'settledAt')
+      settledAt: optionalInteger(instance.settledAt, 'settledAt'),
+      ...metadata
     };
-    store.inspect(db => db.prepare(`INSERT INTO activity_instance
-      (server_id,act_id,period_no,family,parent_act_id,preview_at,open_at,close_at,claim_until,show_until,stage,settled_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    store.inspect(db => {
+      assertFrozenIdentity(db.prepare('SELECT * FROM activity_instance WHERE server_id=? AND act_id=? AND period_no=?')
+        .get(row.serverId, row.actId, row.periodNo), metadata);
+      db.prepare(`INSERT INTO activity_instance
+      (server_id,act_id,period_no,family,parent_act_id,preview_at,open_at,close_at,claim_until,show_until,stage,
+       baseline,scope,scope_id,act_version,occurrence_id,instance_key,group_id,group_master_server_id,
+       group_master_opened_at,group_member_server_ids_json,stage_windows_json,settled_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       ON CONFLICT(server_id,act_id,period_no) DO UPDATE SET
         family=excluded.family,parent_act_id=excluded.parent_act_id,preview_at=excluded.preview_at,
         open_at=excluded.open_at,close_at=excluded.close_at,claim_until=excluded.claim_until,
-        show_until=excluded.show_until,stage=excluded.stage,settled_at=excluded.settled_at,updated_at=excluded.updated_at`)
+        show_until=excluded.show_until,stage=excluded.stage,baseline=COALESCE(activity_instance.baseline,excluded.baseline),
+        scope=COALESCE(activity_instance.scope,excluded.scope),scope_id=COALESCE(activity_instance.scope_id,excluded.scope_id),
+        act_version=COALESCE(activity_instance.act_version,excluded.act_version),
+        occurrence_id=COALESCE(activity_instance.occurrence_id,excluded.occurrence_id),
+        instance_key=COALESCE(activity_instance.instance_key,excluded.instance_key),
+        group_id=COALESCE(activity_instance.group_id,excluded.group_id),
+        group_master_server_id=COALESCE(activity_instance.group_master_server_id,excluded.group_master_server_id),
+        group_master_opened_at=COALESCE(activity_instance.group_master_opened_at,excluded.group_master_opened_at),
+        group_member_server_ids_json=CASE WHEN activity_instance.group_member_server_ids_json='[]'
+          THEN excluded.group_member_server_ids_json ELSE activity_instance.group_member_server_ids_json END,
+        stage_windows_json=CASE WHEN activity_instance.stage_windows_json='[]'
+          THEN excluded.stage_windows_json ELSE activity_instance.stage_windows_json END,
+        settled_at=excluded.settled_at,updated_at=excluded.updated_at`)
       .run(row.serverId, row.actId, row.periodNo, row.family, row.parentActId, row.previewAt, row.openAt,
-        row.closeAt, row.claimUntil, row.showUntil, row.stage, row.settledAt, stamp()));
+        row.closeAt, row.claimUntil, row.showUntil, row.stage, row.baseline, row.scope, row.scopeId, row.actVersion,
+        row.occurrenceId, row.instanceKey, row.groupId, row.groupMasterServerId, row.groupMasterOpenedAt,
+        JSON.stringify(row.groupMemberServerIds), JSON.stringify(row.stageWindows), row.settledAt, stamp());
+    });
     return row;
   }
 
@@ -133,6 +221,7 @@ export function createActivityStore({ store, now = Date.now }) {
   // In particular, an extend or a login racing the scheduler must not roll a
   // closed/claim stage back to running or erase the settled marker.
   function observeInstance(instance) {
+    const metadata = occurrenceMetadata(instance);
     const row = {
       serverId: integer(instance.serverId, 'serverId', { min: 1 }),
       actId: integer(instance.actId, 'actId', { min: 1 }),
@@ -144,17 +233,38 @@ export function createActivityStore({ store, now = Date.now }) {
       closeAt: optionalInteger(instance.closeAt, 'closeAt'),
       claimUntil: optionalInteger(instance.claimUntil, 'claimUntil'),
       showUntil: optionalInteger(instance.showUntil, 'showUntil'),
-      stage: String(instance.stage ?? 'closed')
+      stage: String(instance.stage ?? 'closed'),
+      ...metadata
     };
-    store.inspect(db => db.prepare(`INSERT INTO activity_instance
-      (server_id,act_id,period_no,family,parent_act_id,preview_at,open_at,close_at,claim_until,show_until,stage,settled_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,NULL,?)
+    store.inspect(db => {
+      assertFrozenIdentity(db.prepare('SELECT * FROM activity_instance WHERE server_id=? AND act_id=? AND period_no=?')
+        .get(row.serverId, row.actId, row.periodNo), metadata);
+      db.prepare(`INSERT INTO activity_instance
+      (server_id,act_id,period_no,family,parent_act_id,preview_at,open_at,close_at,claim_until,show_until,stage,
+       baseline,scope,scope_id,act_version,occurrence_id,instance_key,group_id,group_master_server_id,
+       group_master_opened_at,group_member_server_ids_json,stage_windows_json,settled_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,?)
       ON CONFLICT(server_id,act_id,period_no) DO UPDATE SET
         family=excluded.family,parent_act_id=excluded.parent_act_id,preview_at=excluded.preview_at,
         open_at=excluded.open_at,close_at=excluded.close_at,claim_until=excluded.claim_until,
-        show_until=excluded.show_until,updated_at=excluded.updated_at`)
+        show_until=excluded.show_until,baseline=COALESCE(activity_instance.baseline,excluded.baseline),
+        scope=COALESCE(activity_instance.scope,excluded.scope),scope_id=COALESCE(activity_instance.scope_id,excluded.scope_id),
+        act_version=COALESCE(activity_instance.act_version,excluded.act_version),
+        occurrence_id=COALESCE(activity_instance.occurrence_id,excluded.occurrence_id),
+        instance_key=COALESCE(activity_instance.instance_key,excluded.instance_key),
+        group_id=COALESCE(activity_instance.group_id,excluded.group_id),
+        group_master_server_id=COALESCE(activity_instance.group_master_server_id,excluded.group_master_server_id),
+        group_master_opened_at=COALESCE(activity_instance.group_master_opened_at,excluded.group_master_opened_at),
+        group_member_server_ids_json=CASE WHEN activity_instance.group_member_server_ids_json='[]'
+          THEN excluded.group_member_server_ids_json ELSE activity_instance.group_member_server_ids_json END,
+        stage_windows_json=CASE WHEN activity_instance.stage_windows_json='[]'
+          THEN excluded.stage_windows_json ELSE activity_instance.stage_windows_json END,
+        updated_at=excluded.updated_at`)
       .run(row.serverId, row.actId, row.periodNo, row.family, row.parentActId, row.previewAt, row.openAt,
-        row.closeAt, row.claimUntil, row.showUntil, row.stage, stamp()));
+        row.closeAt, row.claimUntil, row.showUntil, row.stage, row.baseline, row.scope, row.scopeId, row.actVersion,
+        row.occurrenceId, row.instanceKey, row.groupId, row.groupMasterServerId, row.groupMasterOpenedAt,
+        JSON.stringify(row.groupMemberServerIds), JSON.stringify(row.stageWindows), stamp());
+    });
     return row;
   }
 

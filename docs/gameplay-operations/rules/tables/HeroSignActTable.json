@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "table": "HeroSignActTable",
+  "assetPath": "personal-server/assets/tables/HeroSignActTable.data.lua.json.gz",
+  "assetSha256": "2acc0f5b77cc38f3dcbfdd7e6085191ad15384ab48bcee90e0aad854db47ad36",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HeroSignActTable.data.lua.json.gz",
+      "sha256": "2acc0f5b77cc38f3dcbfdd7e6085191ad15384ab48bcee90e0aad854db47ad36"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Award":{"status":"decoded-rows","count":18,"externalReferenceCount":0,"rows":[
+{"tid":101,"version":1,"award_list":[[3831200,1],[1221200,1],[5361200,1]],"day":1},
+{"tid":102,"version":1,"award_list":[[3831200,1],[1221200,1],[5361200,1]],"day":3},
+{"tid":103,"version":1,"award_list":[[24400704,80],[2002,10],[101500,500]],"day":7},
+{"tid":104,"version":1,"award_list":[[3831200,1],[1221200,1],[5361200,1]],"day":10},
+{"tid":105,"version":1,"award_list":[[24400704,80],[2002,10],[101500,500]],"day":14},
+{"tid":106,"version":1,"award_list":[[3831200,2],[1221200,2],[5361200,2]],"day":17},
+{"tid":107,"version":1,"award_list":[[3831200,3],[1221200,3],[5361200,3]],"day":21},
+{"tid":108,"version":1,"award_list":[[3831200,4],[1221200,4],[5361200,4]],"day":24},
+{"tid":109,"version":1,"award_list":[[24400704,80],[2002,10],[101500,500]],"day":28},
+{"tid":201,"version":2,"award_list":[[3831200,1],[1221200,1],[5361200,1]],"day":1},
+{"tid":202,"version":2,"award_list":[[3831200,1],[1221200,1],[5361200,1]],"day":3},
+{"tid":203,"version":2,"award_list":[[24400704,80],[2002,10],[101500,500]],"day":7},
+{"tid":204,"version":2,"award_list":[[3831200,1],[1221200,1],[5361200,1]],"day":10},
+{"tid":205,"version":2,"award_list":[[24400704,80],[2002,10],[101500,500]],"day":14},
+{"tid":206,"version":2,"award_list":[[3831200,2],[1221200,2],[5361200,2]],"day":17},
+{"tid":207,"version":2,"award_list":[[3831200,3],[1221200,3],[5361200,3]],"day":21},
+{"tid":208,"version":2,"award_list":[[3831200,4],[1221200,4],[5361200,4]],"day":24},
+{"tid":209,"version":2,"award_list":[[24400704,80],[2002,10],[101500,500]],"day":28}
+]},
+"HeroShow":{"status":"decoded-rows","count":6,"externalReferenceCount":0,"rows":[
+{"show_hero":4040201,"spine_scale":1.04,"spine":"ui_mingyunsanshu_3.prefab","tid":1,"version":1,"page":1},
+{"show_hero":4040201,"spine_scale":1.04,"spine":"ui_mingyunsanshu_2.prefab","tid":2,"version":1,"page":1},
+{"show_hero":4040201,"spine_scale":0.92,"spine":"ui_mingyunsanshu_1.prefab","tid":3,"version":1,"page":1},
+{"show_hero":4040201,"spine_scale":1.04,"spine":"ui_mingyunsanshu_3.prefab","tid":4,"version":2,"page":1},
+{"show_hero":4040201,"spine_scale":1.04,"spine":"ui_mingyunsanshu_2.prefab","tid":5,"version":2,"page":1},
+{"show_hero":4040201,"spine_scale":0.92,"spine":"ui_mingyunsanshu_1.prefab","tid":6,"version":2,"page":1}
+]},
+"Show":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"prefab":"","title_name":685003,"txt_desc_2":685005,"tid":1,"txt_desc_1":685004},
+{"prefab":"","title_name":685003,"txt_desc_2":685005,"tid":2,"txt_desc_1":685004}
+]}
+}
+}

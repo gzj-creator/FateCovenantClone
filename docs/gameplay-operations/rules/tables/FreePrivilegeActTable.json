@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "table": "FreePrivilegeActTable",
+  "assetPath": "personal-server/assets/tables/FreePrivilegeActTable.data.lua.json.gz",
+  "assetSha256": "70e8c993411c907fdd579c569b71924b2edfe2335f6928046c490d6443bdc548",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/FreePrivilegeActTable.data.lua.json.gz",
+      "sha256": "70e8c993411c907fdd579c569b71924b2edfe2335f6928046c490d6443bdc548"
+    }
+  ],
+  "sourceMetadata": "3077547558014218000-FreePrivilegeActTable.data.lua.bin",
+"families":{
+"Version":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"privilege_day":30,"is_month_card":true,"month_card":1},
+{"tid":2,"privilege_day":30,"is_month_card":true,"month_card":1}
+]},
+"Show":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"prefab":"","title":685002,"desc":685006,"privilege_tips":[685012,685013,685014],"txt_cards_tips":685037},
+{"tid":2,"prefab":"","title":685002,"desc":685006,"privilege_tips":[685012,685013,685014],"txt_cards_tips":692233}
+]}
+}
+}

@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "table": "HeroDrawActTable",
+  "assetPath": "personal-server/assets/tables/HeroDrawActTable.data.lua.json.gz",
+  "assetSha256": "48d954e29bde34514ec4482f48f3a57d2149767347a1c01091f89b40cf8ac2fc",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HeroDrawActTable.data.lua.json.gz",
+      "sha256": "48d954e29bde34514ec4482f48f3a57d2149767347a1c01091f89b40cf8ac2fc"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"GenreRank":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"genre_team":101,"tid":1,"rank_id":180},
+{"genre_team":201,"tid":2,"rank_id":181},
+{"genre_team":301,"tid":3,"rank_id":182},
+{"genre_team":401,"tid":4,"rank_id":183}
+]},
+"Task":{"status":"decoded-rows","count":34,"externalReferenceCount":0,"rows":[
+{"tid":1,"award_list":[[101500,100]],"task_type":1,"task_value":100,"version":1,"des":670766},
+{"tid":2,"award_list":[[17002,300]],"task_type":1,"task_value":150,"version":1,"des":670766},
+{"tid":3,"award_list":[[391002,250]],"task_type":1,"task_value":200,"version":1,"des":670766},
+{"tid":4,"award_list":[[33002,5]],"task_type":1,"task_value":250,"version":1,"des":670766},
+{"tid":5,"award_list":[[18002,15]],"task_type":1,"task_value":300,"version":1,"des":670766},
+{"tid":6,"award_list":[[19002,1]],"task_type":1,"task_value":350,"version":1,"des":670766},
+{"tid":7,"award_list":[[200110,1]],"task_type":1,"task_value":400,"version":1,"des":670766},
+{"tid":8,"award_list":[[392002,10]],"task_type":1,"task_value":450,"version":1,"des":670766},
+{"tid":9,"award_list":[[1221200,1]],"task_type":1,"task_value":500,"version":1,"des":670766},
+{"tid":10,"award_list":[[22002,1]],"task_type":1,"task_value":600,"version":1,"des":670766},
+{"tid":11,"award_list":[[1321200,1]],"task_type":1,"task_value":800,"version":1,"des":670766},
+{"tid":12,"award_list":[[22002,1]],"task_type":1,"task_value":1000,"version":1,"des":670766},
+{"tid":13,"award_list":[[1221200,1]],"task_type":1,"task_value":1200,"version":1,"des":670766},
+{"tid":14,"award_list":[[1321200,1]],"task_type":1,"task_value":1400,"version":1,"des":670766},
+{"tid":15,"award_list":[[1321200,1]],"task_type":1,"task_value":1700,"version":1,"des":670766},
+{"tid":16,"award_list":[[1221200,1]],"task_type":1,"task_value":2000,"version":1,"des":670766},
+{"tid":17,"award_list":[[179002,100]],"task_type":2,"task_value":0,"version":1,"des":0},
+{"tid":18,"award_list":[[179002,300]],"task_type":2,"task_value":2,"version":1,"des":0},
+{"tid":19,"award_list":[[1171200,1]],"task_type":2,"task_value":4,"version":1,"des":0},
+{"tid":20,"award_list":[[379002,240]],"task_type":2,"task_value":6,"version":1,"des":0},
+{"tid":21,"award_list":[[22002,1]],"task_type":2,"task_value":10,"version":1,"des":0},
+{"tid":22,"award_list":[[1321200,1]],"task_type":2,"task_value":12,"version":1,"des":0},
+{"tid":23,"award_list":[[22002,1]],"task_type":2,"task_value":16,"version":1,"des":0},
+{"tid":24,"award_list":[[1321200,1]],"task_type":2,"task_value":20,"version":1,"des":0},
+{"tid":25,"award_list":[[17002,200]],"task_type":3,"task_value":150000,"version":1,"des":0},
+{"tid":26,"award_list":[[391002,200]],"task_type":3,"task_value":200000,"version":1,"des":0},
+{"tid":27,"award_list":[[101500,150]],"task_type":3,"task_value":250000,"version":1,"des":0},
+{"tid":28,"award_list":[[18002,15]],"task_type":3,"task_value":300000,"version":1,"des":0},
+{"tid":29,"award_list":[[101500,150]],"task_type":3,"task_value":350000,"version":1,"des":0},
+{"tid":30,"award_list":[[179002,100]],"task_type":3,"task_value":400000,"version":1,"des":0},
+{"tid":31,"award_list":[[101500,150]],"task_type":3,"task_value":450000,"version":1,"des":0},
+{"tid":32,"award_list":[[19002,1]],"task_type":3,"task_value":500000,"version":1,"des":0},
+{"tid":33,"award_list":[[101500,150]],"task_type":3,"task_value":550000,"version":1,"des":0},
+{"tid":34,"award_list":[[392002,5]],"task_type":3,"task_value":600000,"version":1,"des":0}
+]},
+"TaskType":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1},
+{"tid":2},
+{"tid":3}
+]},
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"add_draw_num":100,"add_draw_time":60,"hero_list":[1030101,2030201,3030601,4030501]}
+]},
+"RankReward":{"status":"decoded-rows","count":40,"externalReferenceCount":0,"rows":[
+{"tid":1,"rank_range":[1,1],"award":[[3002,10],[101500,666],[352708,1]],"rank_tid":180},
+{"tid":2,"rank_range":[2,2],"award":[[3002,10],[101500,600],[352708,1]],"rank_tid":180},
+{"tid":3,"rank_range":[3,3],"award":[[3002,10],[101500,500],[352708,1]],"rank_tid":180},
+{"tid":4,"rank_range":[4,10],"award":[[3002,8],[101500,400]],"rank_tid":180},
+{"tid":5,"rank_range":[11,20],"award":[[3002,7],[101500,350]],"rank_tid":180},
+{"tid":6,"rank_range":[21,50],"award":[[3002,6],[101500,300]],"rank_tid":180},
+{"tid":7,"rank_range":[51,100],"award":[[3002,5],[101500,250]],"rank_tid":180},
+{"tid":8,"rank_range":[101,200],"award":[[3002,4],[101500,200]],"rank_tid":180},
+{"tid":9,"rank_range":[201,500],"award":[[3002,3],[101500,150]],"rank_tid":180},
+{"tid":10,"rank_range":[501,9999],"award":[[3002,2],[101500,100]],"rank_tid":180},
+{"tid":11,"rank_range":[1,1],"award":[[3002,10],[101500,666],[352808,1]],"rank_tid":181},
+{"tid":12,"rank_range":[2,2],"award":[[3002,10],[101500,600],[352808,1]],"rank_tid":181},
+{"tid":13,"rank_range":[3,3],"award":[[3002,10],[101500,500],[352808,1]],"rank_tid":181},
+{"tid":14,"rank_range":[4,10],"award":[[3002,8],[101500,400]],"rank_tid":181},
+{"tid":15,"rank_range":[11,20],"award":[[3002,7],[101500,350]],"rank_tid":181},
+{"tid":16,"rank_range":[21,50],"award":[[3002,6],[101500,300]],"rank_tid":181},
+{"tid":17,"rank_range":[51,100],"award":[[3002,5],[101500,250]],"rank_tid":181},
+{"tid":18,"rank_range":[101,200],"award":[[3002,4],[101500,200]],"rank_tid":181},
+{"tid":19,"rank_range":[201,500],"award":[[3002,3],[101500,150]],"rank_tid":181},
+{"tid":20,"rank_range":[501,9999],"award":[[3002,2],[101500,100]],"rank_tid":181},
+{"tid":21,"rank_range":[1,1],"award":[[3002,10],[101500,666],[352908,1]],"rank_tid":182},
+{"tid":22,"rank_range":[2,2],"award":[[3002,10],[101500,600],[352908,1]],"rank_tid":182},
+{"tid":23,"rank_range":[3,3],"award":[[3002,10],[101500,500],[352908,1]],"rank_tid":182},
+{"tid":24,"rank_range":[4,10],"award":[[3002,8],[101500,400]],"rank_tid":182},
+{"tid":25,"rank_range":[11,20],"award":[[3002,7],[101500,350]],"rank_tid":182},
+{"tid":26,"rank_range":[21,50],"award":[[3002,6],[101500,300]],"rank_tid":182},
+{"tid":27,"rank_range":[51,100],"award":[[3002,5],[101500,250]],"rank_tid":182},
+{"tid":28,"rank_range":[101,200],"award":[[3002,4],[101500,200]],"rank_tid":182},
+{"tid":29,"rank_range":[201,500],"award":[[3002,3],[101500,150]],"rank_tid":182},
+{"tid":30,"rank_range":[501,9999],"award":[[3002,2],[101500,100]],"rank_tid":182},
+{"tid":31,"rank_range":[1,1],"award":[[3002,10],[101500,666],[353008,1]],"rank_tid":183},
+{"tid":32,"rank_range":[2,2],"award":[[3002,10],[101500,600],[353008,1]],"rank_tid":183},
+{"tid":33,"rank_range":[3,3],"award":[[3002,10],[101500,500],[353008,1]],"rank_tid":183},
+{"tid":34,"rank_range":[4,10],"award":[[3002,8],[101500,400]],"rank_tid":183},
+{"tid":35,"rank_range":[11,20],"award":[[3002,7],[101500,350]],"rank_tid":183},
+{"tid":36,"rank_range":[21,50],"award":[[3002,6],[101500,300]],"rank_tid":183},
+{"tid":37,"rank_range":[51,100],"award":[[3002,5],[101500,250]],"rank_tid":183},
+{"tid":38,"rank_range":[101,200],"award":[[3002,4],[101500,200]],"rank_tid":183},
+{"tid":39,"rank_range":[201,500],"award":[[3002,3],[101500,150]],"rank_tid":183},
+{"tid":40,"rank_range":[501,9999],"award":[[3002,2],[101500,100]],"rank_tid":183}
+]},
+"Gift":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"show_rule":[0,0,0,0,0,0,0,0,0,0,1,0,2],"gift":[880101,880102,2090007,880104,880103,40010,40008,2090003,2090004,2090005,112001,111004,880105]}
+]}
+}
+}

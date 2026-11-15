@@ -560,10 +560,16 @@ export function createHundredDrawService({
         .find(row => Number(row?.act_id) === Number(actId));
       const customStart = Number(custom?.start_time);
       const customEnd = Number(custom?.end_time);
-      const window = Number.isSafeInteger(customStart) && customStart > 0
-        && Number.isSafeInteger(customEnd) && customEnd > customStart
-        ? { start: customStart, end: customEnd }
-        : activityWindow(act, calendar?.serverOpenedAt, calendar?.activityReferenceOpenedAt);
+      // The calendar already applies the active policy and explicit instance
+      // precedence. Prefer that result so a captured custom row from another
+      // server cannot override the current parent window in formal schedule
+      // mode. The custom fields remain a fallback for callers without a
+      // calendar implementation.
+      const window = calendar?.windowFor?.(Number(actId), activity, at)
+        ?? (Number.isSafeInteger(customStart) && customStart > 0
+          && Number.isSafeInteger(customEnd) && customEnd > customStart
+          ? { start: customStart, end: customEnd }
+          : activityWindow(act, calendar?.serverOpenedAt, calendar?.activityReferenceOpenedAt));
       result.push({ actId: Number(actId), act, version, window });
     }
     return result.sort((left, right) => left.actId - right.actId);

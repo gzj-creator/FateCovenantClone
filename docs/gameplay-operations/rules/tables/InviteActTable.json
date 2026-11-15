@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "table": "InviteActTable",
+  "assetPath": "personal-server/assets/tables/InviteActTable.data.lua.json.gz",
+  "assetSha256": "affc48d6fdf878ad67150f5a3d213f2acaf66249127e29bca29821f35ef03524",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/InviteActTable.data.lua.json.gz",
+      "sha256": "affc48d6fdf878ad67150f5a3d213f2acaf66249127e29bca29821f35ef03524"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"InviteTask":{"status":"decoded-rows","count":48,"externalReferenceCount":0,"rows":[
+{"period":1,"task_des":13216,"award_list":[[25400204,80],[10064100,1],[101500,800]],"type":1801,"tid":1,"target_count":80,"task_param":0},
+{"period":1,"task_des":13218,"award_list":[[3831200,1],[157002,10000],[101500,50]],"type":1002,"tid":2,"target_count":50,"task_param":0},
+{"period":1,"task_des":13219,"award_list":[[2002,10],[17002,500],[101500,50]],"type":1602,"tid":3,"target_count":60,"task_param":0},
+{"period":1,"task_des":13220,"award_list":[[3002,10],[10054100,1],[101500,100]],"type":1003,"tid":4,"target_count":50,"task_param":0},
+{"period":1,"task_des":13221,"award_list":[[3831200,1],[19002,4],[101500,200]],"type":8102,"tid":5,"target_count":8,"task_param":0},
+{"period":1,"task_des":13222,"award_list":[[3002,5],[22002,1],[101500,50]],"type":1801,"tid":6,"target_count":20,"task_param":0},
+{"period":1,"task_des":13223,"award_list":[[1151200,1],[10054100,2],[101500,100]],"type":1801,"tid":7,"target_count":30,"task_param":0},
+{"period":1,"task_des":13224,"award_list":[[3002,10],[141002,10],[101500,200]],"type":1801,"tid":8,"target_count":35,"task_param":0},
+{"period":1,"task_des":13225,"award_list":[[3002,10],[10064100,1],[101500,200]],"type":1801,"tid":9,"target_count":60,"task_param":0},
+{"period":1,"task_des":13226,"award_list":[[808002,10],[10064100,1],[101500,500]],"type":1801,"tid":10,"target_count":70,"task_param":0},
+{"period":1,"task_des":13227,"award_list":[[3901200,1],[1030122,1],[101500,1000]],"type":1801,"tid":11,"target_count":88,"task_param":0},
+{"period":1,"task_des":13228,"award_list":[[3881200,1],[10054100,1],[101500,50]],"type":2301,"tid":12,"target_count":3000000,"task_param":0},
+{"period":1,"task_des":13229,"award_list":[[3881200,1],[10054100,1],[101500,100]],"type":2301,"tid":13,"target_count":6500000,"task_param":0},
+{"period":1,"task_des":13230,"award_list":[[3881200,1],[10064100,2],[101500,200]],"type":2301,"tid":14,"target_count":15000000,"task_param":0},
+{"period":1,"task_des":13231,"award_list":[[3891200,1],[472002,1],[101500,200]],"type":2301,"tid":15,"target_count":25000000,"task_param":0},
+{"period":1,"task_des":13232,"award_list":[[3881200,1],[10064100,2],[101500,500]],"type":2301,"tid":16,"target_count":35000000,"task_param":0},
+{"period":2,"task_des":13298,"award_list":[[25400204,80],[10064100,1],[101500,800]],"type":1801,"tid":17,"target_count":65,"task_param":0},
+{"period":2,"task_des":13218,"award_list":[[3831200,1],[157002,10000],[101500,50]],"type":1002,"tid":18,"target_count":50,"task_param":0},
+{"period":2,"task_des":13219,"award_list":[[2002,10],[17002,500],[101500,50]],"type":1602,"tid":19,"target_count":60,"task_param":0},
+{"period":2,"task_des":13220,"award_list":[[3002,10],[10054100,1],[101500,100]],"type":1003,"tid":20,"target_count":50,"task_param":0},
+{"period":2,"task_des":13221,"award_list":[[3831200,1],[19002,4],[101500,200]],"type":8102,"tid":21,"target_count":8,"task_param":0},
+{"period":2,"task_des":13222,"award_list":[[3002,5],[22002,1],[101500,50]],"type":1801,"tid":22,"target_count":20,"task_param":0},
+{"period":2,"task_des":13223,"award_list":[[1151200,1],[10054100,2],[101500,100]],"type":1801,"tid":23,"target_count":30,"task_param":0},
+{"period":2,"task_des":13224,"award_list":[[3002,10],[141002,10],[101500,200]],"type":1801,"tid":24,"target_count":35,"task_param":0},
+{"period":2,"task_des":13299,"award_list":[[3002,10],[10064100,1],[101500,200]],"type":1801,"tid":25,"target_count":50,"task_param":0},
+{"period":2,"task_des":13225,"award_list":[[808002,10],[10064100,1],[101500,500]],"type":1801,"tid":26,"target_count":60,"task_param":0},
+{"period":2,"task_des":13226,"award_list":[[3901200,1],[1030122,1],[101500,1000]],"type":1801,"tid":27,"target_count":70,"task_param":0},
+{"period":2,"task_des":13300,"award_list":[[3881200,1],[10054100,1],[101500,50]],"type":2301,"tid":28,"target_count":2000000,"task_param":0},
+{"period":2,"task_des":13301,"award_list":[[3881200,1],[10054100,1],[101500,100]],"type":2301,"tid":29,"target_count":3500000,"task_param":0},
+{"period":2,"task_des":13302,"award_list":[[3881200,1],[10064100,2],[101500,200]],"type":2301,"tid":30,"target_count":7500000,"task_param":0},
+{"period":2,"task_des":13303,"award_list":[[3891200,1],[472002,1],[101500,200]],"type":2301,"tid":31,"target_count":12000000,"task_param":0},
+{"period":2,"task_des":13304,"award_list":[[3881200,1],[10064100,2],[101500,500]],"type":2301,"tid":32,"target_count":18000000,"task_param":0},
+{"period":3,"task_des":13298,"award_list":[[25400204,80],[10064100,1],[101500,800]],"type":1801,"tid":33,"target_count":65,"task_param":0},
+{"period":3,"task_des":13218,"award_list":[[3831200,1],[157002,10000],[101500,50]],"type":1002,"tid":34,"target_count":50,"task_param":0},
+{"period":3,"task_des":13219,"award_list":[[2002,10],[17002,500],[101500,50]],"type":1602,"tid":35,"target_count":60,"task_param":0},
+{"period":3,"task_des":13220,"award_list":[[3002,10],[10054100,1],[101500,100]],"type":1003,"tid":36,"target_count":50,"task_param":0},
+{"period":3,"task_des":13221,"award_list":[[3831200,1],[19002,4],[101500,200]],"type":8102,"tid":37,"target_count":8,"task_param":0},
+{"period":3,"task_des":13222,"award_list":[[3002,5],[22002,1],[101500,50]],"type":1801,"tid":38,"target_count":20,"task_param":0},
+{"period":3,"task_des":13223,"award_list":[[1151200,1],[10054100,2],[101500,100]],"type":1801,"tid":39,"target_count":30,"task_param":0},
+{"period":3,"task_des":13224,"award_list":[[3002,10],[141002,10],[101500,200]],"type":1801,"tid":40,"target_count":35,"task_param":0},
+{"period":3,"task_des":13299,"award_list":[[3002,10],[10064100,1],[101500,200]],"type":1801,"tid":41,"target_count":50,"task_param":0},
+{"period":3,"task_des":13225,"award_list":[[808002,10],[10064100,1],[101500,500]],"type":1801,"tid":42,"target_count":60,"task_param":0},
+{"period":3,"task_des":13226,"award_list":[[3901200,1],[1030122,1],[101500,1000]],"type":1801,"tid":43,"target_count":70,"task_param":0},
+{"period":3,"task_des":13300,"award_list":[[3881200,1],[10054100,1],[101500,50]],"type":2301,"tid":44,"target_count":2000000,"task_param":0},
+{"period":3,"task_des":13301,"award_list":[[3881200,1],[10054100,1],[101500,100]],"type":2301,"tid":45,"target_count":3500000,"task_param":0},
+{"period":3,"task_des":13302,"award_list":[[3881200,1],[10064100,2],[101500,200]],"type":2301,"tid":46,"target_count":7500000,"task_param":0},
+{"period":3,"task_des":13303,"award_list":[[3891200,1],[472002,1],[101500,200]],"type":2301,"tid":47,"target_count":12000000,"task_param":0},
+{"period":3,"task_des":13304,"award_list":[[3881200,1],[10064100,2],[101500,500]],"type":2301,"tid":48,"target_count":18000000,"task_param":0}
+]},
+"InviteConst":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"max_bind_count":10}
+]},
+"InviteAct":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"bind_reward":[[1221200,1],[2002,20],[101500,1000]],"split_level":160,"title_two_text_id":5015,"bust_portrait":"img_yaoqinglibao_weier2.png","tid":1,"bg":"img_yaoqinglibao_beijing2.png","act_title_text_id":5084},
+{"bind_reward":[[1221200,1],[2002,20],[101500,1000]],"split_level":160,"title_two_text_id":5015,"bust_portrait":"img_yaoqinglibao_weier2.png","tid":2,"bg":"img_yaoqinglibao_beijing2.png","act_title_text_id":5084},
+{"bind_reward":[[1221200,1],[2002,20],[101500,1000]],"split_level":160,"title_two_text_id":5015,"bust_portrait":"img_yaoqinglibao_weier2.png","tid":3,"bg":"img_yaoqinglibao_beijing2.png","act_title_text_id":5084}
+]}
+}
+}

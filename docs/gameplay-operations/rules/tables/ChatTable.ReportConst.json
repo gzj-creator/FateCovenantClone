@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "table": "ChatTable.ReportConst",
+  "assetPath": "personal-server/assets/tables/ChatTable.ReportConst.json.gz",
+  "assetSha256": "013bc9315c9e9ebf8782dc0203d0427bb519fd4d3dfa46cba33cfe6243d6f404",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/ChatTable.ReportConst.json.gz",
+      "sha256": "013bc9315c9e9ebf8782dc0203d0427bb519fd4d3dfa46cba33cfe6243d6f404"
+    }
+  ],
+  "sourceMetadata": "ChatTable.data.lua.bin",
+"families":{
+"ReportConst":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"day_times":30,"report_msg_num":30,"report_msg_valid_time":1800}
+]}
+}
+}

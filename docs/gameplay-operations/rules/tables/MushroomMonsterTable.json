@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "table": "MushroomMonsterTable",
+  "assetPath": "personal-server/assets/tables/MushroomMonsterTable.data.lua.json.gz",
+  "assetSha256": "9718561ab2f97b0bf5ff6fc99cc2c40447519dcc8fe04f968ced96c079615c9e",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/MushroomMonsterTable.data.lua.json.gz",
+      "sha256": "9718561ab2f97b0bf5ff6fc99cc2c40447519dcc8fe04f968ced96c079615c9e"
+    }
+  ],
+  "sourceMetadata": "18086998538403348000-MushroomMonsterTable.data.lua.bin",
+"families":{
+"MushroomMonster":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"normal_score":100,"crit_score":200,"fight_count":3,"root_red_tid":174581020052,"red_tid":174581022946,"reward_red_tid":174581026463,"round_duration":25,"rank_id":227}
+]},
+"ActAward":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1001,"belong_version":1,"daily_act_val":50,"need_times":1,"award_item":678002,"award_count":300},
+{"tid":1002,"belong_version":1,"daily_act_val":100,"need_times":2,"award_item":678002,"award_count":400},
+{"tid":1003,"belong_version":1,"daily_act_val":150,"need_times":3,"award_item":678002,"award_count":800}
+]},
+"ActSpeed":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"tid":1,"belong_version":1,"speed_max_time":5,"speed_coff":0.5},
+{"tid":2,"belong_version":1,"speed_max_time":10,"speed_coff":1.25},
+{"tid":3,"belong_version":1,"speed_max_time":15,"speed_coff":1.5},
+{"tid":4,"belong_version":1,"speed_max_time":20,"speed_coff":1.75},
+{"tid":5,"belong_version":1,"speed_max_time":1000000000,"speed_coff":2}
+]},
+"ActDisplay":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"belong_version":1,"hit_area_angle":21,"hit_angle":11.9,"crit_hit_angle":4,"fire_angle":1,"fire_move_speed":80,"fire_move_angle":31,"hit_area_asset":"img_cjhd_pandingtiaochang.png","crit_hit_area_asset":"img_cjhd_pandingtiaoduan.png"}
+]}
+}
+}

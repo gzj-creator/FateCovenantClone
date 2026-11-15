@@ -3,8 +3,11 @@ import { GameError } from './hero-progression.mjs';
 import { missionBattleConfig, readMissionTables } from '../config/mission-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
-import { applyNpcScaling, assembleHeroAttributes, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
+import { ACTOR_ATTR, applyNpcScaling, assembleHeroAttributes, compatibilitySpeed, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
+import { resolveFightTeam } from './fight-team-resolver.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
+import { readTacticsTables } from '../config/tactics-tables.mjs';
+import { collectTacticsBaseValues } from './tactics-state.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 import { missionPosition } from './mission-progress.mjs';
@@ -50,12 +53,13 @@ function action(codec, proto, schema, value) {
 }
 
 function unitConfig(tables, role, roleType) {
-  const hero = tables.heroes.Hero.get(Number(role));
-  if (!hero) throw new GameError(5, 'Mission fighter configuration missing');
-  // Early mission enemies reuse hero rows, while later combat NPCs have a dedicated Npc row.
+  // NPCFighter.Init uses NpcUtil.GetNpcHeroCfg: Npc.relation_hero -> Hero.
+  // Several journey NPC ids (including Michelle 3030500) have no Hero row.
   const npc = roleType === FIGHTER_ROLE_NPC ? tables.heroes.Npc.get(Number(role)) : null;
+  const hero = tables.heroes.Hero.get(Number(npc?.relation_hero ?? role));
+  if (!hero) throw new GameError(5, 'Mission fighter configuration missing');
   const ability = npc ? tables.heroes.Npc_Ability.get(Number(role)) : tables.heroes.Ability.get(Number(role));
-  return { hero, npc: Boolean(npc), abilities: ability?.ability ?? [] };
+  return { hero, npc, abilities: ability?.ability ?? [] };
 }
 
 // Exported for the report-layer tests: the event -> pb_generic projection is
@@ -221,9 +225,8 @@ function defenseChannel(stats) {
   return Math.max(0, Math.round((Number(stats.physicalDefense ?? 0) + Number(stats.magicDefense ?? 0)) / 2));
 }
 
-// NPC base rows are unavailable, so the compatible enemy template is derived
-// from the complete player lineup. Averaging each channel prevents one
-// high-HP tank from setting every enemy's attack, defense and speed.
+// Legacy encounter providers without Fight/Team data still use this explicit
+// compatibility baseline. Ordinary journey never calls this path.
 export function lineupReferenceStats(attackers) {
   const count = Math.max(1, attackers.length);
   const average = key => Math.max(0, Math.round(
@@ -287,6 +290,47 @@ function captainFighter(attackers, selected) {
   };
 }
 
+function configuredNpcTeam(config, side, attributeTables) {
+  const resolved = resolveFightTeam({
+    fight: config.fight, side, teams: config.fightTables.Team,
+    fighters: config.fightTables.Fighter, npcAttrs: attributeTables.NpcAttr,
+    ratios: attributeTables.NpcAttrRatio, npcTable: config.tables.heroes.Npc,
+    attributeTables
+  });
+  if (!resolved.resolved) throw new GameError(5, 'Mission team configuration missing: ' + resolved.reason);
+  // Multi-wave inheritance needs its own report sequence. Refuse until that
+  // sequence is implemented rather than silently dropping configured teams.
+  if (resolved.teams.length !== 1) throw new GameError(5, 'Mission multi-team battle is not implemented');
+  const team = side === 'atk' ? 1 : 2;
+  return resolved.teams[0].entries.map((entry, index) => {
+    const cfg = unitConfig(config.tables, entry.npcTid, FIGHTER_ROLE_NPC);
+    if (!cfg.npc) throw new GameError(5, 'Mission NPC configuration missing');
+    const values = entry.values;
+    const maxHp = Math.max(1, Number(values.get(ACTOR_ATTR.HP) ?? 1));
+    const attack = Math.max(1, Number(values.get(ACTOR_ATTR.ATTACK) ?? 1));
+    const defense = defenseChannel({ physicalDefense: values.get(ACTOR_ATTR.PHYSICAL_DEFENSE), magicDefense: values.get(ACTOR_ATTR.MAGIC_DEFENSE) });
+    // Npc_Ability already contains concrete skill ids, including special
+    // endings such as 3900400149. Applying a player's star/quality level row
+    // would replace those with nonexistent ids and remove NPC-only rules.
+    const abilities = [...cfg.abilities, ...(entry.fighter?.add_ab ?? [])].map(Number);
+    if (!abilities.length) throw new GameError(5, 'Mission NPC ability configuration missing');
+    return {
+      id: (team === 1 ? 101 : 201) + index,
+      tid: entry.fighterTid, role: entry.npcTid, role_type: FIGHTER_ROLE_NPC, uid: '0',
+      team, team_index: 1, camp: Number(cfg.hero.camp ?? 0), loc: entry.loc,
+      star: Number(cfg.hero.star ?? 0), level: entry.level, quality: Number(cfg.hero.quality ?? 1),
+      hp: maxHp, max_hp: maxHp, enable: true, final_hp: maxHp,
+      style: Number(cfg.hero.style), profession: Number(cfg.hero.profession ?? 0),
+      ability_list: abilities, init_attr: initialFightAttributes(FIGHT_INITIAL_ENERGY), water_gun: 0,
+      attack, defense, speed: compatibilitySpeed(cfg.hero), initialEnergy: FIGHT_INITIAL_ENERGY,
+      abilityId: abilities[0], activeAbilityId: activeAbilityId(abilities),
+      // Do not load a hero's entire catalog (including unrelated late passives)
+      // just because this NPC shares that hero's appearance.
+      skills: [], power: entry.calculatedPower
+    };
+  });
+}
+
 // Exported so other fight entry points (elite missions) can reuse the same
 // fighter assembly and action-stream generation. 'encounter' replaces the
 // journey section lookup with an authoritative fight config:
@@ -294,6 +338,11 @@ function captainFighter(attackers, selected) {
 export function reportBattle(codec, model, mission, request, attributeTables, encounter = null) {
   const config = encounter ?? missionBattleConfig(mission.missionId);
   if (!config) throw new GameError(5, 'Mission enemy configuration missing');
+  // Fight.atk_team is also consumed by client previews. Its presence alone
+  // does not establish that the server replaces the owned lineup: Fight102's
+  // preview even references a missing Fighter row (9110202). Keep the actual
+  // requested/persisted heroes until a captured tutorial report proves the
+  // fixed-ally contract; do not invent an NPC attack team from preview data.
   const selected = requestedMembers(model, request);
   if (!selected.members.length || selected.members.length > 6) throw new GameError(5, 'Journey lineup size is invalid');
   if (selected.members.some(entry => !Number.isSafeInteger(entry.loc) || entry.loc < 1 || entry.loc > 7)) {
@@ -301,6 +350,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
   }
   const seenLocations = new Set();
   const seenHeroes = new Set();
+  const globalAttrs = collectTacticsBaseValues({ model, codec, tables: readTacticsTables() });
   const attackers = selected.members.map((entry, index) => {
     if (seenLocations.has(entry.loc)) throw new GameError(5, 'Journey lineup location is duplicated');
     if (seenHeroes.has(entry.heroId)) throw new GameError(5, 'Journey lineup hero is duplicated');
@@ -309,7 +359,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     const hero = model.heroInfo.hero_list.find(value => String(value.uid) === entry.heroId);
     if (!hero) throw new GameError(5, 'Journey lineup hero is missing');
     const role = Number(hero.tid), cfg = unitConfig(config.tables, role, 1);
-    const assembled = assembleHeroAttributes({ hero, heroTables: config.tables.heroes, attributeTables });
+    const assembled = assembleHeroAttributes({ hero, heroTables: config.tables.heroes, attributeTables, globalAttrs });
     const level = assembled.level, quality = assembled.quality, maxHp = assembled.stats.hp;
     const combat = {
       profession: assembled.profession,
@@ -336,13 +386,8 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     };
   });
   const attackerLevel = Math.max(...attackers.map(unit => unit.level));
-  // The NpcAttr table and Fight -> Team -> NpcAttr resolver are recovered, but
-  // Mission Fight 403 ships def_team=null (and its referenced Team row is also
-  // absent). Without that authoritative selector, ordinary Mission NPCs keep a
-  // balanced whole-lineup compatibility baseline, then apply the shipped
-  // NpcAttrRatio / NpcFightCustom.elite_scale values.
-  const reference = lineupReferenceStats(attackers);
-  const defenders = config.enemies.map((role, index) => {
+  const reference = config.fight ? null : lineupReferenceStats(attackers);
+  const defenders = config.fight ? configuredNpcTeam(config, 'def', attributeTables) : config.enemies.map((role, index) => {
     const cfg = unitConfig(config.tables, role, 2);
     const level = Math.max(1, attackerLevel), quality = Number(cfg.hero.quality ?? 1);
     const fallback = {
@@ -375,7 +420,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
       activeAbilityId: activeAbilityId(abilities)
     };
   });
-  const fightTid = Number(request.fight_tid ?? 0) || Number(config.mission.fight ?? 0);
+  const fightTid = Number(config.mission.fight ?? 0);
   const seed = battleSeed(mission.missionId, fightTid, model.state.roleId);
   const combatUnit = unit => ({
     id: unit.id,
@@ -414,13 +459,12 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     over_round: simulation.overRound,
     result: simulation.result,
     is_add_battle: false,
-    // Power is the shared attribute-service compatibility rule; the same value
-    // is returned by the 1316 attribute query and the rank screen.
+    // Both teams report power from the same assembled combat attributes.
     atk_power: String(attackers.reduce((sum, unit) => sum + unit.power, 0)),
-    def_power: String(defenders.reduce((sum, unit) => sum + powerFromStats({
+    def_power: String(defenders.reduce((sum, unit) => sum + (unit.power ?? powerFromStats({
       hp: unit.max_hp, attack: unit.attack,
       physicalDefense: unit.defense, magicDefense: unit.defense
-    }, attributeTables), 0)),
+    }, attributeTables)), 0)),
     atk_brief_lineup: brief(selected.teamIndex, attackers),
     def_brief_lineup: brief(1, defenders)
   };
@@ -654,7 +698,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     assertStaminaAvailable(store.read());
     const reportBattleResult = reportBattle(codec, store.read(), mission, request, attributeTables);
     const { simulation, ...battle } = reportBattleResult;
-    const fightTid = Number(request.fight_tid ?? 0) || Number(missionBattleConfig(mission.missionId)?.mission.fight ?? 0);
+    const fightTid = Number(missionBattleConfig(mission.missionId)?.mission.fight ?? 0);
     const report = {
       id: String(++fightIds),
       tid: String(fightTid),
@@ -676,8 +720,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     pending = { stm, report, mission, result: simulation.result, committed: false, fightTid, rounds: simulation.overRound };
     lastReport = report;
     lastSettlement = null;
-    const config = missionBattleConfig(mission.missionId);
-    log({ event: 'mission_fight_started', missionId: mission.missionId, fightTid, reportType: report.type, previousMissionId: Number(current.mission_id ?? 0), settleType: request.stm_type, isAssistant: mission.isAssistant, bossTid: mission.bossTid, enemyFallback: config?.fallback ?? null, attackerCount: battle.atk_brief_lineup.team_list[0].fighter_list.length, defenderCount: battle.def_brief_lineup.team_list[0].fighter_list.length, actionCount: battle.action_list.length, rounds: simulation.overRound, result: simulation.result, pendingRevives: simulation.pendingRevives, committed: false, reportFinish: report.finish });
+    log({ event: 'mission_fight_started', missionId: mission.missionId, fightTid, reportType: report.type, previousMissionId: Number(current.mission_id ?? 0), settleType: request.stm_type, isAssistant: mission.isAssistant, bossTid: mission.bossTid, enemySource: 'Fight->Team->NpcAttr', attackerCount: battle.atk_brief_lineup.team_list[0].fighter_list.length, defenderCount: battle.def_brief_lineup.team_list[0].fighter_list.length, actionCount: battle.action_list.length, rounds: simulation.overRound, result: simulation.result, pendingRevives: simulation.pendingRevives, committed: false, reportFinish: report.finish });
     return { value: { stm, mission: previewValue }, data: codec.pack('pb_fight_response', { report, rsp: {}, stm }) };
   }
 

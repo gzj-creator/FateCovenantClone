@@ -1,6 +1,14 @@
 # 本机客户端兼容组件原型
 
-2026-11-11 活动时间修复：正式排期统一为 `目标服开服时间 + 表内相对时间`。当前二服开服为
+2026-11-15 有效规则入口：[最终基线R1](../docs/gameplay-operations/12-final-rule-baseline.md)、[297任务裁定](../docs/gameplay-operations/rules/final-rule-register.md)、[四项动态排期](../docs/gameplay-operations/rules/dynamic-schedule-decisions.md)，导航见[完整手册](../docs/gameplay-operations/README.md)。除代金券保留定制，其他规则目标1:1；缺原后端的分支已明确作复刻推定或具体限制，不能再沿旧建议另选规则。本轮只更新文档和离线工具，业务偏差仍按[问题与验收](../docs/gameplay-operations/09-defects-and-acceptance.md)分别处理；下方历史快照不作为当前实施/运营依据。
+
+本轮工作树已恢复普通主线原NPC身份/位置/基础属性、Guide奖励资格/时序/位图、名人堂32级且开服日≥2的条件和7201通知，并修空服首号创角前门禁。临时新库首章至2-1、合法败北和重登验证通过；NPC完整技能与1级弹窗实际入口仍待闭合。已有[原赠角离线修复工具](scripts/repair-guide-awards.mjs)及[败北战力离线候选](../agent/workflow/gameplay-rules-20261114/defeat-power/README.md)，尚未修复运行库、部署或安装APK。过程与本轮实际测试结果见[实施记录](../agent/workflow/gameplay-rules-20261114/implementation.md)。
+
+## 历史研发记录（按日期阅读，不作当前执行指令）
+
+下方“当前/最新/正式”、服务状态、测试数字及操作顺序均指各段当时快照；不能据此启停当前服务、操作设备或覆盖R1规则。
+
+2026-11-11 历史活动时间实现曾统一采用`目标服开服时间 + 表内相对时间`；其世界时间平移部分现已撤回，正式world_time按R1保留绝对日期。当时二服开服为
 `2026-11-11T00:00:00+08:00`，白绫 `1102010` 在开服第 16 天 `2026-11-26 05:00` 开启。
 新增全表审计命令 `npm run audit:activity-schedule`；详情见
 [活动相对时间修复](../agent/workflow/fixes/activity-relative-time-20261111.md)。
@@ -29,7 +37,7 @@
 
 2026-10-25本session更新：统一测试已为60项（原54+启动版本2+packet AES4）。v2隔离APK已真实采用本机地址、接受本地版本文件并完成SDK初始化，进入SDK登录页；账号登录、区服、网关与大厅仍未验收。最新实操及边界以 [agent/workflow](../agent/workflow/README.md) 为准，下文54项/unsigned为旧历史。新增启动服务 `startup-service.mjs` 和可选包加密工具 `game-packet-crypto.mjs`，后者尚未接入现有全false网关probe。设备实验已清理并恢复root=false。
 
-当前包含账号 SDK HTTP、区服列表 HTTP/Protobuf、TCP 分帧、严格本地握手profile与网关探针。统一测试54项通过（SDK13、区服9、分帧17、首帧观察3、握手5、网关探针7）；最新结果在 `analysis/experiments/private-server-20261025/p1/components-54-tests.txt`，[原39项记录](../analysis/reports/private-client-16448/local-components-validation.json) 保留为历史。实际 APK 尚未接入；本地profile并未证明 APK/IL2CPP握手行为相同，不能据此进入自有服游玩。
+2026-10-25早期包含账号SDK、区服、TCP分帧、本地握手profile与网关探针。该阶段54项组件通过（13/9/17/3/5/7），日志当时记为`analysis/experiments/private-server-20261025/p1/components-54-tests.txt`；更早39项不是当前验收。该阶段尚未接入APK，随后真实接入证据见[SDK登录记录](../agent/workflow/sdk-login/implementation.md)，不能混用两个阶段的状态。
 
 2026-10-25会话收尾：原APK在目标UID本机隔离下发来一条包名/版本匹配的unknown HTTP POST，观察器返回501，不是SDK/区服成功。所有本次监听器、reverse、设备规则和BPF pin已清理，root恢复关闭，应用保持停止。下一步使用已构建的unsigned隔离包，详见 [续接提示词](../promot/2026-10-25-personal-server-next-session.md)。
 
@@ -180,4 +188,4 @@ try {
 
 已验证的是本机组件行为和结构；未验证 APK 地址重定向、实际 SDK appId/appKey、重签与 appInfo 解密、客户端回包接受、网关握手、大厅初始化和玩法持久化。上一轮只分析本地副本；用户现已停止玩并授权16448可恢复运行实验，先备份并优先隔离测试副本，无需重复确认普通已授权操作。后续执行和验收顺序见 [续接计划](../docs/06-personal-server-handoff.md)。
 
-静态下一层已定位：login_sdk 命令号 909103，内部为 login PB，外层为 pb_c2s；响应外层为 pb_s2c，登录 data 走 ETF。当前组件尚未实现该业务链、ETF 回包或模块初始化。完整证据和后续顺序见 [接入评估](../analysis/notes/07-private-client-feasibility.md)。
+早期静态定位login_sdk命令909103，内部login PB、外层pb_c2s；响应pb_s2c中的登录data为ETF。当时组件尚未实现该链、ETF回包和模块初始化；后续接通证据见[SDK登录](../agent/workflow/sdk-login/implementation.md)和[初始化记录](../agent/workflow/login-initialization/implementation.md)，此段不作为当前未实现清单。

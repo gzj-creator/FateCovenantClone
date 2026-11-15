@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "table": "CampHaloTable",
+  "assetPath": "personal-server/assets/tables/CampHaloTable.data.json.gz",
+  "assetSha256": "eed7cacf7db14829d728b5a8cbb35801aaaa1b0e055da36938c69a48c0fc2c62",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/CampHaloTable.data.json.gz",
+      "sha256": "eed7cacf7db14829d728b5a8cbb35801aaaa1b0e055da36938c69a48c0fc2c62"
+    }
+  ],
+  "sourceMetadata": "9818008907406570000-CampHaloTable.data.lua.bin",
+"families":{
+"HeroCampHaloAttr":{"status":"decoded-rows","count":20,"externalReferenceCount":0,"rows":[
+{"tid":100,"camp":1,"active_num":4,"active_des":678542,"unlock_param":0,"unlock":null,"param":0,"attr":[[43,1500],[172,1000],[173,1000],[58,500]],"skill":[330001101],"sp_attr":[[43,300],[172,300],[173,300],[58,300]]},
+{"tid":101,"camp":1,"active_num":6,"active_des":678543,"unlock_param":400,"unlock":546626500101,"param":0,"attr":[[43,1000],[172,1000],[173,1000],[58,500]],"skill":[330001301],"sp_attr":[[43,0],[172,0],[173,0],[58,0]]},
+{"tid":102,"camp":1,"active_num":4,"active_des":678544,"unlock_param":800,"unlock":546626500102,"param":0,"attr":[[43,0],[172,0],[173,0],[58,0]],"skill":[330001201],"sp_attr":[[43,0],[172,0],[173,0],[58,0]]},
+{"tid":103,"camp":1,"active_num":6,"active_des":678545,"unlock_param":1500,"unlock":546626500103,"param":0,"attr":[[43,0],[172,0],[173,0],[58,0]],"skill":[330001401],"sp_attr":[[43,0],[172,0],[173,0],[58,0]]},
+{"tid":200,"camp":2,"active_num":4,"active_des":678542,"unlock_param":0,"unlock":null,"param":0,"attr":[[43,1500],[172,1000],[173,1000],[57,500]],"skill":[330002101],"sp_attr":[[43,300],[172,300],[173,300],[57,300]]},
+{"tid":201,"camp":2,"active_num":6,"active_des":678543,"unlock_param":400,"unlock":546626500201,"param":0,"attr":[[43,1000],[172,1000],[173,1000],[57,500]],"skill":[330002301],"sp_attr":[[43,0],[172,0],[173,0],[57,0]]},
+{"tid":202,"camp":2,"active_num":4,"active_des":678544,"unlock_param":800,"unlock":546626500202,"param":0,"attr":[[43,0],[172,0],[173,0],[57,0]],"skill":[330002201],"sp_attr":[[43,0],[172,0],[173,0],[57,0]]},
+{"tid":203,"camp":2,"active_num":6,"active_des":678545,"unlock_param":1500,"unlock":546626500203,"param":0,"attr":[[43,0],[172,0],[173,0],[57,0]],"skill":[330002401],"sp_attr":[[43,0],[172,0],[173,0],[57,0]]},
+{"tid":300,"camp":3,"active_num":4,"active_des":678542,"unlock_param":0,"unlock":null,"param":0,"attr":[[43,1500],[172,1000],[173,1000],[174,500]],"skill":[330003101],"sp_attr":[[43,300],[172,300],[173,300],[174,300]]},
+{"tid":301,"camp":3,"active_num":6,"active_des":678543,"unlock_param":400,"unlock":546626500301,"param":0,"attr":[[43,1000],[172,1000],[173,1000],[174,500]],"skill":[330003301],"sp_attr":[[43,0],[172,0],[173,0],[174,0]]},
+{"tid":302,"camp":3,"active_num":4,"active_des":678544,"unlock_param":800,"unlock":546626500302,"param":0,"attr":[[43,0],[172,0],[173,0],[174,0]],"skill":[330003201],"sp_attr":[[43,0],[172,0],[173,0],[174,0]]},
+{"tid":303,"camp":3,"active_num":6,"active_des":678545,"unlock_param":1500,"unlock":546626500303,"param":0,"attr":[[43,0],[172,0],[173,0],[174,0]],"skill":[330003401],"sp_attr":[[43,0],[172,0],[173,0],[174,0]]},
+{"tid":400,"camp":4,"active_num":4,"active_des":678542,"unlock_param":0,"unlock":null,"param":0,"attr":[[43,1500],[172,1000],[173,1000],[176,500]],"skill":[330004101],"sp_attr":[[43,300],[172,300],[173,300],[176,300]]},
+{"tid":401,"camp":4,"active_num":6,"active_des":678543,"unlock_param":400,"unlock":546626500401,"param":0,"attr":[[43,1000],[172,1000],[173,1000],[176,500]],"skill":[330004301],"sp_attr":[[43,0],[172,0],[173,0],[176,0]]},
+{"tid":402,"camp":4,"active_num":4,"active_des":678544,"unlock_param":800,"unlock":546626500402,"param":0,"attr":[[43,0],[172,0],[173,0],[176,0]],"skill":[330004201],"sp_attr":[[43,0],[172,0],[173,0],[176,0]]},
+{"tid":403,"camp":4,"active_num":6,"active_des":678545,"unlock_param":1500,"unlock":546626500403,"param":0,"attr":[[43,0],[172,0],[173,0],[176,0]],"skill":[330004401],"sp_attr":[[43,0],[172,0],[173,0],[176,0]]},
+{"tid":900,"camp":9,"active_num":4,"active_des":678542,"unlock_param":0,"unlock":null,"param":0,"attr":[[43,1500],[172,1000],[173,1000],[176,500]],"skill":[330004101],"sp_attr":[[43,300],[172,300],[173,300],[176,300]]},
+{"tid":901,"camp":9,"active_num":6,"active_des":678543,"unlock_param":400,"unlock":546626500901,"param":0,"attr":[[43,1000],[172,1000],[173,1000],[176,500]],"skill":[330004301],"sp_attr":[[43,0],[172,0],[173,0],[176,0]]},
+{"tid":902,"camp":9,"active_num":4,"active_des":678544,"unlock_param":800,"unlock":546626500902,"param":0,"attr":[[43,0],[172,0],[173,0],[176,0]],"skill":[330004201],"sp_attr":[[43,0],[172,0],[173,0],[176,0]]},
+{"tid":903,"camp":9,"active_num":6,"active_des":678545,"unlock_param":1500,"unlock":546626500903,"param":0,"attr":[[43,0],[172,0],[173,0],[176,0]],"skill":[330004401],"sp_attr":[[43,0],[172,0],[173,0],[176,0]]}
+]},
+"HeroCampHalo":{"status":"decoded-rows","count":5,"externalReferenceCount":0,"rows":[
+{"tid":1},
+{"tid":2},
+{"tid":3},
+{"tid":4},
+{"tid":9}
+]}
+}
+}

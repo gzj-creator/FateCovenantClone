@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "table": "OnesRewardTable",
+  "assetPath": "personal-server/assets/tables/OnesRewardTable.data.lua.json.gz",
+  "assetSha256": "cd26e368335f5911a52c38a741bad73a6c10dbd0a141b502223cde86047ac7b6",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/OnesRewardTable.data.lua.json.gz",
+      "sha256": "cd26e368335f5911a52c38a741bad73a6c10dbd0a141b502223cde86047ac7b6"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"OnesReward":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"award":[[20014100,15],[20024100,15],[20034100,15],[20044100,15],[20054100,15],[20064100,15],[20074100,15]]}
+]}
+}
+}

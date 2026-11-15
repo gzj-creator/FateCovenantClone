@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "table": "FriendTable",
+  "assetPath": "personal-server/assets/tables/FriendTable.data.lua.json.gz",
+  "assetSha256": "87429568757c5c31e88858a50f1eae18088cfb471cfefeea2be56eb785d86f56",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/FriendTable.data.lua.json.gz",
+      "sha256": "87429568757c5c31e88858a50f1eae18088cfb471cfefeea2be56eb785d86f56"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Limit":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"lv_range":[1,49],"daily_present_rewards":[[401900,300]],"max_friend_count":60,"tid":1,"max_receive_friendship_count":30},
+{"lv_range":[50,59],"daily_present_rewards":[[401900,400]],"max_friend_count":80,"tid":2,"max_receive_friendship_count":40},
+{"lv_range":[60,69],"daily_present_rewards":[[401900,500]],"max_friend_count":90,"tid":3,"max_receive_friendship_count":50},
+{"lv_range":[70,999],"daily_present_rewards":[[401900,600]],"max_friend_count":100,"tid":4,"max_receive_friendship_count":60}
+]},
+"Param":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"recommend_max_rank":10,"rev_rewards":[],"present_rewards":[],"friendship_exchange_ratio":100,"accuss_count":300,"recommend_count":5,"recommend_lv_limit":10,"max_private_count":10,"max_present_friendship_count":20,"max_show_apply_count":99,"max_black_list_count":100,"max_apply_count":30,"recommend_fight_life":604800,"tid":1,"recommend_reset_time":5,"max_search_count":5,"present_exchange_ratio":10}
+]},
+"Recommend":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"name":19999,"imgBg":"img_hy_biaoqianlan.png"},
+{"tid":2,"name":19996,"imgBg":"img_hy_biaoqianlan.png"},
+{"tid":3,"name":19997,"imgBg":"img_hy_biaoqianhong.png"},
+{"tid":4,"name":19998,"imgBg":"img_hy_biaoqianhuang.png"}
+]}
+}
+}

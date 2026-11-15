@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "table": "BattleTriMatchLineupTable",
+  "assetPath": "personal-server/assets/tables/BattleTriMatchLineupTable.data.lua.json.gz",
+  "assetSha256": "2f316adb59fdb4ca48cc9d7117ad0041856d13ad898ef8163c74403a9f639204",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/BattleTriMatchLineupTable.data.lua.json.gz",
+      "sha256": "2f316adb59fdb4ca48cc9d7117ad0041856d13ad898ef8163c74403a9f639204"
+    }
+  ],
+  "sourceMetadata": "5513695273515761000-BattleTriMatchLineupTable.data.lua.bin",
+"families":{
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"max_preset":20,"preset_min_length":1,"preset_max_length":6}
+]},
+"Suggest":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"suggest_hero":[10014600,10024600,10034600,10134600],"show_condition":148081100001,"title":7900042,"des":7900043,"sort":1},
+{"tid":2,"suggest_hero":[10044600,10054600,10064600,10134600],"show_condition":148081100001,"title":7900044,"des":7900048,"sort":2},
+{"tid":3,"suggest_hero":[10074600,10084600,10094600,10134600],"show_condition":148081100001,"title":7900053,"des":7900052,"sort":3},
+{"tid":4,"suggest_hero":[10104600,10114600,10124600,10134600],"show_condition":148081100001,"title":7900054,"des":7900055,"sort":4}
+]},
+"Type":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1},
+{"tid":2},
+{"tid":3}
+]}
+}
+}

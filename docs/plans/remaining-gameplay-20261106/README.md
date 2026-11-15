@@ -1,8 +1,11 @@
 # 未实现玩法与活动：完整实施计划
 
+<!-- r1-rule-status -->
+> 历史任务/实施快照：本页不是现行规则或实时状态。2026-11-15起规划按[统一路线](../../gameplay-operations/11-project-roadmap.md)，规则按[最终R1基线](../../gameplay-operations/12-final-rule-baseline.md)及[297任务裁定](../../gameplay-operations/rules/final-rule-register.md)。旧卡号、证据和当时验证保留；不能继承旧完成状态或以旧源码建议覆盖R1。
+
 核对日期：2026-11-06。代码基线：main@0bf8e81。范围：personal-server 与隔离 APK；Unity 路线已取消。本次只生成计划，未改业务代码、运行数据库、实时服务或模拟器。
 
-这是后续 agent 的统一待办入口。按当前源码重新核对，没有沿用 2026-10-31 清单的过时完成状态。全部可识别的未路由命令、明确拒绝、空响应、已实现系统的已知剩余分支，以及活动均已分配任务。
+这是2026-11-06历史任务卡索引，现行入口已迁至上方R1与统一路线。按当前源码重新核对，没有沿用 2026-10-31 清单的过时完成状态。全部可识别的未路由命令、明确拒绝、空响应、已实现系统的已知剩余分支，以及活动均已分配任务。
 
 ## 当前盘点
 
@@ -51,7 +54,7 @@
 ## 证据与更新方式
 
 - 源码判定：personal-server/game/gateway.mjs 及所有实际调用的 supports(type)，源文件 SHA256 保存在 inventory.json。
-- 玩法与协议证据：agent/workflow/interface-catalog/static-interfaces.json、各模块 implementation.md；旧文档冲突时以当前源码与更新日期为准。
+- 玩法与协议证据：agent/workflow/interface-catalog/static-interfaces.json、各模块 implementation.md；当前源码仅用于确认实现现状；规则冲突统一按最终R1和指定版本原证据处理。
 - 技能现状：agent/workflow/skill-system-validation/battle-integration-20261106.md 与当前 skill-database.json。
 - 本次验证是静态清单的一一覆盖、归属唯一、路由集合及源摘要校验；没有为了写计划重复运行全量业务测试。
 - 本目录为 2026-11-06 快照。后续实现后由总控更新任务状态与清单，不把已变更源码继续套用旧计数。生成脚本 analysis/tools/build-gameplay-plan-20261106.mjs 的路由和附加缺口为人工核对快照，不能在代码更新后不审查就当自动最新审计。

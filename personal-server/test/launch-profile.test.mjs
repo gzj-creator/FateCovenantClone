@@ -248,7 +248,7 @@ test('gateway seeding binds the configured realm, role and launch profile', asyn
   assert.equal(decodeActivity(new Map(state.modules.value).get(ACTIVITY_LOGIN_MODULE_ID)).act_custom_list.length, 96);
 });
 
-test('gateway login exposes white-ribbon at server day 16 with the same five-day window in modules 92 and 183', async t => {
+test('explicit replay exposes white-ribbon at server day 16 with the same five-day window in modules 92 and 183', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-white-ribbon-day16-'));
   const at = PUBLIC_SERVER_OPENED_AT + 15 * 86400 + 6 * 3600;
   const game = createLocalGame({
@@ -261,6 +261,7 @@ test('gateway login exposes white-ribbon at server day 16 with the same five-day
     activityWindowAnchor: ANCHOR,
     launchProfileId: 'white-ribbon-day16',
     activityMode: 'schedule',
+    activityWindowPolicy: 'rebase',
     now: () => at * 1000
   });
   t.after(async () => { await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });

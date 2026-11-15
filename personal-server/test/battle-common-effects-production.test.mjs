@@ -111,7 +111,13 @@ function assertLifestealFromReport(report) {
   assert.ok(hits.length >= 1);
   const heals = healPackets(actions, LIFESTEAL_FIGHTER);
   assert.equal(heals.length, 1, 'the life-steal is reported as one TID_PROMPT_HEAL packet');
-  assert.equal(heals[0].value, Math.floor(ultimateDamage * 0.1));
+  const maxHp = Number(report.fighter_list.find(unit => Number(unit.id) === LIFESTEAL_FIGHTER).max_hp);
+  const missingHp = maxHp - heals[0].oldHp;
+  assert.ok(missingHp > 0, 'the chosen fighter must need healing');
+  // Original fixed NPC templates can leave less missing HP than the former
+  // player-scaled enemies. A recovery packet carries actual healing, capped
+  // by the target's missing HP, rather than the uncapped life-steal amount.
+  assert.equal(heals[0].value, Math.min(missingHp, Math.floor(ultimateDamage * 0.1)));
   assert.equal(heals[0].hp - heals[0].oldHp, heals[0].value);
   return actions;
 }

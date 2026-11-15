@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "table": "RechargeRebateResetTable",
+  "assetPath": "personal-server/assets/tables/7806056895365336000-RechargeRebateResetTable.data.json.gz",
+  "assetSha256": "b5ed43b21c7cca0fbf301376ece2415711ffffdc38275cecfc69eafa8a2436a5",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/7806056895365336000-RechargeRebateResetTable.data.json.gz",
+      "sha256": "b5ed43b21c7cca0fbf301376ece2415711ffffdc38275cecfc69eafa8a2436a5"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Act":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1,"daily_award":[[101500,100],[101500,100],[101500,100]],"preview_award_item":101500,"preview_award_num":100,"fun_jump":83},
+{"tid":2,"daily_award":[[101500,100],[101500,100],[101500,100]],"preview_award_item":101500,"preview_award_num":100,"fun_jump":83},
+{"tid":3,"daily_award":[[101500,10],[101500,10],[101500,10]],"preview_award_item":101500,"preview_award_num":10,"fun_jump":83}
+]}
+}
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "table": "GameTable",
+  "assetPath": "personal-server/assets/tables/GameTable.data.lua.json.gz",
+  "assetSha256": "fd7cb270cdff9c85142ae922342c6c2abe7b8129667bf34caf732ee64549a109",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/GameTable.data.lua.json.gz",
+      "sha256": "fd7cb270cdff9c85142ae922342c6c2abe7b8129667bf34caf732ee64549a109"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"OverseaRegion":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"region_tag":"","tid":1,"currency":"￥"},
+{"region_tag":"cht","tid":2,"currency":"$"},
+{"region_tag":"kr","tid":3,"currency":"₩"}
+]},
+"Base":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"secret_id":"9836dda6fd2ff6173e527e296fd5c985","app_id":"5dc14b4cc33e5","sign_to_platform":"5bce882efc3001bf1069b2fa4d4e2c42","business_id":"fa46bacd6cdd31e094848869b17d167e","tid":1,"version":"v5.3","secret_key":"98075cf54e54ee12adf3465e34a076f4"}
+]}
+}
+}

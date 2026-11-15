@@ -1,5 +1,8 @@
 # 块 A2 交付记录：战斗 PVP、竞技、锦标赛与三消
 
+<!-- r1-rule-status -->
+> 历史任务/实施快照：本页不是现行规则或实时状态。2026-11-15起规划按[统一路线](../../gameplay-operations/11-project-roadmap.md)，规则按[最终R1基线](../../gameplay-operations/12-final-rule-baseline.md)及[297任务裁定](../../gameplay-operations/rules/final-rule-register.md)。旧卡号、证据和当时验证保留；不能继承旧完成状态或以旧源码建议覆盖R1。
+
 2026-11-08 派发并完成。范围是[工作块总览](15-three-work-blocks.md)中的块 A2（#18–#33），共 16 张任务卡、147 条未路由命令。
 本块按“实现即提交、不验收”的授权执行：子 agent 只做实现、`node --check` 与 `git diff --check`，不跑 `npm test`、不写真实 TCP/SQLite 证据、不启停服务、不操作设备。全部验收与修复转交验收 agent。
 

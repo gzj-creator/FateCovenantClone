@@ -1,81 +1,55 @@
 # 项目文档索引
 
-当前范围为个人服务器与隔离客户端 APK，Unity 路线已取消。2026-11-06 的 [未实现玩法与活动完整计划](plans/remaining-gameplay-20261106/README.md) 是后续 agent 实施入口，包含全部任务卡、依赖、接口、验收标准和派发提示词。
+更新：2026-11-15。当前范围是个人服务器`personal-server/`与隔离客户端APK`apk/`，Unity自制游戏路线已取消。
 
-下方为历史文档索引与旧开发状态；涉及 Unity 的目标、设备约定与下一步不再作为当前执行指令。
+**当前总要求：除代金券系统保留定制外，其他玩法和运营规则按原游戏1:1还原。** 已有本地兼容规则、明确拒绝和接口路由都不能当作还原完成。
 
-> 项目：FateCovenantClone
-> 版本：0.2
-> 状态：R0–R2 原型源码已交付，独立 C# 测试通过，Unity 与 Android 待验收
-> 更新日期：2026-10-25
+## 当前玩法与运营手册
 
-## 文档地图
+从[最终规则基线R1](gameplay-operations/12-final-rule-baseline.md)进入，并按[297任务唯一裁定](gameplay-operations/rules/final-rule-register.md)实施；完整导航见[玩法与运营总目录](gameplay-operations/README.md)。手册共12章，覆盖玩法、运营、规划与本次统一裁定。原事实、复刻推定、当前实现和验收分开，旧冲突规则已撤回。
 
-| 文档 | 内容 | 何时阅读 |
-| --- | --- | --- |
-| [01-background-and-goals.md](01-background-and-goals.md) | 项目背景、产品目标、范围、原则、成功标准和风险 | 开始设计或判断需求优先级时 |
-| [02-implementation-plan.md](02-implementation-plan.md) | 技术路线、侦察方法、Unity 架构、里程碑、测试和交付标准 | 每次进入开发或评审阶段时 |
-| [03-first-slice-spec.md](03-first-slice-spec.md) | 3D 小队战斗的首版规则、表现、镜头、特效、数据契约和验收标准 | 开始实现战斗切片时 |
-| [04-system-roadmap.md](04-system-roadmap.md) | 完整系统范围、成品号取证、图鉴/技能/养成/天极/法阵路线和验收 | 确定接下来实现什么、检查整体进度时 |
-| [05-development-status.md](05-development-status.md) | 当前源码、验证证据、工具链限制、剩余工作与准确续接命令 | 每次续接开发、检查哪些内容实际通过时先读 |
-| [09-system-completion-plan.md](09-system-completion-plan.md) | 图鉴剩余操作及团员名册、法阵、星魂卷轴、训练、船舱、时空神殿的分工与整体验收 | 分派模块、合并实现或核对后期系统进度时 |
-| [10-store-product-flow-remediation-plan.md](10-store-product-flow-remediation-plan.md) | 商城限购、返利、通行证、表情包宝箱与主线任务奖励修复计划及验收状态 | 处理本轮商城/任务链路时 |
+详细规则已另分为[系统规则册](gameplay-operations/system-rulebooks/README.md)与[活动规则册](gameplay-operations/activity-rulebooks/README.md)，配套[统一项目规划](gameplay-operations/11-project-roadmap.md)、[逐活动配置](gameplay-operations/rules/activities.md)、[开服前90天排期参数](gameplay-operations/rules/activity-calendar.md)、[全部商品价奖限购](gameplay-operations/rules/products.md)、[奖池与保底参数](gameplay-operations/rules/draw-pools.md)及[完整规则数值](gameplay-operations/rules/tables/README.md)。原表值、现有兼容行为、原版未恢复项分别记录，不把文档覆盖数写成玩法还原率。
 
-## 项目一句话定义
+| 直接入口 | 内容 |
+| --- | --- |
+| [四项动态排期已定](gameplay-operations/rules/dynamic-schedule-decisions.md) | 175001父期窗口；461三项day29/79/90首期、阶段、互斥与无隐式循环 |
+| [原版还原标准](gameplay-operations/01-fidelity-and-evidence.md) | 版本、证据、1:1范围、代金券例外与完成口径 |
+| [新手与旅途](gameplay-operations/02-onboarding-and-journey.md) | 赠角、蜜雪儿、2-1、剧情、体力、功能开放 |
+| [运营执行手册](gameplay-operations/08-operations-runbook.md) | 开服/巡检、管理接口、活动、对账/补偿、发布、备份和回滚 |
+| [问题与验收](gameplay-operations/09-defects-and-acceptance.md) | 用户反馈与其他偏差、修复依赖和可复现验收场景 |
+| [全部模块](gameplay-operations/appendices/modules.md) / [全部命令](gameplay-operations/appendices/commands.md) | 297个协议分组、1407条C2S的当前路由与证据缺口 |
+| [引导奖励](gameplay-operations/appendices/guide-awards.md) / [前四章关卡](gameplay-operations/appendices/early-missions.md) | 原客户端提取值与实际战斗数据关系 |
+| [功能开放](gameplay-operations/appendices/feature-unlocks.md) | 523条条件配置与未恢复项 |
+| [原时间与阶段算法](gameplay-operations/activity-rulebooks/time-and-stages.md) / [逐活动阶段](gameplay-operations/rules/activity-phases.md) | 两套原算法、下发覆盖、逐条起止与不能静态确定的阶段 |
+| [证据快照](gameplay-operations/appendices/evidence-manifest.json) | 来源哈希、代码基线、统计口径 |
 
-用 Unity 6 制作一款可在 Android 上独立运行的 3D 二次元小队战斗游戏原型，复刻《命运圣契》中经实际试玩确认的核心体验，而不是复制其完整商业内容或服务器。
+文档已记录的事实不代表已部署修复。首章BOSS、赠角、2-1、败北战力与1级名人堂仍按问题清单分别验收；不能以历史测试数字代替本轮真实客户端结果。
 
-## 当前事实
+## 实施、发布与资产
 
-- 目标平台：Android。
-- 运行方式：MuMu 模拟器，后续可构建独立 APK。
-- MuMu ADB 设备序列号：`127.0.0.1:16416`。
-- 游戏包名：`com.woobest.mysq.yofun.mumu`，版本 `1.55.090365`。
-- 设备：Android 12 / API 32，屏幕 `1440x2560`，主 ABI `x86_64`。
-- 目标类型：3D 小队自动战斗与角色收集；已有回合标识和技能演出证据，精确调度及公式待验证。
-- 本项目计划本地独立运行；原游戏登录及服务器依赖尚未完整验证。
-- 工作目录：`F:\projects\FateCovenantClone`。
-- Unity 工程：`F:\projects\FateCovenantClone\unity\FateCovenantClone`，已写入版本/包清单、战斗/本地循环/程序化表现及编辑器自动化源码；固定 Unity `6000.0.85f1` / URP `17.0.4`，Boot/Main/Battle 场景由 Setup 生成，尚未经真实编辑器验证。
-- 分析资料目录：`F:\projects\FateCovenantClone\analysis`。
-- 项目记忆：`AGENTS.md`。
-- 设备基线：[01-device.md](../analysis/notes/01-device.md)。
+| 入口 | 用途与时间边界 |
+| --- | --- |
+| [2026-11-15统一基线与冲突清理](../agent/workflow/rule-baseline-20261115/implementation.md) | 四项动态裁定、297任务决定、原证据/推定分列、历史撤回与独立边界校验 |
+| [2026-11-14取证与文档记录](../agent/workflow/gameplay-rules-20261114/implementation.md) | 本轮关键纠错、生成命令、验证与遗留 |
+| [详细规则文档交付](../agent/workflow/detailed-rules-20261114/implementation.md) | 297组/1407命令、158活动族、完整数值与90天日历的来源、生成和校验 |
+| [个人服务器README](../personal-server/README.md) | 开发命令与历史联调记录，正文按日期阅读 |
+| [全部剩余玩法任务计划](plans/remaining-gameplay-20261106/README.md) | 2026-11-06任务卡与接口，不当当前完成状态 |
+| [任务实施记录](plans/remaining-gameplay-20261106/execution-status.md) | 各批交付和缺口，区分服务端与APK验收 |
+| [活动修复清单](08-activity-fix-checklist.md) | 专项历史清单与证据 |
+| [系统补全计划](09-system-completion-plan.md) | 图鉴/团员名册等专项历史计划 |
+| [商城与任务修复计划](10-store-product-flow-remediation-plan.md) | 商品、自选、限购和任务专项 |
+| [发布记录](../agent/workflow/public-deployment-20261110/20261114-hall-freeze-hotfix.md) | 2026-11-14大厅协议热修；历史PID/路径不能当实时状态 |
+| [APK快照记录](../apk/README.md) | 本地包版本、哈希、备份、验收与前提；APK不入Git |
 
-## 文档优先级
+## 历史Unity资料
 
-发生冲突时按以下顺序判断：
+以下只作历史背景，不能作为当前开发/设备/部署指令。相关Unity目录已取消，不再要求安装编辑器或继续Unity构建。
 
-1. 用户的最新明确要求。
-2. 实际试玩和可复现证据。
-3. 本目录内的项目文档。
-4. 对原游戏的主观印象或网络资料。
+- [背景与目标](01-background-and-goals.md)
+- [旧实施方案](02-implementation-plan.md)
+- [旧纵向切片](03-first-slice-spec.md)
+- [旧系统路线](04-system-roadmap.md)
+- [旧开发状态](05-development-status.md)
+- [个人服务器早期交接](06-personal-server-handoff.md)
 
-## 更新规则
-
-- 每次确认新的游戏机制，更新背景文档中的“已确认事实”和“待验证假设”。
-- 每次里程碑范围变化，更新实施方案中的范围、退出标准和风险。
-- 不把猜测写成定论。未经试玩或日志验证的内容必须标记为“假设”。
-- 重要决策记录在实施方案的“决策记录”中，包含日期、选择和理由。
-
-## 下一步入口
-
-先读 [05-development-status.md](05-development-status.md)。当前已通过战斗 37 项断言、本地循环 8 个场景及基于既有 Unity 2022 Player API 的三个运行程序集分开编译；这些不代表 Unity 6、运行画面或 APK 通过。独立关卡页和 RuntimeSmoke 源码已加入，Smoke 尚未运行。程序化关节角色与动作仍是占位表现，正式美术未完成。
-
-下一步取得并核实匹配的 Unity 编辑器与 Android 模块，依次执行 `tools/unity-project.ps1` 的 Discover、Setup、Test、Smoke，查看报告和截图，再 BuildAndroid 并安装 MuMu 跑完整闭环。安装入口为 `tools/install-unity-toolchain.ps1`；不等待成品号推进现有工程。
-
-完整开发路线以 [04-system-roadmap.md](04-system-roadmap.md) 为入口：先完成 R0 至 R2 的可玩 APK，再扩展完整技能、养成、天极角色和法阵。专属武器延期；成品号用于后续功能验证，不阻塞工程与基础战斗开发。
-
-ADB 连接、游戏包识别、APK 拉取、引擎识别和首段正常战斗录像已经完成。
-战斗观察见 `analysis/notes/02-battle-evidence.md`，静态清单见 `analysis/notes/03-static-inventory.md`。
-
-新手引导、功能解锁和七日指引观察见 `analysis/notes/04-onboarding-system.md`。
-
-启动公告、登录入口、加载、大厅和后续界面流程，以及最新续接位置，见
-[05-startup-and-ui-flow.md](../analysis/notes/05-startup-and-ui-flow.md)。
-
-2026-10-25 已补录圣器获得、第一槽上阵与星火激活，当前停在第 3 章第 5 关地图；
-证据与旧会话摘要纠错见 [06-relic-and-star.md](../analysis/notes/06-relic-and-star.md)。
-
-纯 C# 战斗内核位于 `unity/FateCovenantClone/Assets/Scripts/Battle/Domain/`，
-可用 `tools/run-battle-core-tests.ps1` 编译和验证，不依赖 Unity 编辑器。
-图鉴、编队、快照、奖励与存档逻辑位于 `Assets/Scripts/Game/`，可用 `tools/run-game-core-tests.ps1` 验证。两个入口的最新日志分别在 `analysis/test-runs/battle-core/last-run.txt` 与 `analysis/test-runs/game-core/last-run.txt`。
-运行程序集的 API 兼容检查入口为 `tools/check-unity-runtime-compile.ps1 -ManagedPath <真实 Player 的 Managed 目录>`，当前引用来自本机 Unity `2022.3.62f3c1` Player；报告在 `analysis/test-runs/runtime-compile/report.json`。它不编译 Editor 源码，也不替代匹配 Unity 6 的实际验证。资产来源清单见开发状态文档。
+规则更新优先使用用户最新要求、同版原客户端配置与消费者脚本、已保存实测证据。原证据未知的事实不改写，执行动作引用R1唯一决定；新证据改变推定必须升级规则版本，不能另选本地数值。历史计划及Unity记录只作证据/过程背景，不是有效运营规则。

@@ -1,4 +1,4 @@
-import { naturalDay, serverDay } from './time.mjs';
+import { DEFAULT_RESET_HOUR, gameDay, serverDay } from './time.mjs';
 import { activityClientStageId } from './activity-online-sync.mjs';
 
 const DAY_SECONDS = 86400;
@@ -12,8 +12,12 @@ function seconds(value) {
   return number > 100000000000 ? Math.floor(number / 1000) : Math.floor(number);
 }
 
-export function dayZero(value) {
-  return naturalDay(seconds(value));
+export function dayZero(value, options = {}) {
+  const resetHour = Number(options.resetHour ?? DEFAULT_RESET_HOUR);
+  if (!Number.isInteger(resetHour) || resetHour < 0 || resetHour > 23) {
+    throw new Error('resetHour must be an integer between 0 and 23');
+  }
+  return gameDay(seconds(value), options) - resetHour * 3600;
 }
 
 export function serverDayNumber(serverOpenedAt, at) {
@@ -110,8 +114,9 @@ function sameAllOpenActivityBatch(left, right) {
     && (Number(left.server_day_limit) || 0) === (Number(right.server_day_limit) || 0);
 }
 
-export function activityWindow(config, serverOpenedAt, activityReferenceOpenedAt = null) {
+export function activityWindow(config, serverOpenedAt, activityReferenceOpenedAt = null, windowPolicy = 'absolute') {
   if (!config) return null;
+  if (!['absolute', 'rebase'].includes(windowPolicy)) throw new Error(`Unsupported activity window policy: ${windowPolicy}`);
   const durationDays = activityDurationDays(config);
   const endTime = Number(config.end_time) || 0;
   const worldTime = seconds(config.world_time);
@@ -119,16 +124,19 @@ export function activityWindow(config, serverOpenedAt, activityReferenceOpenedAt
   const relativeStart = Number(config.refer_start_time ?? config.server_start_time ?? 0);
 
   if (worldTime > 0) {
-    const configuredEnd = dayZero(dayZero(worldTime) + durationDays * DAY_SECONDS) + endTime;
-    const referenceOpenedAt = seconds(activityReferenceOpenedAt);
-    const targetOpenedAt = seconds(serverOpenedAt);
-    if (referenceOpenedAt > 0 && targetOpenedAt > 0) {
-      const offset = targetOpenedAt - referenceOpenedAt;
-      return {
-        start: worldTime + offset,
-        end: configuredEnd + offset,
-        kind: 'server-relative-world'
-      };
+    const worldDayBegin = gameDay(worldTime);
+    const configuredEnd = dayZero(worldDayBegin + durationDays * DAY_SECONDS) + endTime;
+    if (windowPolicy === 'rebase') {
+      const referenceOpenedAt = seconds(activityReferenceOpenedAt);
+      const targetOpenedAt = seconds(serverOpenedAt);
+      if (referenceOpenedAt > 0 && targetOpenedAt > 0) {
+        const offset = targetOpenedAt - referenceOpenedAt;
+        return {
+          start: worldTime + offset,
+          end: configuredEnd + offset,
+          kind: 'server-relative-world'
+        };
+      }
     }
     return {
       start: worldTime,
@@ -139,19 +147,19 @@ export function activityWindow(config, serverOpenedAt, activityReferenceOpenedAt
 
   if (relativeDay > 0) {
     if (!seconds(serverOpenedAt)) return null;
-    const firstDay = dayZero(serverOpenedAt) + (relativeDay - 1) * DAY_SECONDS;
+    const firstDayBegin = gameDay(serverOpenedAt) + (relativeDay - 1) * DAY_SECONDS;
     return {
-      start: firstDay + relativeStart,
-      end: dayZero(firstDay + durationDays * DAY_SECONDS) + endTime,
+      start: dayZero(firstDayBegin) + relativeStart,
+      end: dayZero(firstDayBegin + durationDays * DAY_SECONDS) + endTime,
       kind: 'server-day'
     };
   }
 
   if (relativeStart > 0 && seconds(serverOpenedAt)) {
-    const firstDay = dayZero(serverOpenedAt);
+    const firstDayBegin = gameDay(serverOpenedAt);
     return {
-      start: firstDay + relativeStart,
-      end: dayZero(firstDay + durationDays * DAY_SECONDS) + endTime,
+      start: dayZero(firstDayBegin) + relativeStart,
+      end: dayZero(firstDayBegin + durationDays * DAY_SECONDS) + endTime,
       kind: 'server-time'
     };
   }
@@ -165,7 +173,9 @@ export function createActivityCalendar({
   activityReferenceOpenedAt = null,
   activityWindowAnchor = null,
   activityWindowsAlreadyRebased = false,
+  windowPolicy = 'absolute',
   mode = 'schedule',
+  explicitOccurrences = [],
   currentFishingActivityId,
   now = Date.now
 }) {
@@ -173,12 +183,61 @@ export function createActivityCalendar({
   if (!openedAt) throw new Error('A valid server opening time is required');
   const referenceOpenedAt = seconds(activityReferenceOpenedAt);
   const storedWindowAnchor = seconds(activityWindowAnchor) || referenceOpenedAt;
+  if (!['absolute', 'rebase'].includes(windowPolicy)) throw new Error(`Unsupported activity window policy: ${windowPolicy}`);
   if (typeof activityWindowsAlreadyRebased !== 'boolean') {
     throw new Error('activityWindowsAlreadyRebased must be a boolean');
   }
   const normalizedCustomWindows = new WeakSet();
   if (!['schedule', 'all-open'].includes(mode)) throw new Error(`Unsupported activity calendar mode: ${mode}`);
+  if (!Array.isArray(explicitOccurrences)) throw new Error('explicitOccurrences must be an array');
   const currentSeconds = () => seconds(now());
+  const explicitById = new Map();
+  const explicitByKey = new Set();
+  for (const occurrence of explicitOccurrences) {
+    const actId = Number(occurrence?.actId);
+    const start = seconds(occurrence?.start);
+    const end = seconds(occurrence?.end);
+    const occurrenceId = String(occurrence?.occurrenceId ?? '').trim();
+    const instanceKey = String(occurrence?.instanceKey ?? '').trim();
+    if (!Number.isSafeInteger(actId) || actId <= 0) throw new Error('Explicit occurrence actId is invalid');
+    if (!(start > 0 && end > start)) throw new Error(`Explicit occurrence ${occurrenceId || actId} has an invalid window`);
+    if (!occurrenceId || !instanceKey) throw new Error(`Explicit occurrence ${actId} is missing its identity`);
+    if (explicitByKey.has(instanceKey)) throw new Error(`Duplicate explicit occurrence key ${instanceKey}`);
+    explicitByKey.add(instanceKey);
+    const normalized = Object.freeze({
+      ...structuredClone(occurrence),
+      actId,
+      start,
+      end,
+      occurrenceId,
+      instanceKey,
+      explicitOccurrence: true,
+      kind: 'explicit-occurrence',
+      stages: Object.freeze((occurrence.stages ?? [{ stageId: 50, start, end, source: 'explicit-whole-window' }])
+        .map(stage => Object.freeze({
+          ...stage,
+          stageId: Number(stage.stageId),
+          start: seconds(stage.start),
+          end: seconds(stage.end)
+        }))
+        .filter(stage => stage.stageId > 0 && stage.end > stage.start))
+    });
+    if (!normalized.stages.length || normalized.stages.at(-1).end !== end) {
+      throw new Error(`Explicit occurrence ${occurrenceId} stages do not close on the overall end`);
+    }
+    const list = explicitById.get(actId) ?? [];
+    list.push(normalized);
+    explicitById.set(actId, list);
+  }
+  for (const list of explicitById.values()) list.sort((left, right) => left.start - right.start || left.instanceKey.localeCompare(right.instanceKey));
+  const explicitOccurrenceFor = (actId, at = currentSeconds()) => {
+    const list = explicitById.get(Number(actId));
+    if (!list?.length) return null;
+    const current = seconds(at);
+    return list.find(occurrence => current >= occurrence.start && current < occurrence.end)
+      ?? [...list].reverse().find(occurrence => occurrence.start <= current)
+      ?? list[0];
+  };
   const configuredFishingIds = () => {
     const result = [];
     for (let actId = FISHING_ACT_FIRST; actId <= FISHING_ACT_LAST; actId++) {
@@ -199,6 +258,7 @@ export function createActivityCalendar({
   function isScheduledActivity(actId, stateData, activity, at) {
     const id = Number(actId);
     if (!Number.isSafeInteger(id) || id <= 0) return false;
+    if (at < openedAt) return false;
     if (stateData && Number(stateData.cur_state_id ?? 50) !== 50) return false;
 
     const config = activityConfig(tables, id);
@@ -211,8 +271,10 @@ export function createActivityCalendar({
     return Number(stateData?.cur_state_id ?? 50) === 50;
   }
 
-  function scheduledWindow(actId, activity) {
+  function scheduledWindow(actId, activity, at = currentSeconds()) {
     const id = Number(actId);
+    const explicit = explicitOccurrenceFor(id, at);
+    if (explicit) return explicit;
     const config = activityConfig(tables, id);
     const custom = customActivity(activity, id);
     let customWindow = null;
@@ -221,17 +283,23 @@ export function createActivityCalendar({
       const end = Number(custom.end_time) || 0;
       if (start > 0 && end > start) {
         const alreadyRebased = activityWindowsAlreadyRebased || normalizedCustomWindows.has(custom);
-        const adjustment = alreadyRebased ? 0 : openedAt - storedWindowAnchor;
+        const adjustment = windowPolicy === 'rebase' && !alreadyRebased ? openedAt - storedWindowAnchor : 0;
         customWindow = {
           start: start + adjustment,
           end: end + adjustment,
-          kind: alreadyRebased ? 'server-relative-custom' : 'rebase-custom'
+          kind: windowPolicy === 'absolute' ? 'custom' : alreadyRebased ? 'server-relative-custom' : 'rebase-custom'
         };
       }
     }
-    if (config && usesLegacyCustomWindow(config) && customWindow) return customWindow;
+    // A captured custom row belongs to the server instance that produced it.
+    // In formal absolute scheduling it must not replace a relative table
+    // window or keep an old legacy activity alive. Explicit replay is allowed
+    // to preserve that captured instance through the rebase policy.
+    if (config && usesLegacyCustomWindow(config) && customWindow && windowPolicy === 'rebase') {
+      return customWindow;
+    }
     if (config) {
-      const window = activityWindow(config, openedAt, referenceOpenedAt);
+      const window = activityWindow(config, openedAt, referenceOpenedAt, windowPolicy);
       if (window) return window;
     }
     return customWindow;
@@ -254,7 +322,7 @@ export function createActivityCalendar({
       const customStartTimes = new Map();
       for (const custom of activity.act_custom_list) {
         const config = activityConfig(tables, Number(custom.act_id));
-        const configuredWindow = activityWindow(config, openedAt, referenceOpenedAt);
+        const configuredWindow = activityWindow(config, openedAt, referenceOpenedAt, windowPolicy);
         const window = alignedAllOpenWindow(configuredWindow, at)
           ?? recurringAllOpenWindow(custom.start_time, custom.end_time, at)
           ?? recurringAllOpenWindow(configuredWindow?.start, configuredWindow?.end, at)
@@ -294,6 +362,9 @@ export function createActivityCalendar({
       }
       activity.act_pause_list = [];
       return activity;
+    }
+    for (const [actId, list] of explicitById) {
+      if (list.some(occurrence => at >= occurrence.start && at < occurrence.end)) retained.add(actId);
     }
     activity.act_list = (activity.act_list ?? []).filter(entry => {
       const actId = Number(entry.state_data?.act_id);
@@ -340,7 +411,7 @@ export function createActivityCalendar({
       if (customById.has(id)) continue;
       const config = activityConfig(tables, id);
       if (!(seconds(config?.world_time) > 0)) continue;
-      const window = activityWindow(config, openedAt, referenceOpenedAt);
+      const window = activityWindow(config, openedAt, referenceOpenedAt, windowPolicy);
       if (!window) continue;
       const custom = {
         act_id: id,
@@ -360,13 +431,13 @@ export function createActivityCalendar({
   function activeFishingActivities(at = currentSeconds(), activity = null) {
     if (mode === 'all-open') {
       const config = activityConfig(tables, allOpenFishingActivityId);
-      return [{ actId: allOpenFishingActivityId, config, window: activityWindow(config, openedAt, referenceOpenedAt) }];
+      return [{ actId: allOpenFishingActivityId, config, window: activityWindow(config, openedAt, referenceOpenedAt, windowPolicy) }];
     }
     const result = [];
     for (let actId = FISHING_ACT_FIRST; actId <= FISHING_ACT_LAST; actId++) {
       if (!isActivityRunning(actId, null, activity, at)) continue;
       const config = activityConfig(tables, actId);
-      result.push({ actId, config, window: activityWindow(config, openedAt, referenceOpenedAt) });
+      result.push({ actId, config, window: activityWindow(config, openedAt, referenceOpenedAt, windowPolicy) });
     }
     return result;
   }
@@ -392,6 +463,30 @@ export function createActivityCalendar({
         module_login_data: Buffer.alloc(0)
       });
     }
+    const activeExplicit = [];
+    for (const [actId, list] of explicitById) {
+      const occurrence = list.find(entry => at >= entry.start && at < entry.end) ?? null;
+      if (!occurrence || pausedIds.has(actId)) continue;
+      activeExplicit.push(occurrence);
+      if (!hasLoginState(activity, actId)) {
+        activity.act_list.push({
+          state_data: {
+            act_id: actId,
+            cur_state_id: 50,
+            history_time: [{ state_id: 50, enter_time: occurrence.start }]
+          },
+          module_login_data: Buffer.alloc(0)
+        });
+      }
+      const existing = activity.act_custom_list.find(row => Number(row.act_id) === actId);
+      const row = existing ?? {
+        act_id: actId,
+        fun_id: Number(activityConfig(tables, actId)?.type) || 0
+      };
+      row.start_time = occurrence.start;
+      row.end_time = occurrence.end;
+      if (!existing) activity.act_custom_list.push(row);
+    }
     // Keep administrative pauses so a later login cannot silently re-enable an activity.
     activity.act_pause_list = mode === 'all-open'
       ? []
@@ -399,7 +494,8 @@ export function createActivityCalendar({
         .filter(id => isScheduledActivity(id, null, activity, at));
     return {
       mode,
-      fishingActivityIds: active.filter(entry => !pausedIds.has(entry.actId)).map(entry => entry.actId)
+      fishingActivityIds: active.filter(entry => !pausedIds.has(entry.actId)).map(entry => entry.actId),
+      explicitActivityIds: activeExplicit.map(entry => entry.actId)
     };
   }
 
@@ -431,6 +527,16 @@ export function createActivityCalendar({
         ? { start, end }
         : null;
     };
+    const runtimeStages = id => {
+      const stages = runtimeById.get(Number(id))?.stages;
+      if (!Array.isArray(stages)) return null;
+      const normalized = stages.map(stage => ({
+        stage_id: Number(stage.stageId),
+        start_time: String(Number(stage.start)),
+        end_time: String(Number(stage.end))
+      })).filter(stage => stage.stage_id > 0 && Number(stage.end_time) > Number(stage.start_time));
+      return normalized.length ? normalized : null;
+    };
 
     function upsertLoginRow(id, config, start, end) {
       if (!config) return false;
@@ -438,6 +544,7 @@ export function createActivityCalendar({
       const type = Number(config.type ?? config.func) || 0;
       const stageId = runtimeStage(id) ?? 50;
       const enterTime = Number(runtimeById.get(id)?.stateStart) || start;
+      const stageTimeList = runtimeStages(id) ?? [{ stage_id: stageId, start_time: String(enterTime), end_time: String(end) }];
       let serverRow = serverByTid.get(id);
       if (!serverRow) {
         serverRow = { act_id: id };
@@ -452,7 +559,7 @@ export function createActivityCalendar({
         cur_stage_id: stageId,
         is_pause: false,
         loop_count: 0,
-        stage_time_list: [{ stage_id: stageId, start_time: String(enterTime), end_time: String(end) }]
+        stage_time_list: stageTimeList
       });
 
       let playerRow = playerByTid.get(id);
@@ -526,7 +633,7 @@ export function createActivityCalendar({
 
       for (const group of explicitGroups) {
         const parentConfig = activityConfig(tables, group.actId);
-        const configuredWindow = activityWindow(parentConfig, openedAt, referenceOpenedAt);
+        const configuredWindow = activityWindow(parentConfig, openedAt, referenceOpenedAt, windowPolicy);
         const window = Number.isSafeInteger(group.startTime) && group.startTime > 0
           && Number.isSafeInteger(group.endTime) && group.endTime > group.startTime
           ? { start: group.startTime, end: group.endTime, kind: 'explicit-group' }
@@ -639,7 +746,7 @@ export function createActivityCalendar({
       const config = activityConfig(tables, id);
       const type = Number(config?.type) || 0;
       if (!config || type <= 0) continue;
-      const window = runtimeWindow(id) ?? activityWindow(config, openedAt, referenceOpenedAt);
+      const window = runtimeWindow(id) ?? activityWindow(config, openedAt, referenceOpenedAt, windowPolicy);
       const start = Math.min(window?.start ?? openedAt, current);
       const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
       const stageId = runtimeStage(id) ?? 50;
@@ -677,7 +784,7 @@ export function createActivityCalendar({
 
     for (const group of explicitGroups) {
       const parentConfig = activityConfig(tables, group.actId);
-      const parentWindow = runtimeWindow(group.actId) ?? activityWindow(parentConfig, openedAt, referenceOpenedAt);
+      const parentWindow = runtimeWindow(group.actId) ?? activityWindow(parentConfig, openedAt, referenceOpenedAt, windowPolicy);
       const start = Math.min(parentWindow?.start ?? openedAt, current);
       const end = Math.max(parentWindow?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
       for (const id of [group.actId, ...group.companionIds]) {
@@ -708,7 +815,7 @@ export function createActivityCalendar({
       if (!runtimeVisible(id)) continue;
       if (serverByTid.has(id)) continue;
       const config = activityConfig(tables, id);
-      const window = runtimeWindow(id) ?? activityWindow(config, openedAt, referenceOpenedAt);
+      const window = runtimeWindow(id) ?? activityWindow(config, openedAt, referenceOpenedAt, windowPolicy);
       const start = Math.min(window?.start ?? openedAt, current);
       const end = Math.max(window?.end ?? current + ALL_OPEN_LOGIN_WINDOW_SECONDS, current + ALL_OPEN_LOGIN_WINDOW_SECONDS);
       const stageId = runtimeStage(id) ?? 50;
@@ -788,13 +895,16 @@ export function createActivityCalendar({
     serverOpenedAt: openedAt,
     activityReferenceOpenedAt: referenceOpenedAt || null,
     activityWindowAnchor: storedWindowAnchor || null,
+    windowPolicy,
     mode,
     currentSeconds,
     isServerEligible: (actId, at = currentSeconds()) => serverEligibility(activityConfig(tables, Number(actId)), openedAt, at),
     isActivityRunning,
     // Expose the same custom/table window the login filter uses so the
     // lifecycle instance table and the client payload cannot drift apart.
-    windowFor: (actId, activity = null) => scheduledWindow(Number(actId), activity),
+    windowFor: (actId, activity = null, at = currentSeconds()) => scheduledWindow(Number(actId), activity, at),
+    occurrenceFor: (actId, at = currentSeconds()) => explicitOccurrenceFor(Number(actId), at),
+    explicitOccurrences: Object.freeze([...explicitById.values()].flat()),
     filterLoginActivity,
     applyLoginSchedule,
     normalizeActFrameLogin,

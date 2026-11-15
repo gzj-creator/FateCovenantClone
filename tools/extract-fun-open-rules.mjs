@@ -18,8 +18,17 @@ const COMPARATORS = new Map([
 
 const CONDITION_BY_GETTER = new Map([
   ['GetRoleLv', { type: 'role_level', arg: 'level' }],
+  ['GetPassedSection', { type: 'mission', arg: 'missionId' }],
   ['GetCreateRoleDays', { type: 'create_day', arg: 'day' }],
   ['GetServerOpenDay', { type: 'server_day', arg: 'day' }]
+]);
+
+// 955132601007 is shared by 44 FunOpen rows. The assertion itself is proven,
+// but only 1514's commercial mapping has an execution decision in R1. Binding
+// it to every row would enable unrelated features whose sys_switch source is
+// still absent, so keep those rows fail-closed until each rule is reviewed.
+const CONDITION_BINDINGS = new Map([
+  [1514, new Set([955132601007])]
 ]);
 
 function sha256(buffer) {
@@ -72,9 +81,12 @@ export function indexMethodScripts(methodScript) {
   for (let numberIndex = 0; numberIndex + 1 < root.numbers.length; numberIndex += 2) {
     const functionInstruction = root.instructions[6 + numberIndex * 3];
     const parameterInstruction = root.instructions[9 + numberIndex * 3];
-    if (functionInstruction?.name !== 'FNEW' || parameterInstruction?.name !== 'TDUP') continue;
+    if (functionInstruction?.name !== 'FNEW' || !['TDUP', 'TNEW'].includes(parameterInstruction?.name)) continue;
     const child = root.constants[functionInstruction.d];
-    const parameters = root.constants[parameterInstruction.d];
+    const parameters = parameterInstruction.name === 'TNEW'
+      ? { type: 'table', array: [null] }
+      : root.constants[parameterInstruction.d];
+    if (parameterInstruction.name === 'TNEW' && parameterInstruction.d !== 0) continue;
     if (child?.type !== 'child' || parameters?.type !== 'table') continue;
     const scriptId = Math.floor(root.numbers[numberIndex] / 2);
     if (!Number.isSafeInteger(scriptId)) continue;
@@ -167,12 +179,14 @@ export function generateFunOpenRules({ funOpenFile, funOpenRawFile, methodScript
   const methodTable = JSON.parse(methodTableBuffer.toString('utf8'));
   const rows = funOpen.tables?.FunOpen?.rows;
   const targets = funOpen.tables?.Target?.rows;
+  const showRows = funOpen.tables?.Show?.rows;
   if (!Array.isArray(rows) || rows.length === 0) throw new Error('FunOpenTable.FunOpen has no rows');
   if (!Array.isArray(targets) || targets.length === 0) throw new Error('FunOpenTable.Target has no rows');
 
   const scripts = indexMethodScripts(methodScript);
   const dynamicArgGetters = extractDynamicArgGetters(methodTable);
   const targetByTid = new Map(targets.map(row => [Number(row.tid), row]));
+  const showByTid = new Map((showRows ?? []).map(row => [Number(row.tid), row]));
   const assertionIds = [...new Set(rows.flatMap(row => Array.isArray(row.asserts) ? row.asserts.map(Number) : []))];
   const assertions = new Map(assertionIds.map(scriptId => [
     scriptId,
@@ -187,13 +201,22 @@ export function generateFunOpenRules({ funOpenFile, funOpenRawFile, methodScript
     const evidenceGap = [];
     if (!target) evidenceGap.push({ reason: `target_${row.target}_missing` });
     else if (target.client_req_to_open !== true) evidenceGap.push({ reason: `target_${row.target}_not_client_requested` });
+    // FunOpenData.Check folds every assertion with AND. FunOpenMgr.GetFunAsserts
+    // can replace the list via Show, however, so keep those dynamic rows closed
+    // until the selector expression and both branches have been recovered.
+    if (!Array.isArray(showRows)) evidenceGap.push({ reason: 'show_table_missing' });
+    else if (showByTid.has(funId)) evidenceGap.push({ reason: 'dynamic_show_asserts_unproven' });
     if (!Array.isArray(row.asserts)) evidenceGap.push({ reason: 'assert_list_missing_or_table_empty', value: row.asserts });
     else if (asserts.length === 0) evidenceGap.push({ reason: 'assert_list_empty' });
-    else if (asserts.length > 1) evidenceGap.push({ reason: 'multiple_assert_combination_unproven' });
-    if (asserts.length === 1 && assertEvidence[0].status !== 'ready') {
-      evidenceGap.push({ reason: assertEvidence[0].reason ?? 'assert_condition_unproven' });
+    const boundEvidence = [];
+    for (const evidence of assertEvidence) {
+      if (evidence.status !== 'ready') evidenceGap.push({ scriptId: evidence.scriptId, reason: evidence.reason ?? 'assert_condition_unproven' });
+      else if (evidence.comparison?.getter === 'GetPassedSection'
+        && !CONDITION_BINDINGS.get(funId)?.has(evidence.scriptId)) {
+        evidenceGap.push({ scriptId: evidence.scriptId, reason: 'assert_condition_mapping_not_enabled_for_business_rule' });
+      } else boundEvidence.push(evidence);
     }
-    const ready = evidenceGap.length === 0 && assertEvidence.length === 1 && assertEvidence[0].status === 'ready';
+    const ready = evidenceGap.length === 0 && assertEvidence.length > 0;
     return {
       funId,
       target: row.target,
@@ -201,7 +224,7 @@ export function generateFunOpenRules({ funOpenFile, funOpenRawFile, methodScript
       sysSwitch: row.sys_switch,
       funName: row.fun_name,
       status: ready ? 'ready' : 'evidence_gap',
-      conditions: ready ? [assertEvidence[0].condition] : [],
+      conditions: ready ? boundEvidence.map(evidence => evidence.condition) : [],
       asserts,
       ...(ready ? {} : { evidenceGap })
     };

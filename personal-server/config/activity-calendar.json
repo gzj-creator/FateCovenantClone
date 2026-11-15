@@ -1,6 +1,7 @@
 {
-  "_comment": "Public realm schedule. activityReferenceOpenedAt is the captured reference server's ServerInfo.OpenTime; world-time activity rows are rebased relative to it. activityWindowAnchor only locates the captured login template for initial SQLite seeding.",
+  "_comment": "Public realm schedule. R1 keeps table world_time as an absolute original date; activityReferenceOpenedAt and activityWindowAnchor are retained for explicit replay/all-open tooling only.",
   "mode": "schedule",
+  "windowPolicy": "absolute",
   "serverOpenedAt": "2026-11-11T00:00:00+08:00",
   "activityReferenceOpenedAt": "2026-10-01T00:00:00+08:00",
   "activityWindowAnchor": "2026-10-24T05:00:00+08:00",

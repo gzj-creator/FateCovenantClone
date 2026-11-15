@@ -1,5 +1,8 @@
 # 商城与任务链路修复总计划（2026-10-31）
 
+<!-- r1-rule-status -->
+> 历史专项记录，按文内日期理解。“当前”“正式”和测试数量均指当时快照。现行规则统一按[最终R1基线](gameplay-operations/12-final-rule-baseline.md)和[逐任务裁定](gameplay-operations/rules/final-rule-register.md)，不将旧平移政策、占位算法或服务端测试视为原版已恢复。
+
 ## 目标
 
 修复隔离客户端 `com.jzyx.ps` 连接本机个人服务器时的五组可见问题，并保持现有购买、钱包、活动快照和 SQLite 持久化边界不被破坏：

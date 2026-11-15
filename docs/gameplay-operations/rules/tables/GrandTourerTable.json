@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "table": "GrandTourerTable",
+  "assetPath": "personal-server/assets/tables/GrandTourerTable.data.lua.json.gz",
+  "assetSha256": "e3b9e88524ee560d65a8f823b80ac4a87350dc1c468de67e2d42c211a49f278b",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/GrandTourerTable.data.lua.json.gz",
+      "sha256": "e3b9e88524ee560d65a8f823b80ac4a87350dc1c468de67e2d42c211a49f278b"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"award_num_range":[300,450],"max_speed":100,"destination_distance":842,"tid":1,"default_speed":20,"combo_show":10,"award_item":101500,"magnet_time":5,"distance_max":500,"speed_add":5}
+]}
+}
+}

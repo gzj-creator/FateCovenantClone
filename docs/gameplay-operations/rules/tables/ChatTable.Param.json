@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "table": "ChatTable.Param",
+  "assetPath": "personal-server/assets/tables/ChatTable.Param.json.gz",
+  "assetSha256": "d0894c6dae1050266933a06dbca5bd3c934203a25ae669bbe1658a1204a404d8",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/ChatTable.Param.json.gz",
+      "sha256": "d0894c6dae1050266933a06dbca5bd3c934203a25ae669bbe1658a1204a404d8"
+    }
+  ],
+  "sourceMetadata": "ChatTable.data.lua.bin",
+"families":{
+"Param":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"show_time_interval":180,"world_chat_level_limit":15,"chat_word_count_limit":140,"cancel_ban_lv_inc":5,"send_time_interval":10,"count_limit_in_cd":3,"sys_tips_auto_disappear_time":30,"similarity_msg_limit":70,"similarity_check_limit":10,"similarity_msg_count_limit":10,"emoj_count":30,"black_house_level_limit":35,"max_msg_count":150,"login_chat_msg_count":30,"save_chat_msg_days":7,"max_link_count":2,"max_private_session_count":10,"private_chat_lv_limit":35,"private_chat_lv_dt_limit":5,"pull_history_count":150,"security_tips_limit":3,"link_default_color":"#d19c27","chat_record_max_length":30,"chat_preview_time":5,"private_chat_auto_round_time":180,"private_chat_auto_round_old_index":50,"chat_latest_msg_show_time":5000,"chat_latest_msg_str_len":30}
+]}
+}
+}

@@ -207,6 +207,11 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     CREATE TABLE IF NOT EXISTS wallet_ledger (entry_id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES local_wallets(account_id), kind TEXT NOT NULL, delta_cents INTEGER NOT NULL, balance_cents INTEGER NOT NULL, created_at TEXT NOT NULL, details_json TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS recharge_orders (order_id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES local_wallets(account_id), request_id TEXT NOT NULL, product_id INTEGER NOT NULL, price_cents INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged INTEGER NOT NULL DEFAULT 0, UNIQUE(account_id,request_id));
     CREATE TABLE IF NOT EXISTS activity_claims (role_id INTEGER NOT NULL REFERENCES roles(role_id), act_id INTEGER NOT NULL, task_id INTEGER NOT NULL, period TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(role_id,act_id,task_id,period));
+    CREATE TABLE IF NOT EXISTS buy_skin_free_claims (
+      role_id INTEGER NOT NULL REFERENCES roles(role_id), act_id INTEGER NOT NULL,
+      period_key TEXT NOT NULL, item_id INTEGER NOT NULL, claim_day INTEGER NOT NULL,
+      claimed_at INTEGER NOT NULL, created_at TEXT NOT NULL,
+      PRIMARY KEY(role_id,act_id,period_key,item_id,claim_day));
     CREATE TABLE IF NOT EXISTS pending_rewards (
       role_id INTEGER NOT NULL REFERENCES roles(role_id), source_key TEXT NOT NULL,
       item_tid INTEGER NOT NULL, quantity INTEGER NOT NULL CHECK(quantity>0),

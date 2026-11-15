@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "table": "CmsTable",
+  "assetPath": "personal-server/assets/tables/CmsTable.data.lua.json.gz",
+  "assetSha256": "0486d0f1e4aebe123dd6fe5d876b03c5d8ce43484e8848cdc6b8f29a523de47b",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/CmsTable.data.lua.json.gz",
+      "sha256": "0486d0f1e4aebe123dd6fe5d876b03c5d8ce43484e8848cdc6b8f29a523de47b"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Cms":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"fun_open":1203,"req_duration":1800,"pb":"pb_cms_question_info"}
+]}
+}
+}

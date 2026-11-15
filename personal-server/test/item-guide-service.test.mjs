@@ -15,13 +15,14 @@ import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../g
 
 const codec = createGameCodec();
 const tables = readGameTables();
-const PROCESS_ID = 900;
-const KEY_ID = 11;
+const PROCESS_ID = 104;
+const KEY_ID = 106004;
+const AWARD_KEY_ID = 106008;
 const AWARD_TID = 7;
 
-// Reward rows are injected here: GuideTable.Award has no exported rows yet, so
-// the production config carries none and the service rejects unknown awards.
-const AWARDS = new Map([[AWARD_TID, { awardTid: AWARD_TID, processId: PROCESS_ID, keyId: KEY_ID, items: [[101500, 20]] }]]);
+// This synthetic currency grant isolates service/transport transactions from
+// the production hero awards, which have their own original-table tests.
+const AWARDS = new Map([[AWARD_TID, { awardTid: AWARD_TID, processId: PROCESS_ID, keyId: AWARD_KEY_ID, items: [[101500, 20]] }]]);
 
 function saveStep(store, processId = PROCESS_ID, keyId = KEY_ID) {
   store.transaction(model => { model.state.guides[String(keyId)] = processId; });
@@ -56,12 +57,12 @@ test('8001 grants a configured guide award once and encodes pb_res_to_client', a
 
   const result = await service.execute(8001, AWARD_TID);
   assert.equal(result.value.awardTid, AWARD_TID);
-  assert.equal(result.value.keyId, KEY_ID);
+  assert.equal(result.value.keyId, AWARD_KEY_ID);
   const res = codec.unpack('pb_res_to_client', result.data);
   const change = res.changes.find(row => row.tid === '101500');
   assert.equal(change.diff_num, '20');
   assert.equal(diamonds(store), before + 20n);
-  assert.deepEqual(claimRows(store), [`${PROCESS_ID}:${KEY_ID}:${AWARD_TID}`]);
+  assert.deepEqual(claimRows(store), [`${PROCESS_ID}:${AWARD_KEY_ID}:${AWARD_TID}`]);
 
   await assert.rejects(() => service.execute(8001, AWARD_TID), /already claimed/);
   assert.equal(diamonds(store), before + 20n);
@@ -193,14 +194,14 @@ test('gateway saves guide progress then awards, probes the network and rejects a
   assert.equal(saved.err, undefined);
   const savedBack = codec.unpack('pb_req_save_process_back', Buffer.from(saved.data, 'base64'));
   assert.deepEqual(savedBack.process_list.map(row => [row.process_id, row.key_id]), [[PROCESS_ID, KEY_ID]]);
-  assert.equal(savedBack.process_list[0].is_over, true);
+  assert.equal(savedBack.process_list[0].is_over === true, false);
 
   // The following login must expose the durable guides row through module 16.
   const nextLogin = await decodeEtf(await game.loginPayload());
   const projectedGuide = codec.unpack('pb_guide', loginModuleBytes(nextLogin, GUIDE_LOGIN_MODULE_ID));
   assert.deepEqual(
     projectedGuide.process_list.find(row => Number(row.process_id) === PROCESS_ID && Number(row.key_id) === KEY_ID),
-    { process_id: PROCESS_ID, key_id: KEY_ID, is_over: true }
+    { process_id: PROCESS_ID, key_id: KEY_ID }
   );
   assert.equal(projectedGuide.process_list.length, guideBeforeSave.process_list.length + 1);
   assert.deepEqual(

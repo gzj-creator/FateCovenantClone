@@ -197,9 +197,9 @@ test('every PremiumAct gift has complete rewards with a concrete grant handler',
   assert.deepEqual(issues, []);
 });
 
-test('scheduled premium mall prefers the relative table window over stored stage times', t => {
-  const expected = activityWindow(tables.ActFrameAct.get(ACT_ID), SERVER_OPENED_AT);
-  const at = expected.start + 60;
+test('scheduled premium mall keeps an expired original world-time window closed', t => {
+  const originalWindow = activityWindow(tables.ActFrameAct.get(ACT_ID), SERVER_OPENED_AT);
+  const at = originalWindow.start + 60;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-premium-window-'));
   const store = createGameStore({
     databasePath: path.join(directory, 'game.sqlite'),
@@ -217,9 +217,10 @@ test('scheduled premium mall prefers the relative table window over stored stage
   const player = { data_list: [] };
   const server = { act_stage_list: [{ act_id: ACT_ID, type: 184, start_time: '1', end_time: '2' }] };
 
-  assert.deepEqual(service.synchronizeLogin({ player, server }, at).activityIds, [ACT_ID]);
-  const block = decodeModuleLoginBlocks(player.data_list[0].module_login_data)[0];
-  assert.equal(Number(decodePremiumInfo(block).recharge_info.refresh_time), expected.end);
+  const result = service.synchronizeLogin({ player, server }, at);
+  assert.deepEqual(result.activityIds, []);
+  assert.equal(player.data_list.length, 0);
+  assert.equal(calendar.isActivityRunning(ACT_ID, null, null, at), false);
 });
 
 test('all-open white-ling gift mall exposes login data, free/resource gifts, cash gift and limits', async t => {
@@ -538,10 +539,12 @@ test('scheduled legacy hundred-draw syncs its gift mall, obtains coupons and dra
     '20001'
   );
   const parentCustom = activityLogin.act_custom_list.find(row => Number(row.act_id) === 20001);
-  assert.ok(parentCustom, 'legacy hundred-draw custom window must survive login scheduling');
-  assert.equal(Number(parentCustom.start_time), openedAt);
-  assert.ok(now() / 1000 < activityWindow(tables.Activity.get(20001), openedAt).start,
-    'the real custom window must be tested before the static 05:00 table window opens');
+  assert.ok(parentCustom, 'legacy hundred-draw parent window must survive login scheduling');
+  const parentWindow = activityWindow(tables.Activity.get(20001), openedAt);
+  assert.equal(Number(parentCustom.start_time), parentWindow.start);
+  assert.equal(Number(parentCustom.end_time), parentWindow.end);
+  assert.ok(now() / 1000 >= parentWindow.start && now() / 1000 < parentWindow.end,
+    'the current relative parent window must be running');
 
   const entry183 = modules.get(183);
   assert.ok(entry183, 'module 183 must be present');

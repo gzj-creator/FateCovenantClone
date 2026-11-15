@@ -13,6 +13,7 @@ const report = auditActivitySchedule({
 });
 
 test('audits every activity row without invalid windows or duration totals', () => {
+  assert.equal(report.windowPolicy, 'absolute');
   assert.equal(report.counters.totalRows, 1993);
   assert.equal(report.counters.sourceRows.ActFrameAct, 884);
   assert.equal(report.counters.sourceRows.Activity, 1109);

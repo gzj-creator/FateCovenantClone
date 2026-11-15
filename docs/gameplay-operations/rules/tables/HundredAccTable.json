@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "table": "HundredAccTable",
+  "assetPath": "personal-server/assets/tables/HundredAccTable.data.lua.json.gz",
+  "assetSha256": "2b9b2853731398e0593eacce51f47dbaf76fd309a317caba18adb5df7064178d",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/HundredAccTable.data.lua.json.gz",
+      "sha256": "2b9b2853731398e0593eacce51f47dbaf76fd309a317caba18adb5df7064178d"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Group":{"status":"decoded-rows","count":10,"externalReferenceCount":0,"rows":[
+{"tid":1,"amount":100},
+{"tid":2,"amount":600},
+{"tid":3,"amount":3000},
+{"tid":4,"amount":9000},
+{"tid":5,"amount":18000},
+{"tid":6,"amount":30000},
+{"tid":7,"amount":50000},
+{"tid":8,"amount":70000},
+{"tid":9,"amount":100000},
+{"tid":10,"amount":150000}
+]},
+"Reward":{"status":"decoded-rows","count":10,"externalReferenceCount":0,"rows":[
+{"reward":[[101500,100]],"acc_group":1,"tid":1,"max_show_cnt":1,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailv.png","desc":0,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidihuang.png","split_reward":[[101500,100]],"clip_name":"Ani_HundredAccForm01","disable_red":false},
+{"reward":[[1501200,1],[101500,300]],"acc_group":2,"tid":2,"max_show_cnt":2,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailv.png","desc":679923,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidihuang.png","split_reward":[[1501200,1],[101500,300]],"clip_name":"Ani_HundredAccForm02","disable_red":false},
+{"reward":[[23300504,60],[2002,10]],"acc_group":3,"tid":3,"max_show_cnt":2,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailv.png","desc":679944,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidihuang.png","split_reward":[[41200,1],[2002,10]],"clip_name":"Ani_HundredAccForm03","disable_red":false},
+{"reward":[[10063200,1],[23300504,60]],"acc_group":4,"tid":4,"max_show_cnt":2,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailan.png","desc":679945,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidizi.png","split_reward":[[10063200,1],[41200,1]],"clip_name":"Ani_HundredAccForm04","disable_red":false},
+{"reward":[[200210,1],[5002002,1]],"acc_group":5,"tid":5,"max_show_cnt":1,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailv.png","desc":679924,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidihuang.png","split_reward":[[200210,1],[5002002,1]],"clip_name":"Ani_HundredAccForm05","disable_red":false},
+{"reward":[[22300204,30],[23300504,120]],"acc_group":6,"tid":6,"max_show_cnt":1,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailan.png","desc":679946,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidizi.png","split_reward":[[22300204,30],[41200,2]],"clip_name":"Ani_HundredAccForm06","disable_red":false},
+{"reward":[[23300504,180],[22300204,30]],"acc_group":7,"tid":7,"max_show_cnt":1,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailan.png","desc":679947,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidizi.png","split_reward":[[23300504,180],[22300204,30]],"clip_name":"Ani_HundredAccForm07","disable_red":false},
+{"reward":[[355708,1],[627002,1]],"acc_group":8,"tid":8,"max_show_cnt":1,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailv.png","desc":679925,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidihuang.png","split_reward":[[355708,1],[627002,1]],"clip_name":"Ani_HundredAccForm08","disable_red":false},
+{"reward":[[23300504,240],[400108,1]],"acc_group":9,"tid":9,"max_show_cnt":1,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailan.png","desc":679948,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidizi.png","split_reward":[[23300504,240],[400108,1]],"clip_name":"Ani_HundredAccForm09","disable_red":false},
+{"reward":[[22300204,30],[170112,1]],"acc_group":10,"tid":10,"max_show_cnt":1,"split_stamp":1758488400,"bg":"img_hd_sxlz_pingtailv.png","desc":679949,"get_day_index":0,"desc_bg":"img_hd_sxlz_xinxidihuang.png","split_reward":[[22300204,30],[170112,1]],"clip_name":"Ani_HundredAccForm10","disable_red":false}
+]},
+"HundredAcc":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"move_day_cnt":7,"normal_draw_second_wish_bubble_show_cond":966289600001,"tid":1,"get_way":170,"show_entry_day":5}
+]},
+"Recommend":{"status":"rows-with-external-references","count":7,"externalReferenceCount":7,"rows":[
+{"param":1,"has_buy_func":{"reference":"HundredAccMgr.IsBuyMonthCard"},"jump":38,"type":1,"tid":1,"title":9007,"gift":140001,"petmit_icon":"","order":90},
+{"param":2,"has_buy_func":{"reference":"HundredAccMgr.IsBuyMonthCard"},"jump":38,"type":1,"tid":2,"title":23004,"gift":140002,"petmit_icon":"","order":80},
+{"param":4701,"has_buy_func":{"reference":"HundredAccMgr.IsBuyPermit"},"jump":2237,"type":3,"tid":3,"title":5847,"gift":2000003,"petmit_icon":"icon_sxlz03.png","order":70},
+{"param":2,"has_buy_func":{"reference":"HundredAccMgr.IsBuyPermanentCard"},"jump":141,"type":2,"tid":4,"title":62126,"gift":490002,"petmit_icon":"","order":50},
+{"param":4801,"has_buy_func":{"reference":"HundredAccMgr.IsBuyPermit"},"jump":2238,"type":3,"tid":5,"title":16089,"gift":560010,"petmit_icon":"icon_sxlz01.png","order":40},
+{"param":2090008,"has_buy_func":{"reference":"HundredAccMgr.IsBuyStartGift"},"jump":2109,"type":0,"tid":6,"title":9031,"gift":2090008,"petmit_icon":"","order":30},
+{"param":2090009,"has_buy_func":{"reference":"HundredAccMgr.IsBuyStartGift"},"jump":2109,"type":0,"tid":7,"title":16072,"gift":2090005,"petmit_icon":"","order":20}
+]}
+}
+}

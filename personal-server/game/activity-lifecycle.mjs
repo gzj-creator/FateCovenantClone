@@ -34,6 +34,28 @@ export function activityStateAt(config, window, at) {
   const end = seconds(window?.end);
   if (!(start > 0) || !(end > start) || now < start || now >= end) return closed('outside_window');
 
+  // A server-issued occurrence may replace both the overall window and the
+  // configured state fallback. This is required for 1037001/1037002, whose
+  // 50 and 90 stages end at 22:00/05:00 rather than at equal day offsets.
+  if (Array.isArray(window?.stages) && window.stages.length) {
+    const stage = window.stages.find(entry => {
+      const stageStart = seconds(entry?.start);
+      const stageEnd = seconds(entry?.end);
+      return now >= stageStart && now < stageEnd;
+    });
+    if (!stage) return closed('outside_explicit_stage');
+    const status = STATE_STATUS.get(Number(stage.stageId));
+    if (!status) return closed(`unknown_state_${stage.stageId}`);
+    return {
+      status,
+      visible: true,
+      stateId: Number(stage.stageId),
+      start: seconds(stage.start),
+      end: seconds(stage.end),
+      index: window.stages.indexOf(stage)
+    };
+  }
+
   const states = Array.isArray(config?.state) ? config.state.map(Number) : [];
   const durations = Array.isArray(config?.state_end_day) ? config.state_end_day.map(Number) : [];
   if (!states.length) {
@@ -128,11 +150,16 @@ export function evaluateActivity({
   if (override?.kind === 'pause' || override?.kind === 'force_close') return closed('override_closed');
   if (Number(config.discard_time) > 0 && seconds(at) >= seconds(config.discard_time)) return closed('discarded');
 
+  const baseWindow = windowOverride ?? activityWindow(config, serverOpenedAt, activityReferenceOpenedAt);
+  const explicitOccurrence = baseWindow?.explicitOccurrence === true || Array.isArray(baseWindow?.stages);
+
   // E10-2: these flags need client-time evidence. Until then the affected rows
   // stay closed instead of guessing a window.
   if (Number(config.server_limited_type) === 1 || Number(config.world_limit_state) === 3) return closed('unresolved_server_limit');
   const timeType = Number(config.time_type);
-  if ([3, 4, 5].includes(timeType) || Number(config.time_fun) === 461) return closed('unresolved_time_type');
+  if (!explicitOccurrence && ([3, 4, 5].includes(timeType) || Number(config.time_fun) === 461)) {
+    return closed('unresolved_time_type');
+  }
 
   const minimumDay = Math.max(0, Number(config.join_server_day) || 0);
   const maximumDay = Math.max(0, Number(config.server_day_limit) || 0);
@@ -144,7 +171,6 @@ export function evaluateActivity({
   if (minimumOpen > 0 && opened < minimumOpen) return closed('before_open_limit');
   if (maximumOpen > 0 && opened > maximumOpen) return closed('after_open_limit');
 
-  const baseWindow = windowOverride ?? activityWindow(config, serverOpenedAt, activityReferenceOpenedAt);
   const overrideResult = applyOverride(baseWindow, override, at);
   if (overrideResult.closed) return closed('override_closed');
   const window = overrideResult.window;
@@ -156,7 +182,11 @@ export function evaluateActivity({
   if (!ignorePlayerAccess) {
     const funId = Number(config.jump_func ?? config.func ?? 0);
     if (!overrideResult.forcedOpen && funId > 0 && funOpen && !funOpen.has(funId)) return closed('function_locked');
-    if (!playerCondition(config.asserts, role)) return closed('player_condition');
+    // A verified server occurrence already owns overall/stage timing. Numeric
+    // ActFrame assertions such as 1037001's DynamicArg462<=90 are evaluated by
+    // the explicit occurrence builder at new-instance creation; applying them
+    // again as a per-login boolean would close an already-started period.
+    if (!explicitOccurrence && !playerCondition(config.asserts, role)) return closed('player_condition');
     if (override?.conditions && !playerCondition(override.conditions, role)) return closed('override_condition');
   }
   return { ...state, window };

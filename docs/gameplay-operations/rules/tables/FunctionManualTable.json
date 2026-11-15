@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "table": "FunctionManualTable",
+  "assetPath": "personal-server/assets/tables/FunctionManualTable.rows.json.gz",
+  "assetSha256": "bb6482fefffed921502a864bea65ac2d87741999cd031c072fb54714114a1d8d",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/FunctionManualTable.rows.json.gz",
+      "sha256": "bb6482fefffed921502a864bea65ac2d87741999cd031c072fb54714114a1d8d"
+    }
+  ],
+  "sourceMetadata": "2088191734446398200-FunctionManualTable.data.lua.bin",
+"families":{
+"Task":{"status":"decoded-rows","count":28,"externalReferenceCount":0,"rows":[
+{"tid":1,"show_name":60360,"show_des":5520,"img_bg":"img_gnsc_xinhuo.png","sign_icon":"img_ggsc_xinghuo","func_open":1022,"task_list":[[5902,0,2],[2722,1,2],[2724,1,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[25002,1],[201500,5000]],"goup":205},
+{"tid":2,"show_name":60361,"show_des":5521,"img_bg":"img_gnsc_lvtu.png","sign_icon":"img_ggsc_ltutbx","func_open":1099,"task_list":[[1201,1,10203],[1202,0,3],[1202,0,6]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[101800,2500],[201500,5000]],"goup":169},
+{"tid":3,"show_name":60362,"show_des":5522,"img_bg":"img_gnsc_zhaomu.png","sign_icon":"img_ggsc_zhaomu","func_open":1046,"task_list":[[1003,1,1],[1003,1,10],[1003,1,20]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[201500,10000],[31002,1]],"goup":48},
+{"tid":4,"show_name":60363,"show_des":5523,"img_bg":"img_gnsc_shengji.png","sign_icon":"img_ggsc_tuanyuanshengji","func_open":1097,"task_list":[[5801,5,3],[5801,10,4],[5801,15,5]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[101800,2000],[201500,3000]],"goup":211},
+{"tid":5,"show_name":60373,"show_des":5524,"img_bg":"img_gnsc_haoyou.png","sign_icon":"img_ggsc_haoyou","func_open":1048,"task_list":[[1810,1,1],[1810,1,5],[1810,1,10]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[32002,1],[31002,1]],"goup":37},
+{"tid":6,"show_name":60364,"show_des":5525,"img_bg":"img_gnsc_xiaodui.png","sign_icon":"img_ggsc_manbianxiaoduix","func_open":1098,"task_list":[[5801,15,6],[5802,2,6],[5802,3,3]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[201500,10000],[101800,5000]],"goup":211},
+{"tid":7,"show_name":60372,"show_des":5526,"img_bg":"img_gnsc_liaotian.png","sign_icon":"img_ggsc_liaotian","func_open":1028,"task_list":[[6901,1,1],[6902,1,1],[6903,1,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[201500,10000],[101800,1000]],"goup":119},
+{"tid":8,"show_name":60366,"show_des":5527,"img_bg":"img_gnsc_wangguobaoku.png","sign_icon":"img_ggsc_wangguobaoku","func_open":1056,"task_list":[[1602,1,10],[1304,1,1],[1602,1,50]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[157002,1000],[17002,300]],"goup":15},
+{"tid":9,"show_name":60368,"show_des":5528,"img_bg":"img_gnsc_zhuangbei.png","sign_icon":"img_ggsc_zhuangbeiyangcheng","func_open":1055,"task_list":[[2202,30,1],[2203,1,1],[2206,1,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[157002,2000],[201500,10000]],"goup":204},
+{"tid":10,"show_name":60370,"show_des":5529,"img_bg":"img_gnsc_zhuangbeimingke.png","sign_icon":"img_ggsc_zhuangbeiyangcheng","func_open":1059,"task_list":[[2201,2,4],[2201,2,8],[2201,2,12]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[17002,300],[157002,2000]],"goup":208},
+{"tid":11,"show_name":60367,"show_des":5530,"img_bg":"img_gnsc_sushe.png","sign_icon":"img_ggsc_sushe","func_open":1037,"task_list":[[6101,1,2],[6102,1,1],[6103,1,4]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[2002,1],[201500,5000]],"goup":201},
+{"tid":13,"show_name":60371,"show_des":5532,"img_bg":"img_gnsc_touxian.png","sign_icon":"img_ggsc_tuanduipingji","func_open":1051,"task_list":[[1807,1,1],[1807,0,2],[2301,1,50000]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[201500,20000],[101800,2000]],"goup":202},
+{"tid":14,"show_name":60374,"show_des":5533,"img_bg":"img_gnsc_jinjichang.png","sign_icon":"img_ggsc_kuofukuangjunsai","func_open":1040,"task_list":[[1402,1,1],[1402,1,5],[1405,1,1000]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[101900,300],[2001900,2000]],"goup":200},
+{"tid":15,"show_name":60375,"show_des":5534,"img_bg":"img_gnsc_hanghui.png","sign_icon":"img_ggsc_hanghui","func_open":1053,"task_list":[[2401,1,1],[2402,1,5],[12602,0,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[20002,5],[901900,20]],"goup":128},
+{"tid":16,"show_name":61582,"show_des":5540,"img_bg":"img_gnsc_yunzhongyiji.png","sign_icon":"img_ggsc_yunzhongyiji","func_open":1105,"task_list":[[8801,0,1],[8802,0,1],[8803,0,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[391002,200],[201500,5000]],"goup":172},
+{"tid":17,"show_name":61584,"show_des":5542,"img_bg":"img_gnsc_hunhe.png","sign_icon":"img_ggsc_hunhe","func_open":1195,"task_list":[[8102,0,1],[12701,0,6],[8104,0,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[1241200,1],[179002,200]],"goup":236},
+{"tid":18,"show_name":60380,"show_des":5543,"img_bg":"img_gnsc_leitaisai.png","sign_icon":"img_ggsc_leitaisai","func_open":1064,"task_list":[[6503,1,1],[6503,1,2],[6504,1,5]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[391002,200],[20002,10]],"goup":206},
+{"tid":19,"show_name":60381,"show_des":5544,"img_bg":"img_gnsc_zhuanbeifumo.png","sign_icon":"img_ggsc_zhuangbeifumo","func_open":1061,"task_list":[[2204,1,1],[2204,1,4],[2205,1,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[18002,10],[17002,200]],"goup":209},
+{"tid":20,"show_name":61585,"show_des":5545,"img_bg":"img_gnsc_shikongguansai.png","sign_icon":"img_ggsc_shikongguanweisai","func_open":1066,"task_list":[[7002,0,10],[7003,0,5],[7001,0,4]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[101900,200],[2001900,3000]],"goup":170},
+{"tid":21,"show_name":62503,"show_des":5595,"img_bg":"img_gnsc_linghunlilian.png","sign_icon":"img_ggsc_linghunlilian","func_open":1133,"task_list":[[10001,0,1],[1305,0,3],[10002,0,12]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[2201900,50],[101500,100]],"goup":248},
+{"tid":22,"show_name":62504,"show_des":5596,"img_bg":"img_gnsc_emengzhilv.png","sign_icon":"img_ggsc_emengzhilv","func_open":1045,"task_list":[[9001,0,3],[9002,0,503],[9001,0,10]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[3002,1],[201500,30000]],"goup":21},
+{"tid":23,"show_name":62989,"show_des":62990,"img_bg":"img_gnsc_mingqi.png","sign_icon":"img_ggsc_mingqi","func_open":1151,"task_list":[[12203,10,1],[12203,10,3],[12203,20,3]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[691200,1],[140002,5]],"goup":263},
+{"tid":24,"show_name":62991,"show_des":62992,"img_bg":"img_gnsc_mingyunmengjing.png","sign_icon":"img_ggsc_mingyunmengjin","func_open":1155,"task_list":[[12104,0,1],[12105,0,1],[12102,0,2]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[681200,1],[140002,5]],"goup":263},
+{"tid":25,"show_name":8597,"show_des":66134,"img_bg":"img_gnsc_modaoshizhen.png","sign_icon":"img_ggsc_xinghuo","func_open":1206,"task_list":[[12901,1,10],[12901,1,30],[12902,1,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[331002,50],[332002,20]],"goup":173},
+{"tid":26,"show_name":15726,"show_des":66268,"img_bg":"img_gnsc_shikongshendian.png","sign_icon":"img_ggsc_shikongshendian","func_open":1199,"task_list":[[12831,0,5],[12831,0,20],[12832,0,5]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[326002,1],[101500,100]],"goup":370},
+{"tid":27,"show_name":15722,"show_des":66269,"img_bg":"img_gnsc_wangxianglixian.png","sign_icon":"img_ggsc_ltutbx","func_open":1198,"task_list":[[12802,0,10],[12804,0,1],[12806,0,10]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[180002,1000],[181002,2000]],"goup":360},
+{"tid":28,"show_name":60489,"show_des":66267,"img_bg":"img_gnsc_dianfengduijue.png","sign_icon":"img_ggsc_kuofukuangjunsai","func_open":1159,"task_list":[[12401,0,5],[12401,0,10],[12402,0,5]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[801900,20],[101900,100]],"goup":278},
+{"tid":29,"show_name":66207,"show_des":66208,"img_bg":"img_gnsc_molingTest.png","sign_icon":"img_ggsc_moling","func_open":1209,"task_list":[[13003,1,1],[13002,1,20],[13001,40,1]],"_task_type":null,"_task_param":null,"_task_count":null,"award":[[345015,1],[501002,50]],"goup":385}
+]}
+}
+}

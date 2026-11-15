@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "table": "ExperienceActTable",
+  "assetPath": "personal-server/assets/tables/ExperienceActTable.data.lua.json.gz",
+  "assetSha256": "0a301469ac1a30353eabe213117cb817c0382b7f2c0205e254084af948c08ed7",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/ExperienceActTable.data.lua.json.gz",
+      "sha256": "0a301469ac1a30353eabe213117cb817c0382b7f2c0205e254084af948c08ed7"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Level":{"status":"decoded-rows","count":36,"externalReferenceCount":0,"rows":[
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":1,"tid":1,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":1,"tid":2,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":1,"tid":3,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":1,"tid":4,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":2,"tid":5,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":2,"tid":6,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":2,"tid":7,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":2,"tid":8,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":3,"tid":9,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":3,"tid":10,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":3,"tid":11,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":3,"tid":12,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":4,"tid":13,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":4,"tid":14,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":4,"tid":15,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":4,"tid":16,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":5,"tid":17,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":5,"tid":18,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":5,"tid":19,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":5,"tid":20,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":6,"tid":21,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":6,"tid":22,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":6,"tid":23,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":6,"tid":24,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":7,"tid":25,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":7,"tid":26,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":7,"tid":27,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":7,"tid":28,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,100]],"award":[[6301900,500]],"version":8,"tid":29,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6301900,80]],"award":[[6301900,400]],"version":8,"tid":30,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":8,"tid":31,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":8,"tid":32,"title":666175,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[6891900,100]],"award":[[6891900,500]],"version":9,"tid":33,"title":666172,"need_num":[8,5,5,5]},
+{"need_time":7200,"ex_award":[[6891900,80]],"award":[[6891900,400]],"version":9,"tid":34,"title":666173,"need_num":[7,5,5,5]},
+{"need_time":7200,"ex_award":[[493002,20]],"award":[[493002,100]],"version":9,"tid":35,"title":666174,"need_num":[6,5,5,5]},
+{"need_time":7200,"ex_award":[[495002,24]],"award":[[495002,120]],"version":9,"tid":36,"title":666175,"need_num":[6,5,5,5]}
+]},
+"ActivityUnitType":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1}
+]},
+"Activity":{"status":"decoded-rows","count":9,"externalReferenceCount":0,"rows":[
+{"tid":1,"type":1,"finish_num":1},
+{"tid":2,"type":1,"finish_num":1},
+{"tid":3,"type":1,"finish_num":1},
+{"tid":4,"type":1,"finish_num":1},
+{"tid":5,"type":1,"finish_num":1},
+{"tid":6,"type":1,"finish_num":1},
+{"tid":7,"type":1,"finish_num":1},
+{"tid":8,"type":1,"finish_num":1},
+{"tid":9,"type":1,"finish_num":1}
+]}
+}
+}

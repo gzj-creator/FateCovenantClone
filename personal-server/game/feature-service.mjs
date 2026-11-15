@@ -68,7 +68,7 @@ export function createFeatureService({
     }
     return map;
   };
-  function commit(ids) {
+  function commit(ids, denied = []) {
     return store.transaction(model => {
       const modules = new Map(model.state.modules.value);
       const raw = modules.get(3) ?? Buffer.alloc(0);
@@ -76,7 +76,7 @@ export function createFeatureService({
       updateBits(login, ids);
       modules.set(3, serializedBinary(codec.pack('res_fun_open_login', login)));
       model.state.modules.value = [...modules];
-      const value = { target_list: login.target_list };
+      const value = { target_list: login.target_list, fail_id_list: denied };
       return { schema: 'res_fun_open', value, data: codec.pack('res_fun_open', value) };
     });
   }
@@ -84,6 +84,28 @@ export function createFeatureService({
   function modelContext(model) {
     const extra = typeof context === 'function' ? context({ model, store }) : context;
     return extra && typeof extra === 'object' ? extra : {};
+  }
+
+  function roleForEvaluation(model) {
+    const modules = new Map(model.state.modules.value);
+    const module = modules.get(8);
+    const raw = Array.isArray(module?.value) ? module.value[0] : module;
+    let missionId = 0;
+    if (raw != null) {
+      try {
+        const mission = codec.unpack('pb_mission', rawBinary(raw));
+        const parsed = Number(mission?.mission_id ?? 0);
+        if (Number.isSafeInteger(parsed) && parsed >= 0) missionId = parsed;
+      } catch (error) {
+        log({ event: 'fun_open_mission_parse_failed', message: error?.message ?? String(error) });
+      }
+    }
+    return {
+      ...model.role,
+      missionId,
+      guides: model.guides,
+      heroInfo: model.heroInfo
+    };
   }
 
   // Local test policy: the already visible sprint banners can open their detail UI.
@@ -113,11 +135,7 @@ export function createFeatureService({
     if (!ruleList.length) {
       add = [...forced].filter(([id, mode]) => mode === 'force_open' && !current.has(id)).map(([id]) => id);
     } else {
-      const evaluation = evaluateFunOpen({
-        ...model.role,
-        guides: model.guides,
-        heroInfo: model.heroInfo
-      }, ruleList, modelContext(model));
+      const evaluation = evaluateFunOpen(roleForEvaluation(model), ruleList, modelContext(model));
       const visible = new Set([...evaluation.open].filter(id => forced.get(id) !== 'force_close'));
       for (const [id, mode] of forced) if (mode === 'force_open') visible.add(id);
       add = [...visible].filter(id => !current.has(id));
@@ -131,28 +149,26 @@ export function createFeatureService({
     return add;
   }
 
-  // 7201/res_notify_fun_open is the decoded online notification for a changed
-  // FunOpen target bitmap. The client's OpenFunAndNotify applies each entry's
-  // data as the replacement bitset; flag=1 is the add/set operation used by a
-  // newly unlocked function. No enable time is invented when the table has none.
+  // FunOpenMgr.RevFunOpenNotify passes {target_tid} directly to
+  // OpenFunAndNotify, which expects full function IDs and sets their bits.
+  // Unlike the login/7000 target_list, 7201 therefore names one function (1001),
+  // not its target group (1). extra_ret_list carries custom function data, not
+  // the target bitmap. Do not invent such data or enable times.
   function onlineNotificationsForIds(ids, model = store.read()) {
     const wanted = new Set((ids ?? []).map(Number).filter(Number.isSafeInteger));
     if (!wanted.size) return [];
     const login = codec.unpack('res_fun_open_login', rawBinary(new Map(model.state.modules.value).get(3) ?? Buffer.alloc(0)));
-    const targets = new Map((login.target_list ?? []).map(target => [Number(target.target_tid), target]));
-    const targetIds = [...new Set([...wanted].map(id => Math.floor(id / 1000)))].sort((a, b) => a - b);
+    const open = openFeatureIds(login);
     const notifications = [];
-    for (const targetTid of targetIds) {
-      const target = targets.get(targetTid);
-      if (!target) throw new GameError(5, `FunOpen target ${targetTid} is missing after reconciliation`);
-      const data = Buffer.from(target.fun_open_state ?? '', 'base64');
-      if (!data.length) throw new GameError(5, `FunOpen target ${targetTid} has an empty bitmap`);
+    for (const funId of [...wanted].sort((a, b) => a - b)) {
+      if (!open.has(funId)) throw new GameError(5, `FunOpen ${funId} is missing after reconciliation`);
       notifications.push({
         type: 7201,
-        targetTid,
+        targetTid: funId,
+        funId,
         data: codec.pack('res_notify_fun_open', {
-          target_tid: targetTid,
-          extra_ret_list: [{ flag: 1, data }]
+          target_tid: funId,
+          extra_ret_list: []
         })
       });
     }
@@ -180,19 +196,24 @@ export function createFeatureService({
       // E9-1 recovered FunOpenTable semantics: type 7000 only accepts target 1,
       // whose rows declare client_req_to_open=true. The client has already run
       // the condition and asks the server to commit the successful result.
-      // Applying the evidence-gap evaluator here breaks that acknowledgement
-      // (notably 1054) and leaves the client waiting even though every later
-      // command would otherwise be allowed. Operations can still force-close a
-      // target; target 2 remains server-owned through reconciliation below.
-      const allowed = unique.filter(id => overrideMap.get(id) !== 'force_close');
-      const denied = unique.filter(id => overrideMap.get(id) === 'force_close');
+      // Recheck rules whose original conditions are recovered. Continue to
+      // acknowledge client-only expressions (notably 1054), whose incomplete
+      // server evaluator must not leave the lobby waiting. A denied recovered
+      // condition is returned in fail_id_list, as the original callback expects.
+      // Target 2 remains server-owned through reconciliation above.
+      const readyRules = new Map(ruleList.filter(rule => rule.status === 'ready').map(rule => [Number(rule.funId), rule]));
+      const evaluated = evaluateFunOpen(roleForEvaluation(model), ruleList, modelContext(model));
+      const denied = unique.filter(id => overrideMap.get(id) === 'force_close'
+        || (overrideMap.get(id) !== 'force_open' && readyRules.has(id) && !evaluated.open.has(id)));
+      const deniedSet = new Set(denied);
+      const allowed = unique.filter(id => !deniedSet.has(id));
       if (denied.length) log({
         event: 'fun_open_denied',
         ids: denied,
-        denied: denied.map(funId => ({ funId, type: 'override', reason: 'force_close' }))
+        denied: denied.map(funId => ({ funId, type: overrideMap.get(funId) === 'force_close' ? 'override' : 'rule', reason: overrideMap.get(funId) === 'force_close' ? 'force_close' : 'condition_not_met' }))
       });
       log({ event: 'feature_request', ids: unique, allowed });
-      return commit(allowed);
+      return commit(allowed, denied);
     },
     reconcile() { return store.transaction(model => reconcileModel(model)); },
     reconcileModel,

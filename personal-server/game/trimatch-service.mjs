@@ -27,6 +27,10 @@ const SUPPORTED = [HERO_UP_LV, HERO_UP_STAR, EQUIP_UP, EQUIP_SWAP, EQUIP_MULTIPL
 const MAX_UP_LEVEL_TIMES = 200;
 const MAX_EQUIP_UP_TIMES = 200;
 
+// ModuleTable rows 563-565 are the client's BattleTriMatchHeroMgr,
+// BattleTriMatchEquipMgr and BattleTriMatchLineupMgr login containers.
+export const TRI_MATCH_LOGIN_MODULES = Object.freeze({ hero: 563, equip: 564, lineup: 565 });
+
 function teamsOf(lineup) {
   const teams = Array.isArray(lineup?.team_list) ? lineup.team_list : [];
   return teams.map((team) => {
@@ -106,14 +110,11 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
       levelTid = nextTid;
     }
     if (!steps.length) fail(CODE_LIMIT, 'Triple match hero level is already at the maximum');
-    if (!steps.every(row => affordable(model, row.cost_item ?? []))) {
+    const costs = steps.flatMap(row => row.cost_item ?? []);
+    if (!affordable(model, costs)) {
       fail(CODE_INSUFFICIENT, 'Triple match hero level material is insufficient');
     }
-    const changes = [];
-    for (const row of steps) {
-      const result = consume(model, row.cost_item ?? [], codec, nowMs);
-      changes.push(...result.changes);
-    }
+    const changes = consume(model, costs, codec, nowMs).changes;
     site.level_tid = levelTid;
     writeSite(db, model.state.roleId, site, nowMs);
     log({ event: 'trimatch_hero_up_level', siteIdx, steps: steps.length, levelTid });
@@ -276,10 +277,13 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
 
   function validateTeams(model, db, teams, { allowEmpty = false } = {}) {
     const owned = new Set(ensureRoleState(model, db, tables, model.state.roleId, now()).owned.map(hero => hero.tid));
-    const seenSites = new Set(), seenHeroes = new Set();
-    const normalized = teams.map(team => ({
-      team_id: team.team_id,
-      sites: team.sites.filter(site => site.hero_tid || site.site_index).map((site) => {
+    const seenTeams = new Set(), seenSites = new Set(), seenHeroes = new Set();
+    const normalized = teams.map(team => {
+      if (seenTeams.has(team.team_id)) fail(CODE_INVALID, 'Triple match lineup team id is duplicated');
+      seenTeams.add(team.team_id);
+      return {
+        team_id: team.team_id,
+        sites: team.sites.filter(site => site.hero_tid || site.site_index).map((site) => {
         if (site.site_index < 1 || site.site_index > cells) fail(CODE_INVALID, 'Triple match lineup site is out of range');
         if (seenSites.has(site.site_index)) fail(CODE_INVALID, 'Triple match lineup site is duplicated');
         if (!owned.has(site.hero_tid)) fail(CODE_STATE, 'Triple match lineup hero is not owned');
@@ -288,7 +292,8 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
         seenHeroes.add(site.hero_tid);
         return { site_index: site.site_index, hero_tid: site.hero_tid };
       })
-    }));
+      };
+    });
     if (!allowEmpty && !normalized.length) fail(CODE_INVALID, 'Triple match lineup is empty');
     return normalized;
   }
@@ -357,7 +362,8 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
   function editPlayingLineup(model, db, input) {
     const nowMs = now();
     const lineup = input?.lineup ?? input;
-    const type = integer(lineup?.type ?? 1, 1, 99, 'Invalid triple match playing lineup type');
+    const type = integer(lineup?.type, 1, Number.MAX_SAFE_INTEGER, 'Invalid triple match playing lineup type');
+    if (!tables.lineupTypes.has(type)) fail(CODE_STATE, 'Triple match playing lineup type configuration is missing');
     const teams = validateTeams(model, db, teamsOf(lineup), { allowEmpty: true });
     if (!teams.length || !teams.some(team => team.sites.length)) fail(CODE_INVALID, 'Triple match playing lineup is empty');
     db.prepare(`INSERT INTO trimatch_playing_lineup (role_id, lineup_type, team_list, updated_at) VALUES (?,?,?,?)
@@ -413,7 +419,41 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
     });
   }
 
-  return { supports, execute, snapshot, requestSchemas: {
+  // Login modules 563-565 restore the authoritative site/hero, equipment and
+  // preset state. playing_lineup is repeated, so the main, tower and PVP
+  // deployment types all survive a relogin.
+  function loginPayload(roleId) {
+    return store.transaction((model, db) => {
+      const nowMs = now();
+      ensureTrimatchTables(db);
+      const state = ensureRoleState(model, db, tables, model.state.roleId, nowMs);
+      const lineups = db.prepare('SELECT * FROM trimatch_lineup WHERE role_id=? ORDER BY uid')
+        .all(model.state.roleId).map(lineupRecord);
+      const playingRows = db.prepare('SELECT * FROM trimatch_playing_lineup WHERE role_id=? ORDER BY lineup_type')
+        .all(model.state.roleId).map((row) => {
+          let teams = [];
+          try { teams = JSON.parse(row.team_list); } catch { teams = []; }
+          return { type: Number(row.lineup_type), team_list: Array.isArray(teams) ? teams : [] };
+        });
+      const lineupData = {
+        lineup_list: lineups,
+        playing_lineup: playingRows,
+        add_max_num: maxPreset
+      };
+      return {
+        hero: codec.pack('pb_battle_tri_match_role_hero_data', {
+          hero_list: state.owned.map(hero => heroData(hero.tid, hero.star)),
+          site_list: state.sites.map(siteData)
+        }),
+        equip: codec.pack('pb_battle_tri_match_role_equip_data', {
+          equips: equipDataOf(db, model.state.roleId)
+        }),
+        lineup: codec.pack('pb_battle_tri_match_role_lineup', lineupData)
+      };
+    });
+  }
+
+  return { supports, execute, snapshot, loginPayload, requestSchemas: {
     [HERO_UP_LV]: 'pb_battle_tri_match_hero_up_lv_req',
     [HERO_UP_STAR]: 'pb_battle_tri_match_hero_up_star_req',
     [EQUIP_UP]: 'pb_battle_tri_match_equip_up_req',

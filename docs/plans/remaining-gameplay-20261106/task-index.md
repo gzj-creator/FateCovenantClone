@@ -1,5 +1,8 @@
 # 所有模块任务索引
 
+<!-- r1-rule-status -->
+> 历史任务/实施快照：本页不是现行规则或实时状态。2026-11-15起规划按[统一路线](../../gameplay-operations/11-project-roadmap.md)，规则按[最终R1基线](../../gameplay-operations/12-final-rule-baseline.md)及[297任务裁定](../../gameplay-operations/rules/final-rule-register.md)。旧卡号、证据和当时验证保留；不能继承旧完成状态或以旧源码建议覆盖R1。
+
 一个 ID 对应分区文档中的同名任务卡。共享任务及技能任务在表后。尚未实施，领取状态由总控维护。
 
 2026-11-08 起按命令拆出的可派发子卡见 [子卡划分](14-subtask-cards.md)，子卡 ID 形如 BATTLE-MARTIALCLUB-S2。

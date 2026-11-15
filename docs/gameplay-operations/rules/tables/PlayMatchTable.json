@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "table": "PlayMatchTable",
+  "assetPath": "personal-server/assets/tables/PlayMatchTable.data.lua.json.gz",
+  "assetSha256": "ee902fb6a6e8d3a7660ec0f49ee8dc6c79e0687dd1f3e341d4a6731c381438ca",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/PlayMatchTable.data.lua.json.gz",
+      "sha256": "ee902fb6a6e8d3a7660ec0f49ee8dc6c79e0687dd1f3e341d4a6731c381438ca"
+    }
+  ],
+  "sourceMetadata": "1724506492951760600-PlayMatchTable.data.lua.bin",
+"families":{
+"Robot":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1,"match_type":1,"rand_power":[1000,3000],"rand_head_list":[100208,100308,100408]},
+{"tid":2,"match_type":1,"rand_power":[1000,3000],"rand_head_list":[100208,100308,100408]},
+{"tid":3,"match_type":1,"rand_power":[1000,3000],"rand_head_list":[100208,100308,100408]}
+]},
+"Play":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"match_type":1,"module":"play_cake","module_c":"PlayCakeMgr","data":"pb_cake_play","state_lib":1}
+]},
+"PlayStateLib":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"state_list":[1,2,3,2,3,2,3,2,3,2,3,4]}
+]},
+"PlayStateType":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"keep_time":3,"start_fun":"ready_handler","start_fun_c":""},
+{"tid":2,"keep_time":10,"start_fun":"round_start_handler","start_fun_c":""},
+{"tid":3,"keep_time":1,"start_fun":"round_end_handler","start_fun_c":""},
+{"tid":4,"keep_time":2,"start_fun":"end_handler","start_fun_c":""}
+]}
+}
+}

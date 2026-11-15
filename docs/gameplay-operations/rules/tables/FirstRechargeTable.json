@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "table": "FirstRechargeTable",
+  "assetPath": "personal-server/assets/tables/7289607387164353000-FirstRechargeTable.data.json.gz",
+  "assetSha256": "697c88198f1d6d16ac6c85c459bc83c739d707cf093e96da8fcabecb8562e405",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/7289607387164353000-FirstRechargeTable.data.json.gz",
+      "sha256": "697c88198f1d6d16ac6c85c459bc83c739d707cf093e96da8fcabecb8562e405"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Award":{"status":"decoded-rows","count":9,"externalReferenceCount":0,"rows":[
+{"tid":1,"award":[[3030501,1]]},
+{"tid":2,"award":[[101500,888]]},
+{"tid":3,"award":[[101500,888]]},
+{"tid":4,"award":[[2002,10]]},
+{"tid":5,"award":[[17002,500]]},
+{"tid":6,"award":[[17002,500]]},
+{"tid":7,"award":[[23300504,60]]},
+{"tid":8,"award":[[10063200,1]]},
+{"tid":9,"award":[[23300504,60]]}
+]},
+"Bubble":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1,"music":56142,"time":5000,"des":62308},
+{"tid":2,"music":56143,"time":4000,"des":62309},
+{"tid":3,"music":56144,"time":2000,"des":62310}
+]},
+"FirstRecharge":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"need_amount":600,"show_hero":[3030501],"rewards":[1,2,3],"days":[1,2,3],"tid":1,"show_condition":0},
+{"need_amount":3000,"show_hero":[],"rewards":[4,5,6],"days":[1,2,3],"tid":2,"show_condition":0},
+{"need_amount":10000,"show_hero":[],"rewards":[7,8,9],"days":[1,2,3],"tid":3,"show_condition":0}
+]}
+}
+}

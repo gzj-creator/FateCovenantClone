@@ -3,6 +3,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readGameTables } from '../config/game-tables.mjs';
 import { loadActivityCalendarConfig } from '../config/activity-calendar-config.mjs';
 import { activityDurationDays, activityWindow, dayZero, serverDayNumber } from '../game/activity-calendar.mjs';
+import { gameDay } from '../game/time.mjs';
 
 const DAY_SECONDS = 86400;
 
@@ -54,11 +55,12 @@ function validateActivityState(row, errors) {
   }
 }
 
-export function auditActivitySchedule({ tables, serverOpenedAt, activityReferenceOpenedAt }) {
+export function auditActivitySchedule({ tables, serverOpenedAt, activityReferenceOpenedAt, windowPolicy = 'absolute' }) {
   const targetOpenedAt = integer(serverOpenedAt);
   const referenceOpenedAt = integer(activityReferenceOpenedAt);
   if (!(targetOpenedAt > 0)) throw new Error('serverOpenedAt must be a positive integer timestamp');
   if (!(referenceOpenedAt > 0)) throw new Error('activityReferenceOpenedAt must be a positive integer timestamp');
+  if (!['absolute', 'rebase'].includes(windowPolicy)) throw new Error('windowPolicy must be absolute or rebase');
 
   const errors = [];
   const unresolved = [];
@@ -100,7 +102,7 @@ export function auditActivitySchedule({ tables, serverOpenedAt, activityReferenc
       validateStageDuration(row, errors, counters);
       validateActivityState(row, errors);
 
-      const window = activityWindow(row.config, targetOpenedAt, referenceOpenedAt);
+      const window = activityWindow(row.config, targetOpenedAt, referenceOpenedAt, windowPolicy);
       if (!window) {
         counters.unresolvedWindows++;
         unresolved.push({
@@ -121,9 +123,20 @@ export function auditActivitySchedule({ tables, serverOpenedAt, activityReferenc
       }
 
       const worldTime = integer(row.config.world_time);
-      if (window.kind === 'server-relative-world') {
+      if (window.kind === 'world-time') {
+        const worldDayBegin = gameDay(worldTime);
+        const expectedStart = worldTime;
+        const expectedEnd = dayZero(worldDayBegin + activityDurationDays(row.config) * DAY_SECONDS)
+          + (Number(row.config.end_time) || 0);
+        if (window.start !== expectedStart) {
+          pushError(errors, row, 'world_time_start', `expected absolute start ${expectedStart}, got ${window.start}`);
+        }
+        if (window.end !== expectedEnd) {
+          pushError(errors, row, 'world_time_end', `expected absolute end ${expectedEnd}, got ${window.end}`);
+        }
+      } else if (window.kind === 'server-relative-world') {
         const expectedStart = targetOpenedAt + worldTime - referenceOpenedAt;
-        const expectedEnd = dayZero(dayZero(worldTime) + activityDurationDays(row.config) * DAY_SECONDS)
+        const expectedEnd = dayZero(gameDay(worldTime) + activityDurationDays(row.config) * DAY_SECONDS)
           + (Number(row.config.end_time) || 0) + targetOpenedAt - referenceOpenedAt;
         if (window.start !== expectedStart) {
           pushError(errors, row, 'world_time_rebase', `expected rebased start ${expectedStart}, got ${window.start}`);
@@ -134,11 +147,9 @@ export function auditActivitySchedule({ tables, serverOpenedAt, activityReferenc
       } else {
         const relativeDay = integer(row.config.refer_day ?? row.config.server_day) ?? 0;
         const relativeStart = integer(row.config.refer_start_time ?? row.config.server_start_time) ?? 0;
-        const firstDay = relativeDay > 0
-          ? dayZero(targetOpenedAt) + (relativeDay - 1) * DAY_SECONDS
-          : dayZero(targetOpenedAt);
-        const expectedStart = firstDay + relativeStart;
-        const expectedEnd = dayZero(firstDay + activityDurationDays(row.config) * DAY_SECONDS)
+        const firstDayBegin = gameDay(targetOpenedAt) + Math.max(0, relativeDay - 1) * DAY_SECONDS;
+        const expectedStart = dayZero(firstDayBegin) + relativeStart;
+        const expectedEnd = dayZero(firstDayBegin + activityDurationDays(row.config) * DAY_SECONDS)
           + (Number(row.config.end_time) || 0);
         if (window.start !== expectedStart) {
           pushError(errors, row, 'server_day_start', `expected server-day start ${expectedStart}, got ${window.start}`);
@@ -180,6 +191,7 @@ export function auditActivitySchedule({ tables, serverOpenedAt, activityReferenc
   return {
     serverOpenedAt: targetOpenedAt,
     activityReferenceOpenedAt: referenceOpenedAt,
+    windowPolicy,
     counters: {
       ...counters,
       totalRows: all.length,
@@ -212,6 +224,7 @@ function printReport(report) {
   console.log('Activity schedule audit');
   console.log(`openedAt=${formatDate(report.serverOpenedAt)} (${report.serverOpenedAt})`);
   console.log(`referenceOpenedAt=${formatDate(report.activityReferenceOpenedAt)} (${report.activityReferenceOpenedAt})`);
+  console.log(`windowPolicy=${report.windowPolicy}`);
   console.log(`rows=${c.totalRows} unique=${c.uniqueIds} resolved=${c.resolvedWindows} unresolved=${c.unresolvedWindows}`);
   console.log(`ActFrameAct=${c.sourceRows.ActFrameAct} Activity=${c.sourceRows.Activity}`);
   console.log(`stagedActivities=${c.stagedActivities} explicitZeroDay=${c.explicitZeroDurationActivities} oneMinuteWindows=${c.oneMinuteWindows}`);
@@ -246,7 +259,8 @@ function main() {
   const report = auditActivitySchedule({
     tables: readGameTables(),
     serverOpenedAt: config.serverOpenedAt,
-    activityReferenceOpenedAt: config.activityReferenceOpenedAt
+    activityReferenceOpenedAt: config.activityReferenceOpenedAt,
+    windowPolicy: config.windowPolicy
   });
   if (args.includes('--json')) console.log(JSON.stringify(report, null, 2));
   else printReport(report);

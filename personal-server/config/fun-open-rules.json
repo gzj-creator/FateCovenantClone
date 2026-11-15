@@ -5,11 +5,11 @@
     "funOpenTable": {
       "file": "2127792237940904700-FunOpenTable.data.lua.bin",
       "sha256": "A7DBC28812F761A573837F62758EA210D378EDF51D7B9DF1C0329A0AF12B9A99",
-      "extractedSha256": "14B442957EF5B134296083204898C8208850CF8DBE6EE7EA337BF9B117C0C72D",
+      "extractedSha256": "C5EC69092304913231344D3ED9FAA70B55107027E0C04D071AEF94CA5CA8F68A",
       "rows": 523
     },
     "methodScript": {
-      "file": "MethodScript.data.lua",
+      "file": "MethodScript.data.lua.bin",
       "sha256": "89D91E90E1303DE26E79AA9F598F025EF122362C31F27049042BDFAC4D7917C3",
       "prototypes": 1882
     },
@@ -21,11 +21,11 @@
   },
   "summary": {
     "rules": 523,
-    "ready": 164,
-    "evidenceGap": 359,
+    "ready": 177,
+    "evidenceGap": 346,
     "uniqueAsserts": 271,
-    "mappedAsserts": 262,
-    "readyAsserts": 85,
+    "mappedAsserts": 271,
+    "readyAsserts": 91,
     "dynamicArgs": {
       "1": "GetRoleLv",
       "2": "GetPassedSection",
@@ -150,8 +150,21 @@
         "KSHORT",
         "CALLT"
       ],
-      "status": "evidence_gap",
-      "reason": "unmapped_dynamic_arg_GetPassedSection"
+      "status": "ready",
+      "condition": {
+        "type": "mission",
+        "operator": ">=",
+        "args": {
+          "missionId": 20205
+        }
+      },
+      "comparison": {
+        "methodId": 3,
+        "comparator": "EGreaterThan",
+        "dynamicArg": 2,
+        "getter": "GetPassedSection",
+        "threshold": 20205
+      }
     },
     {
       "scriptId": 955132601006,
@@ -203,8 +216,21 @@
         "KSHORT",
         "CALLT"
       ],
-      "status": "evidence_gap",
-      "reason": "unmapped_dynamic_arg_GetPassedSection"
+      "status": "ready",
+      "condition": {
+        "type": "mission",
+        "operator": ">=",
+        "args": {
+          "missionId": 30203
+        }
+      },
+      "comparison": {
+        "methodId": 3,
+        "comparator": "EGreaterThan",
+        "dynamicArg": 2,
+        "getter": "GetPassedSection",
+        "threshold": 30203
+      }
     },
     {
       "scriptId": 955132601017,
@@ -243,8 +269,21 @@
         "KSHORT",
         "CALLT"
       ],
-      "status": "evidence_gap",
-      "reason": "unmapped_dynamic_arg_GetPassedSection"
+      "status": "ready",
+      "condition": {
+        "type": "mission",
+        "operator": ">=",
+        "args": {
+          "missionId": 30204
+        }
+      },
+      "comparison": {
+        "methodId": 3,
+        "comparator": "EGreaterThan",
+        "dynamicArg": 2,
+        "getter": "GetPassedSection",
+        "threshold": 30204
+      }
     },
     {
       "scriptId": 498792000701,
@@ -263,8 +302,21 @@
         "KSHORT",
         "CALLT"
       ],
-      "status": "evidence_gap",
-      "reason": "unmapped_dynamic_arg_GetPassedSection"
+      "status": "ready",
+      "condition": {
+        "type": "mission",
+        "operator": ">=",
+        "args": {
+          "missionId": 30205
+        }
+      },
+      "comparison": {
+        "methodId": 3,
+        "comparator": "EGreaterThan",
+        "dynamicArg": 2,
+        "getter": "GetPassedSection",
+        "threshold": 30205
+      }
     },
     {
       "scriptId": 186948600102,
@@ -1857,8 +1909,21 @@
         "KSHORT",
         "CALLT"
       ],
-      "status": "evidence_gap",
-      "reason": "unmapped_dynamic_arg_GetPassedSection"
+      "status": "ready",
+      "condition": {
+        "type": "mission",
+        "operator": ">=",
+        "args": {
+          "missionId": 30201
+        }
+      },
+      "comparison": {
+        "methodId": 3,
+        "comparator": "EGreaterThan",
+        "dynamicArg": 2,
+        "getter": "GetPassedSection",
+        "threshold": 30201
+      }
     },
     {
       "scriptId": 955132601145,
@@ -2847,8 +2912,15 @@
       "reason": "expression_not_supported"
     },
     {
+      "scriptId": 955132601207,
+      "prototype": 274,
+      "dynamicArgs": [],
+      "opcodes": [
+        "KSHORT",
+        "RET1"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
       "scriptId": 955132601209,
@@ -3336,8 +3408,21 @@
         "KSHORT",
         "CALLT"
       ],
-      "status": "evidence_gap",
-      "reason": "unmapped_dynamic_arg_GetPassedSection"
+      "status": "ready",
+      "condition": {
+        "type": "mission",
+        "operator": ">=",
+        "args": {
+          "missionId": 30202
+        }
+      },
+      "comparison": {
+        "methodId": 3,
+        "comparator": "EGreaterThan",
+        "dynamicArg": 2,
+        "getter": "GetPassedSection",
+        "threshold": 30202
+      }
     },
     {
       "scriptId": 955132601245,
@@ -6482,12 +6567,40 @@
       }
     },
     {
+      "scriptId": 187548001416,
+      "prototype": 367,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
+      "scriptId": 187548001417,
+      "prototype": 368,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
       "scriptId": 983580210861,
@@ -6622,8 +6735,22 @@
       }
     },
     {
+      "scriptId": 187548001436,
+      "prototype": 372,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
       "scriptId": 955132601438,
@@ -6887,8 +7014,22 @@
       }
     },
     {
+      "scriptId": 187548001454,
+      "prototype": 379,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
       "scriptId": 955132601455,
@@ -7828,12 +7969,40 @@
       "reason": "expression_not_supported"
     },
     {
+      "scriptId": 187548001575,
+      "prototype": 404,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
+      "scriptId": 187548001576,
+      "prototype": 405,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
       "scriptId": 187548001577,
@@ -7868,12 +8037,40 @@
       "reason": "expression_not_supported"
     },
     {
+      "scriptId": 187548001578,
+      "prototype": 407,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
+      "scriptId": 187548001579,
+      "prototype": 408,
+      "dynamicArgs": [],
+      "opcodes": [
+        "UGET",
+        "KSHORT",
+        "CALL",
+        "UGET",
+        "MOV",
+        "KSTR",
+        "CALL",
+        "KSHORT",
+        "CALLT"
+      ],
       "status": "evidence_gap",
-      "reason": "script_mapping_missing"
+      "reason": "expression_not_supported"
     },
     {
       "scriptId": 955132601592,
@@ -8459,7 +8656,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601005,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8476,6 +8674,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601006,
           "reason": "expression_not_supported"
         }
       ]
@@ -8493,7 +8692,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8510,7 +8710,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8527,7 +8728,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8544,7 +8746,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8561,7 +8764,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8578,7 +8782,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8595,7 +8800,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8612,7 +8818,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8669,6 +8876,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601017,
           "reason": "expression_not_supported"
         }
       ]
@@ -8686,7 +8894,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8723,7 +8932,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8740,7 +8950,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8757,7 +8968,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601022,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8774,7 +8986,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601022,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8791,7 +9004,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8808,7 +9022,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8845,7 +9060,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8882,6 +9098,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601029,
           "reason": "expression_not_supported"
         }
       ]
@@ -8899,6 +9116,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601030,
           "reason": "expression_not_supported"
         }
       ]
@@ -8916,7 +9134,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8933,7 +9152,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -8950,6 +9170,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601033,
           "reason": "expression_not_supported"
         }
       ]
@@ -8967,6 +9188,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601035,
           "reason": "expression_not_supported"
         }
       ]
@@ -9024,6 +9246,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601038,
           "reason": "expression_not_supported"
         }
       ]
@@ -9041,6 +9264,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601039,
           "reason": "expression_not_supported"
         }
       ]
@@ -9058,6 +9282,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601039,
           "reason": "expression_not_supported"
         }
       ]
@@ -9075,7 +9300,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9092,6 +9318,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601042,
           "reason": "expression_not_supported"
         }
       ]
@@ -9122,16 +9349,26 @@
       "switch": 0,
       "sysSwitch": 140,
       "funName": 14090,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 41
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 5
+          }
+        }
+      ],
       "asserts": [
         955132601045,
         983580210801
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -9148,7 +9385,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9165,6 +9403,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601047,
           "reason": "unmapped_dynamic_arg_GetQualityDrawCount"
         }
       ]
@@ -9182,7 +9421,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9279,6 +9519,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601054,
           "reason": "expression_not_supported"
         }
       ]
@@ -9296,6 +9537,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -9313,6 +9555,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -9330,6 +9573,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -9347,6 +9591,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -9426,7 +9671,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601017,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -9443,6 +9689,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601065,
           "reason": "expression_not_supported"
         }
       ]
@@ -9461,7 +9708,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001066,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -9479,7 +9727,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001067,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -9489,16 +9738,26 @@
       "switch": 0,
       "sysSwitch": 123,
       "funName": 11318,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 37
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 3
+          }
+        }
+      ],
       "asserts": [
         955132601060,
         955132601064
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -9554,6 +9813,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601090,
           "reason": "expression_not_supported"
         }
       ]
@@ -9571,6 +9831,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601091,
           "reason": "expression_not_supported"
         }
       ]
@@ -9588,6 +9849,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601092,
           "reason": "expression_not_supported"
         }
       ]
@@ -9605,6 +9867,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601093,
           "reason": "expression_not_supported"
         }
       ]
@@ -9622,6 +9885,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601094,
           "reason": "expression_not_supported"
         }
       ]
@@ -9659,7 +9923,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9676,7 +9941,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9793,6 +10059,10 @@
       ],
       "evidenceGap": [
         {
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601105,
           "reason": "expression_not_supported"
         }
       ]
@@ -9830,7 +10100,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9847,7 +10118,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9884,7 +10156,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -9901,6 +10174,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601114,
           "reason": "expression_not_supported"
         }
       ]
@@ -9918,6 +10192,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601116,
           "reason": "expression_not_supported"
         }
       ]
@@ -9995,7 +10270,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -10012,6 +10288,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601122,
           "reason": "expression_not_supported"
         }
       ]
@@ -10029,6 +10306,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601123,
           "reason": "expression_not_supported"
         }
       ]
@@ -10046,7 +10324,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -10103,6 +10382,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601047,
           "reason": "unmapped_dynamic_arg_GetQualityDrawCount"
         }
       ]
@@ -10141,7 +10421,12 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
+        },
+        {
+          "scriptId": 187548001130,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -10171,16 +10456,26 @@
       "switch": 0,
       "sysSwitch": 141,
       "funName": 14091,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 52
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 8
+          }
+        }
+      ],
       "asserts": [
         955132601133,
         941349100005
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -10196,6 +10491,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601122,
           "reason": "expression_not_supported"
         }
       ]
@@ -10213,7 +10509,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -10250,6 +10547,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601137,
           "reason": "expression_not_supported"
         }
       ]
@@ -10267,6 +10565,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601138,
           "reason": "expression_not_supported"
         }
       ]
@@ -10284,6 +10583,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601139,
           "reason": "unknown_dynamic_arg_325"
         }
       ]
@@ -10321,6 +10621,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601141,
           "reason": "expression_not_supported"
         }
       ]
@@ -10338,7 +10639,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 548769500001,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -10355,6 +10657,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601145,
           "reason": "expression_not_supported"
         }
       ]
@@ -10372,6 +10675,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601146,
           "reason": "unknown_dynamic_arg_247"
         }
       ]
@@ -10389,6 +10693,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601147,
           "reason": "unknown_dynamic_arg_247"
         }
       ]
@@ -10406,6 +10711,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601148,
           "reason": "unknown_dynamic_arg_247"
         }
       ]
@@ -10423,6 +10729,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601122,
           "reason": "expression_not_supported"
         }
       ]
@@ -10440,7 +10747,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -10457,6 +10765,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601151,
           "reason": "expression_not_supported"
         }
       ]
@@ -10494,6 +10803,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601155,
           "reason": "expression_not_supported"
         }
       ]
@@ -10504,16 +10814,26 @@
       "switch": 0,
       "sysSwitch": 519,
       "funName": 667075,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 999
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 15
+          }
+        }
+      ],
       "asserts": [
         955132601044,
         230114840301
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -10550,7 +10870,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601159,
+          "reason": "unknown_dynamic_arg_351"
         }
       ]
     },
@@ -10587,6 +10908,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601033,
           "reason": "expression_not_supported"
         }
       ]
@@ -10644,6 +10966,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601165,
           "reason": "unmapped_dynamic_arg_GetNormalDrawCount"
         }
       ]
@@ -10661,6 +10984,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601165,
           "reason": "unmapped_dynamic_arg_GetNormalDrawCount"
         }
       ]
@@ -10738,6 +11062,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601170,
           "reason": "expression_not_supported"
         }
       ]
@@ -10788,16 +11113,26 @@
       "switch": 0,
       "sysSwitch": 24045,
       "funName": 64709,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 29
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 3
+          }
+        }
+      ],
       "asserts": [
         955132601174,
         955132601064
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -10813,6 +11148,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -10823,16 +11159,26 @@
       "switch": 2,
       "sysSwitch": 38,
       "funName": 14091,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 45
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 8
+          }
+        }
+      ],
       "asserts": [
         918220900003,
         941349100005
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -10848,6 +11194,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601177,
           "reason": "unknown_dynamic_arg_252"
         }
       ]
@@ -10865,6 +11212,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601178,
           "reason": "unknown_dynamic_arg_252"
         }
       ]
@@ -10882,6 +11230,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601179,
           "reason": "unknown_dynamic_arg_252"
         }
       ]
@@ -10899,6 +11248,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601180,
           "reason": "expression_not_supported"
         }
       ]
@@ -10916,6 +11266,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601181,
           "reason": "expression_not_supported"
         }
       ]
@@ -10933,6 +11284,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601182,
           "reason": "expression_not_supported"
         }
       ]
@@ -10951,7 +11303,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001183,
+          "reason": "unknown_dynamic_arg_301"
         }
       ]
     },
@@ -10968,6 +11321,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601184,
           "reason": "expression_not_supported"
         }
       ]
@@ -10985,6 +11339,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601185,
           "reason": "expression_not_supported"
         }
       ]
@@ -11002,6 +11357,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601186,
           "reason": "expression_not_supported"
         }
       ]
@@ -11019,6 +11375,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601187,
           "reason": "expression_not_supported"
         }
       ]
@@ -11036,6 +11393,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601188,
           "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
@@ -11053,6 +11411,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601190,
           "reason": "expression_not_supported"
         }
       ]
@@ -11070,6 +11429,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601192,
           "reason": "expression_not_supported"
         }
       ]
@@ -11087,6 +11447,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -11104,6 +11465,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601192,
           "reason": "expression_not_supported"
         }
       ]
@@ -11114,16 +11476,26 @@
       "switch": 0,
       "sysSwitch": 522,
       "funName": 6143,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 37
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 3
+          }
+        }
+      ],
       "asserts": [
         955132601060,
         955132601064
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -11139,7 +11511,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -11177,7 +11550,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001198,
+          "reason": "unmapped_dynamic_arg_GetCrossMainServerOpenDay"
         }
       ]
     },
@@ -11195,7 +11569,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001198,
+          "reason": "unmapped_dynamic_arg_GetCrossMainServerOpenDay"
         }
       ]
     },
@@ -11212,6 +11587,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601200,
           "reason": "expression_not_supported"
         }
       ]
@@ -11229,6 +11605,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601201,
           "reason": "expression_not_supported"
         }
       ]
@@ -11246,6 +11623,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601192,
           "reason": "expression_not_supported"
         }
       ]
@@ -11283,6 +11661,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601039,
           "reason": "expression_not_supported"
         }
       ]
@@ -11300,6 +11679,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -11317,6 +11697,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601206,
           "reason": "expression_not_supported"
         }
       ]
@@ -11334,7 +11715,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "script_mapping_missing"
+          "scriptId": 955132601207,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -11371,6 +11753,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601209,
           "reason": "expression_not_supported"
         }
       ]
@@ -11388,6 +11771,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601210,
           "reason": "expression_not_supported"
         }
       ]
@@ -11503,6 +11887,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601054,
           "reason": "expression_not_supported"
         }
       ]
@@ -11513,16 +11898,26 @@
       "switch": 0,
       "sysSwitch": 161,
       "funName": 60850,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 32
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 2
+          }
+        }
+      ],
       "asserts": [
         955132601037,
         983580210601
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -11538,6 +11933,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601219,
           "reason": "expression_not_supported"
         }
       ]
@@ -11555,6 +11951,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601033,
           "reason": "expression_not_supported"
         }
       ]
@@ -11612,7 +12009,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -11629,6 +12027,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601224,
           "reason": "expression_not_supported"
         }
       ]
@@ -11647,7 +12046,12 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601225,
+          "reason": "unmapped_dynamic_arg_GetNormalDrawCount"
+        },
+        {
+          "scriptId": 187548001225,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -11664,6 +12068,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 746074030001,
           "reason": "expression_not_supported"
         }
       ]
@@ -11681,7 +12086,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -11698,6 +12104,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601228,
           "reason": "unmapped_dynamic_arg_GetNormalDrawCount"
         }
       ]
@@ -11708,16 +12115,26 @@
       "switch": 2,
       "sysSwitch": 141,
       "funName": 14091,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 48
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 8
+          }
+        }
+      ],
       "asserts": [
         955132601229,
         941349100005
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -11753,6 +12170,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601236,
           "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
@@ -11770,6 +12188,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601237,
           "reason": "expression_not_supported"
         }
       ]
@@ -11787,6 +12206,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601238,
           "reason": "expression_not_supported"
         }
       ]
@@ -11844,6 +12264,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601241,
           "reason": "expression_not_supported"
         }
       ]
@@ -11861,7 +12282,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601242,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -11878,6 +12300,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601225,
           "reason": "unmapped_dynamic_arg_GetNormalDrawCount"
         }
       ]
@@ -11895,7 +12318,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601022,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -11912,6 +12336,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601245,
           "reason": "expression_not_supported"
         }
       ]
@@ -11929,6 +12354,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601246,
           "reason": "expression_not_supported"
         }
       ]
@@ -11939,16 +12365,26 @@
       "switch": 0,
       "sysSwitch": 152,
       "funName": 669216,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 48
+          }
+        },
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 8
+          }
+        }
+      ],
       "asserts": [
         955132601229,
         941349100005
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -12004,6 +12440,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601186,
           "reason": "expression_not_supported"
         }
       ]
@@ -12021,7 +12458,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601022,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -12038,6 +12476,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -12055,6 +12494,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601139,
           "reason": "unknown_dynamic_arg_325"
         }
       ]
@@ -12111,7 +12551,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12129,7 +12570,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12147,7 +12589,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12165,7 +12608,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12183,7 +12627,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12201,7 +12646,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12218,6 +12664,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601262,
           "reason": "expression_not_supported"
         }
       ]
@@ -12236,7 +12683,11 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601263,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12246,16 +12697,26 @@
       "switch": 0,
       "sysSwitch": 529,
       "funName": 805313,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 13
+          }
+        },
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 30
+          }
+        }
+      ],
       "asserts": [
         955132601264,
         186948600102
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -12271,6 +12732,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601224,
           "reason": "expression_not_supported"
         }
       ]
@@ -12289,7 +12751,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12306,6 +12769,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601268,
           "reason": "unmapped_dynamic_arg_GetCrossMainServerOpenDay"
         }
       ]
@@ -12324,7 +12788,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12422,7 +12887,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001274,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12440,7 +12906,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001274,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -12458,7 +12925,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001276,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12475,6 +12943,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601033,
           "reason": "expression_not_supported"
         }
       ]
@@ -12573,7 +13042,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001282,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12591,7 +13061,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601283,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12609,7 +13080,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001284,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12646,6 +13118,10 @@
       ],
       "evidenceGap": [
         {
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601286,
           "reason": "expression_not_supported"
         }
       ]
@@ -12664,7 +13140,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001287,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12682,7 +13159,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001288,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12700,7 +13178,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001289,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12718,7 +13197,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001290,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12737,7 +13217,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 959939201291,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -12814,6 +13295,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601295,
           "reason": "expression_not_supported"
         }
       ]
@@ -12891,6 +13373,10 @@
       ],
       "evidenceGap": [
         {
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601299,
           "reason": "expression_not_supported"
         }
       ]
@@ -12928,6 +13414,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 230113840101,
           "reason": "expression_not_supported"
         }
       ]
@@ -12945,6 +13432,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 230113840101,
           "reason": "expression_not_supported"
         }
       ]
@@ -13022,6 +13510,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601306,
           "reason": "unknown_dynamic_arg_364"
         }
       ]
@@ -13039,6 +13528,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601306,
           "reason": "unknown_dynamic_arg_364"
         }
       ]
@@ -13057,7 +13547,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001308,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13075,7 +13566,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001309,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13085,16 +13577,26 @@
       "switch": 0,
       "sysSwitch": 50,
       "funName": 0,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 12
+          }
+        },
+        {
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 58
+          }
+        }
+      ],
       "asserts": [
         983580210701,
         187548001159
-      ],
-      "evidenceGap": [
-        {
-          "reason": "multiple_assert_combination_unproven"
-        }
       ]
     },
     {
@@ -13111,7 +13613,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601241,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13129,7 +13632,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601241,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13147,7 +13651,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001313,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13165,7 +13670,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001314,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13222,6 +13728,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601151,
           "reason": "expression_not_supported"
         }
       ]
@@ -13259,6 +13766,10 @@
       ],
       "evidenceGap": [
         {
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601319,
           "reason": "expression_not_supported"
         }
       ]
@@ -13296,6 +13807,10 @@
       ],
       "evidenceGap": [
         {
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601321,
           "reason": "expression_not_supported"
         }
       ]
@@ -13313,6 +13828,10 @@
       ],
       "evidenceGap": [
         {
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601319,
           "reason": "expression_not_supported"
         }
       ]
@@ -13331,7 +13850,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001323,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13349,7 +13869,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001324,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13367,7 +13888,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001325,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13424,6 +13946,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -13442,7 +13965,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001329,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13460,7 +13984,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001330,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13478,7 +14003,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001331,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13496,7 +14022,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001332,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13514,7 +14041,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001333,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13532,7 +14060,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001334,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13550,7 +14079,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001335,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13568,7 +14098,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001336,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13586,7 +14117,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001337,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13604,7 +14136,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001338,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13622,7 +14155,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001339,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13659,6 +14193,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601341,
           "reason": "expression_not_supported"
         }
       ]
@@ -13676,6 +14211,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13693,7 +14229,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -13710,6 +14247,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13727,6 +14265,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13744,6 +14283,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601346,
           "reason": "unknown_dynamic_arg_402"
         }
       ]
@@ -13761,6 +14301,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13778,6 +14319,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13795,6 +14337,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13812,6 +14355,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13829,6 +14373,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13846,6 +14391,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -13883,6 +14429,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601116,
           "reason": "expression_not_supported"
         }
       ]
@@ -13919,7 +14466,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001356,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13937,7 +14485,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001357,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13955,7 +14504,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001358,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13973,7 +14523,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001359,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -13991,7 +14542,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001360,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14009,7 +14561,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001361,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14027,7 +14580,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001362,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14045,7 +14599,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001363,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14063,7 +14618,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001364,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14081,7 +14637,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001365,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14098,6 +14655,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -14115,6 +14673,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601367,
           "reason": "expression_not_supported"
         }
       ]
@@ -14132,6 +14691,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601368,
           "reason": "expression_not_supported"
         }
       ]
@@ -14149,6 +14709,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14166,6 +14727,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14183,6 +14745,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14200,6 +14763,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14254,7 +14818,12 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601375,
+          "reason": "expression_not_supported"
+        },
+        {
+          "scriptId": 187548001375,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14271,6 +14840,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14288,6 +14858,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14305,7 +14876,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -14322,7 +14894,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -14339,6 +14912,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14356,6 +14930,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14373,6 +14948,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14428,6 +15004,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14445,6 +15022,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601387,
           "reason": "unknown_dynamic_arg_427"
         }
       ]
@@ -14462,6 +15040,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 59946500001,
           "reason": "unknown_dynamic_arg_399"
         }
       ]
@@ -14479,6 +15058,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14496,6 +15076,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14513,6 +15094,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14530,6 +15112,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14567,6 +15150,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14624,6 +15208,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 983580210003,
           "reason": "unknown_dynamic_arg_396"
         }
       ]
@@ -14661,6 +15246,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14678,6 +15264,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -14695,7 +15282,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -14712,6 +15300,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601375,
           "reason": "expression_not_supported"
         }
       ]
@@ -14729,6 +15318,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601375,
           "reason": "expression_not_supported"
         }
       ]
@@ -14747,7 +15337,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001416,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14765,7 +15356,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001417,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -14783,7 +15375,12 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601225,
+          "reason": "unmapped_dynamic_arg_GetNormalDrawCount"
+        },
+        {
+          "scriptId": 187548001225,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -14801,7 +15398,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -14819,7 +15417,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001256,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -14836,6 +15435,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601375,
           "reason": "expression_not_supported"
         }
       ]
@@ -14853,6 +15453,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601375,
           "reason": "expression_not_supported"
         }
       ]
@@ -14970,6 +15571,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601375,
           "reason": "expression_not_supported"
         }
       ]
@@ -14987,6 +15589,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -15004,6 +15607,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601375,
           "reason": "expression_not_supported"
         }
       ]
@@ -15021,6 +15625,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601375,
           "reason": "expression_not_supported"
         }
       ]
@@ -15119,7 +15724,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001436,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15156,6 +15762,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601438,
           "reason": "expression_not_supported"
         }
       ]
@@ -15173,6 +15780,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601033,
           "reason": "expression_not_supported"
         }
       ]
@@ -15190,6 +15798,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601440,
           "reason": "expression_not_supported"
         }
       ]
@@ -15207,6 +15816,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601441,
           "reason": "expression_not_supported"
         }
       ]
@@ -15284,6 +15894,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601029,
           "reason": "expression_not_supported"
         }
       ]
@@ -15301,6 +15912,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 40277400001,
           "reason": "expression_not_supported"
         }
       ]
@@ -15318,6 +15930,10 @@
       ],
       "evidenceGap": [
         {
+          "reason": "dynamic_show_asserts_unproven"
+        },
+        {
+          "scriptId": 955132601447,
           "reason": "expression_not_supported"
         }
       ]
@@ -15395,6 +16011,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601451,
           "reason": "expression_not_supported"
         }
       ]
@@ -15412,6 +16029,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601452,
           "reason": "expression_not_supported"
         }
       ]
@@ -15450,7 +16068,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001454,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15467,6 +16086,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601455,
           "reason": "expression_not_supported"
         }
       ]
@@ -15484,6 +16104,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601456,
           "reason": "expression_not_supported"
         }
       ]
@@ -15501,6 +16122,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601457,
           "reason": "expression_not_supported"
         }
       ]
@@ -15558,6 +16180,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601460,
           "reason": "expression_not_supported"
         }
       ]
@@ -15575,6 +16198,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601461,
           "reason": "expression_not_supported"
         }
       ]
@@ -15612,6 +16236,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601463,
           "reason": "expression_not_supported"
         }
       ]
@@ -15630,7 +16255,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 191281100019,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15648,7 +16274,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001502,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15666,7 +16293,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001503,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15684,7 +16312,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001504,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15702,7 +16331,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001505,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15720,7 +16350,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001506,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15738,7 +16369,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001507,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -15775,6 +16407,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601029,
           "reason": "expression_not_supported"
         }
       ]
@@ -15813,7 +16446,12 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 955132601511,
+          "reason": "expression_not_supported"
+        },
+        {
+          "scriptId": 187548001225,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -15850,6 +16488,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -15860,15 +16499,18 @@
       "switch": 0,
       "sysSwitch": 92098,
       "funName": 0,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "mission",
+          "operator": ">=",
+          "args": {
+            "missionId": 30203
+          }
+        }
+      ],
       "asserts": [
         955132601007
-      ],
-      "evidenceGap": [
-        {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
-        }
       ]
     },
     {
@@ -15884,6 +16526,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -15922,7 +16565,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001225,
+          "reason": "unmapped_dynamic_arg_GetTotalAmount"
         }
       ]
     },
@@ -15939,6 +16583,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 187548001067,
           "reason": "expression_not_supported"
         }
       ]
@@ -15956,7 +16601,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -15973,6 +16619,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601520,
           "reason": "expression_not_supported"
         }
       ]
@@ -15990,7 +16637,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16007,6 +16655,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601522,
           "reason": "expression_not_supported"
         }
       ]
@@ -16024,6 +16673,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601523,
           "reason": "expression_not_supported"
         }
       ]
@@ -16041,7 +16691,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16078,7 +16729,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16095,6 +16747,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601527,
           "reason": "expression_not_supported"
         }
       ]
@@ -16112,7 +16765,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16129,6 +16783,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601210,
           "reason": "expression_not_supported"
         }
       ]
@@ -16166,6 +16821,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601531,
           "reason": "expression_not_supported"
         }
       ]
@@ -16183,6 +16839,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -16260,6 +16917,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601536,
           "reason": "expression_not_supported"
         }
       ]
@@ -16277,7 +16935,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16314,7 +16973,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16331,7 +16991,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16348,7 +17009,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16365,6 +17027,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601542,
           "reason": "expression_not_supported"
         }
       ]
@@ -16382,6 +17045,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601542,
           "reason": "expression_not_supported"
         }
       ]
@@ -16399,6 +17063,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601542,
           "reason": "expression_not_supported"
         }
       ]
@@ -16436,7 +17101,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16553,6 +17219,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601055,
           "reason": "expression_not_supported"
         }
       ]
@@ -16610,7 +17277,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16627,7 +17295,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16644,6 +17313,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601560,
           "reason": "expression_not_supported"
         }
       ]
@@ -16661,6 +17331,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601561,
           "reason": "expression_not_supported"
         }
       ]
@@ -16778,7 +17449,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 498792000701,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16815,7 +17487,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16832,7 +17505,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "unmapped_dynamic_arg_GetPassedSection"
+          "scriptId": 955132601007,
+          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
         }
       ]
     },
@@ -16870,7 +17544,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001575,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -16888,7 +17563,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001576,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -16906,7 +17582,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001577,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -16924,7 +17601,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001578,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -16942,7 +17620,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001579,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -17037,6 +17716,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601592,
           "reason": "expression_not_supported"
         }
       ]
@@ -17074,6 +17754,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601595,
           "reason": "expression_not_supported"
         }
       ]
@@ -17091,6 +17772,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601595,
           "reason": "expression_not_supported"
         }
       ]
@@ -17348,6 +18030,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601542,
           "reason": "expression_not_supported"
         }
       ]
@@ -17405,6 +18088,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601619,
           "reason": "expression_not_supported"
         }
       ]
@@ -17422,6 +18106,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601620,
           "reason": "expression_not_supported"
         }
       ]
@@ -17479,6 +18164,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601625,
           "reason": "expression_not_supported"
         }
       ]
@@ -17574,6 +18260,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601635,
           "reason": "expression_not_supported"
         }
       ]
@@ -17591,6 +18278,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601635,
           "reason": "expression_not_supported"
         }
       ]
@@ -17608,6 +18296,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601635,
           "reason": "expression_not_supported"
         }
       ]
@@ -17625,6 +18314,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601635,
           "reason": "expression_not_supported"
         }
       ]
@@ -17642,6 +18332,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601635,
           "reason": "expression_not_supported"
         }
       ]
@@ -17659,6 +18350,7 @@
       ],
       "evidenceGap": [
         {
+          "scriptId": 955132601635,
           "reason": "expression_not_supported"
         }
       ]
@@ -17697,7 +18389,8 @@
       ],
       "evidenceGap": [
         {
-          "reason": "multiple_assert_combination_unproven"
+          "scriptId": 187548001454,
+          "reason": "expression_not_supported"
         }
       ]
     },
@@ -17717,6 +18410,7 @@
           "reason": "target_2_not_client_requested"
         },
         {
+          "scriptId": 280217002002,
           "reason": "expression_not_supported"
         }
       ]
@@ -17754,6 +18448,7 @@
           "reason": "target_2_not_client_requested"
         },
         {
+          "scriptId": 280217002004,
           "reason": "expression_not_supported"
         }
       ]
@@ -17774,6 +18469,7 @@
           "reason": "target_2_not_client_requested"
         },
         {
+          "scriptId": 280217002005,
           "reason": "expression_not_supported"
         }
       ]
@@ -17794,6 +18490,7 @@
           "reason": "target_2_not_client_requested"
         },
         {
+          "scriptId": 280217002002,
           "reason": "expression_not_supported"
         }
       ]
@@ -17814,6 +18511,7 @@
           "reason": "target_2_not_client_requested"
         },
         {
+          "scriptId": 280217002007,
           "reason": "expression_not_supported"
         }
       ]
@@ -17834,6 +18532,7 @@
           "reason": "target_2_not_client_requested"
         },
         {
+          "scriptId": 983580210003,
           "reason": "unknown_dynamic_arg_396"
         }
       ]
@@ -17871,6 +18570,7 @@
           "reason": "target_2_not_client_requested"
         },
         {
+          "scriptId": 280217002010,
           "reason": "unknown_dynamic_arg_396"
         }
       ]

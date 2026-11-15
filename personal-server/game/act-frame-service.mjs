@@ -1,6 +1,5 @@
 ﻿import { GameError } from './hero-progression.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
-import { activityWindow } from './activity-calendar.mjs';
 import { properList } from './role-service.mjs';
 
 // ActivityCmd/ActFrameCmd runtime. Activity login state (module 92) stays the
@@ -169,15 +168,18 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
       const actStageList = ids.map(actId => {
         const stored = stageRow(db, roleId, actId);
         const config = tables?.ActFrameAct?.get?.(actId) ?? tables?.Activity?.get?.(actId) ?? null;
-        const window = activityWindow(
-          config,
-          calendar.serverOpenedAt,
-          calendar.activityReferenceOpenedAt
-        );
+        const occurrence = calendar.occurrenceFor?.(actId, currentSeconds()) ?? null;
+        const window = occurrence ?? calendar.windowFor?.(actId, activity, currentSeconds()) ?? null;
         const customRow = custom.get(actId);
         const start = Number(window?.start ?? customRow?.start_time ?? 0);
         const end = Number(window?.end ?? customRow?.end_time ?? 0);
-        const current = stored ? Number(stored.stage_id) : STATES.RUNNING;
+        const activeStage = occurrence?.stages?.find(stage => currentSeconds() >= stage.start && currentSeconds() < stage.end);
+        const current = Number(activeStage?.stageId) || (stored ? Number(stored.stage_id) : STATES.RUNNING);
+        const stageTimeList = Array.isArray(occurrence?.stages) && occurrence.stages.length
+          ? occurrence.stages.map(stage => ({
+            stage_id: Number(stage.stageId), start_time: String(stage.start), end_time: String(stage.end)
+          }))
+          : [{ stage_id: current, start_time: String(start), end_time: String(end) }];
         return {
           act_id: actId,
           type: Number(config?.type ?? 0),
@@ -187,7 +189,7 @@ export function createActFrameService({ store, codec, calendar, tables, now = Da
           is_pause: pause.has(actId),
           ignore_fix_time: Boolean(customRow && !window),
           loop_count: Number(stored?.loop_count ?? 0),
-          stage_time_list: [{ stage_id: current, start_time: String(start), end_time: String(end) }]
+          stage_time_list: stageTimeList
         };
       });
       return { value: { activities: actStageList.length }, data: codec.pack('pb_act_frame_stage_push', { act_stage_list: actStageList }) };

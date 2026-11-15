@@ -56,6 +56,76 @@ test('score ordering uses value, configured direction, minimum value and numeric
   assert.throws(() => service.execute(2000, [999999]), error => error.code === 1);
 });
 
+test('R1 tie-break uses the first submitted time at the same score and keeps it after a downgrade', t => {
+  let clock = 1_800_000_000_000;
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-rank-tie-' });
+  const service = createRankService({ codec, store: fixture.store, tables, now: () => clock });
+  const rankId = RANK_IDS.SWAP_ARENA;
+
+  for (const participantId of [100003, 100002, 100001]) {
+    clock += 1_000;
+    service.recordScore({ rankId, participantId, value: 50 });
+  }
+  let board = unpack(service, 2002, [rankId, 10], 'rank_to_client');
+  assert.deepEqual(objs(board).map(item => item.id), ['100003', '100002', '100001']);
+
+  // A later event on the same value does not refresh the original time. A
+  // value change then a return to the old value reuses the old score's first
+  // traversal time, so the participant does not jump ahead of earlier ties.
+  clock += 1_000;
+  service.recordScore({ rankId, participantId: 100001, value: 50 });
+  clock += 1_000;
+  service.recordScore({ rankId, participantId: 100001, value: 60 });
+  board = unpack(service, 2002, [rankId, 10], 'rank_to_client');
+  assert.deepEqual(objs(board).map(item => [item.id, item.value]), [
+    ['100001', '60'], ['100003', '50'], ['100002', '50']
+  ]);
+  clock += 1_000;
+  service.recordScore({ rankId, participantId: 100001, value: 50 });
+  board = unpack(service, 2002, [rankId, 10], 'rank_to_client');
+  assert.deepEqual(objs(board).map(item => [item.id, item.value]), [
+    ['100003', '50'], ['100002', '50'], ['100001', '50']
+  ]);
+
+  const reached = fixture.store.inspect(db => db.prepare(`SELECT participant_id,value,first_reached_at,source
+    FROM rank_score_reached WHERE rank_id=? ORDER BY participant_id,value`).all(rankId));
+  assert.deepEqual(reached.map(row => [row.participant_id, row.value, row.source]), [
+    ['100001', '50', 'submitted-event'],
+    ['100001', '60', 'submitted-event'],
+    ['100002', '50', 'submitted-event'],
+    ['100003', '50', 'submitted-event']
+  ]);
+  assert.equal(Number(reached[0].first_reached_at), 1_800_000_003_000);
+  assert.equal(Number(reached[1].first_reached_at), 1_800_000_005_000);
+  assert.equal(Number(reached[2].first_reached_at), 1_800_000_002_000);
+  assert.equal(Number(reached[3].first_reached_at), 1_800_000_001_000);
+});
+
+test('legacy rank rows without an event ledger migrate to one snapshot time and use role ID', t => {
+  let clock = 1_800_000_000_000;
+  const fixture = createGameFixture(t, codec, { prefix: 'fc-rank-migrate-' });
+  const service = createRankService({ codec, store: fixture.store, tables, now: () => clock });
+  const rankId = RANK_IDS.SWAP_ARENA;
+  clock += 1_000;
+  service.recordScore({ rankId, participantId: 100003, value: 50 });
+  clock += 1_000;
+  service.recordScore({ rankId, participantId: 100002, value: 50 });
+
+  fixture.store.inspect(db => {
+    db.exec('DELETE FROM rank_score_reached; DELETE FROM rank_schema_meta; DELETE FROM rank_backups;');
+  });
+  clock = 1_800_100_000_000;
+  const migrated = createRankService({ codec, store: fixture.store, tables, now: () => clock });
+  const board = unpack(migrated, 2002, [rankId, 10], 'rank_to_client');
+  assert.deepEqual(objs(board).map(item => item.id), ['100002', '100003']);
+  const reached = fixture.store.inspect(db => db.prepare(`SELECT participant_id,first_reached_at,source
+    FROM rank_score_reached WHERE rank_id=? ORDER BY participant_id`).all(rankId));
+  assert.deepEqual(reached.map(row => [row.participant_id, Number(row.first_reached_at), row.source]), [
+    ['100002', 1_800_100_000_000, 'migration-snapshot'],
+    ['100003', 1_800_100_000_000, 'migration-snapshot']
+  ]);
+});
+
 test('current, appointed, cross, batch ETF and protobuf views read the same ranking rows', t => {
   const { service } = setup(t);
   for (const [participantId, serverId, value] of [[100001, 1, 100], [100002, 2, 200], [100003, 1, 300]]) {
