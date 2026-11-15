@@ -137,7 +137,7 @@ import { createHeroHandbookService } from './hero-handbook-service.mjs';
 import { createGuildRosterService } from './guild-roster-service.mjs';
 import { createGuildSocietyService } from './guild-society-service.mjs';
 import { createSocialCommunityService } from './social-community-service.mjs';
-import { createGuildActivityService } from './guild-activity-service.mjs';
+import { createGuildActivityService, GUILD_WAR_LOGIN_MODULE_ID } from './guild-activity-service.mjs';
 import { createHeroFavorService } from './hero-favor-service.mjs';
 import { createHeroLeaseService } from './hero-lease-service.mjs';
 import { createLeaserStarUpService } from './leaser-starup-service.mjs';
@@ -1130,7 +1130,7 @@ export function createLocalGame({
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary(serverName), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
-    modules.set(4, binary(roleService.loginRedDots()));
+    modules.set(4, binary(await roleService.loginRedDots()));
     const storyLogin = storyService.loginPayload();
     modules.set(88, [storyLogin.tid, binary(storyLogin.payload)]);
     modules.set(173, binary(roleService.loginChannelPush()));
@@ -1152,6 +1152,10 @@ export function createLocalGame({
     modules.set(63, binary(pack('pb_cross_login', { cross_infos: [], role_info: pack('pb_cross_role', {}) })));
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
+    // GuildWarMgr is referenced by MainHouseForm during the login transition.
+    // Four empty protobuf blocks make entryData non-nil without opening the
+    // activity or inventing live war state.
+    modules.set(GUILD_WAR_LOGIN_MODULE_ID, guildActivity.loginPayloads().map(entry => binary(entry)));
     const triMatchLogin = triMatch.loginPayload(state.roleId);
     modules.set(TRI_MATCH_LOGIN_MODULES.hero, binary(triMatchLogin.hero));
     modules.set(TRI_MATCH_LOGIN_MODULES.equip, binary(triMatchLogin.equip));

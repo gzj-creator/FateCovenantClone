@@ -121,3 +121,43 @@
 
 客户端仅执行 `am force-stop com.jzyx.ps` 后正常重开，未执行 `pm clear`，未代用户点击 UI。当前停在 QuickSDK“选择账号”页，截图 `analysis/experiments/launch-20261115/client-ready-final-fixes.png`；用户可点“其他账号登录”创建新号做最终视觉验收。
 
+## 2026-11-16 转场卡死与登录模块补齐
+
+### 屏幕不可点击
+
+`com.jzyx.ps` 前台 Activity 和 Unity 渲染都正常，截图中全屏 `LoadingProgressBgForm` 仍可见并拦截触摸。`client-logs/Info_after_guide_hero_fix_runtime.txt` 的异常来自新手引导完成后的 `MainHouseForm` 打开事件：
+
+```text
+GuildWarMgr.lua.txt:887: attempt to index field 'entryData' (a nil value)
+GuildWarMgr.GetRealTimeMap <- GuildWarMgr event callback
+<- MainHouseForm <- MainUITagNode <- MainUIForm <- MainUIMgr.EnterHome
+<- GuideCommClickForm
+```
+
+异常中断 `EnterHome` 后没有关闭 `LoadingProgressBgForm`；不是 Android ANR，也不是服务端返回了未知空白页。
+
+`ModuleTable.data.lua` 中 `24047` 行的路径为 `project/guild_war`。客户端 `GuildWarMgr.LoginParse` 按下列顺序读取四个 binary：`pb_guild_war_entry`、`pb_guild_war_data`、`pb_guild_war_record`、`pb_guild_war_person`。服务端此前没有返回模块 24047，因此 `entryData` 为 nil。
+
+`guild-activity-service.mjs` 现在生成四段空但合法的 protobuf，`gateway.mjs` 在活动门禁处理后仍向登录容器写入模块 24047。空数据只让客户端管理器初始化，不会打开公会战或伪造战场状态。
+
+### 登录异常
+
+- 模块 113 的客户端原型顺序是 role、act、match。服务端已从 act、role、match 改为 role、act、match；此前 act 被当作 role 解码会在字段 5 触发 bytes/varint 类型错误。
+- 模块 4 的 `RedDotMgr.LoginParse` 要求 ETF 列表，元素是 `single_red_info` binary。服务端已从单个 `all_saved_red` protobuf 改为 ETF 列表，并把 `loginRedDots()` 改为异步；gateway 在登录容器中使用它的编码结果。
+
+### 活动 118003 告警
+
+客户端 `ActivityServerData` 在 `cur_state_id` 不在活动 `state` 配置中时打印 `act {0} not exist state {1}`。原表 `ActivityTable.Activity(118003)` 的 `func=118`、`server_day=1`、`duration_day=7`，但 `state=[]`；同族的 118001/118002 明确配置了 `[10,50]`。服务端按运行期写入 `cur_state_id=50`，客户端打印告警后仍继续调用该功能的 `LoginParse`。
+
+因此这是随客户端表带出的状态配置告警，不是模块缺失、登录失败或转场卡顿原因。现有证据不能证明应向客户端伪装一个表内不存在的状态；本轮保留 7 天活动、真实模块数据和不伪状态。
+
+### 验证
+
+- 模块 113 登录顺序专项：1/1 通过。
+- 模块 4 角色支持专项：15/15 通过。
+- 公会战模块 24047 与四段 binary 专项：2/2 通过。
+- `gameplay-gateway.test.mjs`：7/7 通过。
+- `npm test --prefix personal-server`：490 项，pass 488、fail 0、skipped 2；两个 skipped 仍只因未设置已验收 v9 Lua 包环境变量 `FC_RECHARGE_CLIENT_BUNDLE`。
+
+本轮未修改 APK，因此不新增 APK 快照。仍不能据此宣称剩余 25 条 R1 P0/P1 或全部原版玩法已闭合。
+

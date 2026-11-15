@@ -10,8 +10,9 @@ import {
 import { encodeEtf } from '../protocol/game-codec.mjs';
 
 // ArenaContestCmd.lua declares the fifteen commands below in this order and
-// ArenaContestMgr.LoginParse decodes module 113 as three binaries:
-// pb_arena_contest_act, pb_arena_contest_role and pb_arena_contest_match.
+// ArenaContestMgr.LoginParse decodes module 113 as three binaries. The client
+// prototype indexes them role, act, match; preserving that order is required
+// because an act payload decoded as role bytes throws at field 5.
 // See agent/workflow/gameplay-completion/BATTLE-ARENACONTEST/implementation.md.
 const COMMAND_ENTER = 83301;
 const COMMAND_LEAVE = 83302;
@@ -242,8 +243,8 @@ export function createArenaContestService({
       const phase = phaseAt(nowMs);
       const state = readState(db, store.state().roleId, periodAt(nowMs));
       return [
-        codec.pack('pb_arena_contest_act', actData(state, phase)),
         codec.pack('pb_arena_contest_role', roleData(state)),
+        codec.pack('pb_arena_contest_act', actData(state, phase)),
         codec.pack('pb_arena_contest_match', lastMatchData(state))
       ];
     });

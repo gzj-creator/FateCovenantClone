@@ -72,6 +72,11 @@ export const GUILD_ACTIVITY_REQUEST_SCHEMAS = Object.freeze({
 const CODE_INVALID = 1;
 const CODE_UNAVAILABLE = 5;
 const GUILD_MODULE_ID = 24;
+// ModuleTable row 24047 is project/guild_war. GuildWarMgr.LoginParse consumes
+// four binaries in the order below. MainHouseForm calls GetRealTimeMap during
+// the guide-to-home transition, so this module must be present even when the
+// activity gate is closed.
+export const GUILD_WAR_LOGIN_MODULE_ID = 24047;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS guild_activity_state (
@@ -514,6 +519,25 @@ export function createGuildActivityService({
     supports: type => SUPPORTED.has(Number(type)),
     requestSchema: type => GUILD_ACTIVITY_REQUEST_SCHEMAS[Number(type)] ?? null,
     gap: type => GAPS.get(Number(type)) ?? null,
+    loginPayloads: () => [
+      codec.pack('pb_guild_war_entry', {
+        area_list: [],
+        refresh_time: '0',
+        cur_phase: 0,
+        stage: 0,
+        calc_power_time: '0',
+        start_time: '0'
+      }),
+      codec.pack('pb_guild_war_data', { war_list: [] }),
+      codec.pack('pb_guild_war_record', { settle_list: [] }),
+      codec.pack('pb_guild_war_person', {
+        guess_list: [],
+        stat_list: [],
+        add_stat_list: [],
+        is_receive_rank: false,
+        have_operate: false
+      })
+    ],
     execute(type, input) {
       const command = Number(type);
       const gap = GAPS.get(command);

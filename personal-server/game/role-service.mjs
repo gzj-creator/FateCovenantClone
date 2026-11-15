@@ -2,7 +2,7 @@ import { GameError } from './hero-progression.mjs';
 import { grantResources, consumeResources } from './resources.mjs';
 import { buildLineupAttrInfo } from './attribute-service.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
-import { E, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
+import { E, binary, encodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 
 // Block J role authority. RoleCmd stores everything that the client reads back
 // from to_client_role_info inside roles.profile_json so login module 2 stays
@@ -828,17 +828,18 @@ export function createRoleService(options) {
     });
   }
 
-  function loginRedDots() {
+  async function loginRedDots() {
     const model = store.read();
     const rows = store.inspect(db => db.prepare('SELECT * FROM role_red_dots WHERE role_id=? ORDER BY path_key').all(model.state.roleId));
-    return codec.pack('all_saved_red', {
-      saved_red_list: rows.map(row => ({
+    // RedDotMgr.LoginParse stores this module verbatim and
+    // RedDotSaveCacheInit iterates it with ipairs; therefore module 4 is an
+    // ETF list of single_red_info binaries, not an all_saved_red protobuf.
+    return encodeEtf(rows.map(row => binary(codec.pack('single_red_info', {
         state: row.state === 1,
         path_bin: Buffer.from(row.path_key, 'base64'),
         show_count: Number(row.show_count ?? 0),
         extra: termBinary(row.extra_bin) ?? Buffer.alloc(0)
-      }))
-    });
+      }))));
   }
 
   function clientLog(input) {

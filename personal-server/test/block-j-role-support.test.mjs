@@ -243,13 +243,14 @@ test('red dots accept protobuf bytes, deletes raw and base64 paths, and projects
       to_del_list: []
     }
   });
-  let login = codec.unpack('all_saved_red', role.loginRedDots());
-  assert.equal(login.saved_red_list.length, 2);
-  assert.deepEqual(login.saved_red_list.map(row => Buffer.from(row.path_bin, 'base64').toString('utf8')).sort(), ['root/red-one', 'root/red-two']);
+  let login = (await decodeEtf(await role.loginRedDots())).map(bytes => codec.unpack('single_red_info', Buffer.from(bytes.value)));
+  assert.equal(login.length, 2);
+  assert.deepEqual(login.map(row => Buffer.from(row.path_bin, 'base64').toString('utf8')).sort(), ['root/red-one', 'root/red-two']);
+  assert.deepEqual(login.map(row => [row.state ?? false, row.show_count ?? 0, Buffer.from(row.extra ?? '', 'base64').toString('hex')]), [[true, 2, '0102'], [false, 0, '']]);
 
   await role.execute(39001, { request: { to_add_or_change_list: [], to_del_list: ['root/red-one'] } });
-  login = codec.unpack('all_saved_red', role.loginRedDots());
-  assert.deepEqual(login.saved_red_list.map(row => Buffer.from(row.path_bin, 'base64').toString('utf8')), ['root/red-two']);
+  login = (await decodeEtf(await role.loginRedDots())).map(bytes => codec.unpack('single_red_info', Buffer.from(bytes.value)));
+  assert.deepEqual(login.map(row => Buffer.from(row.path_bin, 'base64').toString('utf8')), ['root/red-two']);
 
   await role.execute(39001, {
     request: { to_add_or_change_list: [{ path_bin: firstPath, state: true, show_count: 0, extra: Buffer.alloc(0) }], to_del_list: [] }
@@ -262,7 +263,7 @@ test('red dots accept protobuf bytes, deletes raw and base64 paths, and projects
   assert.deepEqual(push.open_list.map(row => [row.message_id, row.is_open]), [[7, true]]);
   env.reopen();
   const reopened = env.role();
-  assert.equal(codec.unpack('all_saved_red', reopened.loginRedDots()).saved_red_list.length, 1);
+  assert.equal((await decodeEtf(await reopened.loginRedDots())).length, 1);
   assert.equal(codec.unpack('pb_channel_push_param', reopened.loginChannelPush()).open_list[0].message_id, 7);
 });
 
