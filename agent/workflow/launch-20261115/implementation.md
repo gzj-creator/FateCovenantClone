@@ -109,3 +109,15 @@
 - `npm test --prefix personal-server`：487 项，pass 485、fail 0、skipped 2；两个 skipped 仍只因未提供已验收 v9 Lua 包 `FC_RECHARGE_CLIENT_BUNDLE`，与本批修复无关。
 - 尚不能据此宣称剩余 25 条 R1 P0/P1 或全部原版玩法已闭合。
 
+### 部署记录
+
+代码提交 `4300461`（`fix: repair launch guide rewards and open rules`）。切换前再次对实时库执行 SQLite `.backup`：
+
+- 备份：`analysis/experiments/launch-20261115/backups/pre-launch-fixes-20261115T151955Z/game.local-only.sqlite`。
+- 大小 `1,667,072` 字节，SHA256 `6975e926832610140119c7f031b30b021a7cf81f7dad24c034679a26853d5dcf`。
+- `PRAGMA integrity_check=ok`，2 个角色、1 个账号。
+
+旧 PID `32464` 已停止；新服务 PID `8108`，继续使用同一数据目录和开服时间 `1794690000`。五端口均仅监听 `127.0.0.1`，管理页 HTTP 200，stderr 为 0 字节。日志为 `analysis/experiments/launch-20261115/server-final-fixes-20261115T152108Z.out.log`。
+
+客户端仅执行 `am force-stop com.jzyx.ps` 后正常重开，未执行 `pm clear`，未代用户点击 UI。当前停在 QuickSDK“选择账号”页，截图 `analysis/experiments/launch-20261115/client-ready-final-fixes.png`；用户可点“其他账号登录”创建新号做最终视觉验收。
+
