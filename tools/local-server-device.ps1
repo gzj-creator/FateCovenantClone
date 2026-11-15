@@ -36,12 +36,28 @@ function Root([string[]]$Command) {
 }
 
 function RootIgnored([string[]]$Command) {
-    & $adb -s $serial shell su 0 @Command *> $null
+    $previous = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'SilentlyContinue'
+        & $adb -s $serial shell su 0 @Command *> $null
+    } catch {
+        # Restore is idempotent: a missing chain/rule is already the desired state.
+    } finally {
+        $ErrorActionPreference = $previous
+    }
 }
 
 function TestRoot([string[]]$Command) {
-    & $adb -s $serial shell su 0 @Command *> $null
-    return $LASTEXITCODE -eq 0
+    $previous = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'SilentlyContinue'
+        & $adb -s $serial shell su 0 @Command *> $null
+        return $LASTEXITCODE -eq 0
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $previous
+    }
 }
 
 function InstalledUid {
@@ -55,7 +71,7 @@ function ClientRunning {
 }
 
 function ReverseList {
-    return @(& $adb -s $serial reverse --list)
+    return @(& $adb -s $serial reverse --list | Where-Object { -not [string]::IsNullOrWhiteSpace("$_") })
 }
 
 function TestReverseConfigured {

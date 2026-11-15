@@ -134,7 +134,11 @@ const sdk = createSdkService({
   quickSdkIdentityResolver: createQuickSdkIdentityResolver({
     primaryAccount: sdkAccount,
     phoneIdentity,
-    mappingPath: path.join(directory, 'quick-sdk-identities.local-only.json')
+    mappingPath: path.join(directory, 'quick-sdk-identities.local-only.json'),
+    // Public empty realms use the primary placeholder for their first real
+    // identity. Local development must keep QuickSDK identities separate so a
+    // freshly registered client cannot inherit the seeded legacy role.
+    bindFirstIdentityToPrimary: publicDeployment != null
   }),
   quickServerUrl: publicDeployment?.publicSdkUrl ?? `http://127.0.0.1:${requestedPorts.sdk || 18880}`,
   appId: 'fc-local', appKey: 'fc-local-development-key', account: sdkAccount, logger

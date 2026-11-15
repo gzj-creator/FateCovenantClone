@@ -22,7 +22,10 @@ function copyServer(target) {
   fs.cpSync(sourceRoot, target, {
     recursive: true,
     filter(source) {
-      return !skipped.has(source) && !/\.sqlite(?:-shm|-wal)?$/i.test(path.basename(source));
+      const name = path.basename(source);
+      return !skipped.has(source)
+        && !/\.sqlite(?:-shm|-wal)?$/i.test(name)
+        && !/\.local-only\./i.test(name);
     }
   });
   fs.symlinkSync(sourceDependencies, path.join(target, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');

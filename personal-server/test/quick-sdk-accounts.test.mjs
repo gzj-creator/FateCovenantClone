@@ -84,3 +84,20 @@ test('server-issued local and phone identities stay isolated from QuickSDK mappi
   assert.throws(() => resolve({ uid: 'unknown', token: 'server-token' }), /Unknown local account identity/);
   assert.throws(() => resolve({ uid: '123456789012', token: 'short' }), /Unknown local account identity/);
 });
+
+test('local development can keep the first QuickSDK identity off the seeded primary role', t => {
+  const mappingPath = temporaryMapping(t);
+  const resolve = createQuickSdkIdentityResolver({
+    primaryAccount,
+    phoneIdentity,
+    mappingPath,
+    bindFirstIdentityToPrimary: false
+  });
+  const uid = '1234567890ab';
+  const identity = resolve({ uid, token: 'fedcba098765' });
+
+  assert.notDeepEqual(identity, primaryAccount);
+  assert.equal(identity.userId, 'local-quick-' + digest(uid));
+  assert.equal(JSON.parse(fs.readFileSync(mappingPath, 'utf8')).primaryUidHash, null);
+  assert.deepEqual(resolve({ uid, token: 'abcdef123456' }), identity);
+});
