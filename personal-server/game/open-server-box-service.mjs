@@ -218,7 +218,16 @@ export function createOpenServerBoxService({
     const runningHistory = entry.state_data.history_time.find(item => Number(item?.state_id) === RUNNING_STATE_ID);
     if (runningHistory) runningHistory.enter_time = window.start;
     else entry.state_data.history_time.push({ state_id: RUNNING_STATE_ID, enter_time: window.start });
-    entry.module_login_data = wrapEtfBinary(codec.pack('pb_open_server_box', protobufState(state))).toString('base64');
+    const packed = wrapEtfBinary(codec.pack('pb_open_server_box', protobufState(state)));
+    // Legacy activity 20001 is shared by HundredDrawMgr and OpenServerBoxMgr.
+    // module_login_data is a concatenated ETF binary stream, so preserve the
+    // HundredDraw record and append the independently decoded box record.
+    // HundredDraw synchronization runs before this service and replaces its own
+    // record, preventing duplicate box records on relogin.
+    const existing = entry.module_login_data
+      ? Buffer.from(entry.module_login_data, 'base64')
+      : Buffer.alloc(0);
+    entry.module_login_data = Buffer.concat([existing, packed]).toString('base64');
     return state;
   }
 

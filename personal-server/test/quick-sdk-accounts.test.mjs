@@ -56,7 +56,12 @@ test('identity persistence stores only UID hashes with owner-only permissions', 
   assert.equal(parsed.identities[0].uidHash, digest(uid));
   assert.equal(stored.includes(uid), false);
   assert.equal(stored.includes(token), false);
-  assert.equal(fs.statSync(mappingPath).mode & 0o777, 0o600);
+  // Windows reports synthesized read/write bits and cannot represent POSIX
+  // owner/group/world permission classes. The production writer still passes
+  // 0600 to open and chmod; assert that POSIX contract where the OS supports it.
+  if (process.platform !== 'win32') {
+    assert.equal(fs.statSync(mappingPath).mode & 0o777, 0o600);
+  }
 });
 
 test('corrupt identity persistence fails closed instead of reusing the primary account', t => {

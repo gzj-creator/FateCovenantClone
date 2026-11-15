@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "table": "TaskGroupTable",
+  "assetPath": "personal-server/assets/tables/TaskGroupTable.data.json.gz",
+  "assetSha256": "a48549b7d9da225c45a042bcf6d735711bd8cd09f1e23c0c5e52eb0218030215",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/TaskGroupTable.data.json.gz",
+      "sha256": "a48549b7d9da225c45a042bcf6d735711bd8cd09f1e23c0c5e52eb0218030215"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Group":{"status":"decoded-rows","count":6,"externalReferenceCount":0,"rows":[
+{"need_seq":false,"award_scale":0.6,"award":[[201500,1]],"award_pos":[0.54,1.124],"tid":1001,"is_customized":true,"tasks":[100101]},
+{"need_seq":false,"award_scale":0.7,"award":[[201500,1]],"award_pos":[0.54,1.32],"tid":1002,"is_customized":false,"tasks":[100201,100202,100203]},
+{"need_seq":false,"award_scale":0.6,"award":[[201500,1]],"award_pos":[0.54,1.124],"tid":1003,"is_customized":false,"tasks":[100301,100302,100303,100304]},
+{"need_seq":false,"award_scale":0.6,"award":[[201500,1]],"award_pos":[0.54,1.124],"tid":1004,"is_customized":false,"tasks":[100401,100402,100403,100404]},
+{"need_seq":false,"award_scale":0,"award":[[201500,1]],"award_pos":[],"tid":1005,"is_customized":false,"tasks":[100501,100502,100503,100504]},
+{"need_seq":false,"award_scale":0,"award":[[201500,1]],"award_pos":[],"tid":1006,"is_customized":false,"tasks":[100601,100602,100603,100604]}
+]},
+"GroupTask":{"status":"decoded-rows","count":20,"externalReferenceCount":0,"rows":[
+{"award":[],"type":8601,"tid":100101,"target_count":3,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100201,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100202,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100203,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100301,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100302,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100303,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100304,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100401,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100402,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100403,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100404,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100501,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100502,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100503,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100504,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100601,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100602,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100603,"target_count":5,"task_key":0},
+{"award":[[201500,1]],"type":1202,"tid":100604,"target_count":5,"task_key":0}
+]},
+"GroupFunc":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]},
+"Type":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"data":0,"progress_fun":10,"stat_expand":[],"skip":11,"tid":1202,"reverse":false,"progress_param":0,"title":2962,"unLock_Hide":false,"des":11418,"sort_weight":9,"progress_type":1},
+{"data":42,"progress_fun":0,"stat_expand":[2500200],"skip":11,"tid":8601,"reverse":false,"progress_param":0,"title":0,"unLock_Hide":false,"des":0,"sort_weight":0,"progress_type":2}
+]},
+"CommonTask":{"status":"unresolved","count":null,"reason":"Empty/non-row output; field map not independently recovered","rows":null},
+"CommonTaskGlobal":{"status":"decoded-rows","count":4,"externalReferenceCount":0,"rows":[
+{"tid":1,"type":1201},
+{"tid":3,"type":1602},
+{"tid":4,"type":1202},
+{"tid":5,"type":9001}
+]}
+}
+}

@@ -10,6 +10,7 @@
 |---|---|---|
 |[ArtifactTable](tables/ArtifactTable.md)|LevelUp|Empty/non-row output; field map not independently recovered|
 |[HeroTable](tables/HeroTable.md)|NpcAttr|Empty/non-row output; field map not independently recovered|
+|[TaskGroupTable](tables/TaskGroupTable.md)|CommonTask|Empty/non-row output; field map not independently recovered|
 |[TaskTable](tables/TaskTable.md)|CommonTask|Empty/non-row output; field map not independently recovered|
 
 上述是具体资产根索引的解析阻断，不表示整个相关功能没有任何数值。ArtifactTable.LevelUp另有[ArtifactLevelUp独立分片](tables/ArtifactLevelUp.md)，已恢复3005行；HeroTable.NpcAttr另有[HeroTableNpcAttr独立分片](tables/HeroTableNpcAttr.md)。同名根索引与分片的版本/来源仍须对应，不能混成任意互换的行。TaskTable.CommonTask根索引仍未恢复。

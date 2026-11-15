@@ -43,6 +43,14 @@ test('gateway routes 89709 and 89705 through the relic service', { timeout: 1500
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
 
+  // The captured account bitmap predates relic feature 1195. Keep the
+  // production command gate in place and open it through the supported
+  // server-scoped override path for this contract test.
+  game.featureOverrides.set({
+    serverId: 1, funId: 1195, mode: 'force_open',
+    reason: 'test: relic gateway command contract', operator: 'test'
+  });
+
   const seedService = createRelicService({
     store: game.store, codec, tables: readRelicTables(), resourceTables: readGameTables(), now: () => NOW
   });

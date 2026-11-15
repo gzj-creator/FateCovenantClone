@@ -231,30 +231,32 @@ shop_id = floor(Item.tid / 10000000)
 | <a id="growth-target"></a>成长目标69006/69007 | 原表Task666/Const3/Version3/Phase111；func18实例18001/18002/18003映射version1/2/3；每version 37 phase、每phase 6 task；请求为ETF包装PB，三个领取列表独立 | 服务端已实现版本/阶段/任务、原奖励、事务领取、module92登录和SQLite重开。69007仅对已证真实生产者开放；81个period=1任务及缺生产者的phase仍在状态变化前err5。默认生产者下没有完整可领phase，69006不得以注入生产者或总分代替 |
 | <a id="task-award"></a>任务活动69101/69102 | 原表Version1/Task263/Progress6/Tag4；Activity19001、func19、server_day33；`pb_task_award`按version分progress_value/progress_award/task_award/rev_overdue；请求为单值ETF | 263个任务均映射module21真实统计，六档阈值600–3600；任务奖独立位图，领取时按R1推定累计growth_value；module92登录、重复请求和SQLite重开已闭合。六档逾期奖原值为0，不开放逾期补奖；已落库历史仍展示 |
 | <a id="open-server-box"></a>开服宝箱69301/69302 | 原`OpenServerBoxTable`有4个版本、每版30个日箱和5个进度行；`join_day/rev_days/rev_progress/version/recharge_flag`分别保存加入日、领取游标、进度位、版本和真实付费状态。功能门槛为通关30203，当前数据门槛实例为60205；每日资格按激活业务日计算 | 服务端已实现版本/SQL门槛/候选日/进度核验，69301发原日奖并推进游标，69302发原进度奖；`recharge_flag`只由真实630070付费订单产生，后台余额不计费。ETF/PB、SQLite事务、登录投影、重开及真实临时TCP已测；原服成功函数、真实APK和生产TCP仍待验收 |
-| <a id="task-group"></a>任务组84901/84902 | TaskTable有`Group/GroupTask/GroupFunc`；单任务奖与组奖分开请求 | GroupFunc进度生产者、组内前置/可见/阶段条件、原奖励行和独立领奖位，不能以全任务列表存在就领组奖 |
+| <a id="task-group"></a>任务组84901/84902 | TaskTable有`Group 6`（1001–1006）、`GroupTask 20`、`GroupFunc 0`；单任务奖与组奖分开请求。组奖行已恢复为`201500×1`，`Type 1202`的`progress_fun=10`指向已通过章节，`Type 8601`另配`progress_type=2,data=42`；`CommonTask`四行只是分片引用 | 84901/84902仍失败关闭：`GroupFunc`为空，`func_id/func_open`、组间前驱/可见性、独立领取位和type 1202/8601的本服权威进度生产者无法定义；不能以全任务列表或单项奖存在就开放组奖。数字登录槽未取得。2026-11-15 E组复核与真实临时TCP拒绝路径通过 |
 | <a id="career-life"></a>生涯剧情85804 | `pb_career_life`分别存boss_bin/story_bin/pass_award、refresh_time、fight_boss/fight_count；原表StoryChapter18、Story99、BossConst1、Boss0，18章的`res/res_count`均为0 | 服务端按本章全部Story.open_mission和权威mission游标开放，使用`Section.index`（含discard要求），成功后只置`story_bin`章位并写模块153。未知/未开放/重复/损坏状态在写入前err5，编码失败回滚；专项、登录、重开与临时TCP通过 |
 | <a id="linear-level"></a>线性关卡93501 | `pb_linear_level_box_award_req(type,indexes)`与战斗type/level分开；回包更新`pb_linear_level`。原`LinearLevelTable`给出每个type的累计通过门槛、宝箱index和奖励 | 服务端拒绝空/重复/未配置index，在真实`pass_fight`门槛后一次发奖并写入位图；登录使用模块535。ETF/PB、精确门槛、重复、编码失败、SQLite重开和真实临时TCP已测；不能把indexes当关卡tid，也不能与9010线性任务混用 |
-| <a id="period-task"></a>周期任务101301—101303 | `version/task_list/stage_award_state/score_award_state`；单任务项含task_id/refresh_sec | schema明确每日任务须当日refresh_sec才算已领，周期/永久任务有记录即已领；还缺原日界、周期版本表、阶段/积分目标及奖励；三类奖分别防重 |
+| <a id="period-task"></a>周期任务101301—101303 | PB含`version/task_list/stage_award_state/score_award_state`；单任务项含task_id/refresh_sec，`RefreshType`3行分别映射每日、周期、永久刷新；功能模块545。2026-11-15从原bundle和第二份独立导出双重确认`Task=0, Version=0, Score=0, Stage=0` | schema已能说明每日任务须当日refresh_sec、周期/永久任务有记录即已领，但配置中没有任务类型/次数/参数/前驱、阶段`task_range`与奖、积分阈值/奖或`Version.score_item`；登录slot未闭合。三条继续在解析和状态访问前err5 |
 
 <a id="hook"></a>
 ## 14. 挂机、资源补全、回退与神秘商店
 
 78201—78205的挂机数据已明确不是整数背包余额。`pb_hook.cache_list`的num为float，保存小数缓存；`last_reap_time/last_gather_time/old_stage/rand_reap_time`分别记录产出/领取/旧关卡/随机产出，快速挂机次数另有`pb_fast_hook.fast_count`。预览/收取请求含type_list/msg_bin，快速请求含type/count或item_id/times/msg_bin；msg_bin须按挂机type的原自定义schema解释，不能丢掉后统一按主线收益计算。
 
+2026-11-15 C组复核已冻结Hook表六族、同版PB/ETF外层、12个type→erl模块映射、produce-id常量和3063条`RandomAward`外部码；原`HookTable` bundle的SHA256以`363929DC…B3F8F9F9A59E44120B29`为准，旧记录少一个`F9`。五条仍失败关闭，因为逐type产率/关卡/上限、小数余量与取整、领取游标、随机时间、快速次数/成本及`msg_bin`解释没有权威服务端消费者。
+
 待补链为原挂机type→产率/关卡行→累计上限→小数累积与发整取整→领取游标→随机产出时间→快速次数/成本。预览不前移领取游标；正常领取保留小数余量；道具快速生产先核该道具允许的type和times。原表/函数尚未闭合时，不填固定每分钟收益，也不能按客户端传入award发奖。
 
 <a id="res-complete"></a>
-288资源补全奖需要恢复“原补全类型/资格→应补资源清单→已领位/来源键”的消费者。资源不足提示、资源预览与真正补发不同；不能把当前余额与某个模板余额的差额直接赠送，也不能把补全奖励当不限次兑换。当前命令声明本身没有提供合法补全奖清单。
+288资源补全奖需要恢复“原补全类型/资格→应补资源清单→已领位/来源键”的消费者。2026-11-15 E组已恢复唯一`Award`行及平行数组`award=[101500,201500,101800]`、`award_n=[200,10000,500]`，但`CanAward()`只读客户端下载完成标志，请求不带章节/天数/大小等可服务端复核的依据，无法构造权威领取键；`Open`三行只控制自动下载时机。资源不足提示、资源预览与真正补发不同；不能把当前余额与模板余额的差额直接赠送。288继续失败关闭。
 
 <a id="res-rollback"></a>
-88401预览、88402执行共用`pb_res_rollback_req(rollback_type,rollback_res_id)`。原预览只返回res_list；执行还回to_client更新被回退系统。需补rollback_type到真实对象/返还函数的分派、实际养成消耗/手续费、穿戴/锁定/引用保护，以及对象在预览后改变的重核。rollback_res_id可能是独立对象id，不能统一当item tid；执行须同时重置对象和发返还，不能只发预览资源。
+88401预览、88402执行共用`pb_res_rollback_req(rollback_type,rollback_res_id)`。原预览只返回res_list；执行还回to_client更新被回退系统。2026-11-15 E组已恢复8个`rollback_type`、统一成本货币101500及成本500/100×7、最低6星回退到5星，并确认`refresh_func`只是执行后的客户端刷新钩子。仍缺服务端返还公式、八类对象各自的重置范围/投资历史、返还消费者、`to_client`结构、穿戴/锁定/引用保护及预览后指纹复核。`rollback_res_id`可能是独立对象id，不能统一当item tid；88401/88402继续失败关闭。
 
 <a id="mystery-shop"></a>
 91501自动刷新、91502手动刷新、91503购买的`pb_mystery_shop`保存自动/手动时间、manual_refresh_count、discount_items、all_times_data和buy_times。每格是`cell_id/discount_item_tid/discount_price_index/is_bought`，随机次数又按times_type/tid/stage/times区分。
 
 91503的窄成功链已接入：[mystery-shop-service.mjs](../../../personal-server/game/mystery-shop-service.mjs)只接受ETF单个`cell_id`，从模块162的权威`discount_items`取已持久化商品，以`ItemLib.discount_price[DiscountLib.discount_idx] × DiscountLib.discount / 100`计算`ItemLib.cost_item`成本，并在单一SQLite事务内扣款、发`item/count`、置本cell `is_bought`、增加`buy_times`、写request幂等记录和编码`pb_res_to_client`。同request/cell重复请求不再次扣款；新请求不能重复购买原cell。只有`Cell.pre_condition`和`ItemLib.pre_condition`都未配置、商品/折扣家族一致且折扣价恰为整数时才成功。当前3个Cell和116个ItemLib带未恢复前置条件，这些请求以及非整数折扣价均在扣款前返回err5，不猜资格或圆整。
 
-91501自动刷新、91502手动刷新仍失败关闭：原折扣商品池、次数段位权重、自动刷新候选与`all_times_data`更新、刷新日界/CD、`manual_refresh_cw`消耗及状态替换未闭合。不能拿普通Shop固定商品替代，不能凭重进页面或重登洗掉`is_bought`，也不能把已恢复的5档手动价格`100/100/120/120/150`当作已恢复刷新算法。
+91501自动刷新、91502手动刷新仍失败关闭：2026-11-15 D组已复核5档手动价格`100/100/120/120/150`、货币101500、日限5、五类折扣权重及固定四段`manual_refresh_cw=[[2,w],[4,w],[5,w],[20,w]]`；`discount_idx`存在重复值，不能当唯一键。仍缺每格候选池与产出条数、自动权重抽取阶段、`all_times_data`/`customize_auto_refresh_times`推进、日界/CD及`next_auto_refresh_time`计算。价格阶梯和日限恢复不等于刷新算法恢复；不能拿普通Shop固定商品替代，也不能凭重进页面或重登洗掉`is_bought`；自动/手动刷新继续err5。
 
 <a id="mission-rewards"></a>
 ## 15. 主线补给、Guide和统计查询的跨册边界

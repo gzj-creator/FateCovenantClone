@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "table": "PeriodTaskTable",
+  "assetPath": "personal-server/assets/tables/PeriodTaskTable.data.json.gz",
+  "assetSha256": "9badecaea66041a30b9bd48ff60ffb2f6fd82b17c645870ea5a13781fc1932c9",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/PeriodTaskTable.data.json.gz",
+      "sha256": "9badecaea66041a30b9bd48ff60ffb2f6fd82b17c645870ea5a13781fc1932c9"
+    }
+  ],
+  "sourceMetadata": "analysis/scratchpad/time-temple-20261108/project/11485873983200618000-PeriodTaskTable.data.lua.bin",
+"families":{
+"Task":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]},
+"RefreshType":{"status":"rows-with-external-references","count":3,"externalReferenceCount":3,"rows":[
+{"tid":1,"lua_module":{"reference":"PeriodTaskDayRefresh"}},
+{"tid":2,"lua_module":{"reference":"PeriodTaskPeriodRefresh"}},
+{"tid":3,"lua_module":{"reference":"PeriodTaskPermanent"}}
+]},
+"Version":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]},
+"Score":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]},
+"Stage":{"status":"decoded-rows","count":0,"externalReferenceCount":0,"rows":[
+
+]}
+}
+}

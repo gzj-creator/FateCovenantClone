@@ -300,7 +300,12 @@ test('mission action_list encodes the passive repeat as its own action', t => {
     fight_tid: 301,
     stm_type: 1,
     req: codec.pack('mission_fight_req', { mission_id: 30201 }),
-    loc: [{ team_id: 1, loc: [{ hero_id: String(HERO_ROLE), loc: 1 }] }]
+    loc: [{ team_id: 1, loc: [
+      { hero_id: String(HERO_ROLE), loc: 1 },
+      // 1020601 owns 6102060102 (升格防御), a shipped on-round-start shield.
+      // Its passive window is distinct from 2010101's double-attack repeat.
+      { hero_id: '1020601', loc: 2 }
+    ] }]
   });
 
   const response = codec.unpack('pb_fight_response', service.execute(201, request).data);

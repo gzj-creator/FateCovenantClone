@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "table": "ResRollbackTable",
+  "assetPath": "personal-server/assets/tables/ResRollbackTable.data.json.gz",
+  "assetSha256": "27f31320943e1c8e11e95784efe66ad0a853db9a8bba87d944532612fb4ab424",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/ResRollbackTable.data.json.gz",
+      "sha256": "27f31320943e1c8e11e95784efe66ad0a853db9a8bba87d944532612fb4ab424"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"can_rollback_min_star":6,"rollback_to_star":5}
+]},
+"Type":{"status":"rows-with-external-references","count":8,"externalReferenceCount":8,"rows":[
+{"cost_item":101500,"bi_log":98701,"refresh_func":{"reference":"HeroDataMgr.HeroResetUpData"},"refresh_free_time":0,"tid":1,"update_attr_play":1,"cost_item_num":500},
+{"cost_item":101500,"bi_log":98702,"refresh_func":{"reference":"EquipDataMgr.EquipResetUpData"},"refresh_free_time":0,"tid":2,"update_attr_play":3,"cost_item_num":100},
+{"cost_item":101500,"bi_log":98703,"refresh_func":{"reference":"ArtifactMgr.ArtifactResetUpData"},"refresh_free_time":0,"tid":3,"update_attr_play":2,"cost_item_num":100},
+{"cost_item":101500,"bi_log":98704,"refresh_func":{"reference":"RelicMgr.RelicResetUpData"},"refresh_free_time":1746391740,"tid":4,"update_attr_play":54,"cost_item_num":100},
+{"cost_item":101500,"bi_log":98705,"refresh_func":{"reference":"PetEquipMgr.EquipResetUpData"},"refresh_free_time":0,"tid":5,"update_attr_play":0,"cost_item_num":100},
+{"cost_item":101500,"bi_log":98706,"refresh_func":{"reference":"ElvesBeadMgr.ResetUpData"},"refresh_free_time":0,"tid":6,"update_attr_play":0,"cost_item_num":100},
+{"cost_item":101500,"bi_log":98707,"refresh_func":{"reference":"ElvesMgr.ResetUpData"},"refresh_free_time":0,"tid":7,"update_attr_play":0,"cost_item_num":100},
+{"cost_item":101500,"bi_log":98707,"refresh_func":{"reference":"PetMgr.ResetUpData"},"refresh_free_time":0,"tid":8,"update_attr_play":0,"cost_item_num":100}
+]}
+}
+}

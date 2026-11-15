@@ -279,6 +279,13 @@ test('real TCP routes 90201-90204 and returns module 156 through login', { timeo
   };
   let game = createLocalGame(options), socket;
   t.after(async () => { socket?.destroy(); if (game) await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  // Command dispatch still enforces the account FunOpen bitmap. The capture
+  // predates rune feature 1201, so open it explicitly while retaining the
+  // production gate in the request path.
+  game.featureOverrides.set({
+    serverId: 1, funId: 1201, mode: 'force_open',
+    reason: 'test: Norse rune command contract', operator: 'test'
+  });
   const address = await game.listen(0);
   socket = net.connect(address.port, '127.0.0.1');
   const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];

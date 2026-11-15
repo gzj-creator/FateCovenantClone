@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "table": "LineupSnapshotTable",
+  "assetPath": "personal-server/assets/tables/LineupSnapshotTable.data.json.gz",
+  "assetSha256": "0c5decc26acb57ca3363e2f59a85ed72e1a5c7ae7b0e4a31c4303837e079d434",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/LineupSnapshotTable.data.json.gz",
+      "sha256": "0c5decc26acb57ca3363e2f59a85ed72e1a5c7ae7b0e4a31c4303837e079d434"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Const":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"lineup_hero_refresh":7}
+]},
+"RobotLineup":{"status":"decoded-rows","count":2,"externalReferenceCount":0,"rows":[
+{"tid":1,"hero":[2010101,2010201,1020601,2020201,2020601,3030501]},
+{"tid":2,"hero":[1020201,1020301,1020401,1020501,1020601,1010101]}
+]}
+}
+}

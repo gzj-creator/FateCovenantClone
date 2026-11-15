@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "table": "ResCompleteTable",
+  "assetPath": "personal-server/assets/tables/ResCompleteTable.data.json.gz",
+  "assetSha256": "9d612b293f51e035a47ca29aab02f87ef515ab0c9806bbb660538b33cb87434e",
+  "evidence": "extracted-client-configuration; not original-server runtime verification",
+  "sourceVariants": [
+    {
+      "path": "personal-server/assets/tables/ResCompleteTable.data.json.gz",
+      "sha256": "9d612b293f51e035a47ca29aab02f87ef515ab0c9806bbb660538b33cb87434e"
+    }
+  ],
+  "sourceMetadata": null,
+"families":{
+"Open":{"status":"decoded-rows","count":3,"externalReferenceCount":0,"rows":[
+{"tid":1,"old_player_day":4,"download_chapter":0,"second_chapter":100201,"auto_download_day":0,"size":700,"old_player_chapter":310201},
+{"tid":2,"old_player_day":4,"download_chapter":70210,"second_chapter":100201,"auto_download_day":2,"size":1300,"old_player_chapter":310201},
+{"tid":3,"old_player_day":4,"download_chapter":100201,"second_chapter":100201,"auto_download_day":2,"size":1500,"old_player_chapter":310201}
+]},
+"Award":{"status":"decoded-rows","count":1,"externalReferenceCount":0,"rows":[
+{"tid":1,"award_n":[200,10000,500],"award":[101500,201500,101800]}
+]}
+}
+}

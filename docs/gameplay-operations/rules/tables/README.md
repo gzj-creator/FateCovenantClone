@@ -109,6 +109,7 @@
 |[LeaserStarUpTable](LeaserStarUpTable.md)|12|1191|0|[全部行](LeaserStarUpTable.json)|
 |[LineFirstRechargeTable](LineFirstRechargeTable.md)|3|40|0|[全部行](LineFirstRechargeTable.json)|
 |[LinearLevelTable](LinearLevelTable.md)|3|1684|0|[全部行](LinearLevelTable.json)|
+|[LineupSnapshotTable](LineupSnapshotTable.md)|2|3|0|[全部行](LineupSnapshotTable.json)|
 |[LoginRewardActTable](LoginRewardActTable.md)|2|6|0|[全部行](LoginRewardActTable.json)|
 |[LotteryActTable](LotteryActTable.md)|6|624|0|[全部行](LotteryActTable.json)|
 |[LotteryTable](LotteryTable.md)|2|8|0|[全部行](LotteryTable.json)|
@@ -128,6 +129,7 @@
 |[MushroomMonsterTable](MushroomMonsterTable.md)|4|10|0|[全部行](MushroomMonsterTable.json)|
 |[MysteryShopTable](MysteryShopTable.md)|7|483|0|[全部行](MysteryShopTable.json)|
 |[MysteryWishTable](MysteryWishTable.md)|4|112|0|[全部行](MysteryWishTable.json)|
+|[NewHeroExclusiveTable](NewHeroExclusiveTable.md)|13|1148|0|[全部行](NewHeroExclusiveTable.json)|
 |[OnesRewardTable](OnesRewardTable.md)|1|1|0|[全部行](OnesRewardTable.json)|
 |[OnlineGiftTable](OnlineGiftTable.md)|3|1044|0|[全部行](OnlineGiftTable.json)|
 |[OpenServerBoxTable](OpenServerBoxTable.md)|5|149|0|[全部行](OpenServerBoxTable.json)|
@@ -135,6 +137,7 @@
 |[OverallMatchTable](OverallMatchTable.md)|2|2|0|[全部行](OverallMatchTable.json)|
 |[OverallPvpTable](OverallPvpTable.md)|31|1314|0|[全部行](OverallPvpTable.json)|
 |[PeakTowerTable](PeakTowerTable.md)|14|9725|0|[全部行](PeakTowerTable.json)|
+|[PeriodTaskTable](PeriodTaskTable.md)|5|3|0|[全部行](PeriodTaskTable.json)|
 |[PermanentCardTable](PermanentCardTable.md)|1|2|0|[全部行](PermanentCardTable.json)|
 |[PermitTable](PermitTable.md)|13|4151|0|[全部行](PermitTable.json)|
 |[PetActivityTable](PetActivityTable.md)|18|1332|0|[全部行](PetActivityTable.json)|
@@ -158,6 +161,8 @@
 |[RedCliffTable](RedCliffTable.md)|7|50|0|[全部行](RedCliffTable.json)|
 |[RegularGiftTable](RegularGiftTable.md)|4|122|0|[全部行](RegularGiftTable.json)|
 |[RelicTable](RelicTable.md)|26|2160|0|[全部行](RelicTable.json)|
+|[ResCompleteTable](ResCompleteTable.md)|2|4|0|[全部行](ResCompleteTable.json)|
+|[ResRollbackTable](ResRollbackTable.md)|2|9|0|[全部行](ResRollbackTable.json)|
 |[RoleBackTable](RoleBackTable.md)|2|2|0|[全部行](RoleBackTable.json)|
 |[RoleTable](RoleTable.md)|26|1917|0|[全部行](RoleTable.json)|
 |[ScarletTrialTable](ScarletTrialTable.md)|8|3210|0|[全部行](ScarletTrialTable.json)|
@@ -175,6 +180,7 @@
 |[SwapArenaTable](SwapArenaTable.md)|11|650|0|[全部行](SwapArenaTable.json)|
 |[TacticsTable](TacticsTable.md)|3|316|0|[全部行](TacticsTable.json)|
 |[TaskActivityTable](TaskActivityTable.md)|3|156|0|[全部行](TaskActivityTable.json)|
+|[TaskGroupTable](TaskGroupTable.md)|6|32|1|[全部行](TaskGroupTable.json)|
 |[TaskTable](TaskTable.md)|30|10525|1|[全部行](TaskTable.json)|
 |[ThemeTreasureTable](ThemeTreasureTable.md)|25|4512|0|[全部行](ThemeTreasureTable.json)|
 |[ThousandDrawTable](ThousandDrawTable.md)|4|168|0|[全部行](ThousandDrawTable.json)|

@@ -19,6 +19,7 @@ import { activityWindow, dayZero } from '../game/activity-calendar.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 import { createOpenServerBoxService } from '../game/open-server-box-service.mjs';
+import { decodeModuleLoginBlocks } from '../game/relic-divine-login.mjs';
 import { GameError } from '../game/hero-progression.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createLocalGame } from '../local-game.mjs';
@@ -92,10 +93,9 @@ function addRechargeOrder(store, accountId, productId = 630070) {
 function loginState(activityLogin) {
   const entry = (activityLogin.act_list ?? []).find(row => Number(row?.state_data?.act_id) === 20001);
   assert.ok(entry);
-  const wrapped = Buffer.from(entry.module_login_data, 'base64');
-  assert.deepEqual([...wrapped.subarray(0, 2)], [0x83, 0x6d]);
-  assert.equal(wrapped.readUInt32BE(2), wrapped.length - 6);
-  return codec.unpack('pb_open_server_box', wrapped.subarray(6));
+  const blocks = decodeModuleLoginBlocks(entry.module_login_data);
+  assert.ok(blocks.length >= 1);
+  return codec.unpack('pb_open_server_box', blocks.at(-1));
 }
 
 test('OpenServerBox table keeps the four 30-day versions, five progress rows and v0 paid SKU', () => {

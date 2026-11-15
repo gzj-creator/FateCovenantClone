@@ -392,3 +392,55 @@ R1与同版证据只闭合88955：客户端`HeroBlazonCmd.req_hero_blazon_update
 验证：`node --test --test-concurrency=1 personal-server/test/hero-legend-service.test.mjs` 7/7通过。覆盖原表读取、ETF四个type、真实临时TCP、资源不足不扣、重复祝福拒绝、空账号不伪造书和SQLite重开。失败关闭类型由42降至38，测试固定数量同步更新。
 
 边界：真实APK外层/界面和生产TCP未验收；传奇书属性/技能进入全部战斗及其他玩法阵容的最终投影仍待逐入口核验。当前只有已证状态、原回包形状和客户端可见存储，不把服务端测试写成原服函数已恢复。
+
+## 2026-11-15 R1 剩余25条命令五组独立复核
+
+基线为`12a6a16`。五组分别在`.worktree/r1-remaining-20261115/{a,b,c,d,e}`从该提交建立worktree，完成证据复核后按A→E串行合入。最终结论是：**25条命令零移出失败关闭集合**。各组都补出了可机读原表和更精确的阻断点，但没有组同时闭合原生产者、权威状态、成本、前驱、奖励/返还消费者和结果投影，因此没有实现或宣称成功链。所有命令继续在解析价格、扣资源、置领取位、改次数或改对象之前返回`GameError(5, 原因 + decisionId)`。
+
+### A组：纹章与情报（88951/88953/88956、701/702）
+
+详细证据见[a-heroblazon-intelli.md](a-heroblazon-intelli.md)。88951普通格列表生产者是空桩，普通格成本消费者和激活结果位图缺；88953的`GetAllTalentValue`是恒定0桩，`TalentUp`缺`need_other_level`；88956在整个客户端没有请求发送者，原表17族也没有技能重置成本/返还族，`TalentReset`仅属于天赋，不能挪用。701/702有真实Cmd/Mgr调用者，但`Intelli`投影只有4列、没有解锁奖励列，`Type.unlock=389242300001..8`需要求值的`MethodScript`，现有`MethodTable`没有这些解锁脚本行；完成奖、派遣条件/选择和开始到完成状态机也未闭合。
+
+### B组：阵容快照与新英雄专属（87701/87702、88963/88964/88967）
+
+详细证据见[b-lineup-snapshot-new-hero-exclusive.md](b-lineup-snapshot-new-hero-exclusive.md)。已冻结`LineupSnapshotTable`和`NewHeroExclusiveTable`原行及同版PB。快照没有`pb_lineup_snapshot`写入生产者，`reference`生命周期、日界和跨角色可见范围未知；`common_map/dream/guild_explore/guild_gvg/guild_joint`只证明五个镜像key宿主，没有给出写入规则。87702的`key_list`完全来自服务端先前下发的快照元数据。新英雄专属可推导候选`Version→WishDraw→WishDrawHero`，88964已核197行`StoryAward`和`tid%1000`领取位，但活动实例/换选、剧情日/fight解锁生产者未取得，194/197行`fight=0`；表内没有`LineupAward`族，88967没有客户端消费者，三个登录slot也未定位。
+
+### C组：挂机产出（78201—78205）
+
+详细证据见[c-item-hook.md](c-item-hook.md)。原表六族、同版PB/ETF外层、五条客户端请求构造、12个hook type→erl模块映射、produce-id常量及3063条`RandomAward`外部码已冻结。`HookTable`源bundle SHA256以`363929DC…B3F8F9F9A59E44120B29`为准，纠正旧记录少一个`F9`。成功链仍缺逐type产率/关卡/上限、float余量累积与取整、领取游标、随机时间、快速次数/成本和`msg_bin`权威解释；不得把原背包余额差或客户端award当产出。
+
+### D组：神秘商店与周期任务（91501/91502、101301—101303）
+
+详细证据见[d-mysteryshop-periodtask.md](d-mysteryshop-periodtask.md)。神秘商店已闭合5档手动价`100/100/120/120/150`、货币101500、日限5、五类折扣权重和四段`manual_refresh_cw`，但每格候选池、产出条数、自动权重抽取阶段、`all_times_data`/`customize_auto_refresh_times`推进和`next_auto_refresh_time`仍缺；`discount_idx`有重复值，不是唯一键。周期任务从原bundle和第二份独立导出双重确认`Task/Version/Score/Stage`均为0行，任务类型/次数/参数/前驱、阶段`task_range`与奖、积分阈值/奖和`Version.score_item`都不能凭客户端语义补造；登录slot仍未闭合。
+
+### E组：补全、回退与任务组（288、88401/88402、84901/84902）
+
+详细证据见[e-res-tasks-residuals.md](e-res-tasks-residuals.md)。288唯一`Award`行的`101500×200/201500×10000/101800×500`已恢复，但`CanAward()`只读客户端下载完成标志，请求不带章节/天数/大小等可复核依据，无法构造权威领取键。88401/88402已恢复8类对象、成本500/100×7和最低6星回退5星，并确认`refresh_func`只是客户端刷新钩子；服务端返还公式、逐类对象重置范围、返还消费者、`to_client`和预览后指纹复核仍缺。84901/84902已恢复6组、20个组合任务和组奖`201500×1`，但`GroupFunc`为0行，`func_id/func_open`、组间前驱、type 1202/8601进度生产者和领取位定义缺失。
+
+### 共享失败关闭与回归修复
+
+- 25条逐type原因已按本轮证据更新并附decisionId；类型集合仍为25条。`r1-fail-closed-command-service.test.mjs`和E组专项共8/8通过，包含真实临时TCP逐条err5、无成功payload及登录后持久化状态逐字节不变。
+- 修复`multi-realm-gateway.test.mjs`在Windows上删除临时目录早于异步`close()`完成所导致的`EPERM`与测试进程挂起；现在显式逐个等待服务器关闭并以`maxRetries`清理目录，文件约3.6秒通过。
+- protobuf benefit测试分别复现：104001已实现，应移出未实现契约；105401等benefit类型原先被309功能门禁截住，现让已登记为refusal-only的benefit类型在功能门禁前到达业务拒绝。`benefit-command-decode` 6/6通过。
+- StarMission、永久卡、皮肤、英雄差异与英雄重铸等真实网关用例改为只在测试中显式`force_open`其Fun门禁，生产门禁未被绕过；不再用“重跑到绿”掩盖309。
+- pray login按R1绝对窗口复现，测试服务器开启时间改为窗口前10天且仍受29天限制，不再错误要求旧相对平移。
+- 首充真实网关超时复现为模块槽冲突：`TACTICS_MODULE_ID`原误写19，会覆盖模块19 `res_recharge_login`，下一次登录因`Tactics login data is invalid`断开。按`ModuleTable`改为125（`TacticsMgr/project/tactics`），与HeroBlazon 152、HeroLegend 154、MysteryShop 162一致；tactics与line-first-recharge测试均通过。
+- 上述11个已知失败文件修复后单个复跑合计47/47通过，日志保存在`analysis/test-runs/r1-remaining-20261115/`。
+- 完整`test:all`首跑剩余的五项逐一复现并修复，未把任何一项标记为flaky：诺言符文90201和圣器89709改由测试使用生产`featureOverrides.set()`单服`force_open` 1201/1195；QuickSDK的POSIX `0600`断言只在支持该权限语义的平台执行，Windows仍核验UID/token哈希及敏感字段不落盘；活动20001的百抽块被后执行的开服宝箱同步覆盖，现改为追加独立ETF记录块，`open-server-box-service.test.mjs`同步按多块流解码；战斗报告测试原错误假设2010101带护盾，现加入真实拥有回合开始护盾的1020601（`6102060102`）并保留严格`101→109→102`窗口断言。
+- 六个相关文件联合复跑45/45通过。最终完整`npm --prefix personal-server run test:all`为3215通过、0失败、2条件跳过（3217项，636955.5814 ms），日志为`analysis/test-runs/r1-remaining-20261115/final-test-all-after-regression-fixes.log`；`npm --prefix personal-server test`为482通过、0失败、2条件跳过（484项，96296.3613 ms），日志为`analysis/test-runs/r1-remaining-20261115/final-fast-test-after-regression-fixes.log`。
+- 最终`check:command-dispatch`仍为total 1407/serviceRoute 1383/gatewayRoute 18/multiOwner 6/unrouted 0；`build-detailed-rule-docs --check`、`verify-detailed-rule-docs`与`git diff --check`均通过。
+
+### 分层验收
+
+| 层级 | 当前结果 |
+| --- | --- |
+| 原证据已闭合 | 各组表/PB/客户端调用链和缺失函数已独立复核并保存；25条成功链均未闭合 |
+| R1 推定 | 本轮新增0条；没有用推定补造成本、候选、奖励、返还或状态 |
+| 服务端完成 | 25条均为失败关闭，0条成功链完成 |
+| 离线 TCP | 25条逐条GameError(5)、状态不变已验；专项还覆盖各组真实临时TCP拒绝路径 |
+| 存档/重开 | 因无成功写入不能做成功存档/重开验收；拒绝前后状态一致已验 |
+| APK | 未验收；本轮未操作ADB/APK |
+| 生产 TCP / 生产库 | 未读写、未验收 |
+| 部署 | 未执行 |
+
+新账号首次登录、创角、引导、首战、重登和SQLite持久化实机游玩属于独立验收阶段，需要用户另行授权启动服务与操作APK；本轮离线测试不能替代该阶段，也不能承诺未验收环境没有bug。

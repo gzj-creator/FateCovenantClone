@@ -9,9 +9,9 @@
 3. [逐活动ID与版本](activities.md)：1993条原配置、当前实现投影及四项R1决定分别保存。
 4. [原时间算法](../activity-rulebooks/time-and-stages.md)和[逐活动阶段](activity-phases.md)：两种框架分别计算，列输入与阻断；空stage不自动补进行期，R1专项的显式阶段另列推定身份。
 5. [前90天排期](activity-calendar.md)：原相对候选、当前实现差异与R1首期分列，含阶段转换。正式世界日期保留原值，当前平移列不作发布规则。
-6. [完整数值表](tables/README.md)：197份表文档、2013个子表登记、276725行原配置，完整JSON不截断。
+6. [完整数值表](tables/README.md)：203份表文档、2043个子表登记、277924行原配置，完整JSON不截断。
 7. [商品](products.md)、[奖池](draw-pools.md)、[297任务/1407命令对应](module-rule-index.md)与[查规则示例](worked-examples.md)。
-8. [原证据债务与已定行为](unresolved.md)：3个根索引解析阻断（部分有独立分片），各项均绑定R1执行政策。
+8. [原证据债务与已定行为](unresolved.md)：4个根索引解析阻断（部分有独立分片），各项均绑定R1执行政策。
 9. [统一规划](../11-project-roadmap.md)与[运营手册](../08-operations-runbook.md)：实施依赖、阶段验收与逐期操作。
 
 ## 数值如何使用

@@ -3,7 +3,7 @@
   "snapshotDate": "2026-11-15",
   "auditSnapshotDate": "2026-11-14",
   "baseline": "R1-20261115",
-  "codeBaseline": "8135c8a20c34aa10fa89b4f99d72f71bd289099d",
+  "codeBaseline": "fc9769b7c60368245c47a0d022066b9bd05ff1a3",
   "scope": "当前工作树源码与原表证据快照；不证明线上部署或 APK 验收",
   "commandAudit": {
     "total": 1407,
@@ -65,7 +65,7 @@
     },
     {
       "path": "personal-server/config/command-dispatch-audit.json",
-      "sha256": "17a74457747e7f688c0096a0b68ee1bf8ee6125f3b5f603fa8ebd60ebc442b8e"
+      "sha256": "a7e36e1e2d4d4fc4e4b1f31a8b0871838fabbe35c201d67cf5f6d86390bd9a5c"
     },
     {
       "path": "personal-server/config/fun-open-rules.json",
@@ -241,7 +241,7 @@
     },
     {
       "path": "personal-server/game/gateway.mjs",
-      "sha256": "02af58e74dc6e13e789a15fc87c2d22a7fa5ee99453cbed15b6e53edd5b937ca"
+      "sha256": "2c935f729e19d2715b8b8dce90b2b0181d920ff80c80b78eb8a728b91679304b"
     },
     {
       "path": "personal-server/config/skill-database.json",
