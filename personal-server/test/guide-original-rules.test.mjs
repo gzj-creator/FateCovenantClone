@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGameCodec, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readGuideTables } from '../config/guide-tables.mjs';
 import { readGuideAwards } from '../config/guide-awards.mjs';
 import { createGuideService, guideProcessIsOver, projectGuideLoginModule, saveGuideProcesses } from '../game/guide-service.mjs';
+import { createLineupService } from '../game/lineup-service.mjs';
 
 const codec = createGameCodec(), tables = readGameTables(), guides = readGuideTables(), awards = readGuideAwards();
 const guideLogin = store => codec.unpack('pb_guide', rawBinary(new Map(store.state().modules.value).get(16)));
@@ -67,7 +68,14 @@ test('first hero is granted after 10202 before the award key is saved; second wa
   setMission(store, 10202);
   assert.equal(store.state().guides['106004'], undefined);
   const result = await service.execute(8001, 1);
-  assert.equal(codec.unpack('pb_res_to_client', result.data).changes.find(change => change.tid === '1020601').diff_num, '1');
+  const awardChange = codec.unpack('pb_res_to_client', result.data).changes.find(change => change.tid === '1020601');
+  assert.equal(awardChange.diff_num, '1');
+  const heroExtras = await decodeEtf(Buffer.from(awardChange.extra, 'base64'));
+  assert.equal(heroExtras.value.length, 1);
+  const grantedHero = codec.unpack('hero', Buffer.from(heroExtras.value[0].value));
+  assert.equal(grantedHero.tid, '1020601');
+  assert.equal(grantedHero.uid, '1020601');
+  assert.equal(grantedHero.level, 1);
   assert.equal(Number(hero(store, 1020601).level), 1);
   assert.equal(Number(hero(store, 1020601).count), 1);
   assert.equal(Buffer.from(guideLogin(store).award, 'base64')[0], 0x40, 'award 1 is raw MSB-first bit 1, without ETF wrapping');
@@ -81,6 +89,42 @@ test('first hero is granted after 10202 before the award key is saved; second wa
   assert.equal(Buffer.from(guideLogin(store).award, 'base64')[0], 0x60);
   await assert.rejects(() => service.execute(8001, 1), /already claimed/);
   await assert.rejects(() => service.execute(8001, 2), /already claimed/);
+});
+
+test('guide hero and three-person lineup survive SQLite reopen through module 9', async t => {
+  const { store, fixture, service } = setup(t);
+  setMission(store, 10202);
+  await service.execute(8001, 1);
+  const lineupService = createLineupService({ store, codec, tables });
+  const preset = structuredClone(store.read().lineups.pre_lineups[0]);
+  preset.lineup.fighter_list.push({
+    loc: 2,
+    index: 3,
+    hero_id: '1020601',
+    equip_ids: [1, 2, 3, 4],
+    relic_ids: ['0', '0', '0', '0']
+  });
+  const response = codec.unpack('pb_edit_pre_lineup_rsp', lineupService.execute(209, {
+    pre_lineup_list: [preset],
+    handle_types: ['0']
+  }).data);
+  assert.ok(response.role_lineup.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === '1020601'));
+
+  const storedModule = store.inspect(db => JSON.parse(db.prepare(
+    'SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=9'
+  ).get(store.currentRoleId()).payload_json));
+  const storedLogin = codec.unpack('pb_lineup_login', rawBinary(storedModule));
+  const storedRole = codec.unpack('pb_role_lineup', Buffer.from(storedLogin.pre_lineup, 'base64'));
+  assert.ok(storedRole.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === '1020601'));
+  assert.ok(storedLogin.lineups.some(bytes => codec.unpack('pb_lineup', Buffer.from(bytes, 'base64'))
+    .team_list[0].fighter_list.some(fighter => fighter.hero_id === '1020601')));
+
+  const reopened = fixture.open();
+  const loginModule = new Map(reopened.state().modules.value).get(9);
+  const login = codec.unpack('pb_lineup_login', rawBinary(loginModule));
+  const role = codec.unpack('pb_role_lineup', Buffer.from(login.pre_lineup, 'base64'));
+  assert.ok(role.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === '1020601'));
+  assert.ok(reopened.read().heroInfo.hero_list.some(hero => hero.uid === '1020601'));
 });
 
 test('guide progress validates original key membership and keeps intermediate steps unfinished across relogin', t => {

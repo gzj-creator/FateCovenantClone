@@ -40,3 +40,34 @@
 
 本记录可以证明新账号复用模板档的根因已修复，服务端快速套件通过，修复版服务已启动；真实 APK 新账号登录后的角色 ID、等级、英雄、mission 光标及首章界面仍需用户创建账号后核对。未取证的后玩法命令继续明确拒绝，不能据此宣称全部玩法 1:1 完成。
 
+## 2026-11-15 新手女仆奖励与三人编队修复
+
+用户新建角色 `roleId=100002` 完成新手奖励和布阵后发现，服务端已有女仆 `1020601`，`lineups` 与 `play_lineups` 也已是三人，但当前客户端队伍仍找不到女仆。服务端 `8001` 女仆领奖和 `209` 三人编队均成功提交，故不是资源表、发奖事务或编队写入失败。
+
+客户端 `Info_latest.txt` 在 `20:42:52` 报 `HeroRes.lua.txt:62: bad argument #1 to 'ipairs' (table expected, got nil)`，随后 `209` 回包处理持续报 `hero nil` 和 `table index is nil`。`HeroRes.lua.bin` 的 `ResChange` 会把 `change.extra` 解码成 ETF 二进列表，再逐个按 `hero` protobuf 解码并调用 `HeroMgr.AddHeroes`。旧服务端女仆奖励只返回数量 `tid/new_num/diff_num`，因此奖励已落库但打开中的客户端英雄表没有即时加入女仆。
+
+修复分为两项：
+
+- `personal-server/game/resources.mjs` 在首次发放新英雄时返回该英雄的完整 protobuf ETF 列表作为 `change.extra`；重复英雄仍只增加数量，不伪造第二个英雄对象。
+- `personal-server/storage/game-store.mjs` 在事务保存和登录物化时统一从权威 `lineups/play_lineups` 重算登录模块 9，保留未知字段并同步其中旧的编队副本。这样英雄、预编队和真实登录快照会同时更新。
+- 回归测试解码女仆奖励的 `change.extra`，并覆盖女仆领奖、`209` 三人编队、原始模块 9、SQLite 重开；租借英雄星级/品质测试也改为明确核对 SQLite 中模块 9 的编队副本。
+
+验证结果：
+
+- `node --test test/guide-original-rules.test.mjs`：14/14 通过。
+- `node --test test/leaser-starup-service.test.mjs`：11/11 通过。
+- 女仆/编队/账号隔离/招募相关测试：51/51 通过。
+- `npm test`：485 项，483 pass、0 fail、2 skipped；两个 skip 仍仅因未提供 v9 已验收 Lua 包 `FC_RECHARGE_CLIENT_BUNDLE`。
+
+上线前使用 SQLite `VACUUM INTO` 生成一致备份：
+
+- 备份：`analysis/experiments/launch-20261115/backups/pre-guide-hero-20261115T131500Z/game.local-only.sqlite`。
+- 大小 `1,658,880` 字节，SHA256 `d8b9462f99cdb599719a9f426370cecf8c98144c83e1d5734062688c8bd47b9d`。
+- `PRAGMA integrity_check=ok`；备份内有 2 个角色、1 个账号。
+
+新服务 PID `32464`，继续使用 `analysis/experiments/launch-20261115/server-data-fixed` 和原开服时间 `2026-11-15T05:00:00+08:00`。SDK `18880`、列表 `18881`、启动 `18882`、游戏 `19090`、管理 `18883` 均由新 PID 仅监听 `127.0.0.1`；管理页返回 HTTP 200。服务日志为 `server-guide-hero-fix-20261115T131700Z.out.log`，stderr 为空。
+
+客户端只执行 `am force-stop com.jzyx.ps` 后重开，未执行 `pm clear`，PlayerPrefs、账号缓存和本地存档均保留；重开后 `com.jzyx.ps` PID 为 `7933`，当前停在 QuickSDK 账号选择页。服务端和字节码回归已闭合本次两个缺失点，最终队伍是否出现女仆仍需用户在模拟器创建新账号完成视觉验收。
+
+重开后用户继续使用 `roleId=100002` 实测，`8001` award 2 于 `seq=49` 提交，随后 `209` 于 `seq=52` 提交。服务端模块 10 当前英雄为 `2010101/2010201/1020601/2020601`，模块 9 当前主阵为 `1020601/2010201/2010101/2020601`，女仆已同时出现在英雄表和登录编队快照。新客户端日志 `Info_after_guide_hero_fix_runtime.txt` 中 `HeroRes.lua.txt:62`、`hero nil`、`table index is nil` 均为 0 次；这些旧错误没有在新回包路径复现。战斗界面中的最终视觉显示仍由用户当前模拟器操作确认。
+

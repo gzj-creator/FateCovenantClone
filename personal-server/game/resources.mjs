@@ -1,4 +1,4 @@
-import { createGameCodec, encodeEtfIntegerTuple, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { createGameCodec, encodeEtfBinaryList, encodeEtfIntegerTuple, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { setBit } from './bit-block.mjs';
 import {
   MISSION_ENERGY_MODULE_ID,
@@ -270,15 +270,16 @@ function grantRawHero(model, id, amount, tables) {
   const existing = model.heroInfo.hero_list.find(hero => Number(hero.tid) === id);
   if (existing) {
     existing.count = Number(existing.count ?? 0) + amount;
-    return String(existing.count);
+    return { newNum: String(existing.count), hero: null };
   }
   const config = tables.Hero.get(id);
-  model.heroInfo.hero_list.push({
+  const hero = {
     tid: String(id), count: amount, uid: String(id), level: 1,
     star: Number(config?.star ?? 0), source: 1, quality: Number(config?.quality ?? 0),
     relic: [], up_star_high_consume: [], source_point_list: [], pendant_select_list: []
-  });
-  return String(amount);
+  };
+  model.heroInfo.hero_list.push(hero);
+  return { newNum: String(amount), hero };
 }
 
 function grantFigure(model, id, amount, handler) {
@@ -435,7 +436,16 @@ export function grantResources(model, awards, tables, options = {}) {
         changeExtra = { new_bin: result.newBin };
         break;
       }
-      case 'hero': newNum = grantRawHero(model, id, amount, tables); break;
+      case 'hero': {
+        const result = grantRawHero(model, id, amount, tables);
+        newNum = result.newNum;
+        // HeroRes.ResChange iterates change.extra as an ETF list of serialized
+        // `hero` messages and calls HeroMgr.AddHeroes. Without this payload the
+        // award is persisted server-side but remains absent in the open client,
+        // so the immediately following tutorial lineup cannot find the hero.
+        if (result.hero) changeExtra = { extra: encodeEtfBinaryList([codec.pack('hero', result.hero)]) };
+        break;
+      }
       case 'figure': newNum = grantFigure(model, id, amount, handler); break;
       case 'relic': newNum = grantRelic(modules, id, amount, codec); break;
       case 'artifact': newNum = grantArtifact(modules, id, amount, codec); break;

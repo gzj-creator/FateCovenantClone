@@ -18,6 +18,18 @@ import {
 } from '../game/mission-progress.mjs';
 
 const HERO_INFO_MODULE_ID = 10;
+const LINEUP_LOGIN_MODULE_ID = 9;
+
+function synchronizeLineupLoginModule(modules, codec, lineups, playLineups) {
+  const module = modules.get(LINEUP_LOGIN_MODULE_ID);
+  if (!module) throw new Error('Lineup login module 9 is unavailable');
+  const login = codec.unpack('pb_lineup_login', rawBinary(module));
+  login.pre_lineup = codec.pack('pb_role_lineup', lineups);
+  login.lineups = playLineups.map(lineup => codec.pack('pb_lineup', lineup));
+  const bytes = codec.pack('pb_lineup_login', login);
+  modules.set(LINEUP_LOGIN_MODULE_ID, serializedBinary(bytes));
+  return bytes;
+}
 
 function synchronizeHeroInfoModule(modules, codec, heroInfo) {
   const module = modules.get(HERO_INFO_MODULE_ID);
@@ -66,12 +78,8 @@ export function materializeState(model, codec) {
   const state = structuredClone(model.state);
   const modules = new Map(state.modules.value);
   state.rolePb = codec.pack('to_client_role_info', model.role).toString('base64');
-  const lineupLogin = codec.unpack('pb_lineup_login', rawBinary(modules.get(9)));
-  lineupLogin.pre_lineup = codec.pack('pb_role_lineup', model.lineups);
-  lineupLogin.lineups = model.playLineups.map(lineup => codec.pack('pb_lineup', lineup));
-  const lineupBytes = codec.pack('pb_lineup_login', lineupLogin);
+  const lineupBytes = synchronizeLineupLoginModule(modules, codec, model.lineups, model.playLineups);
   state.lineups = lineupBytes.toString('base64');
-  modules.set(9, serializedBinary(lineupBytes));
   modules.get(10).value[0] = serializedBinary(codec.pack('pb_hero_info', model.heroInfo));
   const currencies = new Map(), energyGroups = new Map();
   for (const resource of model.resources.values()) {
@@ -298,6 +306,7 @@ export function createGameStore({ databasePath, legacyStatePath, seed, codec, se
     db.prepare('INSERT OR REPLACE INTO roles VALUES (?,?,?,?,?)').run(state.roleId, state.serverId, state.createdAt, JSON.stringify(role), JSON.stringify(metadata));
     const moduleInsert = db.prepare('INSERT OR REPLACE INTO login_modules VALUES (?,?,?)');
     const storedModules = new Map(modules.value);
+    synchronizeLineupLoginModule(storedModules, codec, lineups, playLineups);
     synchronizeHeroInfoModule(storedModules, codec, heroInfo);
     for (const [key, value] of storedModules) moduleInsert.run(state.roleId, key, JSON.stringify(value));
     for (const table of ['heroes', 'hero_cells', 'resources', 'guides']) db.prepare('DELETE FROM ' + table + ' WHERE role_id=?').run(state.roleId);

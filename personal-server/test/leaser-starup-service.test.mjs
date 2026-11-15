@@ -23,6 +23,7 @@ const tables = readLeaserStarUpTables();
 const gameTables = readGameTables();
 const FIXED_SECONDS = 1_792_789_200;
 const FIXED_NOW = FIXED_SECONDS * 1000;
+const LINEUP_LOGIN_MODULE = 9;
 const HERO_MODULE = 143;
 const LEASE_MODULE = 179;
 const STAR_UP_MODULE = 180;
@@ -213,8 +214,28 @@ function leaseSnapshot(store) {
     lineups: structuredClone(model.lineups),
     playLineups: structuredClone(model.playLineups),
     permanentHeroes: structuredClone(model.heroInfo),
-    otherModules: model.state.modules.value.filter(([id]) => ![HERO_MODULE, LEASE_MODULE, STAR_UP_MODULE].includes(Number(id))).map(([id, value]) => [id, structuredClone(value)])
+    otherModules: model.state.modules.value.filter(([id]) => ![LINEUP_LOGIN_MODULE, HERO_MODULE, LEASE_MODULE, STAR_UP_MODULE].includes(Number(id))).map(([id, value]) => [id, structuredClone(value)])
   };
+}
+
+function storedLineupLogin(store) {
+  const module = JSON.parse(store.inspect(db => db.prepare(
+    'SELECT payload_json FROM login_modules WHERE role_id=? AND module_id=?'
+  ).get(store.currentRoleId(), LINEUP_LOGIN_MODULE).payload_json));
+  const login = codec.unpack('pb_lineup_login', rawBinary(module));
+  return {
+    role: codec.unpack('pb_role_lineup', Buffer.from(login.pre_lineup, 'base64')),
+    play: login.lineups.map(bytes => codec.unpack('pb_lineup', Buffer.from(bytes, 'base64')))
+  };
+}
+
+function storedLineupTeams(store) {
+  const login = storedLineupLogin(store);
+  return [
+    ...login.play.flatMap(lineup => lineup.team_list ?? []),
+    ...(login.role.pre_lineups ?? []).flatMap(preset => preset.lineup?.team_list ?? []),
+    ...(login.role.pre_lineups_standby ?? []).flatMap(preset => preset.lineup?.team_list ?? [])
+  ];
 }
 
 function directDecode(service, bytes, type = 101201) {
@@ -286,6 +307,10 @@ test('hero star-up consumes the exact next-row cost and updates only leased copi
   assert.equal(unpacked.hero_lease_ret.lineup[0].team_list[0].lease_fighter_list[0].hero.star, next.star);
   assert.deepEqual(env.store.read().heroInfo, permanentBefore);
   assert.deepEqual(leaseSnapshot(env.store).otherModules, otherModulesBefore);
+  for (const team of storedLineupTeams(env.store)) {
+    const storedHero = team.lease_fighter_list[0].hero;
+    assert.deepEqual([storedHero.quality, storedHero.star], [next.quality, next.star]);
+  }
 
   const model = env.store.read();
   for (const preset of [model.lineups.pre_lineups[0], model.lineups.pre_lineups_standby[0]]) {
@@ -331,6 +356,13 @@ test('artifact, pet and elves star-up update module 179 and all lineup copies, i
     }
   }
   assert.deepEqual(leaseSnapshot(env.store).otherModules, otherModulesBefore);
+  for (const team of storedLineupTeams(env.store)) {
+    for (const def of defs) {
+      const object = codec.unpack(GENERIC[def.type].schema, Buffer.from(team[GENERIC[def.type].field][0].unit, 'base64'));
+      const next = transitions.find((_, index) => defs[index] === def).next;
+      assert.deepEqual([object.quality, object.star], [next.quality, next.star]);
+    }
+  }
   env.reopen();
   assert.equal(genericLeaseState(env.store).unit_role.length, 3);
 });
@@ -365,6 +397,10 @@ test('101202 resets a real hero upgrade history, refunds every configured row an
   assert.equal(unpacked.hero_lease_ret.lineup[0].team_list[0].lease_fighter_list[0].hero.star, 5);
   assert.deepEqual(env.store.read().heroInfo, permanentBefore);
   assert.deepEqual(leaseSnapshot(env.store).otherModules, otherModulesBefore);
+  for (const team of storedLineupTeams(env.store)) {
+    const storedHero = team.lease_fighter_list[0].hero;
+    assert.deepEqual([storedHero.quality, storedHero.star], [6, 5]);
+  }
 
   const persisted = codec.unpack('pb_leaser_star_up', rawBinary(moduleState(env.store, STAR_UP_MODULE)));
   assert.deepEqual(persisted.reset_list, unpacked.reset_data ? [unpacked.reset_data] : []);
