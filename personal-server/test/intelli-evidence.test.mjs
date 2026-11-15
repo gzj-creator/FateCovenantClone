@@ -59,7 +59,8 @@ test('Intelli evidence remains explicitly unsafe for gameplay completion', () =>
   assert.equal(tables.gameplayReady, false);
   assert.equal(tables.gameplayBlockers.length, 4);
   assert.match(tables.gameplayBlockers[0], /omit award, award_n, hero_star, hero_quality and conditions/);
-  assert.match(tables.gameplayBlockers[1], /MethodScript is empty/);
+  assert.match(tables.gameplayBlockers[1], /MethodTable\.Method and MethodTable\.DynamicArgs/);
+  assert.match(tables.gameplayBlockers[1], /Type\.unlock scripts cannot be evaluated/);
 });
 
 test('Intelli unknown lookups stay unknown', () => {
