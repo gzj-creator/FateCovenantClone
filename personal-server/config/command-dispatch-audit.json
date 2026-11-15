@@ -3,7 +3,7 @@
   "source": {
     "gateway": {
       "path": "personal-server/game/gateway.mjs",
-      "sha256": "02AF58E74DC6E13E789A15FC87C2D22A7FA5EE99453CBED15B6E53EDD5B937CA"
+      "sha256": "2C935F729E19D2715B8B8DCE90B2B0181D920FF80C80B78EB8A728B91679304B"
     },
     "catalog": {
       "path": "personal-server/config/command-catalog.json",
