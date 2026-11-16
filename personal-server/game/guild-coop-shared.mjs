@@ -11,9 +11,10 @@ import { localDateKey, localWeekday, naturalDay } from './time.mjs';
 // GuildHuntCmd, GuildCrusadeCmd, GuildAuctionCmd).
 //
 // Guild identity comes from login module 24 (pb_res_guild_login), the same
-// module GuildMgr writes for 21005-21010. Every command in this block needs a
-// real guild membership, so the guild id, member list and job come from that
-// single authority instead of a second copy in the cooperation tables.
+// module GuildMgr writes for 21005-21010. Guild commands need a real guild
+// membership, so their guild id, member list and job come from that single
+// authority instead of a second copy in the cooperation tables. ChannelEntry
+// is role-scoped and deliberately does not call guildContext.
 //
 // Variable-shape guild state is stored as JSON documents keyed by
 // (scope, guild, role, key). Claim markers are a separate table so every award

@@ -182,6 +182,27 @@ test('expedition, channel and guild nation commands expose real state', async t 
   assert.equal(env.fixture.store.inspect(db => db.prepare('SELECT assist_num FROM guild_nation_assists WHERE assist_id=?').get('77').assist_num), 1);
 });
 
+test('channel entry succeeds without guild membership and stores role-scoped state', async t => {
+  const env = setup(t);
+  const roleId = String(env.fixture.store.read().state.roleId);
+  env.fixture.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    modules.delete(24);
+    model.state.modules.value = [...modules];
+  });
+
+  const channel = await env.services.channel.execute(102801, Buffer.from('836400036e696c', 'hex'));
+  assert.equal(channel.data.length, 0);
+  assert.equal(channel.value.channel.channel_id, 1);
+  assert.equal(channel.value.channel.is_open, true);
+
+  const stored = env.fixture.store.inspect(db => db.prepare(
+    "SELECT guild_id, payload_json FROM guild_coop_docs WHERE scope='channel_entry' AND role_id=? AND doc_key='state'"
+  ).get(roleId));
+  assert.equal(stored.guild_id, '0');
+  assert.equal(JSON.parse(stored.payload_json).opens, 1);
+});
+
 test('temporary TCP gateway routes cooperation commands and decodes client responses', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-guild-coop-gateway-'));
   const game = createLocalGame({
@@ -220,6 +241,11 @@ test('temporary TCP gateway routes cooperation commands and decodes client respo
   assert.ok(BigInt(codec.unpack('pb_guild_boss_use_skill_back', Buffer.from(hit.data, 'base64')).damage) > 0n);
   const joint = await request(91612, 5, empty);
   assert.equal(codec.unpack('pb_guild_joint_enter_map_back', Buffer.from(joint.data, 'base64')).map.monster_list.length, 3);
+  game.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    modules.delete(24);
+    model.state.modules.value = [...modules];
+  });
   const channel = await request(102801, 6, Buffer.from('836400036e696c', 'hex'));
   assert.equal(channel.seq, 6);
   assert.equal(channel.err, undefined);

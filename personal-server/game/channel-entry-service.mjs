@@ -1,12 +1,12 @@
 import { GameError } from './hero-progression.mjs';
 import {
-  ensureCoopTables, guildContext, readDoc, writeDoc, toSeconds, etfArgs, decodeCoopRequest
+  ensureCoopTables, readDoc, writeDoc, toSeconds, etfArgs, decodeCoopRequest
 } from './guild-coop-shared.mjs';
 
 // ChannelEntryCmd 102801. Entries are local channel policy, while opening the
-// entry records a role session in the cooperation store. The command is under
-// guild cooperation because the recovered response type lives in the same
-// channel bundle and is sent only after a role has an authenticated session.
+// entry records a role session in the cooperation store. It lives in the same
+// command family as guild cooperation, but channel entry is available before a
+// role joins a guild and must not depend on module 24 membership state.
 export const CHANNEL_ENTRY_COMMAND = 102801;
 const SCOPE = 'channel_entry';
 
@@ -34,12 +34,16 @@ export function createChannelEntryService({ store, codec, coopTables, now = Date
       return store.transaction((model, db) => {
         ensureCoopTables(db);
         const at = toSeconds(now);
-        const context = guildContext(model, codec);
+        const roleId = String(model.state.roleId);
+        // Channel policy is global/role-scoped. Keep its state outside any
+        // current guild partition so guild changes cannot hide or duplicate
+        // the role's channel-entry history.
+        const guildId = '0';
         if (!entry) throw new GameError(5, 'No channel entry is configured');
-        const doc = readDoc(db, SCOPE, context.guildId, context.roleId, 'state') ?? { opens: 0, lastOpen: 0 };
+        const doc = readDoc(db, SCOPE, guildId, roleId, 'state') ?? { opens: 0, lastOpen: 0 };
         doc.opens = Number(doc.opens ?? 0) + 1;
         doc.lastOpen = at;
-        writeDoc(db, SCOPE, context.guildId, context.roleId, 'state', doc, at);
+        writeDoc(db, SCOPE, guildId, roleId, 'state', doc, at);
         const value = {
           channel_id: Number(entry.channelId),
           is_open: Boolean(entry.isOpen),
