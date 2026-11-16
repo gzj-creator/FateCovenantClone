@@ -6,7 +6,7 @@ import { currentTaskProgress } from './task-service.mjs';
 import { readFirstWeekGoalTables } from '../config/first-week-goal-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 
-export const FIRST_WEEK_GOAL_MODULE_ID = 59015;
+export const FIRST_WEEK_GOAL_MODULE_ID = 92027;
 export const FIRST_WEEK_GOAL_COMMANDS = Object.freeze({ progress: 67004, task: 67005 });
 
 const CODE_INVALID = 1;

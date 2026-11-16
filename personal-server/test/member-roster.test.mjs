@@ -59,7 +59,7 @@ function guildModulePayload(state) {
   return rawBinary(module);
 }
 
-function makeGameFactory(prefix = 'fc-guild-roster-') {
+function makeGameFactory(prefix = 'fc-guild-roster-', options = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   const databasePath = path.join(directory, 'game.sqlite');
   const statePath = path.join(directory, 'absent.json');
@@ -67,6 +67,7 @@ function makeGameFactory(prefix = 'fc-guild-roster-') {
     databasePath,
     statePath,
     capturePath,
+    seedInitialGuild: options.seedInitialGuild ?? true,
     verifySession: (uid, session) => uid === 'guild-user' && session === 'guild-session',
     serverOpenedAt: SERVER_OPENED_AT,
     now: () => (SERVER_OPENED_AT + 3600) * 1000
@@ -169,6 +170,47 @@ test('static client evidence maps the guild member roster to login module 24 and
   assert.ok(fieldNames(schemas.pb_guild).includes('member_list'));
   assert.deepEqual(fieldNames(schemas.pb_guild_member), ['role_id', 'job', 'join_time']);
   assert.deepEqual(fieldNames(schemas.pb_res_guild_member_change), ['member_list', 'log_list', 'impeach_uid', 'can_transfer_time']);
+});
+
+test('new roles start guildless and the legacy Local Covenant fixture migrates only without a directory row', async t => {
+  const emptyFactory = makeGameFactory('fc-guild-empty-', { seedInitialGuild: false });
+  const emptyGame = emptyFactory.makeGame();
+  t.after(async () => {
+    try { await emptyGame.close(); } finally { fs.rmSync(emptyFactory.directory, { recursive: true, force: true }); }
+  });
+  const empty = await guildLoginFromPayload(await emptyGame.loginPayload());
+  assert.equal(Number(empty.guildId ?? 0), 0);
+  assert.equal(empty.guild, undefined);
+  assert.deepEqual(empty.guild_applies, []);
+
+  const legacyFactory = makeGameFactory('fc-guild-legacy-');
+  let legacyGame = legacyFactory.makeGame();
+  t.after(async () => {
+    try { await legacyGame?.close(); } finally { fs.rmSync(legacyFactory.directory, { recursive: true, force: true }); }
+  });
+  const seeded = await guildLoginFromPayload(await legacyGame.loginPayload());
+  assert.equal(seeded.guildId, '900001');
+  const migration = createGuildRosterService({ store: legacyGame.store, codec });
+  assert.equal(migration.ensureLoginState(), true);
+  const migrated = codec.unpack('pb_res_guild_login', migration.loginPayload());
+  assert.equal(Number(migrated.guildId ?? 0), 0);
+  assert.equal(migrated.guild, undefined);
+
+  await legacyGame.close();
+  legacyGame = undefined;
+  legacyGame = legacyFactory.makeGame();
+  const reseeded = await guildLoginFromPayload(await legacyGame.loginPayload());
+  assert.equal(reseeded.guildId, '900001');
+  legacyGame.store.inspect(db => db.prepare(`INSERT INTO guild_directory
+    (guild_id,name,badge,level,active,audit_type,level_limit,power_limit,leader_role_id,member_count,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    900001, 'Local Covenant', 1, 1, 0, 2, 1, 0, 100001, 5, '2026-01-01', '2026-01-01'
+  ));
+  const preservedService = createGuildRosterService({ store: legacyGame.store, codec });
+  assert.equal(preservedService.ensureLoginState(), false);
+  const preserved = codec.unpack('pb_res_guild_login', preservedService.loginPayload());
+  assert.equal(preserved.guildId, '900001');
+  assert.equal(preserved.guild.name, 'Local Covenant');
 });
 
 test('login module 24 drives guild queries and mutations through a temporary TCP server and survives SQLite reopen', async t => {
@@ -276,7 +318,9 @@ test('guild roster mutations roll back when response packing fails', async t => 
       return codec.pack(name, value);
     }
   };
-  const service = createGuildRosterService({ store: game.store, codec: failingCodec, now: () => SERVER_OPENED_AT + 3600 });
+  const service = createGuildRosterService({
+    store: game.store, codec: failingCodec, seedLocalGuild: true, now: () => SERVER_OPENED_AT + 3600
+  });
   service.ensureLoginState();
   const before = service.loginPayload();
   await assert.rejects(service.execute(21006, [String(seeded.guildId), target.role_id]), /forced response packing failure/);
@@ -295,7 +339,9 @@ test('21007 ETF response encoding fails before guild, hero, and module state are
   const successor = initial.guild.member_list.find(member => Number(member.job) === GUILD_JOB.MEMBER);
   assert.ok(successor, 'the seeded roster has a successor');
 
-  const service = createGuildRosterService({ store: game.store, codec, now: () => SERVER_OPENED_AT + 3600 });
+  const service = createGuildRosterService({
+    store: game.store, codec, seedLocalGuild: true, now: () => SERVER_OPENED_AT + 3600
+  });
   service.ensureLoginState();
   const transferred = await service.execute(21010, [guildId, successor.role_id, GUILD_JOB.PRESIDENT]);
   assert.deepEqual(transferred.pushes.map(push => push.type), [2305]);
@@ -308,6 +354,7 @@ test('21007 ETF response encoding fails before guild, hero, and module state are
   const failing = createGuildRosterService({
     store: game.store,
     codec,
+    seedLocalGuild: true,
     now: () => SERVER_OPENED_AT + 7200,
     encodeResponse: async () => {
       encodeCalls++;
@@ -354,6 +401,7 @@ test('21007 retries its preencoded response when module 24 changes concurrently'
   const service = createGuildRosterService({
     store: game.store,
     codec,
+    seedLocalGuild: true,
     now: () => SERVER_OPENED_AT + 3600,
     encodeResponse: value => {
       encodeCalls++;

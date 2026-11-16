@@ -23,6 +23,10 @@ function optionalGuildId(value) {
   return idText(value, 'guild id');
 }
 
+function emptyLogin() {
+  return { guildId: '0', last_leave_time: 0, guild_applies: [] };
+}
+
 function seedLogin(model) {
   // The original server has no guild data for this offline fixture, so the
   // login state starts with one deterministic local guild owned by the actor.
@@ -55,6 +59,40 @@ function seedLogin(model) {
     },
     guild_applies: []
   };
+}
+
+// Early local builds seeded every role into a synthetic guild. Existing saves
+// may still carry that exact fixture even though the role never created or
+// joined a guild. Match every deterministic field before migrating so an
+// edited live guild is never mistaken for fixture data.
+function isLegacyLocalGuildLogin(login, model) {
+  const actor = idText(model.state.roleId, 'role id');
+  const roleId = BigInt(actor);
+  const guild = login.guild;
+  if (String(login.guildId ?? '') !== LOCAL_GUILD_ID || !guild) return false;
+  if (guild.id !== LOCAL_GUILD_ID || guild.name !== 'Local Covenant' || guild.notice !== 'Local guild roster') return false;
+  if (Number(guild.server_id) !== Number(model.state.serverId) || Number(guild.audit_type) !== 2) return false;
+  if (Number(login.last_leave_time ?? 0) !== 0 || (login.guild_applies?.length ?? 0) !== 0) return false;
+  if ((login.leave_count?.length ?? 0) !== 0 || (guild.apply_list?.length ?? 0) !== 0) return false;
+  const members = guild.member_list ?? [];
+  if (members.length !== 5) return false;
+  const expected = [
+    [actor, GUILD_JOB.PRESIDENT, 0],
+    [String(roleId + 1n), GUILD_JOB.OFFICER, 1],
+    [String(roleId + 2n), GUILD_JOB.MEMBER, 2],
+    [String(roleId + 3n), GUILD_JOB.MEMBER, 3],
+    [String(roleId + 4n), GUILD_JOB.MEMBER, 4]
+  ];
+  return members.every((member, index) => (
+    String(member.role_id) === expected[index][0]
+    && Number(member.job) === expected[index][1]
+    && Number(member.join_time) === Number(model.state.createdAt) + expected[index][2]
+  ));
+}
+
+function hasGuildDirectoryRecord(db, guildId) {
+  const table = db.prepare("SELECT 1 AS present FROM sqlite_master WHERE type='table' AND name='guild_directory'").get();
+  return Boolean(table && db.prepare('SELECT 1 AS present FROM guild_directory WHERE guild_id=?').get(Number(guildId)));
 }
 
 function moduleFrom(model) {
@@ -112,16 +150,30 @@ function assertGuildMatches(value, guildId) {
   if (supplied && supplied !== guildId) fail(5, 'Guild id does not match the current guild');
 }
 
-export function createGuildRosterService({ store, codec, now = () => Math.floor(Date.now() / 1000), encodeResponse = encodeEtf, logger = () => {} }) {
+export function createGuildRosterService({
+  store,
+  codec,
+  now = () => Math.floor(Date.now() / 1000),
+  encodeResponse = encodeEtf,
+  seedLocalGuild = false,
+  logger = () => {}
+}) {
   const log = event => { try { logger(event); } catch {} };
   const nowSeconds = () => Math.max(0, Math.trunc(Number(now())));
 
   function ensureLoginState() {
     log({ event: 'guild_roster_ensureLoginState_entry' });
-    return store.transaction(model => {
+    return store.transaction((model, db) => {
       const module = moduleFrom(model);
-      if (!isUninitialized(module, codec)) return false;
-      writeModule(model, codec, seedLogin(model));
+      if (isUninitialized(module, codec)) {
+        writeModule(model, codec, seedLocalGuild ? seedLogin(model) : emptyLogin());
+        return true;
+      }
+      if (seedLocalGuild) return false;
+      const login = readLogin(model, codec);
+      if (!isLegacyLocalGuildLogin(login, model) || hasGuildDirectoryRecord(db, login.guildId)) return false;
+      writeModule(model, codec, emptyLogin());
+      log({ event: 'guild_roster_legacy_fixture_removed', guildId: String(login.guildId) });
       return true;
     });
   }

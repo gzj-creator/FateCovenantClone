@@ -1,6 +1,7 @@
 import { GameError } from './hero-progression.mjs';
 import { encodeEtfInteger, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { readLineupTables } from '../config/lineup-tables.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
 const fail = (code, message) => { throw new GameError(code, message); };
 
 const EDIT_PLAY_LINEUP = 208;
@@ -30,6 +31,10 @@ const CUSTOM_MAX_ENTRIES = 20;
 // LineupTable.Type.team_count reaches five teams; the client limit for custom names is not recovered.
 const MAX_TEAMS = 5;
 const MAX_NAME_LENGTH = 20;
+const TUTORIAL_VELL_TID = '4030801';
+const TUTORIAL_GUIDE_KEY = '205005';
+const TUTORIAL_GUIDE_PROCESS = '369';
+const TUTORIAL_VELL_LOC = 5;
 
 // The ordinary preset editor sends handle_types=[0]. Apply that wildcard to
 // every configured single-team lineup whose LineupTable.Type row is
@@ -71,11 +76,31 @@ function integerValue(value) {
   return null;
 }
 
-function validateTeam(model, team) {
+// Guide process 369 step 205023 grants Vell by putting tid 4030801 in slot 5.
+// Some saves created before that award was persisted still carry the complete
+// module-9 tutorial lineup but omit the hero from module 10. Repair only this
+// exact table-defined case; every other unknown hero remains a hard failure.
+function repairTutorialVell(model, fighter, heroTables) {
+  if (String(fighter?.hero_id) !== TUTORIAL_VELL_TID || Number(fighter?.loc) !== TUTORIAL_VELL_LOC) return false;
+  if (String(model.state.guides?.[TUTORIAL_GUIDE_KEY] ?? '') !== TUTORIAL_GUIDE_PROCESS) return false;
+  if (model.heroInfo.hero_list.some(hero => String(hero.uid) === TUTORIAL_VELL_TID)) return true;
+  const config = heroTables.Hero.get(Number(TUTORIAL_VELL_TID));
+  if (!config || String(config.tid) !== TUTORIAL_VELL_TID) fail(5, 'Tutorial hero configuration is missing');
+  model.heroInfo.hero_list.push({
+    tid: TUTORIAL_VELL_TID, uid: TUTORIAL_VELL_TID, count: 1, level: 1,
+    star: 0, star_progress: 0, breakthrough_level: 0,
+    quality: Number(config.quality ?? 0), relic: [], source_point_list: [],
+    pendant_select_list: [], up_star_high_consume: []
+  });
+  return true;
+}
+
+function validateTeam(model, team, heroTables) {
   if (!team || !Number.isInteger(team.team_id) || team.team_id < 1) fail(51558, 'Invalid team');
   const cells = new Set(), positions = new Set(), heroes = new Set();
   for (const fighter of team.fighter_list ?? []) {
     const uid = String(fighter.hero_id);
+    if (!model.heroInfo.hero_list.some(hero => String(hero.uid) === uid)) repairTutorialVell(model, fighter, heroTables);
     if (!model.heroInfo.hero_list.some(hero => String(hero.uid) === uid)) fail(3001, 'Hero does not exist');
     if (!model.heroInfo.cell_list.some(cell => cell.index === fighter.index)) fail(3029, 'Hero cell does not exist');
     if (!Number.isInteger(fighter.loc) || fighter.loc < 1 || fighter.loc > 6) fail(51551, 'Invalid fighter position');
@@ -124,7 +149,12 @@ function copyCurrentPreset(model, input, sharedPreTypes) {
   return copy;
 }
 
-export function createLineupService({ store, codec, lineupTables = readLineupTables() }) {
+export function createLineupService({
+  store,
+  codec,
+  lineupTables = readLineupTables(),
+  heroTables = readHeroTables()
+}) {
   const sharedPreTypes = sharedPreSingleTeamTypes(lineupTables);
   const customTypes = customPresetTypes(lineupTables);
 
@@ -218,7 +248,7 @@ export function createLineupService({ store, codec, lineupTables = readLineupTab
     if (teams.length > MAX_TEAMS) fail(51503, 'Too many teams');
     const seen = new Set();
     for (const team of teams) {
-      validateTeam(model, team);
+      validateTeam(model, team, heroTables);
       if (seen.has(team.team_id)) fail(51558, 'Duplicate team');
       seen.add(team.team_id);
     }
@@ -293,7 +323,7 @@ export function createLineupService({ store, codec, lineupTables = readLineupTab
             const existing = model.playLineups.findIndex(lineup => lineup.type === entry.type);
             if (existing < 0) fail(51552, 'Unknown lineup type');
             const teams = new Set();
-            for (const team of entry.team_list ?? []) { validateTeam(model, team); if (teams.has(team.team_id)) fail(51558, 'Duplicate team'); teams.add(team.team_id); }
+            for (const team of entry.team_list ?? []) { validateTeam(model, team, heroTables); if (teams.has(team.team_id)) fail(51558, 'Duplicate team'); teams.add(team.team_id); }
             if (!teams.size) fail(51558, 'Missing lineup team');
             model.playLineups[existing] = structuredClone(entry);
           }
@@ -318,7 +348,7 @@ export function createLineupService({ store, codec, lineupTables = readLineupTab
               seen.add(entry.index);
               const index = model.lineups.pre_lineups.findIndex(pre => pre.index === entry.index);
               if (index < 0) fail(51553, 'Unknown preset');
-              validateTeam(model, entry.lineup);
+              validateTeam(model, entry.lineup, heroTables);
               model.lineups.pre_lineups[index] = structuredClone(entry);
             }
             copy = copyCurrentPreset(model, input, sharedPreTypes);

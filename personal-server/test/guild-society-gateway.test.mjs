@@ -27,6 +27,7 @@ test('guild society and community commands dispatch over the temporary handshake
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
     capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
+    seedInitialGuild: true,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: OPENED_AT,
     now: () => NOW

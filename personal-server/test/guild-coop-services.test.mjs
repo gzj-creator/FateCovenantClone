@@ -36,7 +36,7 @@ function setup(t) {
   let now = FIXED_NOW;
   const fixture = createGameFixture(t, codec, { prefix: 'fc-guild-coop-', now: () => now });
   const clock = () => now;
-  createGuildRosterService({ store: fixture.store, codec, now: () => Math.floor(now / 1000) }).ensureLoginState();
+  createGuildRosterService({ store: fixture.store, codec, seedLocalGuild: true, now: () => Math.floor(now / 1000) }).ensureLoginState();
   fixture.store.transaction(model => grantResources(model, [[101500, 100000], [3002, 100]], tables, { codec, now: clock }));
   const coopTables = readGuildCoopTables();
   coopTables.boss.damageAwards[0].damage = '1';
@@ -188,6 +188,7 @@ test('temporary TCP gateway routes cooperation commands and decodes client respo
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
     capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
+    seedInitialGuild: true,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: 1792789200,
     now: () => FIXED_NOW

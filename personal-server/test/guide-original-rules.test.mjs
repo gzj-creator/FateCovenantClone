@@ -127,6 +127,43 @@ test('guide hero and three-person lineup survive SQLite reopen through module 9'
   assert.ok(reopened.read().heroInfo.hero_list.some(hero => hero.uid === '1020601'));
 });
 
+test('guide 205023 repairs missing Vell only for its exact slot and process and persists through SQLite', t => {
+  const { store, fixture } = setup(t);
+  const service = createLineupService({ store, codec });
+  const makePreset = (heroId, loc) => {
+    const preset = structuredClone(store.read().lineups.pre_lineups[0]);
+    preset.lineup.fighter_list = [
+      { loc: 1, index: 1, hero_id: '2010101', equip_ids: [1, 2, 3, 4], relic_ids: ['0', '0', '0', '0'] },
+      { loc, index: 2, hero_id: heroId, equip_ids: [1, 2, 3, 4], relic_ids: ['0', '0', '0', '0'] }
+    ];
+    return preset;
+  };
+
+  assert.throws(() => service.execute(209, {
+    pre_lineup_list: [makePreset('4030801', 5)], handle_types: []
+  }), error => error.code === 3001);
+  store.transaction(model => { model.state.guides['205005'] = 369; });
+  assert.throws(() => service.execute(209, {
+    pre_lineup_list: [makePreset('4030801', 4)], handle_types: []
+  }), error => error.code === 3001);
+  assert.throws(() => service.execute(209, {
+    pre_lineup_list: [makePreset('999999', 5)], handle_types: []
+  }), error => error.code === 3001);
+  assert.equal(hero(store, 4030801), undefined, 'rejected tutorial-like requests must not mutate the roster');
+
+  const response = codec.unpack('pb_edit_pre_lineup_rsp', service.execute(209, {
+    pre_lineup_list: [makePreset('4030801', 5)], handle_types: []
+  }).data);
+  assert.ok(response.role_lineup.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === '4030801' && fighter.loc === 5));
+  assert.equal(hero(store, 4030801).level, 1);
+  assert.equal(hero(store, 4030801).quality, 50);
+
+  const reopened = fixture.open();
+  assert.equal(hero(reopened, 4030801).level, 1);
+  const module10 = codec.unpack('pb_hero_info', rawBinary(new Map(reopened.state().modules.value).get(10).value[0]));
+  assert.ok(module10.hero_list.some(value => value.uid === '4030801' && value.tid === '4030801'));
+});
+
 test('guide progress validates original key membership and keeps intermediate steps unfinished across relogin', t => {
   const { store, fixture } = setup(t);
   assert.equal(guideProcessIsOver(104, 106004), false);

@@ -54,7 +54,7 @@ import { createActivityStore } from './activity-store.mjs';
 import { createActivityRuntime } from './activity-runtime.mjs';
 import { resolveR1ActivityOccurrences } from '../config/activity-explicit-occurrences.mjs';
 import { createActivitySettlementService } from './activity-settlement-service.mjs';
-import { createActivityOnlineSync } from './activity-online-sync.mjs';
+import { createActivityOnlineSync, removeActivityLoginRows } from './activity-online-sync.mjs';
 import { createScheduler } from './scheduler.mjs';
 import { backupSqlite } from './db-backup.mjs';
 import { createEventBus } from './event-bus.mjs';
@@ -281,6 +281,7 @@ export function createLocalGame({
   eliteEnemies = null,
   martialClubRoster = null,
   tournamentRoster = null,
+  seedInitialGuild = false,
   guideAwards = readGuideAwards(),
   maxConnections = DEFAULT_MAX_CONNECTIONS,
   now = Date.now,
@@ -697,7 +698,7 @@ export function createLocalGame({
   const mysteryShop = createMysteryShopService({ store, codec, gameTables: tables, now: clock, logger });
   const itemCommandServices = [linearLevel, openServerBox, growthTarget, taskAward, careerLife, mysteryShop];
   const heroMastery = createHeroMasteryService({ store, codec, heroTables });
-  const lineups = createLineupService({ store, codec });
+  const lineups = createLineupService({ store, codec, heroTables });
   const leaderEquip = createLeaderEquipService({ store, codec, tables: leaderEquipTables });
   const equip = createEquipService({ store, codec, tables: readEquipTables() });
   // Block C endgame development: the leader-equipment develop commands share
@@ -843,7 +844,9 @@ export function createLocalGame({
     onDraw: (model, draw) => heroDrawActivity.recordDraw(model, { ...draw, seconds: Math.floor(draw.seconds) })
   });
   const handbook = createHeroHandbookService({ store, codec, heroTables, tables });
-  const guildRoster = createGuildRosterService({ store, codec, now: () => Math.floor(clock() / 1000) });
+  const guildRoster = createGuildRosterService({
+    store, codec, seedLocalGuild: seedInitialGuild, now: () => Math.floor(clock() / 1000)
+  });
   const heroFavor = createHeroFavorService({
     store, codec, heroTables, tables, now: () => Math.floor(clock() / 1000)
   });
@@ -1130,7 +1133,11 @@ export function createLocalGame({
     const loginTime = pack('pb_login_time', { last_login: loginSeconds, last_logout: loginSeconds - 1, day_count: roleLoginDayCount(state.createdAt, loginSeconds), create_time: state.createdAt, online_time: 0 });
     modules.set(1, [binary('local-sqlite-v1'), state.roleId, binary(loginTime), state.serverId, calendar.serverOpenedAt, binary(serverName), binary(''), 0]);
     modules.set(2, binary(Buffer.from(state.rolePb, 'base64')));
-    modules.set(4, binary(await roleService.loginRedDots()));
+    // RedDotMgr.LoginParse iterates the module with ipairs. Embed the ETF list
+    // itself; wrapping the already encoded ETF payload in a binary makes the
+    // client receive a string instead of the expected table.
+    modules.set(4, (await decodeEtf(await roleService.loginRedDots()))
+      .map(entry => binary(Buffer.from(entry.value))));
     const storyLogin = storyService.loginPayload();
     modules.set(88, [storyLogin.tid, binary(storyLogin.payload)]);
     modules.set(173, binary(roleService.loginChannelPush()));
@@ -1153,9 +1160,12 @@ export function createLocalGame({
     if (state.lineups) modules.set(9, binary(Buffer.from(state.lineups, 'base64')));
     modules.set(guildRoster.moduleId, binary(guildRoster.loginPayload()));
     // GuildWarMgr is referenced by MainHouseForm during the login transition.
-    // Four empty protobuf blocks make entryData non-nil without opening the
-    // activity or inventing live war state.
+    // Every block must encode a non-empty neutral object; GuildWarMgr indexes
+    // these structures before checking whether the activity is open.
     modules.set(GUILD_WAR_LOGIN_MODULE_ID, guildActivity.loginPayloads().map(entry => binary(entry)));
+    for (const [moduleId, payloads] of await guildActivity.loginModulePayloads()) {
+      modules.set(moduleId, payloads.map(entry => binary(entry)));
+    }
     const triMatchLogin = triMatch.loginPayload(state.roleId);
     modules.set(TRI_MATCH_LOGIN_MODULES.hero, binary(triMatchLogin.hero));
     modules.set(TRI_MATCH_LOGIN_MODULES.equip, binary(triMatchLogin.equip));
@@ -1276,6 +1286,11 @@ export function createLocalGame({
     calendar.applyLoginSchedule(activity, loginSeconds);
     const runtimeLogin = activityRuntime.synchronizeLogin(activity, loginSeconds);
     const runtimeLoginView = activityRuntime.applyLoginVisibility(activity, runtimeLogin);
+    const hiddenRebateIds = runtimeLoginView.hidden.filter(id => rechargeRebateReset.activityIds.includes(Number(id)));
+    if (hiddenRebateIds.length) {
+      const removal = removeActivityLoginRows(activity, hiddenRebateIds);
+      logger({ event: 'recharge_rebate_reset_login_hidden', ...removal });
+    }
     const afterActivityIds = new Set([
       ...(activity.act_list ?? []).map(entry => Number(entry.state_data?.act_id)),
       ...(activity.act_parallel_list ?? []).flatMap(group => (group.states_data ?? []).map(entry => Number(entry.act_id)))

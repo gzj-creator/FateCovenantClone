@@ -77,6 +77,10 @@ const GUILD_MODULE_ID = 24;
 // the guide-to-home transition, so this module must be present even when the
 // activity gate is closed.
 export const GUILD_WAR_LOGIN_MODULE_ID = 24047;
+export const GUILD_EXPLORE_LOGIN_MODULE_ID = 24045;
+export const GUILD_EXPLORE_TRIAL_LOGIN_MODULE_ID = 24048;
+export const GUILD_VOTE_LOGIN_MODULE_ID = 24053;
+export const GUILD_EXPEDITION_LOGIN_MODULE_ID = 24055;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS guild_activity_state (
@@ -515,29 +519,90 @@ export function createGuildActivityService({
     ...EXPLORE_TYPES, ...EXPLORE_TRIAL_TYPES, ...WAR_TYPES, ...DUEL_TYPES, ...RACING_TYPES
   ]);
 
-  return {
-    supports: type => SUPPORTED.has(Number(type)),
-    requestSchema: type => GUILD_ACTIVITY_REQUEST_SCHEMAS[Number(type)] ?? null,
-    gap: type => GAPS.get(Number(type)) ?? null,
-    loginPayloads: () => [
+  function guildWarLoginPayloads() {
+    return [
       codec.pack('pb_guild_war_entry', {
         area_list: [],
-        refresh_time: '0',
+        refresh_time: '1',
         cur_phase: 0,
         stage: 0,
-        calc_power_time: '0',
-        start_time: '0'
+        calc_power_time: '2147483647',
+        start_time: '1'
       }),
-      codec.pack('pb_guild_war_data', { war_list: [] }),
-      codec.pack('pb_guild_war_record', { settle_list: [] }),
+      codec.pack('pb_guild_war_data', { war_list: [{ area_idx: 0, is_over: true }] }),
+      codec.pack('pb_guild_war_record', { settle_list: [{ phase: 0, activity_time: 1 }] }),
       codec.pack('pb_guild_war_person', {
         guess_list: [],
         stat_list: [],
         add_stat_list: [],
         is_receive_rank: false,
-        have_operate: false
+        have_operate: false,
+        guess_area: 1
       })
-    ],
+    ];
+  }
+
+  // These four module managers run LoginFinish red-dot checks even while their
+  // activities are closed. Each receives a decoded neutral object instead of
+  // a zero-byte protobuf, which the client treats as nil.
+  async function guildLoginModulePayloads() {
+    // These fields are decoded by Core.BitBlock.New(rawBytes), not by the ETF
+    // codec. A zero-length protobuf bytes field is omitted and becomes nil in
+    // the client, while an ETF-wrapped buffer is interpreted as an invalid bit
+    // block. One zero byte is the canonical non-nil empty BitBlock.
+    const emptyTaskBits = Buffer.alloc(1);
+    const exploreGuild = codec.pack('pb_guild_explore_guild', {
+      boss: { open_time: '1', end_time: '1' },
+      flush_data: {},
+      stat_data: {},
+      active_data: {}
+    });
+    const explorePerson = codec.pack('pb_guild_explore_person', {
+      map_person: { refresh_sec: '1' },
+      task_data: {
+        person_task: emptyTaskBits,
+        ref_guild_day_time: '1',
+        guild_glory_task: emptyTaskBits,
+        person_glory_task: emptyTaskBits,
+        guide_task: emptyTaskBits
+      }
+    });
+    const explore = codec.pack('pb_guild_explore_login', {
+      explore_guild_bin: exploreGuild,
+      explore_person_bin: explorePerson,
+      explore_game_bin: codec.pack('pb_guild_explore_game_data', { last_touch_time: '1' }),
+      explore_shop_bin: codec.pack('pb_guild_explore_shop', { next_reset_time: '1' }),
+      explore_pre_person: codec.pack('pb_guild_explore_pre_person', { state: 2 })
+    });
+    return new Map([
+      [GUILD_EXPLORE_LOGIN_MODULE_ID, [explore]],
+      [GUILD_EXPLORE_TRIAL_LOGIN_MODULE_ID, [
+        codec.pack('pb_guild_explore_trial', { end_time: '1' }),
+        codec.pack('pb_guild_explore_trial_person', { atk_info: {}, receive_list: [] })
+      ]],
+      [GUILD_VOTE_LOGIN_MODULE_ID, [
+        codec.pack('pb_guild_vote_list', { vote_list: [] })
+      ]],
+      [GUILD_EXPEDITION_LOGIN_MODULE_ID, [
+        codec.pack('pb_guild_expedition_login', {
+          server_info: {
+            version: '1',
+            version_start_time: '1',
+            version_end_time: '1'
+          },
+          role_info: {},
+          guild_info: {}
+        })
+      ]]
+    ]);
+  }
+
+  return {
+    supports: type => SUPPORTED.has(Number(type)),
+    requestSchema: type => GUILD_ACTIVITY_REQUEST_SCHEMAS[Number(type)] ?? null,
+    gap: type => GAPS.get(Number(type)) ?? null,
+    loginPayloads: guildWarLoginPayloads,
+    loginModulePayloads: guildLoginModulePayloads,
     execute(type, input) {
       const command = Number(type);
       const gap = GAPS.get(command);

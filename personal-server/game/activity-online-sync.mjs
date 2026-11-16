@@ -115,6 +115,35 @@ export function applyActivityRuntimeLoginView(activity, states) {
 }
 
 /**
+ * Removes activities that must not be represented as a module-92 state row at
+ * all. Most closed rows stay in place and are paused above, but a family whose
+ * own client table has no stage entry must be omitted or the client logs that
+ * the activity state does not exist.
+ */
+export function removeActivityLoginRows(activity, ids) {
+  if (!activity || typeof activity !== 'object') throw new GameError(5, 'Activity login payload is invalid');
+  const removed = new Set([...ids].map(Number).filter(Number.isSafeInteger));
+  if (!removed.size) return { removed: [], count: 0 };
+  let count = 0;
+  activity.act_list = (activity.act_list ?? []).filter(entry => {
+    const keep = !removed.has(Number(entry?.state_data?.act_id));
+    if (!keep) count++;
+    return keep;
+  });
+  activity.act_parallel_list = (activity.act_parallel_list ?? []).flatMap(group => {
+    const states = (group?.states_data ?? []).filter(state => {
+      const keep = !removed.has(Number(state?.act_id));
+      if (!keep) count++;
+      return keep;
+    });
+    return states.length ? [{ ...group, states_data: states }] : [];
+  });
+  activity.act_pause_list = (activity.act_pause_list ?? []).filter(id => !removed.has(Number(id)));
+  activity.act_custom_list = (activity.act_custom_list ?? []).filter(entry => !removed.has(Number(entry?.act_id)));
+  return { removed: [...removed].sort((a, b) => a - b), count };
+}
+
+/**
  * Builds the static, handler-proven push for an online stage transition.
  * A close has no client-side numeric stage in the recovered tables or proto,
  * so it deliberately fails closed rather than inventing stage 0.

@@ -26,7 +26,7 @@ function setup(t, initialSeconds = 1800000000) {
   let nowSeconds = initialSeconds;
   const openStore = () => createGameStore({ databasePath, seed: () => createSeed(codec), codec, serverOpenedAt: SERVER_OPENED_AT });
   let store = openStore();
-  createGuildRosterService({ codec, store }).ensureLoginState();
+  createGuildRosterService({ codec, store, seedLocalGuild: true }).ensureLoginState();
   const makeCms = () => createCmsService({ codec, store, tables, now: () => nowSeconds * 1000 });
   const makeAssist = () => createGuildNationAssistService({ codec, store, now: () => nowSeconds * 1000 });
   let cms = makeCms(), assist = makeAssist();
@@ -147,6 +147,7 @@ test('real gateway serves CMS and current-guild assist reads without unsupported
     databasePath,
     statePath: path.join(directory, 'absent.json'),
     capturePath: new URL('../fixtures/login-modules.seed.json', import.meta.url),
+    seedInitialGuild: true,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: SERVER_OPENED_AT,
     now: () => gameNow,

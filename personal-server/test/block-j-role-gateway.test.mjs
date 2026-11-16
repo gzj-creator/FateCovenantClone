@@ -79,6 +79,14 @@ function loginModuleBytes(login, moduleId, slot = null) {
   return Buffer.isBuffer(selected) ? Buffer.from(selected) : Buffer.from(selected.value ?? selected);
 }
 
+function loginRedItems(login) {
+  const entry = new Map(login[2].value).get(4);
+  assert.ok(entry, 'login module 4 is present');
+  const list = entry.value ?? entry;
+  assert.ok(Array.isArray(list), 'module 4 is an ETF list');
+  return list.map(item => Buffer.from(item.value ?? item));
+}
+
 function activityIds(login) {
   const activity = codec.unpack('pb_act_login', loginModuleBytes(login, 92));
   const ids = [
@@ -111,10 +119,10 @@ test('block J role/support commands survive real loopback framing and SQLite reo
 
   connection = await connectAndLogin(game);
   const roleId = String(game.store.read().state.roleId);
-  const initialRed = codec.unpack('all_saved_red', loginModuleBytes(connection.login, 4));
+  const initialRed = loginRedItems(connection.login).map(bytes => codec.unpack('single_red_info', bytes));
   const initialPush = codec.unpack('pb_channel_push_param', loginModuleBytes(connection.login, 173));
   const initialStory = codec.unpack('story_data', loginModuleBytes(connection.login, 88, 1));
-  assert.deepEqual(initialRed.saved_red_list, []);
+  assert.deepEqual(initialRed, []);
   assert.deepEqual(initialPush.open_list, []);
   assert.ok(Array.isArray(initialStory.finish_story_list));
 
@@ -191,12 +199,12 @@ test('block J role/support commands survive real loopback framing and SQLite reo
 
   game = createTemporaryGame(databasePath, statePath);
   connection = await connectAndLogin(game);
-  const reopenedRed = codec.unpack('all_saved_red', loginModuleBytes(connection.login, 4));
+  const reopenedRed = loginRedItems(connection.login).map(bytes => codec.unpack('single_red_info', bytes));
   const reopenedPush = codec.unpack('pb_channel_push_param', loginModuleBytes(connection.login, 173));
   const reopenedStory = codec.unpack('story_data', loginModuleBytes(connection.login, 88, 1));
   const reopenedSkins = codec.unpack('pb_skin_info', loginModuleBytes(connection.login, 65, 0)).skin_list;
   assert.deepEqual(
-    reopenedRed.saved_red_list.map(row => Buffer.from(row.path_bin, 'base64').toString('utf8')),
+    reopenedRed.map(row => Buffer.from(row.path_bin, 'base64').toString('utf8')),
     ['role/support/red']
   );
   assert.deepEqual(reopenedPush.open_list.map(row => [row.message_id, row.is_open]), [[7, true]]);

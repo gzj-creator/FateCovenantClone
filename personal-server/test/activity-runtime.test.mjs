@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { createActivityStore } from '../game/activity-store.mjs';
 import { createActivityRuntime } from '../game/activity-runtime.mjs';
+import { applyActivityRuntimeLoginView, removeActivityLoginRows } from '../game/activity-online-sync.mjs';
 
 function fixture(t) {
   const db = new DatabaseSync(':memory:');
@@ -72,4 +73,25 @@ test('role-level function locks pause login visibility without closing the serve
   assert.equal(activityStore.instance(1, 1).stage, 'running');
   runtime.tick(1_000_160);
   assert.equal(activityStore.instance(1, 1).stage, 'running');
+});
+
+test('a client-incompatible hidden row can be removed from module 92 without affecting visible states', () => {
+  const activity = {
+    act_list: [
+      { state_data: { act_id: 118003, cur_state_id: 50 }, module_login_data: 'rebate' },
+      { state_data: { act_id: 20001, cur_state_id: 50 }, module_login_data: 'visible' }
+    ],
+    act_parallel_list: [],
+    act_pause_list: [118003, 20001],
+    act_custom_list: [{ act_id: 118003 }, { act_id: 20001 }]
+  };
+  const view = applyActivityRuntimeLoginView(activity, [
+    { actId: 118003, stage: 'closed', stateId: null, window: null },
+    { actId: 20001, stage: 'running', stateId: 50, window: { start: 100, end: 200 } }
+  ]);
+  assert.deepEqual(view.hidden, [118003]);
+  assert.deepEqual(removeActivityLoginRows(activity, view.hidden), { removed: [118003], count: 1 });
+  assert.deepEqual(activity.act_list.map(entry => Number(entry.state_data.act_id)), [20001]);
+  assert.deepEqual(activity.act_pause_list, [20001]);
+  assert.deepEqual(activity.act_custom_list.map(entry => Number(entry.act_id)), [20001]);
 });
