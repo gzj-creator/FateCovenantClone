@@ -339,11 +339,13 @@ function guideDemoBattleConfig(fightTid, fightTables = readJourneyFightTables(),
   if (!Number.isSafeInteger(id) || id <= 0) return null;
   const fight = fightTables.Fight.get(id);
   if (!fight) return null;
-  // GuideDemoFightStep is the only recovered caller that starts a Fight row
-  // without a mode payload. Require both sides to be fixed configured teams
-  // and an exact Step.ref_int_param match before accepting the request.
+  // GuideDemoFightStep and GuideIblisTimelineStep are the recovered callers
+  // that start a Fight row without a mode payload. Require both sides to be
+  // fixed configured teams and an exact Step.ref_int_param match before
+  // accepting the request.
   const referenced = [...guideTables.Step.values()].some(step =>
-    step?.step_module?.reference === 'GuideDemoFightStep' && Number(step.ref_int_param) === id);
+    ['GuideDemoFightStep', 'GuideIblisTimelineStep'].includes(step?.step_module?.reference)
+      && Number(step.ref_int_param) === id);
   if (!referenced || !Array.isArray(fight.atk_team) || !fight.atk_team.length
     || !Array.isArray(fight.def_team) || !fight.def_team.length) return null;
   return { fight, fightTables };
