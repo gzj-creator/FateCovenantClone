@@ -113,11 +113,11 @@ Team91102为NPC9005500/9005600、loc[2,5]、NpcAttr1。FightKit按TeamID×100+lo
 
 FunOpen含target、switch、sysSwitch、断言及动态参数。523条中当前业务映射ready177/gap346；本次文档已核原条件220条，仍有证据缺口303条。新增已证脚本955132601007是`MissionMgr.GetPassedSection()>=30203`，涉及44行，1514在内；当前代码已接入1514。多断言按原FunOpenData.Check做AND，8条Show动态替换仍有缺口。详见[开放附录](appendices/feature-unlocks.md)；已证不等于已开放，缺证条件按R1未满足处理。
 
-当前7000只接target1客户端确认。已恢复规则重新核资格，过早请求1218返回fail_id_list，不写开放位；1054等未恢复表达式继续接受客户端确认，避免大厅等待回包卡死。target2由服务端调和。7201在线通知的target_tid是完整funId，例如1218，不是位图分组1；每项单独通知，extra为空。已有错误开放位不在启动时自动删除。
+当前7000只接target1客户端确认。已恢复规则重新核资格，过早请求1218或旧引导别名1105返回fail_id_list，不写开放位；1054等未恢复表达式继续接受客户端确认，避免大厅等待回包卡死。target2由服务端调和。7201在线通知的target_tid是完整funId，例如1218，不是位图分组1；每项单独通知，extra为空。登录调和时，status=ready且条件明确为false的旧开放位会删除；evidence-gap与force_open位保留。
 
 名人堂Fun1218的原条件已确定：角色等级≥32且开服日≥2，客户端还受模块开关161控制。等级31/32/33与开服日1/2/3、在线通知和重登已做服务端边界测试。临时TCP还发现创角前门禁读取openIds导致空服登录断线，已改为仅ready阶段查功能位。
 
-用户1级弹窗的实际入口尚未闭合：当前718个Step没有GuideFameHallFirstEnterStep引用，新号module3/16为空、module161无旧进度，故障日志也没有7000/1218。仍需对应现场表单/引导ID、客户端Storage和更新资源来源；不能凭恢复门槛就销项。详见[专项调查](../../agent/workflow/gameplay-rules-20261114/fame-hall-investigation.md)。
+用户低等级弹窗入口已闭合：Guide Step `291004`的`GuideFunOpenStep.ref_int_param=1105`，`1105`与`1218`都指向勇闯名人堂；1105原Show表达式未单独恢复，因此按同功能新ID 1218的已证实条件（角色等级≥32且开服日≥2）绑定为别名。登录调和会清除低等级遗留的1105/1218开放位，避免引导291再提示点击未开放的名人堂。详见[专项调查](../../agent/workflow/gameplay-rules-20261114/fame-hall-investigation.md)。
 
 角色功能未解锁和活动服务器实例未存在是两种状态。登录活动结构不能因低等级角色锁功能就删行；原客户端可能依赖实例行初始化管理器，应保留结构并表达 pause/不可操作。
 

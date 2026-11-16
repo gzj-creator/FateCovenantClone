@@ -131,7 +131,7 @@ export function createFeatureService({
     const login = codec.unpack('res_fun_open_login', rawBinary(modules.get(3) ?? Buffer.alloc(0)));
     const current = openFeatureIds(login);
     const forced = overridesFor(model.state.serverId);
-    let add;
+    let add, remove = [];
     if (!ruleList.length) {
       add = [...forced].filter(([id, mode]) => mode === 'force_open' && !current.has(id)).map(([id]) => id);
     } else {
@@ -139,13 +139,22 @@ export function createFeatureService({
       const visible = new Set([...evaluation.open].filter(id => forced.get(id) !== 'force_close'));
       for (const [id, mode] of forced) if (mode === 'force_open') visible.add(id);
       add = [...visible].filter(id => !current.has(id));
+      // A ready rule is authoritative when it evaluates false. Remove only
+      // that stale bitmap. Evidence gaps and unknown rules remain untouched,
+      // and force_open always wins over the computed rule.
+      remove = ruleList
+        .filter(rule => rule.status === 'ready' && Number.isSafeInteger(Number(rule.funId)))
+        .map(rule => Number(rule.funId))
+        .filter(id => current.has(id) && !evaluation.open.has(id) && forced.get(id) !== 'force_open');
       if (evaluation.denied.length) log({ event: 'fun_open_rule_denied', denied: evaluation.denied });
     }
-    if (add.length) {
+    if (add.length || remove.length) {
       updateBits(login, add);
+      clearBits(login, remove);
       modules.set(3, serializedBinary(codec.pack('res_fun_open_login', login)));
       model.state.modules.value = [...modules];
     }
+    if (remove.length) log({ event: 'fun_open_stale_ready_removed', ids: remove });
     return add;
   }
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
-import { createMissionFightService, lineupReferenceStats } from '../game/mission-fight-service.mjs';
+import { createMissionFightService, lineupReferenceStats, reportGuideDemoBattle } from '../game/mission-fight-service.mjs';
 import { MISSION_ENERGY_SLOT } from '../game/energy.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 
@@ -426,6 +426,52 @@ test('non-mission fights are refused without touching saved state', t => {
   // A story-only section has no battle even though map data is present.
   assert.throws(() => env.service.execute(201, fightRequest(30205)), error => error.code === 5);
   assert.throws(() => env.service.execute(207, Buffer.alloc(0)), error => error.code === 1);
+  assert.deepEqual(env.store.state(), before);
+});
+
+test('guide DemoFight 90024 uses both configured teams and settles without gameplay side effects', t => {
+  const env = setup(t);
+  setMission(env.store, 30204);
+  const before = env.store.state();
+  const request = codec.pack('pb_fight_request', { fight_tid: 90024, stm_type: 2 });
+  const started = env.service.execute(201, request);
+  const response = codec.unpack('pb_fight_response', started.data);
+  assert.equal(response.report.tid, '90024');
+  assert.equal(response.report.type, 4, 'the report type comes from JourneyFightTable.Fight[90024].type');
+  assert.equal(response.report.finish ?? false, false);
+  const battle = response.report.battle_list[0];
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 1).map(unit => unit.role ?? '0'),
+    ['0', '4030800', '1020600', '2010200', '2020600', '2010100']);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => unit.role), ['9002700']);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 1 && Number(unit.role_type) !== 3).map(unit => Number(unit.loc)), [1, 2, 4, 5, 6]);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => Number(unit.loc)), [5]);
+  assert.ok(battle.action_list.length > 0);
+
+  const settled = env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 4 }));
+  const settlement = codec.unpack('pb_fight_settlement_response', settled.data);
+  const missionResult = codec.unpack('mission_to_client', Buffer.from(settlement.stm.stm_data, 'base64'));
+  assert.deepEqual(missionResult.res.changes, []);
+  assert.equal(missionResult.mission ?? null, null);
+  assert.equal(missionModule(env.store).mission_id, '30204');
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
+  assert.equal(env.store.inspect(db => db.prepare("SELECT COUNT(*) AS n FROM reward_claims WHERE claim_type='mission_first_clear'").get().n), 0);
+  assert.deepEqual(env.store.read().state.guides, before.guides);
+  assert.equal(env.store.read().state.level, before.level);
+  assert.equal(env.store.read().state.exp, before.exp);
+  const replay = env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 4 }));
+  assert.deepEqual(replay.data, settled.data);
+  assert.equal(env.service.execute(202, codec.pack('pb_fight_exit', { fight_type: 4, is_force: false })).data.length, 0);
+  assert.equal(missionModule(env.store).mission_id, '30204');
+});
+
+test('guide demo fight recognition fails closed for a fabricated fight or an explicit mission payload', t => {
+  const env = setup(t);
+  const before = env.store.state();
+  assert.throws(() => env.service.execute(201, codec.pack('pb_fight_request', { fight_tid: 90025, stm_type: 2 })),
+    error => error.code === 5);
+  assert.throws(() => env.service.execute(201, codec.pack('pb_fight_request', {
+    fight_tid: 90024, stm_type: 2, req: codec.pack('mission_fight_req', { mission_id: 30204 })
+  })), error => error.code === 5);
   assert.deepEqual(env.store.state(), before);
 });
 

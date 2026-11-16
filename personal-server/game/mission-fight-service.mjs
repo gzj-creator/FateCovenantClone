@@ -1,7 +1,10 @@
 import { decodeEtf, encodeEtfIntegerTuple, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { missionBattleConfig, readMissionTables } from '../config/mission-tables.mjs';
+import { readGuideTables } from '../config/guide-tables.mjs';
+import { readJourneyFightTables } from '../config/journey-fight-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
 import { ACTOR_ATTR, applyNpcScaling, assembleHeroAttributes, compatibilitySpeed, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
 import { resolveFightTeam } from './fight-team-resolver.mjs';
@@ -331,6 +334,21 @@ function configuredNpcTeam(config, side, attributeTables) {
   });
 }
 
+function guideDemoBattleConfig(fightTid, fightTables = readJourneyFightTables(), guideTables = readGuideTables()) {
+  const id = Number(fightTid);
+  if (!Number.isSafeInteger(id) || id <= 0) return null;
+  const fight = fightTables.Fight.get(id);
+  if (!fight) return null;
+  // GuideDemoFightStep is the only recovered caller that starts a Fight row
+  // without a mode payload. Require both sides to be fixed configured teams
+  // and an exact Step.ref_int_param match before accepting the request.
+  const referenced = [...guideTables.Step.values()].some(step =>
+    step?.step_module?.reference === 'GuideDemoFightStep' && Number(step.ref_int_param) === id);
+  if (!referenced || !Array.isArray(fight.atk_team) || !fight.atk_team.length
+    || !Array.isArray(fight.def_team) || !fight.def_team.length) return null;
+  return { fight, fightTables };
+}
+
 // Exported so other fight entry points (elite missions) can reuse the same
 // fighter assembly and action-stream generation. 'encounter' replaces the
 // journey section lookup with an authoritative fight config:
@@ -470,6 +488,49 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
   };
 }
 
+export function reportGuideDemoBattle(codec, model, fightTid, attributeTables, fightTables = readJourneyFightTables(), guideTables = readGuideTables()) {
+  const config = guideDemoBattleConfig(fightTid, fightTables, guideTables);
+  if (!config) throw new GameError(5, 'Guide demo fight configuration missing');
+  const tables = { heroes: readHeroTables() };
+  const attackers = configuredNpcTeam({ ...config, tables }, 'atk', attributeTables);
+  const defenders = configuredNpcTeam({ ...config, tables }, 'def', attributeTables);
+  const seed = battleSeed(0, fightTid, model.state.roleId);
+  const combatUnit = unit => ({
+    id: unit.id, role: unit.role, profession: unit.profession, camp: unit.camp, loc: unit.loc,
+    abilityId: unit.abilityId, activeAbilityId: unit.activeAbilityId, maxHp: unit.max_hp,
+    attack: unit.attack, defense: unit.defense, speed: unit.speed,
+    initialEnergy: unit.initialEnergy, skills: unit.skills
+  });
+  const simulation = simulateBattle({ attackers: attackers.map(combatUnit), defenders: defenders.map(combatUnit), seed });
+  const finalHp = new Map([...simulation.attackers, ...simulation.defenders].map(unit => [unit.id, unit.hp]));
+  for (const unit of attackers) unit.final_hp = finalHp.get(unit.id) ?? unit.final_hp;
+  for (const unit of defenders) unit.final_hp = finalHp.get(unit.id) ?? 0;
+  const selected = { teamIndex: 1 };
+  const fighters = [captainFighter(attackers, selected), ...attackers, ...defenders];
+  const brief = (team, members) => ({ team_list: [{
+    team_index: team,
+    fighter_list: members.map(unit => ({ tid: unit.role, is_mutant: false }))
+  }] });
+  return {
+    simulation,
+    atk_team_index: 1,
+    def_team_index: 1,
+    fighter_list: fighters,
+    action_list: actionList(codec, simulation),
+    over_reason: simulation.result,
+    over_round: simulation.overRound,
+    result: simulation.result,
+    is_add_battle: false,
+    atk_power: String(attackers.reduce((sum, unit) => sum + unit.power, 0)),
+    def_power: String(defenders.reduce((sum, unit) => sum + (unit.power ?? powerFromStats({
+      hp: unit.max_hp, attack: unit.attack,
+      physicalDefense: unit.defense, magicDefense: unit.defense
+    }, attributeTables)), 0)),
+    atk_brief_lineup: brief(1, attackers),
+    def_brief_lineup: brief(1, defenders)
+  };
+}
+
 function configuredAwards(section) {
   const ids = Array.isArray(section?.award) ? section.award : [];
   const counts = Array.isArray(section?.award_n) ? section.award_n : [];
@@ -556,7 +617,7 @@ function combinedChanges(...groups) {
 
 export const MISSION_FIGHT_COMMAND_TYPES = Object.freeze([201, 202, 203, 204, 207, 213, 503, 506]);
 
-export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), now = Date.now, logger = () => {}, playbackEnabled = false, eliteBattle = null, onSettlementCommitted = null }) {
+export function createMissionFightService({ store, codec, gameTables = readGameTables(), missionTables = readMissionTables(), attributeTables = readAttributeTables(), fightTables = readJourneyFightTables(), guideTables = readGuideTables(), now = Date.now, logger = () => {}, playbackEnabled = false, eliteBattle = null, onSettlementCommitted = null }) {
   const log = event => { try { logger(event); } catch {} };
   let pending = null, lastReport = null, lastSettlement = null, fightIds = 0;
 
@@ -575,6 +636,17 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     if (!(missionId > 0)) return null;
     if (Number(request.boss_tid ?? 0) > 0 && request.is_assistant) return null;
     return { chapter, section, missionId, bossTid: Number(request.boss_tid ?? 0), isAssistant: Boolean(request.is_assistant) };
+  }
+
+  function guideDemoRequest(request) {
+    const fightTid = Number(request?.fight_tid ?? 0);
+    const config = guideDemoBattleConfig(fightTid, fightTables, guideTables);
+    const req = request?.req;
+    // A protobuf default for an absent bytes field is either an empty Buffer
+    // or an empty array. Require absence here: a mode-owned req.payload must
+    // continue to its own parser instead of being mistaken for a demo fight.
+    if (!config || !(req == null || req.length === 0)) return null;
+    return { fightTid, config };
   }
 
   function currentMission(model) {
@@ -675,6 +747,33 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
       lastReport = elite.report ?? null;
       return { value: elite.value, data: elite.data };
     }
+    const demo = guideDemoRequest(request);
+    if (demo) {
+      const model = store.read();
+      const reportBattleResult = reportGuideDemoBattle(codec, model, demo.fightTid, attributeTables, fightTables, guideTables);
+      const { simulation, ...battle } = reportBattleResult;
+      const reportType = Number(demo.config.fight.type);
+      if (!Number.isSafeInteger(reportType) || reportType < 0) throw new GameError(5, 'Guide demo fight type is invalid');
+      const report = {
+        id: String(++fightIds), tid: String(demo.fightTid), type: reportType,
+        atk_role_id: String(model.state.roleId), def_role_id: '0',
+        battle_list: [battle], time: String(Math.floor(now() / 1000)),
+        final_result: simulation.result, finish: false, req: request.req, team_count: 101
+      };
+      const stm = { result: simulation.result, stm_data: codec.pack('mission_to_client', {
+        res: { changes: [], is_overflow: false }, fight_result: simulation.result
+      }), exception: false };
+      pending = { kind: 'guide_demo', stm, report, result: simulation.result,
+        committed: false, fightTid: demo.fightTid, rounds: simulation.overRound };
+      lastReport = report;
+      lastSettlement = null;
+      log({ event: 'guide_demo_fight_started', fightTid: demo.fightTid,
+        reportType, attackerCount: battle.atk_brief_lineup.team_list[0].fighter_list.length,
+        defenderCount: battle.def_brief_lineup.team_list[0].fighter_list.length,
+        actionCount: battle.action_list.length, rounds: simulation.overRound,
+        result: simulation.result, settleType: Number(request.stm_type ?? 0), committed: false });
+      return { value: { stm }, data: codec.pack('pb_fight_response', { report, rsp: {}, stm }) };
+    }
     const mission = missionRequest(request.req);
     if (!mission) throw new GameError(5, 'Only ordinary mission fights are implemented');
     const current = currentMission(store.read()).value;
@@ -729,6 +828,16 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     if (!pending && lastSettlement) return lastSettlement;
     if (!pending) throw new GameError(1, 'No pending fight settlement');
     if (pending.committed) return lastSettlement;
+    if (pending.kind === 'guide_demo') {
+      const stm = { result: pending.result, stm_data: codec.pack('mission_to_client', {
+        res: { changes: [], is_overflow: false }, fight_result: pending.result
+      }), exception: false };
+      pending.stm = stm;
+      pending.committed = true;
+      lastSettlement = { value: { stm }, data: codec.pack('pb_fight_settlement_response', { stm }) };
+      log({ event: 'guide_demo_fight_committed', fightTid: pending.fightTid, result: pending.result });
+      return lastSettlement;
+    }
     const committed = commitSettlement(), missionId = pending.mission.missionId, previousMissionId = committed.previousMissionId;
     pending.stm = committed.stm;
     pending.committed = true;
@@ -751,7 +860,7 @@ export function createMissionFightService({ store, codec, gameTables = readGameT
     let isForce = false;
     try { isForce = Boolean(codec.unpack('pb_fight_exit', bytes).is_force); } catch {}
     if (eliteBattle) eliteBattle.exit();
-    if (pending) log({ event: 'mission_fight_exited', missionId: pending.mission.missionId, isForce, result: pending.result, committed: pending.committed });
+    if (pending) log({ event: 'mission_fight_exited', ...(pending.mission ? { missionId: pending.mission.missionId } : { fightTid: pending.fightTid }), kind: pending.kind ?? 'mission', isForce, result: pending.result, committed: pending.committed });
     // fight_exit acknowledges scene teardown. It must never bypass 207; an
     // uncommitted exit also clears any older settlement replay value.
     if (pending && !pending.committed) lastSettlement = null;

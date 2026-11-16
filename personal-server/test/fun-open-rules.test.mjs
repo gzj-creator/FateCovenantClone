@@ -16,8 +16,8 @@ test('the exported FunOpen table covers all client rows with source hashes', () 
   assert.equal(new Set(config.rules.map(rule => rule.funId)).size, 523);
   assert.deepEqual(config.summary, {
     rules: 523,
-    ready: 181,
-    evidenceGap: 342,
+    ready: 183,
+    evidenceGap: 340,
     uniqueAsserts: 271,
     mappedAsserts: 271,
     readyAsserts: 94,
@@ -44,6 +44,13 @@ test('bytecode-proven row conditions retain their exact comparator and threshold
   assert.deepEqual(byId.get(1514).conditions, [
     { type: 'mission', operator: '>=', args: { missionId: 30203 } }
   ]);
+  assert.equal(byId.get(1573).status, 'ready');
+  assert.deepEqual(byId.get(1573).conditions, [
+    { type: 'mission', operator: '>=', args: { missionId: 30203 } }
+  ]);
+  assert.equal(byId.get(1105).aliasOf, 1218);
+  assert.equal(byId.get(1105).status, 'ready');
+  assert.deepEqual(byId.get(1105).conditions, byId.get(1218).conditions);
   assert.deepEqual(byId.get(1413).conditions, [
     { type: 'mission', operator: '>=', args: { missionId: 30203 } }
   ]);
@@ -78,7 +85,7 @@ test('unproven expressions, dynamic Show lists, empty asserts and non-client tar
     'assert_condition_mapping_not_enabled_for_business_rule');
   assert.equal(byId.get(1215).status, 'evidence_gap');
   assert.equal(byId.get(1215).evidenceGap[0].reason, 'assert_list_missing_or_table_empty');
-  for (const id of [1105, 1263, 1286, 1299, 1319, 1321, 1322, 1447]) {
+  for (const id of [1263, 1286, 1299, 1319, 1321, 1322, 1447]) {
     assert.equal(byId.get(id).status, 'evidence_gap');
     assert.ok(byId.get(id).evidenceGap.some(gap => gap.reason === 'dynamic_show_asserts_unproven'));
   }

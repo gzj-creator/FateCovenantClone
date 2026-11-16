@@ -21,8 +21,8 @@
   },
   "summary": {
     "rules": 523,
-    "ready": 181,
-    "evidenceGap": 342,
+    "ready": 183,
+    "evidenceGap": 340,
     "uniqueAsserts": 271,
     "mappedAsserts": 271,
     "readyAsserts": 94,
@@ -10187,19 +10187,30 @@
       "switch": 0,
       "sysSwitch": 135,
       "funName": 60850,
-      "status": "evidence_gap",
-      "conditions": [],
-      "asserts": [
-        955132601105
-      ],
-      "evidenceGap": [
+      "status": "ready",
+      "aliasOf": 1218,
+      "conditions": [
         {
-          "reason": "dynamic_show_asserts_unproven"
+          "type": "role_level",
+          "operator": ">=",
+          "args": {
+            "level": 32
+          }
         },
         {
-          "scriptId": 955132601105,
-          "reason": "expression_not_supported"
+          "type": "server_day",
+          "operator": ">=",
+          "args": {
+            "day": 2
+          }
         }
+      ],
+      "asserts": [
+        955132601037,
+        983580210601
+      ],
+      "sourceAsserts": [
+        955132601105
       ]
     },
     {
@@ -17673,16 +17684,18 @@
       "switch": 0,
       "sysSwitch": 92129,
       "funName": 682760,
-      "status": "evidence_gap",
-      "conditions": [],
+      "status": "ready",
+      "conditions": [
+        {
+          "type": "mission",
+          "operator": ">=",
+          "args": {
+            "missionId": 30203
+          }
+        }
+      ],
       "asserts": [
         955132601007
-      ],
-      "evidenceGap": [
-        {
-          "scriptId": 955132601007,
-          "reason": "assert_condition_mapping_not_enabled_for_business_rule"
-        }
       ]
     },
     {

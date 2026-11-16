@@ -95,6 +95,63 @@ test('online FameHall unlock sends full ID 1218, which the client can apply with
   assert.throws(() => features.onlineNotificationsForIds([1999]), /missing after reconciliation/);
 });
 
+test('reconciliation removes stale ready bits while preserving force-open, evidence-gap and unrelated bits', t => {
+  const fixture = createGameFixture(t, codec, { seed: { freshAccount: true, createdAt: CREATED_AT } });
+  fixture.store.transaction(model => {
+    model.role.level = 1;
+    const modules = new Map(model.state.modules.value);
+    modules.set(3, serializedBinary(codec.pack('res_fun_open_login', { target_list: [{
+      target_tid: 1,
+      fun_open_state: (() => {
+        const bytes = Buffer.alloc(256);
+        for (const id of [1054, 1105, 1218, 1514]) bytes[Math.floor((id % 1000) / 8)] |= 128 >> (id % 8);
+        return bytes.toString('base64');
+      })()
+    }] })));
+    model.state.modules.value = [...modules];
+  });
+  const features = createFeatureService({
+    store: fixture.store, codec, rules,
+    overrides: () => [{ funId: 1514, mode: 'force_open' }],
+    context: () => ({ serverDay: 2, createDay: 1 })
+  });
+  features.reconcile();
+  const open = codec.unpack('res_fun_open_login', rawBinary(new Map(fixture.store.state().modules.value).get(3)));
+  const ids = openFeatureIds(open);
+  assert.equal(ids.has(FAME_HALL), false, 'ready FameHall false is authoritative and clears the stale bit');
+  assert.equal(ids.has(1105), false, 'the legacy FameHall guide alias follows the same gate');
+  assert.equal(ids.has(1054), true, 'evidence-gap bits stay untouched');
+  assert.equal(ids.has(1514), true, 'force_open wins over a false computed rule');
+  assert.equal(features.reconcile().length, 0);
+});
+
+test('current mission opens 1573 while stale FameHall and permanent Dream House stay closed', t => {
+  const fixture = createGameFixture(t, codec, { seed: { freshAccount: true, createdAt: CREATED_AT } });
+  fixture.store.transaction(model => {
+    model.role.level = 11;
+    const modules = new Map(model.state.modules.value);
+    modules.set(3, serializedBinary(codec.pack('res_fun_open_login', { target_list: [{
+      target_tid: 1,
+      fun_open_state: (() => {
+        const bytes = Buffer.alloc(256);
+        for (const id of [1155, FAME_HALL]) bytes[Math.floor((id % 1000) / 8)] |= 128 >> (id % 8);
+        return bytes.toString('base64');
+      })()
+    }] })));
+    const missionModule = modules.get(8);
+    const mission = codec.unpack('pb_mission', rawBinary(missionModule.value[0]));
+    mission.mission_id = '30204';
+    missionModule.value[0] = serializedBinary(codec.pack('pb_mission', mission));
+    model.state.modules.value = [...modules];
+  });
+  const features = createFeatureService({ store: fixture.store, codec, rules, context: () => ({ serverDay: 2, createDay: 1 }) });
+  features.reconcile();
+  const ids = features.openIds();
+  assert.equal(ids.has(1573), true, 'mission 30204 satisfies the recovered 30203 Dream Trial gate');
+  assert.equal(ids.has(FAME_HALL), false, 'level 11 cannot retain the stale level-32 FameHall bit');
+  assert.equal(ids.has(1155), false, 'the permanent Dream House still requires level 60 or server day 24');
+});
+
 test('generated MethodScript index retains a function with an empty dynamic-argument list', () => {
   const root = {
     constants: [{ type: 'child', prototype: 1 }],
