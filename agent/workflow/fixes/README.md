@@ -1,6 +1,9 @@
 # 个人服务器修复记录
 
 基线提交 `26982a4`；2026-10-30 活动修复 worktree 基线 `5aa0a21`。本目录逐项记录“用户反馈 → 证据 → 根因 → 实现边界 → 测试 → 验收级别”。
+
+**持久规则：每个修复都必须登记到本表，并按 [BUG-MEMORY.md](BUG-MEMORY.md) 的流程补充防复发措施；开工前先查防复发清单，禁止重复犯同一类错误。新条目用 [TEMPLATE.md](TEMPLATE.md)。**
+
 统一测试：`npm test --prefix personal-server`；合并前定向 68/68 通过，本轮全量 `npm run test:all` 实测 2898 项、
 pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`），日志
 `analysis/test-runs/up-star-gift-20261112/main-merge-all.log`。

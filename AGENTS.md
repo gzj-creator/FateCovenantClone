@@ -14,6 +14,12 @@
 
 每次涉及 APK 的修改，验收通过后必须把当前可用 APK 同步一份到项目 `apk/` 目录，并在 `apk/README.md` 记录文件名、大小、SHA256、包名/版本、来源、验收证据和已知前置条件（例如 PlayerPrefs）。APK 文件不提交 Git；只提交文档。未验收或仅组件测试通过的构建不得标为“可用快照”。
 
+## Bug 修复记忆规则（持久）
+
+2026-11-16 用户最终规则：**每个修过的 bug 都必须写进持久记忆，之后不允许再犯同类错误。** 开工前先读 [BUG-MEMORY.md](agent/workflow/fixes/BUG-MEMORY.md) 的防复发清单和 `agent/workflow/fixes/README.md` 的修复索引，按症状、命令号、模块号、活动 ID 搜一遍 `agent/workflow/fixes`；已有结论优先复用证据，不能凭印象重复试错。
+
+任何修复（用户反馈、测试失败、审查发现）完成后，必须在 `agent/workflow/fixes/` 新建或更新一份记录，写清现象与触发请求、证据路径、根因、修复范围、验证等级（组件/临时 TCP/部署/APK 真机）、防复发措施和未验证项，并同步更新 `agent/workflow/fixes/README.md` 与 [BUG-MEMORY.md](agent/workflow/fixes/BUG-MEMORY.md)。没有记录、没有索引、没有防复发措施的修复视为未完成。同一根因再次出现时，必须先写复发复盘（上一条记录为什么没拦住），补上能抓住它的测试或断言，再改代码。禁止“先修、以后补记录”。
+
 ## 当前目标
 
 2026-11-15 用户要求统一真实点和所有未明确项，后续agent执行唯一基线[R1](docs/gameplay-operations/12-final-rule-baseline.md)，逐项查[297任务/1407命令最终裁定](docs/gameplay-operations/rules/final-rule-register.md)，动态排期查[四项专项](docs/gameplay-operations/rules/dynamic-schedule-decisions.md)。原证据、复刻推定、工程契约和具体受限动作分开；新证据变更推定须升级R版本，不混改已冻结实例。正式world_time保留原绝对日期；175001按父174001整体窗口显式50段、全服共时，免费奖不要求先买，功能1514原门槛通关30203。461三项按真实组主服业务日29/79/90首期，尾参不猜、不隐式复发；单区显式建真实单服组。原461服务器函数未取得，不冒称已恢复。原条件已核220/剩余303，当前业务映射176/347另列，44行新增断言证据尚未接入业务。数值186来源（184压缩资产+2原bin）、184表、1921子表、256243原行。旧规划/调查建议已降为历史，不以当前源码或旧defaults覆盖R1。实操和校验见[本轮记录](agent/workflow/rule-baseline-20261115/implementation.md)。本轮只改文档与离线工具，不改业务/运行库/服务/设备/APK；保留此前工作树及`.codex/config.toml`。
