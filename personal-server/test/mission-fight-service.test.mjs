@@ -464,10 +464,37 @@ test('guide DemoFight 90024 uses both configured teams and settles without gamep
   assert.equal(missionModule(env.store).mission_id, '30204');
 });
 
-test('guide demo fight recognition fails closed for a fabricated fight or an explicit mission payload', t => {
+test('guide Iblis timeline fight 90025 uses both configured teams and settles without gameplay side effects', t => {
+  const env = setup(t);
+  setMission(env.store, 30204);
+  const before = env.store.state();
+  const started = env.service.execute(201, codec.pack('pb_fight_request', { fight_tid: 90025, stm_type: 2 }));
+  const response = codec.unpack('pb_fight_response', started.data);
+  assert.equal(response.report.tid, '90025');
+  assert.equal(response.report.type, 4);
+  const battle = response.report.battle_list[0];
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 1 && Number(unit.role_type) !== 3).map(unit => unit.role),
+    ['4030500', '1030100', '3030600', '2030200']);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => unit.role),
+    ['9301900', '9301700', '9301800', '9002700']);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 1 && Number(unit.role_type) !== 3).map(unit => Number(unit.loc)),
+    [2, 4, 5, 6]);
+  assert.deepEqual(battle.fighter_list.filter(unit => unit.team === 2).map(unit => Number(unit.loc)),
+    [1, 2, 3, 5]);
+  assert.ok(battle.action_list.length > 0);
+
+  env.service.execute(207, codec.pack('pb_fight_settlement_request', { fight_type: 4 }));
+  assert.equal(missionModule(env.store).mission_id, '30204');
+  assert.equal(resourceAmount(env.store, 100012900), 120n);
+  assert.deepEqual(env.store.read().state.guides, before.guides);
+  assert.equal(env.store.read().state.level, before.level);
+  assert.equal(env.store.read().state.exp, before.exp);
+});
+
+test('guide fight recognition fails closed for a fabricated fight or an explicit mission payload', t => {
   const env = setup(t);
   const before = env.store.state();
-  assert.throws(() => env.service.execute(201, codec.pack('pb_fight_request', { fight_tid: 90025, stm_type: 2 })),
+  assert.throws(() => env.service.execute(201, codec.pack('pb_fight_request', { fight_tid: 99999, stm_type: 2 })),
     error => error.code === 5);
   assert.throws(() => env.service.execute(201, codec.pack('pb_fight_request', {
     fight_tid: 90024, stm_type: 2, req: codec.pack('mission_fight_req', { mission_id: 30204 })
