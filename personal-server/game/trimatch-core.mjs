@@ -1,6 +1,7 @@
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { firstEquipLevelTid, firstHeroLevelTid, heroLevelRow, triMatchCellCount } from '../config/trimatch-tables.mjs';
+import { INT64_MAX, int64 } from './develop-support.mjs';
 
 // Shared triple match state: the authoritative per role site/hero/equip rows,
 // the owned hero list derived from the item inventory, and the attribute and
@@ -10,6 +11,7 @@ export const CODE_INVALID = 1;
 export const CODE_STATE = 5;
 export const CODE_LIMIT = 3;
 export const CODE_INSUFFICIENT = 301;
+export const CODE_EXHAUSTED = 305;
 
 export const fail = (code, message) => { throw new GameError(code, message); };
 
@@ -17,6 +19,16 @@ export function integer(value, min, max, message) {
   const number = Number(value);
   if (!Number.isSafeInteger(number) || number < min || number > max) fail(CODE_INVALID, message);
   return number;
+}
+
+export function int64Id(value, message, { min = 0n } = {}) {
+  const text = int64(value, message, { min, max: INT64_MAX });
+  const numeric = BigInt(text);
+  return numeric <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(text) : text;
+}
+
+export function int64Text(value, message, { min = 0n } = {}) {
+  return int64(value, message, { min, max: INT64_MAX });
 }
 
 export function isoSeconds(milliseconds) {
@@ -75,16 +87,21 @@ function nowText(nowMs) {
 }
 
 export function readIdent(db, roleId, nowMs) {
-  const row = db.prepare('SELECT * FROM trimatch_ident WHERE role_id=?').get(roleId);
-  if (row) return { roleId, nextUid: Number(row.next_lineup_uid ?? 1) };
+  const row = db.prepare('SELECT CAST(next_lineup_uid AS TEXT) AS next_lineup_uid FROM trimatch_ident WHERE role_id=?').get(roleId);
+  if (row) return { roleId, nextUid: int64Text(row.next_lineup_uid ?? '1', 'triple match lineup uid') };
   db.prepare('INSERT INTO trimatch_ident VALUES (?,?,?)').run(roleId, 1, nowText(nowMs));
-  return { roleId, nextUid: 1 };
+  return { roleId, nextUid: '1' };
 }
 
 export function takeLineupUid(db, roleId, nowMs) {
   const ident = readIdent(db, roleId, nowMs);
-  db.prepare('UPDATE trimatch_ident SET next_lineup_uid=?, updated_at=? WHERE role_id=?').run(ident.nextUid + 1, nowText(nowMs), roleId);
-  return ident.nextUid;
+  const current = BigInt(ident.nextUid);
+  // This column stores the next value, so INT64_MAX is a terminal sentinel:
+  // allocating it would require persisting INT64_MAX + 1 outside the signed
+  // int64 storage domain.
+  if (current >= INT64_MAX) fail(CODE_EXHAUSTED, 'Triple match lineup uid space is exhausted');
+  db.prepare('UPDATE trimatch_ident SET next_lineup_uid=?, updated_at=? WHERE role_id=?').run((current + 1n).toString(), nowText(nowMs), roleId);
+  return int64Id(current.toString(), 'triple match lineup uid', { min: 1n });
 }
 
 export function readSites(db, roleId) {

@@ -361,8 +361,8 @@ test('monthly battle-pass source-point gifts buy through native recharge and per
     purchases: db.prepare("SELECT activity_id,product_id,buy_num FROM activity_purchases ORDER BY product_id").all()
   }));
   assert.deepEqual(state.state.source_point_list, [
-    { tid: 100334300, uid: 1 },
-    { tid: 100344300, uid: 2 }
+    { tid: 100334300, uid: '1' },
+    { tid: 100344300, uid: '2' }
   ]);
   assert.deepEqual(state.purchases.map(row => [row.activity_id, row.product_id, row.buy_num]), [
     [1007101, 1270301, 1],

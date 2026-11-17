@@ -31,6 +31,12 @@ pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`）�
 | P1 | 636/82601/640/503 后期养成与扫荡 | [endgame-progression.md](endgame-progression.md) | 四接口已实现并集成部署；228/228 测试通过；四项 APK 操作与视觉验收待完成 |
 | L1 | 团长装备穿戴返回未开放 | [leader-equip-wear.md](leader-equip-wear.md) | 98401 已接模块 175 事务穿戴、替换与持久化；315/315 通过，未部署、未做 APK 验收 |
 | F5 | 线性任务缺少星火阶段进度 | [f5-linear-task-destiny-progress.md](f5-linear-task-destiny-progress.md) | 5901/155 读取模块 107 的原始 `cur_stage`；六个任务、临时 TCP 与 307/307 测试通过；未部署、未做 APK 验收 |
+| B1 | 薇尔几百面板攻击却普攻 3k | [vell-basic-attack-attributes-20261116.md](vell-basic-attack-attributes-20261116.md) | 星级索引误用阵营、固定加值与比例互换、成长精度和小段缓存遗漏已修；初始薇尔恢复 HP1530/攻击245/双防105/战力408；组件、1316/201/207 临时 TCP 与重开通过，未部署/未做 APK |
+| B2 | 战斗丢基础暴击、暴伤、阵营和完整战力 | [combat-numeric-projection-20261117.md](combat-numeric-projection-20261117.md) | 基础暴击/暴伤、阵营和完整权威战力已接入主线与 PvP；`projection-development-after.log` 9/9、`focused-final.log` 82/82；未部署/未做 APK |
+| B3 | 专精与突破天赋扣料后不增加属性 | [hero-development-attribute-sources-20261117.md](hero-development-attribute-sources-20261117.md) | 天赋逐级、专精等级逐行、专精突破当前行和 44 交换已接入；组件、659/660 临时 TCP 与重开通过；未部署/未做 APK |
+| N1 | 独立奖励数量溢出协议位宽、精灵珠 UID 精度丢失 | [reward-quantity-boundaries-20261117.md](reward-quantity-boundaries-20261117.md) | int32/uint32/int64 边界、事务回滚和下游长 UID 已修；多组专项与重开日志通过，最终全量见验收文档；未部署/未做 APK |
+| N2 | 道具重试二进制回执和全量旧测试前置失效 | [item-receipt-and-audit-fixtures-20261117.md](item-receipt-and-audit-fixtures-20261117.md) | 回执递归恢复、合法业务日、真实公会状态和派发清单已修；`receipt-and-validation-after.log` 17/17；未部署/未做 APK |
+| N3 | 代金券余额与管理页大整数精度 | [voucher-integer-precision-20261117.md](voucher-integer-precision-20261117.md) | BigInt 金额/张数、JSON 字符串边界、管理页格式化和全账本累计已修；`downstream-after.log` 37/37；未部署/未做 APK |
 
 验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**本轮为限购修复，已重启本机服务部署；未由 agent 点击客户端界面，也未修改 ADB reverse/UID 隔离。**
 

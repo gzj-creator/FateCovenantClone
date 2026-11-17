@@ -3,6 +3,7 @@ import {
   ensureCoopTables, guildContext, readDoc, writeDoc, claimOnce, appendEvent, toSeconds,
   resOf, grantAwards, spendResources, asInteger, etfArgs, decodeCoopRequest, DIAMOND_TID
 } from './guild-coop-shared.mjs';
+import { int64, uint64 } from './develop-support.mjs';
 
 // GuildAuctionCmd 107601-107603. Auction items, opening prices, duration and
 // completion bonus are local policy. Bids spend real diamonds, replace (and
@@ -26,7 +27,7 @@ export function createGuildAuctionService({ store, codec, tables, coopTables, no
       settled: false,
       version: 1,
       items: config.items.map(item => ({
-        uid: item.uid,
+        uid: int64(item.uid, 'auction item uid', { min: 1n }),
         resTid: item.resTid,
         count: item.count,
         price: item.startPrice,
@@ -41,6 +42,12 @@ export function createGuildAuctionService({ store, codec, tables, coopTables, no
   function auctionDoc(db, guildId, at) {
     const key = 'auction:' + AUCTION_ID;
     const existing = readDoc(db, SCOPE, guildId, '0', key);
+    if (existing) {
+      existing.items = (existing.items ?? []).map(item => ({
+        ...item,
+        uid: int64(item.uid, 'auction item uid', { min: 1n })
+      }));
+    }
     if (existing && at < Number(existing.end)) return existing;
     if (existing && !existing.settled) return existing;
     return existing ?? freshAuction(at);
@@ -96,17 +103,17 @@ export function createGuildAuctionService({ store, codec, tables, coopTables, no
   }
 
   function bid(input) {
-    const auctionId = asInteger(input?.auction_id, 'auction id', { min: 1 });
-    const itemUid = asInteger(input?.item_uid, 'auction item uid', { min: 1 });
+    const auctionId = int64(input?.auction_id, 'auction id', { min: 1n });
+    const itemUid = int64(input?.item_uid, 'auction item uid', { min: 1n });
     const spend = asInteger(input?.spend, 'bid amount', { min: 1 });
-    if (auctionId !== AUCTION_ID) throw new GameError(1, 'Auction does not exist');
+    if (auctionId !== String(AUCTION_ID)) throw new GameError(1, 'Auction does not exist');
     return store.transaction((model, db) => {
       ensureCoopTables(db);
       const at = toSeconds(now);
       const context = guildContext(model, codec);
       const auction = auctionDoc(db, context.guildId, at);
       if (at >= Number(auction.end)) throw new GameError(5, 'Auction has ended');
-      const item = auction.items.find(row => Number(row.uid) === itemUid);
+      const item = auction.items.find(row => String(row.uid) === itemUid);
       if (!item) throw new GameError(1, 'Auction item does not exist');
       if (spend <= Number(item.price)) throw new GameError(5, 'Bid must exceed the current price');
       const previousBidder = String(item.bidder);
@@ -135,19 +142,20 @@ export function createGuildAuctionService({ store, codec, tables, coopTables, no
   }
 
   function wish(input) {
-    const auctionId = asInteger(input?.auction_id, 'auction id', { min: 1 });
-    const itemUid = asInteger(input?.auction_item_uid, 'auction item uid', { min: 1 });
-    const doType = asInteger(input?.do_type, 'wish operation', { min: 0, max: 1 });
-    if (auctionId !== AUCTION_ID) throw new GameError(1, 'Auction does not exist');
+    const auctionId = uint64(input?.auction_id, 'auction id', { min: 1n });
+    const itemUid = uint64(input?.auction_item_uid, 'auction item uid', { min: 1n });
+    const doType = uint64(input?.do_type, 'wish operation');
+    if (doType !== '0' && doType !== '1') throw new GameError(1, 'Invalid wish operation');
+    if (auctionId !== String(AUCTION_ID)) throw new GameError(1, 'Auction does not exist');
     return store.transaction((model, db) => {
       ensureCoopTables(db);
       const at = toSeconds(now);
       const context = guildContext(model, codec);
       const auction = auctionDoc(db, context.guildId, at);
-      if (!auction.items.some(item => Number(item.uid) === itemUid)) throw new GameError(1, 'Auction item does not exist');
+      if (!auction.items.some(item => String(item.uid) === itemUid)) throw new GameError(1, 'Auction item does not exist');
       const role = roleDoc(db, context.guildId, context.roleId, at);
-      const wishes = new Set(role.wishes.map(Number));
-      if (doType === 1) {
+      const wishes = new Set((role.wishes ?? []).map(value => int64(value, 'auction wish item uid', { min: 1n })));
+      if (doType === '1') {
         if (!wishes.has(itemUid) && wishes.size >= config.wishLimit) throw new GameError(5, 'Wish list limit is reached');
         wishes.add(itemUid);
       } else {

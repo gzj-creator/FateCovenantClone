@@ -1,4 +1,5 @@
 import { createPendingRequest } from './pending-request.js';
+import { money, quantity } from './numeric-format.js';
 
 const $ = id => document.getElementById(id);
 const fromHash = new URLSearchParams(location.hash.slice(1)).get('key');
@@ -11,10 +12,6 @@ if (fromHash) {
   history.replaceState(null, '', location.pathname);
 }
 
-const money = cents => {
-  const value = Number(cents) || 0;
-  return (value < 0 ? '-¥ ' : '¥ ') + (Math.abs(value) / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
 const names = { 101500: '钻石', 201500: '金币', 401500: '龙晶', 1601000: '冲榜积分', 701500: '代金券' };
 const statusNames = { pending: '待领取', claimed: '已领取', expired: '已过期', deleted: '已删除' };
 const time = value => value ? new Date(Number(value) < 100000000000 ? Number(value) * 1000 : Number(value)).toLocaleString('zh-CN') : '—';
@@ -148,7 +145,7 @@ function selectProduct() {
   const maximum = Math.min(balance, available);
   $('price').textContent = money(balance);
   $('rewards').textContent = product?.rewards.map(reward => (names[reward.tid] || '资源 ' + reward.tid) + ' × ' + reward.count).join('、') || '暂无商品';
-  $('purchase-voucher-balance').textContent = vouchers ? `${vouchers.balance.quantity.toLocaleString('zh-CN')} 张 · ${money(available)}` : '代金券服务未启用';
+  $('purchase-voucher-balance').textContent = vouchers ? `${quantity(vouchers.balance.quantity)} 张 · ${money(available)}` : '代金券服务未启用';
   $('voucher-deduction').max = (maximum / 100).toFixed(2);
   $('voucher-deduction').disabled = !vouchers || maximum <= 0;
   $('use-max-voucher').disabled = !vouchers || maximum <= 0;
@@ -168,7 +165,7 @@ function updatePurchaseQuote() {
   $('balance-pay').textContent = money(balance);
   $('purchase-submit').textContent = applied > 0 ? `确认购买 · 余额支付 ${money(balance)}` : '使用余额购买';
   if (!vouchers) $('purchase-quote').textContent = '代金券服务未启用，本次将全额使用账户余额';
-  else if (requested > maximum) $('purchase-quote').textContent = `最多可抵扣 ${money(maximum)}（可用 ${vouchers.balance.quantity.toLocaleString('zh-CN')} 张）`;
+  else if (requested > maximum) $('purchase-quote').textContent = `最多可抵扣 ${money(maximum)}（可用 ${quantity(vouchers.balance.quantity)} 张）`;
   else if (applied > 0) $('purchase-quote').textContent = `本次抵扣 ${money(applied)} · 使用 ${Math.round(applied / vouchers.sku.face_value_cents).toLocaleString('zh-CN')} 张代金券`;
   else $('purchase-quote').textContent = '本次不使用代金券';
 }
@@ -192,7 +189,7 @@ function render() {
   $('balance').textContent = money(account?.balance_cents || 0);
   $('account-short').textContent = account ? `${account.account_id} · 角色 ${account.role_id}` : '无本地账户';
   $('voucher-available').textContent = money(vouchers?.balance?.amount_cents || 0);
-  $('voucher-count').textContent = `${(vouchers?.balance?.quantity || 0).toLocaleString('zh-CN')} 张`;
+  $('voucher-count').textContent = `${quantity(vouchers?.balance?.quantity)} 张`;
   $('voucher-pending').textContent = money(vouchers?.totals?.outstanding_amount_cents || 0);
   $('voucher-pending-count').textContent = `${vouchers?.totals?.pending_count || 0} 封邮件`;
   $('credited').textContent = money(state.totals.credited_cents);

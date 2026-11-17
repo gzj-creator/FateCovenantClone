@@ -2,6 +2,7 @@ import { GameError } from './hero-progression.mjs';
 import { assembleHeroAttributes } from './attribute-service.mjs';
 import { readHeroRentTables } from '../config/hero-rent-tables.mjs';
 import { gameDayIndex } from './time.mjs';
+import { uint64 } from './develop-support.mjs';
 
 // HERO-HERO rent/share cluster: 627 req_rent_out_hero, 628 req_rent_out_off_hero,
 // 629 req_rent_in_hero, 630 req_query_rent_out_info, 631 req_rent_flush and
@@ -56,9 +57,7 @@ function positiveInt(value, field, max = MAX_UINT32) {
 }
 
 function uidString(value, field) {
-  const text = value === undefined || value === null ? '' : String(value);
-  if (!/^[0-9]{1,20}$/.test(text)) fail(CODE_INVALID, 'Invalid hero ' + field);
-  return text;
+  return uint64(value, 'hero ' + field, { min: 1n });
 }
 
 function dayIndex(seconds) {
@@ -174,13 +173,13 @@ export function createHeroRentService({ store, codec, tables, heroTables, now = 
         if (Number(hero.level ?? 1) < minLevel) fail(CODE_LOCKED, 'Hero level is too low to rent out');
         const snapshot = heroSnapshot(hero);
         added.push({
-          hero_uid: Number(uid),
+          hero_uid: uid,
           hero: snapshot,
           power: snapshot.power,
           rent_list: [],
           submit_time: at,
           index: indexes[offset],
-          owner_id: Number(roleKey(model))
+          owner_id: roleKey(model)
         });
         taken.add(uid);
       }
@@ -211,7 +210,10 @@ export function createHeroRentService({ store, codec, tables, heroTables, now = 
       for (const rentTid of targets) {
         const state = readOutState(model, db, rentTid);
         if (!state.rent_out_hero_list.length) continue;
-        for (const entry of state.rent_out_hero_list) removed.push({ uid: Number(entry.hero_uid), rent_list: (entry.rent_list ?? []).map(Number) });
+        for (const entry of state.rent_out_hero_list) removed.push({
+          uid: String(entry.hero_uid),
+          rent_list: (entry.rent_list ?? []).map(value => String(value))
+        });
         state.rent_out_hero_list = [];
         state.valid_time = 0;
         state.take_off_list = removed;
@@ -277,7 +279,7 @@ export function createHeroRentService({ store, codec, tables, heroTables, now = 
       for (const rentTid of rentTids) {
         const state = readOutState(model, db, rentTid);
         if (!state.rent_out_hero_list.length) continue;
-        list.push({ role_id: Number(ownRole), rent_out: rentOutPayload(state) });
+        list.push({ role_id: ownRole, rent_out: rentOutPayload(state) });
       }
       if (!list.length) fail(CODE_STATE, 'This role has no hero offered for rent');
       const value = { role_rent_out_list: list };
@@ -326,7 +328,7 @@ export function createHeroRentService({ store, codec, tables, heroTables, now = 
             log({ event: 'hero_share_cache_unreadable', heroUid: String(row.hero_uid), message: error?.message });
           }
         }
-        backList.push({ role_id: Number(roleId), hero_share_list: heroShareList });
+        backList.push({ role_id: roleId, hero_share_list: heroShareList });
       }
       if (!backList.length) fail(CODE_CONTENT, 'Hero share data of another player is unavailable on this single-role server');
       const value = { req_back_list: backList };

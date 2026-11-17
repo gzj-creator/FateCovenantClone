@@ -4,6 +4,7 @@ import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { currentTaskProgress } from './task-service.mjs';
 import { setBit } from './bit-block.mjs';
+import { INT64_MAX, int64 } from './develop-support.mjs';
 
 // G2 exploration / mini-game block. Commands keep authoritative state in
 // SQLite, spend and grant through resources.mjs, and answer with the response
@@ -642,7 +643,10 @@ export function createMinigameActService({
     state.intimacy = Number(state.intimacy ?? 0);
     state.intimacy_lv = Number(state.intimacy_lv ?? 1);
     state.lands = Array.isArray(state.lands) && state.lands.length ? state.lands : [{ id: 1, crop_tid: 0, update_time: 0, mature_time: 0 }];
-    state.entrusts = Array.isArray(state.entrusts) ? state.entrusts : [];
+    state.entrusts = Array.isArray(state.entrusts) ? state.entrusts.map(entrust => ({
+      ...entrust,
+      uid: int64(entrust?.uid, 'spirit courtyard entrust uid', { min: 1n })
+    })) : [];
     state.task_claims = Array.isArray(state.task_claims) ? state.task_claims : [];
     state.publish_count = Number(state.publish_count ?? 0);
     return state;
@@ -658,13 +662,13 @@ export function createMinigameActService({
   }
   function spiritEntrust(entrust) {
     return {
-      uid: String(Number(entrust.uid ?? 0)),
+      uid: int64(entrust.uid, 'spirit courtyard entrust uid', { min: 1n }),
       tid: Number(entrust.tid ?? 0),
       lib_tid_list: (entrust.lib ?? []).map(Number),
       is_public: Boolean(entrust.is_public),
       is_finish: Boolean(entrust.is_finish),
-      role_id: String(Number(entrust.role_id ?? 0)),
-      assist_role_id: String(Number(entrust.assist_role_id ?? 0))
+      role_id: int64(entrust.role_id ?? 0, 'spirit courtyard entrust role id'),
+      assist_role_id: int64(entrust.assist_role_id ?? 0, 'spirit courtyard assist role id')
     };
   }
   function spiritRole(state) {
@@ -766,7 +770,8 @@ export function createMinigameActService({
     card: 'PLAY-SPIRITCOURTYARD', encoding: 'pb', request: 'pb_req_spirit_courtyard_submit_entrust',
     handler: request => run('spirit', ctx => {
       const state = spiritState(ctx);
-      const entrust = state.entrusts.find(candidate => Number(candidate.uid) === Number(request.uid));
+      const uid = int64(request.uid, 'spirit courtyard entrust uid', { min: 1n });
+      const entrust = state.entrusts.find(candidate => candidate.uid === uid);
       if (!entrust) throw new GameError(1, 'Unknown spirit courtyard entrust');
       if (entrust.is_finish) throw new GameError(311, 'Spirit courtyard entrust is already finished');
       const order = requireRow(t.spirit.EntrustOrder, entrust.tid, 'Spirit courtyard entrust order');
@@ -807,7 +812,7 @@ export function createMinigameActService({
           const libRows = t.spirit.EntrustOrderLib.rows.filter(candidate => Number(candidate.lib) === Number(order.lib));
           libs.push(Number(weightedPick(libRows, { label: 'Spirit courtyard entrust lib' }).tid));
         }
-        state.entrusts.push({ uid: index + 1, tid: Number(order.tid), lib: libs, is_public: false, is_finish: false, role_id: ctx.roleId });
+        state.entrusts.push({ uid: String(index + 1), tid: Number(order.tid), lib: libs, is_public: false, is_finish: false, role_id: int64(ctx.roleId, 'spirit courtyard entrust role id', { min: 1n }) });
       }
       saveState(ctx.db, ctx.roleId, SPIRIT_KEY, state, ctx.at);
       return { schema: 'pb_res_spirit_courtyard_update_task', actKey: SPIRIT_KEY, value: { role_info: spiritRole(state), res: resOf({ changes: [] }) } };
@@ -818,7 +823,8 @@ export function createMinigameActService({
     card: 'PLAY-SPIRITCOURTYARD', encoding: 'pb', request: 'pb_req_spirit_courtyard_publish_collaboration',
     handler: request => run('spirit', ctx => {
       const state = spiritState(ctx);
-      const entrust = state.entrusts.find(candidate => Number(candidate.uid) === Number(request.uid));
+      const uid = int64(request.uid, 'spirit courtyard entrust uid', { min: 1n });
+      const entrust = state.entrusts.find(candidate => candidate.uid === uid);
       if (!entrust) throw new GameError(1, 'Unknown spirit courtyard entrust');
       if (entrust.is_public) throw new GameError(311, 'Spirit courtyard entrust is already published');
       const limit = Number(requireRow(t.spirit.Const, 1, 'Spirit courtyard constants').publish_entrust_times);
@@ -899,7 +905,8 @@ export function createMinigameActService({
     card: 'PLAY-SPIRITCOURTYARD', encoding: 'pb', request: 'pb_req_spirit_courtyard_cancel_collaboration',
     handler: request => run('spirit', ctx => {
       const state = spiritState(ctx);
-      const entrust = state.entrusts.find(candidate => Number(candidate.uid) === Number(request.uid));
+      const uid = int64(request.uid, 'spirit courtyard entrust uid', { min: 1n });
+      const entrust = state.entrusts.find(candidate => candidate.uid === uid);
       if (!entrust) throw new GameError(1, 'Unknown spirit courtyard entrust');
       if (!entrust.is_public) throw new GameError(311, 'Spirit courtyard entrust is not published');
       entrust.is_public = false;
@@ -1198,8 +1205,14 @@ export function createMinigameActService({
       state.day_free_used = 0;
     }
     state.cur_index = Number(state.cur_index ?? 0);
-    state.event_uid = Number(state.event_uid ?? 0);
-    state.events = Array.isArray(state.events) ? state.events : [];
+    state.event_uid = int64(state.event_uid ?? 0, 'monopoly event counter');
+    state.events = Array.isArray(state.events) ? state.events.map(event => ({
+      ...event,
+      tid: String(Number(event?.tid)),
+      uid: int64(event?.uid, 'monopoly event uid', { min: 1n }),
+      finish_stage: Number(event?.finish_stage ?? 0),
+      param: int64(event?.param ?? 0, 'monopoly event parameter')
+    })) : [];
     state.score = Number(state.score ?? 0);
     state.day_help_num = Number(state.day_help_num ?? 0);
     state.day_free_used = Number(state.day_free_used ?? 0);
@@ -1338,8 +1351,13 @@ export function createMinigameActService({
       if (!mapRows.length) throw new GameError(5, 'Monopoly map is not configured');
       state.cur_index = ((state.cur_index + dice - 1) % mapRows.length) + 1;
       const square = mapRows[state.cur_index - 1];
-      state.event_uid += 1;
-      state.events.push({ tid: Number(square.tid), uid: state.event_uid, finish_stage: 0, param: Number(square.event ?? 0) });
+      const currentEventUid = BigInt(state.event_uid);
+      if (currentEventUid >= INT64_MAX) throw new GameError(305, 'Monopoly event uid space is exhausted');
+      state.event_uid = (currentEventUid + 1n).toString();
+      state.events.push({
+        tid: String(Number(square.tid)), uid: state.event_uid, finish_stage: 0,
+        param: int64(square.event ?? 0, 'monopoly event parameter')
+      });
       saveState(ctx.db, ctx.roleId, key, state, ctx.at);
       refreshStoredLogin(ctx, actId, () => codec.pack('pb_monopoly_act_role_info', { act_data_list: [monopolyRole(state, version)] }));
       return {
@@ -1356,10 +1374,8 @@ export function createMinigameActService({
       const actId = Number(request.act_tid);
       assertRunning(actId, ctx.at, 'Monopoly');
       const { key, state, version } = monopolyCtx(ctx, actId);
-      const id = Number(request.tid);
-      let event = state.events.find(candidate => Number(candidate.uid) === id);
-      if (!event) event = state.events.find(candidate => Number(candidate.tid) === id);
-      if (!event) event = state.events.find(candidate => Number(candidate.param) === id);
+      const id = int64(request.tid, 'monopoly event id', { min: 0n });
+      const event = state.events.find(candidate => candidate.uid === id || candidate.tid === id || candidate.param === id);
       if (!event) throw new GameError(1, 'Monopoly event is not present');
       if (Number(event.finish_stage) !== 0) throw new GameError(311, 'Monopoly event is already finished');
       const eventRow = requireRow(t.monopoly.Event, event.param, 'Monopoly event');
@@ -1758,9 +1774,11 @@ export function createMinigameActService({
   function sourcePointState(ctx) {
     const state = loadState(ctx.db, ctx.roleId, SOURCE_POINT_KEY);
     state.source_point_list = (Array.isArray(state.source_point_list) ? state.source_point_list : [])
-      .map(entry => ({ tid: Number(entry.tid), uid: Number(entry.uid) }))
-      .filter(entry => Number.isSafeInteger(entry.tid) && entry.tid > 0 && Number.isSafeInteger(entry.uid) && entry.uid > 0);
-    state.max_uid = Math.max(Number(state.max_uid ?? 0), ...state.source_point_list.map(entry => entry.uid), 0);
+      .map(entry => ({ tid: Number(entry.tid), uid: int64(entry.uid, 'source point uid', { min: 1n }) }))
+      .filter(entry => Number.isSafeInteger(entry.tid) && entry.tid > 0);
+    let maxUid = BigInt(int64(state.max_uid ?? 0, 'maximum source point uid'));
+    for (const entry of state.source_point_list) maxUid = maxUid > BigInt(entry.uid) ? maxUid : BigInt(entry.uid);
+    state.max_uid = maxUid.toString();
     state.hero_task_claims = Array.isArray(state.hero_task_claims) ? state.hero_task_claims.map(Number) : [];
     return state;
   }
@@ -1771,13 +1789,18 @@ export function createMinigameActService({
     return (ctx.model.heroInfo?.hero_list ?? []).find(hero => String(hero.tid) === String(tid));
   }
   function sourcePointInstance(state, uid) {
-    return state.source_point_list.find(entry => Number(entry.uid) === Number(uid));
+    return state.source_point_list.find(entry => String(entry.uid) === String(uid));
   }
   function sourcePointAdd(state, tid, count) {
-    for (let index = 0; index < Number(count); index += 1) {
-      state.max_uid += 1;
-      state.source_point_list.push({ tid: Number(tid), uid: state.max_uid });
+    const amount = Number(count);
+    if (!Number.isSafeInteger(amount) || amount < 1) throw new GameError(5, 'Source point reward count is invalid');
+    let nextUid = BigInt(state.max_uid);
+    for (let index = 0; index < amount; index += 1) {
+      if (nextUid >= INT64_MAX) throw new GameError(305, 'Source point uid space exhausted');
+      nextUid += 1n;
+      state.source_point_list.push({ tid: Number(tid), uid: nextUid.toString() });
     }
+    state.max_uid = nextUid.toString();
   }
   function isSourcePointReward(tid) {
     return t.sourcePoint.SourcePoint.byTid.has(Number(tid));
@@ -1803,12 +1826,12 @@ export function createMinigameActService({
     const state = sourcePointState({ db, roleId });
     const changes = [];
     for (const [tid, count] of totals) {
-      let newNum = state.source_point_list.filter(entry => Number(entry.tid) === tid).length;
+      let newNum = BigInt(state.source_point_list.filter(entry => Number(entry.tid) === tid).length);
       for (let index = 0; index < count; index += 1) {
         sourcePointAdd(state, tid, 1);
-        newNum += 1;
+        newNum += 1n;
         changes.push({
-          tid: String(tid), new_num: String(newNum), diff_num: '1',
+          tid: String(tid), new_num: newNum.toString(), diff_num: '1',
           new_bin: codec.pack('pb_source_point', { tid: String(tid), uid: String(state.max_uid) })
         });
       }
@@ -1826,15 +1849,17 @@ export function createMinigameActService({
   function sourcePointChangeList(heroes) {
     return heroes.map(hero => ({
       hero_uid: String(hero.uid),
-      changes: (hero.source_point_list ?? []).map(Number)
+      changes: (hero.source_point_list ?? []).map(value =>
+        int64(value, 'source point uid', { min: 1n }))
     }));
   }
   function sourcePointRemoveFromHeroes(ctx, ids) {
-    const removed = new Set(ids.map(Number));
+    const removed = new Set(ids.map(value => int64(value, 'source point uid', { min: 1n })));
     const changed = new Set();
     for (const hero of ctx.model.heroInfo?.hero_list ?? []) {
-      const current = (hero.source_point_list ?? []).map(String);
-      const next = current.filter(uid => !removed.has(Number(uid)));
+      const current = (hero.source_point_list ?? []).map(value =>
+        int64(value, 'source point uid', { min: 1n }));
+      const next = current.filter(uid => !removed.has(uid));
       if (next.length === current.length) continue;
       hero.source_point_list = next;
       changed.add(hero);
@@ -1853,13 +1878,13 @@ export function createMinigameActService({
       for (const entry of changes) {
         const hero = sourcePointHero(ctx, entry.hero_uid);
         if (!hero) throw new GameError(1, 'Source point hero is not owned');
-        const ids = (entry.changes ?? []).map(Number);
+        const ids = (entry.changes ?? []).map(value => int64(value, 'source point uid', { min: 1n }));
         for (const uid of ids) {
           if (!sourcePointInstance(state, uid)) throw new GameError(1, 'Source point instance is not owned: ' + uid);
           if (seen.has(uid)) throw new GameError(1, 'Source point instance is assigned twice: ' + uid);
           seen.add(uid);
         }
-        targets.set(String(hero.uid), ids.map(String));
+        targets.set(String(hero.uid), ids);
       }
       const changed = new Set(sourcePointRemoveFromHeroes(ctx, [...seen]));
       for (const [uid, ids] of targets) {
@@ -1882,7 +1907,8 @@ export function createMinigameActService({
     handler: request => run('source_point', ctx => {
       const target = requireRow(t.sourcePoint.Elevate, request.tid, 'Source point elevate');
       const state = sourcePointState(ctx);
-      const ids = (request.source_point_list ?? []).map(Number);
+      const ids = (request.source_point_list ?? []).map(value =>
+        int64(value, 'source point uid', { min: 1n }));
       if (new Set(ids).size !== ids.length) throw new GameError(1, 'Source point combine list contains duplicates');
       const instances = ids.map(uid => sourcePointInstance(state, uid));
       if (instances.some(instance => !instance)) throw new GameError(1, 'Source point instance is not owned');
@@ -1901,7 +1927,8 @@ export function createMinigameActService({
       }
       const spent = spend(ctx, [...costs], 'Source point combine');
       const changed = new Set(sourcePointRemoveFromHeroes(ctx, ids));
-      state.source_point_list = state.source_point_list.filter(entry => !ids.includes(Number(entry.uid)));
+      const spendIds = new Set(ids);
+      state.source_point_list = state.source_point_list.filter(entry => !spendIds.has(String(entry.uid)));
       sourcePointAdd(state, target.tid, 1);
       saveState(ctx.db, ctx.roleId, SOURCE_POINT_KEY, state, ctx.at);
       return {
@@ -2016,26 +2043,40 @@ export function createMinigameActService({
     }
     state.level = Number(state.level ?? 1);
     state.prosperity = Number(state.prosperity ?? 0);
-    state.today_likes = Array.isArray(state.today_likes) ? state.today_likes : [];
-    state.today_visits = Array.isArray(state.today_visits) ? state.today_visits : [];
+    state.today_likes = Array.isArray(state.today_likes)
+      ? state.today_likes.map(value => int64(value, 'homeland like role id', { min: 1n })) : [];
+    state.today_visits = Array.isArray(state.today_visits)
+      ? state.today_visits.map(value => int64(value, 'homeland visit role id', { min: 1n })) : [];
     state.rooms = state.rooms && typeof state.rooms === 'object' ? state.rooms : {};
-    state.furniture = state.furniture && typeof state.furniture === 'object' ? state.furniture : {};
-    state.total_like_count = Number(state.total_like_count ?? 0);
+    const furniture = {};
+    let maxUid = BigInt(int64(state.max_uid ?? 0, 'homeland maximum furniture uid'));
+    for (const [uidValue, entry] of Object.entries(state.furniture && typeof state.furniture === 'object' ? state.furniture : {})) {
+      const uid = int64(uidValue, 'homeland furniture uid', { min: 1n });
+      furniture[uid] = {
+        tid: Number(int64(entry?.tid, 'homeland furniture tid', { min: 1n })),
+        room_tid: int64(entry?.room_tid ?? 0, 'homeland furniture room id')
+      };
+      if (BigInt(uid) > maxUid) maxUid = BigInt(uid);
+    }
+    state.furniture = furniture;
+    state.max_uid = maxUid.toString();
+    state.total_like_count = int64(state.total_like_count ?? 0, 'homeland total like count');
     state.finish_tasks = Array.isArray(state.finish_tasks) ? state.finish_tasks.map(Number) : [];
     return state;
   }
   function homelandDepot(state) {
     return {
-      max_uid: 0,
+      max_uid: int64(state.max_uid, 'homeland maximum furniture uid'),
       furniture_list: Object.entries(state.furniture).map(([uid, entry]) => ({
-        tid: Number(entry.tid), uid: Number(uid), room_tid: Number(entry.room_tid ?? 0)
+        tid: Number(entry.tid), uid: int64(uid, 'homeland furniture uid', { min: 1n }),
+        room_tid: int64(entry.room_tid ?? 0, 'homeland furniture room id')
       })),
       level: state.level,
       prosperity: state.prosperity,
       house_list: [],
       finish_tasks: state.finish_tasks.map(Number),
-      today_like_role_ids: state.today_likes.map(Number),
-      today_visit_role_ids: state.today_visits.map(Number),
+      today_like_role_ids: state.today_likes.map(value => int64(value, 'homeland like role id', { min: 1n })),
+      today_visit_role_ids: state.today_visits.map(value => int64(value, 'homeland visit role id', { min: 1n })),
       today_visit_record_list: [],
       today_like_record_list: [],
       total_like_count: state.total_like_count,
@@ -2085,7 +2126,7 @@ export function createMinigameActService({
   register(110907, {
     card: 'PLAY-HOMELAND', encoding: 'etf',
     handler: request => run('homeland', ctx => {
-      const target = Number(request.value ?? request.fields?.role_id ?? ctx.roleId);
+      const target = int64(request.value ?? request.fields?.role_id ?? ctx.roleId, 'homeland visit role id', { min: 1n });
       const state = homelandState(ctx);
       const limit = Number(requireRow(t.homeland.Const, 1, 'Homeland constants').day_support_time);
       if (!state.today_visits.includes(target) && state.today_visits.length >= limit) throw new GameError(311, 'Homeland visit limit is reached');
@@ -2101,12 +2142,14 @@ export function createMinigameActService({
   register(110908, {
     card: 'PLAY-HOMELAND', encoding: 'etf',
     handler: request => run('homeland', ctx => {
-      const target = Number(request.value ?? request.fields?.role_id ?? ctx.roleId);
+      const target = int64(request.value ?? request.fields?.role_id ?? ctx.roleId, 'homeland like role id', { min: 1n });
       const state = homelandState(ctx);
       if (state.today_likes.includes(target)) throw new GameError(311, 'Homeland target is already liked today');
       const awarded = grant(ctx, awardsOf(requireRow(t.homeland.Const, 1, 'Homeland constants').like_award, 'Homeland like award'), 'Homeland');
       state.today_likes.push(target);
-      state.total_like_count += 1;
+      const totalLikeCount = BigInt(state.total_like_count);
+      if (totalLikeCount >= INT64_MAX) throw new GameError(305, 'Homeland like counter is exhausted');
+      state.total_like_count = (totalLikeCount + 1n).toString();
       saveState(ctx.db, ctx.roleId, HOMELAND_KEY, state, ctx.at);
       return { schema: 'pb_homeland_like_rsp', actKey: HOMELAND_KEY, value: { today_like_role_ids: state.today_likes, res: resOf(awarded) } };
     })
@@ -2149,11 +2192,14 @@ export function createMinigameActService({
       for (const house of request.house_list ?? []) {
         for (const room of house.room_list ?? []) {
           for (const item of room.furniture_list ?? []) {
-            const uid = Number(item.furniture_uid);
-            const tid = Number(item.furniture_tid);
-            if (!Number.isSafeInteger(uid) || uid <= 0) throw new GameError(1, 'Invalid homeland furniture uid');
+            const uid = int64(item.furniture_uid, 'homeland furniture uid', { min: 1n });
+            const tid = Number(int64(item.furniture_tid, 'homeland furniture tid', { min: 1n }));
             if (!t.homeland.Furniture.byTid.has(tid)) throw new GameError(5, 'Homeland furniture is not configured: ' + tid);
-            state.furniture[String(uid)] = { tid, room_tid: Number(room.room_tid ?? 0) };
+            state.furniture[uid] = {
+              tid,
+              room_tid: int64(room.room_tid ?? 0, 'homeland furniture room id')
+            };
+            if (BigInt(uid) > BigInt(state.max_uid)) state.max_uid = uid;
           }
         }
       }

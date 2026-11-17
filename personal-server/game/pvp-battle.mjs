@@ -1,5 +1,5 @@
 import { GameError } from './hero-progression.mjs';
-import { assembleLineup, powerFromStats } from './attribute-service.mjs';
+import { assembleLineup, combatCriticalStats, powerFromStats } from './attribute-service.mjs';
 import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
@@ -87,6 +87,7 @@ function fightersOf(entries, { team, teamIndex, idBase, heroTables }) {
       uid: String(entry.uid ?? entry.hero?.uid ?? '0'),
       role: Number(entry.tid),
       team,
+      camp: Number(entry.camp ?? 0),
       team_index: teamIndex,
       loc: Math.max(1, Number(entry.loc ?? index + 1)),
       star: Number(entry.star ?? 0),
@@ -104,6 +105,7 @@ function fightersOf(entries, { team, teamIndex, idBase, heroTables }) {
       attack: combat.attack,
       defense: combat.defense,
       speed: combat.speed,
+      ...combatCriticalStats(entry.stats),
       initialEnergy: FIGHT_INITIAL_ENERGY,
       abilityId: abilities[0] ?? 1,
       activeAbilityId: activeAbilityId(abilities),
@@ -147,6 +149,7 @@ const combatUnit = unit => ({
   id: unit.id,
   role: unit.role,
   profession: unit.profession,
+  camp: unit.camp,
   loc: unit.loc,
   abilityId: unit.abilityId,
   activeAbilityId: unit.activeAbilityId,
@@ -154,6 +157,8 @@ const combatUnit = unit => ({
   attack: unit.attack,
   defense: unit.defense,
   speed: unit.speed,
+  critChance: unit.critChance,
+  critMultiplier: unit.critMultiplier,
   initialEnergy: unit.initialEnergy,
   skills: unit.skills
 });
@@ -180,14 +185,10 @@ export function simulatePvpBattle({ codec, attacker, defender, seedText, heroTab
       fighter_list: members.map(unit => ({ tid: unit.role, is_mutant: false }))
     }]
   });
-  const atkPower = attacker.entries.reduce((sum, entry) => sum + powerFromStats({
-    hp: entry.stats.hp, attack: entry.stats.attack,
-    physicalDefense: entry.stats.physicalDefense, magicDefense: entry.stats.magicDefense
-  }), 0);
-  const defPower = defender.entries.reduce((sum, entry) => sum + powerFromStats({
-    hp: entry.stats.hp, attack: entry.stats.attack,
-    physicalDefense: entry.stats.physicalDefense, magicDefense: entry.stats.magicDefense
-  }), 0);
+  const rosterPower = roster => roster.entries.reduce((sum, entry) =>
+    sum + (entry.power ?? powerFromStats(entry.stats)), 0);
+  const atkPower = rosterPower(attacker);
+  const defPower = rosterPower(defender);
   return {
     simulation,
     won: Number(simulation.result) === Number(BATTLE_RESULT.WIN),

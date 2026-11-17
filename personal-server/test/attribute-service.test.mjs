@@ -17,6 +17,7 @@ import {
 } from '../game/attribute-service.mjs';
 import { createMissionFightService } from '../game/mission-fight-service.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
+import { FAT_ACTION, PROMPT } from '../game/effects/report-codes.mjs';
 
 const codec = createGameCodec();
 const heroTables = readHeroTables();
@@ -72,11 +73,12 @@ test('assembles configured level, star, break and quality attribute rows', () =>
   assert.ok(levelled.sources.some(source => source.play === 'base' && source.displayAttr === 1));
 
   const starred = assembleHeroAttributes({ hero: hero({ star: 6 }), heroTables, attributeTables });
-  assert.ok(starred.stats.hp > levelled.stats.hp, 'high star rows add HP');
+  const fiveStar = assembleHeroAttributes({ hero: hero({ star: 5 }), heroTables, attributeTables });
+  assert.ok(starred.stats.hp > fiveStar.stats.hp, 'high star rows add HP at the same level');
   assert.ok(starred.sources.some(source => source.play === 'high-star:6'));
 
   const broken = assembleHeroAttributes({ hero: hero({ breakthrough_level: 6 }), heroTables, attributeTables });
-  assert.ok(broken.stats.hp > levelled.stats.hp, 'breakthrough rows add HP');
+  assert.ok(broken.stats.hp > base.stats.hp, 'breakthrough rows add HP at the same level');
   assert.ok(broken.sources.some(source => source.play === 'break' && source.value > 0));
 
   // Deterministic for identical state.
@@ -103,20 +105,20 @@ test('Vell uses one cumulative row for low and high star attributes', () => {
   const assembled = assembleHeroAttributes({ hero: vell, heroTables, attributeTables });
   assert.equal(assembled.star, 1, 'stored star 0 is displayed as the default 1 star');
   assert.deepEqual(assembled.stats, {
-    hp: 8874,
-    attack: 3321,
-    physicalDefense: 155,
-    magicDefense: 155,
+    hp: 1530,
+    attack: 245,
+    physicalDefense: 105,
+    magicDefense: 105,
     critRate: 500,
     critHarm: 15000,
     speed: 113
   });
-  assert.equal(assembled.power, 3053);
+  assert.equal(assembled.power, 408);
   assert.equal(assembled.powerSource, 'PowerCalculator.CalcAttrPower');
   assert.deepEqual(
     [...new Set(assembled.sources.filter(source => source.play.startsWith('star:')).map(source => source.play))],
-    ['star:0'],
-    'the first cumulative row is used without adding a synthetic star 1 row'
+    [],
+    'the zero-valued initial row 5000 adds no synthetic star 1 or camp 4 bonus'
   );
 
   const highStar = assembleHeroAttributes({ hero: { ...vell, star: 8 }, heroTables, attributeTables });
@@ -183,7 +185,7 @@ test('attribute assembly follows persisted hero state across SQLite reopen', t =
   assert.equal(afterStats.hp, assembleHeroAttributes({ hero: reloaded, heroTables, attributeTables }).stats.hp);
 });
 
-test('1316 attribute query over real gateway framing matches stored lineup power', async t => {
+test('1316 and 201/207 use Vell original attributes over real gateway framing', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-attr-gateway-'));
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
@@ -192,7 +194,8 @@ test('1316 attribute query over real gateway framing matches stored lineup power
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: SERVER_OPENED_AT,
     now: () => (SERVER_OPENED_AT + 3600) * 1000,
-    random: () => 0.5
+    random: () => 0.5,
+    missionFightPlayback: true
   });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -209,9 +212,29 @@ test('1316 attribute query over real gateway framing matches stored lineup power
   send(Buffer.from('verify'));
   const parsed = parseServerChallenge(await next()), key = 'ClientKey1234567';
   send(Buffer.concat([Buffer.from(key), localAesBeforeFinal(parsed.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }), parsed.rawFlags, Buffer.from('1.55.090365')]));
-  const request = async (type, seq, data) => { send(codec.pack('pb_c2s', { type, seq, data })); return codec.unpack('pb_s2c', await next()); };
+  const request = async (type, seq, data) => {
+    send(codec.pack('pb_c2s', { type, seq, data }));
+    for (;;) {
+      const reply = codec.unpack('pb_s2c', await next());
+      if (reply.seq === seq) return reply;
+    }
+  };
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
+
+  game.store.transaction(model => {
+    const initialVell = {
+      uid: '4030801', tid: '4030801', level: 1, quality: 50, star: 0,
+      star_progress: 0, breakthrough_level: 0, count: 1
+    };
+    const owned = model.heroInfo.hero_list.find(hero => String(hero.uid) === initialVell.uid);
+    if (owned) Object.assign(owned, initialVell);
+    else model.heroInfo.hero_list.push(initialVell);
+    const lineup = model.playLineups.find(value => value.type === 1);
+    if (!lineup.team_list[0].fighter_list.some(fighter => String(fighter.hero_id) === initialVell.uid)) {
+      lineup.team_list[0].fighter_list.push({ hero_id: initialVell.uid, loc: 1 });
+    }
+  });
 
   const response = await request(1316, 2, Buffer.from([131, 106]));
   assert.equal(response.err, undefined);
@@ -225,4 +248,27 @@ test('1316 attribute query over real gateway framing matches stored lineup power
   assert.ok(expectedFirst, 'attribute entity tid is the persisted hero uid');
   assert.equal(Number(first.fight_attr_list.find(attr => Number(attr.key) === FIGHT_ATTR.HP).value), expectedFirst.stats.hp);
   assert.equal(Number(info.lineup_attr.team_power_list[0].power), expected.entries.reduce((sum, entry) => sum + entry.power, 0));
+  const vell = info.lineup_attr.attr_list.find(entry => String(entry.tid) === '4030801');
+  assert.ok(vell);
+  assert.equal(Number(vell.fight_attr_list.find(attr => attr.key === FIGHT_ATTR.ATTACK).value), 245);
+
+  const start = await request(201, 3, codec.pack('pb_fight_request', {
+    fight_tid: 301, stm_type: 1,
+    req: codec.pack('mission_fight_req', { mission_id: 30201 }),
+    loc: [{ team_id: 1, loc: [{ hero_id: '4030801', loc: 1 }] }]
+  }));
+  assert.equal(start.err, undefined);
+  const battle = codec.unpack('pb_fight_response', Buffer.from(start.data, 'base64')).report.battle_list[0];
+  const fighter = battle.fighter_list.find(unit => String(unit.uid) === '4030801');
+  assert.ok(fighter);
+  assert.equal(Number(fighter.max_hp), 1530);
+  const harms = battle.action_list.map(bytes => codec.unpack('pb_generic', Buffer.from(bytes, 'base64')))
+    .filter(action => action.proto === FAT_ACTION.HARM)
+    .flatMap(action => codec.unpack('pb_fat_harm', Buffer.from(action.bin, 'base64')).harm_list)
+    .filter(harm => Number(harm.src_id) === Number(fighter.id) && harm.type !== PROMPT.HEAL);
+  assert.ok(harms.length > 0);
+  assert.ok(harms.every(harm => Number(harm.value) > 0 && Number(harm.value) < 500));
+  const settlement = await request(207, 4, codec.pack('pb_fight_settlement_request', { fight_type: 1 }));
+  assert.equal(settlement.err, undefined);
+  assert.ok(codec.unpack('pb_fight_settlement_response', Buffer.from(settlement.data, 'base64')).stm);
 });

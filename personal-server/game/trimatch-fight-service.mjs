@@ -1,9 +1,10 @@
 import { encodeEtfIntegerTuple } from '../protocol/game-codec.mjs';
 import { BATTLE_RESULT, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
 import {
-  CODE_INVALID, CODE_STATE, fail, integer, isoSeconds,
-  ensureRoleState, ensureTrimatchTables, fightersOfRole, powerOf, teamSitesOf
+  CODE_EXHAUSTED, CODE_INVALID, CODE_STATE, fail, integer, isoSeconds,
+  ensureRoleState, ensureTrimatchTables, fightersOfRole, powerOf, teamSitesOf, int64Id, int64Text
 } from './trimatch-core.mjs';
+import { INT64_MAX } from './develop-support.mjs';
 
 // Triple match fight pipeline (BATTLE-TRIPLEMATCHFIGHT, 115001-115006).
 //
@@ -389,7 +390,11 @@ export function createTriMatchFightService({
   }
 
   function persistedFight(db, roleId, fightUid) {
-    const row = db.prepare('SELECT * FROM trimatch_fight WHERE role_id=? AND fight_uid=?').get(roleId, fightUid);
+    const row = db.prepare(`SELECT CAST(fight_uid AS TEXT) AS fight_uid, CAST(fight_tid AS TEXT) AS fight_tid,
+      fight_type, is_pve, lineup_type, board_tid, board_json, red_team_json, blue_team_json, atk_power, def_power,
+      CAST(atk_role_id AS TEXT) AS atk_role_id, CAST(def_role_id AS TEXT) AS def_role_id, result, attempt,
+      CAST(round_id AS TEXT) AS round_id, CAST(phase_id AS TEXT) AS phase_id, remaining_ms, status, created_at, updated_at
+      FROM trimatch_fight WHERE role_id=? AND fight_uid=?`).get(roleId, fightUid);
     if (!row) fail(CODE_STATE, 'Triple match fight is missing: ' + fightUid);
     return row;
   }
@@ -504,8 +509,10 @@ export function createTriMatchFightService({
   }
 
   function nextFightUid(db, roleId) {
-    const row = db.prepare('SELECT COALESCE(MAX(fight_uid), 0) AS uid FROM trimatch_fight WHERE role_id=?').get(roleId);
-    return Number(row?.uid ?? 0) + 1;
+    const row = db.prepare('SELECT CAST(COALESCE(MAX(fight_uid), 0) AS TEXT) AS uid FROM trimatch_fight WHERE role_id=?').get(roleId);
+    const previous = BigInt(row?.uid ?? 0);
+    if (previous >= INT64_MAX) fail(CODE_EXHAUSTED, 'Triple match fight uid space is exhausted');
+    return int64Id((previous + 1n).toString(), 'triple match fight uid', { min: 1n });
   }
 
   // 115001: open a fight of the configured fight table row. The result and the
@@ -547,15 +554,16 @@ export function createTriMatchFightService({
   // because the elimination rule has no shipped evidence.
   function swapTile(model, db, input) {
     const roleId = model.state.roleId;
-    const fightUid = integer(input?.id, 1, Number.MAX_SAFE_INTEGER, 'Invalid triple match fight id');
+    const fightUid = int64Id(input?.id, 'Invalid triple match fight id', { min: 1n });
     const row = persistedFight(db, roleId, fightUid);
     if (row.status !== 'running') fail(CODE_STATE, 'Triple match fight is not running');
     const x1 = integer(input?.x1, 1, 64, 'Invalid triple match swap coordinate');
     const y1 = integer(input?.y1, 1, 64, 'Invalid triple match swap coordinate');
     const x2 = integer(input?.x2, 1, 64, 'Invalid triple match swap coordinate');
     const y2 = integer(input?.y2, 1, 64, 'Invalid triple match swap coordinate');
-    const clientOpId = integer(input?.client_op_id ?? 0, 0, Number.MAX_SAFE_INTEGER, 'Invalid triple match swap id');
-    const roundId = Number(input?.round_id ?? 0), phaseId = Number(input?.phase_id ?? 0);
+    const clientOpId = int64Id(input?.client_op_id ?? 0, 'Invalid triple match swap id');
+    const roundId = int64Id(input?.round_id ?? 0, 'Invalid triple match round id');
+    const phaseId = int64Id(input?.phase_id ?? 0, 'Invalid triple match phase id');
     const board = tables.fightBoards.get(Number(row.board_tid));
     if (!board) fail(CODE_STATE, 'Triple match board configuration is missing: ' + row.board_tid);
     const maxX = Number(board.x_tile), maxY = Number(board.y_tile);
@@ -587,7 +595,9 @@ export function createTriMatchFightService({
     const requested = fightIdArgument(input);
     const existing = requested
       ? persistedFight(db, roleId, requested)
-      : db.prepare('SELECT * FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid DESC LIMIT 1').get(roleId);
+      : db.prepare(`SELECT CAST(fight_uid AS TEXT) AS fight_uid, CAST(fight_tid AS TEXT) AS fight_tid,
+        CAST(def_role_id AS TEXT) AS def_role_id, attempt, status, created_at
+        FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid DESC LIMIT 1`).get(roleId);
     if (!existing) fail(CODE_STATE, 'Triple match fight is missing');
     if (existing.status === 'given_up') fail(CODE_STATE, 'Triple match fight was given up');
     const attempt = Number(existing.attempt ?? 1) + 1;
@@ -595,7 +605,7 @@ export function createTriMatchFightService({
       fightTid: Number(existing.fight_tid),
       defRoleId: Number(existing.def_role_id ?? 0),
       attempt,
-      fightUid: Number(existing.fight_uid)
+      fightUid: int64Id(existing.fight_uid, 'triple match fight uid', { min: 1n })
     });
     db.prepare('DELETE FROM trimatch_fight_op WHERE role_id=? AND fight_uid=?').run(roleId, plan.fightUid);
     storePlan(db, roleId, plan, { created: existing.created_at, status: 'running' });
@@ -611,12 +621,12 @@ export function createTriMatchFightService({
   // itself is not modelled.
   function ready(model, db, input) {
     const roleId = model.state.roleId;
-    const fightUid = integer(input?.fight_id, 1, Number.MAX_SAFE_INTEGER, 'Invalid triple match fight id');
+    const fightUid = int64Id(input?.fight_id, 'Invalid triple match fight id', { min: 1n });
     const row = persistedFight(db, roleId, fightUid);
     if (row.status !== 'running') fail(CODE_STATE, 'Triple match fight is not running');
-    const roundId = integer(input?.round_id ?? row.round_id, 0, Number.MAX_SAFE_INTEGER, 'Invalid triple match round id');
-    const phaseId = integer(input?.phase_id ?? row.phase_id, 0, Number.MAX_SAFE_INTEGER, 'Invalid triple match phase id');
-    if (roundId !== Number(row.round_id) || phaseId !== Number(row.phase_id)) {
+    const roundId = int64Id(input?.round_id ?? row.round_id, 'Invalid triple match round id');
+    const phaseId = int64Id(input?.phase_id ?? row.phase_id, 'Invalid triple match phase id');
+    if (String(roundId) !== String(row.round_id) || String(phaseId) !== String(row.phase_id)) {
       fail(CODE_STATE, 'Triple match operate phase is out of date');
     }
     log({ event: 'trimatch_fight_ready', fightUid, roundId, phaseId, remainingMs: Number(row.remaining_ms) });
@@ -637,16 +647,17 @@ export function createTriMatchFightService({
     const requested = fightIdArgument(input);
     const row = requested
       ? persistedFight(db, roleId, requested)
-      : db.prepare('SELECT * FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid DESC LIMIT 1').get(roleId);
+      : db.prepare(`SELECT CAST(fight_uid AS TEXT) AS fight_uid, CAST(fight_tid AS TEXT) AS fight_tid, status
+        FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid DESC LIMIT 1`).get(roleId);
     if (!row) fail(CODE_STATE, 'Triple match fight is missing');
     if (row.status === 'given_up') {
-      log({ event: 'trimatch_fight_giveup_replayed', fightUid: Number(row.fight_uid) });
-      return { value: { fightUid: Number(row.fight_uid), result: BATTLE_RESULT.LOSS }, data: encodeEtfIntegerTuple([]) };
+      log({ event: 'trimatch_fight_giveup_replayed', fightUid: row.fight_uid });
+      return { value: { fightUid: int64Id(row.fight_uid, 'triple match fight uid', { min: 1n }), result: BATTLE_RESULT.LOSS }, data: encodeEtfIntegerTuple([]) };
     }
     db.prepare('UPDATE trimatch_fight SET status=?, result=?, updated_at=? WHERE role_id=? AND fight_uid=?')
-      .run('given_up', BATTLE_RESULT.LOSS, isoSeconds(now()), roleId, Number(row.fight_uid));
-    log({ event: 'trimatch_fight_given_up', fightUid: Number(row.fight_uid), fightTid: Number(row.fight_tid) });
-    return { value: { fightUid: Number(row.fight_uid), result: BATTLE_RESULT.LOSS }, data: encodeEtfIntegerTuple([]) };
+      .run('given_up', BATTLE_RESULT.LOSS, isoSeconds(now()), roleId, row.fight_uid);
+    log({ event: 'trimatch_fight_given_up', fightUid: row.fight_uid, fightTid: Number(row.fight_tid) });
+    return { value: { fightUid: int64Id(row.fight_uid, 'triple match fight uid', { min: 1n }), result: BATTLE_RESULT.LOSS }, data: encodeEtfIntegerTuple([]) };
   }
 
   // 115006: replay of the stored report, built from the actions that were
@@ -656,9 +667,10 @@ export function createTriMatchFightService({
     const requested = fightIdArgument(input);
     const row = requested
       ? persistedFight(db, roleId, requested)
-      : db.prepare('SELECT * FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid DESC LIMIT 1').get(roleId);
+      : db.prepare(`SELECT CAST(fight_uid AS TEXT) AS fight_uid, CAST(fight_tid AS TEXT) AS fight_tid,
+        fight_type, created_at, board_json FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid DESC LIMIT 1`).get(roleId);
     if (!row) fail(CODE_STATE, 'Triple match fight is missing');
-    const actions = storedActions(db, roleId, Number(row.fight_uid));
+    const actions = storedActions(db, roleId, row.fight_uid);
     if (!actions.length) fail(CODE_STATE, 'Triple match fight report is missing');
     const created = Math.floor(new Date(row.created_at).getTime() / 1000);
     // A record is served as-is while it is inside the retention window; a stale
@@ -667,9 +679,9 @@ export function createTriMatchFightService({
     if (Number.isSafeInteger(created) && ageSeconds > REPORT_RETENTION_SECONDS) {
       fail(CODE_STATE, 'Triple match fight report has expired');
     }
-    log({ event: 'trimatch_fight_record_read', fightUid: Number(row.fight_uid), actions: actions.length });
+    log({ event: 'trimatch_fight_record_read', fightUid: row.fight_uid, actions: actions.length });
     return {
-      value: { fightUid: Number(row.fight_uid), actions: actions.length },
+      value: { fightUid: int64Id(row.fight_uid, 'triple match fight uid', { min: 1n }), actions: actions.length },
       data: codec.pack('pb_triple_match_fight_report', {
         fight_id: String(row.fight_uid),
         fight_tid: String(row.fight_tid),
@@ -688,9 +700,7 @@ export function createTriMatchFightService({
     const value = input && typeof input === 'object' && !Array.isArray(input) ? (input.value ?? input) : input;
     const candidate = Array.isArray(value) ? value[0] : value;
     if (candidate === undefined || candidate === null || candidate === '') return null;
-    const id = Number(candidate);
-    if (!Number.isSafeInteger(id) || id <= 0) return null;
-    return id;
+    return int64Id(candidate, 'Invalid triple match fight id', { min: 1n });
   }
 
   function supports(type) { return SUPPORTED.includes(Number(type)); }
@@ -716,9 +726,11 @@ export function createTriMatchFightService({
     return store.inspect(db => {
       ensureTrimatchTables(db);
       ensureFightTables(db);
-      return db.prepare('SELECT * FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid').all(roleId).map(row => ({
-        fight_uid: Number(row.fight_uid),
-        fight_tid: Number(row.fight_tid),
+      return db.prepare(`SELECT CAST(fight_uid AS TEXT) AS fight_uid, CAST(fight_tid AS TEXT) AS fight_tid,
+        fight_type, is_pve, result, attempt, status, atk_power, def_power
+        FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid`).all(roleId).map(row => ({
+        fight_uid: int64Id(row.fight_uid, 'triple match fight uid', { min: 1n }),
+        fight_tid: int64Id(row.fight_tid, 'triple match fight tid', { min: 1n }),
         fight_type: Number(row.fight_type),
         is_pve: Number(row.is_pve) === 1,
         result: Number(row.result),

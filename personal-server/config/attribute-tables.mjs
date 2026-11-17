@@ -2,8 +2,9 @@ import { readGeneratedTables } from './hero-tables.mjs';
 import { tableAsset } from '../assets.mjs';
 
 // HeroTable also owns the attribute growth families used by AttrMgr:
-// BaseAttrNew (base + per-level grow by quality), StarAddAttr (star 0..5 by
-// camp/quality), HighStarAddAttr (stars 6..10 per hero), BreakAddAttr,
+// BaseAttrNew (base + per-level grow/100 by quality), StarAddAttr (cumulative
+// flat stats by star/quality/star_progress), HighStarAddAttr (percentage stats
+// at stars 6..10 per hero), BreakAddAttr,
 // BattleAttr (per-hero fixed battle attributes) and AttrType (display attr ->
 // fight attr key/value type). They were previously not loaded by the server,
 // which is why every battle used a flat HP estimate instead of configured

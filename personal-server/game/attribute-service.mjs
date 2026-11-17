@@ -2,12 +2,12 @@ import { GameError } from './hero-progression.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
 
-// Attribute values are stored as fixed-point integers in HeroTable: growth rows
-// use 1/10000 steps (BaseAttrNew.hp_grow = 396000 means +39.6 HP per level) and
-// every "sum_add" column is a percentage with 10000 = 100%. AttrType.show_factor
-// carries the same 10000 scale for value_type=1 rows, which is why the same
-// divisor is applied to percentages assembled from AttrType.
+// AttrType percentage values use 10000 = 100%. HeroAttrCollect uses a separate
+// divisor of 100 for BaseAttrNew growth; StarAddAttr.*_sum_add are cumulative
+// FLAT values, while HighStarAddAttr's four stat columns are percentages.
+// Do not infer a column's unit from its name. Evidence: fix B1 (2026-11-16).
 export const ATTR_SCALE = 10000;
+const HERO_GROWTH_SCALE = 100;
 
 // Fight attribute keys follow AttrType.fight_attr. The physical/magic defense
 // pair is proven by AttrType 24->8 / 25->13 together with the paired percentage
@@ -182,7 +182,7 @@ function finalStat(flat, rate, key, rateKey, min, fallback) {
   const base = flat.get(key) ?? fallback;
   const percent = rate.get(rateKey) ?? 0;
   const scaled = base * (1 + percent / ATTR_SCALE);
-  return Math.max(min, Math.round(scaled));
+  return Math.max(min, Math.floor(scaled));
 }
 
 // Local compatibility only: no shipped row maps profession to base speed, so the
@@ -203,6 +203,16 @@ export function statsFromFightAttrs(fightAttrs, { speed = 0 } = {}) {
     critRate: Math.max(0, Math.round(Number(fightAttrs?.[FIGHT_ATTR.CRIT_RATE] ?? 0))),
     critHarm: Math.max(0, Math.round(Number(fightAttrs?.[FIGHT_ATTR.CRIT_HARM] ?? 0))),
     speed: Math.max(0, Math.round(Number(speed ?? 0)))
+  };
+}
+
+// AttributeKit percentage inputs use 10000; the simulator uses probabilities
+// and multipliers. Preserve missing values for legacy callers, and explicit 0
+// for authoritative hero/NPC rows. See fix B2.
+export function combatCriticalStats(stats) {
+  return {
+    critChance: stats?.critRate == null ? undefined : Number(stats.critRate) / ATTR_SCALE,
+    critMultiplier: stats?.critHarm == null ? undefined : Number(stats.critHarm) / ATTR_SCALE
   };
 }
 
@@ -312,6 +322,7 @@ export function assembleHeroAttributes({
   // first attribute tier while pb_single_hero still exposes it as at least 1.
   const storedStar = clampInteger(overrides.star ?? hero.star, 0, STAR_LIMIT, 0);
   const star = Math.max(1, storedStar);
+  const starProgress = clampInteger(overrides.starProgress ?? hero.star_progress, 0, 99, 0);
   const breakLevel = clampInteger(overrides.breakLevel ?? hero.breakthrough_level, 0, 50, 0);
   // Some persisted/imported rosters carry a current quality after a quality-up
   // step even though pb_single_hero omits it from its ordinary wire shape.
@@ -324,7 +335,7 @@ export function assembleHeroAttributes({
   if (!base.exact) notes.push('base-quality-fallback:' + quality + '->' + base.quality);
   const baseRow = base.row;
   const perLevel = Math.max(0, level - 1);
-  const grown = (value, grow) => Number(value ?? 0) + Number(grow ?? 0) * perLevel / ATTR_SCALE;
+  const grown = (value, grow) => Math.floor(Number(value ?? 0) + Number(grow ?? 0) * perLevel / HERO_GROWTH_SCALE);
   eachDisplayStat(attributeTables, sources, flat, rate, 'base', {
     hp: grown(baseRow.hp, baseRow.hp_grow),
     attack: grown(baseRow.attack, baseRow.attack_grow),
@@ -339,16 +350,16 @@ export function assembleHeroAttributes({
   ]);
 
   const lowStar = Math.min(storedStar, 5);
-  const starKey = camp * 10000 + quality * 100 + lowStar;
+  // HeroDevelopMgr.GetHeroStarAddAttrTid(star, quality, starProgress).
+  // The first argument is a star tier, never the hero's camp.
+  const starKey = lowStar * 10000 + quality * 100 + starProgress;
   const starRow = attributeTables.StarAddAttr?.get(starKey);
   if (!starRow) {
     notes.push('star-attr-missing:' + starKey);
   } else {
     eachDisplayStat(attributeTables, sources, flat, rate, 'star:' + lowStar, starRow, [
-      ['hp', DISPLAY_ATTR.hp], ['attack', DISPLAY_ATTR.attack],
-      ['physical_def', DISPLAY_ATTR.physical_def], ['magic_def', DISPLAY_ATTR.magic_def],
-      ['hp_sum_add', DISPLAY_ATTR.hp_rate], ['attack_sum_add', DISPLAY_ATTR.attack_rate],
-      ['physical_def_sum_add', DISPLAY_ATTR.physical_def_rate], ['magic_def_sum_add', DISPLAY_ATTR.magic_def_rate]
+      ['hp_sum_add', DISPLAY_ATTR.hp], ['attack_sum_add', DISPLAY_ATTR.attack],
+      ['physical_def_sum_add', DISPLAY_ATTR.physical_def], ['magic_def_sum_add', DISPLAY_ATTR.magic_def]
     ]);
   }
   if (storedStar >= 6) {
@@ -358,8 +369,8 @@ export function assembleHeroAttributes({
       notes.push('high-star-attr-missing:' + highStarKey);
     } else {
       eachDisplayStat(attributeTables, sources, flat, rate, 'high-star:' + storedStar, highStarRow, [
-        ['hp', DISPLAY_ATTR.hp], ['attack', DISPLAY_ATTR.attack],
-        ['physical_def', DISPLAY_ATTR.physical_def], ['magic_def', DISPLAY_ATTR.magic_def]
+        ['hp', DISPLAY_ATTR.hp_rate], ['attack', DISPLAY_ATTR.attack_rate],
+        ['physical_def', DISPLAY_ATTR.physical_def_rate], ['magic_def', DISPLAY_ATTR.magic_def_rate]
       ]);
     }
   }
@@ -372,6 +383,37 @@ export function assembleHeroAttributes({
   for (const pair of battleRow?.attr ?? []) {
     if (!Array.isArray(pair) || pair.length !== 2) continue;
     addSource(sources, flat, rate, attributeTables, 'battle', pair[0], pair[1]);
+  }
+  const addDevelopmentRow = (play, row) => {
+    for (const [key, value] of row?.attr ?? []) {
+      const attr = attributeTables.AttrType?.get(Number(key));
+      if (attr?.exchange?.length) {
+        addExchangedSources(sources, flat, rate, attributeTables, play, new Map([[Number(key), value]]));
+      } else {
+        addSource(sources, flat, rate, attributeTables, play, key, value);
+      }
+    }
+  };
+  // HeroAttrCollect._HandleAttrValue PC212-283: breakthrough talents and
+  // mastery levels are increments; MasteryBreak is the current total row.
+  for (let step = 1; step <= breakLevel; step++) {
+    const talentTid = tid * 100 + step;
+    addDevelopmentRow('break-talent:' + talentTid, heroTables.UpStageTalent?.get(talentTid));
+  }
+  const masteryGroup = heroTables.MasteryGroup?.get(Number(heroTables.Mastery?.get(tid)?.mastery_group));
+  const masteryLevel = clampInteger(hero.mastery_level, 0, masteryGroup?.level_range?.length ?? 0, 0);
+  for (let step = 0; step < masteryLevel; step++) {
+    const rowTid = Number(masteryGroup.level_range[step]);
+    const row = heroTables.MasteryLevel?.get(rowTid);
+    if (!row) fail(5, 'Hero mastery level attribute configuration missing');
+    addDevelopmentRow('mastery-level:' + rowTid, row);
+  }
+  const masteryBreak = Number(hero.mastery_break ?? 0);
+  if (masteryBreak > 0) {
+    const row = (masteryGroup?.break_range ?? []).map(rowTid => heroTables.MasteryBreak?.get(Number(rowTid)))
+      .find(candidate => Number(candidate?.mastery_break) === masteryBreak);
+    if (!row) fail(5, 'Hero mastery break attribute configuration missing');
+    addDevelopmentRow('mastery-break:' + row.tid, row);
   }
   addExchangedSources(sources, flat, rate, attributeTables, 'global:tactics', globalAttrs);
 
@@ -497,7 +539,7 @@ export function buildLineupAttrInfo({
 
 function heroStateKey(hero) {
   return [
-    hero?.uid, hero?.tid, hero?.level, hero?.star, hero?.breakthrough_level,
+    hero?.uid, hero?.tid, hero?.level, hero?.star, hero?.star_progress, hero?.breakthrough_level,
     hero?.quality, hero?.rare, hero?.mastery_level, hero?.mastery_break
   ].map(value => value ?? '').join(':');
 }

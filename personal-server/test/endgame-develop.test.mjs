@@ -51,6 +51,28 @@ function editModule(store, moduleId, schema, mutate) {
   });
 }
 
+function writeDevelopState(store, module, value) {
+  store.transaction((model, db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS develop_module_state (
+      role_id TEXT NOT NULL,
+      module TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (role_id, module)
+    )`);
+    db.prepare(`INSERT INTO develop_module_state (role_id, module, payload, updated_at)
+      VALUES (?,?,?,?) ON CONFLICT(role_id,module) DO UPDATE SET
+      payload=excluded.payload, updated_at=excluded.updated_at`)
+      .run(String(model.state.roleId), module, JSON.stringify(value), new Date().toISOString());
+  });
+}
+
+function readDevelopState(store, module) {
+  return store.transaction((model, db) => JSON.parse(db.prepare(
+    'SELECT payload FROM develop_module_state WHERE role_id=? AND module=?'
+  ).get(String(model.state.roleId), module).payload));
+}
+
 function setup(t, prefix) {
   const fixture = createGameFixture(t, codec, { prefix });
   return { get store() { return fixture.store; }, reopen: () => fixture.open() };
@@ -169,6 +191,84 @@ test('leader-equipment star-up consumes cost uids from the bag', t => {
   const data = moduleData(env.store, 175, 'pb_leader_equips_data');
   assert.equal(data.equip_list.length, 0);
   assert.equal(Number(data.slots[0].equip.star), 1);
+});
+
+test('leader-equipment int64 uid selection distinguishes adjacent values above 2^53', t => {
+  const env = setup(t, 'fc-leader-int64-');
+  const adjacent = '9007199254740992', target = '9007199254740993';
+  editModule(env.store, 175, 'pb_leader_equips_data', data => {
+    data.slots = [];
+    data.equip_list = [
+      { tid: '1008', uid: adjacent, star: 0, level: 1 },
+      { tid: '1008', uid: target, star: 0, level: 1 }
+    ];
+    data.max_uid = target;
+  });
+  const service = createLeaderEquipDevelopService({ store: env.store, codec });
+  const request = service.decode(98403, codec.pack('pb_leader_equip_up_star_req', {
+    uid: target, cost_uid_list: [adjacent]
+  }));
+  const body = codec.unpack('pb_leader_equip_back', service.execute(98403, request).data);
+  assert.equal(body.equip.uid, target);
+  assert.equal(body.equip.star, 1);
+  const data = moduleData(env.store, 175, 'pb_leader_equips_data');
+  assert.deepEqual(data.equip_list.map(row => [row.uid, row.star]), [[target, 1]]);
+});
+
+test('pet core int64 uid chains keep adjacent selections, allocation and reopen exact', t => {
+  const env = setup(t, 'fc-pet-core-int64-');
+  const adjacent = '9007199254740992', target = '9007199254740993';
+  editModule(env.store, 158, 'pb_pet_develop_data', data => {
+    data.pets = [{ tid: '100113', star: 0, level: 1, quality: 1, book_level: 0, break_level: 0, promote_lv: 0, equip_items: [], equips: [], is_mutant: false }];
+  });
+  writeDevelopState(env.store, 'pet_equips', {
+    maxUid: target,
+    items: [
+      { uid: adjacent, tid: '344002', star: 0 },
+      { uid: target, tid: '344002', star: 0 }
+    ]
+  });
+
+  let service = createPetService({ store: env.store, codec });
+  const starRequest = service.decode(90742, codec.pack('pb_pet_equip_star_up', {
+    pet_tid: 100113, equip_up_uid: target, equip_uid_list: [adjacent]
+  }));
+  const starBody = codec.unpack('pb_pet_equip_star_up_back', service.execute(90742, starRequest).data);
+  assert.equal(starBody.pet.tid, '100113');
+  assert.deepEqual(readDevelopState(env.store, 'pet_equips'), {
+    maxUid: target,
+    items: [{ uid: target, tid: '344002', star: 1 }]
+  });
+
+  const combineRequest = service.decode(90736, codec.pack('pb_req_combine_equip', {
+    combine_equips: [{ cost_equips: [target] }]
+  }));
+  const combineBody = codec.unpack('pb_rsp_pet_equip', service.execute(90736, combineRequest).data);
+  assert.deepEqual(combineBody.new_equips, ['9007199254740994']);
+
+  env.reopen();
+  service = createPetService({ store: env.store, codec });
+  assert.deepEqual(readDevelopState(env.store, 'pet_equips'), {
+    maxUid: '9007199254740994',
+    items: [{ uid: '9007199254740994', tid: '344002', star: 0 }]
+  });
+});
+
+test('pet core allocation refuses int64 overflow and rolls the whole command back', t => {
+  const env = setup(t, 'fc-pet-core-overflow-');
+  editModule(env.store, 158, 'pb_pet_develop_data', data => {
+    data.pets = [{ tid: '100113', star: 0, level: 1, quality: 1, book_level: 0, break_level: 0, promote_lv: 0, equip_items: [], equips: [], is_mutant: false }];
+  });
+  const atMax = { maxUid: '9223372036854775807', items: [{ uid: '9223372036854775807', tid: '344002', star: 0 }] };
+  writeDevelopState(env.store, 'pet_equips', atMax);
+  const service = createPetService({ store: env.store, codec });
+  const request = service.decode(90736, codec.pack('pb_req_combine_equip', {
+    combine_equips: [{ cost_equips: ['9223372036854775807'] }]
+  }));
+  const moduleBefore = moduleData(env.store, 158, 'pb_pet_develop_data');
+  assert.throws(() => service.execute(90736, request), error => error.code === 305);
+  assert.deepEqual(readDevelopState(env.store, 'pet_equips'), atMax);
+  assert.deepEqual(moduleData(env.store, 158, 'pb_pet_develop_data'), moduleBefore);
 });
 
 test('equip 1008 converts exchange rows and 1009 batch-refines the bag', t => {

@@ -1,5 +1,6 @@
 import { GameError } from './hero-progression.mjs';
 import { grantResources, partitionGrantableResources } from './resources.mjs';
+import { INT64_MAX, int64 } from './develop-support.mjs';
 
 const MAIL_COMMANDS = new Set([3000, 3001, 3002, 3003, 3004, 3005, 3006]);
 // MailTable.data row 11400 is the first ordinary (type=1) system mail. tid=0 is
@@ -15,6 +16,13 @@ const integer = (value, min, max, message) => {
   if (!Number.isSafeInteger(value) || value < min || value > max) fail(1, message);
   return value;
 };
+const mailIdText = (value, message = 'Invalid mail ID') => int64(value, message, { min: 1n, max: INT64_MAX });
+const mailIdValue = value => {
+  const text = mailIdText(value);
+  return BigInt(text) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(text) : text;
+};
+const MAIL_COLUMNS = `CAST(mail_id AS TEXT) AS mail_id, role_id, request_id, tid, send_name, title, content,
+  send_time, expire_at, read, received, deleted, award_json, created_at`;
 const text = (value, name, max) => {
   if (typeof value !== 'string' || value.length === 0 || value.length > max) fail(1, 'Invalid mail ' + name);
   return value;
@@ -51,7 +59,8 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
     return row.role_id;
   }
   function mailRow(db, roleId, mailId) {
-    const row = db.prepare('SELECT * FROM game_mails WHERE role_id=? AND mail_id=? AND deleted=0').get(roleId, Number(mailId));
+    const row = db.prepare(`SELECT ${MAIL_COLUMNS} FROM game_mails WHERE role_id=? AND mail_id=? AND deleted=0`)
+      .get(roleId, mailIdText(mailId));
     if (!row) fail(5, 'Mail does not exist');
     return row;
   }
@@ -68,7 +77,7 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
   function brief(row, current = now()) {
     const award = JSON.parse(row.award_json);
     return {
-      tid: row.tid, id: row.mail_id, send_time: row.send_time,
+      tid: row.tid, id: mailIdValue(row.mail_id), send_time: row.send_time,
       read: Boolean(row.read), received: Boolean(row.received), title: row.title,
       award: awardMessage(award), is_full_info: true,
       expire_time: row.expire_at > 0 ? Math.max(0, row.expire_at - current) : 0,
@@ -85,7 +94,8 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
   }
   function publishNewMail(mailId, roleId) {
     try {
-      const row = store.inspect(db => db.prepare('SELECT * FROM game_mails WHERE mail_id=? AND deleted=0').get(mailId));
+      const row = store.inspect(db => db.prepare(`SELECT ${MAIL_COLUMNS} FROM game_mails WHERE mail_id=? AND deleted=0`)
+        .get(mailIdText(mailId)));
       if (!row) return;
       const newBin = codec.pack('pb_mail', fullMail(row)).toString('base64');
       publish(900, codec.pack('pb_rev_new_mail_info', {
@@ -124,24 +134,26 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
     const id = integer(Number(roleId), 1, Number.MAX_SAFE_INTEGER, 'Invalid mail role ID');
     if (!db.prepare('SELECT 1 FROM roles WHERE role_id=?').get(id)) fail(5, 'Unknown role for mail');
     const normalized = normalizeIssue(message);
-    const old = db.prepare('SELECT * FROM game_mails WHERE role_id=? AND request_id=?').get(id, normalized.request_id);
+    const old = db.prepare(`SELECT CAST(mail_id AS TEXT) AS mail_id, title, content, award_json, expire_at
+      FROM game_mails WHERE role_id=? AND request_id=?`).get(id, normalized.request_id);
     if (old) {
-      const grant = db.prepare('SELECT * FROM voucher_grants WHERE mail_id=?').get(old.mail_id);
+      const grant = db.prepare('SELECT quantity, face_value_cents FROM voucher_grants WHERE mail_id=?').get(old.mail_id);
       const same = old.title === normalized.title && old.content === normalized.content
         && old.award_json === JSON.stringify(normalized.awards) && old.expire_at === normalized.expireAt
         && (!normalized.voucherGrant || (grant && grant.quantity === normalized.voucherGrant.quantity));
       if (!same) fail(1, 'Mail request ID already used');
       return {
-        mail_id: old.mail_id, duplicate: true, role_id: id, awards: normalized.awards,
+        mail_id: mailIdValue(old.mail_id), duplicate: true, role_id: id, awards: normalized.awards,
         quantity: grant?.quantity ?? 0,
         amount_cents: (grant?.quantity ?? 0) * (grant?.face_value_cents ?? 0)
       };
     }
     const sendTime = now();
-    const row = db.prepare('INSERT INTO game_mails(role_id,request_id,tid,send_name,title,content,send_time,expire_at,read,received,deleted,award_json,created_at) VALUES (?,?,?,?,?,?,?,?,0,0,0,?,?)')
-      .run(id, normalized.request_id, MAIL_CONFIG_TID, normalized.send_name, normalized.title, normalized.content,
-        sendTime, normalized.expireAt, JSON.stringify(normalized.awards), new Date().toISOString());
-    const mailId = Number(row.lastInsertRowid);
+    const insertMail = db.prepare('INSERT INTO game_mails(role_id,request_id,tid,send_name,title,content,send_time,expire_at,read,received,deleted,award_json,created_at) VALUES (?,?,?,?,?,?,?,?,0,0,0,?,?)');
+    insertMail.setReadBigInts(true);
+    insertMail.run(id, normalized.request_id, MAIL_CONFIG_TID, normalized.send_name, normalized.title, normalized.content,
+      sendTime, normalized.expireAt, JSON.stringify(normalized.awards), new Date().toISOString());
+    const mailId = mailIdValue(db.prepare('SELECT CAST(last_insert_rowid() AS TEXT) AS mail_id').get().mail_id);
     if (normalized.voucherGrant) voucher.recordGrant({ db, mailId, roleId: id, quantity: normalized.voucherGrant.quantity });
     return {
       mail_id: mailId, duplicate: false, role_id: id, awards: normalized.awards,
@@ -181,7 +193,8 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
   }
 
   function loginPayload(roleId = store.read().state.roleId) {
-    const rows = store.inspect(db => db.prepare('SELECT * FROM game_mails WHERE role_id=? AND deleted=0 ORDER BY send_time DESC, mail_id DESC').all(roleId));
+    const rows = store.inspect(db => db.prepare(`SELECT ${MAIL_COLUMNS} FROM game_mails
+      WHERE role_id=? AND deleted=0 ORDER BY send_time DESC, mail_id DESC`).all(roleId));
     const current = now();
     return codec.pack('pb_rev_login_mail_info', { mail_list: rows.map(row => brief(row, current)) });
   }
@@ -192,16 +205,16 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
       const row = mailRow(db, roleId, mailId);
       db.prepare('UPDATE game_mails SET read=1 WHERE mail_id=?').run(row.mail_id);
     });
-    return { mail_id: Number(mailId) };
+    return { mail_id: mailIdValue(mailId) };
   }
 
   function readOneKey(ids) {
     const roleId = store.read().state.roleId;
-    const selected = Array.isArray(ids) && ids.length ? new Set(ids.map(Number)) : null;
+    const selected = Array.isArray(ids) && ids.length ? new Set(ids.map(value => mailIdText(value))) : null;
     store.transaction((model, db) => {
-      const rows = db.prepare('SELECT mail_id FROM game_mails WHERE role_id=? AND deleted=0 AND read=0').all(roleId);
+      const rows = db.prepare('SELECT CAST(mail_id AS TEXT) AS mail_id FROM game_mails WHERE role_id=? AND deleted=0 AND read=0').all(roleId);
       const update = db.prepare('UPDATE game_mails SET read=1 WHERE mail_id=?');
-      for (const row of rows) if (!selected || selected.has(row.mail_id)) update.run(row.mail_id);
+      for (const row of rows) if (!selected || selected.has(String(row.mail_id))) update.run(row.mail_id);
     });
     return {};
   }
@@ -223,10 +236,11 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
 
   function claimOneKey(ids) {
     const roleId = store.read().state.roleId;
-    const selected = Array.isArray(ids) && ids.length ? new Set(ids.map(Number)) : null;
+    const selected = Array.isArray(ids) && ids.length ? new Set(ids.map(value => mailIdText(value))) : null;
     return store.transaction((model, db) => {
-      const rows = db.prepare('SELECT * FROM game_mails WHERE role_id=? AND deleted=0 AND received=0 AND award_json<>\'[]\' ORDER BY mail_id').all(roleId)
-        .filter(row => !selected || selected.has(row.mail_id))
+      const rows = db.prepare(`SELECT ${MAIL_COLUMNS} FROM game_mails
+        WHERE role_id=? AND deleted=0 AND received=0 AND award_json<>'[]' ORDER BY mail_id`).all(roleId)
+        .filter(row => !selected || selected.has(String(row.mail_id)))
         .filter(row => !(row.expire_at > 0 && now() > row.expire_at));
       if (!rows.length) fail(5, 'No mail awards available');
       const totals = new Map();
@@ -258,12 +272,13 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
 
   function delOneKey(ids) {
     const roleId = store.read().state.roleId;
-    const selected = Array.isArray(ids) && ids.length ? new Set(ids.map(Number)) : null;
+    const selected = Array.isArray(ids) && ids.length ? new Set(ids.map(value => mailIdText(value))) : null;
     store.transaction((model, db) => {
-      const rows = db.prepare('SELECT mail_id,received,award_json,expire_at FROM game_mails WHERE role_id=? AND deleted=0').all(roleId);
+      const rows = db.prepare(`SELECT CAST(mail_id AS TEXT) AS mail_id, received, award_json, expire_at
+        FROM game_mails WHERE role_id=? AND deleted=0`).all(roleId);
       const update = db.prepare('UPDATE game_mails SET deleted=1 WHERE mail_id=?');
       for (const row of rows) {
-        if (selected && !selected.has(row.mail_id)) continue;
+        if (selected && !selected.has(String(row.mail_id))) continue;
         const expired = row.expire_at > 0 && now() > row.expire_at;
         if (row.received || row.award_json === '[]' || expired) update.run(row.mail_id);
       }
@@ -273,7 +288,8 @@ export function createMailService({ store, codec, tables, voucher, publish = () 
 
   function detail(mailId) {
     const roleId = store.read().state.roleId;
-    const row = store.inspect(db => db.prepare('SELECT * FROM game_mails WHERE role_id=? AND mail_id=? AND deleted=0').get(roleId, Number(mailId)));
+    const row = store.inspect(db => db.prepare(`SELECT ${MAIL_COLUMNS}
+      FROM game_mails WHERE role_id=? AND mail_id=? AND deleted=0`).get(roleId, mailIdText(mailId)));
     if (!row) fail(5, 'Mail does not exist');
     return codec.pack('pb_mail', fullMail(row));
   }

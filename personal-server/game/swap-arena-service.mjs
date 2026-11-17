@@ -287,7 +287,16 @@ export function createSwapArenaService({
   }
 
   function reportData(db, roleId) {
-    const rows = db.prepare('SELECT * FROM swap_arena_reports WHERE role_id=? ORDER BY fight_time DESC LIMIT 20').all(roleId);
+    const rows = db.prepare(`SELECT
+        CAST(fight_id AS TEXT) AS fight_id,
+        before_rank,
+        after_rank,
+        CAST(fight_time AS TEXT) AS fight_time,
+        CAST(attack_role_id AS TEXT) AS attack_role_id,
+        CAST(def_role_id AS TEXT) AS def_role_id,
+        self_fight_result,
+        enemy_rank
+      FROM swap_arena_reports WHERE role_id=? ORDER BY fight_time DESC LIMIT 20`).all(roleId);
     return {
       fight_report_list: rows.map((row) => ({
         fight_id: String(row.fight_id),

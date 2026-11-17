@@ -1,6 +1,6 @@
 # Bug 记忆与防复发清单
 
-更新时间：2026-11-16（Asia/Shanghai）
+更新时间：2026-11-17（Asia/Shanghai）
 
 用户 2026-11-16 持久规则：**每个修过的 bug 都要记进持久记忆，之后不允许再犯同类错误。** 本文件是修复入口和防复发清单；逐项证据仍写在 `agent/workflow/fixes/` 下的单独文档里。
 
@@ -68,8 +68,23 @@
 
 ### 8. 文档与基线
 
-- R1 是唯一规则基线；旧规划、旧 defaults、旧调查建议和导出副本 `FateCovenantClone-main/` 都不能覆盖 R1 或冒充现行源码。
+- 当前为R1加[数值R2增补](../../../docs/gameplay-operations/13-numeric-r2-amendment.md)；旧规划、旧defaults、旧调查建议和导出副本不能覆盖现行基线。R1冻结实例与历史SHA不因R2修复就地改写。
 - 新证据改变推定必须升级 R 版本，不混改已冻结实例。
+
+### 9. 英雄属性与战斗数值
+
+- `GetHeroStarAddAttrTid` 的参数为星级、品质、升星小段，索引为 `min(star,5)*10000+quality*100+star_progress`，与阵营无关。低星 `*_sum_add` 是累计平值，高星四维是百分比；基础成长除以 100，百分比才除以 10000。必须从原消费者核对参数和单位，禁止仅凭字段名推断。[vell-basic-attack-attributes-20261116.md](vell-basic-attack-attributes-20261116.md)
+- 属性缓存必须包含 `star_progress` 等全部实际贡献字段。回归固定原数值并覆盖阵营独立、小段升星、成长和高星比例，禁止把错误的当前输出写成正确期望。
+- 属性到主线/PvP 战斗的每次对象转换都要保留基础暴击、暴伤和阵营；明确的 0 不得被职业默认值覆盖。战报复用完整权威战力，不能只拿四维重算。[B2](combat-numeric-projection-20261117.md)
+- 养成测试必须验证扣料后的属性或技能结果；专精等级逐行累计、专精突破只取当前累计行、突破天赋逐级累计，并按 AttrType.exchange 处理聚合属性。[B3](hero-development-attribute-sources-20261117.md)
+
+### 10. 数量与协议边界
+
+- 数量按原 protobuf 字段分别限制 int32、uint32、int64；`protobufjs.fromObject` 会截断越界值，编码成功不能代替范围检查。既有值加奖励也必须检查总量；int64 UID 全程用 BigInt/字符串，不能先转 Number。[N1](reward-quantity-boundaries-20261117.md)
+- 大整数必须沿发奖、养成查找、JSON/HTTP与显示整条链核对。数量尚为安全整数不代表乘面值后的金额安全；超出安全整数的JSON字段使用十进制字符串，显示直接格式化整数分。[N3](voucher-integer-precision-20261117.md)
+- JSON回执必须递归恢复所有Buffer字段，不能只修new_bin而漏extra；第一次、重试和重开库后的响应必须一致且只扣料一次。测试显式建立合法开服日/门禁和真实公会状态，不恢复已撤回的虚构业务来满足旧断言。[N2](item-receipt-and-audit-fixtures-20261117.md)
+- SQLite 的 int64 UID 列不能用裸 `SELECT *` 交给默认 Number 解码；查询用 `CAST(uid AS TEXT)`/`setReadBigInts(true)`，插入自增 ID 时单独读取返回行，业务层保持 BigInt 或十进制字符串。低 ID 可继续返回 Number，高 ID 必须返回字符串，禁止先转 Number 再查库。[N1](reward-quantity-boundaries-20261117.md)
+- 修复一个发奖入口不代表长 ID 链闭合；必须按“生成 → 执行命令 → 引用/消耗 → 重开库”反查所有下游服务。已验证的实例 UID 链路同样适用于邮件、拍卖、家园、三消、战报和英雄借用/租借。[N1](reward-quantity-boundaries-20261117.md)
 
 ## 记录索引
 

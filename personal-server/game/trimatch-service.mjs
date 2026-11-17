@@ -1,7 +1,7 @@
 import {
   CODE_STATE, CODE_LIMIT, CODE_INVALID, CODE_INSUFFICIENT, fail, integer, isoSeconds,
   ensureTrimatchTables, ensureRoleState, readSites, writeSite, readHeroStars, writeHeroStar,
-  readEquips, writeEquip, takeLineupUid, readIdent, grant, consume, affordable
+  readEquips, writeEquip, takeLineupUid, readIdent, grant, consume, affordable, int64Id
 } from './trimatch-core.mjs';
 import {
   heroLevelRow, heroStarRow, heroStarCost, equipLevelRow, equipNextLevelRow, equipCost,
@@ -80,7 +80,7 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
     let teams = [];
     try { teams = JSON.parse(row.team_list); } catch { teams = []; }
     return {
-      uid: Number(row.uid),
+      uid: int64Id(row.uid, 'triple match lineup uid', { min: 1n }),
       gen_time: Number(row.gen_time ?? 0),
       team_list: Array.isArray(teams) ? teams : [],
       name: row.name ?? ''
@@ -318,8 +318,9 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
 
   function lineupEdit(model, db, input) {
     const nowMs = now();
-    const uid = integer(input?.lineup?.uid, 1, Number.MAX_SAFE_INTEGER, 'Invalid triple match lineup uid');
-    const row = db.prepare('SELECT * FROM trimatch_lineup WHERE role_id=? AND uid=?').get(model.state.roleId, uid);
+    const uid = int64Id(input?.lineup?.uid, 'Invalid triple match lineup uid', { min: 1n });
+    const row = db.prepare(`SELECT CAST(uid AS TEXT) AS uid, gen_time, name, team_list
+      FROM trimatch_lineup WHERE role_id=? AND uid=?`).get(model.state.roleId, uid);
     if (!row) fail(CODE_STATE, 'Triple match lineup preset is missing');
     const teams = validateTeams(model, db, teamsOf(input?.lineup));
     const name = String(input?.lineup?.name ?? row.name ?? '').slice(0, 32);
@@ -336,12 +337,13 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
 
   function lineupSetName(model, db, input) {
     const nowMs = now();
-    const uid = integer(input?.uid, 1, Number.MAX_SAFE_INTEGER, 'Invalid triple match lineup uid');
+    const uid = int64Id(input?.uid, 'Invalid triple match lineup uid', { min: 1n });
     const name = String(input?.name ?? '').trim();
     const min = Number(tables.lineupConst?.preset_min_length ?? 1);
     const max = Number(tables.lineupConst?.preset_max_length ?? 6);
     if (name.length < min || name.length > max) fail(CODE_INVALID, 'Triple match lineup name length is invalid');
-    const row = db.prepare('SELECT * FROM trimatch_lineup WHERE role_id=? AND uid=?').get(model.state.roleId, uid);
+    const row = db.prepare(`SELECT CAST(uid AS TEXT) AS uid, gen_time, name, team_list
+      FROM trimatch_lineup WHERE role_id=? AND uid=?`).get(model.state.roleId, uid);
     if (!row) fail(CODE_STATE, 'Triple match lineup preset is missing');
     db.prepare('UPDATE trimatch_lineup SET name=?, updated_at=? WHERE role_id=? AND uid=?').run(name, isoSeconds(nowMs), model.state.roleId, uid);
     const record = lineupRecord(row);
@@ -351,7 +353,7 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
   }
 
   function lineupDelete(model, db, input) {
-    const uid = integer(input?.uid, 1, Number.MAX_SAFE_INTEGER, 'Invalid triple match lineup uid');
+    const uid = int64Id(input?.uid, 'Invalid triple match lineup uid', { min: 1n });
     const result = db.prepare('DELETE FROM trimatch_lineup WHERE role_id=? AND uid=?').run(model.state.roleId, uid);
     if (!result.changes) fail(CODE_STATE, 'Triple match lineup preset is missing');
     log({ event: 'trimatch_lineup_delete', uid });
@@ -409,7 +411,8 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
         site_idx: siteIndex,
         equips: [...types.entries()].map(([equip_type_tid, level_tid]) => ({ equip_type_tid, level_tid }))
       }));
-      const lineups = db.prepare('SELECT * FROM trimatch_lineup WHERE role_id=? ORDER BY uid').all(roleId).map(lineupRecord);
+      const lineups = db.prepare(`SELECT CAST(uid AS TEXT) AS uid, gen_time, name, team_list
+        FROM trimatch_lineup WHERE role_id=? ORDER BY uid`).all(roleId).map(lineupRecord);
       const playing = db.prepare('SELECT * FROM trimatch_playing_lineup WHERE role_id=?').all(roleId).map((row) => {
         let teamList = [];
         try { teamList = JSON.parse(row.team_list); } catch { teamList = []; }
@@ -427,7 +430,8 @@ export function createTriMatchService({ store, codec, tables, gameTables, logger
       const nowMs = now();
       ensureTrimatchTables(db);
       const state = ensureRoleState(model, db, tables, model.state.roleId, nowMs);
-      const lineups = db.prepare('SELECT * FROM trimatch_lineup WHERE role_id=? ORDER BY uid')
+      const lineups = db.prepare(`SELECT CAST(uid AS TEXT) AS uid, gen_time, name, team_list
+        FROM trimatch_lineup WHERE role_id=? ORDER BY uid`)
         .all(model.state.roleId).map(lineupRecord);
       const playingRows = db.prepare('SELECT * FROM trimatch_playing_lineup WHERE role_id=? ORDER BY lineup_type')
         .all(model.state.roleId).map((row) => {

@@ -3,6 +3,7 @@ import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { wrapEtfBinary } from './etf-binary.mjs';
 import { gameDayIndex } from './time.mjs';
+import { INT64_MAX, int64 } from './develop-support.mjs';
 
 // G1 (#151-#162): exploration and home activities.
 //
@@ -520,7 +521,7 @@ export function createExplorationActService({
     return {
       act_tid: actTid, themes: {}, fragments: {}, daily_gift_count: 0, daily_request_count: 0,
       daily_task_list: [], weekly_task_list: [], shop_bought: {}, my_requests: {}, received_process_list: [],
-      get_gifts: [], my_gifts: [], day: 0, gift_uid: 0
+      get_gifts: [], my_gifts: [], day: 0, gift_uid: '0'
     };
   }
 
@@ -546,11 +547,11 @@ export function createExplorationActService({
       received_process_list: (state.received_process_list ?? []).map(Number),
       get_gifts: (state.get_gifts ?? []).map(row => ({
         gift_role_id: Number(row.gift_role_id), gift_time: Number(row.gift_time), piece_tid: Number(row.piece_tid),
-        gift_uid: Number(row.gift_uid), is_finish: Boolean(row.is_finish)
+        gift_uid: int64(row.gift_uid, 'home puzzle gift uid', { min: 1n }), is_finish: Boolean(row.is_finish)
       })),
       my_gifts: (state.my_gifts ?? []).map(row => ({
         gift_role_id: Number(row.gift_role_id), gift_time: Number(row.gift_time), piece_tid: Number(row.piece_tid),
-        gift_uid: Number(row.gift_uid), is_finish: Boolean(row.is_finish)
+        gift_uid: int64(row.gift_uid, 'home puzzle gift uid', { min: 1n }), is_finish: Boolean(row.is_finish)
       }))
     };
   }
@@ -608,9 +609,9 @@ export function createExplorationActService({
   function puzzleGifts(request) {
     const actTid = idOf(request.activity_id, 'Invalid home puzzle activity id');
     const pieceTid = idOf(request.piece_tid, 'Invalid home puzzle piece id');
-    const friend = Number(plainOf(request.friend_role_id) ?? 0);
+    const friend = int64(plainOf(request.friend_role_id) ?? 0, 'home puzzle friend role id');
     return puzzleRun(actTid, 'pb_home_puzzle_gift_rsp', ({ model, state, version, time, roleId }) => {
-      if (friend && friend !== Number(roleId)) throw new GameError(5, 'Only the local role gift target is available');
+      if (friend !== '0' && friend !== String(roleId)) throw new GameError(5, 'Only the local role gift target is available');
       const piece = puzzlePieces.get(pieceTid);
       if (!piece || !piece.can_gift) throw new GameError(5, 'Home puzzle piece cannot be gifted');
       const conf = [...puzzleSocial.values()].find(row => Number(row.version) === Number(version.tid));
@@ -618,8 +619,10 @@ export function createExplorationActService({
       if (limit > 0 && Number(state.daily_gift_count ?? 0) >= limit) throw new GameError(307, 'Home puzzle gift limit reached');
       const fragment = state.fragments[String(pieceTid)];
       if (!fragment || Number(fragment.count) <= 0) throw new GameError(301, 'Home puzzle piece is insufficient');
+      const currentGiftUid = BigInt(int64(state.gift_uid ?? 0, 'home puzzle gift uid'));
+      if (currentGiftUid >= INT64_MAX) throw new GameError(305, 'Home puzzle gift uid space exhausted');
       fragment.count = Number(fragment.count) - 1;
-      state.gift_uid = Number(state.gift_uid ?? 0) + 1;
+      state.gift_uid = (currentGiftUid + 1n).toString();
       const gift = { gift_role_id: Number(roleId), gift_time: time, piece_tid: pieceTid, gift_uid: state.gift_uid, is_finish: false };
       state.my_gifts.push(gift);
       state.get_gifts.push({ ...gift });
@@ -630,9 +633,10 @@ export function createExplorationActService({
 
   function puzzleReceive(request) {
     const actTid = idOf(request.activity_id, 'Invalid home puzzle activity id');
-    const giftUid = Number(plainOf(request.gift_uid) ?? 0);
+    const giftUid = int64(plainOf(request.gift_uid) ?? 0, 'home puzzle gift uid', { min: 1n });
     return puzzleRun(actTid, 'pb_home_puzzle_rec_gift_piece_rsp', ({ model, state, time }) => {
-      const gift = state.get_gifts.find(entry => Number(entry.gift_uid) === giftUid);
+      const gift = state.get_gifts.find(entry =>
+        int64(entry.gift_uid, 'home puzzle gift uid', { min: 1n }) === giftUid);
       if (!gift) throw new GameError(311, 'Home puzzle gift does not exist');
       if (gift.is_finish) throw new GameError(310, 'Home puzzle gift is already received');
       const piece = puzzlePieces.get(Number(gift.piece_tid));

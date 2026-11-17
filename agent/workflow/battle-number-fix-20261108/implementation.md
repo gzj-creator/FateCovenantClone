@@ -1,5 +1,7 @@
 # 4-3、薇尔战斗数值与全技能一致性修复记录
 
+> 2026-11-17 历史结论更正：本页薇尔HP8874/攻击3321及相关“应有”量级已由[B1原消费者复核](../fixes/vell-basic-attack-attributes-20261116.md)撤回；正确初始值为HP1530/攻击245/双防105/战力408。旧记录只阻止逐档累加，没有纠正camp误作星级、成长/百分比单位和小段索引，不能再作为数值金值。借邻关、按玩家均值造敌的旧兼容也已由2026-11-14真实Fight→Team→NpcAttr链替换。以下保留当时过程，不作为现行规则；现行数值见[R2](../../../docs/gameplay-operations/13-numeric-r2-amendment.md)。
+
 日期：2026-11-08。分支：`fix/attribute-star-quality-20261108`。worktree：`.worktree/gameplay-20261108/fix-attribute-star-quality-20261108`。基线：`main@0d8d9ec`。
 
 ## 结论

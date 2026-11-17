@@ -145,7 +145,7 @@ NPC倍率 = NpcAttrRatio[npcTid×10].attr_list[attr] / 10000，缺项为1
 
 映射由`AttrType.fight_attr`决定，不是所有同号都同义。读取百分比时以`value_type=1`和`show_factor`解释定点数；平值不除10000。原`AttrCalculator.CalcValues`对HP/攻击/双防分别执行`floor(平值×(1+对应百分比))`，再移除四个百分比键。例如HP1000、生命百分比5000得到1500，不是1000+5000。
 
-玩家基础成长按`BaseAttrNew[heroTid×100+quality]`选行：`base+grow×(level-1)/10000`。低星取当前一行`StarAddAttr[camp×10000+quality×100+min(star,5)]`，不能累加所有低星行；6星以上另取`HighStarAddAttr[heroTid×100+star]`，再合突破与BattleAttr。当前某品质行缺失时存在邻近品质兼容回退，必须保留`notes`并逐英雄对照，不能把回退当原版公式。
+2026-11-17 [R2数值增补](../13-numeric-r2-amendment.md)纠正本节旧公式：玩家基础成长按`BaseAttrNew[heroTid×100+quality]`选行，四维为`floor(base+grow×(level-1)/100)`。低星取当前一行`StarAddAttr[min(storedStar,5)×10000+quality×100+star_progress]`的四个`*_sum_add`累计平值，与阵营无关；6星以上另取`HighStarAddAttr[heroTid×100+star]`四维百分比（10000精度），最终四维向下取整。再按原顺序合突破、BattleAttr、逐级UpStageTalent、逐级MasteryLevel与当前一行MasteryBreak；聚合属性按AttrType.exchange展开。当前某品质行缺失时存在邻近品质兼容回退，必须保留`notes`并逐英雄对照，不能把回退当原版公式。
 
 ## 9. 战力公式与显示来源
 

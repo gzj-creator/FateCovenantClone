@@ -6,7 +6,7 @@ import { readJourneyFightTables } from '../config/journey-fight-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
-import { ACTOR_ATTR, applyNpcScaling, assembleHeroAttributes, compatibilitySpeed, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
+import { ACTOR_ATTR, applyNpcScaling, assembleHeroAttributes, combatCriticalStats, compatibilitySpeed, npcAttributeScale, powerFromStats } from './attribute-service.mjs';
 import { resolveFightTeam } from './fight-team-resolver.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { readTacticsTables } from '../config/tactics-tables.mjs';
@@ -326,6 +326,7 @@ function configuredNpcTeam(config, side, attributeTables) {
       style: Number(cfg.hero.style), profession: Number(cfg.hero.profession ?? 0),
       ability_list: abilities, init_attr: initialFightAttributes(FIGHT_INITIAL_ENERGY), water_gun: 0,
       attack, defense, speed: compatibilitySpeed(cfg.hero), initialEnergy: FIGHT_INITIAL_ENERGY,
+      ...combatCriticalStats({ critRate: values.get(ACTOR_ATTR.CRIT), critHarm: values.get(ACTOR_ATTR.CRIT_HARM) }),
       abilityId: abilities[0], activeAbilityId: activeAbilityId(abilities),
       // Do not load a hero's entire catalog (including unrelated late passives)
       // just because this NPC shares that hero's appearance.
@@ -399,6 +400,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
       enable: true, final_hp: maxHp, style: Number(cfg.hero.style ?? role),
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
+      ...combatCriticalStats(assembled.stats),
       speed: combat.speed, initialEnergy: combat.initialEnergy, abilityId: abilities[0] ?? 1,
       activeAbilityId: activeAbilityId(abilities),
       skills: skillLoadout.skills,
@@ -436,6 +438,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
       enable: true, final_hp: 0, style: Number(cfg.hero.style ?? role),
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
+      ...combatCriticalStats(stats),
       speed: combat.speed, initialEnergy: combat.initialEnergy, abilityId: abilities[0] ?? 1,
       activeAbilityId: activeAbilityId(abilities)
     };
@@ -454,6 +457,8 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     attack: unit.attack,
     defense: unit.defense,
     speed: unit.speed,
+    critChance: unit.critChance,
+    critMultiplier: unit.critMultiplier,
     initialEnergy: unit.initialEnergy,
     skills: unit.skills
   });
@@ -501,6 +506,7 @@ export function reportGuideDemoBattle(codec, model, fightTid, attributeTables, f
     id: unit.id, role: unit.role, profession: unit.profession, camp: unit.camp, loc: unit.loc,
     abilityId: unit.abilityId, activeAbilityId: unit.activeAbilityId, maxHp: unit.max_hp,
     attack: unit.attack, defense: unit.defense, speed: unit.speed,
+    critChance: unit.critChance, critMultiplier: unit.critMultiplier,
     initialEnergy: unit.initialEnergy, skills: unit.skills
   });
   const simulation = simulateBattle({ attackers: attackers.map(combatUnit), defenders: defenders.map(combatUnit), seed });

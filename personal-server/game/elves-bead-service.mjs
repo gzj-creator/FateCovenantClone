@@ -16,6 +16,16 @@ const LEVEL_MAX = 100;
 const STAR_MAX = 10;
 const BEAD_TID = 1000122;
 
+// The bead protocol uses int64 identifiers. Never round them through Number,
+// including the persisted allocation counter and JSON slot references (N1).
+function beadUid(value, allowZero = false) {
+  if ((typeof value === 'number' && !Number.isSafeInteger(value))
+      || !/^[0-9]+$/.test(String(value))) fail(1, 'Invalid bead uid');
+  const uid = BigInt(value);
+  if (uid < (allowZero ? 0n : 1n) || uid > 9223372036854775807n) fail(1, 'Invalid bead uid');
+  return uid.toString();
+}
+
 export function createElvesBeadService({ store, codec, now = () => Date.now() }) {
   function execute(type, input) {
     return store.transaction((model, db) => {
@@ -24,17 +34,17 @@ export function createElvesBeadService({ store, codec, now = () => Date.now() })
       const modules = new Map(model.state.modules.value);
       const data = readModuleData(modules, BEAD_MODULE, null, BEAD_SCHEMA, { max_uid: 0, elves_beads: [] }, codec);
       data.elves_beads ??= [];
-      data.max_uid = numeric(data.max_uid);
+      data.max_uid = beadUid(data.max_uid ?? 0, true);
       const save = () => { writeModuleData(modules, BEAD_MODULE, null, BEAD_SCHEMA, data, codec); model.state.modules.value = [...modules]; };
       const beadOf = uid => {
-        const bead = data.elves_beads.find(entry => numeric(entry.uid) === uid);
+        const bead = data.elves_beads.find(entry => String(entry.uid) === uid);
         if (!bead) fail(5, 'Spirit bead does not exist');
         return bead;
       };
       const command = Number(type);
 
       if (command === ELVES_BEAD_COMMANDS.upLevel) {
-        const uid = integer(input?.bead_uid, 'bead uid', { min: 1 });
+        const uid = beadUid(input?.bead_uid);
         const bead = beadOf(uid);
         const count = integer(input?.up_level ?? 1, 'level count', { min: 1, max: 100 });
         if (numeric(bead.level) + count > LEVEL_MAX) fail(305, 'Spirit bead level limit reached');
@@ -47,17 +57,17 @@ export function createElvesBeadService({ store, codec, now = () => Date.now() })
 
       if (command === ELVES_BEAD_COMMANDS.upStar) {
         const rune = Number(type);
-        const target = beadOf(integer(input?.bead_uid, 'bead uid', { min: 1 }));
+        const target = beadOf(beadUid(input?.bead_uid));
         if (numeric(target.star) >= STAR_MAX) fail(305, 'Spirit bead star limit reached');
         for (const value of input?.use_bead_uid_list ?? []) {
-          const uid = integer(value, 'bead uid', { min: 1 });
-          const index = data.elves_beads.findIndex(entry => numeric(entry.uid) === uid);
+          const uid = beadUid(value);
+          const index = data.elves_beads.findIndex(entry => String(entry.uid) === uid);
           if (index < 0) fail(5, 'Spirit bead does not exist');
           data.elves_beads.splice(index, 1);
         }
         target.star = numeric(target.star) + 1;
         save();
-        const body = { tid: numeric(target.tid), uid: numeric(target.uid), level: numeric(target.level), star: numeric(target.star) };
+        const body = { tid: numeric(target.tid), uid: String(target.uid), level: numeric(target.level), star: numeric(target.star) };
         return { schema: 'pb_elves_bead_back', value: body, data: codec.pack('pb_elves_bead_back', body), valueForLog: { command: rune, uid: target.uid, star: target.star } };
       }
 
@@ -70,10 +80,10 @@ export function createElvesBeadService({ store, codec, now = () => Date.now() })
         if (!requests.length) fail(1, 'Spirit bead slot request is empty');
         for (const request of requests) {
           const index = integer(request.slot?.index, 'slot index', { min: 1 });
-          const uid = numeric(request.slot?.elves_bead_uid);
-          if (uid > 0) beadOf(uid);
+          const uid = beadUid(request.slot?.elves_bead_uid ?? 0, true);
+          if (uid !== '0') beadOf(uid);
           slots.slots = slots.slots.filter(row => !(numeric(row.elves_id) === request.elves_id && numeric(row.index) === index));
-          if (uid > 0) slots.slots.push({ elves_id: request.elves_id, index, uid });
+          if (uid !== '0') slots.slots.push({ elves_id: request.elves_id, index, uid });
         }
         writeState(db, roleId, 'elves_bead_slots', slots, now());
         const body = command === ELVES_BEAD_COMMANDS.wear
@@ -84,8 +94,8 @@ export function createElvesBeadService({ store, codec, now = () => Date.now() })
       }
 
       if (command === ELVES_BEAD_COMMANDS.resolve) {
-        const uid = integer(input, 'bead uid', { min: 1 });
-        const index = data.elves_beads.findIndex(entry => numeric(entry.uid) === uid);
+        const uid = beadUid(input);
+        const index = data.elves_beads.findIndex(entry => String(entry.uid) === uid);
         if (index < 0) fail(5, 'Spirit bead does not exist');
         data.elves_beads.splice(index, 1);
         save();

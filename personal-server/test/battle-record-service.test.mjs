@@ -6,6 +6,8 @@ import { createBattleRecordService } from '../game/battle-record-service.mjs';
 
 const codec = createGameCodec();
 const FIXED_NOW = 1794000000000;
+const FIRST_LONG_ID = '9007199254740992';
+const SECOND_LONG_ID = '9007199254740993';
 
 function setup(t) {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-battle-record-', now: () => FIXED_NOW });
@@ -100,4 +102,44 @@ test('a failed vote insert rolls the whole statement back', t => {
   });
   assert.throws(() => service.execute(212, { pass_tid: 88001, id: 30301, fight_id: 8800130301, type: 1, is_up_vote: true }), /forced vote failure/);
   assert.equal(store.inspect(db => db.prepare('SELECT count(*) AS n FROM battle_pass_votes').get().n), 0);
+});
+
+test('pass records preserve adjacent int64 fight and business IDs through vote and reopen', t => {
+  const env = setup(t);
+  const store = env.fixture.store;
+  otherRole(store, 100099);
+  let service = env.open();
+  service.recordPass({
+    passTid: 99001,
+    businessId: SECOND_LONG_ID,
+    passType: 1,
+    fightId: FIRST_LONG_ID,
+    passScore: SECOND_LONG_ID,
+    show: { level: 12 }
+  });
+  store.inspect(db => db.prepare('INSERT INTO battle_pass_records VALUES (?,?,?,?,?,?,?,?,?,?)').run(
+    100099, 99001, SECOND_LONG_ID, 1, SECOND_LONG_ID, SECOND_LONG_ID, '0', '{}', '{}', new Date(FIXED_NOW).toISOString()
+  ));
+
+  let listed = codec.unpack('pb_pass_record', service.execute(211, { pass_tid: 99001, id: SECOND_LONG_ID }).data);
+  assert.deepEqual(listed.pass_info_list.map(row => [row.fight_id, row.pass_score]), [
+    [FIRST_LONG_ID, SECOND_LONG_ID],
+    [SECOND_LONG_ID, SECOND_LONG_ID]
+  ]);
+
+  const voted = service.execute(212, {
+    pass_tid: 99001,
+    id: SECOND_LONG_ID,
+    fight_id: SECOND_LONG_ID,
+    type: 1,
+    is_up_vote: true
+  });
+  assert.equal(voted.value.duplicate, false);
+
+  service = env.build(env.fixture.open());
+  listed = codec.unpack('pb_pass_record', service.execute(211, { pass_tid: 99001, id: SECOND_LONG_ID }).data);
+  assert.deepEqual(listed.pass_info_list.map(row => [row.fight_id, row.vote_info?.up_vote ?? '0']), [
+    [FIRST_LONG_ID, '0'],
+    [SECOND_LONG_ID, '1']
+  ]);
 });

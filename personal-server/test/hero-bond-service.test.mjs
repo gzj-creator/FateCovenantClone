@@ -286,6 +286,24 @@ test('661 rejects missing heroes, insufficient items and heroes without diff row
   await assert.rejects(call(service, 661, await encodeEtf([DIFF_HERO, DIFF_HERO])), error => error.code === 1);
 });
 
+test('661 decodes and preserves an int64 hero UID above 2^53', async t => {
+  const env = setup(t);
+  const uid = '9007199254740993';
+  const service = env.service();
+  addHero(env, DIFF_HERO, { uid });
+  grant(env, [[DIFF_ITEM, 10]]);
+  const input = await service.decode(661, Buffer.alloc(0), {
+    etf: async () => [uid],
+    unpack: helpers.unpack,
+    singleId: helpers.singleId
+  });
+  assert.equal(input.uid, uid);
+  const result = service.execute(661, input);
+  assert.equal(codec.unpack('pb_hero_diff_back', result.data).new_hero.uid, uid);
+  assert.equal(hero(env, DIFF_HERO).uid, uid);
+  assert.equal(Number(hero(env, DIFF_HERO).diff), 1);
+});
+
 test('661 rolls back the item cost when encoding fails', async t => {
   const env = setup(t);
   addHero(env, DIFF_HERO);

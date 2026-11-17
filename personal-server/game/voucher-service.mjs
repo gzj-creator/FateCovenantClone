@@ -9,6 +9,8 @@ const integer = (value, min, max, message) => {
   if (!Number.isSafeInteger(value) || value < min || value > max) fail(1, message);
   return value;
 };
+const jsonInteger = value => value <= BigInt(Number.MAX_SAFE_INTEGER) && value >= BigInt(Number.MIN_SAFE_INTEGER)
+  ? Number(value) : value.toString();
 // The native client's 16004 request has no coupon count. Its RechargeMgr uses
 // RechargeTable.Param.score_token_rate, so the local item policy and the patched
 // client table both define one voucher as one yuan.
@@ -42,7 +44,7 @@ export function createVoucherService({ store, tables, now = () => Math.floor(Dat
 
   function balance(model = store.read()) {
     const quantity = BigInt(model.resources.get(String(itemTid))?.num ?? 0);
-    return { quantity: Number(quantity), amount_cents: Number(quantity) * faceValueCents };
+    return { quantity: jsonInteger(quantity), amount_cents: jsonInteger(quantity * BigInt(faceValueCents)) };
   }
 
   function autoCount(priceCents) {
@@ -83,14 +85,16 @@ export function createVoucherService({ store, tables, now = () => Math.floor(Dat
     const currentBalance = balance();
     const currentSku = sku();
     return store.inspect(db => {
-      const grants = db.prepare(`SELECT g.*, m.request_id, m.title, m.content, m.send_time, m.expire_at, m.read, m.received, m.deleted
+      const grants = db.prepare(`SELECT CAST(g.mail_id AS TEXT) AS mail_id, g.grant_id, g.role_id, g.sku_id,
+          g.item_tid, g.face_value_cents, g.quantity, g.claimed_at, g.created_at,
+          m.request_id, m.title, m.content, m.send_time, m.expire_at, m.read, m.received, m.deleted
         FROM voucher_grants g JOIN game_mails m ON m.mail_id=g.mail_id ORDER BY m.mail_id DESC`).all();
       const redemptions = db.prepare('SELECT * FROM voucher_redemptions ORDER BY created_at DESC LIMIT 100').all();
       const nowSeconds = now();
       const mails = grants.map(row => {
         const status = row.deleted ? 'deleted' : row.claimed_at ? 'claimed' : row.expire_at > 0 && nowSeconds > row.expire_at ? 'expired' : 'pending';
         return {
-          mail_id: row.mail_id, request_id: row.request_id, title: row.title,
+          mail_id: jsonInteger(BigInt(row.mail_id)), request_id: row.request_id, title: row.title,
           content: row.content,
           quantity: row.quantity, face_value_cents: row.face_value_cents,
           amount_cents: row.quantity * row.face_value_cents, status,
@@ -98,7 +102,10 @@ export function createVoucherService({ store, tables, now = () => Math.floor(Dat
           received: Boolean(row.received), claimed_at: row.claimed_at
         };
       });
-      const sum = (rows, field) => rows.reduce((total, row) => total + row[field], 0);
+      const sum = (rows, field) => jsonInteger(rows.reduce((total, row) => total + BigInt(row[field]), 0n));
+      // The detail view is limited to 100 rows; the cumulative amount is not.
+      let redeemedCents = 0n;
+      for (const row of db.prepare('SELECT amount_cents FROM voucher_redemptions').iterate()) redeemedCents += BigInt(row.amount_cents);
       const pending = mails.filter(row => row.status === 'pending');
       const claimed = mails.filter(row => row.status === 'claimed');
       const expired = mails.filter(row => row.status === 'expired');
@@ -108,7 +115,7 @@ export function createVoucherService({ store, tables, now = () => Math.floor(Dat
           issued_amount_cents: sum(mails, 'amount_cents'),
           claimed_amount_cents: sum(claimed, 'amount_cents'),
           outstanding_amount_cents: sum(pending, 'amount_cents'),
-          redeemed_amount_cents: sum(redemptions, 'amount_cents'),
+          redeemed_amount_cents: jsonInteger(redeemedCents),
           available_amount_cents: currentBalance.amount_cents,
           mail_count: mails.length, pending_count: pending.length, claimed_count: claimed.length,
           expired_count: expired.length

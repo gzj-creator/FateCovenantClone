@@ -1,5 +1,5 @@
 import {
-  ensureStateTable, fail, integer, numeric, readModuleData, readState, resourceChange,
+  ensureStateTable, fail, int64, integer, INT64_MAX, numeric, readModuleData, readState, resourceChange,
   writeModuleData, writeState
 } from './develop-support.mjs';
 import { consumeResources } from './resources.mjs';
@@ -46,6 +46,16 @@ export function createPetService({ store, codec, now = () => Date.now() }) {
       data.cur_rune_node = numeric(data.cur_rune_node);
       const cores = readState(db, roleId, 'pet_equips', { maxUid: 0, items: [] });
       cores.items ??= [];
+      cores.maxUid = int64(cores.maxUid ?? 0, 'maximum core uid');
+      let highestCoreUid = 0n;
+      for (const item of cores.items) {
+        const uid = int64(item.uid, 'core uid', { min: 1n });
+        item.uid = uid;
+        item.tid = int64(item.tid, 'core tid', { min: 1n });
+        const value = BigInt(uid);
+        if (value > highestCoreUid) highestCoreUid = value;
+      }
+      if (BigInt(cores.maxUid) < highestCoreUid) fail(5, 'Pet core uid watermark is behind an existing core');
       const savePets = () => { writeModuleData(modules, PET_MODULE, 0, PET_SCHEMA, data, codec); model.state.modules.value = [...modules]; };
       const saveCores = () => writeState(db, roleId, 'pet_equips', cores, now());
       const command = Number(type);
@@ -97,18 +107,20 @@ export function createPetService({ store, codec, now = () => Date.now() }) {
         if (!Array.isArray(groups) || groups.length === 0) fail(1, 'Pet core combine list is empty');
         const spend = [];
         for (const group of groups) {
-          for (const uid of group?.cost_equips ?? []) spend.push(integer(uid, 'core uid', { min: 1 }));
+          for (const uid of group?.cost_equips ?? []) spend.push(int64(uid, 'core uid', { min: 1n }));
         }
         if (!spend.length) fail(1, 'Pet core combine list is empty');
         const created = [];
         for (const uid of spend) {
-          const index = cores.items.findIndex(item => numeric(item.uid) === uid);
+          const index = cores.items.findIndex(item => String(item.uid) === uid);
           if (index < 0) fail(5, 'Pet core does not exist');
           cores.items.splice(index, 1);
         }
         if (command === PET_COMMANDS.equipCombine) {
-          cores.maxUid = numeric(cores.maxUid) + 1;
-          cores.items.push({ uid: cores.maxUid, tid: 344002, star: 0 });
+          const nextUid = BigInt(cores.maxUid) + 1n;
+          if (nextUid > INT64_MAX) fail(305, 'Pet core uid space exhausted');
+          cores.maxUid = nextUid.toString();
+          cores.items.push({ uid: cores.maxUid, tid: '344002', star: 0 });
           created.push(cores.maxUid);
         }
         saveCores();
@@ -160,13 +172,13 @@ export function createPetService({ store, codec, now = () => Date.now() }) {
       if (command === PET_COMMANDS.equipUp) {
         const tid = integer(input?.pet_tid, 'pet tid', { min: 1 });
         const pet = findPet(data, tid);
-        const upUid = integer(input?.equip_up_uid, 'core uid', { min: 1 });
-        const target = cores.items.find(item => numeric(item.uid) === upUid);
+        const upUid = int64(input?.equip_up_uid, 'core uid', { min: 1n });
+        const target = cores.items.find(item => String(item.uid) === upUid);
         if (!target) fail(5, 'Pet core does not exist');
         if (numeric(target.star) >= CORE_STAR_MAX) fail(305, 'Pet core star limit reached');
         for (const uid of input?.equip_uid_list ?? []) {
-          const spend = integer(uid, 'core uid', { min: 1 });
-          const index = cores.items.findIndex(item => numeric(item.uid) === spend);
+          const spend = int64(uid, 'core uid', { min: 1n });
+          const index = cores.items.findIndex(item => String(item.uid) === spend);
           if (index < 0) fail(5, 'Pet core does not exist');
           cores.items.splice(index, 1);
         }
@@ -213,12 +225,12 @@ export function createPetService({ store, codec, now = () => Date.now() }) {
           pet.equip_items ??= [];
           for (const slot of request?.pet_req_equip ?? []) {
             const index = integer(slot?.index, 'core slot index', { min: 0 });
-            const uid = integer(slot?.equip_uid ?? 0, 'core uid', { min: 0 });
+            const uid = integer(slot?.equip_uid ?? 0, 'core uid', { min: 0, max: 2147483647 });
             pet.equip_items = pet.equip_items.filter(row => numeric(row.index) !== index);
             if (uid > 0) {
-              const core = cores.items.find(item => numeric(item.uid) === uid);
+              const core = cores.items.find(item => String(item.uid) === String(uid));
               if (!core) fail(5, 'Pet core does not exist');
-              pet.equip_items.push({ index, item: { uid, tid: numeric(core.tid) } });
+              pet.equip_items.push({ index, item: { uid: String(uid), tid: String(core.tid) } });
             }
           }
           changed.push(pet);

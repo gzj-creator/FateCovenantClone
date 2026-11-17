@@ -44,6 +44,17 @@ const ITEM_GROUP_HANDLERS = new Map([
 
 let schemaCodec;
 const codecFor = options => options?.codec ?? (schemaCodec ??= createGameCodec());
+const INT32_MAX = 2147483647n;
+const UINT32_MAX = 4294967295n;
+const INT64_MAX = 9223372036854775807n;
+
+// protobufjs coerces out-of-range integers instead of rejecting them. Check
+// the accumulated value before touching a protocol-backed quantity (fix N1).
+function checkedQuantity(current, amount, maximum = INT64_MAX) {
+  const next = BigInt(current ?? 0) + BigInt(amount);
+  if (next < 0n || next > maximum) throw new GameError(1, 'Resource quantity limit reached');
+  return next;
+}
 
 function totalsOf(awards) {
   const totals = new Map();
@@ -269,12 +280,12 @@ function grantRawHero(model, id, amount, tables) {
   model.heroInfo.hero_list ??= [];
   const existing = model.heroInfo.hero_list.find(hero => Number(hero.tid) === id);
   if (existing) {
-    existing.count = Number(existing.count ?? 0) + amount;
+    existing.count = Number(checkedQuantity(existing.count, amount, INT32_MAX));
     return { newNum: String(existing.count), hero: null };
   }
   const config = tables.Hero.get(id);
   const hero = {
-    tid: String(id), count: amount, uid: String(id), level: 1,
+    tid: String(id), count: Number(checkedQuantity(0, amount, INT32_MAX)), uid: String(id), level: 1,
     star: Number(config?.star ?? 0), source: 1, quality: Number(config?.quality ?? 0),
     relic: [], up_star_high_consume: [], source_point_list: [], pendant_select_list: []
   };
@@ -307,7 +318,7 @@ function grantArtifact(modules, id, amount, codec) {
   data.artifact_list ??= [];
   let row = data.artifact_list.find(entry => Number(entry.tid) === id);
   if (!row) { row = { tid: String(id), num: 0 }; data.artifact_list.push(row); }
-  row.num = Number(row.num ?? 0) + amount;
+  row.num = Number(checkedQuantity(row.num, amount, INT32_MAX));
   writeSerialized(modules, 50, 0, 'pb_artifact_info', data, codec);
   return String(row.num);
 }
@@ -317,7 +328,7 @@ function grantSkin(modules, id, amount, codec) {
   data.skin_list ??= [];
   let row = data.skin_list.find(entry => Number(entry.id) === id);
   if (!row) { row = { id: String(id), num: 0 }; data.skin_list.push(row); }
-  row.num = Number(row.num ?? 0) + amount;
+  row.num = Number(checkedQuantity(row.num, amount, INT32_MAX));
   writeSerialized(modules, 65, 0, 'pb_skin_info', data, codec);
   return String(row.num);
 }
@@ -335,10 +346,10 @@ function grantTreasure(modules, id, amount, quality, codec) {
   data.treasure_list ??= [];
   let card = data.treasure_list.find(entry => Number(entry.tid) === id);
   if (!card) {
-    card = { tid: String(id), quality, chip_num: amount };
+    card = { tid: String(id), quality, chip_num: Number(checkedQuantity(0, amount, UINT32_MAX)) };
     data.treasure_list.push(card);
   } else {
-    card.chip_num = Number(card.chip_num ?? 0) + amount;
+    card.chip_num = Number(checkedQuantity(card.chip_num, amount, UINT32_MAX));
   }
   writeSerialized(modules, 534, 0, 'pb_treasure_data', data, codec);
   return { newNum: String(card.chip_num ?? 1), newBin: codec.pack('pb_treasure_card', card) };
@@ -349,7 +360,7 @@ function grantFantasyEquip(modules, id, amount, codec) {
   data.raw_equips ??= [];
   let row = data.raw_equips.find(entry => Number(entry.tid) === id);
   if (!row) { row = { tid: id, num: 0 }; data.raw_equips.push(row); }
-  row.num = Number(row.num ?? 0) + amount;
+  row.num = Number(checkedQuantity(row.num, amount, INT32_MAX));
   writeSerialized(modules, 518, 0, 'pb_fantasy_equip_res', data, codec);
   return String(row.num);
 }
@@ -357,11 +368,13 @@ function grantFantasyEquip(modules, id, amount, codec) {
 function grantElvesBead(modules, id, amount, codec) {
   const data = readSerialized(modules, 539, null, 'pb_elves_bead_data', { max_uid: 0, elves_beads: [] }, codec);
   data.elves_beads ??= [];
-  data.max_uid = Number(data.max_uid ?? 0);
+  let nextUid = BigInt(data.max_uid ?? 0);
+  checkedQuantity(nextUid, amount);
   for (let index = 0; index < amount; index++) {
-    data.max_uid++;
-    data.elves_beads.push({ tid: String(id), uid: String(data.max_uid), level: 1 });
+    nextUid += 1n;
+    data.elves_beads.push({ tid: String(id), uid: nextUid.toString(), level: 1 });
   }
+  data.max_uid = nextUid.toString();
   writeSerialized(modules, 539, null, 'pb_elves_bead_data', data, codec);
   return String(data.elves_beads.filter(entry => Number(entry.tid) === id).length);
 }
@@ -371,7 +384,7 @@ function grantHouseAssistant(modules, id, amount, codec) {
   data.res ??= [];
   let row = data.res.find(entry => Number(entry.tid) === id);
   if (!row) { row = { tid: String(id), num: '0' }; data.res.push(row); }
-  row.num = (BigInt(row.num ?? 0) + BigInt(amount)).toString();
+  row.num = checkedQuantity(row.num, amount).toString();
   writeSerialized(modules, 148, 0, 'pb_house_assistant_info', data, codec);
   return row.num;
 }

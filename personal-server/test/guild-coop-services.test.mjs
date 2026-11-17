@@ -138,6 +138,25 @@ test('GVG, bargain, hunt and auction use authoritative inventory and claims', as
   assert.equal(codec.unpack('guild_auction_get_req', settled.data).guild_auction_info.data_list[0].stage, '2');
 });
 
+test('guild auction keeps large item uid strings exact through wish and bid', async t => {
+  const env = setup(t);
+  const itemUid = '9007199254740993';
+  env.coopTables.auction.items[0].uid = itemUid;
+  const wish = await env.services.auction.execute(107602, codec.pack('pb_guild_auction_wish_req', {
+    auction_id: '1', auction_item_uid: itemUid, do_type: '1'
+  }));
+  assert.deepEqual(codec.unpack('rsp_guild_auction_wish', wish.data).focus_item_uid_list, [itemUid]);
+  const bid = await env.services.auction.execute(107601, codec.pack('req_guild_auction_bid', {
+    auction_id: '1', item_uid: itemUid, spend: '60'
+  }));
+  assert.equal(codec.unpack('rsp_guild_auction_bid', bid.data).item.uid, itemUid);
+
+  env.reopen();
+  const view = await env.services.auction.execute(107603, await encodeEtf([]));
+  const items = codec.unpack('guild_auction_get_req', view.data).guild_auction_info.data_list[0].item_list;
+  assert.equal(items.find(item => item.uid === itemUid).bid_price, '60');
+});
+
 test('expedition, channel and guild nation commands expose real state', async t => {
   const env = setup(t);
   const empty = await encodeEtf([]);

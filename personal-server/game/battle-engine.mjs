@@ -127,7 +127,8 @@ function normalizeUnit(unit, skillDatabase) {
     attack,
     defense,
     speed,
-    critChance: Math.max(0, Math.min(0.75, Number(unit.critChance ?? 0))),
+    critChance: unit.critChance == null ? undefined : Math.max(0, Math.min(1, Number(unit.critChance))),
+    critMultiplier: unit.critMultiplier == null ? undefined : Math.max(1, Number(unit.critMultiplier)),
     hp: maxHp,
     shield: 0,
     energy: initialEnergy,
@@ -205,7 +206,7 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
   const actionType = actionScopedType(state);
   const critChance = effectiveCritChance({
     ...actor,
-    critChance: Math.max(actor.critChance, behavior.critChance),
+    critChance: actor.critChance ?? behavior.critChance,
   }, target, actionType);
   const critical = nextRandom(state) < critChance;
   const ignoreDefense = effectiveIgnoreDefense(actor);

@@ -8,6 +8,7 @@ import {
 } from '../config/arena-tables.mjs';
 import { encodeEtf } from '../protocol/game-codec.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
+import { INT64_MAX, int64 } from './develop-support.mjs';
 
 // HunterArenaCmd.lua (module 121, ModuleTable name HunterArenaReqMgr) declares the
 // eleven commands below in this order; HunterArenaReqMgr wires one Send() per
@@ -54,6 +55,13 @@ function integer(value, min, max, message) {
   if (!Number.isSafeInteger(number) || number < min || number > max) fail(CODE_INVALID, message);
   return number;
 }
+
+const reportIdText = (value, message = 'Hunter arena report lock needs a fight uid') =>
+  int64(value, message, { min: 1n, max: INT64_MAX });
+const reportIdValue = value => {
+  const text = reportIdText(value);
+  return BigInt(text) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(text) : text;
+};
 
 function idList(value, message) {
   const raw = Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
@@ -237,7 +245,9 @@ export function createHunterArenaService({
   }
 
   function reportsOf(db, roleId, limit) {
-    const rows = db.prepare('SELECT * FROM hunter_arena_reports WHERE role_id=? ORDER BY fight_stamp DESC, fight_uid DESC LIMIT ?')
+    const rows = db.prepare(`SELECT score_change, CAST(fight_uid AS TEXT) AS fight_uid, fight_stamp,
+        CAST(enemy_id AS TEXT) AS enemy_id, is_atk, is_win, locked, old_score, new_score
+      FROM hunter_arena_reports WHERE role_id=? ORDER BY fight_stamp DESC, fight_uid DESC LIMIT ?`)
       .all(roleId, limit);
     return rows.map((row) => ({
       score_change: Number(row.score_change),
@@ -470,19 +480,20 @@ export function createHunterArenaService({
   // pb_hunter_arena_set_report_lock.fight_uid: the report is locked so the
   // client cannot hide it. lock_fight_report_max caps the locked reports.
   async function reportLock(input) {
-    const fightUid = integer(input ? input.fight_uid : undefined, 0, Number.MAX_SAFE_INTEGER, 'Hunter arena report lock needs a fight uid');
+    const fightUidText = reportIdText(input ? input.fight_uid : undefined);
+    const fightUid = reportIdValue(fightUidText);
     const lock = input ? input.lock === true : false;
     return store.transaction((model, db) => {
       ensureTables(db);
       const nowMs = now();
       const roleId = model.state.roleId;
-      const row = db.prepare('SELECT locked FROM hunter_arena_reports WHERE role_id=? AND fight_uid=?').get(roleId, fightUid);
+      const row = db.prepare('SELECT locked FROM hunter_arena_reports WHERE role_id=? AND fight_uid=?').get(roleId, fightUidText);
       if (!row) fail(CODE_STATE, 'Hunter arena report is missing');
       if (lock && Number(row.locked) !== 1) {
         const locked = db.prepare('SELECT COUNT(*) AS total FROM hunter_arena_reports WHERE role_id=? AND locked=1').get(roleId);
         if (Number(locked.total ?? 0) >= lockMax) fail(CODE_LIMIT, 'Hunter arena locked report limit is reached');
       }
-      db.prepare('UPDATE hunter_arena_reports SET locked=? WHERE role_id=? AND fight_uid=?').run(lock ? 1 : 0, roleId, fightUid);
+      db.prepare('UPDATE hunter_arena_reports SET locked=? WHERE role_id=? AND fight_uid=?').run(lock ? 1 : 0, roleId, fightUidText);
       log({ event: 'hunter_arena_report_lock_set', fightUid, lock });
       return { value: { fightUid, lock }, data: resPacket([]) };
     });

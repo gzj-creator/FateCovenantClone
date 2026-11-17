@@ -1,24 +1,18 @@
 import { GameError } from './hero-progression.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
+import { int64, uint64 } from './develop-support.mjs';
 
 const LEADER_EQUIP_MODULE_ID = 175;
 const LEADER_EQUIP_WEAR_TYPE = 98401;
 const fail = (code, message) => { throw new GameError(code, message); };
 
 function positiveUid(value) {
-  try {
-    const uid = BigInt(value);
-    if (uid <= 0n) fail(1, 'Invalid leader-equipment uid');
-    return uid.toString();
-  } catch (error) {
-    if (error instanceof GameError) throw error;
-    fail(1, 'Invalid leader-equipment uid');
-  }
+  return int64(value, 'leader-equipment uid', { min: 1n });
 }
 
 function slotType(value) {
   const type = Number(value);
-  if (!Number.isSafeInteger(type) || type < 1) fail(1, 'Invalid leader-equipment slot type');
+  if (!Number.isSafeInteger(type) || type < 1 || type > 2147483647) fail(1, 'Invalid leader-equipment slot type');
   return type;
 }
 
@@ -29,7 +23,7 @@ function readLeaderEquipState(model, codec) {
   const data = codec.unpack('pb_leader_equips_data', rawBinary(module));
   data.slots = Array.isArray(data.slots) ? data.slots : [];
   data.equip_list = Array.isArray(data.equip_list) ? data.equip_list : [];
-  data.max_uid = String(data.max_uid ?? 0);
+  data.max_uid = uint64(data.max_uid ?? 0, 'maximum leader-equipment uid');
   data.draw_info ??= { lv: 1 };
   data.dismiss ??= '';
   return { modules, data };

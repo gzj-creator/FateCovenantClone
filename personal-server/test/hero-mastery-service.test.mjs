@@ -10,12 +10,14 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createHeroMasteryService, heroMasteryView } from '../game/hero-mastery-service.mjs';
+import { assembleHeroAttributes, FIGHT_ATTR } from '../game/attribute-service.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createLocalGame } from '../local-game.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
 const codec = createGameCodec(), heroTables = readHeroTables(), gameTables = readGameTables();
+const SERVER_OPENED_AT = 1792789200;
 const capturePath = new URL('../fixtures/login-modules.seed.json', import.meta.url);
 const capture = JSON.parse(fs.readFileSync(capturePath));
 
@@ -182,12 +184,15 @@ test('gateway routes 659 and 660 over a temporary TCP connection', async t => {
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
     capturePath,
+    serverOpenedAt: SERVER_OPENED_AT,
+    now: () => (SERVER_OPENED_AT + 2 * 86400) * 1000,
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session'
   });
   let socket;
   t.after(async () => { socket?.destroy(); await game.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   stock(game.store);
   setHero(game.store, { star: 10, mastery_level: 0, mastery_break: 0 });
+  const beforeAttributes = assembleHeroAttributes({ hero: hero(game.store), heroTables });
 
   const address = await game.listen(0);
   socket = net.connect(address.port, '127.0.0.1');
@@ -214,7 +219,17 @@ test('gateway routes 659 and 660 over a temporary TCP connection', async t => {
   assert.equal(reply.err ?? 0, 0);
   assert.equal(codec.unpack('pb_hero_mastery_level_up_rsp', Buffer.from(reply.data, 'base64')).hero.mastery_level, 1);
 
-  const rejectedReply = await request(659, 4, await encodeEtf([9876543]));
+  const trained = assembleHeroAttributes({ hero: hero(game.store), heroTables });
+  assert.ok(trained.stats.hp > beforeAttributes.stats.hp);
+  assert.ok(trained.power > beforeAttributes.power);
+  const attrReply = await request(1316, 4, Buffer.from([131, 106]));
+  assert.equal(attrReply.err ?? 0, 0);
+  const info = codec.unpack('pb_attr_lineup_all_info', Buffer.from(attrReply.data, 'base64'));
+  const target = info.lineup_attr.attr_list.find(row => String(row.tid) === String(hero(game.store).uid));
+  assert.ok(target, 'trained hero remains in the authoritative lineup');
+  assert.equal(Number(target.fight_attr_list.find(row => Number(row.key) === FIGHT_ATTR.HP).value), trained.stats.hp);
+
+  const rejectedReply = await request(659, 5, await encodeEtf([9876543]));
   assert.equal(rejectedReply.err?.err, 3001);
   assert.equal(hero(game.store).mastery_level, 1);
 });

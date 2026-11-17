@@ -1,6 +1,6 @@
 import {
   CODE_INVALID, CODE_LIMIT, CODE_INSUFFICIENT, CODE_STATE, fail, integer, isoSeconds,
-  affordable, consume, ensureTrimatchTables, grant
+  affordable, consume, ensureTrimatchTables, grant, int64Id, int64Text
 } from './trimatch-core.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
 import { towerMissionByFightTid } from '../config/trimatch-tables.mjs';
@@ -106,7 +106,9 @@ export function createTriMatchTowerService({
   }
 
   function readState(db, roleId, actId, nowMs) {
-    const row = db.prepare('SELECT * FROM trimatch_tower_state WHERE role_id=? AND act_id=?').get(roleId, actId);
+    const row = db.prepare(`SELECT tower, got_progress_award, stamina, stamina_last_update,
+      CAST(last_settlement_fight_id AS TEXT) AS last_settlement_fight_id
+      FROM trimatch_tower_state WHERE role_id=? AND act_id=?`).get(roleId, actId);
     if (!row) {
       return {
         roleId, actId,
@@ -114,7 +116,7 @@ export function createTriMatchTowerService({
         gotProgressAward: Buffer.alloc(0),
         stamina: initStamina,
         staminaLastUpdate: Math.floor(nowMs / 1000),
-        lastSettlementFightId: 0
+        lastSettlementFightId: '0'
       };
     }
     let bits = Buffer.alloc(0);
@@ -126,7 +128,7 @@ export function createTriMatchTowerService({
       gotProgressAward: bits,
       stamina: Number(row.stamina ?? initStamina),
       staminaLastUpdate: Number(row.stamina_last_update ?? Math.floor(nowMs / 1000)),
-      lastSettlementFightId: Number(row.last_settlement_fight_id ?? 0)
+      lastSettlementFightId: int64Text(row.last_settlement_fight_id ?? '0', 'triple match tower settlement fight id')
     };
   }
 
@@ -250,7 +252,7 @@ export function createTriMatchTowerService({
   function passLineup(model, db, input) {
     const nowMs = now();
     const actId = actIdOf(input?.act_id);
-    const rows = db.prepare('SELECT * FROM trimatch_tower_clear WHERE role_id=? AND act_id=? ORDER BY tower').all(model.state.roleId, actId);
+    const rows = db.prepare('SELECT tower, hero_list_json, power FROM trimatch_tower_clear WHERE role_id=? AND act_id=? ORDER BY tower').all(model.state.roleId, actId);
     const passList = rows.map((row) => {
       let heroes = [];
       try { heroes = JSON.parse(row.hero_list_json); } catch { heroes = []; }
@@ -279,6 +281,8 @@ export function createTriMatchTowerService({
   // Version.del_stamina, matching TriMatchTowerUtil.GetFailDelStamina.
   function settleFight(model, db, { fightUid, fightTid, fightType, result, powers, fighters }) {
     const nowMs = now();
+    const fightUidText = int64Text(fightUid, 'Invalid triple match tower settlement fight id', { min: 1n });
+    const powerText = int64Text(powers ?? 0, 'Invalid triple match tower settlement power');
     const mission = missionByFight.get(Number(fightTid)) ?? towerMissionByFightTid(tables, fightTid);
     if (!mission) return null;
     const actId = resolveActId();
@@ -292,7 +296,7 @@ export function createTriMatchTowerService({
     if (!won) {
       state.stamina = Math.max(0, normalized.stamina - delStamina);
       state.staminaLastUpdate = normalized.lastUpdate;
-      state.lastSettlementFightId = Number(fightUid);
+      state.lastSettlementFightId = fightUidText;
       writeState(db, state, nowMs);
       log({ event: 'trimatch_tower_fight_failed', actId, fightTid: Number(fightTid), stamina: state.stamina });
       return { actId, won: false, stamina: state.stamina };
@@ -308,7 +312,7 @@ export function createTriMatchTowerService({
     }
     state.stamina = normalized.stamina;
     state.staminaLastUpdate = normalized.lastUpdate;
-    state.lastSettlementFightId = Number(fightUid);
+    state.lastSettlementFightId = fightUidText;
     if (target === state.tower + 1) state.tower = target;
     writeState(db, state, nowMs);
     db.prepare(`INSERT INTO trimatch_tower_clear (role_id, act_id, tower, fight_uid, hero_list_json, power, created_at)
@@ -317,9 +321,9 @@ export function createTriMatchTowerService({
         fight_uid=excluded.fight_uid, hero_list_json=excluded.hero_list_json,
         power=excluded.power, created_at=excluded.created_at`)
       .run(
-        model.state.roleId, actId, target, Number(fightUid),
+        model.state.roleId, actId, target, fightUidText,
         JSON.stringify(Array.isArray(fighters) ? fighters : []),
-        Number(powers ?? 0), isoSeconds(nowMs)
+        powerText, isoSeconds(nowMs)
       );
     log({ event: 'trimatch_tower_cleared', actId, tower: target, fightTid: Number(fightTid), fightType: Number(fightType ?? 0) });
     return { actId, won: true, tower: target };
@@ -345,12 +349,14 @@ export function createTriMatchTowerService({
       ensureTrimatchTables(db);
       ensureTowerTables(db);
       const actId = resolveActId();
-      return db.prepare('SELECT * FROM trimatch_tower_state WHERE role_id=? ORDER BY act_id').all(roleId).map((row) => ({
+      return db.prepare(`SELECT act_id, tower, stamina, stamina_last_update,
+        CAST(last_settlement_fight_id AS TEXT) AS last_settlement_fight_id
+        FROM trimatch_tower_state WHERE role_id=? ORDER BY act_id`).all(roleId).map((row) => ({
         act_id: Number(row.act_id),
         tower: Number(row.tower),
         stamina: Number(row.stamina),
         stamina_last_update: Number(row.stamina_last_update),
-        last_settlement_fight_id: Number(row.last_settlement_fight_id),
+        last_settlement_fight_id: int64Id(row.last_settlement_fight_id, 'triple match tower settlement fight id'),
         configured_act_id: actId
       }));
     });

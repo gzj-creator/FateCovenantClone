@@ -162,7 +162,7 @@ export function effectiveCritChance(attacker, defender = null, actionType = null
 
 export function effectiveCritMultiplier(attacker, defender = null) {
   const reduction = defender ? statTotal(defender, STAT_TYPES.CRIT_DAMAGE_REDUCTION) : 0;
-  return Math.max(1, 1.5 + statTotal(attacker, STAT_TYPES.CRIT_DAMAGE) - reduction);
+  return Math.max(1, finiteNumber(attacker?.critMultiplier, 1.5) + statTotal(attacker, STAT_TYPES.CRIT_DAMAGE) - reduction);
 }
 
 export function effectiveDamageBonus(unit, actionType = null) {

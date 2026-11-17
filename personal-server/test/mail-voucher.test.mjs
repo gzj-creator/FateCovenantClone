@@ -117,6 +117,60 @@ test('voucher mail issue is idempotent and appears in login module 93', t => {
   assert.deepEqual(normalMail.award.map(row => [Number(row.tid), Number(row.num)]), [[101500, 10]]);
 });
 
+test('mail IDs above Number.MAX_SAFE_INTEGER remain exact through issue, selection, claim and reopen', t => {
+  const e = setup(t);
+  e.store.inspect(db => {
+    const updated = db.prepare("UPDATE sqlite_sequence SET seq=? WHERE name='game_mails'").run('9007199254740991');
+    if (!updated.changes) db.prepare("INSERT INTO sqlite_sequence(name,seq) VALUES('game_mails',?)").run('9007199254740991');
+  });
+
+  const first = e.mail.issue({
+    account_id: 'local-1', request_id: 'long-mail-1', title: 'long 1', content: 'one',
+    awards: [{ tid: 101500, count: 1 }]
+  });
+  const second = e.mail.issue({
+    account_id: 'local-1', request_id: 'long-mail-2', title: 'long 2', content: 'two',
+    awards: [{ tid: 101500, count: 1 }]
+  });
+  assert.equal(String(first.mail_id), '9007199254740992');
+  assert.equal(String(second.mail_id), '9007199254740993');
+  assert.notEqual(first.mail_id, second.mail_id);
+
+  e.mail.readOneKey([second.mail_id]);
+  let login = codec.unpack('pb_rev_login_mail_info', e.mail.loginPayload()).mail_list;
+  assert.deepEqual(login.map(row => [row.id, Boolean(row.read)]), [
+    ['9007199254740993', true],
+    ['9007199254740992', false]
+  ]);
+
+  const claimed = codec.unpack('pb_rev_award_mail', e.mail.claim(first.mail_id).data);
+  assert.equal(claimed.award[0].id, 101500);
+  e.reopen();
+  login = codec.unpack('pb_rev_login_mail_info', e.mail.loginPayload()).mail_list;
+  assert.deepEqual(login.map(row => [row.id, Boolean(row.read), Boolean(row.received)]), [
+    ['9007199254740993', true, false],
+    ['9007199254740992', true, true]
+  ]);
+
+  const voucherMail = e.mail.issueVoucher(voucherRequest({
+    request_id: 'long-voucher-mail',
+    amount_cents: 600,
+    expire_at: Math.floor(Date.now() / 1000) + 3600
+  }));
+  assert.equal(String(voucherMail.mail_id), '9007199254740994');
+  e.mail.claim(voucherMail.mail_id);
+  let snapshot = e.voucher.snapshot();
+  assert.equal(snapshot.mails.length, 1);
+  assert.equal(String(snapshot.mails[0].mail_id), '9007199254740994');
+  assert.equal(snapshot.mails[0].status, 'claimed');
+
+  e.reopen();
+  snapshot = e.voucher.snapshot();
+  assert.equal(snapshot.mails.length, 1);
+  assert.equal(String(snapshot.mails[0].mail_id), '9007199254740994');
+  assert.equal(snapshot.mails[0].status, 'claimed');
+});
+
 test('claiming a voucher mail grants item 701500 exactly once and syncs grant state', t => {
   const e = setup(t);
   const issued = e.mail.issueVoucher(voucherRequest());

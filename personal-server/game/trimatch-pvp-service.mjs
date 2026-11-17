@@ -1,7 +1,7 @@
 import { encodeEtfIntegerTuple } from '../protocol/game-codec.mjs';
 import {
   CODE_INVALID, CODE_LIMIT, CODE_STATE, fail, integer, isoSeconds,
-  ensureTrimatchTables, grant
+  ensureTrimatchTables, grant, int64Id, int64Text
 } from './trimatch-core.mjs';
 
 // Triple match PVP activity (BATTLE-TRIMATCHPVP, 121001-121004).
@@ -128,14 +128,17 @@ export function createTriMatchPvpService({
   }
 
   function readState(db, roleId, actId, nowMs) {
-    const row = db.prepare('SELECT * FROM trimatch_pvp_state WHERE role_id=? AND act_id=?').get(roleId, actId);
+    const row = db.prepare(`SELECT score, max_score, daily_success_times, daily_match_times, daily_give_up,
+      give_up_num, success_streak_times, match_times, day_key, last_update_time,
+      CAST(last_settlement_fight_id AS TEXT) AS last_settlement_fight_id
+      FROM trimatch_pvp_state WHERE role_id=? AND act_id=?`).get(roleId, actId);
     const today = dayKey(nowMs);
     if (!row) {
       return {
         roleId, actId, score: initScore, maxScore: initScore,
         dailySuccessTimes: 0, dailyMatchTimes: 0, dailyGiveUp: 0,
         giveUpNum: 0, successStreakTimes: 0, matchTimes: 0,
-        dayKey: today, lastUpdateTime: Math.floor(nowMs / 1000), lastSettlementFightId: 0
+        dayKey: today, lastUpdateTime: Math.floor(nowMs / 1000), lastSettlementFightId: '0'
       };
     }
     // Daily counters reset when the stored day differs from the current day; the
@@ -154,7 +157,7 @@ export function createTriMatchPvpService({
       matchTimes: Number(row.match_times ?? 0),
       dayKey: today,
       lastUpdateTime: Number(row.last_update_time ?? Math.floor(nowMs / 1000)),
-      lastSettlementFightId: Number(row.last_settlement_fight_id ?? 0)
+      lastSettlementFightId: int64Text(row.last_settlement_fight_id ?? '0', 'triple match pvp settlement fight id')
     };
   }
 
@@ -194,7 +197,11 @@ export function createTriMatchPvpService({
   }
 
   function reports(db, roleId, actId) {
-    return db.prepare('SELECT * FROM trimatch_pvp_report WHERE role_id=? AND act_id=? ORDER BY time DESC, fight_uid DESC LIMIT ?')
+    return db.prepare(`SELECT CAST(fight_uid AS TEXT) AS fight_uid, time, atk_role_id, def_role_id, result,
+      CAST(atk_score_change AS TEXT) AS atk_score_change, CAST(def_score_change AS TEXT) AS def_score_change,
+      CAST(atk_power AS TEXT) AS atk_power, CAST(def_power AS TEXT) AS def_power, is_robot,
+      CAST(fight_tid AS TEXT) AS fight_tid
+      FROM trimatch_pvp_report WHERE role_id=? AND act_id=? ORDER BY time DESC, fight_uid DESC LIMIT ?`)
       .all(roleId, actId, reportMax)
       .map(row => ({
         fight_uid: String(row.fight_uid),
@@ -380,6 +387,8 @@ export function createTriMatchPvpService({
     const state = readState(db, model.state.roleId, actId, nowMs);
     const result = Number(payload?.result ?? 0);
     const scoreChange = Number(payload?.atkScoreChange ?? 0);
+    const fightUid = int64Text(payload?.fightUid, 'Invalid triple match pvp fight id', { min: 1n });
+    const fightTid = int64Text(payload?.fightTid, 'Invalid triple match pvp fight tid', { min: 1n });
     state.score += scoreChange;
     if (state.score > state.maxScore) state.maxScore = state.score;
     state.matchTimes += 1;
@@ -390,7 +399,7 @@ export function createTriMatchPvpService({
     } else {
       state.successStreakTimes = 0;
     }
-    state.lastSettlementFightId = Number(payload?.fightUid ?? 0);
+    state.lastSettlementFightId = fightUid;
     state.lastUpdateTime = Math.floor(nowMs / 1000);
     writeState(db, state, nowMs);
     db.prepare(`INSERT INTO trimatch_pvp_report
@@ -399,12 +408,12 @@ export function createTriMatchPvpService({
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       ON CONFLICT(role_id, act_id, fight_uid) DO NOTHING`)
       .run(
-        model.state.roleId, actId, Number(payload?.fightUid ?? 0), Number(payload?.fightTid ?? 0),
+        model.state.roleId, actId, fightUid, fightTid,
         Math.floor(nowMs / 1000), Number(payload?.atkRoleId ?? model.state.roleId), Number(payload?.defRoleId ?? 0),
         result, scoreChange, Number(payload?.defScoreChange ?? 0), Number(payload?.atkPower ?? 0),
         Number(payload?.defPower ?? 0), payload?.isRobot ? 1 : 0, isoSeconds(nowMs)
       );
-    log({ event: 'trimatch_pvp_fight_recorded', actId, fightUid: Number(payload?.fightUid ?? 0), result, score: state.score });
+    log({ event: 'trimatch_pvp_fight_recorded', actId, fightUid, result, score: state.score });
     return { actId, score: state.score, maxScore: state.maxScore };
   }
 
@@ -412,7 +421,10 @@ export function createTriMatchPvpService({
     return store.inspect(db => {
       ensureTrimatchTables(db);
       ensurePvpTables(db);
-      return db.prepare('SELECT * FROM trimatch_pvp_state WHERE role_id=? ORDER BY act_id').all(roleId).map(row => ({
+      return db.prepare(`SELECT act_id, score, max_score, daily_success_times, daily_match_times, daily_give_up,
+        give_up_num, success_streak_times, match_times, day_key,
+        CAST(last_settlement_fight_id AS TEXT) AS last_settlement_fight_id
+        FROM trimatch_pvp_state WHERE role_id=? ORDER BY act_id`).all(roleId).map(row => ({
         act_id: Number(row.act_id),
         score: Number(row.score),
         max_score: Number(row.max_score),
@@ -422,7 +434,8 @@ export function createTriMatchPvpService({
         give_up_num: Number(row.give_up_num),
         success_streak_times: Number(row.success_streak_times),
         match_times: Number(row.match_times),
-        day_key: row.day_key
+        day_key: row.day_key,
+        last_settlement_fight_id: int64Id(row.last_settlement_fight_id, 'triple match pvp settlement fight id')
       }));
     });
   }

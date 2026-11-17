@@ -80,13 +80,10 @@ export function createItemBoxService({ store, codec, tables, heroTables = null, 
   }
 
   function reviveValue(value) {
-    if (!value || !Array.isArray(value.changes)) return value;
-    return {
-      ...value,
-      changes: value.changes.map(change => (change && change.new_bin)
-        ? { ...change, new_bin: Buffer.isBuffer(change.new_bin) ? change.new_bin : Buffer.from(change.new_bin?.data ?? []) }
-        : change)
-    };
+    if (Array.isArray(value)) return value.map(reviveValue);
+    if (!value || typeof value !== 'object' || Buffer.isBuffer(value)) return value;
+    if (value.type === 'Buffer' && Array.isArray(value.data)) return Buffer.from(value.data);
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, reviveValue(entry)]));
   }
 
   function commit(scope, descriptor, action) {

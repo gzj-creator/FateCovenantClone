@@ -52,17 +52,18 @@ function setup(t) {
   };
 }
 
-function addHero(env, tid, { star = 5, level = 20 } = {}) {
+function addHero(env, tid, { star = 5, level = 20, uid = tid } = {}) {
   env.store.transaction(model => {
     const existing = model.heroInfo.hero_list.find(hero => Number(hero.tid) === tid);
     if (existing) {
+      existing.uid = String(uid);
       existing.star = star;
       existing.level = level;
       return;
     }
     const config = heroTables.Hero.get(tid);
     model.heroInfo.hero_list.push({
-      tid: String(tid), uid: String(tid), count: 1, level, star,
+      tid: String(tid), uid: String(uid), count: 1, level, star,
       star_progress: 0, breakthrough_level: 0, quality: Number(config.quality ?? 0),
       relic: [], up_star_high_consume: [], source_point_list: [], pendant_select_list: []
     });
@@ -124,6 +125,27 @@ test('628 takes the hero off the listing once and reports it in take_off_list', 
   assert.equal(off.rent_out_one.take_off_list.length, 1);
   assert.equal(String(off.rent_out_one.take_off_list[0].uid), String(RENT_HERO));
   assert.throws(() => service.execute(628, {}), error => error.code === 5);
+});
+
+test('627 and 628 preserve adjacent hero UIDs above 2^53 through reopen', async t => {
+  const env = setup(t);
+  const firstUid = '9007199254740992';
+  const secondUid = '9007199254740993';
+  addHero(env, RENT_HERO, { uid: firstUid });
+  addHero(env, OTHER_HERO, { uid: secondUid });
+  const listed = codec.unpack('pb_req_rent_out_back', env.service().execute(627, {
+    rent_tid: RENT_TID,
+    hero_uid_list: [firstUid, secondUid],
+    hero_index_list: [1, 2]
+  }).data);
+  assert.deepEqual(listed.rent_out_one.rent_out_hero_list.map(row => row.hero_uid), [firstUid, secondUid]);
+
+  env.reopen();
+  const service = env.service();
+  const flushed = codec.unpack('pb_rent_flush_ret', service.execute(631, {}).data);
+  assert.deepEqual(flushed.rent_out_one.rent_out_hero_list.map(row => row.hero_uid), [firstUid, secondUid]);
+  const off = codec.unpack('pb_req_rent_out_back', service.execute(628, {}).data);
+  assert.deepEqual(off.rent_out_one.take_off_list.map(row => row.uid), [firstUid, secondUid]);
 });
 
 test('629 refuses a cross-role rent-in and clears the local list on an explicit clear', async t => {

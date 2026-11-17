@@ -275,6 +275,44 @@ test('triple match presets stop at the configured maximum and UID allocation sur
   assert.equal(next.value.uid, 21);
 });
 
+test('triple match preset int64 allocation stays exact above Number.MAX_SAFE_INTEGER and exhausts atomically', async t => {
+  const env = setup(t);
+  env.login();
+  const roleId = env.store.state().roleId;
+  const first = '9007199254740992';
+  env.store.inspect(db => db.prepare('UPDATE trimatch_ident SET next_lineup_uid=? WHERE role_id=?').run(first, roleId));
+
+  const one = await env.execute(114001, { lineup: { team_list: [teamOf()] } });
+  assert.equal(String(one.value.uid), first);
+  assert.equal(unpackResponse(114001, one).change_lineup.uid, first);
+
+  const two = await env.execute(114001, { lineup: { team_list: [teamOf()] } });
+  assert.equal(String(two.value.uid), '9007199254740993');
+  assert.equal(unpackResponse(114001, two).change_lineup.uid, '9007199254740993');
+
+  env.reopen();
+  const three = await env.execute(114001, { lineup: { team_list: [teamOf()] } });
+  assert.equal(String(three.value.uid), '9007199254740994');
+  assert.deepEqual(
+    env.store.inspect(db => db.prepare('SELECT CAST(uid AS TEXT) AS uid FROM trimatch_lineup WHERE role_id=? ORDER BY uid').all(roleId).map(row => row.uid)),
+    [first, '9007199254740993', '9007199254740994']
+  );
+
+  env.store.inspect(db => db.prepare('UPDATE trimatch_ident SET next_lineup_uid=? WHERE role_id=?').run('9223372036854775807', roleId));
+  const before = env.store.inspect(db => ({
+    count: db.prepare('SELECT COUNT(*) AS total FROM trimatch_lineup WHERE role_id=?').get(roleId).total,
+    next: db.prepare('SELECT CAST(next_lineup_uid AS TEXT) AS uid FROM trimatch_ident WHERE role_id=?').get(roleId).uid
+  }));
+  await assert.rejects(
+    () => env.execute(114001, { lineup: { team_list: [teamOf()] } }),
+    error => error instanceof GameError && error.code === 305
+  );
+  assert.deepEqual(env.store.inspect(db => ({
+    count: db.prepare('SELECT COUNT(*) AS total FROM trimatch_lineup WHERE role_id=?').get(roleId).total,
+    next: db.prepare('SELECT CAST(next_lineup_uid AS TEXT) AS uid FROM trimatch_ident WHERE role_id=?').get(roleId).uid
+  })), before);
+});
+
 function moduleBytes(entry) {
   assert.ok(entry, 'login module is missing');
   const value = entry.value ?? entry;

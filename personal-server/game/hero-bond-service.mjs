@@ -2,6 +2,7 @@ import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources } from './resources.mjs';
 import { readHeroBondTables } from '../config/hero-bond-tables.mjs';
+import { int64 } from './develop-support.mjs';
 
 // HeroCmd 602 (req_choose_hero_school), 654 (req_active_fetter), 661
 // (req_hero_diff) and 672 (req_hero_select_pendant). The shared dispatch in
@@ -46,9 +47,7 @@ function positiveId(value, field) {
 }
 
 function heroUidValue(value) {
-  const uid = Number(value ?? 0);
-  if (!Number.isSafeInteger(uid) || uid <= 0) fail(CODE_INVALID, 'Invalid hero uid');
-  return uid;
+  return int64(value, 'hero uid', { min: 1n });
 }
 
 function ensureTables(db) {
@@ -87,7 +86,7 @@ export function createHeroBondService({ store, codec, tables, heroTables, bondTa
   }
 
   function heroByUid(model, uid) {
-    const hero = (model.heroInfo.hero_list ?? []).find(entry => Number(entry.uid) === uid);
+    const hero = (model.heroInfo.hero_list ?? []).find(entry => String(entry.uid) === uid);
     if (!hero) fail(CODE_CONTENT, 'Hero does not exist');
     return hero;
   }
@@ -298,6 +297,21 @@ export function createHeroBondService({ store, codec, tables, heroTables, bondTa
     return value;
   }
 
+  async function singleHeroUid(helpers, raw, message) {
+    let decoded;
+    try {
+      decoded = await helpers.etf(raw);
+    } catch {
+      fail(CODE_INVALID, message);
+    }
+    const candidate = Array.isArray(decoded) ? (decoded.length === 1 ? decoded[0] : undefined) : decoded;
+    try {
+      return heroUidValue(candidate);
+    } catch {
+      fail(CODE_INVALID, message);
+    }
+  }
+
   return {
     supports: type => SUPPORTED.includes(Number(type)),
     async decode(type, raw, helpers) {
@@ -307,7 +321,7 @@ export function createHeroBondService({ store, codec, tables, heroTables, bondTa
         case COMMAND_ACTIVE_FETTER:
           return helpers.unpack('pb_active_fetter_req', raw);
         case COMMAND_HERO_DIFF:
-          return { uid: await singleValue(helpers, raw, 'Invalid hero diff hero id') };
+          return { uid: await singleHeroUid(helpers, raw, 'Invalid hero diff hero id') };
         case COMMAND_SELECT_PENDANT: {
           const request = helpers.unpack('pb_hero_select_pendant_req', raw);
           return { hero_uid: request.hero_uid, pendants: request.pendants ?? [] };

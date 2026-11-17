@@ -8,10 +8,31 @@ import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 // row in develop_module_state, the same containment bonus-draw uses.
 export const fail = (code, message) => { throw new GameError(code, message); };
 
+export const INT64_MAX = 9223372036854775807n;
+export const UINT64_MAX = 18446744073709551615n;
+
 export function integer(value, field, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
   const number = Number(value);
   if (!Number.isSafeInteger(number) || number < min || number > max) fail(1, 'Invalid ' + field);
   return number;
+}
+
+export function unsignedBigInt(value, field, { min = 0n, max = UINT64_MAX } = {}) {
+  if ((typeof value === 'number' && !Number.isSafeInteger(value))
+      || value == null || !/^[0-9]+$/.test(String(value))) {
+    fail(1, 'Invalid ' + field);
+  }
+  const parsed = BigInt(value);
+  if (parsed < min || parsed > max) fail(1, 'Invalid ' + field);
+  return parsed;
+}
+
+export function int64(value, field, { min = 0n, max = INT64_MAX } = {}) {
+  return unsignedBigInt(value, field, { min, max }).toString();
+}
+
+export function uint64(value, field, { min = 0n, max = UINT64_MAX } = {}) {
+  return unsignedBigInt(value, field, { min, max }).toString();
 }
 
 export function positiveId(value, field = 'id') {

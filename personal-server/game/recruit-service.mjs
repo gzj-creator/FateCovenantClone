@@ -13,6 +13,7 @@ import {
   pickQuality
 } from './recruit-pool-rules.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
+import { INT64_MAX } from './develop-support.mjs';
 
 const fail = (code, message) => { throw new GameError(code, message); };
 const integer = (value, min, max, message = 'Invalid recruitment value') => {
@@ -792,6 +793,7 @@ export function createRecruitService({
         ? candidates[0]
         : pickRandom(candidates.map(item => ({ ...item, weight: 1 })), random);
       if (guaranteed) guaranteeCount = 0;
+      if (nextUid >= INT64_MAX) fail(305, 'Leader-equipment uid space exhausted');
       nextUid += 1n;
       const equip = {
         tid: String(configItem.tid),

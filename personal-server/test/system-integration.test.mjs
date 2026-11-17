@@ -58,7 +58,8 @@ function heroSlots(modules) {
 
 function assertScrolls(modules) {
   const guild = codec.unpack('pb_res_guild_login', moduleBytes(modules, 24));
-  assert.ok(Array.isArray(guild.guild?.member_list) && guild.guild.member_list.length > 0);
+  assert.equal(String(guild.guildId ?? 0), '0');
+  assert.equal((guild.guild?.member_list ?? []).length, 0, 'an unjoined role must not receive fabricated members');
 
   const cabin = codec.unpack('pb_campsite_data', moduleBytes(modules, 114));
   assert.ok(Array.isArray(cabin.groups_data));

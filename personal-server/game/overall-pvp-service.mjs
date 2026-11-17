@@ -2,6 +2,7 @@ import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { hasBit, setBit } from './bit-block.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
+import { int64 } from './develop-support.mjs';
 
 import {
   elmsQualification,
@@ -201,6 +202,15 @@ function integer(value, min, max, message) {
   if (!Number.isSafeInteger(number) || number < min || number > max) invalid(message);
   return number;
 }
+
+const reportIdText = (value, message = 'Invalid overall PVP fight id') => int64(value, message, { min: 1n });
+const reportIdValue = value => {
+  const text = reportIdText(value);
+  return BigInt(text) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(text) : text;
+};
+const REPORT_COLUMNS = `stage, CAST(fight_uid AS TEXT) AS fight_uid, CAST(fight_time AS TEXT) AS fight_time,
+  CAST(atk_role_id AS TEXT) AS atk_role_id, CAST(def_role_id AS TEXT) AS def_role_id, final_result,
+  atk_before, atk_after, def_before, def_after, def_is_bot, other_data`;
 
 function iso(seconds) {
   return new Date(Math.floor(Number(seconds)) * 1000).toISOString();
@@ -1023,7 +1033,8 @@ export function createOverallPvpService({
     const cycle = cycleAt(nowSeconds());
     return store.inspect(db => {
       const limit = Number(elmsConstant?.role_report_num ?? 0) || 30;
-      const rows = db.prepare('SELECT * FROM overall_pvp_reports WHERE atk_role_id=? OR def_role_id=? ORDER BY fight_time DESC LIMIT ?')
+      const rows = db.prepare(`SELECT ${REPORT_COLUMNS} FROM overall_pvp_reports
+        WHERE atk_role_id=? OR def_role_id=? ORDER BY fight_time DESC LIMIT ?`)
         .all(String(roleId), String(roleId), limit);
       return reportObject(cycle, rows);
     });
@@ -1034,7 +1045,8 @@ export function createOverallPvpService({
     const cycle = cycleAt(nowSeconds());
     return store.inspect(db => {
       const limit = Number(elmsConstant?.peak_report_num ?? 0) || 30;
-      const rows = db.prepare('SELECT * FROM overall_pvp_reports ORDER BY fight_time DESC LIMIT ?').all(limit);
+      const rows = db.prepare(`SELECT ${REPORT_COLUMNS} FROM overall_pvp_reports
+        ORDER BY fight_time DESC LIMIT ?`).all(limit);
       return reportObject(cycle, rows);
     });
   }
@@ -1044,7 +1056,8 @@ export function createOverallPvpService({
   function scrollList() {
     return store.inspect(db => {
       const limit = Number(elmsConstant?.peak_show ?? 0) || 10;
-      const rows = db.prepare('SELECT * FROM overall_pvp_reports ORDER BY fight_time DESC LIMIT ?').all(limit);
+      const rows = db.prepare(`SELECT ${REPORT_COLUMNS} FROM overall_pvp_reports
+        ORDER BY fight_time DESC LIMIT ?`).all(limit);
       const value = {
         scroll_list: rows.map(row => {
           const atk = String(row.atk_role_id), def = String(row.def_role_id);
@@ -1246,15 +1259,15 @@ export function createOverallPvpService({
   // while no row exists, which is the honest state for a single local server.
   function recordReport(entry) {
     const at = Number.isSafeInteger(Number(entry?.fightTime)) ? Number(entry.fightTime) : nowSeconds();
-    const fightUid = Number(entry?.fightUid);
-    if (!Number.isSafeInteger(fightUid) || fightUid <= 0) invalid('Invalid overall PVP fight id');
+    const fightUidText = reportIdText(entry?.fightUid);
+    const fightUid = reportIdValue(fightUidText);
     const stage = integer(entry?.stage ?? 0, 0, 100, 'Invalid overall PVP report stage');
     return store.transaction((model, db) => {
       db.prepare(`INSERT INTO overall_pvp_reports(role_id,stage,fight_uid,fight_time,atk_role_id,def_role_id,final_result,
           atk_before,atk_after,def_before,def_after,def_is_bot,other_data,created_at)
         VALUES(0,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(role_id,fight_uid) DO NOTHING`)
-        .run(stage, fightUid, at, String(entry.atkRoleId ?? ''), String(entry.defRoleId ?? ''),
+        .run(stage, fightUidText, at, String(entry.atkRoleId ?? ''), String(entry.defRoleId ?? ''),
           Number(entry.result ?? 0) === 1 ? 1 : 0, Number(entry.atkBefore ?? 0), Number(entry.atkAfter ?? 0),
           Number(entry.defBefore ?? 0), Number(entry.defAfter ?? 0), entry.defIsBot ? 1 : 0,
           Buffer.from(entry.otherData ?? []), iso(at));

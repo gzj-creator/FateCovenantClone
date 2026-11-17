@@ -164,6 +164,8 @@ test('a repeated request scope replays the stored response and rejects a differe
   env.reopen();
   const afterReopen = env.service.composeChip({ tid: 21300104, num: 1 }, context);
   assert.equal(afterReopen.duplicate, true);
+  assert.deepEqual(afterReopen.value, first.value);
+  assert.deepEqual(afterReopen.data, first.data);
   assert.equal(env.store.read().resources.get('21300104').num, '120');
   assert.equal(env.service.composeCount(21300104), 1);
 });

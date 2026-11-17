@@ -25,19 +25,40 @@ function positiveInteger(value, label, { allowZero = false } = {}) {
   return number;
 }
 
+// SQLite INTEGER is signed 64-bit. The wire fields include int64/uint64, but
+// the current table cannot persist the upper half of uint64 without changing
+// its storage class, so reject that range until a schema migration exists.
+const MAX_PERSISTED_UNSIGNED = 9223372036854775807n;
+
+function persistedIntegerText(value, label, { allowZero = false } = {}) {
+  let text;
+  if (typeof value === 'bigint') text = value.toString();
+  else if (typeof value === 'number') {
+    if (!Number.isSafeInteger(value)) throw new GameError(1, 'Invalid ' + label);
+    text = String(value);
+  } else text = String(value ?? '').trim();
+  if (!/^[0-9]+$/.test(text)) throw new GameError(1, 'Invalid ' + label);
+  const integer = BigInt(text);
+  if (integer > MAX_PERSISTED_UNSIGNED || (!allowZero && integer === 0n)) {
+    throw new GameError(1, 'Invalid ' + label);
+  }
+  return integer.toString();
+}
+
 export function createBattleRecordService({ store, codec, logger = () => {}, now = Date.now }) {
   const log = event => { try { logger(event); } catch {} };
 
   // Called from the 207 settlement path with the committed journey result.
   function recordPass({ passTid, businessId, passType, fightId, passScore = 0, subPassScore = 0, lineup = {}, show = {} }) {
     const passTidValue = positiveInteger(passTid, 'pass record tid');
-    const businessValue = Number(businessId);
-    if (!Number.isSafeInteger(businessValue) || businessValue < 0) throw new GameError(1, 'Invalid pass record business id');
-    const fightValue = positiveInteger(fightId, 'pass record fight id');
+    const businessValue = persistedIntegerText(businessId, 'pass record business id', { allowZero: true });
+    const fightValue = persistedIntegerText(fightId, 'pass record fight id');
+    const passScoreValue = persistedIntegerText(passScore, 'pass record score', { allowZero: true });
+    const subPassScoreValue = persistedIntegerText(subPassScore, 'pass record sub score', { allowZero: true });
     return store.transaction((model, db) => {
       db.prepare('INSERT OR IGNORE INTO battle_pass_records VALUES (?,?,?,?,?,?,?,?,?,?)').run(
         model.state.roleId, passTidValue, businessValue, Number(passType ?? 0), fightValue,
-        Number(passScore ?? 0), Number(subPassScore ?? 0),
+        passScoreValue, subPassScoreValue,
         JSON.stringify(lineup ?? {}), JSON.stringify(show ?? {}), new Date(now()).toISOString()
       );
       return { passTid: passTidValue, businessId: businessValue, fightId: fightValue };
@@ -46,23 +67,31 @@ export function createBattleRecordService({ store, codec, logger = () => {}, now
 
   function votesFor(db, passTid, businessId) {
     const rows = db.prepare(
-      'SELECT fight_id, SUM(up_vote) AS up_vote, SUM(1 - up_vote) AS down_vote FROM battle_pass_votes WHERE pass_tid=? AND business_id=? GROUP BY fight_id'
+      `SELECT CAST(fight_id AS TEXT) AS fight_id,
+        CAST(SUM(up_vote) AS TEXT) AS up_vote,
+        CAST(SUM(1 - up_vote) AS TEXT) AS down_vote
+      FROM battle_pass_votes WHERE pass_tid=? AND business_id=? GROUP BY fight_id`
     ).all(passTid, businessId);
-    return new Map(rows.map(row => [Number(row.fight_id), {
-      up_vote: String(Number(row.up_vote ?? 0)), down_vote: String(Number(row.down_vote ?? 0))
+    return new Map(rows.map(row => [String(row.fight_id), {
+      up_vote: String(row.up_vote ?? 0), down_vote: String(row.down_vote ?? 0)
     }]));
   }
 
   function passRecord(request) {
     const passTid = positiveInteger(request?.pass_tid, 'pass record tid', { allowZero: true });
-    const businessId = Number(request?.id ?? 0);
-    if (!Number.isSafeInteger(businessId) || businessId < 0) throw new GameError(1, 'Invalid pass record business id');
+    const businessId = persistedIntegerText(request?.id ?? 0, 'pass record business id', { allowZero: true });
     const rows = store.inspect(db => {
       const records = db.prepare(
-        'SELECT * FROM battle_pass_records WHERE pass_tid=? AND business_id=? ORDER BY pass_score, fight_id'
+        `SELECT pass_type,
+          CAST(fight_id AS TEXT) AS fight_id,
+          CAST(role_id AS TEXT) AS role_id,
+          CAST(pass_score AS TEXT) AS pass_score,
+          CAST(sub_pass_score AS TEXT) AS sub_pass_score,
+          show_json
+        FROM battle_pass_records WHERE pass_tid=? AND business_id=? ORDER BY pass_score, fight_id`
       ).all(passTid, businessId);
       const votes = votesFor(db, passTid, businessId);
-      return records.map(row => ({ row, vote: votes.get(Number(row.fight_id)) ?? null }));
+      return records.map(row => ({ row, vote: votes.get(String(row.fight_id)) ?? null }));
     });
     const value = {
       pass_info_list: rows.map(({ row, vote }) => ({
@@ -81,16 +110,15 @@ export function createBattleRecordService({ store, codec, logger = () => {}, now
 
   function vote(request) {
     const passTid = positiveInteger(request?.pass_tid, 'pass record tid', { allowZero: true });
-    const businessId = Number(request?.id ?? 0);
-    if (!Number.isSafeInteger(businessId) || businessId < 0) throw new GameError(1, 'Invalid pass record business id');
-    const fightId = Number(request?.fight_id ?? 0);
-    if (!Number.isSafeInteger(fightId) || fightId < 0) throw new GameError(1, 'Invalid pass record fight id');
+    const businessId = persistedIntegerText(request?.id ?? 0, 'pass record business id', { allowZero: true });
+    const fightId = persistedIntegerText(request?.fight_id ?? 0, 'pass record fight id', { allowZero: true });
     // pb_pass_record_vote_req.is_up_vote is the only vote direction flag; the
     // request must name one of the two directions explicitly.
     if (typeof request?.is_up_vote !== 'boolean') throw new GameError(1, 'Invalid pass record vote direction');
     const up = request.is_up_vote;
     return store.transaction((model, db) => {
-      const record = db.prepare('SELECT role_id FROM battle_pass_records WHERE pass_tid=? AND business_id=? AND fight_id=?')
+      const record = db.prepare(`SELECT CAST(role_id AS TEXT) AS role_id
+        FROM battle_pass_records WHERE pass_tid=? AND business_id=? AND fight_id=?`)
         .get(passTid, businessId, fightId);
       if (!record) throw new GameError(5, 'Pass record is missing');
       // The shipped client never votes on its own record. Self-vote and daily
@@ -113,8 +141,7 @@ export function createBattleRecordService({ store, codec, logger = () => {}, now
   // command has no c2s_back schema, so an empty body with code 0 is the
   // protocol's success signal for this request.
   function shareReport(request) {
-    const fightId = Number(request?.fight_id ?? 0);
-    if (!Number.isSafeInteger(fightId) || fightId <= 0) throw new GameError(1, 'Invalid share report fight id');
+    const fightId = persistedIntegerText(request?.fight_id, 'share report fight id');
     const fightType = Number(request?.fight_type ?? 0);
     if (!Number.isSafeInteger(fightType) || fightType <= 0) throw new GameError(1, 'Invalid share report fight type');
     log({ event: 'battle_report_shared', fightId, fightType });

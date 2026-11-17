@@ -41,6 +41,33 @@ function open(now = () => START) {
   return { directory, databasePath, store, service };
 }
 
+function readExplorationState(store, module, actId) {
+  return JSON.parse(store.transaction((model, db) => db.prepare(
+    'SELECT payload FROM exploration_act_state WHERE role_id=? AND module=? AND act_id=?'
+  ).get(model.state.roleId, module, actId).payload));
+}
+
+function setExplorationState(store, module, actId, value) {
+  store.transaction((model, db) => {
+    const stamp = new Date(START).toISOString();
+    db.prepare(`INSERT INTO exploration_act_state
+      (role_id, module, act_id, payload, created_at, updated_at)
+      VALUES (?,?,?,?,?,?) ON CONFLICT(role_id,module,act_id) DO UPDATE SET
+      payload=excluded.payload, updated_at=excluded.updated_at`)
+      .run(model.state.roleId, module, actId, JSON.stringify(value), stamp, stamp);
+  });
+}
+
+function puzzleGift(uid, finished = false) {
+  return {
+    gift_role_id: 100001,
+    gift_time: Math.floor(START / 1000),
+    piece_tid: 10101,
+    gift_uid: uid,
+    is_finish: finished
+  };
+}
+
 test('G1 registry covers every declared exploration command', () => {
   const { directory, service, store } = open();
   try {
@@ -139,6 +166,74 @@ test('HomePuzzle request, duplicate refusal and gift requirement', async () => {
     })), err => err instanceof GameError && err.code === 301);
     const cancel = await service.execute(11420, codec.pack('pb_home_puzzle_cancel_request_req', { activity_id: 1, piece_tid: 10101 }));
     assert.equal(codec.unpack('pb_home_puzzle_cancel_request_rsp', cancel.data).act_data.my_requests.length, 0);
+  } finally {
+    store.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('HomePuzzle gift counter preserves int64 values above Number.MAX_SAFE_INTEGER', async () => {
+  const { directory, service, store } = open();
+  try {
+    const previous = '9007199254740992';
+    setExplorationState(store, 'home_puzzle', 1, {
+      act_tid: 1, themes: {}, fragments: { 10101: { piece_tid: 10101, count: 1 } },
+      daily_gift_count: 0, daily_request_count: 0, daily_task_list: [], weekly_task_list: [],
+      shop_bought: {}, my_requests: {}, received_process_list: [], get_gifts: [],
+      my_gifts: [], day: 0, gift_uid: previous
+    });
+    await service.execute(11409, codec.pack('pb_home_puzzle_gift_req', {
+      activity_id: 1, piece_tid: 10101, friend_role_id: 0
+    }));
+    const state = readExplorationState(store, 'home_puzzle', 1);
+    assert.equal(state.gift_uid, '9007199254740993');
+    assert.equal(state.my_gifts[0].gift_uid, '9007199254740993');
+    assert.equal(state.get_gifts[0].gift_uid, '9007199254740993');
+  } finally {
+    store.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('HomePuzzle receive selects the exact adjacent int64 gift uid', async () => {
+  const { directory, service, store } = open();
+  try {
+    const adjacent = '9007199254740992', target = '9007199254740993';
+    setExplorationState(store, 'home_puzzle', 1, {
+      act_tid: 1, themes: {}, fragments: {}, daily_gift_count: 0, daily_request_count: 0,
+      daily_task_list: [], weekly_task_list: [], shop_bought: {}, my_requests: {},
+      received_process_list: [], get_gifts: [puzzleGift(adjacent), puzzleGift(target)],
+      my_gifts: [], day: 0, gift_uid: target
+    });
+    await service.execute(11418, codec.pack('pb_home_puzzle_rec_gift_piece_req', {
+      activity_id: 1, gift_uid: target, friend_role_id: 0
+    }));
+    const state = readExplorationState(store, 'home_puzzle', 1);
+    assert.deepEqual(state.get_gifts.map(gift => [gift.gift_uid, gift.is_finish]), [
+      [adjacent, false],
+      [target, true]
+    ]);
+  } finally {
+    store.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('HomePuzzle gift allocation refuses int64 overflow without consuming the fragment', async () => {
+  const { directory, service, store } = open();
+  try {
+    const atMax = {
+      act_tid: 1, themes: {}, fragments: { 10101: { piece_tid: 10101, count: 1 } },
+      daily_gift_count: 0, daily_request_count: 0, daily_task_list: [], weekly_task_list: [],
+      shop_bought: {}, my_requests: {}, received_process_list: [], get_gifts: [],
+      my_gifts: [], day: 0, gift_uid: '9223372036854775807'
+    };
+    setExplorationState(store, 'home_puzzle', 1, atMax);
+    const before = readExplorationState(store, 'home_puzzle', 1);
+    await assert.rejects(() => service.execute(11409, codec.pack('pb_home_puzzle_gift_req', {
+      activity_id: 1, piece_tid: 10101, friend_role_id: 0
+    })), error => error instanceof GameError && error.code === 305);
+    assert.deepEqual(readExplorationState(store, 'home_puzzle', 1), before);
   } finally {
     store.close();
     fs.rmSync(directory, { recursive: true, force: true });

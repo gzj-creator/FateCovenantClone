@@ -294,6 +294,39 @@ test('homeland level up spends the level cost and adds prosperity', async t => {
   assert.equal(resource(world.store, 41002), 3n);
 });
 
+test('homeland furniture keeps adjacent int64 uids and the exact depot counter', async t => {
+  const world = setup(t);
+  const furniture = minigameTables.homeland.Furniture.rows[0];
+  const adjacent = ['9007199254740992', '9007199254740993'];
+  const request = await world.service.decode(110913, codec.pack('pb_homeland_replace_req', {
+    house_list: [{
+      house_tid: 1,
+      room_list: [{
+        room_tid: 1,
+        furniture_list: adjacent.map(uid => ({
+          furniture_uid: uid,
+          furniture_tid: Number(furniture.tid),
+          x: 0,
+          y: 0
+        }))
+      }]
+    }]
+  }));
+  const decoded = codec.unpack('pb_homeland_depot', world.service.execute(110913, request).data);
+  assert.equal(decoded.max_uid, adjacent[1]);
+  assert.deepEqual(decoded.furniture_list.map(item => item.uid).sort(), adjacent);
+
+  const persisted = world.store.transaction((model, db) => JSON.parse(
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('homeland:1').data
+  ));
+  assert.equal(persisted.max_uid, adjacent[1]);
+  world.reopen();
+  const reopened = world.store.transaction((model, db) => JSON.parse(
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('homeland:1').data
+  ));
+  assert.deepEqual(Object.keys(reopened.furniture).sort(), adjacent);
+});
+
 test('homeland like pays the configured award once per role per day', async t => {
   const world = setup(t);
   const before = resource(world.store, 201500);
@@ -308,6 +341,57 @@ test('monopoly day award is paid once per day', async t => {
   world.service.execute(107809, {});
   assert.equal(resource(world.store, DIAMOND), before + 50n);
   assert.throws(() => world.service.execute(107809, {}), error => error instanceof GameError && error.code === 311);
+});
+
+test('monopoly event counter and event targeting preserve adjacent int64 uids', async t => {
+  const world = setup(t);
+  const previous = '9007199254740992';
+  const next = '9007199254740993';
+  setMiniState(world.store, 'monopoly:' + ACTS.monopoly, {
+    cur_index: 0, event_uid: previous, events: [], score: 0, next_multiple: 1,
+    day_free_used: 0, role_total_award_gets: [], role_live_award_gets: [], role_guild_task_award_gets: []
+  });
+  const go = await world.service.decode(107801, codec.pack('pb_monopoly_act_go_req', {
+    act_tid: String(ACTS.monopoly), is_high: false, need_point: 0
+  }));
+  world.service.execute(107801, go);
+  const moved = world.store.transaction((model, db) => JSON.parse(
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('monopoly:' + ACTS.monopoly).data
+  ));
+  assert.equal(moved.event_uid, next);
+  assert.deepEqual(moved.events.map(event => event.uid), [next]);
+
+  setMiniState(world.store, 'monopoly:' + ACTS.monopoly, {
+    cur_index: 5, event_uid: next, events: [
+      { tid: 105, uid: previous, finish_stage: 0, param: 10501 },
+      { tid: 105, uid: next, finish_stage: 0, param: 10501 }
+    ],
+    score: 0, next_multiple: 1, role_total_award_gets: [], role_live_award_gets: [], role_guild_task_award_gets: []
+  });
+  const fight = await world.service.decode(107802, codec.pack('pb_monopoly_act_base_req', {
+    act_tid: String(ACTS.monopoly), tid: next
+  }));
+  const finished = codec.unpack('pb_monopoly_act_base_back', world.service.execute(107802, fight).data);
+  assert.equal(finished.event_uid, next);
+  assert.deepEqual(finished.act_role_data.event_list.map(event => Number(event.finish_stage ?? 0)), [0, 2]);
+});
+
+test('monopoly event counter fails without wrapping at the int64 limit', async t => {
+  const world = setup(t);
+  setMiniState(world.store, 'monopoly:' + ACTS.monopoly, {
+    cur_index: 0, event_uid: '9223372036854775807', events: [], score: 0,
+    next_multiple: 1, day_free_used: 0,
+    role_total_award_gets: [], role_live_award_gets: [], role_guild_task_award_gets: []
+  });
+  const go = await world.service.decode(107801, codec.pack('pb_monopoly_act_go_req', {
+    act_tid: String(ACTS.monopoly), is_high: false, need_point: 0
+  }));
+  assert.throws(() => world.service.execute(107801, go), error => error instanceof GameError && error.code === 305);
+  const persisted = world.store.transaction((model, db) => JSON.parse(
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('monopoly:' + ACTS.monopoly).data
+  ));
+  assert.equal(persisted.event_uid, '9223372036854775807');
+  assert.deepEqual(persisted.events, []);
 });
 
 test('baking make cake spends stamina and adds a board cell', async t => {
@@ -370,20 +454,73 @@ test('source point rewards allocate persistent depot instances with client binar
     db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('source_point:1').data
   ));
   assert.deepEqual(readState(world.store), {
-    max_uid: 3,
+    max_uid: '3',
     source_point_list: [
-      { tid: 100334300, uid: 1 },
-      { tid: 100334300, uid: 2 },
-      { tid: 100344300, uid: 3 }
+      { tid: 100334300, uid: '1' },
+      { tid: 100334300, uid: '2' },
+      { tid: 100344300, uid: '3' }
     ],
     hero_task_claims: []
   });
   world.reopen();
   assert.deepEqual(readState(world.store).source_point_list, [
-    { tid: 100334300, uid: 1 },
-    { tid: 100334300, uid: 2 },
-    { tid: 100344300, uid: 3 }
+    { tid: 100334300, uid: '1' },
+    { tid: 100334300, uid: '2' },
+    { tid: 100344300, uid: '3' }
   ]);
+});
+
+test('source point int64 allocation and hero selection distinguish adjacent values above 2^53', async t => {
+  const world = setup(t);
+  seed(world.store, [[1040101, 1]]);
+  const previous = '9007199254740992';
+  setMiniState(world.store, 'source_point:1', {
+    max_uid: previous, source_point_list: [], hero_task_claims: []
+  });
+  const granted = world.store.transaction((model, db) => world.service.grantSourcePointRewards({
+    model, db, awards: [[100334300, 2]], at: NOW
+  }));
+  assert.deepEqual(
+    granted.changes.map(change => codec.unpack('pb_source_point', Buffer.from(change.new_bin, 'base64')).uid),
+    ['9007199254740993', '9007199254740994']
+  );
+  const readState = store => JSON.parse(store.transaction((model, db) =>
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('source_point:1').data
+  ));
+  assert.deepEqual(readState(world.store), {
+    max_uid: '9007199254740994',
+    source_point_list: [
+      { tid: 100334300, uid: '9007199254740993' },
+      { tid: 100334300, uid: '9007199254740994' }
+    ],
+    hero_task_claims: []
+  });
+
+  setHero(world.store, 1040101, { source_point_list: [] });
+  const target = '9007199254740993';
+  const request = await world.service.decode(110101, codec.pack('pb_source_point_change_req', {
+    change_list: [{ hero_uid: '1040101', changes: [target] }]
+  }));
+  world.service.execute(110101, request);
+  const hero = world.store.read().heroInfo.hero_list.find(candidate => String(candidate.tid) === '1040101');
+  assert.deepEqual(hero.source_point_list, [target]);
+});
+
+test('source point allocation refuses int64 overflow and leaves the depot unchanged', t => {
+  const world = setup(t);
+  setMiniState(world.store, 'source_point:1', {
+    max_uid: '9223372036854775807', source_point_list: [], hero_task_claims: []
+  });
+  const before = world.store.transaction((model, db) =>
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('source_point:1').data
+  );
+  assert.throws(() => world.store.transaction((model, db) => world.service.grantSourcePointRewards({
+    model, db, awards: [[100334300, 1]], at: NOW
+  })), error => error.code === 305);
+  const after = world.store.transaction((model, db) =>
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('source_point:1').data
+  );
+  assert.deepEqual(after, before);
 });
 
 test('source point combine consumes matching instances and creates the elevated instance', async t => {
@@ -683,6 +820,38 @@ test('spirit courtyard entrust submit consumes fruit and pays the order award', 
   assert.equal(resource(world.store, 20014100), 0n);
   assert.equal(resource(world.store, 2002), 1n);
   assert.equal(resource(world.store, 101500), 50n);
+});
+
+test('spirit courtyard actions select adjacent int64 entrust uids exactly', async t => {
+  const world = setup(t);
+  seed(world.store, [[20014100, 15]]);
+  const first = '9007199254740992';
+  const second = '9007199254740993';
+  setMiniState(world.store, 'spirit:1', {
+    intimacy: 0, intimacy_lv: 1, lands: [{ id: 1, crop_tid: 0, update_time: 0, mature_time: 0 }],
+    entrusts: [first, second].map(uid => ({
+      uid, tid: 101, lib: [101], is_public: false, is_finish: false, role_id: 100001
+    })),
+    task_claims: [], publish_count: 0
+  });
+  const publish = await world.service.decode(105007, codec.pack('pb_req_spirit_courtyard_publish_collaboration', { uid: second }));
+  assert.equal(codec.unpack('pb_res_spirit_courtyard_publish_collaboration', world.service.execute(105007, publish).data).entrust_info.uid, second);
+  let stored = world.store.transaction((model, db) => JSON.parse(
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('spirit:1').data
+  ));
+  assert.deepEqual(stored.entrusts.map(entry => entry.is_public), [false, true]);
+
+  const cancel = await world.service.decode(105013, codec.pack('pb_req_spirit_courtyard_cancel_collaboration', { uid: second }));
+  assert.equal(codec.unpack('pb_res_spirit_courtyard_cancel_collaboration', world.service.execute(105013, cancel).data).entrust_info.uid, second);
+  const submit = await world.service.decode(105005, codec.pack('pb_req_spirit_courtyard_submit_entrust', { uid: second }));
+  const submitted = codec.unpack('pb_res_spirit_courtyard_submit_entrust', world.service.execute(105005, submit).data);
+  assert.equal(submitted.role_info.entrust_task_list.find(entry => entry.uid === second).is_finish, true);
+  assert.equal(Boolean(submitted.role_info.entrust_task_list.find(entry => entry.uid === first).is_finish), false);
+  stored = world.store.transaction((model, db) => JSON.parse(
+    db.prepare('SELECT data FROM minigame_act_state WHERE act_key=?').get('spirit:1').data
+  ));
+  assert.deepEqual(stored.entrusts.map(entry => entry.is_finish), [false, true]);
+  assert.equal(resource(world.store, 20014100), 0n);
 });
 
 test('spirit assist, banquet and banquet award remain explicit evidence gaps', async t => {

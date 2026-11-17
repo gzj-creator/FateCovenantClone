@@ -1,6 +1,6 @@
 import { GameError } from './hero-progression.mjs';
 import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
-import { fail, integer, numeric, resourceChange } from './develop-support.mjs';
+import { fail, int64, integer, numeric, resourceChange, uint64 } from './develop-support.mjs';
 
 // LeaderEquipCmd 98402-98407. 98401 (wear) stays in leader-equip-service; these
 // commands act on the same login module 175 payload (pb_leader_equips_data) so
@@ -23,7 +23,7 @@ function readState(model, codec) {
   const data = codec.unpack(SCHEMA, rawBinary(module));
   data.slots = Array.isArray(data.slots) ? data.slots : [];
   data.equip_list = Array.isArray(data.equip_list) ? data.equip_list : [];
-  data.max_uid = String(data.max_uid ?? 0);
+  data.max_uid = uint64(data.max_uid ?? 0, 'maximum leader-equipment uid');
   return { modules, data };
 }
 
@@ -37,9 +37,11 @@ export function createLeaderEquipDevelopService({ store, codec }) {
     return store.transaction(model => {
       const state = readState(model, codec);
       const command = Number(type);
-      const uid = () => integer(input, 'leader equipment uid', { min: 1 });
-      const findBag = value => state.data.equip_list.find(equip => numeric(equip.uid) === value);
-      const findSlot = value => state.data.slots.find(slot => slot.equip && numeric(slot.equip.uid) === value);
+      const uid = () => int64(input, 'leader equipment uid', { min: 1n });
+      const findBag = value => state.data.equip_list.find(equip =>
+        int64(equip.uid, 'leader equipment uid', { min: 1n }) === value);
+      const findSlot = value => state.data.slots.find(slot =>
+        slot.equip && int64(slot.equip.uid, 'leader equipment uid', { min: 1n }) === value);
 
       if (command === LEADER_EQUIP_DEVELOP_COMMANDS.upLevel) {
         const slotType = integer(input, 'leader equipment slot type', { min: 1 });
@@ -52,13 +54,14 @@ export function createLeaderEquipDevelopService({ store, codec }) {
       }
 
       if (command === LEADER_EQUIP_DEVELOP_COMMANDS.upStar) {
-        const target = integer(input?.uid, 'leader equipment uid', { min: 1 });
+        const target = int64(input?.uid, 'leader equipment uid', { min: 1n });
         const equip = findBag(target) ?? findSlot(target)?.equip;
         if (!equip) fail(5, 'Leader equipment does not exist');
         if (numeric(equip.star) >= STAR_MAX) fail(305, 'Leader-equipment star limit reached');
         for (const value of input?.cost_uid_list ?? []) {
-          const costUid = integer(value, 'cost equipment uid', { min: 1 });
-          const index = state.data.equip_list.findIndex(entry => numeric(entry.uid) === costUid);
+          const costUid = int64(value, 'cost equipment uid', { min: 1n });
+          const index = state.data.equip_list.findIndex(entry =>
+            int64(entry.uid, 'leader equipment uid', { min: 1n }) === costUid);
           if (index < 0) fail(5, 'Leader-equipment cost item is not in the bag');
           state.data.equip_list.splice(index, 1);
         }
@@ -70,10 +73,13 @@ export function createLeaderEquipDevelopService({ store, codec }) {
 
       if (command === LEADER_EQUIP_DEVELOP_COMMANDS.dissolve) {
         const target = uid();
-        const index = state.data.equip_list.findIndex(entry => numeric(entry.uid) === target);
+        const index = state.data.equip_list.findIndex(entry =>
+          int64(entry.uid, 'leader equipment uid', { min: 1n }) === target);
         if (index < 0) fail(5, 'Leader equipment is not in the bag');
         state.data.equip_list.splice(index, 1);
-        for (const slot of state.data.slots) if (slot.equip && numeric(slot.equip.uid) === target) slot.equip = null;
+        for (const slot of state.data.slots) {
+          if (slot.equip && int64(slot.equip.uid, 'leader equipment uid', { min: 1n }) === target) slot.equip = null;
+        }
         writeState(model, codec, state);
         const body = resourceChange([]);
         return { schema: 'pb_res_to_client', value: body, data: codec.pack('pb_res_to_client', body), valueForLog: { uid: target, awards: 'unrecovered' } };
