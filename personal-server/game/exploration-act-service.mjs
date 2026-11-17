@@ -792,7 +792,7 @@ export function createExplorationActService({
 
   function homelandProgress(state, task) {
     switch (Number(task.task_type)) {
-      case 1803: return state.selected_hero_tid ? 1 : 0;
+      case 1803: return 1;
       case 2407: return Number(state.hero_select_count ?? 0);
       case 1805: return (state.decorate_list ?? []).length;
       case 6901: return Number(state.clear_count ?? 0);
@@ -992,7 +992,7 @@ export function createExplorationActService({
         const key = actTid + ':' + challengeTid + ':' + taskId;
         if (state.challenge_claims.includes(key) || hasClaim(db, roleId, 'pet_challenge', key)) throw new GameError(310, 'Pet challenge task already claimed');
         let progress;
-        if (Number(task.task_type) === 1803) progress = state.selected_pet_tid ? 1 : 0;
+        if (Number(task.task_type) === 1803) progress = 1;
         else if (Number(task.task_type) === 13101) progress = Number(state.fight_acc_dmg ?? 0);
         else throw new GameError(5, 'Pet challenge task rule is not recovered');
         if (progress < Number(task.task_count ?? 0)) throw new GameError(311, 'Pet challenge task is not finished');

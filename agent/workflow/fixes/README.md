@@ -38,8 +38,11 @@ pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`）�
 | N2 | 道具重试二进制回执和全量旧测试前置失效 | [item-receipt-and-audit-fixtures-20261117.md](item-receipt-and-audit-fixtures-20261117.md) | 回执递归恢复、合法业务日、真实公会状态和派发清单已修；`receipt-and-validation-after.log` 17/17；未部署/未做 APK |
 | N3 | 代金券余额与管理页大整数精度 | [voucher-integer-precision-20261117.md](voucher-integer-precision-20261117.md) | BigInt 金额/张数、JSON 字符串边界、管理页格式化和全账本累计已修；`downstream-after.log` 37/37；未部署/未做 APK |
 | PT1 | 通行证无经验可领取、领取后红线、新号继承进度 | [permit-day-exp-reddot-20261117.md](permit-day-exp-reddot-20261117.md) | 经验总式、空奖励领取位和新号全字段重置已修；专项 12/12、相关 35/35、fast 534 项 0 失败；未部署/未做 APK |
+| S1 | 客户端启动显示“配置出错” | [sdk-ip-discovery-404-20261118.md](sdk-ip-discovery-404-20261118.md) | `/ad/api/ip_address//` 由 404 修为 GET 200 本机 IP；SDK 专项 26/26、全量 532 pass/0 fail/2 skipped；待部署与客户端重登 |
+| M1 | 家园任务已领取仍显示可领，点击无反应 | [only-state-task-state-20261118.md](only-state-task-state-20261118.md) | `TaskType 1803 ONLY_STATE` 误用选人/计数条件；家园、宠物、神器三入口已修，含首次、重复和重开库断言；全量通过；待部署 |
+| G6 | 引导 205020 完成后停在后续旁白 | [guide-adventure-node-955-20261118.md](guide-adventure-node-955-20261118.md) | 服务端状态正确，等待客户端旅途节点 955；真机执行“旅途→返回”后 364070 后续对白已播放；无需服务端改动 |
 
-验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**本轮为限购修复，已重启本机服务部署；未由 agent 点击客户端界面，也未修改 ADB reverse/UID 隔离。**
+验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**2026-11-18 当前轮修复 SDK 启动路由、`1803 ONLY_STATE` 任务状态，并完成引导旅途节点真机路径定位；部署与客户端状态以 S1/M1/G6 记录的最新验证为准。**
 
 ## 2026-10-30 海岛垂钓岛屿解锁
 

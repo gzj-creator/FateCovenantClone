@@ -421,6 +421,18 @@ test('trial and draw task claim bytes use task_tid % 1000 in independent bitsets
   assert.throws(() => f.service.execute101802({ act_tid: ACT.trial, task_ids: [1001] }), codeIs(310));
 });
 
+test('artifact ONLY_STATE trial task 101 does not require a trial-fight counter increment', t => {
+  const f = fixture(t);
+  f.service.recordTrialFight(ACT.trial, 1, 150000);
+  f.store.transaction(model => {
+    model.state.artifactDrawActs.activities[String(ACT.trial)].daily.counters.trial_fights = 0;
+  });
+  const result = f.service.execute101801({ act_tid: ACT.trial, challenge_tid: 1, task_id: [101] });
+  assert.equal(result.value.changes.length, 1);
+  assert.deepEqual(stateOf(f.store, ACT.trial).fight_record.claimed_tasks, [101]);
+  assert.equal(f.service.execute101801({ act_tid: ACT.trial, challenge_tid: 1, task_id: [101] }).value.changes.length, 0);
+});
+
 test('invalid item in a task batch rolls back every task reward and claim bit', t => {
   const f = fixture(t);
   f.service.recordArtifactDraw(ACT.task, 5);

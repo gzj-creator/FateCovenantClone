@@ -163,6 +163,15 @@ test('HTTP banner returns empty config and unknown, payment, identity routes fai
   assert.equal((await f.raw('/user/login')).status, 405);
 });
 
+test('HTTP SDK IP address discovery succeeds without an unimplemented-route log', async t => {
+  const f = await fixture(t);
+  const response = await f.raw('/ad/api/ip_address//');
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { ip: '127.0.0.1' });
+  assert.equal(f.events.some(event => event.event === 'unimplemented_route'), false);
+  assert(f.events.some(event => event.route === 'ipAddress' && event.statusCode === 200));
+});
+
 test('HTTP form parser rejects duplicate, missing, extra, wrong content type, and oversized data', async t => {
   const f = await fixture(t);
   const valid = new URLSearchParams({ ...f.loginFields, sign: signSdkParameters(f.loginFields, configuration.appKey) }).toString();

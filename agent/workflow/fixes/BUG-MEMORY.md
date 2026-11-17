@@ -1,6 +1,6 @@
 # Bug 记忆与防复发清单
 
-更新时间：2026-11-17（Asia/Shanghai）
+更新时间：2026-11-18（Asia/Shanghai）
 
 用户 2026-11-16 持久规则：**每个修过的 bug 都要记进持久记忆，之后不允许再犯同类错误。** 本文件是修复入口和防复发清单；逐项证据仍写在 `agent/workflow/fixes/` 下的单独文档里。
 
@@ -91,6 +91,12 @@
 - 通行证经验必须按客户端 `PermitCycleTypeBase.GetExp` 计算为 `基础经验 + buy_exp`；动态开服日经验和资源经验都不能绕过购买经验。[PT1](permit-day-exp-reddot-20261117.md)
 - 客户端领取红点只检查 `receive_free` / `receive_permit`，不检查奖励数组。只要达到等级的对应轨道尚未领取，服务端就必须写入领取位；奖励数组为空时只跳过资源追加，不能跳过状态变更。[PT1](permit-day-exp-reddot-20261117.md)
 - 新建账号必须显式清空 `pb_permit_info` 的全部账号字段和外层补偿日，不能以展开模板对象的方式只覆盖少数字段。[PT1](permit-day-exp-reddot-20261117.md)
+
+### 12. 客户端状态镜像与辅助接口
+
+- SDK 启动链中客户端实际请求的辅助地址必须按真实方法、真实路径处理。`/ad/api/ip_address//` 的双斜杠和 GET 都要原样匹配，返回 200；未知路由 404 会在客户端变成“配置出错”。[S1](sdk-ip-discovery-404-20261118.md)
+- 任务进度先看 `TaskType` 的 `progress_type`/`progress_fun`。`ONLY_STATE + progress_fun=0` 的状态进度为 1，不得附加选英雄、选宠物或战斗计数；修复时必须审计该 Type 的全部调用点，并覆盖首次领取、重复领取和重开库。[M1](only-state-task-state-20261118.md)
+- 引导 MethodScript 等待 `GuideNodeEnable` 时必须同时核对客户端界面注册节点；非持久化 step 完成没有 8000 请求是正常现象。`364070` 的节点 `955` 由旅途/冒险笔记打开并返回注册，不能靠改库或伪造服务端返回值跳过。[G6](guide-adventure-node-955-20261118.md)
 
 ## 记录索引
 

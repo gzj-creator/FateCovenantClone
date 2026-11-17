@@ -496,7 +496,7 @@ export function createArtifactDrawActService({
       if (rows.some(row => claimed.has(Number(row.tid)))) fail(310, 'Artifact trial task is partially claimed');
       for (const row of rows) {
         const progress = Number(row.task_type) === 1803
-          ? Number(activity.daily.counters.trial_fights)
+          ? 1
           : Number(activity.fight_record.acc_dmg);
         if (progress < Number(row.task_count)) fail(308, 'Artifact trial task is not complete');
       }
