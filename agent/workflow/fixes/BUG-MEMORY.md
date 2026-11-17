@@ -86,6 +86,12 @@
 - SQLite 的 int64 UID 列不能用裸 `SELECT *` 交给默认 Number 解码；查询用 `CAST(uid AS TEXT)`/`setReadBigInts(true)`，插入自增 ID 时单独读取返回行，业务层保持 BigInt 或十进制字符串。低 ID 可继续返回 Number，高 ID 必须返回字符串，禁止先转 Number 再查库。[N1](reward-quantity-boundaries-20261117.md)
 - 修复一个发奖入口不代表长 ID 链闭合；必须按“生成 → 执行命令 → 引用/消耗 → 重开库”反查所有下游服务。已验证的实例 UID 链路同样适用于邮件、拍卖、家园、三消、战报和英雄借用/租借。[N1](reward-quantity-boundaries-20261117.md)
 
+### 11. 通行证进度与领取状态
+
+- 通行证经验必须按客户端 `PermitCycleTypeBase.GetExp` 计算为 `基础经验 + buy_exp`；动态开服日经验和资源经验都不能绕过购买经验。[PT1](permit-day-exp-reddot-20261117.md)
+- 客户端领取红点只检查 `receive_free` / `receive_permit`，不检查奖励数组。只要达到等级的对应轨道尚未领取，服务端就必须写入领取位；奖励数组为空时只跳过资源追加，不能跳过状态变更。[PT1](permit-day-exp-reddot-20261117.md)
+- 新建账号必须显式清空 `pb_permit_info` 的全部账号字段和外层补偿日，不能以展开模板对象的方式只覆盖少数字段。[PT1](permit-day-exp-reddot-20261117.md)
+
 ## 记录索引
 
 全部修复条目及结论见 [README.md](README.md)。新增条目时按“编号、故障、文档、当前结论”补一行；编号取下一个未使用的字母/数字组合，不重复使用。
