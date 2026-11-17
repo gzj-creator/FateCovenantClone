@@ -132,11 +132,20 @@ function resetPermits(modules, codec, nowSeconds) {
     try {
       const permit = codec.unpack('pb_permit_data', rawBinary(value));
       permit.permit_list = (permit.permit_list ?? []).map(info => ({
-        ...info,
+        id: info.id,
+        period: 0,
         open_day: openDay,
+        is_pay: false,
+        buy_num: 0,
+        is_settle: false,
         levels: [],
-        is_pay: false
+        buy_exp: '0',
+        award_idx: 0,
+        is_choose: false,
+        is_join_compensate: false
       }));
+      permit.compensate_day = '0';
+      permit.new_compensate_day = '0';
       return serializedBinary(codec.pack('pb_permit_data', permit));
     } catch {
       return emptySerialized();

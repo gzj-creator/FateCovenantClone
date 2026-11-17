@@ -71,6 +71,7 @@ export function createPermitService({ codec, tables, now = () => Math.floor(Date
   }
 
   function experienceForInfo({ model, permit, info }) {
+    let baseExperience;
     const dynamic = tables.PermitDynamicArgs?.get(Number(permit.exp_item));
     if (dynamic?.lua_interface?.reference === 'PermitUtil.CalcOpenDay') {
       const openDay = Number(info.open_day);
@@ -82,9 +83,22 @@ export function createPermitService({ codec, tables, now = () => Math.floor(Date
       const at = Number(now());
       if (!Number.isSafeInteger(at) || at <= 0) throw new GameError(1, 'Invalid permit claim time');
       const currentDay = gameDayIndex(at);
-      return Math.min(Math.max(currentDay - openDay + 1, 0), cycle);
+      baseExperience = Math.min(Math.max(currentDay - openDay + 1, 0), cycle);
+    } else {
+      baseExperience = currentExperience({ model, permit });
     }
-    return currentExperience({ model, permit });
+
+    // PermitCycleTypeBase.GetExp always adds the persisted purchased experience
+    // to the configured experience source. The client renders that same total.
+    const buyExperience = Number(info.buy_exp ?? 0);
+    if (!Number.isSafeInteger(buyExperience) || buyExperience < 0) {
+      throw new GameError(5, 'Permit purchased experience is invalid');
+    }
+    const totalExperience = baseExperience + buyExperience;
+    if (!Number.isSafeInteger(totalExperience)) {
+      throw new GameError(5, 'Permit experience exceeds the supported range');
+    }
+    return totalExperience;
   }
 
   function currentLevel(rows, experience) {
@@ -120,15 +134,14 @@ export function createPermitService({ codec, tables, now = () => Math.floor(Date
         levelState.set(level, state);
       }
       let levelChanged = false;
-      if (free && state.receive_free !== true && Array.isArray(row.free_award) && row.free_award.length > 0) {
+      if (free && state.receive_free !== true) {
         state.receive_free = true;
-        awards.push(...row.free_award);
+        if (Array.isArray(row.free_award)) awards.push(...row.free_award);
         levelChanged = true;
       }
-      if (paid && found.info.is_pay === true && state.receive_permit !== true
-          && Array.isArray(row.permit_award) && row.permit_award.length > 0) {
+      if (paid && found.info.is_pay === true && state.receive_permit !== true) {
         state.receive_permit = true;
-        awards.push(...row.permit_award);
+        if (Array.isArray(row.permit_award)) awards.push(...row.permit_award);
         levelChanged = true;
       }
       if (levelChanged) changed.push({ ...state });
