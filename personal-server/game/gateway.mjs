@@ -1111,9 +1111,8 @@ export function createLocalGame({
     features.reconcile();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
-    const list = revive(state.modules);
-    const modules = new Map(list.value);
-    features.maskLogin(modules);
+    features.maskLogin(storedModules);
+    const modules = new Map(revive({ ...state.modules, value: [...storedModules] }).value);
     const taskPayloads = tasks.loginPayloads(storedModules.get(tasks.moduleId));
     modules.set(tasks.moduleId, new E.OtpErlangList(taskPayloads.map(binary), false));
     const guideLogin = projectGuideLoginModule({

@@ -65,12 +65,14 @@
 
 - 用户报“服务器错误”时先查 `events.jsonl` 的真实 type/seq 和旧响应；`unsupported_command` 通常只是缺 handler，不能凭界面猜接口（2001 头像排行）。[avatar-rank-info.md](avatar-rank-info.md)
 - 新 handler 按 `agent/workflow/interface-catalog/` 的 schema 解码请求，字段名和类型以协议和客户端 Lua 为准。
+- 空服启动只能跳过依赖角色的预载，不可返回永久残缺的服务接口；首号创建后同一进程须正常使用所有功能服务方法。模块 3 的登录遮罩先操作序列化副本，再还原 ETF，不改库内位图。[EL1](empty-realm-login-mask-20261118.md)
 
 ### 7. 验证与发布
 
 - 组件测试、临时 TCP、部署、APK 真机是四个不同等级；记录里必须写清哪一级通过，不能把组件通过写成可玩验收。
 - APK 修改前先备份当前可用包并核对 SHA256；验收通过后更新 `apk/README.md`；未验收构建不得标“可用快照”。
 - 操作实时服务、运行库或设备前先读当前状态文件和进程，不继承旧 PID、旧路径和旧通过数字。
+- 空服发布门禁必须用临时空库、真实 SDK 会话与 `909103` 验证首号和重登完整回包；端口、握手、区服列表与 SDK 200 不代表可登录。[EL1](empty-realm-login-mask-20261118.md)
 - ADB/iptables 恢复必须对“已经没有目标资源”幂等；对已经清除的 reverse/chain 报错不能阻止其他资源清理和 `network-state` 状态归档。验收同时查退出码、实际规则和状态文件。[T1](local-device-restore-20261118.md)
 
 ### 8. 文档与基线
