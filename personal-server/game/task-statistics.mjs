@@ -4,6 +4,13 @@ import { GameError } from './hero-progression.mjs';
 const STATISTICS_MODULE = 21;
 const ROLE_STATISTICS_TYPE = 0;
 
+// TaskType 1803 is the activity-local daily login task. Every consumer uses
+// this generic semantic; unrelated local selections (hero, pet, trial, etc.)
+// must not be turned into prerequisites for the login itself.
+export function isDailyLoginTask(task) {
+  return Number(task?.task_type ?? task?.type) === 1803;
+}
+
 // TaskType.progress_type=2 rows read the role statistics payload that login
 // module 21 carries. TaskType.data selects the CountStatistics slot and
 // stat_expand lists the statistic ids that add up to the task progress.

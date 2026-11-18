@@ -5,6 +5,7 @@ import {
   createFantasyEquipmentInventory,
   FANTASY_EQUIP_ITEM_TYPE
 } from './fantasy-equipment-inventory.mjs';
+import { isDailyLoginTask } from './task-statistics.mjs';
 
 const INT32_MAX = 2147483647;
 const DAY_SECONDS = 86400;
@@ -485,8 +486,13 @@ export function createArtifactDrawActService({
         if (result && typeof result.then === 'function') fail(5, 'Artifact challenge gate must be synchronous');
         if (!gateIsOpen(result)) fail(305, 'Artifact trial challenge is not open');
       }
-      if (Number(activity.fight_record.mission_tid) !== Number(challenge.fight_tid)) fail(308, 'Artifact trial fight record is missing');
       const rows = assertTaskBatch(versionId, taskIds, 'trials');
+      // The daily-login task is independent of a trial battle. Damage/count
+      // rows still require the matching fight record and their real counters.
+      if (rows.some(row => !isDailyLoginTask(row))
+        && Number(activity.fight_record.mission_tid) !== Number(challenge.fight_tid)) {
+        fail(308, 'Artifact trial fight record is missing');
+      }
       const claimed = new Set(activity.fight_record.claimed_tasks.map(Number));
       const allClaimed = rows.every(row => claimed.has(Number(row.tid)));
       if (allClaimed) {
@@ -495,8 +501,8 @@ export function createArtifactDrawActService({
       }
       if (rows.some(row => claimed.has(Number(row.tid)))) fail(310, 'Artifact trial task is partially claimed');
       for (const row of rows) {
-        const progress = Number(row.task_type) === 1803
-          ? Number(activity.daily.counters.trial_fights)
+        const progress = isDailyLoginTask(row)
+          ? 1
           : Number(activity.fight_record.acc_dmg);
         if (progress < Number(row.task_count)) fail(308, 'Artifact trial task is not complete');
       }

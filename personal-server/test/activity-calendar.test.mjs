@@ -36,6 +36,73 @@ test('maps the local opening epoch to activity days and 05:00 boundaries', () =>
   );
 });
 
+test('opens Dream House on new-server day 8 and selects the current weekly generation', () => {
+  const openedAt = 1794690000; // 2026-11-15 05:00 Asia/Shanghai
+  const at = seconds => createActivityCalendar({
+    tables,
+    serverOpenedAt: openedAt,
+    now: () => seconds * 1000
+  });
+  for (const seconds of [openedAt, openedAt + 3 * DAY, openedAt + 7 * DAY - 1]) {
+    assert.equal(at(seconds).isActivityRunning(1085004, null), false);
+    assert.equal(at(seconds).isActivityRunning(1085007, null), false);
+    assert.equal(at(seconds).isActivityRunning(1085008, null), false);
+  }
+
+  // Day 8 begins at 05:00. The 00:00-05:00 reset gap stays closed instead of
+  // falling back to the legacy day-1 rows.
+  const firstEnd = Date.parse('2026-11-22T00:00:00+08:00') / 1000;
+  const secondStart = Date.parse('2026-11-22T05:00:00+08:00') / 1000;
+  assert.equal(at(firstEnd - 1).isActivityRunning(1085008, null), false);
+  assert.equal(at(firstEnd).isActivityRunning(1085008, null), false);
+  assert.equal(at(secondStart - 1).isActivityRunning(1085008, null), false);
+  assert.equal(at(secondStart).isActivityRunning(1085004, null), false);
+  assert.equal(at(secondStart).isActivityRunning(1085007, null), false);
+  assert.equal(at(secondStart).isActivityRunning(1085008, null), true);
+  assert.equal(at(secondStart).selectedVersionFor(1085008), 8);
+
+  assert.equal(at(Date.parse('2026-11-29T05:00:00+08:00') / 1000).isActivityRunning(1085008, null), false);
+  assert.equal(at(Date.parse('2026-11-29T05:00:00+08:00') / 1000).selectedVersionFor(1085009), 9);
+  assert.equal(at(Date.parse('2026-12-06T05:00:00+08:00') / 1000).selectedVersionFor(1085010), 10);
+});
+
+test('requires Dream House old-server world periods to begin after day 29', () => {
+  const worldStart = Number(tables.ActFrameAct.get(1085003).world_time);
+  const calendar = openedAt => createActivityCalendar({
+    tables,
+    serverOpenedAt: openedAt,
+    now: () => worldStart * 1000
+  });
+
+  const day28 = Date.parse('2026-06-01T05:00:00+08:00') / 1000;
+  const day29 = Date.parse('2026-05-31T05:00:00+08:00') / 1000;
+  assert.equal(calendar(day28).isActivityRunning(1085003, null), false);
+  assert.equal(calendar(day29).isActivityRunning(1085003, null), true);
+});
+
+test('removes legacy Dream House rows from login until the day-8 generation', () => {
+  const openedAt = 1794690000; // 2026-11-15 05:00 Asia/Shanghai
+  const legacyRows = () => [
+    { state_data: { act_id: 1085004, cur_state_id: 50 }, module_login_data: Buffer.alloc(0) },
+    { state_data: { act_id: 1085007, cur_state_id: 50 }, module_login_data: Buffer.alloc(0) },
+    { state_data: { act_id: 1085008, cur_state_id: 50 }, module_login_data: Buffer.alloc(0) }
+  ];
+  const calendarAt = seconds => createActivityCalendar({
+    tables,
+    serverOpenedAt: openedAt,
+    now: () => seconds * 1000
+  });
+
+  const early = { act_list: legacyRows(), act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+  calendarAt(openedAt + 3 * DAY).filterLoginActivity(early);
+  assert.deepEqual(early.act_list, []);
+
+  const day8 = Date.parse('2026-11-22T05:00:00+08:00') / 1000;
+  const current = { act_list: legacyRows(), act_parallel_list: [], act_pause_list: [], act_custom_list: [] };
+  calendarAt(day8).filterLoginActivity(current);
+  assert.deepEqual(current.act_list.map(entry => Number(entry.state_data.act_id)), [1085008]);
+});
+
 test('keeps world-time activities on their original absolute date', () => {
   const whiteRibbon = tables.ActFrameAct.get(1102010);
   const window = activityWindow(whiteRibbon, PUBLIC_SERVER_OPENED_AT, ACTIVITY_REFERENCE_OPENED_AT);

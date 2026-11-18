@@ -4,6 +4,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { createActivityStore } from '../game/activity-store.mjs';
 import { createActivityRuntime } from '../game/activity-runtime.mjs';
 import { applyActivityRuntimeLoginView, removeActivityLoginRows } from '../game/activity-online-sync.mjs';
+import { createActivityCalendar } from '../game/activity-calendar.mjs';
+import { readGameTables } from '../config/game-tables.mjs';
 
 function fixture(t) {
   const db = new DatabaseSync(':memory:');
@@ -94,4 +96,56 @@ test('a client-incompatible hidden row can be removed from module 92 without aff
   assert.deepEqual(activity.act_list.map(entry => Number(entry.state_data.act_id)), [20001]);
   assert.deepEqual(activity.act_pause_list, [20001]);
   assert.deepEqual(activity.act_custom_list.map(entry => Number(entry.act_id)), [20001]);
+});
+
+test('ActFrame stage windows persist at login and advance through show to closed', t => {
+  const db = new DatabaseSync(':memory:');
+  t.after(() => db.close());
+  const store = {
+    inspect: action => action(db),
+    read: () => ({ state: { serverId: 1 }, role: { level: 30 } })
+  };
+  const tables = readGameTables();
+  const openedAt = 1794690000;
+  const loginAt = Date.parse('2026-11-23T00:39:00+08:00') / 1000;
+  const stage90At = Date.parse('2026-11-28T12:00:00+08:00') / 1000;
+  const endAt = Date.parse('2026-11-29T00:00:00+08:00') / 1000;
+  let clock = loginAt;
+  const activityStore = createActivityStore({ store, now: () => clock * 1000 });
+  const calendar = createActivityCalendar({ tables, serverOpenedAt: openedAt, now: () => clock * 1000 });
+  const settled = [], changes = [];
+  const runtime = createActivityRuntime({
+    store, calendar, tables, activityStore,
+    now: () => clock * 1000,
+    onSettle: change => settled.push(change),
+    onStageChanged: change => changes.push(change)
+  });
+  const activity = { act_list: [{ state_data: { act_id: 1085008 }, module_login_data: Buffer.alloc(0) }] };
+  const login = runtime.synchronizeLogin(activity, loginAt);
+  assert.equal(login.length, 1);
+  assert.deepEqual(login[0].stages.map(stage => stage.stageId), [50, 90]);
+  assert.equal(login[0].stateId, 50);
+
+  const player = { data_list: [] }, server = { act_stage_list: [] };
+  calendar.normalizeActFrameLogin(player, server, loginAt, {
+    activityIds: [1085008], activity, runtimeStates: login
+  });
+  const serverRow = server.act_stage_list.find(row => Number(row.act_id) === 1085008);
+  assert.deepEqual(serverRow.stage_time_list.map(row => Number(row.stage_id)), [50, 90]);
+  assert.deepEqual(JSON.parse(activityStore.instance(1, 1085008, 8).stage_windows_json).map(row => row.stageId), [50, 90]);
+  assert.equal(runtime.gate(1085008, 'operate', loginAt), true);
+
+  clock = stage90At;
+  runtime.tick(stage90At);
+  assert.equal(activityStore.instance(1, 1085008, 8).stage, 'show');
+  assert.equal(runtime.gate(1085008, 'operate', stage90At), false);
+  assert.equal(settled.length, 1);
+  assert.deepEqual(changes.map(change => [change.from, change.to]), [['running', 'show']]);
+
+  clock = endAt;
+  runtime.tick(endAt);
+  assert.equal(activityStore.instance(1, 1085008, 8).stage, 'closed');
+  assert.deepEqual(changes.map(change => [change.from, change.to]), [
+    ['running', 'show'], ['show', 'closed']
+  ]);
 });

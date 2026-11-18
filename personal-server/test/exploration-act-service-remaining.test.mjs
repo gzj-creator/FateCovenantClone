@@ -59,39 +59,40 @@ async function expectCode(promise, code) {
   await assert.rejects(promise, error => error instanceof GameError && error.code === code);
 }
 
-test('Homeland selection, task, decoration and clear survive reopen', async () => {
+test('Homeland daily-login task is independent from hero selection and survives reopen', async () => {
   const env = open();
   try {
-    const select = await run(env.service, 11501, codec.pack('pb_homeland_act_select_hero_req', {
-      activity_id: 2, hero_tid: 5040601
-    }));
-    assert.equal(Number(unpack('pb_homeland_act_select_hero_rsp', select).act_info.selected_hero_tid), 5040601);
-
     const task = await run(env.service, 11502, codec.pack('pb_homeland_act_task_award_req', {
-      activity_id: 2, task_tid: 201
+      activity_id: 7, task_tid: 701
     }));
+    assert.equal(unpack('pb_homeland_act_task_award_rsp', task).act_info.selected_hero_tid ?? 0, 0);
     assert.equal(unpack('pb_homeland_act_task_award_rsp', task).act_info.finish_tasks.length, 1);
     await expectCode(run(env.service, 11502, codec.pack('pb_homeland_act_task_award_req', {
-      activity_id: 2, task_tid: 201
+      activity_id: 7, task_tid: 701
     })), 310);
 
+    const select = await run(env.service, 11501, codec.pack('pb_homeland_act_select_hero_req', {
+      activity_id: 7, hero_tid: 4040301
+    }));
+    assert.equal(Number(unpack('pb_homeland_act_select_hero_rsp', select).act_info.selected_hero_tid), 4040301);
+
     const decorate = await run(env.service, 11503, codec.pack('pb_homeland_act_decorate_req', {
-      activity_id: 2,
+      activity_id: 7,
       furniture_list: [{ furniture_tid: 100974400, x: 1, y: 1, furniture_type: 0 }]
     }));
     assert.equal(unpack('pb_homeland_act_decorate_rsp', decorate).act_info.decorate_list.length, 1);
 
-    const cleared = await run(env.service, 11505, codec.pack('pb_homeland_act_clear_room_req', { activity_id: 2 }));
+    const cleared = await run(env.service, 11505, codec.pack('pb_homeland_act_clear_room_req', { activity_id: 7 }));
     assert.equal(unpack('pb_homeland_act_clear_room_rsp', cleared).act_info.is_cleaned, true);
 
     env.store.close();
     const second = reopen(env.databasePath);
     try {
       const selected = await run(second.service, 11501, codec.pack('pb_homeland_act_select_hero_req', {
-        activity_id: 2, hero_tid: 5040601
+        activity_id: 7, hero_tid: 4040301
       }));
-      assert.equal(Number(unpack('pb_homeland_act_select_hero_rsp', selected).act_info.selected_hero_tid), 5040601);
-      await expectCode(run(second.service, 11505, codec.pack('pb_homeland_act_clear_room_req', { activity_id: 2 })), 311);
+      assert.equal(Number(unpack('pb_homeland_act_select_hero_rsp', selected).act_info.selected_hero_tid), 4040301);
+      await expectCode(run(second.service, 11505, codec.pack('pb_homeland_act_clear_room_req', { activity_id: 7 })), 311);
     } finally {
       second.store.close();
     }
@@ -321,16 +322,16 @@ test('Pet activity select, fight claim, cure, favor, vitality and exchange', asy
   const env = open(() => clock);
   try {
     fund(env.store, [[378002, 10], [1901200, 1]]);
-    const selected = await run(env.service, 90501, codec.pack('pb_req_pet_act_select_pet', {
-      act_tid: 83010, pet_tid: 300313
-    }));
-    assert.equal(unpack('pb_pet_act_player', selected).selected_pet_tid, 300313);
     await run(env.service, 90502, codec.pack('pb_req_pet_act_daily_reward', {
       act_tid: 83010, challenge_tid: 28, task_id: [2801]
     }));
     await expectCode(run(env.service, 90502, codec.pack('pb_req_pet_act_daily_reward', {
       act_tid: 83010, challenge_tid: 28, task_id: [2801]
     })), 310);
+    const selected = await run(env.service, 90501, codec.pack('pb_req_pet_act_select_pet', {
+      act_tid: 83010, pet_tid: 300313
+    }));
+    assert.equal(unpack('pb_pet_act_player', selected).selected_pet_tid, 300313);
     await run(env.service, 90504, codec.pack('pb_req_pet_act_cure', { act_tid: 83010, wound_tid: 37 }));
     clock += 10 * 1000;
     await run(env.service, 90505, codec.pack('pb_req_pet_act_cure', { act_tid: 83010, wound_tid: 37 }));

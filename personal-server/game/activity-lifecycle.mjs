@@ -1,4 +1,4 @@
-import { activityDurationDays, activityWindow, serverDayNumber } from './activity-calendar.mjs';
+import { activityDurationDays, activityStageWindows, activityWindow, serverDayNumber } from './activity-calendar.mjs';
 import { GameError } from './hero-progression.mjs';
 
 const DAY_SECONDS = 86400;
@@ -14,6 +14,11 @@ export const ACTIVITY_STATUS = Object.freeze({
 const STATE_STATUS = new Map([
   [10, ACTIVITY_STATUS.PREVIEW],
   [50, ACTIVITY_STATUS.RUNNING],
+  [51, ACTIVITY_STATUS.RUNNING],
+  [52, ACTIVITY_STATUS.RUNNING],
+  [53, ACTIVITY_STATUS.RUNNING],
+  [54, ACTIVITY_STATUS.RUNNING],
+  [55, ACTIVITY_STATUS.RUNNING],
   [60, ACTIVITY_STATUS.CLAIM],
   [90, ACTIVITY_STATUS.SHOW]
 ]);
@@ -52,7 +57,10 @@ export function activityStateAt(config, window, at) {
       stateId: Number(stage.stageId),
       start: seconds(stage.start),
       end: seconds(stage.end),
-      index: window.stages.indexOf(stage)
+      index: window.stages.indexOf(stage),
+      stages: window.stages.map(entry => ({
+        stageId: Number(entry.stageId), start: seconds(entry.start), end: seconds(entry.end)
+      }))
     };
   }
 
@@ -176,7 +184,10 @@ export function evaluateActivity({
   const window = overrideResult.window;
   if (!window) return closed('no_window');
 
-  const state = activityStateAt(config, window, at);
+  const stageTiming = activityStageWindows(config, window);
+  if (stageTiming?.reason) return closed(stageTiming.reason);
+  const stateWindow = stageTiming?.stages ? { ...window, stages: stageTiming.stages } : window;
+  const state = activityStateAt(config, stateWindow, at);
   if (!state.visible) return state;
 
   if (!ignorePlayerAccess) {
@@ -189,7 +200,7 @@ export function evaluateActivity({
     if (!explicitOccurrence && !playerCondition(config.asserts, role)) return closed('player_condition');
     if (override?.conditions && !playerCondition(override.conditions, role)) return closed('override_condition');
   }
-  return { ...state, window };
+  return { ...state, window: stateWindow };
 }
 
 export function createActivityLifecycle({ calendar, tables, now = Date.now }) {

@@ -212,6 +212,7 @@ const ARTIFACT_COMMAND_MATRIX = Object.freeze([
     request: () => ({ act_tid: ACT.trial, challenge_tid: 1, task_id: [101] }),
     invalidRequest: () => ({ act_tid: ACT.trial, challenge_tid: 999, task_id: [101] }),
     prepare: f => f.service.recordTrialFight(ACT.trial, 1, 150000),
+    insufficientRequest: () => ({ act_tid: ACT.trial, challenge_tid: 1, task_id: [102] }),
     prepareInsufficient() {},
     duplicate(f, request) {
       const repeated = f.service.execute(this.command, request);
@@ -314,7 +315,9 @@ for (const matrix of ARTIFACT_COMMAND_MATRIX) {
     seedResources(insufficient.store);
     matrix.prepareInsufficient(insufficient);
     const beforeInsufficient = persistenceSnapshot(insufficient.store);
-    assert.throws(() => insufficient.service.execute(matrix.command, request), codeIs(matrix.command === 101803 || matrix.command === 101806 ? 301 : 308));
+    assert.throws(() => insufficient.service.execute(matrix.command,
+      matrix.insufficientRequest?.() ?? request),
+    codeIs(matrix.command === 101803 || matrix.command === 101806 ? 301 : 308));
     assert.deepEqual(persistenceSnapshot(insufficient.store), beforeInsufficient);
 
     const closed = matrixFixture(t, { assertOpen: () => false });
@@ -399,6 +402,26 @@ test('all six command responses use their exact protobuf schemas', t => {
     assert.doesNotThrow(() => codec.unpack(schema, result.data));
   }
   assert.deepEqual(moduleBytes(f.store, 518), module518Before);
+});
+
+test('trial daily-login task claims without a prior fight record or fight count', t => {
+  const f = fixture(t);
+  const claimed = f.service.execute101801({
+    act_tid: ACT.trial, challenge_tid: 1, task_id: [101]
+  });
+  assert.ok(claimed.value.changes.length > 0);
+  const state = stateOf(f.store, ACT.trial);
+  assert.equal(state.daily.counters.trial_fights, 0);
+  assert.equal(state.fight_record.mission_tid, 0);
+  assert.deepEqual(state.fight_record.claimed_tasks, [101]);
+
+  const repeated = f.service.execute101801({
+    act_tid: ACT.trial, challenge_tid: 1, task_id: [101]
+  });
+  assert.deepEqual(repeated.value.changes, []);
+  assert.throws(() => f.service.execute101801({
+    act_tid: ACT.trial, challenge_tid: 1, task_id: [102]
+  }), codeIs(308));
 });
 
 test('trial and draw task claim bytes use task_tid % 1000 in independent bitsets', t => {

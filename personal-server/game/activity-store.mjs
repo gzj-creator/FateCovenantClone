@@ -286,11 +286,20 @@ export function createActivityStore({ store, now = Date.now }) {
     return store.inspect(db => db.prepare('SELECT * FROM activity_settlement WHERE server_id=? ORDER BY done_at DESC, act_id, period_no LIMIT 500').all(serverId));
   }
 
-  function setStage(serverId, actId, periodNo, stage, settledAt = null) {
+  function setStage(serverId, actId, periodNo, stage, settledAt = null, stages = null) {
     const value = String(stage ?? '');
     if (!value) throw new GameError(1, 'Activity stage is invalid');
-    store.inspect(db => db.prepare('UPDATE activity_instance SET stage=?, settled_at=?, updated_at=? WHERE server_id=? AND act_id=? AND period_no=?')
-      .run(value, settledAt, stamp(), serverId, actId, periodNo));
+    const stageWindows = Array.isArray(stages) && stages.length
+      ? JSON.stringify(jsonArray(stages, 'stageWindows').map(stageWindow => ({
+        stageId: integer(stageWindow?.stageId, 'stageId', { min: 1 }),
+        start: integer(stageWindow?.start, 'stage start', { min: 1 }),
+        end: integer(stageWindow?.end, 'stage end', { min: 1 })
+      })))
+      : null;
+    store.inspect(db => db.prepare(`UPDATE activity_instance
+      SET stage=?, settled_at=?, stage_windows_json=COALESCE(?,stage_windows_json), updated_at=?
+      WHERE server_id=? AND act_id=? AND period_no=?`)
+      .run(value, settledAt, stageWindows, stamp(), serverId, actId, periodNo));
   }
 
   function recordOverride({ serverId, actId, kind, startAt = null, endAt = null, conditions = [], reason = '', operator = '' }) {

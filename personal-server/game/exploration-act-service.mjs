@@ -4,6 +4,7 @@ import { consumeResources, grantResources } from './resources.mjs';
 import { wrapEtfBinary } from './etf-binary.mjs';
 import { gameDayIndex } from './time.mjs';
 import { INT64_MAX, int64 } from './develop-support.mjs';
+import { isDailyLoginTask } from './task-statistics.mjs';
 
 // G1 (#151-#162): exploration and home activities.
 //
@@ -791,8 +792,8 @@ export function createExplorationActService({
   }
 
   function homelandProgress(state, task) {
+    if (isDailyLoginTask(task)) return 1;
     switch (Number(task.task_type)) {
-      case 1803: return state.selected_hero_tid ? 1 : 0;
       case 2407: return Number(state.hero_select_count ?? 0);
       case 1805: return (state.decorate_list ?? []).length;
       case 6901: return Number(state.clear_count ?? 0);
@@ -992,7 +993,7 @@ export function createExplorationActService({
         const key = actTid + ':' + challengeTid + ':' + taskId;
         if (state.challenge_claims.includes(key) || hasClaim(db, roleId, 'pet_challenge', key)) throw new GameError(310, 'Pet challenge task already claimed');
         let progress;
-        if (Number(task.task_type) === 1803) progress = state.selected_pet_tid ? 1 : 0;
+        if (isDailyLoginTask(task)) progress = 1;
         else if (Number(task.task_type) === 13101) progress = Number(state.fight_acc_dmg ?? 0);
         else throw new GameError(5, 'Pet challenge task rule is not recovered');
         if (progress < Number(task.task_count ?? 0)) throw new GameError(311, 'Pet challenge task is not finished');

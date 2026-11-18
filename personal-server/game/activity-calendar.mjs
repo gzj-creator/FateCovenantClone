@@ -5,6 +5,9 @@ const DAY_SECONDS = 86400;
 const FISHING_ACT_FIRST = 1074001;
 const FISHING_ACT_LAST = 1074011;
 const ALL_OPEN_LOGIN_WINDOW_SECONDS = 365 * DAY_SECONDS;
+const DREAM_HOUSE_ACT_TYPE = 1085;
+const DREAM_HOUSE_NEW_SERVER_OPEN_DAY = 8;
+const DREAM_HOUSE_OLD_SERVER_OPEN_DAY = 29;
 
 function seconds(value) {
   const number = Number(value);
@@ -32,6 +35,18 @@ function serverEligibility(config, serverOpenedAt, at) {
   if (!config) return true;
   const minimumDay = Math.max(0, Number(config.join_server_day) || 0);
   if (minimumDay > 0 && serverDayNumber(serverOpenedAt, at) < minimumDay) return false;
+
+  // Dream House has two release paths. A relative/windowed row is the current
+  // new-server activity and opens on server day 8; the absolute world-time row
+  // is the old-server period and requires server day 29. The table also keeps
+  // older relative generations with refer_day=1, so their own start day is not
+  // enough to decide eligibility for this family.
+  if (Number(config.type) === DREAM_HOUSE_ACT_TYPE) {
+    const releaseDay = seconds(config.world_time) > 0
+      ? DREAM_HOUSE_OLD_SERVER_OPEN_DAY
+      : DREAM_HOUSE_NEW_SERVER_OPEN_DAY;
+    if (serverDayNumber(serverOpenedAt, at) < releaseDay) return false;
+  }
 
   // server_day_limit is the oldest server age for which this row is valid
   // (for example the *_7日 and *_29日 variants). Treating it as a minimum
@@ -167,6 +182,69 @@ export function activityWindow(config, serverOpenedAt, activityReferenceOpenedAt
   return null;
 }
 
+// ActFrame supplies stage ids and their duration/end-time columns independently
+// of the legacy Activity state_end_day array. Recreate Activity.GetStageTime in
+// original array order; sorting or treating stage ids as ordinary indexes gives
+// different boundaries for 51..55 and for short display stages.
+export function activityStageWindows(config, window) {
+  // A server-supplied stage_time_list is authoritative even when the static
+  // fallback arrays are incomplete. Normalize and validate only that list.
+  if (Array.isArray(window?.stages) && window.stages.length) {
+    const stages = window.stages.map(stage => ({
+      stageId: Number(stage?.stageId),
+      start: seconds(stage?.start),
+      end: seconds(stage?.end)
+    }));
+    if (stages.some(stage => !Number.isSafeInteger(stage.stageId) || stage.stageId <= 0
+      || !(stage.start > 0) || !(stage.end >= stage.start))) {
+      return { stages: null, reason: 'invalid_stage_config' };
+    }
+    return { stages, reason: null };
+  }
+  const stageIds = Array.isArray(config?.stage) ? config.stage : [];
+  if (!stageIds.length) return null;
+  const durations = Array.isArray(config?.stage_duration_day) ? config.stage_duration_day : null;
+  const endTimes = Array.isArray(config?.stage_end_time) ? config.stage_end_time : null;
+  const start = seconds(window?.start);
+  if (!(start > 0) || !durations || !endTimes
+    || durations.length !== stageIds.length || endTimes.length !== stageIds.length) {
+    return { stages: null, reason: 'invalid_stage_config' };
+  }
+  const normalizedIds = stageIds.map(Number);
+  const normalizedDurations = durations.map(Number);
+  const normalizedEndTimes = endTimes.map(Number);
+  if (normalizedIds.some(id => !Number.isSafeInteger(id) || id <= 0)
+    || normalizedDurations.some(days => !Number.isSafeInteger(days) || days < 0)
+    || normalizedEndTimes.some(endTime => !Number.isSafeInteger(endTime) || endTime < 0)) {
+    return { stages: null, reason: 'invalid_stage_config' };
+  }
+  const stages = normalizedIds.map(stageId => {
+    let previousDays = 0;
+    let previousEndTime = 0;
+    let currentDays = 0;
+    let currentEndTime = 0;
+    for (let index = 0; index < normalizedIds.length; index += 1) {
+      const configuredStage = normalizedIds[index];
+      if (stageId < configuredStage) break;
+      if (configuredStage < stageId) {
+        previousDays += normalizedDurations[index];
+        previousEndTime = normalizedEndTimes[index];
+      } else {
+        currentDays = normalizedDurations[index];
+        currentEndTime = normalizedEndTimes[index];
+      }
+    }
+    let stageStart = start + previousDays * DAY_SECONDS;
+    if (previousEndTime > 0) stageStart = dayZero(stageStart) + previousEndTime;
+    const stageEnd = dayZero(stageStart + currentDays * DAY_SECONDS) + currentEndTime;
+    return { stageId, start: stageStart, end: stageEnd };
+  });
+  if (stages.some(stage => stage.end < stage.start)) {
+    return { stages: null, reason: 'invalid_stage_config' };
+  }
+  return { stages, reason: null };
+}
+
 export function createActivityCalendar({
   tables,
   serverOpenedAt,
@@ -255,6 +333,31 @@ export function createActivityCalendar({
     if (!activityConfig(tables, allOpenFishingActivityId)) throw new Error(`Fishing activity ${allOpenFishingActivityId} is not configured`);
   }
 
+  // The current new-server Dream House chain uses weekly generations at days
+  // 8/15/22. Older rows with refer_day=1 remain in the shipped table but must
+  // not steal the entry. Select the newest eligible day-8+ generation and keep
+  // the 00:00-05:00 boundary closed instead of falling back to an old row.
+  const dreamHouseGenerations = [...(tables?.ActFrameAct ?? [])]
+    .map(([actId, config]) => ({
+      actId: Number(actId),
+      config,
+      version: Number(config?.version ?? actId)
+    }))
+    .filter(row => Number.isSafeInteger(row.actId) && row.actId > 0
+      && Number(row.config?.type) === 1085
+      && !(seconds(row.config?.world_time) > 0)
+      && Number(row.config?.refer_day) >= DREAM_HOUSE_NEW_SERVER_OPEN_DAY)
+    .sort((left, right) => left.version - right.version || left.actId - right.actId);
+  const selectedDreamHouseGeneration = at => {
+    const currentDay = serverDayNumber(openedAt, at);
+    return dreamHouseGenerations.filter(row => currentDay >= Number(row.config.refer_day)
+      && serverEligibility(row.config, openedAt, at)).at(-1)?.actId ?? null;
+  };
+  const isSelectedActFrameGeneration = (actId, config, at) => {
+    if (Number(config?.type) !== 1085 || seconds(config?.world_time) > 0 || !(Number(config?.refer_day) > 0)) return true;
+    return selectedDreamHouseGeneration(at) === Number(actId);
+  };
+
   function isScheduledActivity(actId, stateData, activity, at) {
     const id = Number(actId);
     if (!Number.isSafeInteger(id) || id <= 0) return false;
@@ -263,6 +366,7 @@ export function createActivityCalendar({
 
     const config = activityConfig(tables, id);
     if (config && !serverEligibility(config, openedAt, at)) return false;
+    if (config && !isSelectedActFrameGeneration(id, config, at)) return false;
     if (config || customActivity(activity, id)) {
       const window = scheduledWindow(id, activity);
       if (window) return at >= window.start && at < window.end;
@@ -904,6 +1008,10 @@ export function createActivityCalendar({
     // lifecycle instance table and the client payload cannot drift apart.
     windowFor: (actId, activity = null, at = currentSeconds()) => scheduledWindow(Number(actId), activity, at),
     occurrenceFor: (actId, at = currentSeconds()) => explicitOccurrenceFor(Number(actId), at),
+    selectedVersionFor: (actId, at = currentSeconds()) => {
+      const config = activityConfig(tables, Number(actId));
+      return isSelectedActFrameGeneration(Number(actId), config, at) ? Number(config?.version ?? actId) : null;
+    },
     explicitOccurrences: Object.freeze([...explicitById.values()].flat()),
     filterLoginActivity,
     applyLoginSchedule,

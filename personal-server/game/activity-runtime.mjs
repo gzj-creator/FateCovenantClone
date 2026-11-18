@@ -114,13 +114,16 @@ export function createActivityRuntime({
       const periodNo = Number(occurrence?.periodNo)
         || Math.max(1, serverDayNumber(calendar.serverOpenedAt, window.start));
       const effectiveWindow = timeline.window ?? access.window ?? window;
+      const stageWindows = Array.isArray(timeline.stages)
+        ? timeline.stages
+        : Array.isArray(occurrence?.stages) ? occurrence.stages : null;
       activityStore.observeInstance({
         serverId: srv, actId, periodNo, family: String(config.type ?? config.func ?? ''),
         previewAt: effectiveWindow.start, openAt: effectiveWindow.start, closeAt: effectiveWindow.end,
         showUntil: effectiveWindow.end, stage: timeline.status, parentActId: occurrence?.parentActId ?? null,
         baseline: occurrence?.baseline, scope: occurrence?.scope, scopeId: occurrence?.scopeId,
         actVersion: occurrence?.version, occurrenceId: occurrence?.occurrenceId,
-        instanceKey: occurrence?.instanceKey, group: occurrence?.group, stages: occurrence?.stages
+        instanceKey: occurrence?.instanceKey, group: occurrence?.group, stages: stageWindows
       });
       const stateStart = Number(access.start ?? effectiveWindow.start);
       changed.push({
@@ -133,7 +136,7 @@ export function createActivityRuntime({
         stateId: Number(access.stateId) || null,
         stateStart: Number.isSafeInteger(stateStart) && stateStart > 0 ? stateStart : null,
         window: { start: Number(effectiveWindow.start), end: Number(effectiveWindow.end) },
-        stages: occurrence?.stages ?? null,
+        stages: stageWindows,
         occurrence: occurrence ? {
           baseline: occurrence.baseline, scope: occurrence.scope, scopeId: occurrence.scopeId,
           version: occurrence.version, occurrenceId: occurrence.occurrenceId,
@@ -172,7 +175,7 @@ export function createActivityRuntime({
         actId: Number(row.act_id), periodNo: Number(row.period_no), from: previous,
         to: result.status, at: Number(at),
         window: { start: Number(window.start), end: Number(window.end) },
-        stages: occurrence?.stages ?? storedStages,
+        stages: result.stages ?? occurrence?.stages ?? storedStages,
         occurrenceId: row.occurrence_id ?? occurrence?.occurrenceId ?? null,
         instanceKey: row.instance_key ?? occurrence?.instanceKey ?? null
       };
@@ -186,7 +189,8 @@ export function createActivityRuntime({
         }
         activityStore.markSettlement(srv, row.act_id, row.period_no, 0, 'lifecycle');
       }
-      activityStore.setStage(srv, row.act_id, row.period_no, result.status, result.status === 'closed' ? at : null);
+      activityStore.setStage(srv, row.act_id, row.period_no, result.status,
+        result.status === 'closed' ? at : null, result.stages ?? null);
       activityStore.audit('scheduler', 'activity.stage', `${srv}:${row.act_id}:${row.period_no}`,
         { stage: previous }, { stage: result.status, reason: result.reason ?? null }, 'activity lifecycle');
       changes.push(change);
