@@ -91,6 +91,7 @@
 - 通行证经验必须按客户端 `PermitCycleTypeBase.GetExp` 计算为 `基础经验 + buy_exp`；动态开服日经验和资源经验都不能绕过购买经验。[PT1](permit-day-exp-reddot-20261117.md)
 - 客户端领取红点只检查 `receive_free` / `receive_permit`，不检查奖励数组。只要达到等级的对应轨道尚未领取，服务端就必须写入领取位；奖励数组为空时只跳过资源追加，不能跳过状态变更。[PT1](permit-day-exp-reddot-20261117.md)
 - 新建账号必须显式清空 `pb_permit_info` 的全部账号字段和外层补偿日，不能以展开模板对象的方式只覆盖少数字段。[PT1](permit-day-exp-reddot-20261117.md)
+- 2026-11-18 已随 `main@20dc167` 部署并通过进程、端口、启动日志与 SQLite `quick_check`；领取后红点和新号通行证状态仍须由用户做 APK 验收。后续操作先实时读取运行状态，不复用旧 PID。[PT1](permit-day-exp-reddot-20261117.md)
 
 ### 12. 客户端状态镜像与辅助接口
 
