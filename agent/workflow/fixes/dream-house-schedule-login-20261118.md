@@ -6,7 +6,7 @@
 
 基线提交：`89b410a`
 
-状态：worktree 内修复与组件验证完成；未部署、未写运行库、未做临时 TCP 或 APK 真机验收
+状态：已合并 `main@4e6f8ad` 并部署；组件、健康检查和客户端启动通过，等待用户登录后做梦中小屋入口与领奖的 APK 真机验收
 
 ## 现象与触发
 
@@ -64,11 +64,13 @@
 
 | 级别 | 内容 | 结果 |
 | --- | --- | --- |
-| 专项组件测试 | `activity-calendar/lifecycle/runtime`、Artifact TrialsTask、Homeland/Pet 回归 | 70/70 通过；日志 `analysis/test-runs/dream-house-schedule-login-20261118-targeted.log` |
-| 全量组件测试 | `personal-server npm test` | 541 项：pass 539 / fail 0 / skipped 2；日志 `analysis/test-runs/dream-house-schedule-login-20261118-full.log` |
+| 专项组件测试 | `activity-calendar/lifecycle/runtime`、Artifact TrialsTask、Homeland/Pet 回归 | 合并后 72/72 通过；日志 `analysis/test-runs/dream-house-schedule-login-20261118-merged-targeted.log` |
+| 全量组件测试 | `personal-server npm test` | 合并后 541 项：pass 539 / fail 0 / skipped 2；日志 `analysis/test-runs/dream-house-schedule-login-20261118-merge-full.log` |
 | 临时 TCP | 本轮未执行 | 未验证 |
-| 部署 | 本轮不部署 | 未部署 |
-| APK 真机 | 本轮不改 APK | 未验收 |
+| 部署 | 从 main 启动，核进程、五端口、管理页、stderr、SQLite 与开服日 | 通过；PID `8752`，`serverOpenedAt=1794690000`、`serverDay=4`、全部端口仅 `127.0.0.1`、管理页 200、stderr 0、SQLite quick/integrity ok |
+| APK 真机 | 启动既有隔离客户端 `com.jzyx.ps`，不改 APK | 已到 QuickSDK 账号登录页；梦中小屋入口和 `11502` 领奖仍待用户验证 |
+
+部署前备份位于 `analysis/experiments/launch-20261115/server-data-fixed/backups/pre-dream-house-deploy-20261118T051352Z/`。`game.local-only.vacuum.sqlite` 大小 1,687,552 字节，SHA256 `a87867b36f2d45c5ab52a9fd7a6d3df2223a2b45098bbeed299c32006dc1a5a0`，包含 2 个角色、1 个账号和 177 张表。
 
 ## 防复发
 
@@ -86,5 +88,5 @@
 - 原服务端选择函数尚未取得；当前入口门槛由公开玩法规则与 `ActFrameTable` 的日龄行共同确定，断言锁定的是对外行为，不冒充已恢复原函数源码。
 - 空 stage 的 ActFrame 不自动生成阶段，避免一次改动关闭 811 条证据不足的活动。
 - 通用长周期奖励保留活动结束门禁；没有本期完成权益快照前，不直接放开结束后的累计统计领奖，避免产出或重复领奖。
-- 本轮不部署、不重启实时服务、不写运行库、不执行临时 TCP、不操作模拟器或 APK。部署后仍需用登录下发与 scheduler 的运行库状态复验。
+- 部署验收只证明服务和新进程健康；用户登录后仍需核对 module 92 不再下发第 4 天的 Type 1085 活动，并验证第 8 天入口/阶段及每日登录奖励领取。
 

@@ -45,8 +45,8 @@ err=HTTP/1.1 404 Not Found
 | --- | --- | --- |
 | 组件测试 | `sdk-service.test.mjs`，包括真实 URL、GET 方法、200 响应体以及不得记录 `unimplemented_route` | 26/26 通过 |
 | 全量测试 | `npm test --prefix personal-server` | 532 pass / 0 fail / 2 skipped |
-| 部署 | 重启后的新进程直接请求该 URL | 部署验证结果在提交和重启后补入本节 |
-| APK 真机 | 重登后检查该 URL 不再 404、启动不再弹“配置出错” | 部署后客户端复验 |
+| 部署 | `main@4e6f8ad` 下新 PID `8752` 直接 GET 该 URL | HTTP 200、响应 `{"ip":"127.0.0.1"}`，本轮日志 `unimplemented_route=0` |
+| APK 真机 | 重登后检查该 URL 不再 404、启动不再弹“配置出错” | 隔离客户端已启动到 QuickSDK 账号登录页；用户重登验收待完成 |
 
 ## 防复发
 

@@ -121,13 +121,37 @@ function WriteState([int]$uid) {
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $stateFile -Encoding UTF8
 }
 
+function RemoveReversePort([int]$Port) {
+    $previous = $ErrorActionPreference
+    try {
+        # Restore is idempotent: a reverse listener may already be gone after a
+        # device restart. If removal reports an error, list the remaining
+        # listeners before deciding whether ADB or only the target is gone.
+        $ErrorActionPreference = 'SilentlyContinue'
+        & $adb -s $serial reverse --remove "tcp:$Port" *> $null
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0) {
+            $remaining = @(& $adb -s $serial reverse --list 2> $null)
+            $listExitCode = $LASTEXITCODE
+            if ($listExitCode -ne 0) {
+                throw "adb reverse cleanup failed for tcp:$Port and the device is unavailable (list exit $listExitCode)"
+            }
+            if (@($remaining) -match "tcp:$Port(?:\s|$)") {
+                throw "adb reverse --remove tcp:$Port failed with exit code $exitCode and the listener remains"
+            }
+        }
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 function RemoveLoopbackSetup([object]$state, [bool]$stopClient) {
     if ($stopClient -and (ClientRunning)) { Device @('am', 'force-stop', $package) | Out-Null }
     RootIgnored @('iptables', '-t', 'nat', '-D', 'OUTPUT', '-p', 'tcp', '-d', $loopback, '-j', $chain)
     RootIgnored @('iptables', '-t', 'nat', '-F', $chain)
     RootIgnored @('iptables', '-t', 'nat', '-X', $chain)
     $ports = if ($state -and $state.reverse) { @($state.reverse) } else { $reversePorts }
-    foreach ($port in $ports) { & $adb -s $serial reverse --remove "tcp:$port" *> $null }
+    foreach ($port in $ports) { RemoveReversePort ([int]$port) }
 }
 
 function RemoveLegacySetup([object]$state, [bool]$stopClient) {
@@ -144,7 +168,7 @@ function RemoveLegacySetup([object]$state, [bool]$stopClient) {
         }
         RootIgnored @('rm', '-f', $pin, '/data/local/tmp/fc-local-uid-helper')
     }
-    foreach ($port in @($state.reverse)) { & $adb -s $serial reverse --remove "tcp:$port" *> $null }
+    foreach ($port in @($state.reverse)) { RemoveReversePort ([int]$port) }
 }
 
 function RemoveRecordedSetup([bool]$stopClient, [string]$suffix) {

@@ -56,7 +56,7 @@ exploration_command_rejected code=311 message=Homeland task is not finished
 | 神器组件 | 将试炼计数强制归零后仍可领取 ONLY_STATE 任务，重领不重复发奖 | 通过 |
 | 定向测试 | 探索活动 14/14；神器活动 19/19 | 通过 |
 | 全量测试 | `npm test --prefix personal-server` | 532 pass / 0 fail / 2 skipped |
-| 部署/客户端 | 真实任务领取和第二次请求 | 提交重启后执行并补入结果 |
+| 部署/客户端 | `main@4e6f8ad` 新 PID `8752`；真实任务领取和第二次请求 | 服务已部署，隔离客户端已启动到登录页；任务界面验收待用户重登后完成 |
 
 ## 防复发
 

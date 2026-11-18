@@ -48,6 +48,7 @@
 - 世界时间活动按“目标服开服 + (world_time - 参考服开服)”换算；同一行同时有明确 `world_time` 和默认 `refer_day/server_day` 时以 `world_time` 为准。[activity-relative-time-20261111.md](activity-relative-time-20261111.md)
 - 登录模块 1 第 5 项 `ServerInfo.OpenTime` 使用活动日历的开服时间，不能用角色 `createdAt`；区服列表的 `release_time/show_time/open_time` 必须同一基准，不允许隐式回退 `now - 1`。[sprint-claim-expired.md](sprint-claim-expired.md)
 - Type 1085 梦中小屋必须按 `ServerInfo.OpenTime` 推导的开服天数判断：新区第 8 天起、老服世界时间期第 29 天起；不能按绝对公历日或旧 `refer_day=1` 行决定入口。新区只选择当前已到达的最新第 8/15/22 天代际，00:00—05:00 间隙不回退旧版本。[dream-house-schedule-login-20261118.md](dream-house-schedule-login-20261118.md)
+- 2026-11-18 已由 `main@4e6f8ad` 部署并通过新进程、五端口、管理页、SQLite 和客户端启动检查；第 4 天登录隐藏 1085、第 8 天入口阶段和 `11502` 每日登录领奖仍须真机确认。[D1](dream-house-schedule-login-20261118.md)
 - ActFrame 的非空 `stage/stage_duration_day/stage_end_time` 必须按原 `GetStageTime` 的数组顺序和阶段 ID 比较生成窗口，并让登录 `stage_time_list`、持久实例和 scheduler 共用同一结果；不完整数组 fail closed。[dream-house-schedule-login-20261118.md](dream-house-schedule-login-20261118.md)
 - `TaskType=1803` 是活动内“每日登录游戏”，与选英雄、选宠物、试炼战报等局部选择无关。客户端显示“奖励已过期”可能只是服务端 `311 任务未完成` 的文案映射，先核 1803 进度语义，不要用放开领奖时限掩盖。[dream-house-schedule-login-20261118.md](dream-house-schedule-login-20261118.md)
 - 附加账本（Week Hunt、希望树返利）在活动关闭或周期结束时只跳过记账，不能否决仍在开放的主购买。[limited-recruit-gift-week-hunt-20261110.md](limited-recruit-gift-week-hunt-20261110.md)、[wish-tree-rebate-cycle-20261108.md](wish-tree-rebate-cycle-20261108.md)
@@ -68,6 +69,7 @@
 - 组件测试、临时 TCP、部署、APK 真机是四个不同等级；记录里必须写清哪一级通过，不能把组件通过写成可玩验收。
 - APK 修改前先备份当前可用包并核对 SHA256；验收通过后更新 `apk/README.md`；未验收构建不得标“可用快照”。
 - 操作实时服务、运行库或设备前先读当前状态文件和进程，不继承旧 PID、旧路径和旧通过数字。
+- ADB/iptables 恢复必须对“已经没有目标资源”幂等；对已经清除的 reverse/chain 报错不能阻止其他资源清理和 `network-state` 状态归档。验收同时查退出码、实际规则和状态文件。[T1](local-device-restore-20261118.md)
 
 ### 8. 文档与基线
 

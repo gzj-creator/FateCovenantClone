@@ -38,12 +38,13 @@ pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`）�
 | N2 | 道具重试二进制回执和全量旧测试前置失效 | [item-receipt-and-audit-fixtures-20261117.md](item-receipt-and-audit-fixtures-20261117.md) | 回执递归恢复、合法业务日、真实公会状态和派发清单已修；`receipt-and-validation-after.log` 17/17；未部署/未做 APK |
 | N3 | 代金券余额与管理页大整数精度 | [voucher-integer-precision-20261117.md](voucher-integer-precision-20261117.md) | BigInt 金额/张数、JSON 字符串边界、管理页格式化和全账本累计已修；`downstream-after.log` 37/37；未部署/未做 APK |
 | PT1 | 通行证无经验可领取、领取后红线、新号继承进度 | [permit-day-exp-reddot-20261117.md](permit-day-exp-reddot-20261117.md) | 经验总式、空奖励领取位和新号全字段重置已修；专项 12/12、相关 35/35、fast 534 项 0 失败；已随 `main@20dc167` 部署且健康检查通过，APK 待用户验收 |
-| D1 | 梦中小屋错误开放与每日登录活跃奖励提示已过期 | [dream-house-schedule-login-20261118.md](dream-house-schedule-login-20261118.md) | 新区第 8 天/老服第 29 天门禁、1085 当前代际过滤、ActFrame 50→90 窗口和 TaskType 1803 登录任务已修；专项 70/70、全量 541 项中 539 通过/0 失败/2 跳过；待部署验收 |
-| S1 | 客户端启动显示“配置出错” | [sdk-ip-discovery-404-20261118.md](sdk-ip-discovery-404-20261118.md) | `/ad/api/ip_address//` 由 404 修为 GET 200 本机 IP；SDK 专项 26/26、全量 532 pass/0 fail/2 skipped；待部署与客户端重登 |
-| M1 | 家园任务已领取仍显示可领，点击无反应 | [only-state-task-state-20261118.md](only-state-task-state-20261118.md) | `TaskType 1803 ONLY_STATE` 误用选人/计数条件；家园、宠物、神器三入口已修，含首次、重复和重开库断言；全量通过；待部署 |
+| D1 | 梦中小屋错误开放与每日登录活跃奖励提示已过期 | [dream-house-schedule-login-20261118.md](dream-house-schedule-login-20261118.md) | 新区第 8 天/老服第 29 天门禁、1085 当前代际过滤、ActFrame 50→90 窗口和 TaskType 1803 登录任务已修；合并后专项 72/72、全量 541 项中 539 通过/0 失败/2 跳过；已部署，客户端入口与领奖待用户验收 |
+| S1 | 客户端启动显示“配置出错” | [sdk-ip-discovery-404-20261118.md](sdk-ip-discovery-404-20261118.md) | `/ad/api/ip_address//` 由 404 修为 GET 200 本机 IP；已部署，客户端到达账号登录页，重登后最终验收待完成 |
+| M1 | 家园任务已领取仍显示可领，点击无反应 | [only-state-task-state-20261118.md](only-state-task-state-20261118.md) | `TaskType 1803 ONLY_STATE` 误用选人/计数条件；家园、宠物、神器三入口已修，含首次、重复和重开库断言；已部署，任务界面验收待用户重登 |
 | G6 | 引导 205020 完成后停在后续旁白 | [guide-adventure-node-955-20261118.md](guide-adventure-node-955-20261118.md) | 服务端状态正确，等待客户端旅途节点 955；真机执行“旅途→返回”后 364070 后续对白已播放；无需服务端改动 |
+| T1 | 设备网络 `Restore` 在缺失 ADB reverse 时提前中断 | [local-device-restore-20261118.md](local-device-restore-20261118.md) | 反向端口清理改为先删后查的幂等处理；reverse 已清场景 Restore→Setup、五条 NAT、四条 reverse 和客户端启动均通过 |
 
-验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**2026-11-18 当前轮修复 SDK 启动路由、`1803 ONLY_STATE` 任务状态，并完成引导旅途节点真机路径定位；部署与客户端状态以 S1/M1/G6 记录的最新验证为准。**
+验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**2026-11-18 当前轮修复已由 `main@4e6f8ad` 部署，客户端已启动；D1/S1/M1 的最终界面结果由用户重登后确认。**
 
 ## 2026-10-30 海岛垂钓岛屿解锁
 
