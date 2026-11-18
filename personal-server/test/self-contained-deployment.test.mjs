@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 import { spawn, spawnSync } from 'node:child_process';
 import { createCipheriv } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { openFeatureIds } from '../game/feature-service.mjs';
+import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
+import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
+import { createGameCodec, decodeEtf, rawBinary } from '../protocol/game-codec.mjs';
 import { createProtobufJsCodec } from '../server-list-codec.mjs';
 import { encodeServerListRequest } from '../server-list.mjs';
 import { signQuickSdk } from '../quick-sdk.mjs';
@@ -45,7 +51,45 @@ async function waitForReady(file, child, timeoutMs = 30000) {
   throw new Error('Deployment server did not write its ready status');
 }
 
-test('a clean personal-server copy boots from the public server list without the repository analysis tree', { timeout: 60000 }, async t => {
+async function loginThroughGateway(codec, port, identity) {
+  const socket = net.createConnection({ host: '127.0.0.1', port, timeout: 10000 });
+  socket.once('timeout', () => socket.destroy(new Error('Game gateway login timed out')));
+  const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 });
+  const send = payload => socket.write(encodeGameFrame(payload));
+  let challenge;
+  try {
+    send(Buffer.from('verify'));
+    for await (const chunk of socket) {
+      for (const frame of decoder.push(chunk)) {
+        if (!challenge) {
+          challenge = parseServerChallenge(frame);
+          const key = 'CovenantKey12345';
+          send(Buffer.concat([Buffer.from(key),
+            localAesBeforeFinal(challenge.clientVerify, key, HANDSHAKE_FIXED_IV, { profile: LOCAL_AES_PROFILE }),
+            challenge.rawFlags, Buffer.from('1.55.090365')]));
+          const login = codec.pack('login', {
+            server_id: 3, channel_uid: identity.uid, verify_code: identity.user_token, channel_extra: ''
+          });
+          send(codec.pack('pb_c2s', { type: 909103, seq: 1, data: login }));
+          continue;
+        }
+        const response = codec.unpack('pb_s2c', frame);
+        assert.equal(response.seq, 1);
+        assert.equal(response.err, undefined);
+        const login = await decodeEtf(Buffer.from(response.data, 'base64'));
+        assert.equal(login[0], 1);
+        const modules = new Map(login[2].value);
+        const features = codec.unpack('res_fun_open_login', Buffer.from(modules.get(3).value));
+        return { roleId: Number(modules.get(1)[1]), features: openFeatureIds(features) };
+      }
+    }
+    assert.fail('Game gateway closed before returning the login response');
+  } finally {
+    socket.destroy();
+  }
+}
+
+test('a clean personal-server copy boots and admits the first public account without the repository analysis tree', { timeout: 60000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-self-contained-'));
   const serverCopy = path.join(directory, 'personal-server');
   const dataDirectory = path.join(directory, 'runtime');
@@ -137,6 +181,42 @@ test('a clean personal-server copy boots from the public server list without the
   assert.equal(quickLogin.result, true);
   assert.equal(quickLogin.data.uid, 'local-1');
   assert.match(quickLogin.data.user_token, /^[0-9a-f]{64}$/);
+
+  const inspect = sql => {
+    const database = new DatabaseSync(path.join(dataDirectory, 'game.local-only.sqlite'), { readOnly: true });
+    try { return database.prepare(sql).get(); } finally { database.close(); }
+  };
+  const roleCount = () => inspect('SELECT COUNT(*) AS count FROM roles').count;
+  const codec = createGameCodec();
+  const login = () => loginThroughGateway(codec, status.boundPorts.game, quickLogin.data);
+  assert.equal(roleCount(), 0);
+  assert.equal((await login()).roleId, 1);
+  assert.equal(roleCount(), 1);
+
+  const funId = 1054;
+  const adminToken = fs.readFileSync(path.join(dataDirectory, 'admin-key.local-only.txt'), 'utf8').trim();
+  const setOverride = async mode => {
+    const response = await fetch(`http://127.0.0.1:${status.boundPorts.admin}/api/feature/override`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverId: 3, funId, mode }),
+      signal: AbortSignal.timeout(5000)
+    });
+    assert.equal(response.status, 200);
+    await response.json();
+  };
+  await setOverride('force_open');
+  const opened = await login();
+  assert.equal(opened.roleId, 1);
+  assert.ok(opened.features.has(funId));
+  await setOverride('force_close');
+  const closed = await login();
+  assert.equal(closed.roleId, 1);
+  assert.equal(closed.features.has(funId), false);
+  assert.equal(roleCount(), 1);
+  const stored = inspect('SELECT payload_json FROM login_modules WHERE role_id=1 AND module_id=3');
+  const storedFeatures = codec.unpack('res_fun_open_login', rawBinary(JSON.parse(stored.payload_json)));
+  assert.ok(openFeatureIds(storedFeatures).has(funId));
 
   const exited = once(child, 'exit');
   child.kill('SIGTERM');

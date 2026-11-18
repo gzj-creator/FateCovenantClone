@@ -111,14 +111,7 @@ export function createFeatureService({
   // Local test policy: the already visible sprint banners can open their detail UI.
   // Leader-equipment draw 1348 must also be open or HeroDrawForm resolves an empty
   // current library and falls back to the ordinary adventure library.
-  if (sprintPreview) {
-    if (store.empty && !store.hasRoles()) return {
-      supports: type => type === 7000,
-      execute() { throw new GameError(5, 'No player role exists yet'); },
-      reconcile() { return []; },
-      reconcileModel() { return []; },
-      onlineNotificationsForIds() { return []; }
-    };
+  if (sprintPreview && (!store.empty || store.hasRoles())) {
     const login = codec.unpack('res_fun_open_login', rawBinary(new Map(store.state().modules.value).get(3) ?? Buffer.alloc(0)));
     const current = openFeatureIds(login);
     const forced = overridesFor(store.state().serverId);

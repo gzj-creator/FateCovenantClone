@@ -1111,9 +1111,8 @@ export function createLocalGame({
     features.reconcile();
     const state = store.state();
     const storedModules = new Map(state.modules.value);
-    const list = revive(state.modules);
-    const modules = new Map(list.value);
-    features.maskLogin(modules);
+    features.maskLogin(storedModules);
+    const modules = new Map(revive({ ...state.modules, value: [...storedModules] }).value);
     const guideLogin = projectGuideLoginModule({
       entry: storedModules.get(GUIDE_LOGIN_MODULE_ID),
       guides: state.guides,

@@ -43,6 +43,7 @@ pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`）�
 | M1 | 家园任务已领取仍显示可领，点击无反应 | [only-state-task-state-20261118.md](only-state-task-state-20261118.md) | `TaskType 1803 ONLY_STATE` 误用选人/计数条件；家园、宠物、神器三入口已修，含首次、重复和重开库断言；已部署，任务界面验收待用户重登 |
 | G6 | 引导 205020 完成后停在后续旁白 | [guide-adventure-node-955-20261118.md](guide-adventure-node-955-20261118.md) | 服务端状态正确，等待客户端旅途节点 955；真机执行“旅途→返回”后 364070 后续对白已播放；无需服务端改动 |
 | T1 | 设备网络 `Restore` 在缺失 ADB reverse 时提前中断 | [local-device-restore-20261118.md](local-device-restore-20261118.md) | 反向端口清理改为先删后查的幂等处理；reverse 已清场景 Restore→Setup、五条 NAT、四条 reverse 和客户端启动均通过 |
+| L1 | 公网空服首个角色连接后立即断线 | [empty-realm-login-mask-20261118.md](empty-realm-login-mask-20261118.md) | `909103` 回包前功能服务接口缺失；空库首次登录及模块 3 遮罩纳入发布门禁 |
 
 验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**2026-11-18 当前轮修复已由 `main@4e6f8ad` 部署，客户端已启动；D1/S1/M1 的最终界面结果由用户重登后确认。**
 
