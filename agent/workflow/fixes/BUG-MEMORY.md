@@ -45,6 +45,7 @@
 ### 4. 活动读取与生命周期
 
 - 客户端会遍历探测未开放活动；读取接口（107703、104801 等）应返回空状态或关闭标志，不能抛全局“配置出错”。[entry-display-config-error-20261111.md](entry-display-config-error-20261111.md)、[act-shop-20261112.md](act-shop-20261112.md)
+- 大厅自动读取的回归必须同时覆盖“已开放 × 无公会”等正常空状态。`107703` 不把合法的模块 24 `guildId=0` 当作损坏配置，不写公会或发奖；`107702` 仍要求已有公会和真实贡献。必须对真实登录后的请求及 protobuf 回包做 TCP 断言。[E1 复盘](entry-display-config-error-20261111.md)
 - 同一活动可能存在新旧两代 ID/type（20001 与 1102 都指向百抽），版本表要做代际映射，不能只接受新 type。[activity-ticket-audit-20261111.md](activity-ticket-audit-20261111.md)
 - 世界时间活动按“目标服开服 + (world_time - 参考服开服)”换算；同一行同时有明确 `world_time` 和默认 `refer_day/server_day` 时以 `world_time` 为准。[activity-relative-time-20261111.md](activity-relative-time-20261111.md)
 - 登录模块 1 第 5 项 `ServerInfo.OpenTime` 使用活动日历的开服时间，不能用角色 `createdAt`；区服列表的 `release_time/show_time/open_time` 必须同一基准，不允许隐式回退 `now - 1`。[sprint-claim-expired.md](sprint-claim-expired.md)
@@ -101,9 +102,9 @@
 
 ### 12. 客户端状态镜像与辅助接口
 
-- SDK 启动链中客户端实际请求的辅助地址必须按真实方法、真实路径处理。`/ad/api/ip_address//` 的双斜杠和 GET 都要原样匹配，返回 200；未知路由 404 会在客户端变成“配置出错”。[S1](sdk-ip-discovery-404-20261118.md)
+- SDK 辅助地址要核实真实目的地址、HTTP 方法及精确路径（含末尾斜杠），并把网关业务错误与 HTTP 失败分别关联到界面。`/ad/api/ip_address//` 本机 GET 200 不代表客户端实际请求命中；实采出现过 POST，19:04 外部探测 404 未阻断 19:10 进服。[S1](sdk-ip-discovery-404-20261118.md)、[E1](entry-display-config-error-20261111.md)
 - 任务进度先看 `TaskType` 的 `progress_type`/`progress_fun`。`ONLY_STATE + progress_fun=0` 的状态进度为 1，不得附加选英雄、选宠物或战斗计数；修复时必须审计该 Type 的全部调用点，并覆盖首次领取、重复领取和重开库。[M1](only-state-task-state-20261118.md)
-- 引导 MethodScript 等待 `GuideNodeEnable` 时必须同时核对客户端界面注册节点；非持久化 step 完成没有 8000 请求是正常现象。`364070` 的节点 `955` 由旅途/冒险笔记打开并返回注册，不能靠改库或伪造服务端返回值跳过。[G6](guide-adventure-node-955-20261118.md)
+- 引导 MethodScript 等待 `GuideNodeEnable` 时核对实际打开的表单和目标 step 日志，不能用大厅字幕代替成功证据。`364070` 的节点 `955` 由冒险笔记表单注册，旅途地图不是该表单；非持久化 step `205020` 无 8000 请求属正常，不改库跳过。[G6](guide-adventure-node-955-20261118.md)
 
 ## 记录索引
 

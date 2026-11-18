@@ -291,9 +291,43 @@ test('DragonLandActCmd 107703 answers with the local guild boss and contribution
   assert.equal(readGuildData(harness.service).value.guild_info.piece, '10');
 });
 
-test('DragonLandActCmd 107703 rejects requests without guild authority', t => {
+test('DragonLandActCmd 107703 returns a read-only zero state for an active guildless role', t => {
   const harness = setup(t);
-  assert.throws(() => readGuildData(harness.service), error => error instanceof GameError && error.code === 5);
+  const service = harness.service;
+  seedGuild(harness.store);
+  service.recordBossDamage({ actId: ACT_ID, guildId: '900001', damage: 900, wayTid: 1, piece: 6 });
+  harness.store.transaction(model => {
+    const modules = new Map(model.state.modules.value);
+    modules.set(24, serializedBinary(codec.pack('pb_res_guild_login', { guildId: '0' })));
+    model.state.modules.value = [...modules];
+  });
+  const snapshot = () => harness.store.inspect(db => ({
+    progress: db.prepare('SELECT * FROM dragon_land_guild_state').all(),
+    contributions: db.prepare('SELECT * FROM dragon_land_contribution').all(),
+    roleState: db.prepare('SELECT * FROM dragon_land_role_state').all()
+  }));
+  const before = snapshot();
+  assert.equal(before.progress.length, 1);
+  assert.equal(before.contributions.length, 1);
+  assert.equal(service.guildId(), null);
+
+  for (const attempt of [1, 2]) {
+    const { result, value: { guild_info: info } } = readGuildData(service);
+    assert.equal(result.guildId, undefined, `read ${attempt} must not assign a guild`);
+    assert.equal(info.version, String(VERSION));
+    assert.equal(info.level, '1');
+    assert.equal(info.boss_id, '1');
+    assert.equal(Number(info.lost_hp ?? 0), 0);
+    assert.equal(Number(info.piece ?? 0), 0);
+    assert.deepEqual(info.piece_list, []);
+    assert.deepEqual(info.display_list, []);
+  }
+  assert.throws(() => claimTrial(service, [10101]), error => error instanceof GameError && error.code === 311);
+  assert.deepEqual(snapshot(), before);
+});
+
+test('DragonLandActCmd 107703 rejects unknown activities and malformed payloads', t => {
+  const harness = setup(t);
   assert.throws(() => readGuildData(harness.service, 62001), error => error instanceof GameError && error.code === 1);
   assert.throws(
     () => harness.service.execute(107703, Buffer.from([0xff, 0xff, 0xff])),

@@ -510,8 +510,11 @@ export function createDragonLandActService({
     // misleading global "仅显示物品不可操作" toast even though the live row is
     // requested immediately afterwards. Answer with a complete zero state
     // instead, while award commands remain fail-closed through requestActivity.
-    if (!activityRunning(act, at)) {
+    const closed = !activityRunning(act, at);
+    const guildId = closed ? null : guildIdOf(store.state());
+    if (!guildId) {
       const first = firstBossOf(act.version);
+      if (!closed && !first) throw new GameError(5, 'Dragon land boss configuration is missing');
       const value = {
         guild_info: {
           version: String(act.version),
@@ -523,12 +526,9 @@ export function createDragonLandActService({
           display_list: []
         }
       };
-      log({ event: 'dragon_land_guild_data_closed', actId, version: act.version });
-      return { value, data: codec.pack('pb_dragon_land_guild_data_rsp', value), actId, closed: true };
+      log({ event: closed ? 'dragon_land_guild_data_closed' : 'dragon_land_guild_data_no_guild', actId, version: act.version });
+      return { value, data: codec.pack('pb_dragon_land_guild_data_rsp', value), actId, closed };
     }
-    const state = store.state();
-    const guildId = guildIdOf(state);
-    if (!guildId) throw new GameError(5, 'Guild does not exist');
     const day = dayIndex(act, at);
     const value = store.inspect(db => {
       const progress = guildProgress(db, guildId, act);

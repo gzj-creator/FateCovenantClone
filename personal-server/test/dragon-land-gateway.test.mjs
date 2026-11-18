@@ -41,7 +41,7 @@ function seedDatabase(databasePath) {
   store.close();
 }
 
-function openGame(databasePath) {
+function openGame(databasePath, options = {}) {
   return createLocalGame({
     databasePath,
     statePath: path.join(path.dirname(databasePath), 'absent.json'),
@@ -49,7 +49,8 @@ function openGame(databasePath) {
     verifySession: (uid, code) => uid === 'local-user' && code === 'test-session',
     serverOpenedAt: OPENED_AT,
     activityMode: 'all-open',
-    now: () => NOW_MS
+    now: () => NOW_MS,
+    ...options
   });
 }
 
@@ -173,6 +174,36 @@ test('DragonLandActCmd 107701/107702/107703 answer over the temporary handshake 
   const guildInfo = codec.unpack('pb_dragon_land_guild_data_rsp', client.payloadOf(guildAfterReopen)).guild_info;
   assert.equal(guildInfo.lost_hp, '900');
   assert.equal(guildInfo.piece, '6');
+});
+
+test('DragonLandActCmd 107703 accepts the observed hall-entry request from a guildless role', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-dragon-land-guildless-'));
+  const game = openGame(path.join(directory, 'game.sqlite'), {
+    serverOpenedAt: 1794690000,
+    activityMode: 'schedule',
+    now: () => Date.parse('2026-11-18T13:44:08+08:00')
+  });
+  t.after(async () => {
+    await game.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+  const client = await connectClient(t, game);
+  assert.equal(game.dragonLandAct.guildId(), null);
+  const claim = await client.request(107702, 3, codec.pack('pb_dragon_land_trial_award_req', {
+    activity_id: String(ACT_ID), id_list: ['10101']
+  }));
+  assert.equal(client.errorCode(claim), 311);
+
+  const reply = await client.request(107703, 4, Buffer.from('08e19d3f', 'hex'));
+  assert.equal(reply.err, undefined);
+  const info = codec.unpack('pb_dragon_land_guild_data_rsp', client.payloadOf(reply)).guild_info;
+  assert.equal(info.version, String(VERSION));
+  assert.equal(info.level, '1');
+  assert.equal(info.boss_id, '1');
+  assert.equal(Number(info.lost_hp ?? 0), 0);
+  assert.equal(Number(info.piece ?? 0), 0);
+  assert.deepEqual(info.piece_list, []);
+  assert.deepEqual(info.display_list, []);
 });
 
 test('DragonLandActCmd 107701 rolls the whole grant back when encoding or SQLite fails', t => {

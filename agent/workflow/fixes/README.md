@@ -18,7 +18,7 @@ pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`）�
 | G5 | 新超凡魔灵服务器错误 | [pet-activity/implementation.md](../pet-activity/implementation.md) | 83028 活动、专属商城和现世礼包已接入同一开服活动日历；组件/TCP 通过，实时 APK 未验收 |
 | H1 | 进入大厅显示服务器错误 | [hall-entry.md](hall-entry.md) | 大厅商店读取按请求 id 空组回包、活动阶段同步空变更回执 |
 | H2 | 点击头像显示服务器错误 | [avatar-rank-info.md](avatar-rank-info.md) | 2001 单条排名查询已实现；同分支另补 2002/2005/2006/2007/2009/2010，[详情](../activity-ranking/leaderboard-api.md)；267/267 测试通过，尚未部署与 APK 验收 |
-| E1 | 进入游戏依次提示“仅显示物品不可操作”和“配置出错了” | [entry-display-config-error-20261111.md](entry-display-config-error-20261111.md) | `107703` 关闭活动改为空读取，`10507 type 12` 接入本服频道；目标回归 23/23，通过后待部署与客户端复验 |
+| E1 | 进入游戏提示“仅显示物品不可操作”或“配置出错了” | [entry-display-config-error-20261111.md](entry-display-config-error-20261111.md) | 关闭活动和开放但未入会的 `107703` 均返回零态；2026-11-18 复发专项 53/53，已部署本机并复验隔离 APK 正常进服、同请求不再返回 5 |
 | U1 | 独立“限时升星/升星礼包”空白 | [up-star-gift-20261111.md](up-star-gift-20261111.md) | 登录版本块补齐当前开放版本并修复选中版本；31053 仅选当前开放版本；31052 按英雄/魔灵/精灵真实星级、静态奖励与 award_bin 同事务结算；当前开放行均为充值礼包，充值仍走 RechargeMgr |
 | U2 | 块 I 同类活动“有入口但只有拒绝” | [benefit-command-decode-20261111.md](benefit-command-decode-20261111.md) | 27 条仍由 benefit 处理的 protobuf 命令按 schema 解码；104801 拆到 ActShop；拒绝原因按最新 APK/Lua/表复核，Fashion 与红包的旧缺失文案已纠正 |
 | U3 | 活动商店读取与同类资产缺口 | [act-shop-20261112.md](act-shop-20261112.md)、[activity-asset-audit-20261112.md](activity-asset-audit-20261112.md) | 104801 返回当前 ActFrame 商店并持久化 ETF/protobuf 玩家状态；104802/104803 保留具体拒绝；43 家族/83 命令逐项登记资产、入口和持久化缺口 |
@@ -39,13 +39,13 @@ pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`）�
 | N3 | 代金券余额与管理页大整数精度 | [voucher-integer-precision-20261117.md](voucher-integer-precision-20261117.md) | BigInt 金额/张数、JSON 字符串边界、管理页格式化和全账本累计已修；`downstream-after.log` 37/37；未部署/未做 APK |
 | PT1 | 通行证无经验可领取、领取后红线、新号继承进度 | [permit-day-exp-reddot-20261117.md](permit-day-exp-reddot-20261117.md) | 经验总式、空奖励领取位和新号全字段重置已修；专项 12/12、相关 35/35、fast 534 项 0 失败；已随 `main@20dc167` 部署且健康检查通过，APK 待用户验收 |
 | D1 | 梦中小屋错误开放与每日登录活跃奖励提示已过期 | [dream-house-schedule-login-20261118.md](dream-house-schedule-login-20261118.md) | 新区第 8 天/老服第 29 天门禁、1085 当前代际过滤、ActFrame 50→90 窗口和 TaskType 1803 登录任务已修；合并后专项 72/72、全量 541 项中 539 通过/0 失败/2 跳过；已部署，客户端入口与领奖待用户验收 |
-| S1 | 客户端启动显示“配置出错” | [sdk-ip-discovery-404-20261118.md](sdk-ip-discovery-404-20261118.md) | `/ad/api/ip_address//` 由 404 修为 GET 200 本机 IP；已部署，客户端到达账号登录页，重登后最终验收待完成 |
+| S1 | SDK 启动辅助 IP 探测返回 HTTP 404 | [sdk-ip-discovery-404-20261118.md](sdk-ip-discovery-404-20261118.md) | 本机 GET 已返回 200；隔离 APK 请求仍发往外部地址并得 404，本次未阻断进服，不等同 E1 |
 | M1 | 家园任务已领取仍显示可领，点击无反应 | [only-state-task-state-20261118.md](only-state-task-state-20261118.md) | `TaskType 1803 ONLY_STATE` 误用选人/计数条件；家园、宠物、神器三入口已修，含首次、重复和重开库断言；已部署，任务界面验收待用户重登 |
-| G6 | 引导 205020 完成后停在后续旁白 | [guide-adventure-node-955-20261118.md](guide-adventure-node-955-20261118.md) | 服务端状态正确，等待客户端旅途节点 955；真机执行“旅途→返回”后 364070 后续对白已播放；无需服务端改动 |
+| G6 | 引导 205020 完成后不接 364070 | [guide-adventure-node-955-20261118.md](guide-adventure-node-955-20261118.md) | 隔离 APK 已复现；旅途地图未触发 364070，节点 955 由独立冒险笔记页面注册；后续未验收，未改业务 |
 | T1 | 设备网络 `Restore` 在缺失 ADB reverse 时提前中断 | [local-device-restore-20261118.md](local-device-restore-20261118.md) | 反向端口清理改为先删后查的幂等处理；reverse 已清场景 Restore→Setup、五条 NAT、四条 reverse 和客户端启动均通过 |
 | LT1 | 主线 3-4 已领，重登仍亮可领红点 | [main-linear-task-relogin-20261118.md](main-linear-task-relogin-20261118.md) | 模块 90 登录首槽下发线性领取状态；重开库 TCP 与 35 项专项通过，重复无奖励；未部署、APK 待验收 |
 
-验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**2026-11-18 当前轮修复已由 `main@4e6f8ad` 部署，客户端已启动；D1/S1/M1 的最终界面结果由用户重登后确认。**
+验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**2026-11-18 E1 在本机 `main@eb1e8ce` 加本轮修复的工作树部署并复验进服；D1/M1 具体玩法界面未在本轮验收。**
 
 ## 2026-10-30 海岛垂钓岛屿解锁
 
