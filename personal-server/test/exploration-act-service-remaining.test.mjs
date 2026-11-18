@@ -101,6 +101,30 @@ test('Homeland daily-login task is independent from hero selection and survives 
   }
 });
 
+test('Homeland ONLY_STATE task 701 can be claimed before selecting a hero and remains claimed after reopen', async () => {
+  const env = open();
+  try {
+    const request = codec.pack('pb_homeland_act_task_award_req', {
+      activity_id: 1085007, task_tid: 701
+    });
+    const claimed = await run(env.service, 11502, request);
+    const info = unpack('pb_homeland_act_task_award_rsp', claimed).act_info;
+    assert.equal(Number(info.selected_hero_tid ?? 0), 0);
+    assert.deepEqual(info.finish_tasks.map(row => Number(row.task_tid)), [701]);
+    await expectCode(run(env.service, 11502, request), 310);
+
+    env.store.close();
+    const second = reopen(env.databasePath);
+    try {
+      await expectCode(run(second.service, 11502, request), 310);
+    } finally {
+      second.store.close();
+    }
+  } finally {
+    cleanup(env.directory);
+  }
+});
+
 test('Carnival dice, events, build, tech, dispatch and box award use local state', async () => {
   let clock = START;
   const env = open(() => clock);
@@ -322,9 +346,10 @@ test('Pet activity select, fight claim, cure, favor, vitality and exchange', asy
   const env = open(() => clock);
   try {
     fund(env.store, [[378002, 10], [1901200, 1]]);
-    await run(env.service, 90502, codec.pack('pb_req_pet_act_daily_reward', {
+    const onlyStateClaim = await run(env.service, 90502, codec.pack('pb_req_pet_act_daily_reward', {
       act_tid: 83010, challenge_tid: 28, task_id: [2801]
     }));
+    assert.equal(unpack('pb_pet_act_flush', onlyStateClaim).act_player_list.act_data_list[0].selected_pet_tid ?? 0, 0);
     await expectCode(run(env.service, 90502, codec.pack('pb_req_pet_act_daily_reward', {
       act_tid: 83010, challenge_tid: 28, task_id: [2801]
     })), 310);

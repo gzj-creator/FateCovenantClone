@@ -312,7 +312,7 @@ export function createSdkService(options = {}) {
     }
     try {
       const url = new URL(request.url, `http://${HOST}`);
-      route = url.pathname === '/user/login' ? 'login' : url.pathname === '/user/tokenVerifySdk' ? 'tokenVerifySdk' : /^\/banner\/[A-Za-z0-9_-]+\/(?:android|[0-9]+)-banner[.]json$/.test(url.pathname) ? 'banner' : 'unknown';
+      route = url.pathname === '/user/login' ? 'login' : url.pathname === '/user/tokenVerifySdk' ? 'tokenVerifySdk' : url.pathname === '/ad/api/ip_address//' ? 'ipAddress' : /^\/banner\/[A-Za-z0-9_-]+\/(?:android|[0-9]+)-banner[.]json$/.test(url.pathname) ? 'banner' : 'unknown';
       const otpRoutes = { '/user/phoneAccountCheck': 'phoneAccountCheck', '/sms/send': 'localSms', '/user/phoneLogin': 'localPhoneLogin', '/user/loginReg': 'localPhoneLogin', '/user/phoneRegist': 'localPhoneRegister' };
       if (localTestOtp && Object.hasOwn(otpRoutes, url.pathname)) route = otpRoutes[url.pathname];
       if (quickSdk && url.pathname === '/v2/users/checkLogin') route = 'quickLogin';
@@ -324,9 +324,10 @@ export function createSdkService(options = {}) {
       if (route === 'unknown') log({ event: 'unimplemented_route', method: request.method, pathSha256: createHash('sha256').update(url.pathname).digest('hex') });
       if (route === 'unknown') throw new RequestError(404, 404, 'Route not implemented');
       if (url.search) throw new RequestError(400, 400, 'Use form fields without a query string');
-      if (request.method !== (['banner', 'quickServers'].includes(route) ? 'GET' : 'POST')) throw new RequestError(405, 405, 'Method not allowed');
+      if (request.method !== (['banner', 'quickServers', 'ipAddress'].includes(route) ? 'GET' : 'POST')) throw new RequestError(405, 405, 'Method not allowed');
       if (route === 'banner') { send(200, {}); return; }
       if (route === 'quickServers') { send(200, [quickServerUrl]); return; }
+      if (route === 'ipAddress') { send(200, { ip: '127.0.0.1' }); return; }
       if(route==='walletPaytips'){
         const fields=await readForm(request,['appid','userid','sign']);
         const signature=fields.get('sign');fields.delete('sign');

@@ -1,12 +1,12 @@
 # PT1 通行证经验、领取位与新号重置不一致
 
-日期：2026-11-17（Asia/Shanghai）
+日期：2026-11-17，部署验证 2026-11-18（Asia/Shanghai）
 
 分支/worktree：`fix/permit-exp-reddot-20261117` / `.worktree/permit-exp-reddot-20261117`
 
 基线提交：`6999752c218d1dc592b28b47fb3dccadab44ce64`
 
-状态：组件与临时 TCP 通过，未部署
+状态：组件、临时 TCP 与部署健康检查通过，APK 真机待用户验收
 
 ## 现象与触发
 
@@ -45,8 +45,8 @@ level=2、levels=[1,2] 和 level=3、levels=[3]，但用户界面仍观察到红
 | --- | --- | --- |
 | 组件测试 | 新增专项覆盖动态经验、资源经验、`buy_exp`、空奖励领取位、全量状态、新号字段重置与重复领取；专项 12/12，相关支付/通行证 35/35；完整 fast 套件 534 项 pass 532 / fail 0 / skipped 2 | 通过 |
 | 临时 TCP | `permit-receive.test.mjs` 的真实 loopback 35005/105803 回包、事件与 SQLite 持久化 | 通过 |
-| 部署 | 不部署 | 未做 |
-| APK 真机 | 不改 APK、不操作设备 | 未做 |
+| 部署 | 以 `main@20dc167` 从 main 根目录启动 PID `31860`；保留 `FC_SERVER_OPENED_AT=1794690000`，五端口仅监听 loopback，`local_server_ready` 已记录，stderr 为空，管理页 HTTP 200，SQLite `quick_check=ok`；停服前数据备份在 `analysis/experiments/launch-20261115/server-data-fixed/backups/pre-permit-deploy-20261118-084045/` | 通过 |
+| APK 真机 | 未改 APK、未操作设备；等待用户重新登录检查领取后红点与新号通行证状态 | 待验收 |
 
 ## 防复发
 
@@ -57,6 +57,6 @@ level=2、levels=[1,2] 和 level=3、levels=[3]，但用户界面仍观察到红
 
 ## 未验证项与边界
 
-未部署，不读写实时运行库，不重启服务，不操作设备或 APK。购买提示红点来自客户端
-`one_key_custom_red_dot` 与 `!HavePay` 的原逻辑；本修复不伪造购买状态，最终是否仍需
-调整界面表现要在客户端逻辑层面另行确认。
+服务已部署，客户端红点是否消失仍待用户重新登录后做 APK 真机验收；本记录不把部署
+健康检查当作可玩验收。购买提示红点来自客户端 `one_key_custom_red_dot` 与 `!HavePay`
+的原逻辑；本修复不伪造购买状态，最终是否仍需调整界面表现要在客户端逻辑层面另行确认。
