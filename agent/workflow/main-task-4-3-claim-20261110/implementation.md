@@ -1,5 +1,7 @@
 # 主线 4-3 任务奖励“未解锁”修复
 
+> 2026-11-18 更正：下文的第 0/4 槽是 SQLite 内部布局，不是客户端登录布局。客户端先取第 0 槽作为线性任务。登录下发顺序的修复与重登验证见 [LT1](../fixes/main-linear-task-relogin-20261118.md)。
+
 ## 范围
 
 - worktree：`F:\projects\FateCovenantClone\.worktree\main-task-4-3-claim-20261110`

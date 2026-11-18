@@ -30,6 +30,7 @@
 - 模块 92、183 的 `module_login_data` 必须用 `0x836d + uint32BE length + protobuf` 包装，客户端会再执行 `Codec.DecodeErl`；写入裸 protobuf 会导致活动空白或静默失败。[hundred-draw-spirit-star-20261111.md](hundred-draw-spirit-star-20261111.md)
 - 资源发放的 `pb_res_change` 要带完整 `pb_res_obj` 的 `new_bin`，否则服务端已扣款发券，客户端券对象仍不刷新。[recruit-purchase-ticket-sync.md](recruit-purchase-ticket-sync.md)
 - `snapshot_val` 按客户端 `CalcItemState` 的语义填写，不能把当前 `mission_id` 直接当快照值。[linear-task-snapshot.md](linear-task-snapshot.md)
+- 登录模块 90 在传输时是 ETF 列表，顺序为线性任务、普通组 `1201/1602/1202/9001`；SQLite 顺序不同。必须用非空 `receive_tid` 和各组位图验证真实重登回包，不能从全空抓包推断槽序或拿存储下标验回包。[LT1](main-linear-task-relogin-20261118.md)
 
 ### 2. 事务与持久化
 

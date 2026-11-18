@@ -1114,6 +1114,8 @@ export function createLocalGame({
     const list = revive(state.modules);
     const modules = new Map(list.value);
     features.maskLogin(modules);
+    const taskPayloads = tasks.loginPayloads(storedModules.get(tasks.moduleId));
+    modules.set(tasks.moduleId, new E.OtpErlangList(taskPayloads.map(binary), false));
     const guideLogin = projectGuideLoginModule({
       entry: storedModules.get(GUIDE_LOGIN_MODULE_ID),
       guides: state.guides,

@@ -59,12 +59,9 @@ function readGroupRows(bytes, type) {
   return rows;
 }
 
-// CommonTaskMgr.LoginParse walks TaskTable.CommonTaskGlobalCount and reads one module 90
-// slot per group, so each group owns one contiguous login slot from slot 0; the captured
-// login payload for module 90 carries five empty slots (four common groups plus the linear
-// group that MainLinearTaskMgr parses afterwards). TaskTable.CommonTaskGlobal is keyed
-// 1/3/4/5 (tid 2 is absent), and the generated *_List accessor is ordered by tid, so the
-// slot is the group's rank in that order.
+// CommonTaskMgr.LoginParse walks TaskTable.CommonTaskGlobalCount after removing
+// the first (linear) wire slot. The stored common-task slots start at 0 and
+// follow the tid order 1/3/4/5, matching the remaining wire slots.
 export function commonTaskGroupSlots(gameTables) {
   const globals = [...gameTables.CommonTaskGlobal.values()]
     .map(row => ({ tid: Number(row.tid), type: Number(row.type) }))

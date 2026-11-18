@@ -12,12 +12,12 @@
 ## 协议与客户端依据
 
 - `CommonTaskCmd.req_finish_common_task(param, cbDone, cbFail)`：`EncodeErl(param)`，参数是任务 tid 或 tid 列表（ETF）。
-- `CommonTaskMgr.LoginParse`：模块 90 的 `serverDataL` 每个槽位按 `TaskTable.CommonTaskGlobalByIndex(i)`（i=1..`CommonTaskGlobalCount`）取组配置，用 `Codec.DecodePbList('pb_common_task')` 解码，`Core.BitBlock` 还原 `receive_list`；`progress_type == ONLY_STATE` 用 `StateTask`，否则 `ProgressTask`，最后交给 `MainLinearTaskMgr.LoginParse`。
+- `CommonTaskMgr.LoginParse`：先从模块 90 取走首块供 `MainLinearTaskMgr.LoginParse` 使用，再用 `Codec.DecodePbList('pb_common_task')` 解码余下槽位，按 `TaskTable.CommonTaskGlobalByIndex(i)` 取组配置，用 `Core.BitBlock` 还原 `receive_list`；`progress_type == ONLY_STATE` 用 `StateTask`，否则 `ProgressTask`。
 - `pb_common_task { bytes receive_list = 1; }`，`common_receive_back { pb_common_task common_task = 1; pb_res_to_client res = 2; }`。
 - `CommonTask.lua` 的 `GetState` 用 `receiveList:Get(tid % 10000)` 判断是否已领取，`BASE_NUMBER = 10000`。
 - `MethodTable`：`progress_fun` 2 = `MissionMgr.GetPassedSection`、10 = `GetPassedChapter`、12 = `PeakTowerMgr.GetTowerLayer`、247 = `EliteMissionMgr.GetPassedChapter`、155 = `DestinyMgr.RealStage`。
 
-组配置（`TaskTable.CommonTaskGlobal`，按 tid 排序）：`1→1201`、`3→1602`、`4→1202`、`5→9001`。捕获的真实登录包里模块 90 有 5 个空槽位，正好是 4 个通用任务组加 1 个线性任务组，因此槽位按“通用组顺序在前、线性组在后”排布：1201→0、1602→1、1202→2、9001→3，线性 type 1→4。
+组配置（`TaskTable.CommonTaskGlobal`，按 tid 排序）：`1→1201`、`3→1602`、`4→1202`、`5→9001`。捕获的 5 个空槽只证明槽数，不能证明顺序。下文的布局为 SQLite 存储：1201→0、1602→1、1202→2、9001→3，线性 type 1→4；客户端要求线性槽在最前，2026-11-18 的出站顺序修正见 [LT1](../../fixes/main-linear-task-relogin-20261118.md)。
 
 ## 新增与修改
 

@@ -254,6 +254,7 @@ function sameBytes(left, right) {
 
 export function createTaskService({ store, codec, tables, commonTasks = readCommonTaskTables(), now = Date.now, logger = () => {} }) {
   const log = event => { try { logger(event); } catch {} };
+  const commonSlotCount = commonTasks.groups.size;
 
   function readTaskModule(model) {
     const module = new Map(model.state.modules.value).get(TASK_MODULE);
@@ -300,6 +301,16 @@ export function createTaskService({ store, codec, tables, commonTasks = readComm
     return { value, data: codec.pack('pb_linear_task_receive_back', { task, res_change }) };
   }
 
+  function loginPayloads(module) {
+    const readSlot = slot => {
+      const payload = module.value[slot];
+      return payload == null ? Buffer.alloc(0) : rawBinary(payload);
+    };
+    const payloads = [readSlot(commonSlotCount)];
+    for (let slot = 0; slot < commonSlotCount; slot++) payloads.push(readSlot(slot));
+    return payloads;
+  }
+
   function ensureLoginState() {
     return store.transaction((model, db) => {
       const roleId = model.state.roleId;
@@ -311,7 +322,7 @@ export function createTaskService({ store, codec, tables, commonTasks = readComm
       const commonClaimIds = new Set(commonClaims.map(row => Number(row.claim_key)));
       const repairedCommonSlots = [];
 
-      // Rebuild the four CommonTaskMgr slots from their durable claim ledger.
+      // Rebuild the four stored CommonTaskMgr slots from their durable claim ledger.
       // This removes the legacy pb_linear_task_data accidentally stored in slot 0
       // after 9010 moved to the fifth slot and also repairs any missing bit.
       for (const [type, rows] of commonTasks.groups) {
@@ -331,7 +342,7 @@ export function createTaskService({ store, codec, tables, commonTasks = readComm
         }
       }
 
-      const linearSlot = commonTasks.groups.size;
+      const linearSlot = commonSlotCount;
       const linearData = values[linearSlot] == null
         ? { task_list: [] }
         : (() => {
@@ -455,11 +466,9 @@ export function createTaskService({ store, codec, tables, commonTasks = readComm
   function claimLinearTask(taskId) {
     const id = Number(taskId), config = tables.LinearTask.get(id);
     if (!Number.isSafeInteger(id) || !config) throw new GameError(1, 'Invalid linear task id');
-    // MainLinearTaskMgr stores task rows by LinearTask.type and parses them after the
-    // common-task groups consume their own module 90 slots (four groups today, matching
-    // the five empty slots in the captured login payload). All current linear tasks use
-    // type 1, which therefore maps to the slot right behind the common groups.
-    const moduleIndex = taskGroupIndex(config, commonTasks.groups.size);
+    // Keep the existing SQLite layout. On the wire CommonTaskMgr.LoginParse
+    // removes the first block and passes it to MainLinearTaskMgr.LoginParse.
+    const moduleIndex = taskGroupIndex(config, commonSlotCount);
     const awards = configuredAwards(config);
     if (awards.some(([tid, count]) => !Number.isSafeInteger(tid) || !Number.isSafeInteger(count) || count <= 0)) throw new GameError(5, 'Linear task reward configuration is invalid');
 
@@ -516,8 +525,10 @@ export function createTaskService({ store, codec, tables, commonTasks = readComm
   }
 
   return {
+    moduleId: TASK_MODULE,
     supports: type => type === 9010 || type === 9005,
     ensureLoginState,
+    loginPayloads,
     execute(type, input) {
       if (type === 9010) {
         const result = claimLinearTask(input);
