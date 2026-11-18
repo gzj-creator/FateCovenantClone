@@ -13,6 +13,8 @@
 
 当前 `recruit-pool-rules` 有本地兼容矩阵，不能作为原概率公告。`DrawTable` 中 `weight/probability` 字段必须先确认属于哪个候选集合，才可计算条件概率；显示概率ID不是概率本身。下文“按权重抽取”只在权重与候选关系均恢复时成立，未知池不借用邻版本。
 
+**本地回包契约：** `601` 首获用英雄本体 TID 发放 `+1`，在 `extra` 的 ETF 列表中携带英雄 protobuf，供 `HeroRes` 注册名单和结果页显示一张卡。已拥有（含同批重复）才按 `Quality.convert_piece_new` 发放碎片，`decompose_args` 留空。`614` 合成则分别发碎片扣除和英雄本体变更。回包契约依据客户端派发与结果页，未改奖池裁定；见 [R3 修复](../../../agent/workflow/fixes/recruit-squad-live-sync-20261118.md)。
+
 ## DRAW-MAGICDRAW：魔法招募
 
 **执行裁定：** [DRAW-MAGICDRAW 的唯一R1决定](../rules/final-rule-register.md#draw-magicdraw)。本节数值与现代码描述须按该裁定使用。

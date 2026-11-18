@@ -84,12 +84,19 @@ test('614 composes an unowned hero from chips, rejects repeats and survives a re
 
   const result = service.execute(614, { tid: CHIP_TID, num: 90 });
   assert.equal(result.schema, 'pb_res_to_client');
-  assert.equal(result.value.changes.find(change => Number(change.tid) === CHIP_TID).diff_num, '-60');
+  const [spent, unlocked] = codec.unpack('pb_res_to_client', result.data).changes;
+  assert.equal(spent.tid, String(CHIP_TID));
+  assert.equal(spent.diff_num, '-60');
+  assert.equal(spent.extra, undefined);
+  assert.equal(unlocked.tid, String(CHIP_HERO_TID));
+  assert.equal(unlocked.diff_num, '1');
   const hero = env.store.read().heroInfo.hero_list.find(entry => Number(entry.tid) === CHIP_HERO_TID);
   assert.ok(hero);
-  const extra = await decodeEtf(Buffer.from(result.value.changes[0].extra, 'base64'));
+  const extra = await decodeEtf(Buffer.from(unlocked.extra, 'base64'));
   assert.equal(extra.value.length, 1);
-  assert.equal(Number(codec.unpack('hero', Buffer.from(extra.value[0].value)).tid), CHIP_HERO_TID);
+  const rosterHero = codec.unpack('hero', Buffer.from(extra.value[0].value));
+  assert.equal(rosterHero.tid, unlocked.tid);
+  assert.equal(rosterHero.uid, unlocked.tid);
   assert.equal(resource(env, CHIP_TID), 30n);
 
   assert.throws(() => service.execute(614, { tid: CHIP_TID, num: 20 }), error => error.code === 5);

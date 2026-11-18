@@ -74,8 +74,9 @@ test('hero extra commands answer through the real gateway with login-module pers
   let response = await request(614, 2, codec.pack('hero_chip_use', { tid: 21300104, num: 60 }));
   assert.equal(response.err, undefined);
   const composed = codec.unpack('pb_res_to_client', Buffer.from(response.data, 'base64'));
-  assert.equal(composed.changes.find(change => change.tid === '21300104').diff_num, '-60');
-  assert.ok(composed.changes.find(change => change.tid === '21300104').extra);
+  assert.deepEqual(composed.changes.map(change => [change.tid, change.diff_num]), [['21300104', '-60'], ['1030101', '1']]);
+  assert.equal(composed.changes[0].extra, undefined);
+  assert.ok(composed.changes[1].extra);
   assert.equal(game.store.read().heroInfo.hero_list.some(hero => Number(hero.tid) === 1030101), true);
   response = await request(614, 21, codec.pack('hero_chip_use', { tid: 21300104, num: 60 }));
   assert.equal(response.err.err, 5);

@@ -29,6 +29,7 @@
 - 登录模块编号按客户端 `ModuleTable` 查证：星火是模块 107，不是 100；模块号写错时客户端读到空字节并显示未激活。[destiny-star-regression-handoff.md](destiny-star-regression-handoff.md)
 - 模块 92、183 的 `module_login_data` 必须用 `0x836d + uint32BE length + protobuf` 包装，客户端会再执行 `Codec.DecodeErl`；写入裸 protobuf 会导致活动空白或静默失败。[hundred-draw-spirit-star-20261111.md](hundred-draw-spirit-star-20261111.md)
 - 资源发放的 `pb_res_change` 要带完整 `pb_res_obj` 的 `new_bin`，否则服务端已扣款发券，客户端券对象仍不刷新。[recruit-purchase-ticket-sync.md](recruit-purchase-ticket-sync.md)
+- 601 首获和 614 合成的 `pb_res_change` 必须用英雄本体 TID 触发 `HeroRes`，`extra` 是含英雄 PB 的 ETF 列表，不能挂在碎片变化上。重复抽取才转碎片；同连接用回包中的 UID 测 209，另测重登模块 10，不能用存档替代实时回包。[R3](recruit-squad-live-sync-20261118.md)
 - `snapshot_val` 按客户端 `CalcItemState` 的语义填写，不能把当前 `mission_id` 直接当快照值。[linear-task-snapshot.md](linear-task-snapshot.md)
 - 登录模块 90 在传输时是 ETF 列表，顺序为线性任务、普通组 `1201/1602/1202/9001`；SQLite 顺序不同。必须用非空 `receive_tid` 和各组位图验证真实重登回包，不能从全空抓包推断槽序或拿存储下标验回包。[LT1](main-linear-task-relogin-20261118.md)
 

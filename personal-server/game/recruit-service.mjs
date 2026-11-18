@@ -882,27 +882,16 @@ export function createRecruitService({
       );
       results.push(result);
       const owned = model.heroInfo.hero_list.some(hero => Number(hero.tid) === result.tid);
-      // The client's HeroDrawUILogic.FilterAwards splits one chip award into
-      // floor(num / Quality.convert_piece_new) result cards. Every drawn hero,
-      // including a newly unlocked one, must therefore arrive as one full
-      // convert_piece_new chip bundle; a single chip renders zero cards and
-      // makes HeroDrawResultShowForm.Repeat fail with executeCount = 0.
+      if (!owned) {
+        const granted = grantResources(model, [[result.tid, 1]], tables, { codec, heroSource: lib, heroStar: 0 });
+        changes.push(...granted.changes);
+        newHeroes.push(String(result.tid));
+        continue;
+      }
       const amount = Number(heroTables.Quality.get(result.quality)?.convert_piece_new ?? 0);
       if (amount <= 0) fail(5, 'Hero conversion configuration is missing');
       const granted = grantResources(model, [[result.chip, amount]], tables);
-      const change = granted.changes[0];
-      if (!owned) {
-        // HeroDataMgr caches heroes by hero.uid but resolves them by hero.tid.
-        // The shipped client requires these identifiers to be identical.
-        const tid = String(result.tid);
-        const hero = { tid, uid: tid, level: 1, star: 0, star_progress: 0, breakthrough_level: 0, quality: result.quality, source: lib };
-        // HeroRes.ResChange decodes change.extra as an ETF list of binary hero PB messages.
-        // A bare integer is ignored, leaving the hero absent until the next login.
-        change.extra = encodeEtfBinaryList([codec.pack('hero', hero)]);
-        model.heroInfo.hero_list.push(hero);
-        newHeroes.push(hero);
-      }
-      changes.push(change);
+      changes.push(...granted.changes);
     }
     info.daily_draw_count = (info.daily_draw_count ?? 0) + count;
     if (heroTables.DrawNumLimit.has(lib)) info.daily_can_draw_num = Number(info.daily_can_draw_num ?? 0) - count;
@@ -936,7 +925,7 @@ export function createRecruitService({
         lib,
         count,
         ruleVersion: RECRUIT_RULE_VERSION,
-        newHeroes: newHeroes.map(hero => hero.tid),
+        newHeroes,
         activityProgress,
         results: results.map(result => ({
           tid: result.tid,

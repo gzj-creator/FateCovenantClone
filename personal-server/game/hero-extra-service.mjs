@@ -1,4 +1,4 @@
-﻿import { rawBinary, serializedBinary, encodeEtfBinaryList } from '../protocol/game-codec.mjs';
+﻿import { rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { GameError } from './hero-progression.mjs';
 import { consumeResources, grantResources } from './resources.mjs';
 import { gameDayIndex } from './time.mjs';
@@ -179,19 +179,9 @@ export function createHeroExtraService({ store, codec, tables, heroTables, now =
       if (existing) fail(CODE_STATE, 'Hero is already owned and cannot be composed');
       if (requested < need) fail(CODE_STATE, 'Hero chip quantity is insufficient');
       const spent = consumeResources(model, [[chipTid, need]], CODE_INSUFFICIENT);
-      const heroCfg = heroConfig(heroTid);
-      const hero = {
-        tid: String(heroTid), uid: String(heroTid), count: 1, level: 1,
-        star: Number(heroCfg.star ?? 0), star_progress: 0, breakthrough_level: 0,
-        quality: Number(heroCfg.quality ?? 0), source: Number(config.type ?? 0),
-        relic: [], up_star_high_consume: [], source_point_list: [], pendant_select_list: []
-      };
-      model.heroInfo.hero_list.push(hero);
-      const change = spent.changes.find(entry => Number(entry.tid) === chipTid);
-      // HeroRes.ResChange reads change.extra as an ETF list of hero protobufs,
-      // which is how the shipped client learns about a composed hero.
-      if (change) change.extra = encodeEtfBinaryList([codec.pack('hero', hero)]);
-      const value = { changes: spent.changes, is_overflow: false };
+      heroConfig(heroTid);
+      const granted = grantResources(model, [[heroTid, 1]], tables, { codec, heroSource: Number(config.type ?? 0) });
+      const value = { changes: [...spent.changes, ...granted.changes], is_overflow: false };
       const data = codec.pack('pb_res_to_client', value);
       log({ event: 'hero_chip_used', chipTid, heroTid, consumed: need });
       return { schema: 'pb_res_to_client', value, data, valueForLog: { chipTid, heroTid, consumed: need } };
