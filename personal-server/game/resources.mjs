@@ -276,7 +276,7 @@ function grantRoleExp(model, amount, tables, options) {
   return result;
 }
 
-function grantRawHero(model, id, amount, tables) {
+function grantRawHero(model, id, amount, tables, options) {
   model.heroInfo.hero_list ??= [];
   const existing = model.heroInfo.hero_list.find(hero => Number(hero.tid) === id);
   if (existing) {
@@ -286,7 +286,8 @@ function grantRawHero(model, id, amount, tables) {
   const config = tables.Hero.get(id);
   const hero = {
     tid: String(id), count: Number(checkedQuantity(0, amount, INT32_MAX)), uid: String(id), level: 1,
-    star: Number(config?.star ?? 0), source: 1, quality: Number(config?.quality ?? 0),
+    star: options.heroStar ?? Number(config?.star ?? 0), star_progress: 0, breakthrough_level: 0,
+    source: options.heroSource ?? 1, quality: Number(config?.quality ?? 0),
     relic: [], up_star_high_consume: [], source_point_list: [], pendant_select_list: []
   };
   model.heroInfo.hero_list.push(hero);
@@ -450,7 +451,7 @@ export function grantResources(model, awards, tables, options = {}) {
         break;
       }
       case 'hero': {
-        const result = grantRawHero(model, id, amount, tables);
+        const result = grantRawHero(model, id, amount, tables, options);
         newNum = result.newNum;
         // HeroRes.ResChange iterates change.extra as an ETF list of serialized
         // `hero` messages and calls HeroMgr.AddHeroes. Without this payload the

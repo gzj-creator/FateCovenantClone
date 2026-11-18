@@ -10,7 +10,6 @@ import { readRecruitHeroExclusionGroups } from '../config/recruit-hero-groups.mj
 import { readFantasyEquipTables, readHeroTables, readLeaderEquipTables } from '../config/hero-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createRecruitService, GUIDE_FIRST_RECRUIT_HERO_TID } from '../game/recruit-service.mjs';
-import { createLineupService } from '../game/lineup-service.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 import {
   NEW_HERO_EXCLUSIVE_GROUP,
@@ -733,24 +732,23 @@ test('elite pity continues when an SSR is drawn without a selected target', t =>
   assert.equal(Number(result.value.recruit_info.daily_ssr_draw_num), 1);
 });
 
-test('new heroes persist, duplicate heroes convert to chips and avoid duplicate hero extras', async t => {
+test('a first recruit routes to the hero roster and a repeat converts to chips', async t => {
   const env = setup(t);
   env.seed(2002, 10);
   const before = env.store.read().heroInfo.hero_list.length;
+  const chipsBefore = BigInt(env.store.read().resources.get('21100104')?.num ?? 0);
   const first = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
-  const newChange = first.res.changes.find(change => change.tid === '21100104');
+  const [newChange] = first.res.changes.filter(change => BigInt(change.diff_num) > 0n);
   const quality = Number(heroTables.Hero.get(1010101).quality);
   const convertCount = Number(heroTables.Quality.get(quality).convert_piece_new);
-  assert.equal(newChange.diff_num, String(convertCount));
-  // HeroDrawUILogic.FilterAwards renders floor(diff_num / convert_piece_new) cards.
-  assert.equal(Number(newChange.diff_num) / convertCount, 1);
-  // A first unlock is already represented by the full-chip resource change
-  // below. HeroDrawUILogic converts that change to one card; a decompose entry
-  // would add a second card for the same pull.
+  assert.deepEqual(first.res.changes.map(change => [change.tid, change.diff_num]), [['2002', '-1'], ['1010101', '1']]);
+  assert.equal(newChange.new_num, '1');
   assert.deepEqual(first.decompose_args, []);
   const syncedHero = await decodeHeroExtra(newChange.extra);
   assert.equal(syncedHero.tid, '1010101');
   assert.equal(syncedHero.uid, '1010101');
+  assert.equal(syncedHero.count, 1);
+  assert.equal(BigInt(env.store.read().resources.get('21100104')?.num ?? 0), chipsBefore);
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
   const persistedHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.read().state.modules.value).get(10).value[0]));
   assert.equal(persistedHeroes.hero_list.find(hero => Number(hero.tid) === 1010101)?.uid, '1010101');
@@ -759,41 +757,44 @@ test('new heroes persist, duplicate heroes convert to chips and avoid duplicate 
   assert.ok(recruited);
   assert.equal(recruited.uid, recruited.tid);
   assert.equal(recruited.uid, '1010101');
-  // A newly unlocked hero must be usable for the next squad edit without
-  // relogging: the model has already received the same hero through ResChange.
-  const lineupService = createLineupService({ store: env.store, codec });
-  const preset = structuredClone(env.store.read().lineups.pre_lineups[0]);
-  preset.lineup.fighter_list.push({ loc: 1, index: 5, hero_id: recruited.uid });
-  const lineupResponse = codec.unpack('pb_edit_pre_lineup_rsp', lineupService.execute(209, {
-    pre_lineup_list: [preset],
-    handle_types: []
-  }).data);
-  assert.ok(lineupResponse.role_lineup.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === recruited.uid));
   env.reopen();
   assert.equal(env.store.read().heroInfo.hero_list.find(hero => hero.tid === recruited.tid)?.uid, recruited.uid);
   const reopenedHeroes = codec.unpack('pb_hero_info', rawBinary(new Map(env.store.read().state.modules.value).get(10).value[0]));
   assert.equal(reopenedHeroes.hero_list.find(hero => Number(hero.tid) === 1010101)?.uid, '1010101');
-  assert.ok(env.store.read().lineups.pre_lineups[0].lineup.fighter_list.some(fighter => fighter.hero_id === recruited.uid));
   const second = codec.unpack('hero_draw_back', env.service.execute(601, { draw_lib: 1, point_draw_num: 1 }).data);
   const duplicate = second.res.changes.find(change => change.tid === '21100104');
   assert.equal(duplicate.diff_num, String(convertCount));
   assert.deepEqual(second.decompose_args, []);
   assert.equal(duplicate.extra, undefined);
+  assert.equal(BigInt(env.store.read().resources.get('21100104').num), chipsBefore + BigInt(convertCount));
   assert.equal(env.store.read().heroInfo.hero_list.length, before + 1);
 });
 
-test('ten draws never add duplicate result cards for newly unlocked heroes', t => {
+test('ten draws produce exactly one hero or chip card per pull, including repeats in the batch', async t => {
   const env = setup(t);
   env.seed(2002, 10);
+  const owned = new Set(env.store.read().heroInfo.hero_list.map(hero => Number(hero.tid)));
   const result = env.service.execute(601, { draw_lib: 1, point_draw_num: 10 });
   const response = codec.unpack('hero_draw_back', result.data);
-  const cardChanges = response.res.changes.filter(change => Number(change.diff_num) > 0 && Number(change.tid) !== 2002);
+  const cardChanges = response.res.changes.filter(change => BigInt(change.diff_num) > 0n);
   assert.equal(cardChanges.length, 10);
-  const renderedCards = cardChanges.reduce((sum, change, index) => {
-    const convertCount = Number(heroTables.Quality.get(result.valueForLog.results[index].quality)?.convert_piece_new ?? 0);
-    return sum + (convertCount > 0 ? Math.floor(Number(change.diff_num) / convertCount) : 0);
-  }, response.decompose_args.length);
-  assert.equal(renderedCards, 10);
+  const newlyOwned = [];
+  for (const [index, change] of cardChanges.entries()) {
+    const { tid, quality } = result.valueForLog.results[index];
+    if (!owned.has(tid)) {
+      assert.equal(change.tid, String(tid));
+      assert.equal(change.diff_num, '1');
+      assert.equal((await decodeHeroExtra(change.extra)).uid, String(tid));
+      owned.add(tid);
+      newlyOwned.push(String(tid));
+    } else {
+      assert.equal(Number(tables.Chip.get(Number(change.tid))?.point_item), tid);
+      assert.equal(change.diff_num, String(heroTables.Quality.get(quality).convert_piece_new));
+      assert.equal(change.extra, undefined);
+    }
+  }
+  assert.ok(newlyOwned.length > 0 && newlyOwned.length < cardChanges.length);
+  assert.deepEqual(result.valueForLog.newHeroes, newlyOwned);
   assert.deepEqual(response.decompose_args, []);
 });
 

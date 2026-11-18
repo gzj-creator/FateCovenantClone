@@ -120,6 +120,8 @@ node personal-server/scripts/generate-new-hero-exclusive-heroes.mjs --table <New
 
 ### 首次角色和小队同步
 
+以下为 2026-10-31 的历史方案，首获回包以 [R3 修复](../fixes/recruit-squad-live-sync-20261118.md)为准。碎片 TID 不进入 `HeroRes`，不能用于即时同步英雄。
+
 - 每次抽到英雄均按 `Quality[quality].convert_piece_new` 发放完整碎片包。结果为首次解锁时，同一 `pb_res_change.extra` 还携带 ETF 二进制列表，元素是 protobuf `hero`；客户端 `HeroRes.ResChange -> HeroMgr.AddHeroes` 可立即建立英雄缓存。
 - 新英雄的 `uid=tid`，并立即写入 SQLite `heroes` 与登录模块 10。修复前裸 ETF 整数 extra 不生成即时英雄对象，且旧 UID 与 TID 不同会导致小队按 TID 查询不到。
 - 首次解锁同时写 `decompose_args`，使用碎片 TID、完整碎片数和 ETF 整数英雄 TID；重复英雄不写英雄对象或 decompose 记录。

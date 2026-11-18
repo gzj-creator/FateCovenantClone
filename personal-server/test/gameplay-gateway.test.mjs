@@ -7,6 +7,9 @@ import net from 'node:net';
 import { once } from 'node:events';
 import { E, createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createLocalGame } from '../local-game.mjs';
+import { readGameTables } from '../config/game-tables.mjs';
+import { GUIDE_FIRST_RECRUIT_HERO_TID } from '../game/recruit-service.mjs';
+import { grantResources } from '../game/resources.mjs';
 import { GameFrameDecoder, encodeGameFrame, parseServerChallenge } from '../game-framing.mjs';
 import { HANDSHAKE_FIXED_IV, LOCAL_AES_PROFILE, localAesBeforeFinal } from '../game-handshake.mjs';
 
@@ -608,8 +611,8 @@ test('gateway serves meal, stamina exchange and chapter pass on a temporary port
 });
 
 
-function setupLinearTaskGateway(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-linear-task-'));
+function setupReopenableGateway(t) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-gameplay-reopen-'));
   const options = {
     databasePath: path.join(directory, 'game.sqlite'),
     statePath: path.join(directory, 'absent.json'),
@@ -633,7 +636,7 @@ function setupLinearTaskGateway(t) {
   };
 }
 
-async function connectLinearTaskClient(game) {
+async function connectGameClient(game) {
   const address = await game.listen(0);
   const socket = net.connect(address.port, '127.0.0.1');
   const decoder = new GameFrameDecoder({ maxPayloadBytes: 1048576 }), queue = [], waiters = [];
@@ -661,9 +664,58 @@ async function connectLinearTaskClient(game) {
   return { request, login };
 }
 
+test('gateway makes the 601 hero usable by 209 on the same TCP session and retains it on fresh login', { timeout: 15000 }, async t => {
+  const env = setupReopenableGateway(t);
+  const heroTid = String(GUIDE_FIRST_RECRUIT_HERO_TID);
+  env.game.store.transaction(model => {
+    model.heroInfo.hero_list = model.heroInfo.hero_list.filter(hero => hero.tid !== heroTid);
+    for (const preset of model.lineups.pre_lineups) {
+      preset.lineup.fighter_list = preset.lineup.fighter_list.filter(fighter => fighter.hero_id !== heroTid);
+    }
+    const drawSlots = new Map(model.state.modules.value).get(10).value;
+    const drawInfo = codec.unpack('pb_hero_draw_info', rawBinary(drawSlots[2]));
+    for (const record of drawInfo.recruit_list) record.draw_count = 0;
+    drawSlots[2] = serializedBinary(codec.pack('pb_hero_draw_info', drawInfo));
+    grantResources(model, [[2002, 1]], readGameTables());
+  });
+
+  const decodeRoster = login => codec.unpack('pb_hero_info', loginModuleBytes(login, 10)).hero_list;
+  const decodeLineup = login => {
+    const lineup = codec.unpack('pb_lineup_login', loginModuleBytes(login, 9));
+    return codec.unpack('pb_role_lineup', Buffer.from(lineup.pre_lineup, 'base64'));
+  };
+  const client = await connectGameClient(env.game);
+  assert.equal(decodeRoster(client.login).some(hero => hero.tid === heroTid), false);
+
+  const wire = await client.request(601, 2, codec.pack('pb_draw_hero', { draw_lib: 1, point_draw_num: 1 }));
+  assert.equal(wire.err, undefined);
+  const draw = codec.unpack('hero_draw_back', Buffer.from(wire.data, 'base64'));
+  const heroChange = draw.res.changes.find(change => change.tid === heroTid);
+  assert.ok(heroChange, 'HeroRes only receives the hero resource tid, not its chip tid');
+  assert.equal(heroChange.diff_num, '1');
+  const extra = await decodeEtf(Buffer.from(heroChange.extra, 'base64'));
+  assert.ok(extra instanceof E.OtpErlangList);
+  assert.equal(extra.value.length, 1);
+  const rosterHero = codec.unpack('hero', Buffer.from(extra.value[0].value));
+  assert.equal(rosterHero.tid, heroTid);
+  assert.equal(rosterHero.uid, heroTid);
+
+  const [preset] = decodeLineup(client.login).pre_lineups;
+  preset.lineup.fighter_list[0].hero_id = rosterHero.uid;
+  const edit = await client.request(209, 3, codec.pack('pb_edit_pre_lineup_req', { pre_lineup_list: [preset], handle_types: [] }));
+  assert.equal(edit.err, undefined);
+  const lineup = codec.unpack('pb_edit_pre_lineup_rsp', Buffer.from(edit.data, 'base64'));
+  assert.equal(lineup.role_lineup.pre_lineups[0].lineup.fighter_list[0].hero_id, rosterHero.uid);
+
+  await env.reopen();
+  const reopened = await connectGameClient(env.game);
+  assert.deepEqual(decodeRoster(reopened.login).filter(hero => hero.tid === heroTid).map(hero => hero.uid), [rosterHero.uid]);
+  assert.equal(decodeLineup(reopened.login).pre_lineups[0].lineup.fighter_list[0].hero_id, rosterHero.uid);
+});
+
 test('gateway restores the claimed 3-4 linear task on a fresh TCP login without granting it again', { timeout: 15000 }, async t => {
-  const env = setupLinearTaskGateway(t);
-  let client = await connectLinearTaskClient(env.game);
+  const env = setupReopenableGateway(t);
+  let client = await connectGameClient(env.game);
   assert.deepEqual(codec.unpack('pb_linear_task_data', loginModuleBytes(client.login, 90)).task_list, []);
   setMission(env.game.store, 30204);
   const diamonds = () => BigInt(env.game.store.read().resources.get('101500')?.num ?? 0);
@@ -682,7 +734,7 @@ test('gateway restores the claimed 3-4 linear task on a fresh TCP login without 
   assert.deepEqual(storedLinearTask(env.game.store).task_list, [claimed.task]);
 
   await env.reopen();
-  client = await connectLinearTaskClient(env.game);
+  client = await connectGameClient(env.game);
   assert.deepEqual(codec.unpack('pb_linear_task_data', loginModuleBytes(client.login, 90)).task_list, [claimed.task]);
   const [, taskModule] = client.login[2].value.find(([moduleId]) => Number(moduleId) === 90);
   assert.ok(taskModule instanceof E.OtpErlangList);
@@ -700,9 +752,9 @@ test('gateway restores the claimed 3-4 linear task on a fresh TCP login without 
 });
 
 test('gateway claims a destiny-stage linear task through 9010 and persists it across restart', { timeout: 15000 }, async t => {
-  const env = setupLinearTaskGateway(t);
+  const env = setupReopenableGateway(t);
   const { game } = env;
-  const { request } = await connectLinearTaskClient(game);
+  const { request } = await connectGameClient(game);
 
   setDestiny(game.store, { cur_stage: 2, slot_state: Buffer.alloc(13) });
   const diamondsBefore = BigInt(game.store.read().resources.get('201500').num);
@@ -730,7 +782,7 @@ test('gateway claims a destiny-stage linear task through 9010 and persists it ac
   assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(delivered, 107)).cur_stage, 2);
 
   await env.reopen();
-  const { login } = await connectLinearTaskClient(env.game);
+  const { login } = await connectGameClient(env.game);
   assert.deepEqual(codec.unpack('pb_linear_task_data', loginModuleBytes(login, 90)).task_list, [claim.task]);
   assert.equal(codec.unpack('pb_destiny_data', loginModuleBytes(login, 107)).cur_stage, 2);
   assert.equal(BigInt(env.game.store.read().resources.get('201500').num), diamondsBefore + 2000n);

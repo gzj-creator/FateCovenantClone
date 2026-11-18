@@ -45,6 +45,7 @@ pass 2896、fail 0、skipped 2（两项均等待 `FC_RECHARGE_CLIENT_BUNDLE`）�
 | T1 | 设备网络 `Restore` 在缺失 ADB reverse 时提前中断 | [local-device-restore-20261118.md](local-device-restore-20261118.md) | 反向端口清理改为先删后查的幂等处理；reverse 已清场景 Restore→Setup、五条 NAT、四条 reverse 和客户端启动均通过 |
 | EL1 | 公网空服首个角色连接后立即断线 | [empty-realm-login-mask-20261118.md](empty-realm-login-mask-20261118.md) | `909103` 回包前功能服务接口缺失；空库首登及模块 3 遮罩纳入发布门禁，三服已部署，真机待重登 |
 | LT1 | 主线 3-4 已领，重登仍亮可领红点 | [main-linear-task-relogin-20261118.md](main-linear-task-relogin-20261118.md) | 模块 90 登录首槽下发线性领取状态；重开库 TCP 与 35 项专项通过，重复无奖励；未部署、APK 待验收 |
+| R3 | 抽到新英雄后小队不显示 | [recruit-squad-live-sync-20261118.md](recruit-squad-live-sync-20261118.md) | 601 首获与 614 合成都按本体 TID 发放，重复抽取仍转碎片；50 项专项通过，含同连接 601→209 和重登；未部署、APK 待验收 |
 
 验收级别定义见 `docs/07-private-server-feature-execution-plan.md`。活动修复逐项勾选见 `docs/08-activity-fix-checklist.md`。**2026-11-18 E1 在本机 `main@eb1e8ce` 加本轮修复的工作树部署并复验进服；D1/M1 具体玩法界面未在本轮验收。**
 
