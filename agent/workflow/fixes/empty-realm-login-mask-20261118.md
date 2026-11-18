@@ -29,4 +29,5 @@
 - 组件与临时 TCP：相关测试 42/42 通过。
 - 自包含部署：空库首次登录、角色 1 重连及功能覆盖断言 1/1 通过；独立的远端 `main` 检出上再跑同一回归 1/1 通过。
 - 回归日志：`/data/disk1/game/logs/login-hotfix-20261118T145855Z-HUvlIU/` 的 `before.log`、`after.log`、`targeted.log`，以及 `/data/disk1/game/logs/login-fix-main-20261118T153004Z-dj4axs/deployment-regression.log`。
+- 生产部署：命运三服于 2026-11-18 23:37（UTC+8）切换至 `release-20261118T153737Z`（代码提交 `6c2e885`）。沿用本次新服数据库，部署后仍为 1 个账号、1 个角色；SQLite 完整性、活动排期审计、SDK 健康检查和五端口就绪均通过。切换前备份 `/data/disk1/game/backups/pre-20261118T153737Z/data.tar.gz` 已通过 SHA256 校验；未恢复任何废弃旧服数据。部署日志为 `login-fix-main-20261118T153004Z-dj4axs/realm-3-deployment.log`（位于 `/data/disk1/game/logs/`）。
 - 未操作 APK；真实客户端大厅验收由用户重登确认。
