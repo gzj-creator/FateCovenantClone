@@ -31,7 +31,7 @@ import {
   setLayer,
   summonGuard,
 } from './proprietary-state.mjs';
-import { EffectExecutor } from './effect-executor.mjs';
+import { canGainEnergy, EffectExecutor } from './effect-executor.mjs';
 import { BUFF_CHANGE_REASON, BUFF_SIGN, provenBuffTid } from './report-codes.mjs';
 import { isTianjiAbility } from '../../config/fight-ability-types.mjs';
 
@@ -536,6 +536,7 @@ function healNamedUnit(events, unit, amount, sourceId, actionId = 0) {
 /** Change energy for one unit and emit the same event shape as an energy effect. */
 function adjustEnergyNamed(events, unit, { energyType, magnitude, sourceId, actionId = 0, reason }) {
   if (!unit?.alive || !(Number(magnitude) > 0)) return 0;
+  if (energyType === 'gain' && !canGainEnergy(unit)) return 0;
   const oldEnergy = Math.max(0, Number(unit.energy) || 0);
   const delta = Number(magnitude);
   const newEnergy = energyType === 'gain'

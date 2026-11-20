@@ -112,7 +112,7 @@ const PROVEN_STATUS_BUFFS = new Map([
   })],
   ['poison', Object.freeze({
     tid: 11003, constant: 'TID_BUFF_POISON', buffType: 2, effect: 1013,
-    dispel: true, deadRemove: true, overlayLimit: 2
+    dispel: true, deadRemove: true, overlayLimit: 2, tickPrompt: PROMPT.HARM_POISON
   })],
   ['burn', Object.freeze({
     tid: 11004, constant: 'TID_BUFF_BURNING_HOT', buffType: 2, effect: 1014,

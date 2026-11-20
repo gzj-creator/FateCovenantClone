@@ -5,11 +5,12 @@ import { EffectExecutor } from '../game/effects/effect-executor.mjs';
 
 const HERO_ID = 4030401;
 
-test('hero 4030401 skills are loaded from skill database', () => {
+test('hero 4030401 exposes the original ordinary ultimate separately from rare skills', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 15, 'expected 15 skills for 圣棺裁决');
+  const ordinary = skills.filter(skill => skill.id === '2403040113');
+  assert.equal(ordinary.length, 1);
+  assert.equal(ordinary[0].implementation.ability.type, 2);
 });
 
 test('passive triggers count is at least 10', () => {

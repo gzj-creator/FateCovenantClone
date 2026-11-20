@@ -4752,6 +4752,76 @@
       },
       "skills": [
         {
+          "id": "2102030112",
+          "name": "噬骨之毒",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成224%魔法伤害，并附加{0}",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2102030112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102030112, "type_des": 3, "show_name": 602500641, "text": 601501007,
+              "skill_icon": "Icon_Skill_anna_n1.png", "detail_text": 0, "feature": [2] },
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 1000,
+            "effects": [
+              {
+                "target": { "targetType": "single" },
+                "targetGroup": "hit",
+                "effect": { "type": "damage", "damageType": "magical", "multiplier": 2.24 }
+              },
+              {
+                "target": { "targetType": "single" },
+                "targetGroup": "hit",
+                "effect": { "type": "status", "statusType": "poison", "maxStacks": 2, "stackGroup": "poison",
+                  "roundStartDamage": { "targetMaxHpRatio": 0.06, "casterMaxHpCap": 0.1 } },
+                "duration": { "durationType": "timed", "rounds": 2 }
+              }
+            ],
+            "notes": "Original feature 2, text 609000002 and Buff 11003. Cross-caster merging and original tick priority are unresolved."
+          }
+        },
+        {
+          "id": "2102030113",
+          "name": "噬骨之毒",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成248%魔法伤害，并附加{0}",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2102030113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102030113, "type_des": 3, "show_name": 602500642, "text": 601501008,
+              "skill_icon": "Icon_Skill_anna_n1.png", "detail_text": 0, "feature": [2] },
+            "effectType": "damage",
+            "targetType": "single",
+            "energyCost": 1000,
+            "effects": [
+              {
+                "target": { "targetType": "single" },
+                "targetGroup": "hit",
+                "effect": { "type": "damage", "damageType": "magical", "multiplier": 2.48 }
+              },
+              {
+                "target": { "targetType": "single" },
+                "targetGroup": "hit",
+                "effect": { "type": "status", "statusType": "poison", "maxStacks": 2, "stackGroup": "poison",
+                  "roundStartDamage": { "targetMaxHpRatio": 0.06, "casterMaxHpCap": 0.1 } },
+                "duration": { "durationType": "timed", "rounds": 2 }
+              }
+            ],
+            "notes": "Original feature 2, text 609000002 and Buff 11003. Cross-caster merging and original tick priority are unresolved."
+          }
+        },
+        {
           "id": "normal-profession-1",
           "name": "Warrior Basic Attack (攻击)",
           "type": "Normal",
@@ -5112,7 +5182,9 @@
                   "type": "status",
                   "statusType": "poison",
                   "stacks": 1,
-                  "maxStacks": 2
+                  "maxStacks": 2,
+                  "stackGroup": "poison",
+                  "roundStartDamage": { "targetMaxHpRatio": 0.06, "casterMaxHpCap": 0.1 }
                 },
                 "duration": {
                   "durationType": "timed",
@@ -5133,7 +5205,9 @@
                     "type": "status",
                     "statusType": "poison",
                     "stacks": 1,
-                    "maxStacks": 2
+                    "maxStacks": 2,
+                    "stackGroup": "poison",
+                    "roundStartDamage": { "targetMaxHpRatio": 0.06, "casterMaxHpCap": 0.1 }
                   },
                   "duration": {
                     "durationType": "timed",
@@ -5152,7 +5226,9 @@
                     "type": "status",
                     "statusType": "poison",
                     "stacks": 1,
-                    "maxStacks": 2
+                    "maxStacks": 2,
+                    "stackGroup": "poison",
+                    "roundStartDamage": { "targetMaxHpRatio": 0.06, "casterMaxHpCap": 0.1 }
                   },
                   "duration": {
                     "durationType": "timed",
@@ -5161,7 +5237,7 @@
                 }
               }
             ],
-            "notes": "Original text 604400044 and Buff 11003: apply one poison layer to the action targets, up to two for this source. Poison tick damage and cross-source stack merging are unresolved.",
+            "notes": "Original text 604400044 and Buff 11003: apply one poison layer to the action targets and use feature 2 for round-start damage. Cross-caster merging and original tick priority are unresolved.",
             "requiresInvestigation": true
           }
         },
@@ -10918,6 +10994,36 @@
         "spd": 107
       },
       "skills": [
+        {
+          "id": "2103020113",
+          "name": "四步将杀",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成127%的物理伤害，并施加3层{0}",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2103020113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2103020113, "type_des": 3, "show_name": 602500636, "text": 601501001,
+              "skill_icon": "Icon_Skill_ailun_n1.png", "detail_text": 0, "feature": [1] },
+            "effects": [
+              {
+                "targetGroup": "hit", "target": { "targetType": "front-row" },
+                "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.27 }
+              },
+              {
+                "targetGroup": "hit", "target": { "targetType": "front-row" },
+                "effect": { "type": "status", "statusType": "frightened", "stacks": 3, "maxStacks": 6,
+                  "stackGroup": "four-step-checkmate", "statModifiers": { "damage-reduction": -0.05 } },
+                "duration": { "durationType": "timed", "rounds": 2 }
+              }
+            ],
+            "notes": "Feature 1 (609000001) adds final damage taken after the hit. Ordinary casts from the same caster share the six-layer limit. No original wire buff TID, mastery interaction, or cross-caster stacking is asserted."
+          }
+        },
         {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
@@ -16838,6 +16944,36 @@
         "spd": 112
       },
       "skills": [
+        {
+          "id": "2103070113",
+          "name": "无情鞭挞",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体目标，造成83%的物理伤害，并附加1层{0}，持续到战斗结束",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2103070113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2103070113, "type_des": 3, "show_name": 602501242, "text": 601501108,
+              "skill_icon": "Icon_Skill_zuiyuyeying_n1.png", "detail_text": 0, "feature": [137] },
+            "effects": [
+              {
+                "targetGroup": "hit", "target": { "targetType": "all-enemies" },
+                "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.83 }
+              },
+              {
+                "targetGroup": "hit", "target": { "targetType": "all-enemies" },
+                "effect": { "type": "status", "statusType": "whiplash", "maxStacks": 10,
+                  "statModifiers": { "damage-bonus": -0.05, "crit-rate": -0.05, "crit-damage": -0.05 } },
+                "duration": { "durationType": "permanent" }
+              }
+            ],
+            "notes": "Feature 137 (609000137) is one persistent status with three additive penalties. The ten-layer cap is enforced per caster; no unverified wire buff TID is emitted."
+          }
+        },
         {
           "id": "normal-profession-4",
           "name": "Knight Basic Attack (防御)",
@@ -33718,6 +33854,35 @@
         "spd": 102
       },
       "skills": [
+        {
+          "id": "2203020113",
+          "name": "明月潮生",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体目标造成83%的魔法伤害，并使我方全体获得{0}",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2203020113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2203020113, "type_des": 3, "show_name": 602500660, "text": 601501027,
+              "skill_icon": "Icon_Skill_lan_n1.png", "detail_text": 0, "feature": [6] },
+            "effects": [
+              {
+                "target": { "targetType": "all-enemies" },
+                "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.83 }
+              },
+              {
+                "includeInActionTargets": false, "target": { "targetType": "all-allies" },
+                "effect": { "type": "status", "statusType": "prayer", "unique": true, "roundEndEnergy": 100 },
+                "duration": { "durationType": "timed", "rounds": 2 }
+              }
+            ],
+            "notes": "Feature 6 (609000006) restores energy at round end for two rounds. Local playback uses the next two round ends, a capped energy sync, and no unverified buff TID. Original application-round counting and cross-caster stacking are unresolved."
+          }
+        },
         {
           "id": "normal-profession-2",
           "name": "Assassin Basic Attack (冲锋)",
@@ -76283,6 +76448,37 @@
       },
       "skills": [
         {
+          "id": "2403030113",
+          "name": "时间炸弹",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体造成83%的魔法伤害，并有55%概率附加{0}",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2403030113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2403030113, "type_des": 3, "show_name": 602500710, "text": 601501075,
+              "skill_icon": "Icon_Skill_lafeier_n1.png", "detail_text": 0, "feature": [14] },
+            "effects": [
+              {
+                "targetGroup": "hit", "target": { "targetType": "all-enemies" },
+                "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.83 }
+              },
+              {
+                "targetGroup": "hit", "target": { "targetType": "all-enemies" },
+                "effect": { "type": "status", "statusType": "holy-judgment", "unique": true,
+                  "roundStartDamage": { "targetMaxHpRatio": 0.05, "casterMaxHpCap": 0.075 } },
+                "duration": { "durationType": "timed", "rounds": 2 },
+                "chance": 0.55
+              }
+            ],
+            "notes": "Feature 14 (609000014) ticks at the next two round starts. Same-source refresh and shield handling use local status rules; original shield, refresh, and wire buff semantics are unresolved."
+          }
+        },
+        {
           "id": "normal-profession-1",
           "name": "Warrior Basic Attack (攻击)",
           "type": "Normal",
@@ -77442,6 +77638,37 @@
         "spd": 107
       },
       "skills": [
+        {
+          "id": "2403040113",
+          "name": "圣棺之审判",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方攻击最高的2个目标，造成166%的魔法伤害，并有55%概率将目标装进{0}",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2403040113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2403040113, "type_des": 3, "show_name": 602500711, "text": 601501076,
+              "skill_icon": "Icon_Skill_xiamier_n1.png", "detail_text": 0, "feature": [15] },
+            "effects": [
+              {
+                "targetGroup": "hit", "target": { "targetType": "highest-attack-enemies", "count": 2 },
+                "effect": { "type": "damage", "damageType": "magical", "multiplier": 1.66 }
+              },
+              {
+                "targetGroup": "hit", "target": { "targetType": "highest-attack-enemies", "count": 2 },
+                "effect": { "type": "status", "statusType": "atonement-coffin", "unique": true,
+                  "statModifiers": { "damage-reduction": -0.2 } },
+                "duration": { "durationType": "timed", "rounds": 1 },
+                "chance": 0.55
+              }
+            ],
+            "notes": "Feature 15 (609000015) blocks actions and energy gains and lowers final mitigation. Uses the local full-round timed status policy; original tie breaks, immunity, and wire buff TID are unresolved."
+          }
+        },
         {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
@@ -82355,6 +82582,43 @@
             "triggers": [],
             "requiresInvestigation": false,
             "notes": "Ultimate: heal the lowest-HP ally for 120% caster ATK, capped at 90% caster max HP, and restore 80 energy to the same target. A Sacred (camp 4) target receives 1.5x healing and energy. The same target is reused across both effects."
+          }
+        }
+      ]
+    },
+    {
+      "id": 4040101,
+      "name": "伊比利斯",
+      "role": "Warrior",
+      "skills": [
+        {
+          "id": "2404010113",
+          "name": "启示降临",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排造成127%物理伤害，附加1层{0}，持续到战斗结束",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "catalogTypeMatch": true,
+            "ability": { "tid": 2404010113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2404010113, "type_des": 3, "show_name": 602501191, "text": 601501100,
+              "skill_icon": "Icon_Skill_PaKe_S1.png", "detail_text": 0, "feature": [23] },
+            "effects": [
+              {
+                "targetGroup": "hit", "target": { "targetType": "front-row" },
+                "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.27 }
+              },
+              {
+                "targetGroup": "hit", "target": { "targetType": "front-row" },
+                "effect": { "type": "stat-modifier", "statType": "damage-bonus", "magnitude": -0.05,
+                  "isPercentage": true, "maxStacks": 10 },
+                "duration": { "durationType": "permanent" }
+              }
+            ],
+            "notes": "Original feature 23, text 609000023. The report does not synthesize a Buff TID, and empty-front fallback is unresolved."
           }
         }
       ]

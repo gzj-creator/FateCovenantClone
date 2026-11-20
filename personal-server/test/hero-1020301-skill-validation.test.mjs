@@ -10,7 +10,8 @@ test('hero 1020301 skills are loaded from skill database', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 狂暴玛丽');
+  assert.deepEqual(skills.filter(skill => /^210203011[23]$/.test(skill.id)).map(skill => skill.id).sort(),
+    ['2102030112', '2102030113']);
 });
 
 test('重击 (312030171) registers damage-bonus 0.05 on battle start', () => {
@@ -129,15 +130,19 @@ test('poison status applies to target debuffs via EffectExecutor', () => {
   assert.equal(target.debuffs[0].tickInterval, 1);
 });
 
-test('poison DoT tick deals percent-max-hp damage to target', () => {
-  const executor = new EffectExecutor({ seed: 1, random: () => 0.5 });
-  const unit = { id: 2, team: 2, hp: 500, maxHp: 500, defense: 50, shield: 0, alive: true, buffs: [], debuffs: [] };
-  const tick = { type: 'damage', damageType: 'percent-max-hp', magnitude: 0.2, canCrit: false };
-  const result = executor.executeDamage(tick, unit, unit);
-  assert.ok(result, 'tick should produce damage result');
-  assert.ok(result.value > 0, 'DoT damage should be > 0');
-  // 20% of 500 = 100
-  assert.equal(result.value, 100);
+test('恶性疗法 poison from a normal action uses the caster cap at the next round start', () => {
+  const skill = getHeroSkills(HERO_ID, loadSkillDatabase()).find(entry => entry.id === '312030174');
+  const battle = simulateBattle({
+    attackers: [{ id: 101, role: HERO_ID, maxHp: 600, attack: 10, speed: 100, skills: [skill],
+      initialEnergy: 0, abilityId: 1102030101, activeAbilityId: null }],
+    defenders: [{ id: 201, loc: 1, maxHp: 1200, attack: 1, speed: 1, activeAbilityId: null, skills: [] }],
+    seed: 2, maxRounds: 2,
+  });
+  const start = battle.events.findIndex(event => event.kind === 'round-start' && event.round === 2);
+  const tick = battle.events.findIndex(event => event.kind === 'damage' && event.tick);
+  const firstMove = battle.events.findIndex((event, index) => index > start && event.kind === 'action-start');
+  assert.ok(tick > start && tick < firstMove, 'the applied poison ticks before a normal turn');
+  assert.deepEqual(battle.events[tick].harms.map(harm => [harm.srcId, harm.aimId, harm.value]), [[101, 201, 60]]);
 });
 
 test('恶意蔓延 (312030175) amplifies only the current ordinary ultimate', () => {

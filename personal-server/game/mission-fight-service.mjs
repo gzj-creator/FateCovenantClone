@@ -69,6 +69,21 @@ function unitConfig(tables, role, roleType) {
 // the only place action codes and harm prompt ids reach the client.
 export function actionList(codec, simulation) {
   const events = [];
+  const harmBatches = new Map();
+  function appendHarms(id, harms) {
+    if (harms.length === 0) return;
+    if (!(id > 0)) {
+      events.push(action(codec, ACTION_FIGHT_HARM, 'pb_fat_harm', { id, harm_list: harms }));
+      return;
+    }
+    let batch = harmBatches.get(id);
+    if (!batch) {
+      batch = { index: events.length, harms: [] };
+      harmBatches.set(id, batch);
+      events.push(null);
+    }
+    batch.harms.push(...harms);
+  }
   for (const event of simulation.events) {
     if (event.kind === 'round-start') {
       events.push(action(codec, ACTION_ROUND_READY, 'pb_fat_round_ready', { round: event.round }));
@@ -82,37 +97,31 @@ export function actionList(codec, simulation) {
         type: event.actionType === ACTION_ABILITY_ACTIVE ? ACTION_ABILITY_ACTIVE : ACTION_ABILITY_COMMON
       }));
     } else if (event.kind === 'damage') {
-      events.push(action(codec, ACTION_FIGHT_HARM, 'pb_fat_harm', {
-        id: event.id,
-        harm_list: event.harms.map(harm => ({
-          aim_id: harm.aimId,
-          src_id: harm.srcId,
-          type: PROMPT_NORMAL_HARM,
-          is_ab_aim: true,
-          value: harm.value,
-          old_hp: harm.oldHp,
-          hp: harm.hp,
-          old_shield: harm.oldShield,
-          shield: harm.shield
-        }))
-      }));
+      appendHarms(event.id, event.harms.map(harm => ({
+        aim_id: harm.aimId,
+        src_id: harm.srcId,
+        type: harm.prompt ?? PROMPT_NORMAL_HARM,
+        is_ab_aim: harm.isStatusTick !== true,
+        value: harm.value,
+        old_hp: harm.oldHp,
+        hp: harm.hp,
+        old_shield: harm.oldShield,
+        shield: harm.shield
+      })));
     } else if (event.kind === 'heal' && Number(event.actualHeal ?? event.value) > 0) {
       // TID_PROMPT_HEAL (107): FightTable.Prompt[107] is a positive-number
       // prompt, which is exactly the client's IFightHarm.IsRecover test.
-      events.push(action(codec, ACTION_FIGHT_HARM, 'pb_fat_harm', {
-        id: event.id,
-        harm_list: [{
-          aim_id: event.aimId,
-          src_id: event.srcId,
-          type: PROMPT_HEAL,
-          is_ab_aim: true,
-          value: event.actualHeal ?? event.value,
-          old_hp: event.oldHp,
-          hp: event.hp ?? event.newHp,
-          old_shield: event.oldShield ?? 0,
-          shield: event.shield ?? 0
-        }]
-      }));
+      appendHarms(event.id, [{
+        aim_id: event.aimId,
+        src_id: event.srcId,
+        type: PROMPT_HEAL,
+        is_ab_aim: true,
+        value: event.actualHeal ?? event.value,
+        old_hp: event.oldHp,
+        hp: event.hp ?? event.newHp,
+        old_shield: event.oldShield ?? 0,
+        shield: event.shield ?? 0
+      }]);
     } else if (event.kind === 'shield') {
       events.push(action(codec, ACTION_SHIELD, 'pb_fat_shield', {
         id: event.id,
@@ -132,20 +141,17 @@ export function actionList(codec, simulation) {
       && Number(event.actualHeal ?? event.value) > 0) {
       // Proprietary domain/passive handlers write the same recover shape as the
       // generic executor; this branch keeps those heals replayable too.
-      events.push(action(codec, ACTION_FIGHT_HARM, 'pb_fat_harm', {
-        id: event.id ?? 0,
-        harm_list: [{
-          aim_id: event.target,
-          src_id: event.actor,
-          type: PROMPT_HEAL,
-          is_ab_aim: true,
-          value: event.actualHeal ?? event.value,
-          old_hp: event.oldHp,
-          hp: event.newHp,
-          old_shield: event.oldShield ?? 0,
-          shield: event.shield ?? 0
-        }]
-      }));
+      appendHarms(event.id ?? 0, [{
+        aim_id: event.target,
+        src_id: event.actor,
+        type: PROMPT_HEAL,
+        is_ab_aim: true,
+        value: event.actualHeal ?? event.value,
+        old_hp: event.oldHp,
+        hp: event.newHp,
+        old_shield: event.oldShield ?? 0,
+        shield: event.shield ?? 0
+      }]);
     } else if (event.kind === 'buff-change') {
       // pb_fat_buff_change (103). sign is the add/remove flag: false -> AddBuff,
       // true -> RemoveBuff(change_reason), per BuffChangeStep._OnStart.
@@ -190,6 +196,9 @@ export function actionList(codec, simulation) {
     } else if (event.kind === 'battle-end') {
       events.push(action(codec, ACTION_BATTLE_OVER, 'pb_fat_battle_over', { why: event.result }));
     }
+  }
+  for (const [id, { index, harms }] of harmBatches) {
+    events[index] = action(codec, ACTION_FIGHT_HARM, 'pb_fat_harm', { id, harm_list: harms });
   }
   return events;
 }

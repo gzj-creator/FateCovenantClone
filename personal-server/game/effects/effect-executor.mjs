@@ -49,6 +49,7 @@ const BUFF_STATUS_TYPES = new Set([
   STATUS_TYPES.STRENGTHENED,
   STATUS_TYPES.HASTED,
   STATUS_TYPES.ENERGIZED,
+  STATUS_TYPES.PRAYER,
 ]);
 
 function finiteNumber(value, fallback = 0) {
@@ -117,9 +118,10 @@ export function statTotal(source, statType, actionType = null) {
   let total = 0;
   for (const collection of modifierCollections(source)) {
     for (const modifier of collection) {
-      if (modifier?.statType !== statType) continue;
+      const value = modifier?.statType === statType ? modifier.magnitude : modifier?.statModifiers?.[statType];
+      if (value === undefined) continue;
       if (modifier.actionType && modifier.actionType !== actionType) continue;
-      const magnitude = finiteNumber(modifier.magnitude);
+      const magnitude = finiteNumber(value);
       const stacks = modifierStacks(modifier);
       total += modifier.stacksAdditive === false
         ? Math.pow(Math.max(0, 1 + magnitude), stacks) - 1
@@ -176,6 +178,10 @@ export function effectiveDamageBonus(unit, actionType = null) {
 
 export function effectiveDamageReduction(unit) {
   return Math.max(-0.9, Math.min(0.9, statTotal(unit, STAT_TYPES.DAMAGE_REDUCTION)));
+}
+
+export function canGainEnergy(unit) {
+  return !unit?.debuffs?.some(status => status.type === STATUS_TYPES.ATONEMENT_COFFIN);
 }
 
 export function effectiveIgnoreDefense(unit) {
@@ -393,17 +399,32 @@ export class EffectExecutor {
       });
     }
 
-    // Apply to target
+    return this.applyDamage(finalDamage, actor, target, { isCrit, damageReduction });
+  }
+
+  executeRoundStartDamage(status, actor, target) {
+    const { targetMaxHpRatio, casterMaxHpCap } = status.roundStartDamage;
+    const perStack = Math.max(1, Math.floor(Math.min(effectiveMaxHp(target) * targetMaxHpRatio,
+      effectiveMaxHp(actor) * casterMaxHpCap)));
+    return {
+      ...this.applyDamage(perStack * modifierStacks(status), actor, target, { statusTick: true }),
+      status: status.id,
+      statusType: status.type,
+      tick: true,
+    };
+  }
+
+  applyDamage(finalDamage, actor, target, { isCrit = false, damageReduction = 0, statusTick = false } = {}) {
     const oldHp = target.hp;
     const oldShield = Math.max(0, Number(target.shield) || 0);
     const applied = absorbDamage(target, finalDamage, { sourceId: actor.id, events: this.state?.events });
     const absorbed = applied.absorbed + applied.superAbsorbed + applied.summonAbsorbed;
 
     const hpDamage = recordActionDamage(actor, target, oldHp, target.hp, absorbed, this.state);
-    const consumedDurations = this.consumeTriggerCount(target, 'damage-taken');
-
-    // Grant energy to target on being hit
-    target.energy = Math.min(1000, (target.energy || 0) + 80 * (1 + effectiveEnergyBonus(target)));
+    const consumedDurations = statusTick ? [] : this.consumeTriggerCount(target, 'damage-taken');
+    if (!statusTick && canGainEnergy(target)) {
+      target.energy = Math.min(1000, (target.energy || 0) + 80 * (1 + effectiveEnergyBonus(target)));
+    }
 
     return {
       type: 'damage',
@@ -679,13 +700,14 @@ export class EffectExecutor {
         // Take from target and give to actor
         const stolen = Math.min(oldEnergy, effect.magnitude);
         newEnergy = oldEnergy - stolen;
-        actor.energy = Math.min(1000, (actor.energy || 0) + stolen);
+        if (canGainEnergy(actor)) actor.energy = Math.min(1000, (actor.energy || 0) + stolen);
         break;
       case ENERGY_TYPES.SET:
         newEnergy = effect.magnitude;
         break;
     }
 
+    if (newEnergy > oldEnergy && !canGainEnergy(target)) newEnergy = oldEnergy;
     target.energy = newEnergy;
 
     return {
@@ -728,6 +750,10 @@ export class EffectExecutor {
       tickInterval: effect.tickInterval || 0,
       tickEffect: effect.tickEffect || null,
       nextTick: 0,
+      roundStartDamage: effect.roundStartDamage,
+      roundEndEnergy: effect.roundEndEnergy,
+      statModifiers: effect.statModifiers,
+      stackGroup: effect.stackGroup,
       dispellable: effect.dispellable !== false,
       unique: effect.unique || false,
       refresh: effect.refresh !== false,
@@ -745,7 +771,8 @@ export class EffectExecutor {
 
     const existingIndex = collection.findIndex(item => item.type === effect.statusType
       && item.source === actor.id
-      && (!effect.sourceSkill || !item.sourceSkill || item.sourceSkill === effect.sourceSkill));
+      && (effect.stackGroup || item.stackGroup ? item.stackGroup === effect.stackGroup
+        : (!effect.sourceSkill || !item.sourceSkill || item.sourceSkill === effect.sourceSkill)));
     const requestedStacks = Math.max(1, Math.floor(finiteNumber(effect.stacks, 1)));
     const stackLimit = Math.max(1, Math.floor(finiteNumber(effect.maxStacks, 0)) || requestedStacks);
     const managesExisting = effect.unique || effect.maxStacks > 0;

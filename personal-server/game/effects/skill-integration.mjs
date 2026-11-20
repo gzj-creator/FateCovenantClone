@@ -549,6 +549,30 @@ function evaluateConditionKey(key, unit, allUnits, state, target = null) {
       return false;
   }
 }
+export function processRoundStartStatusTicks(unit, state, onDamage) {
+  if (!unit.debuffs?.length) return;
+  const executor = new EffectExecutor(state);
+  for (const status of [...unit.debuffs]) {
+    if (!unit.alive) break;
+    if (!status.roundStartDamage || status.appliedRound >= state.round || status.remainingRounds <= 0
+        || !unit.debuffs.includes(status)) continue;
+    const caster = state.allUnits.find(candidate => candidate.id === status.source);
+    if (caster) onDamage(caster, executor.executeRoundStartDamage(status, caster, unit));
+  }
+}
+
+export function processRoundEndEnergyTicks(unit, state, onEnergy) {
+  if (!unit.buffs?.length) return;
+  const executor = new EffectExecutor(state);
+  for (const status of unit.buffs) {
+    if (!(status.roundEndEnergy > 0) || status.remainingRounds <= 0) continue;
+    const caster = state.allUnits.find(candidate => candidate.id === status.source);
+    if (!caster) continue;
+    const result = executor.executeEnergy({ energyType: 'gain', magnitude: status.roundEndEnergy }, caster, unit);
+    if (result && result.newEnergy !== result.oldEnergy) onEnergy(caster, result);
+  }
+}
+
 export function processBuffTicks(unit, state, events) {
   if (!unit.buffs && !unit.debuffs) return;
 
@@ -559,7 +583,7 @@ export function processBuffTicks(unit, state, events) {
       || ((Number(status.remainingRounds ?? status.duration ?? 0) > 0) ? 'timed' : 'permanent');
     // A timed status created during this round gets its full advertised lifetime.
     // Conditional statuses still need to react to condition changes immediately.
-    if (durationType === 'timed'
+    if (durationType === 'timed' && !(status.roundEndEnergy > 0)
       && Number.isSafeInteger(status.appliedRound)
       && status.appliedRound === state?.round) continue;
     let expired = false;

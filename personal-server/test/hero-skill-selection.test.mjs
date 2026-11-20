@@ -484,8 +484,9 @@ test('Quicksand Prince heals only from his capped follow-up true damage, never f
       const healing = castEvents.filter(event => event.kind === 'heal');
       assert.deepEqual(healing.map(event => [event.aimId, event.value, event.actualHeal]),
         trueDamage ? [[101, trueDamage, trueDamage]] : []);
-      const harms = packets(report, 106, 'pb_fat_harm').filter(packet => packet.id === cast.id)
-        .flatMap(packet => packet.harm_list).map(harm => [Number(harm.aim_id), Number(harm.value), Number(harm.type) === 107]);
+      const harmPackets = packets(report, 106, 'pb_fat_harm').filter(packet => packet.id === cast.id);
+      assert.equal(harmPackets.length, 1, 'FightActionData.SetFatHarm rejects a second 106 for this action');
+      const harms = harmPackets[0].harm_list.map(harm => [Number(harm.aim_id), Number(harm.value), Number(harm.type) === 107]);
       assert.deepEqual(harms, trueDamage ? [[201, physicalDamage, false], [201, trueDamage, false], [101, trueDamage, true]]
         : [[201, physicalDamage, false]]);
       const sync = packets(report, 116, 'pb_fat_attr_sync').find(packet => packet.id === cast.id);
@@ -495,6 +496,255 @@ test('Quicksand Prince heals only from his capped follow-up true damage, never f
     assert.ok(lineupSkills(hero).includes(id));
     assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
   }
+});
+
+test('Berserk Mary casts same-ID magic damage and two capped poison ticks before the next turns', () => {
+  for (const [quality, id, textId, directDamage] of [
+    [40, 2102030112, 601501007, 224], [50, 2102030113, 601501008, 248],
+  ]) {
+    const hero = heroAt(1020301, { quality });
+    const { skills, abilityIds } = buildHeroSkillLoadout({ hero, heroTables, skillDatabase: database });
+    const actionIds = selectFightActionIds(abilityIds);
+    const selected = resolveActionSkill({ ...actionIds, skills }, true, database);
+    assert.equal(actionIds.activeAbilityId, id);
+    assert.equal(Number(selected?.id), id, 'the poison finisher must use the original action ID');
+    assert.equal(selected.implementation.abilityDes.text, textId);
+    assert.deepEqual(selected.implementation.abilityDes.feature, [2]);
+    assert.equal(selected.implementation.effects[0].effect.damageType, 'magical');
+    const play = (maxHp, mastery = null, lethal = false) => {
+      const simulation = simulateBattle({
+        attackers: [{ id: 101, role: hero.tid, loc: 1, maxHp: 1000, attack: 100, speed: 100, critChance: 0,
+          initialEnergy: FIGHT_ENERGY_MAX, skills: [...fixedDamage(selected), ...(mastery ? [mastery] : [])], ...actionIds }],
+        defenders: (lethal ? [1] : [1, 4]).map((loc, index) => ({ id: 201 + index, loc, maxHp, attack: 1, speed: 1,
+          defense: 0, initialEnergy: 0, activeAbilityId: null, skills: [] })),
+        seed: 8, maxRounds: mastery ? 2 : 4,
+      });
+      const report = { action_list: actionList(codec, simulation) };
+      const cast = firstActive(report);
+      assert.equal(Number(cast.ab_tid), id);
+      assert.deepEqual(cast.aim_list.map(Number), [201]);
+      const harms = packets(report, 106, 'pb_fat_harm');
+      assert.deepEqual(harms.find(packet => packet.id === cast.id).harm_list.map(harm =>
+        [Number(harm.src_id), Number(harm.aim_id), Number(harm.value)]), [[101, 201, directDamage]]);
+      const overlays = packets(report, 103, 'pb_fat_buff_change');
+      const applied = overlays.filter(packet => packet.id === cast.id).flatMap(packet => packet.buff_list);
+      assert.deepEqual(applied.map(buff => [buff.aim_id, Number(buff.tid), buff.overlay, buff.sign, buff.caster_id, Number(buff.ab_tid)]),
+        Array.from({ length: mastery ? 2 : 1 }, () => [201, 11003, 1, true, 101, id]));
+      const periodic = harms.filter(packet => packet.harm_list.some(harm => Number(harm.type) === 113));
+      const starts = packets(report, 101, 'pb_fat_action_before');
+      const ends = packets(report, 102, 'pb_fat_action_after');
+      const anger = packets(report, 116, 'pb_fat_attr_sync');
+      const ticks = [];
+      let round = 0;
+      let actorMoved = false;
+      for (const event of simulation.events) {
+        if (event.kind === 'round-start') { round = event.round; actorMoved = false; }
+        if (event.kind === 'action-start') actorMoved = true;
+        if (event.kind !== 'damage' || !event.tick) continue;
+        assert.equal(actorMoved, false, 'never tick after an actor takes its turn');
+        const before = starts.find(packet => packet.id === event.id);
+        assert.equal(Number(before?.ab_tid ?? 0), 0, 'no repeat cast animation for poison');
+        assert.equal(Number(before?.src_id), 101);
+        assert.ok(ends.some(packet => packet.id === event.id));
+        assert.ok(!anger.some(packet => packet.id === event.id), 'poison is not another anger-granting direct attack');
+        const harm = periodic.find(packet => packet.id === event.id)?.harm_list[0];
+        assert.ok(harm, '106 has the original poison prompt');
+        assert.deepEqual([harm.aim_id, harm.src_id, harm.is_ab_aim ?? false], [201, 101, false]);
+        const value = Number(harm.value);
+        assert.equal(Number(harm.old_hp) - Number(harm.hp ?? 0), Math.min(value, Number(harm.old_hp)));
+        ticks.push([round, value]);
+      }
+      assert.equal(periodic.length, ticks.length);
+      const removals = overlays.flatMap(packet => packet.buff_list).filter(buff => !buff.sign);
+      assert.deepEqual(removals.map(buff => [buff.aim_id, Number(buff.tid), buff.overlay, Number(buff.change_reason ?? 0)]),
+        mastery ? [] : [[201, 11003, 1, lethal ? 2 : 0]]);
+      if (lethal) assert.equal(simulation.defenders[0].alive, false);
+      return ticks;
+    };
+    assert.deepEqual(play(1000), [[2, 60], [3, 60]]);
+    assert.deepEqual(play(6000), [[2, 100], [3, 100]]);
+    assert.deepEqual(play(directDamage + 2, null, true), [[2, Math.floor((directDamage + 2) * 0.06)]]);
+    const mastery = database.heroes.find(row => Number(row.id) === hero.tid).skills.find(skill => skill.id === '312030174');
+    assert.ok(mastery);
+    assert.deepEqual(play(6000, mastery), [[2, 200]]);
+    assert.ok(lineupSkills(hero).includes(id));
+    assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
+  }
+});
+
+test('Time Bomb hits all enemies and only judged targets lose capped health before turns in rounds two and three', () => {
+  const hero = heroAt(4030301);
+  const { skills, abilityIds } = buildHeroSkillLoadout({ hero, heroTables, skillDatabase: database });
+  const actionIds = selectFightActionIds(abilityIds);
+  const id = 2403030113;
+  assert.equal(actionIds.activeAbilityId, id);
+  const selected = resolveActionSkill({ ...actionIds, skills }, true, database);
+  assert.equal(Number(selected?.id), id, 'Time Bomb must use its same-ID effect');
+  assert.equal(selected.implementation.abilityDes.text, 601501075);
+  assert.deepEqual(selected.implementation.abilityDes.feature, [14]);
+  assert.equal(selected.implementation.effects[0].effect.damageType, 'magical');
+  const normalProbe = { id: String(actionIds.abilityId), type: 'Normal', implementation: { effects: [{
+    target: { targetType: 'single' }, effect: { type: 'damage', damageType: 'magical', multiplier: 0.01, canCrit: false, variance: 1 },
+  }] } };
+  const simulation = simulateBattle({
+    attackers: [{ id: 101, role: hero.tid, loc: 4, maxHp: 2000, attack: 1000, speed: 100,
+      critChance: 0, initialEnergy: FIGHT_ENERGY_MAX, skills: [...fixedDamage(selected), normalProbe], ...actionIds },
+    { id: 102, loc: 1, maxHp: 100000, attack: 1, speed: 5, activeAbilityId: null, skills: [] }],
+    defenders: [2000, 6000, 10000].map((maxHp, index) => ({ id: 201 + index, loc: [1, 3, 4][index],
+      maxHp, attack: 1, speed: 1, activeAbilityId: null, skills: [] })),
+    maxRounds: 4, seed: 12,
+  });
+  const report = { action_list: actionList(codec, simulation) };
+  const starts = packets(report, 101, 'pb_fat_action_before');
+  const harms = packets(report, 106, 'pb_fat_harm');
+  const ends = packets(report, 102, 'pb_fat_action_after');
+  const anger = packets(report, 116, 'pb_fat_attr_sync');
+  const casts = starts.filter(action => Number(action.ab_tid) === id);
+  assert.equal(casts.length, 1);
+  assert.deepEqual(casts[0].aim_list.map(Number), [201, 202, 203]);
+  const direct = harms.filter(packet => packet.id === casts[0].id);
+  assert.equal(direct.length, 1);
+  assert.deepEqual(direct[0].harm_list.map(hit => [hit.aim_id, Number(hit.value)]), [[201, 830], [202, 830], [203, 830]]);
+
+  const ticks = [];
+  let round = 0;
+  let acted = false;
+  for (const event of simulation.events) {
+    if (event.kind === 'round-start') { round = event.round; acted = false; }
+    if (event.kind === 'action-start') acted = true;
+    if (event.kind !== 'damage' || !event.tick) continue;
+    assert.equal(acted, false);
+    const start = starts.find(packet => packet.id === event.id);
+    assert.deepEqual([start?.src_id, Number(start?.ab_tid ?? 0)], [101, 0]);
+    assert.ok(ends.some(packet => packet.id === event.id));
+    assert.ok(!anger.some(packet => packet.id === event.id));
+    const tickPackets = harms.filter(packet => packet.id === event.id);
+    assert.equal(tickPackets.length, 1);
+    assert.equal(tickPackets[0].harm_list.length, 1);
+    const [hit] = tickPackets[0].harm_list;
+    assert.deepEqual([hit.src_id, Number(hit.type), hit.is_ab_aim ?? false], [101, 106, false]);
+    assert.equal(Number(hit.old_hp) - Number(hit.hp ?? 0), Number(hit.value));
+    ticks.push([round, hit.aim_id, Number(hit.value)]);
+  }
+  assert.deepEqual(ticks, [[2, 201, 100], [2, 202, 150], [3, 201, 100], [3, 202, 150]]);
+  assert.ok(lineupSkills(hero).includes(id));
+  assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
+});
+
+test('Moon Tide hits both enemy rows and synchronizes two end-of-round prayer gains for allies', () => {
+  const hero = heroAt(2030201);
+  const { skills, abilityIds } = buildHeroSkillLoadout({ hero, heroTables, skillDatabase: database });
+  const actionIds = selectFightActionIds(abilityIds);
+  const id = 2203020113;
+  assert.equal(actionIds.activeAbilityId, id);
+  const selected = resolveActionSkill({ ...actionIds, skills }, true, database);
+  assert.equal(Number(selected?.id), id, 'Moon Tide must use the original ordinary action effect');
+  assert.equal(selected.implementation.abilityDes.text, 601501027);
+  assert.deepEqual(selected.implementation.abilityDes.feature, [6]);
+  assert.equal(selected.implementation.effects[0].effect.damageType, 'magical');
+
+  const simulation = simulateBattle({
+    attackers: [{ id: 101, role: hero.tid, loc: 4, maxHp: 100000, attack: 1000, speed: 100,
+      critChance: 0, initialEnergy: FIGHT_ENERGY_MAX, skills: fixedDamage(selected), ...actionIds },
+    ...[0, 730].map((initialEnergy, index) => ({ id: 102 + index, loc: 1 + index, maxHp: 100000,
+      attack: 1, speed: 10, initialEnergy, activeAbilityId: null, skills: [] }))],
+    defenders: [1, 4].map((loc, index) => ({ id: 201 + index, loc, maxHp: 100000, attack: 1,
+      speed: 1, activeAbilityId: null, skills: [] })),
+    maxRounds: 3, seed: 1,
+  });
+  const report = { action_list: actionList(codec, simulation) };
+  const starts = packets(report, 101, 'pb_fat_action_before');
+  const ends = packets(report, 102, 'pb_fat_action_after');
+  const harms = packets(report, 106, 'pb_fat_harm');
+  const anger = packets(report, 116, 'pb_fat_attr_sync');
+  const cast = starts.find(action => Number(action.ab_tid) === id);
+  assert.deepEqual(cast.aim_list.map(Number), [201, 202]);
+  const direct = harms.filter(packet => packet.id === cast.id);
+  assert.equal(direct.length, 1);
+  assert.deepEqual(direct[0].harm_list.map(hit => [hit.aim_id, Number(hit.value)]), [[201, 830], [202, 830]]);
+  assert.deepEqual(anger.find(packet => packet.id === cast.id).attr_list.map(attr => attr.aim_id), [101, 201, 202]);
+
+  const ticks = [];
+  let round = 0;
+  let turns = 0;
+  for (const event of simulation.events) {
+    if (event.kind === 'round-start') { round = event.round; turns = 0; }
+    if (event.kind === 'action-start') turns++;
+    if (event.kind !== 'passive-action-start' || event.abilityId !== 0) continue;
+    assert.equal(turns, 5, 'prayer ticks only after the turns for this round');
+    assert.equal(event.srcId, 101);
+    assert.ok(ends.some(packet => packet.id === event.id));
+    assert.ok(!harms.some(packet => packet.id === event.id));
+    const sync = anger.filter(packet => packet.id === event.id);
+    assert.equal(sync.length, 1);
+    assert.deepEqual(sync[0].attr_list.map(attr => attr.aim_id), event.aimList);
+    ticks.push(...sync[0].attr_list.map(attr => [round, attr.aim_id, Number(attr.attr_val)]));
+  }
+  assert.deepEqual(ticks, [[1, 101, 100], [1, 102, 510], [1, 103, 1000], [2, 101, 450], [2, 102, 1000]]);
+  assert.equal(simulation.attackers.find(unit => unit.id === 101).energy, 700);
+  assert.ok(lineupSkills(hero).includes(id));
+  assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
+});
+
+test('Atonement Coffin damages the two strongest enemies and only the affected unit loses turns and gains no anger', () => {
+  const hero = heroAt(4030401);
+  const { skills, abilityIds } = buildHeroSkillLoadout({ hero, heroTables, skillDatabase: database });
+  const actionIds = selectFightActionIds(abilityIds);
+  const id = 2403040113;
+  assert.equal(actionIds.activeAbilityId, id);
+  const selected = resolveActionSkill({ ...actionIds, skills }, true, database);
+  assert.equal(Number(selected?.id), id, 'Atonement Coffin must use the original ordinary effect');
+  assert.equal(selected.implementation.abilityDes.text, 601501076);
+  assert.deepEqual(selected.implementation.abilityDes.feature, [15]);
+  assert.equal(selected.implementation.effects[0].effect.damageType, 'magical');
+
+  const probe = { id: '1101010101', type: 'Normal', implementation: { effects: [{
+    target: { targetType: 'all-enemies' }, effect: { type: 'damage', damageType: 'physical', multiplier: 1, canCrit: false, variance: 1 },
+  }] } };
+  const giver = { id: '1102010101', type: 'Normal', implementation: { effects: [{
+    target: { targetType: 'all-allies' }, effect: { type: 'energy', energyType: 'gain', magnitude: 200 },
+  }] } };
+  const simulation = simulateBattle({
+    attackers: [{ id: 101, role: hero.tid, loc: 1, maxHp: 100000, attack: 1000, speed: 100,
+      critChance: 0, initialEnergy: FIGHT_ENERGY_MAX, skills: fixedDamage(selected), ...actionIds },
+    { id: 102, loc: 4, maxHp: 100000, attack: 1000, speed: 50, abilityId: Number(probe.id), activeAbilityId: null, skills: [probe] }],
+    defenders: [
+      { id: 201, loc: 2, maxHp: 100000, attack: 3, speed: 10, initialEnergy: 100, activeAbilityId: null, skills: [] },
+      { id: 202, loc: 1, maxHp: 100000, attack: 10, speed: 5, initialEnergy: 900, activeAbilityId: null, skills: [] },
+      { id: 203, loc: 5, maxHp: 100000, attack: 7, speed: 1, abilityId: Number(giver.id), activeAbilityId: null, skills: [giver] },
+    ],
+    maxRounds: 3, seed: 1,
+  });
+  const report = { action_list: actionList(codec, simulation) };
+  const starts = packets(report, 101, 'pb_fat_action_before');
+  const harms = packets(report, 106, 'pb_fat_harm');
+  const anger = packets(report, 116, 'pb_fat_attr_sync');
+  const idOf = action => Number(action.ab_tid);
+  const cast = starts.find(action => idOf(action) === id);
+  assert.deepEqual(cast.aim_list.map(Number), [202, 203]);
+  const hitsFor = action => {
+    const matching = harms.filter(packet => packet.id === action.id);
+    assert.equal(matching.length, 1);
+    return matching[0].harm_list.map(hit => [hit.aim_id, Number(hit.value)]);
+  };
+  assert.deepEqual(hitsFor(cast), [[202, 1660], [203, 1660]]);
+  const vulnerable = [[202, 1200], [201, 1000], [203, 1000]];
+  assert.deepEqual(starts.filter(action => action.src_id === 102).map(hitsFor), [
+    vulnerable, vulnerable, [[202, 1000], [201, 1000], [203, 1000]],
+  ]);
+  assert.deepEqual(simulation.events.filter(event => event.kind === 'status-skip').map(event => [event.round, event.srcId]), [[1, 202], [2, 202]]);
+  assert.equal(starts.filter(action => action.src_id === 202).length, 1);
+  assert.equal(starts.filter(action => action.src_id === 203).length, 3);
+  const changed = aimId => anger.flatMap(packet => packet.attr_list.filter(attr => attr.aim_id === aimId)
+    .map(attr => [packet.id, Number(attr.attr_val)]));
+  const thirdRoundAction = simulation.events.findIndex(event => event.kind === 'round-start' && event.round === 3);
+  const firstAfter = simulation.events.slice(thirdRoundAction).find(event => event.kind === 'action-start');
+  assert.deepEqual(changed(202).filter(([actionId]) => actionId < firstAfter.id), [[cast.id, 980]]);
+  assert.ok(changed(202).some(([actionId, value]) => actionId >= firstAfter.id && value === 1000));
+  const allyGift = starts.find(action => action.src_id === 203);
+  assert.ok(changed(201).some(([actionId]) => actionId === allyGift.id), 'the same grant must work for an unaffected ally');
+  assert.ok(lineupSkills(hero).includes(id));
+  assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
 });
 
 test('Bounty Hunter shoots the front row with penetration and crit limited to Deadly Bullet', () => {
@@ -908,6 +1158,167 @@ test('Black Crow casts the same-ID magic storm and caps both permanent enemy pen
     }
   }
   assert.deepEqual([...attacksByEnemy.values()], [16, 16]);
+  assert.ok(lineupSkills(hero).includes(id));
+  assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
+});
+
+test('Iblis hits only the enemy front row and reduces its outgoing damage up to ten persistent layers', () => {
+  const hero = heroAt(4040101);
+  const { skills, abilityIds } = buildHeroSkillLoadout({ hero, heroTables, skillDatabase: database });
+  const actionIds = selectFightActionIds(abilityIds);
+  const id = 2404010113;
+  assert.equal(actionIds.activeAbilityId, id);
+  const selected = resolveActionSkill({ ...actionIds, skills }, true, database);
+  assert.equal(Number(selected?.id), id, 'Iblis must not use profession fallback or Tianji effects');
+  assert.equal(selected.implementation.abilityDes.text, 601501100);
+  assert.deepEqual(selected.implementation.abilityDes.feature, [23]);
+  assert.equal(selected.implementation.effects[0].effect.damageType, 'physical');
+  const probe = { id: '1201010101', type: 'Normal', implementation: { effects: [{
+    target: { targetType: 'single' }, effect: { type: 'damage', damageType: 'physical', multiplier: 1, canCrit: false, variance: 1 },
+  }] } };
+  const simulation = simulateBattle({
+    attackers: [{ id: 101, role: hero.tid, loc: 1, maxHp: 1000000, attack: 1000, speed: 100, critChance: 0,
+      initialEnergy: 900, skills: fixedDamage(selected), ...actionIds }],
+    defenders: [1, 3, 4].map((loc, index) => ({ id: 201 + index, loc, maxHp: 1000000, attack: 1000,
+      speed: 10, abilityId: Number(probe.id), activeAbilityId: null, skills: [probe] })),
+    maxRounds: 37, seed: 1,
+  });
+  const report = { action_list: actionList(codec, simulation) };
+  const starts = packets(report, 101, 'pb_fat_action_before');
+  const harms = new Map(packets(report, 106, 'pb_fat_harm').map(packet => [packet.id, packet.harm_list]));
+  let casts = 0;
+  let checked = 0;
+  for (const start of starts) {
+    if (Number(start.ab_tid) === id) {
+      casts++;
+      assert.deepEqual(start.aim_list.map(Number), [201, 202]);
+      assert.deepEqual(harms.get(start.id).map(harm => [harm.aim_id, Number(harm.value)]), [[201, 1270], [202, 1270]]);
+    } else if ([201, 202, 203].includes(start.src_id)) {
+      const expected = start.src_id === 203 ? 1000 : Math.floor(1000 * (1 - 0.05 * Math.min(10, casts)));
+      assert.deepEqual(harms.get(start.id).map(harm => [harm.aim_id, Number(harm.value)]), [[101, expected]]);
+      checked++;
+    }
+  }
+  assert.ok(casts >= 11, 'verify a cast past the layer cap');
+  assert.equal(checked, 37 * 3);
+  assert.ok(lineupSkills(hero).includes(id));
+  assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
+});
+
+test('Alan hits the front row before applying three layers of increased damage taken, capped at six', () => {
+  const hero = heroAt(1030201);
+  const { skills, abilityIds } = buildHeroSkillLoadout({ hero, heroTables, skillDatabase: database });
+  const actionIds = selectFightActionIds(abilityIds);
+  const id = 2103020113;
+  assert.equal(actionIds.activeAbilityId, id);
+  const selected = resolveActionSkill({ ...actionIds, skills }, true, database);
+  assert.equal(Number(selected?.id), id, 'Alan must not use a profession or altered-form ultimate');
+  assert.equal(selected.implementation.abilityDes.text, 601501001);
+  assert.deepEqual(selected.implementation.abilityDes.feature, [1]);
+
+  const probe = { id: '1201010101', type: 'Normal', implementation: { effects: [{
+    target: { targetType: 'all-enemies' }, effect: { type: 'damage', damageType: 'physical', multiplier: 1, canCrit: false, variance: 1 },
+  }] } };
+  const [fixed] = fixedDamage(selected);
+  const makeEnemy = (loc, index) => ({ id: 201 + index, loc, maxHp: 100000, attack: 1,
+    speed: 1, activeAbilityId: null, skills: [] });
+  const simulation = simulateBattle({
+    attackers: [{ id: 101, role: hero.tid, loc: 4, maxHp: 100000, attack: 1000, speed: 100,
+      critChance: 0, initialEnergy: FIGHT_ENERGY_MAX, skills: [fixed], ...actionIds },
+    { id: 102, loc: 1, maxHp: 100000, attack: 1000, speed: 10,
+      abilityId: Number(probe.id), activeAbilityId: null, skills: [probe] }],
+    defenders: [1, 3, 4].map(makeEnemy), maxRounds: 4, seed: 1,
+  });
+  const report = { action_list: actionList(codec, simulation) };
+  const starts = packets(report, 101, 'pb_fat_action_before');
+  const harms = packets(report, 106, 'pb_fat_harm');
+  const casts = starts.filter(action => Number(action.ab_tid) === id);
+  assert.equal(casts.length, 1, 'expiry must not be hidden by reapplication');
+  const hitsFor = action => {
+    const matching = harms.filter(packet => packet.id === action.id);
+    assert.equal(matching.length, 1);
+    return matching[0].harm_list.map(hit => [hit.aim_id, Number(hit.value)]);
+  };
+  assert.deepEqual(casts[0].aim_list.map(Number), [201, 202]);
+  assert.deepEqual(hitsFor(casts[0]), [[201, 1270], [202, 1270]]);
+  const affected = [[201, 1150], [202, 1150], [203, 1000]];
+  assert.deepEqual(starts.filter(action => action.src_id === 102).map(hitsFor), [
+    affected, affected, affected, [[201, 1000], [202, 1000], [203, 1000]],
+  ]);
+
+  const caster = { id: 101, team: 1, loc: 1, alive: true, hp: 100000, maxHp: 100000, attack: 1000 };
+  const enemies = [1, 3, 4].map((loc, index) => ({ ...makeEnemy(loc, index), team: 2, alive: true, hp: 100000 }));
+  const units = [caster, ...enemies];
+  const state = { round: 1, skillDatabase: database, random: () => 0.5, allUnits: units };
+  for (const [total, added, damage] of [[3, 3, 1150], [6, 3, 1300], [6, 0, 1300]]) {
+    const { results } = applySkillEffects(fixed, caster, units, state, []);
+    assert.deepEqual(results.filter(result => result.type === 'status').map(result =>
+      [result.target, result.statusType, result.stacks, result.stacksDelta]),
+    [[201, 'frightened', total, added], [202, 'frightened', total, added]]);
+    assert.deepEqual(applySkillEffects(probe, caster, units, state, []).results.map(result => result.value), [damage, damage, 1000]);
+  }
+  assert.ok(lineupSkills(hero).includes(id));
+  assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
+});
+
+test('Ruthless Whiplash applies one persistent layer to both rows and weakens damage and both crit stats', () => {
+  const hero = heroAt(1030701);
+  const { skills, abilityIds } = buildHeroSkillLoadout({ hero, heroTables, skillDatabase: database });
+  const actionIds = selectFightActionIds(abilityIds);
+  const id = 2103070113;
+  assert.equal(actionIds.activeAbilityId, id);
+  const selected = resolveActionSkill({ ...actionIds, skills }, true, database);
+  assert.equal(Number(selected?.id), id, 'Whiplash must not use a profession ultimate');
+  assert.equal(selected.implementation.abilityDes.text, 601501108);
+  assert.deepEqual(selected.implementation.abilityDes.feature, [137]);
+
+  const probe = { id: '1201010101', type: 'Normal', implementation: { effects: [{
+    target: { targetType: 'single' }, effect: { type: 'damage', damageType: 'physical', multiplier: 1, variance: 1 },
+  }] } };
+  const [fixed] = fixedDamage(selected);
+  const simulation = simulateBattle({
+    attackers: [{ id: 101, role: hero.tid, loc: 1, maxHp: 100000, attack: 1000, speed: 100,
+      critChance: 0, initialEnergy: FIGHT_ENERGY_MAX, skills: [fixed], ...actionIds }],
+    defenders: [1, 5].map((loc, index) => ({ id: 201 + index, loc, maxHp: 100000, attack: 1000,
+      speed: 1, critChance: 0, abilityId: Number(probe.id), activeAbilityId: null, skills: [probe] })),
+    maxRounds: 4, seed: 1,
+  });
+  const report = { action_list: actionList(codec, simulation) };
+  const starts = packets(report, 101, 'pb_fat_action_before');
+  const harms = packets(report, 106, 'pb_fat_harm');
+  const casts = starts.filter(action => Number(action.ab_tid) === id);
+  assert.equal(casts.length, 1, 'persistence must not depend on refreshing the status');
+  const hitsFor = action => {
+    const matching = harms.filter(packet => packet.id === action.id);
+    assert.equal(matching.length, 1);
+    return matching[0].harm_list.map(hit => [hit.aim_id, Number(hit.value)]);
+  };
+  assert.deepEqual(casts[0].aim_list.map(Number), [201, 202]);
+  assert.deepEqual(hitsFor(casts[0]), [[201, 830], [202, 830]]);
+  assert.deepEqual(starts.filter(action => action.src_id !== 101).map(hitsFor),
+    Array.from({ length: 8 }, () => [[101, 950]]));
+
+  const caster = { id: 101, team: 1, loc: 1, alive: true, hp: 100000, maxHp: 100000, attack: 1000 };
+  const enemies = [1, 5].map((loc, index) => ({ id: 201 + index, loc, team: 2, alive: true,
+    hp: 100000, maxHp: 100000, attack: 1000, critChance: 0.8, critMultiplier: 2 }));
+  const units = [caster, ...enemies];
+  let roll = 0.5;
+  const state = { round: 1, skillDatabase: database, random: () => roll, allUnits: units };
+  for (let used = 1; used <= 11; used++) {
+    const layers = Math.min(used, 10);
+    const { results } = applySkillEffects(fixed, caster, units, state, []);
+    assert.deepEqual(results.filter(result => result.type === 'status').map(result =>
+      [result.target, result.stacks, result.stacksDelta]), [[201, layers, used <= 10 ? 1 : 0], [202, layers, used <= 10 ? 1 : 0]]);
+    for (const enemy of enemies) {
+      assert.equal(enemy.debuffs.length, 1, 'the three penalties must expire and stack together');
+      for (const [threshold, expectedCrit] of [[0, true], [0.575, layers <= 4], [0.99, false]]) {
+        roll = threshold;
+        const [hit] = applySkillEffects(probe, enemy, units, state, []).results;
+        assert.equal(hit.crit, expectedCrit, `critical result at ${layers} layers with roll ${roll}`);
+        assert.equal(hit.value, Math.floor(1000 * (1 - layers * 0.05) * (expectedCrit ? 2 - layers * 0.05 : 1)));
+      }
+    }
+  }
   assert.ok(lineupSkills(hero).includes(id));
   assert.equal(Number(firstActive(pvpFor(hero).battle)?.ab_tid), id);
 });

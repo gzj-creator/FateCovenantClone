@@ -81,6 +81,11 @@ export class TargetSelector {
           .sort((left, right) => effectiveAttack(right) - effectiveAttack(left) || left.loc - right.loc || left.id - right.id)
           .slice(0, 1);
 
+      case TARGET_TYPES.HIGHEST_ATTACK_ENEMIES:
+        return this.getEnemies(actor, allUnits)
+          .sort((left, right) => effectiveAttack(right) - effectiveAttack(left) || left.loc - right.loc || left.id - right.id)
+          .slice(0, targetDef.count || 1);
+
       case TARGET_TYPES.RANDOM:
         return this.selectRandomEnemy(actor, allUnits);
 

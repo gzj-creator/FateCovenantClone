@@ -4,6 +4,8 @@ import {
   prepareSkillAction,
   registerPassiveTriggers,
   processTriggers,
+  processRoundStartStatusTicks,
+  processRoundEndEnergyTicks,
   processBuffTicks,
   resetRoundTriggers,
   resolveActionSkill,
@@ -22,7 +24,9 @@ import {
   consumeTriggerCount,
   recordActionDamage,
   actionScopedType,
+  canGainEnergy,
 } from './effects/effect-executor.mjs';
+import { STATUS_TYPES } from './effects/effect-types.mjs';
 import {
   PROPRIETARY_HOOKS,
   absorbDamage,
@@ -41,7 +45,9 @@ import { isTianjiAbility } from '../config/fight-ability-types.mjs';
 import {
   BUFF_CHANGE_REASON,
   BUFF_SIGN,
+  PROMPT,
   provenBuffTid,
+  provenStatusBuff,
   removesOnDeath,
 } from './effects/report-codes.mjs';
 
@@ -235,10 +241,12 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
   const applied = absorbDamage(target, damage, { sourceId: actor.id, events: state?.events });
   const absorbed = applied.absorbed + applied.superAbsorbed + applied.summonAbsorbed;
   const oldHp = applied.oldHp;
-  target.energy = Math.min(
-    FIGHT_ENERGY_MAX,
-    target.energy + FIGHT_ENERGY_ON_HIT * (1 + effectiveEnergyBonus(target))
-  );
+  if (canGainEnergy(target)) {
+    target.energy = Math.min(
+      FIGHT_ENERGY_MAX,
+      target.energy + FIGHT_ENERGY_ON_HIT * (1 + effectiveEnergyBonus(target))
+    );
+  }
   const hpDamage = recordActionDamage(actor, target, oldHp, target.hp, absorbed, state);
   consumeTriggerCount(target, 'damage-taken');
   return {
@@ -341,6 +349,7 @@ function unitHasStatus(unit, ...types) {
 }
 
 function rawDamageEvent(actionId, result) {
+  const isStatusTick = result.tick === true && result.statusType !== undefined;
   const event = {
     kind: 'damage',
     id: actionId,
@@ -353,6 +362,7 @@ function rawDamageEvent(actionId, result) {
       hp: result.newHp,
       oldShield: result.oldShield,
       shield: result.newShield,
+      ...(isStatusTick ? { isStatusTick, prompt: provenStatusBuff(result.statusType)?.tickPrompt ?? PROMPT.HARM_DOT } : {}),
     }],
   };
   for (const key of ['type', 'actor', 'target', 'trigger', 'triggerType', 'status', 'tick']) {
@@ -500,15 +510,15 @@ function processUnitTriggers(events, unit, triggerType, state, actionId = state.
   }
 }
 
-function appendStandaloneResults(events, unit, results, state) {
+function appendStandaloneResults(events, unit, results, state, abilityOverride, beforeEnergy) {
   if (!unit || !Array.isArray(results) || !results.length) return;
   // A passive action still needs an existing FightTable.Ability id; reuse the
   // trigger prefix when present, otherwise the unit's own action ability.
   const triggerSkill = results.find(result => result.trigger)?.trigger;
   const parsedAbilityId = Number(String(triggerSkill || '').split('_')[0]);
-  const abilityId = Number.isSafeInteger(parsedAbilityId) && parsedAbilityId > 0
+  const abilityId = abilityOverride ?? (Number.isSafeInteger(parsedAbilityId) && parsedAbilityId > 0
     ? parsedAbilityId
-    : (Number(unit.abilityId) || Number(unit.activeAbilityId) || 1);
+    : (Number(unit.abilityId) || Number(unit.activeAbilityId) || 1));
   if (state.actionOpen) {
     appendEffectResults(events, state.currentActionId, results, unit, state);
     return;
@@ -523,6 +533,7 @@ function appendStandaloneResults(events, unit, results, state) {
   state.currentAbilityId = abilityId;
   try {
     appendEffectResults(events, actionId, results, unit, state);
+    if (beforeEnergy) emitAngerSync(events, actionId, beforeEnergy, state.allUnits);
   } finally {
     state.currentAbilityId = previousAbilityId;
   }
@@ -566,12 +577,14 @@ function handleDamageTriggers(events, actionId, actor, harms, state) {
     for (const harm of harms) {
       const target = units.get(harm.aimId);
       if (!target) continue;
-      processUnitTriggers(events, target, 'on-being-hit', state, actionId);
-      const actionType = state.actionContext?.actionType ?? null;
-      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_TAKEN, { target, actor, actionId, harm, actionType }, events,
-        unit => unit.id === target.id);
-      runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_DEALT, { target, actor, actionId, harm, actionType }, events,
-        unit => unit.id === actor.id);
+      if (!harm.isStatusTick) {
+        processUnitTriggers(events, target, 'on-being-hit', state, actionId);
+        const actionType = state.actionContext?.actionType ?? null;
+        runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_TAKEN, { target, actor, actionId, harm, actionType }, events,
+          unit => unit.id === target.id);
+        runProprietary(state, PROPRIETARY_HOOKS.DAMAGE_DEALT, { target, actor, actionId, harm, actionType }, events,
+          unit => unit.id === actor.id);
+      }
       if (harm.oldHp > 0 && harm.hp === 0) {
         processUnitTriggers(events, actor, 'on-kill', state, actionId);
         processUnitTriggers(events, target, 'on-death', state, actionId);
@@ -626,7 +639,7 @@ function drainProprietaryActions(events, state) {
     while (state.proprietaryQueue.length) {
       const request = state.proprietaryQueue.shift();
       const actor = state.allUnits.find(unit => unit.id === request.actorId);
-      if (!actor?.alive) continue;
+      if (!actor?.alive || unitHasStatus(actor, STATUS_TYPES.ATONEMENT_COFFIN)) continue;
       executeExtraAction(events, actor, state.allUnits, state, request);
     }
   } finally {
@@ -756,7 +769,7 @@ function combinationAssistIds(actor, allUnits, useSkill) {
 function emitAngerSync(events, actionId, beforeEnergy, allUnits) {
   const attrList = [];
   for (const unit of allUnits) {
-    if (unit.energy === beforeEnergy.get(unit.id)) continue;
+    if (!beforeEnergy.has(unit.id) || unit.energy === beforeEnergy.get(unit.id)) continue;
     attrList.push({ aimId: unit.id, attrType: FIGHT_ATTR.ANGER, attrValue: unit.energy, ignoreTip: true });
   }
   if (attrList.length) events.push({ kind: 'anger-sync', id: actionId, attrList });
@@ -857,7 +870,9 @@ function executeTurn(events, actor, allUnits, state) {
   if (deityReady) {
     spendTianji(actor, deityCost, { events, reason: 'deity-skill' });
   } else if (!useSkill) {
-    actor.energy = Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN * (1 + effectiveEnergyBonus(actor)));
+    if (canGainEnergy(actor)) {
+      actor.energy = Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN * (1 + effectiveEnergyBonus(actor)));
+    }
     gainNormalTianji(actor, catalogSkill, events);
   }
   state.actionContext.phase = 'after';
@@ -941,6 +956,10 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     for (const unit of allUnits) resetProprietaryRound(unit);
     runProprietary(turnState, PROPRIETARY_HOOKS.ROUND_START, { round }, events);
     for (const unit of living(allUnits)) runRoundTrigger(events, unit, 'on-round-start', turnState);
+    for (const unit of living(allUnits)) {
+      processRoundStartStatusTicks(unit, turnState, (caster, result) =>
+        appendStandaloneResults(events, caster, [result], turnState, 0));
+    }
     if (!living(attackerTeam).length || !living(defenderTeam).length) {
       events.push({ kind: 'round-end', round });
       overRound = round;
@@ -952,7 +971,7 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     for (const actor of order) {
       if (!actor.alive) continue;
       if (!living(attackerTeam).length || !living(defenderTeam).length) break;
-      if (unitHasStatus(actor, 'stun', 'freeze')) {
+      if (unitHasStatus(actor, 'stun', 'freeze', STATUS_TYPES.ATONEMENT_COFFIN)) {
         events.push({ kind: 'status-skip', round, srcId: actor.id });
         continue;
       }
@@ -962,6 +981,8 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     for (const unit of living(allUnits)) runRoundTrigger(events, unit, 'on-round-end', turnState);
     for (const unit of living(allUnits)) {
       if (expireTimedShields(unit, round) > 0) events.push({ kind: 'shield', id: 0, aimId: unit.id, shield: unit.shield });
+      processRoundEndEnergyTicks(unit, turnState, (caster, result) =>
+        appendStandaloneResults(events, caster, [result], turnState, 0, new Map([[unit.id, result.oldEnergy]])));
       const raw = [];
       processBuffTicks(unit, turnState, raw);
       appendStandaloneResults(events, unit, raw, turnState);

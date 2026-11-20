@@ -5,11 +5,12 @@ import { EffectExecutor } from '../game/effects/effect-executor.mjs';
 
 const HERO_ID = 1030701;
 
-test('hero 1030701 skills are loaded from skill database', () => {
+test('hero 1030701 exposes only one definition for its original ordinary ultimate', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 罪欲夜影');
+  const ordinary = skills.filter(skill => skill.id === '2103070113');
+  assert.equal(ordinary.length, 1);
+  assert.equal(ordinary[0].implementation.ability.type, 2);
 });
 
 test('冷血 (313070171) registers on-round-start damage-reduction trigger', () => {

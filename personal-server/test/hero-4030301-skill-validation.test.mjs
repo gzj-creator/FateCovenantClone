@@ -5,11 +5,12 @@ import { EffectExecutor } from '../game/effects/effect-executor.mjs';
 
 const HERO_ID = 4030301;
 
-test('hero 4030301 skills are loaded from skill database', () => {
+test('hero 4030301 has a single definition for its original ordinary ultimate', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 天启之子');
+  const ordinary = skills.filter(skill => skill.id === '2403030113');
+  assert.equal(ordinary.length, 1);
+  assert.equal(ordinary[0].implementation.ability.type, 2);
 });
 
 test('passive triggers count is at least 10', () => {

@@ -101,6 +101,31 @@ test('a heal that restores no HP is never sent as a recover prompt', () => {
   assert.equal(packets.some(packet => packet.proto === 106), false);
 });
 
+test('the client receives at most one harm packet per action with ordered damage and recovery rows', () => {
+  const damage = (id, oldHp, hp, value) => ({ kind: 'damage', id,
+    harms: [{ aimId: 201, srcId: 101, value, oldHp, hp, oldShield: 7, shield: 0 }] });
+  const packets = decode(actionList(codec, { events: [
+    { kind: 'action-start', id: 1, srcId: 101, aimList: [201], abilityId: 2202010112, actionType: 2 },
+    damage(1, 300, 270, 37),
+    { kind: 'shield', id: 1, aimId: 101, shield: 16 },
+    damage(1, 270, 250, 20),
+    { kind: 'heal', id: 1, srcId: 101, aimId: 101, value: 40, actualHeal: 20, oldHp: 80, hp: 100 },
+    { kind: 'effect', type: 'heal', id: 1, actor: 101, target: 102, value: 4, oldHp: 89, newHp: 93 },
+    { kind: 'action-end', id: 1 },
+    { kind: 'action-start', id: 2, srcId: 101, aimList: [201], abilityId: 1102010101, actionType: 1 },
+    damage(2, 250, 240, 10),
+    { kind: 'action-end', id: 2 },
+  ] }));
+  assert.deepEqual(packets.map(packet => [packet.proto, Number(packet.value.id)]),
+    [[101, 1], [106, 1], [109, 1], [102, 1], [101, 2], [106, 2], [102, 2]]);
+  assert.deepEqual(packets.filter(packet => packet.proto === 106).map(packet => packet.value.harm_list.map(harm =>
+    [harm.type, harm.src_id, harm.aim_id, Number(harm.value), Number(harm.old_hp), Number(harm.hp)])), [
+    [[101, 101, 201, 37, 300, 270], [101, 101, 201, 20, 270, 250], [107, 101, 101, 20, 80, 100],
+      [107, 101, 102, 4, 89, 93]],
+    [[101, 101, 201, 10, 250, 240]],
+  ]);
+});
+
 test('the production report now carries the life-steal recover prompt', t => {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-heal-', now: () => 1700000000 * 1000 });
   fixture.store.transaction(model => {

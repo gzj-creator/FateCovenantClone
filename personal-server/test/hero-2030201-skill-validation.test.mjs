@@ -5,27 +5,18 @@ import { EffectExecutor } from '../game/effects/effect-executor.mjs';
 
 const HERO_ID = 2030201;
 
-test('hero 2030201 skills are loaded from skill database', () => {
+test('hero 2030201 keeps the original ordinary ultimate and the existing mastery IDs', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 15, 'expected 15 skills for 龙之澜');
-  assert.deepEqual(skills.map(skill => skill.id), [
-    'normal-profession-2',
+  const ordinary = skills.filter(skill => skill.id === '2203020113');
+  assert.equal(ordinary.length, 1);
+  assert.equal(ordinary[0].implementation.ability.type, 2);
+  assert.deepEqual(skills.filter(skill => skill.type === 'Mastery').map(skill => skill.id), [
     '323020171',
     '323020172',
     '323020173',
     '323020174',
     '323020175',
-    '120001026',
-    '120000018',
-    '120000019',
-    '120000023',
-    '120000025',
-    '120000028',
-    '120001009',
-    '6203020109',
-    '6910001017',
   ]);
 });
 

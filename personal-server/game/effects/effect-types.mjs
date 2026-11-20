@@ -74,6 +74,7 @@ export const STATUS_TYPES = Object.freeze({
   STRENGTHENED: 'strengthened',       // Increased damage
   HASTED: 'hasted',                  // Increased speed
   ENERGIZED: 'energized',            // Increased energy gain
+  PRAYER: 'prayer',
 
   // Debuffs
   POISON: 'poison',                  // Damage over time
@@ -85,6 +86,7 @@ export const STATUS_TYPES = Object.freeze({
   WEAKENED: 'weakened',              // Decreased damage
   SLOWED: 'slowed',                  // Decreased speed
   EXHAUSTED: 'exhausted',            // Decreased energy gain
+  ATONEMENT_COFFIN: 'atonement-coffin',
   FRIGHTENED: 'frightened',          // 惊惧: terror debuff (银爵艾伦)
   CHAIN: 'chain',                    // 锁链 (chain layers)
   PURSUIT: 'pursuit',                // 追击
@@ -109,6 +111,7 @@ export const TARGET_TYPES = Object.freeze({
   LOWEST_HP_ALLY: 'lowest-hp-ally',
   HIGHEST_HP_ALLY: 'highest-hp-ally',
   HIGHEST_ATTACK_ALLY: 'highest-attack-ally',
+  HIGHEST_ATTACK_ENEMIES: 'highest-attack-enemies',
   RANDOM: 'random',              // Random enemy
   RANDOM_ALLY: 'random-ally',    // Random ally
   RANDOM_COUNT: 'random-count',  // N random targets
