@@ -9,6 +9,7 @@ import {
   battleBehaviorFor,
   simulateBattle
 } from '../game/battle-engine.mjs';
+import { getHeroSkills, loadSkillDatabase } from '../game/effects/skill-integration.mjs';
 
 function unit(id, role, profession, overrides = {}) {
   return {
@@ -34,13 +35,14 @@ test('the shipped starting heroes select four distinct combat behaviors', () => 
   assert.equal(battleBehaviorFor(unit(4, 2020601, 2)), 'shadow-calamus');
 });
 
-test('charging a full skill produces archetype-specific targets and effects', () => {
+test('without active definitions charging a full skill exercises the compatibility archetypes', () => {
+  const database = loadSkillDatabase();
   const attackers = [
     unit(1, 2010101, 1, { speed: 90, initialEnergy: FIGHT_ENERGY_MAX }),
     unit(2, 2010201, 1, { speed: 95, initialEnergy: FIGHT_ENERGY_MAX }),
     unit(3, 1020601, 4, { speed: 80, initialEnergy: FIGHT_ENERGY_MAX }),
     unit(4, 2020601, 2, { speed: 85, initialEnergy: FIGHT_ENERGY_MAX })
-  ];
+  ].map(actor => ({ ...actor, skills: getHeroSkills(actor.role, database).filter(skill => skill.type !== 'Ultimate') }));
   const defenders = [
     unit(201, 9002100, 2, { loc: 1, attack: 1, maxHp: 8000 }),
     unit(202, 9002600, 4, { loc: 2, attack: 1, maxHp: 8000 })
@@ -89,8 +91,9 @@ test('charging a full skill produces archetype-specific targets and effects', ()
 });
 
 test('Grace\'s active skill hits the whole enemy front row and skips the back row', () => {
+  const skill = getHeroSkills(1020601, loadSkillDatabase()).find(candidate => candidate.id === '2102060112');
   const attackers = [
-    unit(3, 1020601, 4, { speed: 120, initialEnergy: FIGHT_ENERGY_MAX, attack: 100 })
+    unit(3, 1020601, 4, { speed: 120, initialEnergy: FIGHT_ENERGY_MAX, attack: 100, activeAbilityId: 2102060112, skills: [skill] })
   ];
   const defenders = [
     unit(201, 9002100, 2, { loc: 1, speed: 1, attack: 1, maxHp: 8000 }),
@@ -101,17 +104,19 @@ test('Grace\'s active skill hits the whole enemy front row and skips the back ro
   ];
   const battle = simulateBattle({ attackers, defenders, seed: 17, maxRounds: 1 });
   const grace = battle.events.find(event => event.kind === 'action-start' && event.srcId === 3);
-  const damage = battle.events.find(event => event.kind === 'damage' && event.id === grace.id);
+  const harms = battle.events.filter(event => event.kind === 'damage' && event.id === grace.id).flatMap(event => event.harms);
 
+  assert.equal(grace.abilityId, 2102060112);
   assert.deepEqual(grace.aimList, [201, 202, 203]);
-  assert.deepEqual(damage.harms.map(harm => harm.aimId), [201, 202, 203]);
-  assert.ok(damage.harms.every(harm => harm.hp < harm.oldHp));
+  assert.deepEqual(harms.map(harm => harm.aimId), [201, 202, 203]);
+  assert.ok(harms.every(harm => harm.hp < harm.oldHp));
   assert.deepEqual(battle.defenders.filter(unit => unit.id >= 204).map(unit => unit.hp), [8000, 8000]);
 });
 
-test('Calamus\' active skill is single-target and continues after each kill', () => {
+test('Calamus\' ordinary finisher uses two single-target follow-ups after kills', () => {
+  const skill = getHeroSkills(2020601, loadSkillDatabase()).find(candidate => candidate.id === '2202060112');
   const attackers = [
-    unit(4, 2020601, 2, { speed: 120, initialEnergy: FIGHT_ENERGY_MAX, attack: 4000 })
+    unit(4, 2020601, 2, { speed: 120, initialEnergy: FIGHT_ENERGY_MAX, attack: 4000, activeAbilityId: 2202060112, skills: [skill] })
   ];
   const defenders = [
     unit(201, 9002100, 2, { loc: 1, speed: 1, attack: 1, maxHp: 500 }),
@@ -125,13 +130,14 @@ test('Calamus\' active skill is single-target and continues after each kill', ()
   assert.deepEqual(starts.map(event => event.aimList), [[201], [202], [203]]);
   assert.deepEqual(damages.map(event => event.harms.map(harm => harm.aimId)), [[201], [202], [203]]);
   assert.equal(new Set(starts.map(event => event.id)).size, 3);
-  assert.equal(starts.every(event => event.actionType === 2), true);
+  assert.ok(starts.every(event => event.actionType === 2 && event.abilityId === 2202060112));
   assert.equal(battle.result, BATTLE_RESULT.WIN);
 });
 
 test('Calamus\' active skill stops after a non-lethal single hit', () => {
+  const skill = getHeroSkills(2020601, loadSkillDatabase()).find(candidate => candidate.id === '2202060112');
   const attackers = [
-    unit(4, 2020601, 2, { speed: 120, initialEnergy: FIGHT_ENERGY_MAX, attack: 180 })
+    unit(4, 2020601, 2, { speed: 120, initialEnergy: FIGHT_ENERGY_MAX, attack: 180, activeAbilityId: 2202060112, skills: [skill] })
   ];
   const defenders = [
     unit(201, 9002100, 2, { loc: 1, speed: 1, attack: 1, maxHp: 8000 }),
@@ -142,6 +148,7 @@ test('Calamus\' active skill stops after a non-lethal single hit', () => {
   const damages = battle.events.filter(event => event.kind === 'damage' && event.id === starts[0].id);
 
   assert.equal(starts.length, 1);
+  assert.equal(starts[0].abilityId, 2202060112);
   assert.deepEqual(starts[0].aimList, [201]);
   assert.deepEqual(damages[0].harms.map(harm => harm.aimId), [201]);
   assert.equal(battle.result, BATTLE_RESULT.DRAW);

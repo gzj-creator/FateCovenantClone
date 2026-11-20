@@ -10,6 +10,7 @@ import { TargetSelector } from './target-selector.mjs';
 import { TARGET_TYPES, DURATION_TYPES, TRIGGER_TYPES } from './effect-types.mjs';
 import { commonSkillEffect, commonSkillEffects, commonSkillTriggerType } from './common-skill-rules.mjs';
 import { proprietarySkillEffects, proprietaryTriggerAllowed } from './proprietary-rules.mjs';
+import { isTianjiAbility } from '../../config/fight-ability-types.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,21 +56,23 @@ export function getHeroSkills(heroId, skillDatabase) {
 /**
  * Resolve the catalog skill used by one battle action.
  *
- * The shipped HeroTable ability ids and the catalog skill ids use different
- * numbering. An exact id match is therefore preferred, but the catalog still
- * exposes the hero's normal and ultimate definitions. Metadata-only 2.0x
- * ultimate fallbacks are deliberately ignored so the existing profession
- * behavior remains the compatibility path until those rows are investigated.
+ * The legacy role-only lookup may use catalog types. For an explicit loadout
+ * an active action can use only its own ID; missing effects use the engine's
+ * compatibility behavior, never another skill's effects.
  */
 export function resolveActionSkill(unit, useSkill, skillDatabase) {
   if (!skillDatabase || !unit) return null;
+  if (useSkill && unit.activeAbilityId === null) return null;
   const skills = Array.isArray(unit.skills) ? unit.skills : getHeroSkills(unit.role ?? unit.id, skillDatabase);
   const actionId = String(useSkill ? (unit.activeAbilityId ?? unit.abilityId ?? '') : (unit.abilityId ?? ''));
+  if (useSkill && (unit.activeAbilityId === null || isTianjiAbility(actionId))) return null;
   const exact = skills.find(skill => String(skill.id) === actionId);
   if (exact) return exact;
   if (!useSkill) return skills.find(skill => skill.type === 'Normal') ?? null;
+  if (Array.isArray(unit.skills) && unit.legacyCatalogActionFallback !== true) return null;
   const ultimates = skills.filter(skill => skill.type === 'Ultimate');
   return ultimates.find(skill => {
+    if (isTianjiAbility(skill.id)) return false;
     const implementation = skill.implementation;
     if (!implementation) return false;
     const metadataFallback = skill.category === 'metadata fallback'
@@ -89,7 +92,7 @@ export function resolveActionSkill(unit, useSkill, skillDatabase) {
  * This is a placeholder - will be enhanced with FightTable data
  */
 export function skillToEffect(skill, skillDatabase) {
-  if (!skill) return null;
+  if (!skill || skill.status === 'MetadataOnly') return null;
   // Prefer stored explicit single effect
   if (skill.implementation && Array.isArray(skill.implementation.effects) && skill.implementation.effects.length === 1) {
     return commonSkillEffect(skill, { ...skill.implementation.effects[0] });
@@ -173,7 +176,7 @@ export function skillToEffect(skill, skillDatabase) {
  * Prefers stored implementation.effects if present; falls back to heuristic single.
  */
 export function skillToEffects(skill, skillDatabase) {
-  if (!skill) return [];
+  if (!skill || skill.status === 'MetadataOnly') return [];
 
   // Stored explicit effects
   if (skill.implementation && Array.isArray(skill.implementation.effects) && skill.implementation.effects.length) {
@@ -203,83 +206,79 @@ function executorEffect(effectDefinition, sourceSkill) {
   return effect;
 }
 
-export function applySkillEffects(skill, actor, allUnits, state, events) {
-  if (!skill) return { targets: [], results: [] };
-
-  const executor = new EffectExecutor(state);
-  const selector = new TargetSelector();
-
-  // Load skill database if not in state
-  const skillDatabase = state.skillDatabase || loadSkillDatabase();
-  if (!skillDatabase) {
-    console.warn('Skill database not available');
-    return { targets: [], results: [] };
-  }
-
-  // Convert skill to every executable effect definition.
-  const effectDefinitions = skillToEffects(skill, skillDatabase);
-  if (!effectDefinitions.length) {
-    console.warn(`No effect definition for skill ${skill.id}`);
-    return { targets: [], results: [] };
-  }
-
-  const affectedTargets = new Map();
-  const targetGroups = new Map();
-  const results = [];
-
-  for (const effectDefinition of effectDefinitions) {
-    if (!effectDefinition?.effect) continue;
-    const targetGroup = typeof effectDefinition.targetGroup === 'string'
-      ? effectDefinition.targetGroup : null;
-    let targets = targetGroup ? targetGroups.get(targetGroup) : null;
-    if (!targets) {
-      targets = selector.selectTargets(effectDefinition.target, actor, allUnits, state);
-      if (targetGroup) targetGroups.set(targetGroup, targets);
+export function prepareSkillAction(skill, actor, allUnits, state) {
+  const skillDatabase = state.skillDatabase || (skill && loadSkillDatabase());
+  const definitions = skillDatabase ? skillToEffects(skill, skillDatabase).filter(definition => definition?.effect) : [];
+  const selector = new TargetSelector(state);
+  const selections = new Map();
+  const targetsFor = definition => {
+    const key = typeof definition.targetGroup === 'string' && definition.targetGroup ? definition.targetGroup : definition;
+    if (!selections.has(key)) {
+      selections.set(key, selector.selectTargets(definition.target, actor, allUnits, state));
     }
+    return selections.get(key);
+  };
+  const sorted = targets => [...targets.values()].sort((left, right) =>
+    Number(left.loc) - Number(right.loc) || Number(left.id) - Number(right.id));
 
-    for (const target of targets) {
-      affectedTargets.set(target.id, target);
-      if (typeof effectDefinition.condition === 'function'
-        && !effectDefinition.condition(actor, target, state)) continue;
-      if (effectDefinition.conditionKey
-        && !evaluateConditionKey(effectDefinition.conditionKey, actor, allUnits, state, target)) continue;
-      if (!passesChance(effectDefinition.chance, executor)) continue;
-
-      const result = executor.executeEffect(
-        executorEffect(effectDefinition, skill.id),
-        actor,
-        target
-      );
-      if (result) {
-        events.push(result);
-        results.push(result);
+  return {
+    collectTargets() {
+      const visible = new Map();
+      for (const definition of definitions) {
+        if (definition.includeInActionTargets === false) continue;
+        for (const target of targetsFor(definition)) visible.set(target.id, target);
       }
-    }
-  }
-  return { targets: [...affectedTargets.values()].sort((left, right) =>
-    Number(left.loc) - Number(right.loc) || Number(left.id) - Number(right.id)), results };
+      return sorted(visible);
+    },
+    apply(events) {
+      if (skill && !definitions.length) {
+        console.warn(skillDatabase ? `No effect definition for skill ${skill.id}` : 'Skill database not available');
+      }
+      const executor = new EffectExecutor(state);
+      const affected = new Map();
+      const results = [];
+      const damageByGroup = new Map();
+      const canApply = (definition, target) => {
+        if (typeof definition.condition === 'function' && !definition.condition(actor, target, state)) return false;
+        if (definition.conditionKey && !evaluateConditionKey(definition.conditionKey, actor, allUnits, state, target)) return false;
+        return passesChance(definition.chance, executor);
+      };
+      for (const definition of definitions) {
+        const targets = targetsFor(definition);
+        const effect = executorEffect(definition, skill.id);
+        if (effect.type === 'defense-transfer') {
+          for (const target of targets) affected.set(target.id, target);
+          const transfers = executor.executeDefenseTransfer(effect, actor, targets.filter(target => canApply(definition, target)));
+          events.push(...transfers);
+          results.push(...transfers);
+          continue;
+        }
+        if (effect.type === 'heal' && definition.healFromDamageGroup) {
+          const damage = damageByGroup.get(definition.healFromDamageGroup) ?? 0;
+          if (damage <= 0) continue;
+          effect.scopedHpDamage = damage;
+        }
+        for (const target of targets) {
+          affected.set(target.id, target);
+          if (!canApply(definition, target)) continue;
+          const result = executor.executeEffect(effect, actor, target);
+          if (result) {
+            if (result.type === 'damage' && definition.damageGroup) {
+              const key = definition.damageGroup;
+              damageByGroup.set(key, (damageByGroup.get(key) ?? 0) + result.hpDamage);
+            }
+            events.push(result);
+            results.push(result);
+          }
+        }
+      }
+      return { targets: sorted(affected), results };
+    },
+  };
 }
 
-export function collectSkillTargets(skill, actor, allUnits, state) {
-  if (!skill) return [];
-  const selector = new TargetSelector(state);
-  const targets = new Map();
-  const targetGroups = new Map();
-  for (const effectDefinition of skillToEffects(skill, state.skillDatabase)) {
-    if (!effectDefinition?.effect) continue;
-    const targetGroup = typeof effectDefinition.targetGroup === 'string'
-      ? effectDefinition.targetGroup : null;
-    let selected = targetGroup ? targetGroups.get(targetGroup) : null;
-    if (!selected) {
-      selected = selector.selectTargets(effectDefinition.target, actor, allUnits, state);
-      if (targetGroup) targetGroups.set(targetGroup, selected);
-    }
-    for (const target of selected) {
-      targets.set(target.id, target);
-    }
-  }
-  return [...targets.values()].sort((left, right) =>
-    Number(left.loc) - Number(right.loc) || Number(left.id) - Number(right.id));
+export function applySkillEffects(skill, actor, allUnits, state, events) {
+  return prepareSkillAction(skill, actor, allUnits, state).apply(events);
 }
 
 /**
@@ -294,7 +293,9 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
   const triggers = [];
 
   for (const skill of skills) {
-    if (skill.type !== 'Passive' && skill.type !== 'Mastery') continue;
+    const passive = skill.type === 'Passive' || skill.type === 'Mastery';
+    const equippedUltimate = skill.type === 'Ultimate' && Number(skill.id) === unit.activeAbilityId;
+    if (!passive && !equippedUltimate) continue;
 
     // Prefer stored triggers from implementation
     const storedTriggers = skill.implementation && Array.isArray(skill.implementation.triggers)
@@ -302,6 +303,7 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
 
     if (Array.isArray(storedTriggers)) {
       for (const t of storedTriggers) {
+        if (!passive && (t.triggerType !== 'on-battle-start' || !t.effect)) continue;
         // CORE-BATTLE-B: drop catalog approximations a proprietary rule replaces.
         if (!proprietaryTriggerAllowed(skill, t)) continue;
         const rawEffect = t.effect ? commonSkillEffect(skill, { ...t.effect }) : skillToEffect(skill, skillDatabase);
@@ -345,6 +347,7 @@ export function registerPassiveTriggers(unit, skillDatabase, state) {
     }
 
     // Fallback: infer trigger type from description
+    if (!passive) continue;
     const desc = skill.description || '';
     const triggerType = inferTriggerType(desc);
     if (triggerType) {

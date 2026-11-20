@@ -293,6 +293,11 @@ function decodeAction(packet, schema) {
 
 test('mission action_list encodes the passive repeat as its own action', t => {
   const fixture = createGameFixture(t, codec, { prefix: 'fc-skill-battle-' });
+  fixture.store.transaction(model => {
+    for (const hero of model.heroInfo.hero_list) {
+      if (Number(hero.tid) === HERO_ROLE) hero.breakthrough_level = 1;
+    }
+  });
   addResource(fixture.store, 100012900, 1000);
   setMission(fixture.store, 30201);
   const service = createMissionFightService({ store: fixture.store, codec, playbackEnabled: true });
@@ -302,8 +307,6 @@ test('mission action_list encodes the passive repeat as its own action', t => {
     req: codec.pack('mission_fight_req', { mission_id: 30201 }),
     loc: [{ team_id: 1, loc: [
       { hero_id: String(HERO_ROLE), loc: 1 },
-      // 1020601 owns 6102060102 (升格防御), a shipped on-round-start shield.
-      // Its passive window is distinct from 2010101's double-attack repeat.
       { hero_id: '1020601', loc: 2 }
     ] }]
   });
@@ -313,19 +316,12 @@ test('mission action_list encodes the passive repeat as its own action', t => {
   const hero = battle.fighter_list.find(candidate => candidate.team === 1
     && Number(candidate.role) === HERO_ROLE);
   assert.ok(hero, 'task battle must include role 2010101');
+  const grace = battle.fighter_list.find(candidate => candidate.team === 1 && Number(candidate.role) === 1020601);
 
   const packets = actions(response.report);
-  const passiveShieldIndex = packets.findIndex(packet => Number(packet.proto) === 109);
-  assert.ok(passiveShieldIndex > 0);
-  const passiveShield = decodeAction(packets[passiveShieldIndex], 'pb_fat_shield');
-  const passiveStartIndex = packets.findIndex((packet, index) => index < passiveShieldIndex
-    && Number(packet.proto) === 101
-    && Number(decodeAction(packet, 'pb_fat_action_before').id) === Number(passiveShield.id));
-  const passiveEndIndex = packets.findIndex((packet, index) => index > passiveShieldIndex
-    && Number(packet.proto) === 102
-    && Number(decodeAction(packet, 'pb_fat_action_after').id) === Number(passiveShield.id));
-  assert.ok(passiveStartIndex >= 0 && passiveEndIndex > passiveShieldIndex,
-    'round-start passive effects must have an existing action-before/after window');
+  assert.ok(!packets.filter(packet => Number(packet.proto) === 101)
+    .some(packet => Number(decodeAction(packet, 'pb_fat_action_before').ab_tid) === 6102060102),
+  'an untransformed hero does not leak its mutant passive action');
   const replaySchemas = new Map([
     [101, 'pb_fat_action_before'],
     [102, 'pb_fat_action_after'],
@@ -335,12 +331,25 @@ test('mission action_list encodes the passive repeat as its own action', t => {
     [114, 'pb_fat_fighter_relive'],
     [116, 'pb_fat_attr_sync'],
   ]);
+  let inAction = false;
+  const standaloneShields = [];
   for (const packet of packets) {
     const schema = replaySchemas.get(Number(packet.proto));
     if (!schema) continue;
-    assert.ok(Number(decodeAction(packet, schema).id) > 0,
-      `${schema} must not use action id 0`);
+    const decoded = decodeAction(packet, schema);
+    const id = Number(decoded.id ?? 0);
+    if (schema === 'pb_fat_shield' && id === 0) {
+      assert.equal(inAction, false);
+      assert.equal(Number(decoded.aim_id), Number(grace.id));
+      standaloneShields.push(Number(decoded.shield ?? 0));
+      continue;
+    }
+    assert.ok(id > 0, `${schema} must not use action id 0`);
+    if (schema === 'pb_fat_action_before') inAction = true;
+    if (schema === 'pb_fat_action_after') inAction = false;
   }
+  assert.ok(standaloneShields[0] > 0);
+  assert.ok(standaloneShields.slice(1).every(value => value === 0));
   const ownNormalActions = packets
     .filter(packet => Number(packet.proto) === 101)
     .map(packet => decodeAction(packet, 'pb_fat_action_before'))

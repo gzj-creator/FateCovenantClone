@@ -72,7 +72,7 @@ test('the described ultimate drain takes one 天极值 from a random enemy and s
   const battle = simulateBattle({
     attackers: [fighter(101, {
       maxHp: 5000, attack: 100, initialEnergy: FIGHT_ENERGY_MAX,
-      abilityId: 1504010101, activeAbilityId: 2504010123, initialTianji: 3,
+      abilityId: 1504010101, activeAbilityId: 2504010113, tianjiAbilityId: 2504010123, initialTianji: 2,
       skills: [catalogSkill('354030172'), catalogSkill('2504010123')]
     })],
     defenders: [fighter(201, { maxHp: 200000, attack: 1, speed: 10, initialTianji: 5, tianjiMax: 5 })],
@@ -82,7 +82,8 @@ test('the described ultimate drain takes one 天极值 from a random enemy and s
   assert.equal(drains.length, 1);
   assert.equal(drains[0].aimId, 201);
   assert.equal(drains[0].delta, -1);
-  assert.equal(battle.defenders[0].energy <= 0 || true, true);
+  assert.equal(actionStarts(battle)[0].abilityId, 2504010113);
+  assert.equal(battle.defenders[0].energy, 330);
   const energyStandIn = battle.events.filter(event => event.kind === 'effect'
     && event.type === 'energy' && event.energyType === 'loss');
   assert.equal(energyStandIn.length, 0, 'the catalog 1-point energy approximation no longer runs');
@@ -92,7 +93,7 @@ test('双重攻击 repeats the round-one action without paying energy again', ()
   const battle = simulateBattle({
     attackers: [fighter(101, {
       maxHp: 5000, attack: 100, initialEnergy: FIGHT_ENERGY_MAX,
-      abilityId: 1504010101, activeAbilityId: 2504010123, initialTianji: 3,
+      abilityId: 1504010101, activeAbilityId: 2504010113, tianjiAbilityId: 2504010123, initialTianji: 3,
       skills: [catalogSkill('120001001'), catalogSkill('2504010123')]
     })],
     defenders: [fighter(201, { maxHp: 400000, attack: 1, speed: 10 })],
@@ -102,18 +103,20 @@ test('双重攻击 repeats the round-one action without paying energy again', ()
   let round = 0;
   for (const event of battle.events) {
     if (event.kind === 'round-start') round = event.round;
-    if (event.kind === 'action-start' && event.srcId === 101) roundOne.push({ round, actionType: event.actionType });
+    if (event.kind === 'action-start' && event.srcId === 101) roundOne.push({ round, abilityId: event.abilityId });
   }
   assert.equal(roundOne.filter(entry => entry.round === 1).length, 2, 'round one has the extra action');
   assert.equal(roundOne.filter(entry => entry.round === 2).length, 1, 'later rounds do not repeat it');
-  assert.deepEqual(roundOne[0].actionType, roundOne[1].actionType, 'the extra action repeats the same kind');
+  assert.deepEqual(roundOne.filter(entry => entry.round === 1).map(entry => entry.abilityId), [2504010123, 2504010123]);
+  assert.equal(roundOne.find(entry => entry.round === 2).abilityId, 2504010113, 'anger remains available for the ordinary cast');
+  assert.deepEqual(tianjiEvents(battle).filter(event => event.aimId === 101 && event.delta < 0).map(event => event.delta), [-3]);
 });
 
 test('送别礼物 casts a free ultimate and destroys 20% shield first', () => {
   const battle = simulateBattle({
     attackers: [fighter(101, {
       maxHp: 5000, attack: 100, initialEnergy: 0, initialTianji: 3,
-      abilityId: 1504010101, activeAbilityId: 2504010123,
+      abilityId: 1504010101, activeAbilityId: 2504010113, tianjiAbilityId: 2504010123,
       skills: [catalogSkill('324020173'), catalogSkill('2504010123')]
     })],
     defenders: [fighter(201, {
@@ -137,4 +140,5 @@ test('送别礼物 casts a free ultimate and destroys 20% shield first', () => {
   assert.ok(destroyed.some(event => event.ratio === 0.2 && event.srcId === 101));
   const starts = actionStarts(battle).filter(event => event.srcId === 101);
   assert.equal(starts.length, 2, 'the action is followed by a free ultimate');
+  assert.deepEqual(starts.map(event => event.abilityId), [2504010123, 2504010113]);
 });

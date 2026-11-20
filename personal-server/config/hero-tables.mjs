@@ -6,12 +6,13 @@ const defaultLeaderEquipPath = tableAsset('LeaderEquipTable.data.lua.json');
 let defaultCache;
 let defaultFantasyEquipCache;
 let defaultLeaderEquipCache;
+let mutantSkillCache;
 
 // Interpret generated, straight-line table constructors without executing Lua.
 export function readHeroTables(file = defaultPath) {
   const names = [
     'Hero', 'UpLevel', 'UpStage', 'UpStarCost', 'UpStarStone', 'Star',
-    'DevelopConst', 'AbilityLevel', 'UpStageTalent', 'Ability', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
+    'DevelopConst', 'AbilityLevel', 'UpStageTalent', 'Ability', 'Profession', 'Rare', 'Diff', 'Npc', 'Npc_Ability', 'Draw', 'DrawConst',
     'DrawNumLimit', 'Guaranteed', 'Quality', 'DrawAchievementAward',
     'DrawExchangeHero',
     'DrawAchievementLib', 'NormalDrawExchangeLineup', 'HandbookConstant',
@@ -49,6 +50,10 @@ export function readFantasyEquipTables(file = defaultFantasyEquipPath) {
   const tables = readGeneratedTables(file, ['DrawNormal', 'DrawNormalWish', 'DrawUnlock', 'FantasyEquip']);
   if (file === defaultFantasyEquipPath) defaultFantasyEquipCache = tables;
   return tables;
+}
+
+export function readHeroMutantSkills() {
+  return mutantSkillCache ??= readGeneratedTables(tableAsset('HeroMutantSkills.data.json'), ['HeroMutant']).HeroMutant;
 }
 
 export function readLeaderEquipTables(file = defaultLeaderEquipPath) {

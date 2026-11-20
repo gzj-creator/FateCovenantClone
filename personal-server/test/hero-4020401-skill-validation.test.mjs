@@ -9,7 +9,8 @@ test('hero 4020401 skills are loaded from skill database', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 铁拳莫林');
+  assert.deepEqual(skills.filter(skill => skill.implementation?.ability?.type === 2).map(skill => skill.id),
+    ['2402040112', '2402040113']);
 });
 
 test('passive triggers count is at least 10', () => {

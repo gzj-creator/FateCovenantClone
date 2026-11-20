@@ -1,8 +1,7 @@
 import {
   loadSkillDatabase,
   getHeroSkills,
-  applySkillEffects,
-  collectSkillTargets,
+  prepareSkillAction,
   registerPassiveTriggers,
   processTriggers,
   processBuffTicks,
@@ -28,13 +27,17 @@ import {
   PROPRIETARY_HOOKS,
   absorbDamage,
   advanceDomains,
+  clearShield,
   createProprietaryState,
+  expireTimedShields,
+  gainTianji,
   resetProprietaryRound,
   runHooks,
   spendTianji,
   tianjiValue,
 } from './effects/proprietary-state.mjs';
-import { initProprietaryBattle, isDeitySkill, tianjiCostFor } from './effects/proprietary-rules.mjs';
+import { initProprietaryBattle, tianjiCostFor } from './effects/proprietary-rules.mjs';
+import { isTianjiAbility } from '../config/fight-ability-types.mjs';
 import {
   BUFF_CHANGE_REASON,
   BUFF_SIGN,
@@ -103,6 +106,9 @@ function normalizeUnit(unit, skillDatabase) {
   const defense = Math.max(0, Number(unit.defense ?? 0));
   const speed = finitePositive(Number(unit.speed ?? 100), 'speed');
   const initialEnergy = Math.max(0, Math.min(FIGHT_ENERGY_MAX, Number(unit.initialEnergy ?? FIGHT_INITIAL_ENERGY)));
+  const activeAbilityId = unit.activeAbilityId === null ? null : Number(unit.activeAbilityId ?? unit.abilityId ?? 0);
+  const legacyTianjiId = isTianjiAbility(activeAbilityId) ? activeAbilityId : null;
+  const tianjiAbilityId = Number(unit.tianjiAbilityId ?? legacyTianjiId ?? 0);
 
   // A caller that has authoritative progression must pass the filtered catalog.
   // Role-only tests and systems without roster state retain the legacy lookup.
@@ -121,7 +127,8 @@ function normalizeUnit(unit, skillDatabase) {
     camp: Number(unit.camp ?? 0),
     loc: Number(unit.loc ?? unit.id),
     abilityId: Number(unit.abilityId ?? 0),
-    activeAbilityId: Number(unit.activeAbilityId ?? unit.abilityId ?? 0),
+    activeAbilityId: legacyTianjiId === null ? activeAbilityId : null,
+    tianjiAbilityId: isTianjiAbility(tianjiAbilityId) ? tianjiAbilityId : null,
     behavior: String(unit.behavior ?? ''),
     maxHp,
     attack,
@@ -137,6 +144,7 @@ function normalizeUnit(unit, skillDatabase) {
     reviveHpRatio: Math.max(0.05, Math.min(0.75, Number(unit.reviveHpRatio ?? 0.3))),
     // New fields for skill system
     skills,
+    legacyCatalogActionFallback: !Array.isArray(unit.skills),
     buffs: [],
     debuffs: [],
     triggers: [],
@@ -216,7 +224,7 @@ function emitDamage(actionId, actor, target, multiplier, state, bonus = 0) {
     target,
     { ignoreDefense }
   );
-  const critMultiplier = critical ? effectiveCritMultiplier(actor, target) : 1;
+  const critMultiplier = critical ? effectiveCritMultiplier(actor, target, actionType) : 1;
   let damage = Math.max(1, Math.floor(
     raw * variance * (1 + effectiveDamageBonus(actor, actionType)) * critMultiplier
   ));
@@ -260,7 +268,7 @@ function emitAutoRevives(events, actionId, allUnits) {
     unit.reviveOnce = false;
     unit.alive = true;
     unit.hp = Math.max(1, Math.floor(unit.maxHp * unit.reviveHpRatio));
-    unit.shield = 0;
+    clearShield(unit);
     unit.energy = 0;
     events.push({ kind: 'revive', id: actionId, aimId: unit.id, hp: unit.hp });
   }
@@ -626,51 +634,71 @@ function drainProprietaryActions(events, state) {
   }
 }
 
+function resolveTianjiSkill(actor) {
+  if (actor.tianjiAbilityId === null) return null;
+  return actor.skills.find(skill => Number(skill.id) === actor.tianjiAbilityId
+    && skill.category !== 'metadata fallback' && skill.implementation?.category !== 'metadata fallback') ?? null;
+}
+
+function prepareActionModifiers(events, actor, state, actionId, ordinaryUltimate) {
+  if (ordinaryUltimate) processUnitTriggers(events, actor, 'before-ultimate-use', state, actionId);
+  return new Map([...(actor.buffs || []), ...(actor.debuffs || [])]
+    .map(entry => [entry, entry.applicationId]));
+}
+
+function gainNormalTianji(actor, skill, events) {
+  if (Number(skill?.id) !== actor.abilityId) return;
+  const amount = skill.implementation?.tianjiGain;
+  if (amount > 0) gainTianji(actor, amount, { events, reason: 'normal-action' });
+}
+
 // A free action granted by a mastery or reaction. It pays no energy and no
 // 天极值 ("不消耗能量", "无消耗"), so only the effect pipeline and the ordinary
 // after-action triggers run.
 function executeExtraAction(events, actor, allUnits, state, request) {
+  const tianji = request.kind === 'tianji';
+  const useSkill = request.kind === 'ultimate' || tianji;
+  if (!tianji && useSkill && actor.activeAbilityId === null) return;
+  const catalogSkill = tianji ? resolveTianjiSkill(actor) : request.skill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
+  if (tianji && !catalogSkill) return;
+  const preparedSkill = catalogSkill ? prepareSkillAction(catalogSkill, actor, allUnits, state) : null;
+  if (catalogSkill?.killFollowUp && !preparedSkill.collectTargets().length) return;
   const actionId = state.nextActionId++;
   const behavior = behaviorFor(actor);
-  const useSkill = request.kind === 'ultimate' || request.kind === 'tianji';
-  const catalogSkill = request.skill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
-  const abilityId = (useSkill ? actor.activeAbilityId : actor.abilityId) || 1;
+  const abilityId = (tianji ? actor.tianjiAbilityId : useSkill ? actor.activeAbilityId : actor.abilityId) || 1;
   const actionType = useSkill ? 2 : 1;
   const beforeEnergy = new Map(allUnits.map(unit => [unit.id, unit.energy]));
-  const assistIds = combinationAssistIds(actor, allUnits, useSkill);
+  const assistIds = combinationAssistIds(actor, allUnits, useSkill && !tianji);
   state.currentActionId = actionId;
   state.actionOpen = true;
   state.currentAbilityId = abilityId;
   state.actionContext = {
     actorId: actor.id,
-    actionType: useSkill ? 'ultimate' : 'attack',
+    actionType: tianji ? 'tianji' : useSkill ? 'ultimate' : 'attack',
     phase: 'action',
     damage: new Map(),
     extra: true
   };
   if (typeof request.before === 'function') request.before(actor, state, events);
+  const actionModifiers = prepareActionModifiers(events, actor, state, actionId, useSkill && !tianji);
   runProprietary(state, PROPRIETARY_HOOKS.BEFORE_ACTION, {
     actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType, extra: true,
-    resolveTargets: () => {
-      const skill = catalogSkill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
-      return skill ? collectSkillTargets(skill, actor, allUnits, state) : chooseTargets(actor, allUnits, 'front');
-    }
+    resolveTargets: () => preparedSkill ? preparedSkill.collectTargets() : chooseTargets(actor, allUnits, 'front')
   }, events);
-  if (catalogSkill) {
-    const targets = collectSkillTargets(catalogSkill, actor, allUnits, state);
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
-    const raw = [];
-    const outcome = applySkillEffects(catalogSkill, actor, allUnits, state, raw);
-    appendEffectResults(events, actionId, outcome.results, actor, state);
+  if (preparedSkill) {
+    executeCatalogAction(events, actor, state, preparedSkill, actionId, abilityId, actionType, assistIds);
   } else {
     const targets = chooseTargets(actor, allUnits, 'front');
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
     executeAttack(events, actionId, actor, targets,
       useSkill ? behavior.skillMultiplier : behavior.basicMultiplier, state);
   }
+  if (!useSkill) gainNormalTianji(actor, catalogSkill, events);
   state.actionContext.phase = 'after';
+  if (!tianji) consumeTriggerCount(actor, useSkill ? 'ultimate' : 'attack', actionModifiers);
   processUnitTriggers(events, actor, useSkill ? 'on-skill-use' : 'on-attack', state, actionId);
-  if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
+  if (tianji) processUnitTriggers(events, actor, 'on-tianji-use', state, actionId);
+  else if (useSkill) processUnitTriggers(events, actor, 'on-ultimate-use', state, actionId);
   runProprietary(state, PROPRIETARY_HOOKS.ACTION_END, {
     actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType, extra: true
   }, events);
@@ -688,22 +716,33 @@ function runRoundTrigger(events, unit, triggerType, state) {
   state.triggerDepth = (state.triggerDepth || 0) + 1;
   try {
     processTriggers(unit, triggerType, state.allUnits, state, raw);
-    appendStandaloneResults(events, unit, raw, state);
+    if (triggerType === 'on-battle-start') appendEffectResults(events, 0, raw, unit, state);
+    else appendStandaloneResults(events, unit, raw, state);
   } finally {
     state.triggerDepth--;
   }
 }
 
-function startAction(events, actor, actionId, targets, abilityId, actionType, assistIds = []) {
+function startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds = []) {
+  const aimList = targets.map(target => target.id);
+  state.actionContext.targetIds = aimList;
   events.push({
     kind: 'action-start',
     id: actionId,
     srcId: actor.id,
     assistIds,
-    aimList: targets.map(target => target.id),
+    aimList,
     abilityId,
     actionType
   });
+}
+
+function executeCatalogAction(events, actor, state, preparedSkill, actionId, abilityId, actionType, assistIds) {
+  const targets = preparedSkill.collectTargets();
+  startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
+  const outcome = preparedSkill.apply([]);
+  state.actionContext.primaryResults = outcome.results;
+  appendEffectResults(events, actionId, outcome.results, actor, state);
 }
 
 function combinationAssistIds(actor, allUnits, useSkill) {
@@ -727,23 +766,18 @@ function executeTurn(events, actor, allUnits, state) {
   let actionId = state.nextActionId++;
   const behavior = behaviorFor(actor);
   const silenced = unitHasStatus(actor, 'silence');
-  // 天极技 (FightTable ability type 2 / run_type 5) is paid with 天极值, never
-  // with energy. A deity skill that the description gives no price for cannot
-  // be cast, so the unit falls back to its normal action instead of treating
-  // energy as the currency of a 天极技.
-  const activeSkill = resolveActionSkill(actor, true, state.skillDatabase);
-  const deitySkill = activeSkill && isDeitySkill(activeSkill) ? activeSkill : null;
-  const deityCost = deitySkill ? tianjiCostFor(deitySkill) : null;
+  const deitySkill = resolveTianjiSkill(actor);
+  const deityCost = tianjiCostFor(deitySkill);
   const deityReady = Boolean(deitySkill) && deityCost !== null && !silenced
     && tianjiValue(actor) >= deityCost;
-  const useSkill = deityReady || (!deitySkill && actor.energy >= FIGHT_ENERGY_MAX && !silenced);
+  const useSkill = deityReady || (actor.activeAbilityId !== null && actor.energy >= FIGHT_ENERGY_MAX && !silenced);
   const actionKind = deityReady ? 'tianji' : useSkill ? 'ultimate' : 'attack';
-  const abilityId = (useSkill ? actor.activeAbilityId : actor.abilityId) || 1;
+  const abilityId = (deityReady ? actor.tianjiAbilityId : useSkill ? actor.activeAbilityId : actor.abilityId) || 1;
   const actionType = useSkill ? 2 : 1;
-  const assistIds = combinationAssistIds(actor, allUnits, useSkill);
+  const assistIds = combinationAssistIds(actor, allUnits, useSkill && !deityReady);
   const beforeEnergy = new Map(allUnits.map(unit => [unit.id, unit.energy]));
   const team = allUnits.filter(unit => unit.team === actor.team);
-  const catalogSkill = resolveActionSkill(actor, useSkill, state.skillDatabase);
+  const catalogSkill = deityReady ? deitySkill : resolveActionSkill(actor, useSkill, state.skillDatabase);
   state.currentActionId = actionId;
   state.actionOpen = true;
   state.currentAbilityId = abilityId;
@@ -752,34 +786,27 @@ function executeTurn(events, actor, allUnits, state) {
     actor, actionId, useSkill, actionType: state.actionContext.actionType
   }, events);
   processUnitTriggers(events, actor, 'on-turn-start', state, actionId);
-  if (useSkill && !deityReady) processUnitTriggers(events, actor, 'before-ultimate-use', state, actionId);
-  const actionModifiers = new Map([...(actor.buffs || []), ...(actor.debuffs || [])]
-    .map(entry => [entry, entry.applicationId]));
+  const actionModifiers = prepareActionModifiers(events, actor, state, actionId, useSkill && !deityReady);
+  if (useSkill && !deityReady) actor.energy = 0;
   state.actionContext.phase = 'action';
+  const preparedSkill = catalogSkill ? prepareSkillAction(catalogSkill, actor, allUnits, state) : null;
   // "释放终结技前，额外摧毁敌方全体15%的护盾" style clauses run here, after
   // the turn-start and before-ultimate triggers and before any damage.
   runProprietary(state, PROPRIETARY_HOOKS.BEFORE_ACTION, {
     actor, actionId, useSkill, skill: catalogSkill, actionType: state.actionContext.actionType,
-    resolveTargets: () => {
-      const skill = catalogSkill ?? resolveActionSkill(actor, useSkill, state.skillDatabase);
-      return skill ? collectSkillTargets(skill, actor, allUnits, state) : chooseTargets(actor, allUnits, 'front');
-    }
+    resolveTargets: () => preparedSkill ? preparedSkill.collectTargets() : chooseTargets(actor, allUnits, 'front')
   }, events);
 
-  if (catalogSkill) {
-    const targets = collectSkillTargets(catalogSkill, actor, allUnits, state);
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
-    const raw = [];
-    const outcome = applySkillEffects(catalogSkill, actor, allUnits, state, raw);
-    appendEffectResults(events, actionId, outcome.results, actor, state);
+  if (preparedSkill) {
+    executeCatalogAction(events, actor, state, preparedSkill, actionId, abilityId, actionType, assistIds);
   } else if (useSkill && behavior.skill === 'area') {
     const targets = chooseTargets(actor, allUnits, 'all');
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
     executeAttack(events, actionId, actor, targets, behavior.skillMultiplier, state);
   } else if (useSkill && behavior.skill === 'kill-chain') {
     while (enemiesOf(actor, allUnits).length) {
       const targets = chooseTargets(actor, allUnits, 'lowest');
-      startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+      startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
       executeAttack(events, actionId, actor, targets, behavior.skillMultiplier, state);
       if (targets[0].alive || !enemiesOf(actor, allUnits).length) break;
       events.push({ kind: 'action-end', id: actionId });
@@ -787,50 +814,51 @@ function executeTurn(events, actor, allUnits, state) {
     }
   } else if (useSkill && behavior.skill === 'execute') {
     const targets = chooseTargets(actor, allUnits, 'lowest');
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
     executeAttack(events, actionId, actor, targets, behavior.skillMultiplier, state, target => {
       return (1 - target.hp / target.maxHp) * actor.attack * 1.4;
     });
   } else if (useSkill && behavior.skill === 'front-row-all') {
     const targets = chooseTargets(actor, allUnits, 'front-row-all');
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
     executeAttack(events, actionId, actor, targets, behavior.skillMultiplier, state);
   } else if (useSkill && behavior.skill === 'heavy-strike') {
     const targets = chooseTargets(actor, allUnits, 'front');
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
     executeAttack(events, actionId, actor, targets, behavior.skillMultiplier, state);
   } else if (useSkill && behavior.skill === 'shield') {
     const targets = chooseTargets(actor, allUnits, 'front');
     const shieldTargets = chooseShieldTargets(actor, allUnits, 1);
-    startAction(events, actor, actionId, [...targets, ...shieldTargets], abilityId, actionType, assistIds);
+    startAction(state, events, actor, actionId, [...targets, ...shieldTargets], abilityId, actionType, assistIds);
     executeAttack(events, actionId, actor, targets, behavior.skillMultiplier, state);
     for (const target of shieldTargets) applyShield(events, actionId, target, target.maxHp * 0.18);
   } else if (useSkill && behavior.skill === 'revive-or-shield') {
     const deadAlly = team.filter(unit => !unit.alive).sort(byLocation)[0];
     if (deadAlly) {
-      startAction(events, actor, actionId, [deadAlly], abilityId, actionType, assistIds);
+      startAction(state, events, actor, actionId, [deadAlly], abilityId, actionType, assistIds);
       deadAlly.alive = true;
       deadAlly.hp = Math.max(1, Math.floor(deadAlly.maxHp * 0.35));
-      deadAlly.shield = 0;
+      clearShield(deadAlly);
       deadAlly.energy = 0;
       events.push({ kind: 'revive', id: actionId, aimId: deadAlly.id, hp: deadAlly.hp });
     } else {
       const shieldTargets = chooseShieldTargets(actor, allUnits, 2);
-      startAction(events, actor, actionId, shieldTargets, abilityId, actionType, assistIds);
+      startAction(state, events, actor, actionId, shieldTargets, abilityId, actionType, assistIds);
       for (const target of shieldTargets) applyShield(events, actionId, target, target.maxHp * 0.14);
     }
   } else {
     const name = behaviorName(actor);
     const mode = name === 'hunter' ? 'lowest' : name === 'elementalist' || name === 'shadow-calamus' ? 'back' : 'front';
     const targets = chooseTargets(actor, allUnits, mode);
-    startAction(events, actor, actionId, targets, abilityId, actionType, assistIds);
+    startAction(state, events, actor, actionId, targets, abilityId, actionType, assistIds);
     executeAttack(events, actionId, actor, targets, behavior.basicMultiplier, state);
   }
 
   if (deityReady) {
     spendTianji(actor, deityCost, { events, reason: 'deity-skill' });
-  } else {
-    actor.energy = useSkill ? 0 : Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN);
+  } else if (!useSkill) {
+    actor.energy = Math.min(FIGHT_ENERGY_MAX, actor.energy + FIGHT_ENERGY_GAIN * (1 + effectiveEnergyBonus(actor)));
+    gainNormalTianji(actor, catalogSkill, events);
   }
   state.actionContext.phase = 'after';
   // "下一次终结技" modifiers are not consumed by a 天极技.
@@ -904,8 +932,11 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
   let overRound = 0;
 
   for (let round = 1; round <= maxRounds; round++) {
-    turnState.round = round;
     events.push({ kind: 'round-start', round });
+    if (round === 1) {
+      for (const unit of living(allUnits)) runRoundTrigger(events, unit, 'on-battle-start', turnState);
+    }
+    turnState.round = round;
     for (const unit of allUnits) resetRoundTriggers(unit);
     for (const unit of allUnits) resetProprietaryRound(unit);
     runProprietary(turnState, PROPRIETARY_HOOKS.ROUND_START, { round }, events);
@@ -930,6 +961,7 @@ export function simulateBattle({ attackers, defenders, seed = 1, maxRounds = 30 
     }
     for (const unit of living(allUnits)) runRoundTrigger(events, unit, 'on-round-end', turnState);
     for (const unit of living(allUnits)) {
+      if (expireTimedShields(unit, round) > 0) events.push({ kind: 'shield', id: 0, aimId: unit.id, shield: unit.shield });
       const raw = [];
       processBuffTicks(unit, turnState, raw);
       appendStandaloneResults(events, unit, raw, turnState);

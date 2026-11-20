@@ -1,0 +1,15 @@
+{
+  "sources": [{
+    "name": "3071318098590395000-HeroMutantTable.data.lua.bin",
+    "sha256": "3998066d56d9bc9811423b1bceb57046ec40f49b97aba3a9d72bac3b70e31eb3",
+    "rows": 2
+  }],
+  "tables": {
+    "HeroMutant": {
+      "rows": [
+        { "tid": 1, "belong_hero": 2020601, "extra_skill": 6202060112 },
+        { "tid": 2, "belong_hero": 1020601, "extra_skill": 6102060102 }
+      ]
+    }
+  }
+}

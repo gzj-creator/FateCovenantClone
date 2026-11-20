@@ -48,14 +48,14 @@ test('本源感知 (354070171) registers heal trigger (requiresInvestigation)', 
   assert.equal(skill.implementation.requiresInvestigation, true);
 });
 
-test('潜能蕴养 (354070172) registers energy loss trigger (requiresInvestigation)', () => {
+test('潜能蕴养 (354070172) no longer declares any borrowed anger loss', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '354070172');
   assert.ok(skill);
-  assert.ok(skill.implementation.triggers.length > 0);
-  assert.equal(skill.implementation.triggers[0].effect.effect.type, 'energy');
-  assert.equal(skill.implementation.triggers[0].effect.effect.energyType, 'loss');
+  const effects = [...skill.implementation.effects, ...skill.implementation.triggers.map(trigger => trigger.effect)];
+  assert.ok(effects.every(entry => entry.effect.type !== 'energy'));
+  assert.equal(skill.implementation.abilityDes.text, 604401001);
   assert.equal(skill.implementation.requiresInvestigation, true);
 });
 
@@ -205,13 +205,14 @@ test('complete skill id list loads in catalog order', () => {
   assert.deepEqual(getHeroSkills(HERO_ID, db).map(skill => skill.id), EXPECTED_SKILL_IDS);
 });
 
-test('every skill declares effectType matching its first declared effect', () => {
+test('every skill declares effectType matching its first direct or triggered effect', () => {
   const db = loadSkillDatabase();
   for (const skill of getHeroSkills(HERO_ID, db)) {
     const impl = skill.implementation;
     assert.ok(impl.effectType, skill.id + ' missing effectType');
-    assert.ok(Array.isArray(impl.effects) && impl.effects.length > 0, skill.id + ' missing effects');
-    assert.equal(impl.effectType, impl.effects[0].effect.type, skill.id + ' effectType mismatch');
+    const first = impl.effects[0] ?? impl.triggers?.[0]?.effect;
+    assert.ok(first, skill.id + ' missing effects');
+    assert.equal(impl.effectType, first.effect.type, skill.id + ' effectType mismatch');
   }
 });
 

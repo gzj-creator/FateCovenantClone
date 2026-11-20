@@ -10,6 +10,7 @@ import { createGameStore } from '../storage/game-store.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { createHeroMasteryService, heroMasteryView } from '../game/hero-mastery-service.mjs';
+import { buildHeroSkillLoadout } from '../game/hero-skill-loadout.mjs';
 import { assembleHeroAttributes, FIGHT_ATTR } from '../game/attribute-service.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createLocalGame } from '../local-game.mjs';
@@ -119,8 +120,11 @@ test('mastery breakthrough stops at the configured break rows', t => {
     service.execute(660, [HERO_TID]);
     assert.equal(hero(env.store).mastery_break, level);
   }
+  env.reopen();
   assert.equal(heroMasteryView(hero(env.store), heroTables).level_limit, 70);
-  rejected(() => service.execute(660, [HERO_TID]), 3012);
+  assert.equal(buildHeroSkillLoadout({ hero: hero(env.store), heroTables }).mastery.selected,
+    heroTables.Ability.get(HERO_TID).mastery_ability + 4);
+  rejected(() => env.service().execute(660, [HERO_TID]), 3012);
   assert.equal(hero(env.store).mastery_break, 5);
 });
 
@@ -211,25 +215,37 @@ test('gateway routes 659 and 660 over a temporary TCP connection', async t => {
   const login = await request(909103, 1, codec.pack('login', { server_id: 1, channel_uid: 'local-user', verify_code: 'test-session', channel_extra: '' }));
   assert.equal((await decodeEtf(Buffer.from(login.data, 'base64')))[0], 1);
 
+  const readAttributes = async seq => {
+    const attrReply = await request(1316, seq, Buffer.from([131, 106]));
+    assert.equal(attrReply.err ?? 0, 0);
+    const info = codec.unpack('pb_attr_lineup_all_info', Buffer.from(attrReply.data, 'base64'));
+    const target = info.lineup_attr.attr_list.find(row => String(row.tid) === String(hero(game.store).uid));
+    assert.ok(target, 'trained hero remains in the authoritative lineup');
+    return target;
+  };
+  const ability = heroTables.Ability.get(HERO_TID).mastery_ability;
+
   let reply = await request(660, 2, await encodeEtf([HERO_TID]));
   assert.equal(reply.err ?? 0, 0);
   assert.equal(codec.unpack('pb_hero_mastery_break_rsp', Buffer.from(reply.data, 'base64')).hero.mastery_break, 1);
+  assert.ok((await readAttributes(3)).skills.map(Number).includes(ability), 'first break grants the skill even at level 0');
 
-  reply = await request(659, 3, await encodeEtf([HERO_TID]));
+  reply = await request(659, 4, await encodeEtf([HERO_TID]));
   assert.equal(reply.err ?? 0, 0);
   assert.equal(codec.unpack('pb_hero_mastery_level_up_rsp', Buffer.from(reply.data, 'base64')).hero.mastery_level, 1);
 
   const trained = assembleHeroAttributes({ hero: hero(game.store), heroTables });
   assert.ok(trained.stats.hp > beforeAttributes.stats.hp);
   assert.ok(trained.power > beforeAttributes.power);
-  const attrReply = await request(1316, 4, Buffer.from([131, 106]));
-  assert.equal(attrReply.err ?? 0, 0);
-  const info = codec.unpack('pb_attr_lineup_all_info', Buffer.from(attrReply.data, 'base64'));
-  const target = info.lineup_attr.attr_list.find(row => String(row.tid) === String(hero(game.store).uid));
-  assert.ok(target, 'trained hero remains in the authoritative lineup');
+  const target = await readAttributes(5);
   assert.equal(Number(target.fight_attr_list.find(row => Number(row.key) === FIGHT_ATTR.HP).value), trained.stats.hp);
 
-  const rejectedReply = await request(659, 5, await encodeEtf([9876543]));
+  const secondBreak = await request(660, 6, await encodeEtf([HERO_TID]));
+  assert.equal(secondBreak.err ?? 0, 0);
+  assert.equal(codec.unpack('pb_hero_mastery_break_rsp', Buffer.from(secondBreak.data, 'base64')).hero.mastery_break, 2);
+  assert.deepEqual((await readAttributes(7)).skills.map(Number).filter(id => id >= ability && id < ability + 5), [ability + 1]);
+
+  const rejectedReply = await request(659, 8, await encodeEtf([9876543]));
   assert.equal(rejectedReply.err?.err, 3001);
   assert.equal(hero(game.store).mastery_level, 1);
 });

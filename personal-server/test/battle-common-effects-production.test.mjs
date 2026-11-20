@@ -111,7 +111,9 @@ function assertLifestealFromReport(report) {
   assert.ok(hits.length >= 1);
   const heals = healPackets(actions, LIFESTEAL_FIGHTER);
   assert.equal(heals.length, 1, 'the life-steal is reported as one TID_PROMPT_HEAL packet');
-  const maxHp = Number(report.fighter_list.find(unit => Number(unit.id) === LIFESTEAL_FIGHTER).max_hp);
+  const fighter = report.fighter_list.find(unit => Number(unit.id) === LIFESTEAL_FIGHTER);
+  assert.ok(fighter.ability_list.map(Number).includes(120001002));
+  const maxHp = Number(fighter.max_hp);
   const missingHp = maxHp - heals[0].oldHp;
   assert.ok(missingHp > 0, 'the chosen fighter must need healing');
   // Original fixed NPC templates can leave less missing HP than the former
@@ -147,6 +149,12 @@ function promoteActionCoverageHeroes(store) {
     const lineupHeroes = new Set(LINEUP.map(entry => Number(entry.hero_id)));
     for (const hero of model.heroInfo.hero_list) {
       if (lineupHeroes.has(Number(hero.tid))) hero.star = 10;
+      if (Number(hero.tid) !== 2010201) continue;
+      const preset = model.lineups.pre_lineups.find(row => row.index === model.lineups.cur_pre_index);
+      const fighter = preset.lineup.fighter_list.find(row => String(row.hero_id) === String(hero.uid));
+      const cell = model.heroInfo.cell_list.find(row => row.index === fighter.index);
+      cell.break_level = 1;
+      hero.breakthrough_level = cell.break_level;
     }
   });
 }

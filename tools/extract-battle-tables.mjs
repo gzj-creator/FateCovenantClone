@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { readGeneratedDump } from '../personal-server/config/hero-tables.mjs';
+import { readFightShard } from './read-fight-shard.mjs';
 
 const names = ('ISLT ISGE ISLE ISGT ISEQV ISNEV ISEQS ISNES ISEQN ISNEN ISEQP ISNEP ISTC ISFC IST ISF ISTYPE ISNUM MOV NOT UNM LEN ADDVN SUBVN MULVN DIVVN MODVN ADDNV SUBNV MULNV DIVNV MODNV ADDVV SUBVV MULVV DIVVV MODVV POW CAT KSTR KCDATA KSHORT KNUM KPRI KNIL UGET USETV USETS USETN USETP UCLO FNEW TNEW TDUP GGET GSET TGETV TGETS TGETB TGETR TSETV TSETS TSETB TSETM TSETR CALLM CALL CALLMT CALLT ITERC ITERN VARG ISNEXT RETM RET RET0 RET1 FORI JFORI FORL IFORL JFORL ITERL IITERL JITERL LOOP ILOOP JLOOP JMP FUNCF IFUNCF JFUNCF FUNCV IFUNCV JFUNCV FUNCC FUNCCW').split(' ');
 
@@ -168,14 +170,34 @@ function tableValue(value) {
   return value;
 }
 
-export function extractGroups(result) {
+const structuredHeroTables = new Set(['Hero', 'Npc', 'Ability', 'Npc_Ability', 'AbilityLevel', 'Profession',
+  'BaseAttrNew', 'UpStageTalent', 'Rare', 'Diff', 'HeroMutant']);
+
+export function extractGroups(result, tableName = '') {
+  const root = result.prototypes[result.rootPrototype];
+  if (/^FightTable\.Ability(?:Des)?\.\d+$/.test(tableName)) {
+    const columns = Object.fromEntries(root.constants.find(value => value.type === 'table'
+      && value.hash.some(([key]) => key === 'tid')).hash);
+    return [{ prototype: root.index, rootName: null, firstLine: root.firstLine ?? null, strings: [], columns,
+      rows: [...readFightShard(result).values()] }];
+  }
   const groups = [];
-  const rootConstants = result.prototypes[result.rootPrototype].constants;
+  const rootConstants = root.constants;
   const rootNames = new Map();
   for (let i = 0; i + 1 < rootConstants.length; i++) {
     const name = rootConstants[i];
     const child = rootConstants[i + 1];
     if (name.type === 'string' && child.type === 'child') rootNames.set(child.prototype, name.value);
+  }
+  const structured = new Map();
+  if (!tableName || tableName === 'HeroTable' || tableName === 'HeroMutantTable') {
+    for (let index = 0; index < root.instructions.length - 1; index++) {
+      const instruction = root.instructions[index];
+      const child = root.instructions[index + 1];
+      if (instruction.name !== 'KSTR' || child.name !== 'FNEW') continue;
+      const name = rootConstants[instruction.d].value;
+      if (structuredHeroTables.has(name)) structured.set(rootConstants[child.d].prototype, name);
+    }
   }
   for (const proto of result.prototypes) {
     const schemas = proto.constants
@@ -185,6 +207,14 @@ export function extractGroups(result) {
         maxIndex: Math.max(...value.hash.map(([, index]) => Number(tableValue(index))))
       }));
     if (schemas.length === 0) continue;
+
+    const rootName = structured.get(proto.index);
+    if (rootName) {
+      groups.push({ prototype: proto.index, rootName, firstLine: proto.firstLine ?? null,
+        strings: [...new Set(proto.constants.filter(value => value.type === 'string').map(value => value.value))],
+        columns: schemas[0].columns, rows: [...readGeneratedDump(result, [rootName])[rootName].values()] });
+      continue;
+    }
 
     const candidates = proto.constants
       .filter(value => value.type === 'table' && value.hash.length === 0 && value.array[0] == null && typeof value.array[1] === 'number')
@@ -224,7 +254,7 @@ export function extractBattleTables(sourceRoot, desiredPrefixes = [], options = 
     // Parameterized files can be rejected before parsing. The unparameterized
     // family file still needs parsing because it may contain several sub-tables.
     if (desiredTypes.size && fileBase !== family && ![...desiredTypes].some(type => fileBase === type || fileBase.startsWith(type + '.'))) continue;
-    const extracted = extractGroups(parseLuaJit(fs.readFileSync(file)));
+    const extracted = extractGroups(parseLuaJit(fs.readFileSync(file), { allowMultipleRoots: name === 'HeroTable' }), name);
     for (const extractedGroup of extracted) {
       const type = extractedGroup.rootName
         ? (fileBase === family ? `${family}.${extractedGroup.rootName}` : fileBase)

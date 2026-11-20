@@ -904,16 +904,11 @@ export function createLocalGame({
   const campTower = createCampTowerService({ store, codec, tables: readCampTowerTables(), gameTables: tables, logger, now: clock });
   const destinyPve = createDestinyPveService({ store, codec, tables: readDestinyPveTables(), logger, now: clock });
   // BATTLE-TRIPLEMATCHFIGHT (115001-115006), BATTLE-TRIMATCHTOWER
-  // (119001-119003) and BATTLE-TRIMATCHPVP (121001-121004) share the triple
-  // match tables. A won tower fight advances the tower through the fight
-  // settlement hook instead of a client claim.
+  // (119001-119003) and BATTLE-TRIMATCHPVP (121001-121004) share the triple match tables.
   const triMatchTables = readTriMatchTables();
   const triMatch = createTriMatchService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
   const triMatchTower = createTriMatchTowerService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
-  const triMatchFight = createTriMatchFightService({
-    store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock,
-    hooks: { onFightSettled: (model, db, payload) => triMatchTower.settle(model, db, payload) }
-  });
+  const triMatchFight = createTriMatchFightService({ store, codec, tables: triMatchTables, logger, now: clock });
   const triMatchPvp = createTriMatchPvpService({ store, codec, tables: triMatchTables, gameTables: tables, logger, now: clock });
   const magicCircle = createMagicCircleService({ store, codec, tables: readMagicCircleTables(), now: clock });
   const norseRune = createNorseRuneService({ store, codec, tables: readNorseRuneTables(), random });

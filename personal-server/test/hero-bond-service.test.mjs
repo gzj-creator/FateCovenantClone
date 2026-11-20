@@ -10,6 +10,7 @@ import { readGameTables } from '../config/game-tables.mjs';
 import { readHeroBondTables } from '../config/hero-bond-tables.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { createHeroBondService } from '../game/hero-bond-service.mjs';
+import { createLineupAttributeCache } from '../game/attribute-service.mjs';
 
 const codec = createGameCodec();
 const heroTables = readHeroTables();
@@ -254,6 +255,14 @@ test('661 consumes diff items, writes the hero marker and rejects repeats', asyn
   const service = env.service();
   addHero(env, DIFF_HERO);
   grant(env, [[DIFF_ITEM, 10]]);
+  const cache = createLineupAttributeCache();
+  const diffSkill = bondTables.Diff.get(DIFF_HERO).skill;
+  const getSkills = () => {
+    const model = env.store.read();
+    model.playLineups = [{ type: 1, team_list: [{ team_id: 1, fighter_list: [{ hero_id: String(DIFF_HERO), loc: 1 }] }] }];
+    return cache.get({ model, heroTables }).lineup_attr.attr_list[0].skills;
+  };
+  assert.ok(!getSkills().includes(diffSkill));
 
   const result = await call(service, 661, await encodeEtf([DIFF_HERO]));
   assert.equal(result.schema, 'pb_hero_diff_back');
@@ -261,11 +270,14 @@ test('661 consumes diff items, writes the hero marker and rejects repeats', asyn
   assert.equal(result.value.res.changes.find(change => Number(change.tid) === DIFF_ITEM).diff_num, '-10');
   assert.equal(Number(hero(env, DIFF_HERO).diff), 1);
   assert.equal(Number(codec.unpack('pb_hero_diff_back', result.data).new_hero.diff), 1);
+  assert.ok(getSkills().includes(diffSkill), 'the same 1316 cache now exposes the unlocked skill');
   await assert.rejects(call(service, 661, await encodeEtf([DIFF_HERO])), error => error.code === 5);
 
   env.reopen();
+  cache.clear();
   const reopened = env.service();
   assert.equal(Number(hero(env, DIFF_HERO).diff), 1);
+  assert.ok(getSkills().includes(diffSkill), 'the persisted hero still grants the skill after reopen');
   await assert.rejects(call(reopened, 661, await encodeEtf([DIFF_HERO])), error => error.code === 5);
 });
 

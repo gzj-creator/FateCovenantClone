@@ -9,7 +9,9 @@ test('hero 1010101 skills are loaded from skill database', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 吟游诗人');
+  assert.equal(skills.length, 17, '14 existing catalog rows and three original ordinary tiers');
+  assert.deepEqual(skills.filter(skill => skill.implementation.ability?.type === 2).map(skill => Number(skill.id)),
+    [2101010111, 2101010112, 2101010113]);
 });
 
 test('不屈 (311010171) registers a battle-start trigger with damage-reduction 0.05', () => {

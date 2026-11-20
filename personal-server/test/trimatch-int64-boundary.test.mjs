@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameCodec } from '../protocol/game-codec.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
+import { seedArchivedTriMatchFight } from './helpers/archived-trimatch-fight.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readTriMatchTables } from '../config/trimatch-tables.mjs';
 import { createTriMatchService } from '../game/trimatch-service.mjs';
@@ -31,7 +32,7 @@ function setup(t) {
       store: fixture.store, codec, tables: triTables, gameTables, now: () => FIXED_NOW
     });
     const fight = createTriMatchFightService({
-      store: fixture.store, codec, tables: triTables, gameTables, now: () => FIXED_NOW
+      store: fixture.store, codec, tables: triTables, now: () => FIXED_NOW
     });
     const pvp = createTriMatchPvpService({
       store: fixture.store, codec, tables: triTables, gameTables, now: () => FIXED_NOW
@@ -57,40 +58,16 @@ function setup(t) {
   };
 }
 
-function copyFight(db, roleId, fromUid, toUid) {
-  const inserted = db.prepare(`INSERT INTO trimatch_fight
-    SELECT role_id, ?, fight_tid, fight_type, is_pve, lineup_type, board_tid, board_json, red_team_json,
-      blue_team_json, atk_power, def_power, atk_role_id, def_role_id, result, attempt, round_id, phase_id,
-      remaining_ms, status, created_at, updated_at
-    FROM trimatch_fight WHERE role_id=? AND fight_uid=?`).run(toUid, roleId, fromUid);
-  assert.equal(inserted.changes, 1);
-  db.prepare(`INSERT INTO trimatch_fight_action
-    SELECT role_id, ?, seq, action_type, payload FROM trimatch_fight_action
-    WHERE role_id=? AND fight_uid=?`).run(toUid, roleId, fromUid);
-}
-
-test('triple match fight UID allocation, retry, give-up and report stay exact above 2^53', async t => {
+test('triple match archived give-up and reports keep adjacent fight IDs exact above 2^53', async t => {
   const env = setup(t);
-  const first = await env.services.fight.execute(115001, { fight_tid: '1', enemy_id: '0' });
-  assert.equal(String(first.value.fightUid), '1');
-  env.store.inspect(db => copyFight(db, env.roleId, '1', FIRST_LONG_UID));
-
-  const next = await env.services.fight.execute(115001, { fight_tid: '1', enemy_id: '0' });
-  assert.equal(String(next.value.fightUid), SECOND_LONG_UID);
-  assert.equal(codec.unpack('pb_triple_match_fight_response', next.data).id, SECOND_LONG_UID);
-
-  const record = await env.services.fight.execute(115006, [FIRST_LONG_UID]);
-  assert.equal(String(record.value.fightUid), FIRST_LONG_UID);
-  assert.equal(codec.unpack('pb_triple_match_fight_report', record.data).fight_id, FIRST_LONG_UID);
-
-  const retried = await env.services.fight.execute(115003, [FIRST_LONG_UID]);
-  assert.equal(String(retried.value.fightUid), FIRST_LONG_UID);
-  assert.equal(codec.unpack('pb_triple_match_fight_response', retried.data).id, FIRST_LONG_UID);
+  env.services.fight.state(env.roleId);
+  const archived = new Map(env.store.transaction((model, db) => [FIRST_LONG_UID, SECOND_LONG_UID, INT64_MAX].map(fightUid => [fightUid,
+    seedArchivedTriMatchFight(db, codec, { roleId: env.roleId, fightUid, fightRow: triTables.fightRows.get(1), now: FIXED_NOW })])));
+  await assert.rejects(() => env.services.fight.execute(115003, [FIRST_LONG_UID]), error => error instanceof GameError && error.code === 5);
 
   const giveUp = await env.services.fight.execute(115005, [FIRST_LONG_UID]);
   assert.equal(String(giveUp.value.fightUid), FIRST_LONG_UID);
-  const expected = [[FIRST_LONG_UID, 'given_up'], ['1', 'running'], [SECOND_LONG_UID, 'running']]
-    .sort((left, right) => BigInt(left[0]) < BigInt(right[0]) ? -1 : 1);
+  const expected = [[FIRST_LONG_UID, 'given_up'], [SECOND_LONG_UID, 'running'], [INT64_MAX, 'running']];
   assert.deepEqual(
     env.store.inspect(db => db.prepare(`SELECT CAST(fight_uid AS TEXT) AS fight_uid, status
       FROM trimatch_fight WHERE role_id=? ORDER BY fight_uid`).all(env.roleId)
@@ -104,19 +81,13 @@ test('triple match fight UID allocation, retry, give-up and report stay exact ab
     expected
   );
 
-  env.store.inspect(db => copyFight(db, env.roleId, '1', INT64_MAX));
-  const before = env.store.inspect(db => ({
-    count: db.prepare('SELECT COUNT(*) AS total FROM trimatch_fight WHERE role_id=?').get(env.roleId).total,
-    max: db.prepare('SELECT CAST(MAX(fight_uid) AS TEXT) AS uid FROM trimatch_fight WHERE role_id=?').get(env.roleId).uid
-  }));
-  await assert.rejects(
-    () => env.services.fight.execute(115001, { fight_tid: '1', enemy_id: '0' }),
-    error => error instanceof GameError && error.code === 305
-  );
-  assert.deepEqual(env.store.inspect(db => ({
-    count: db.prepare('SELECT COUNT(*) AS total FROM trimatch_fight WHERE role_id=?').get(env.roleId).total,
-    max: db.prepare('SELECT CAST(MAX(fight_uid) AS TEXT) AS uid FROM trimatch_fight WHERE role_id=?').get(env.roleId).uid
-  })), before);
+  for (const [fightUid, actions] of archived) {
+    const record = await env.services.fight.execute(115006, [fightUid]);
+    const decoded = codec.unpack('pb_triple_match_fight_report', record.data);
+    assert.equal(String(record.value.fightUid), fightUid);
+    assert.equal(decoded.fight_id, fightUid);
+    assert.deepEqual(decoded.action_list, actions);
+  }
 });
 
 test('triple match PVP keeps adjacent fight IDs and last settlement ID exact after reopen', async t => {

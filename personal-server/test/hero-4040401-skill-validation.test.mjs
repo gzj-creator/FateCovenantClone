@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
+import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers, skillToEffect, skillToEffects } from '../game/effects/skill-integration.mjs';
+import { proprietaryRulesFor } from '../game/effects/proprietary-rules.mjs';
 import { EffectExecutor } from '../game/effects/effect-executor.mjs';
 
 const HERO_ID = 4040401;
@@ -162,13 +163,19 @@ test('生命护盾 (120001003) registers hp-below-70 shield 0.8 (once per battle
   assert.equal(trig.effect.effect.multiplier, 0.8);
 });
 
-test('2404040123 ultimate has a damage effect (requiresInvestigation)', () => {
+test('2404040123 retains its source row without executing the other hero’s description', () => {
   const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '2404040123');
-  assert.ok(skill.implementation.effects.length > 0);
-  assert.equal(skill.implementation.effects[0].effect.type, 'damage');
+  const skill = getHeroSkills(HERO_ID, db).find(entry => entry.id === '2404040123');
+  const control = getHeroSkills(4040301, db).find(entry => entry.id === '2404030123');
+  assert.equal(skill.name, '绛丝乱舞');
+  assert.equal(skill.implementation.abilityDes.text, 601501120);
   assert.equal(skill.implementation.requiresInvestigation, true);
+  assert.deepEqual(proprietaryRulesFor([skill]), [], 'do not register the copied shield and moonlight rules');
+  assert.deepEqual(skillToEffects(skill, db), []);
+  assert.equal(skillToEffect(skill, db), null, 'do not synthesize an effect from the conflicting text');
+  const controlKinds = proprietaryRulesFor([control]).map(({ rule }) => rule.kind);
+  assert.ok(controlKinds.includes('shield-destroy'));
+  assert.ok(controlKinds.includes('layer'));
 });
 
 test('6910001065 ultimate has a damage effect (requiresInvestigation)', () => {

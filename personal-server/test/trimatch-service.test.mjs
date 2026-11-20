@@ -5,13 +5,15 @@ import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
-import { createGameCodec, decodeEtf } from '../protocol/game-codec.mjs';
+import { createGameCodec, decodeEtf, encodeEtf } from '../protocol/game-codec.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
+import { seedArchivedTriMatchFight } from './helpers/archived-trimatch-fight.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import {
-  readTriMatchTables, firstHeroLevelTid, firstEquipLevelTid, heroStarCost
+  readTriMatchTables, firstHeroLevelTid, firstEquipLevelTid, heroStarCost, heroStarRow
 } from '../config/trimatch-tables.mjs';
 import { createTriMatchService, TRI_MATCH_LOGIN_MODULES } from '../game/trimatch-service.mjs';
+import { createTriMatchFightService, selectTriMatchActionIds } from '../game/trimatch-fight-service.mjs';
 import { grantResources } from '../game/resources.mjs';
 import { GameError } from '../game/hero-progression.mjs';
 import { createLocalGame } from '../local-game.mjs';
@@ -138,6 +140,92 @@ test('112001 accumulates every UpLevel cost, rejects the exact shortfall atomica
     assert.equal(starResponse.res.changes.find(change => Number(change.tid) === tid).diff_num, String(-amount));
   }
   assert.equal(env.snapshot().stars.find(([tid]) => tid === HERO_TIDS[0])?.[1], 1);
+});
+
+test('156 triple match skill rows each select one distinct normal and anger action without using board actions', () => {
+  const players = [...triTables.heroStarByHero.values()].flat();
+  const npcs = [...triTables.fightNpcAbilities.values()];
+  assert.equal(players.length, 78);
+  assert.equal(npcs.length, 78);
+  for (const { ability } of [...players, ...npcs]) {
+    const selected = selectTriMatchActionIds(triTables, ability);
+    assert.ok(ability.includes(selected.abilityId) && ability.includes(selected.activeAbilityId));
+    assert.equal(triTables.fightAbilities.get(selected.abilityId).type, 1);
+    assert.equal(triTables.fightAbilities.get(selected.activeAbilityId).type, 2);
+  }
+  assert.throws(() => selectTriMatchActionIds(triTables, [1, 5]), /Invalid triple match fighter skill reference/);
+  assert.throws(() => selectTriMatchActionIds(triTables, [4, 5, 8]), /missing or ambiguous/);
+});
+
+function replaySkillIds(report, caster) {
+  return [...new Set(report.action_list
+    .map(bytes => codec.unpack('action', Buffer.from(bytes, 'base64')).skillStart)
+    .filter(action => Number(action?.casterUid) === caster)
+    .map(action => Number(action.skillTid)))].sort((left, right) => left - right);
+}
+
+test('115006 retains the archived skill bytes when the configured player anger skill changes', async t => {
+  const env = setup(t);
+  env.login();
+  const roleId = env.store.state().roleId;
+  const make = () => createTriMatchFightService({ store: env.store, codec, tables: triTables, now: () => FIXED_NOW });
+  const service = make();
+  service.state(roleId);
+  const bytes = env.store.transaction((model, db) => seedArchivedTriMatchFight(db, codec, {
+    roleId, fightRow: triTables.fightRows.get(1), now: FIXED_NOW
+  }));
+  const readReport = async (service, id) => {
+    const record = await service.execute(115006, [id]);
+    return codec.unpack('pb_triple_match_fight_report', record.data);
+  };
+  const before = await readReport(service, '1');
+  assert.deepEqual(before.action_list, bytes);
+  assert.deepEqual(replaySkillIds(before, 101), [4, 5], 'player star 0');
+  assert.deepEqual(replaySkillIds(before, 102), [12, 13], 'another player with a different kit');
+  assert.deepEqual(replaySkillIds(before, 201), [4, 5], 'NPC 1 uses its own table row');
+
+  env.grant([[835502, 20]]);
+  await env.execute(112002, { hero_tid: HERO_TIDS[0] });
+  await env.execute(112002, { hero_tid: HERO_TIDS[0] });
+  env.reopen();
+  const star = env.snapshot().stars.find(([tid]) => tid === HERO_TIDS[0])?.[1];
+  assert.equal(star, 2);
+  assert.deepEqual(selectTriMatchActionIds(triTables, heroStarRow(triTables, HERO_TIDS[0], star).ability),
+    { abilityId: 4, activeAbilityId: 8 });
+  assert.deepEqual(await readReport(make(), before.fight_id), before);
+});
+
+test('unverified triple match battles cannot create or rewrite an attempt or settle before board play', async t => {
+  const env = setup(t);
+  env.login();
+  const roleId = env.store.state().roleId;
+  let settlements = 0;
+  const make = () => createTriMatchFightService({ store: env.store, codec, tables: triTables,
+    now: () => FIXED_NOW, hooks: { onFightSettled: () => settlements++ } });
+  const service = make();
+  service.state(roleId);
+  const fightRow = triTables.fightRows.get(1);
+  const bytes = env.store.transaction((model, db) => seedArchivedTriMatchFight(db, codec, { roleId, fightRow, now: FIXED_NOW }));
+  const snapshot = () => ({
+    resources: [...env.store.read().resources],
+    storage: env.store.inspect(db => ['trimatch_fight', 'trimatch_fight_action', 'trimatch_fight_op', 'reward_claims']
+      .map(table => db.prepare(`SELECT * FROM ${table}`).all())),
+  });
+  const before = snapshot();
+  const attempts = [[115001, { fight_tid: '1', enemy_id: '0' }], [115003, ['1']],
+    [115002, { id: '1', x1: 1, y1: 1, x2: 2, y2: 1, round_id: '1', phase_id: '1', client_op_id: '1' }],
+    [115004, { fight_id: '1', round_id: '1', phase_id: '1' }]];
+  const responses = await Promise.allSettled(attempts.map(([type, payload]) => service.execute(type, payload)));
+  assert.deepEqual(responses.map(response => response.status), attempts.map(() => 'rejected'));
+  assert.ok(responses.every(response => response.reason instanceof GameError && response.reason.code === 5
+    && /board resolution/.test(response.reason.message)));
+  assert.equal(settlements, 0);
+  assert.deepEqual(snapshot(), before);
+  env.reopen();
+  const record = await make().execute(115006, ['1']);
+  const decoded = codec.unpack('pb_triple_match_fight_report', record.data);
+  assert.equal(decoded.fight_id, '1');
+  assert.deepEqual(decoded.action_list, bytes);
 });
 
 test('113001-113003 use configured equipment rows for single, one-key, swap and repeated upgrades', async t => {
@@ -322,7 +410,7 @@ function moduleBytes(entry) {
   throw new TypeError('Login module binary is malformed');
 }
 
-test('gateway routes all ten triple match commands over a temporary TCP port', { timeout: 20000 }, async t => {
+test('gateway routes triple match development and battle playback over a temporary TCP port', { timeout: 20000 }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fc-trimatch-gateway-'));
   const game = createLocalGame({
     databasePath: path.join(directory, 'game.sqlite'),
@@ -412,6 +500,27 @@ test('gateway routes all ten triple match commands over a temporary TCP port', {
   const playing = await invoke(114005, { lineup: { type: 1, team_list: [teamOf()] } });
   assert.equal(Number(playing.lineup.type), 1);
   await invoke(114004, { uid });
+
+  const roleId = game.store.state().roleId;
+  const archive = createTriMatchFightService({ store: game.store, codec, tables: triTables, now: () => FIXED_NOW });
+  archive.state(roleId);
+  const bytes = game.store.transaction((model, db) => seedArchivedTriMatchFight(db, codec, {
+    roleId, fightRow: triTables.fightRows.get(1), now: FIXED_NOW
+  }));
+  const resourcesBeforeFight = [...game.store.read().resources];
+  const started = await request(115001, seq++, codec.pack('pb_triple_match_fight_request', { fight_tid: '1', enemy_id: '0' }));
+  assert.equal(Number(started.err?.err), 5);
+  const retried = await request(115003, seq++, encodeEtf([1]));
+  assert.equal(Number(retried.err?.err), 5);
+  const replayed = await request(115006, seq++, encodeEtf([1]));
+  assert.equal(replayed.err, undefined);
+  const replay = codec.unpack('pb_triple_match_fight_report', Buffer.from(replayed.data, 'base64'));
+  assert.equal(replay.fight_id, '1');
+  assert.deepEqual(replay.action_list, bytes);
+  assert.deepEqual(replaySkillIds(replay, 101), [4, 5]);
+  assert.deepEqual(replaySkillIds(replay, 202), [12, 13]);
+  assert.deepEqual([...game.store.read().resources], resourcesBeforeFight);
+  assert.equal(archive.state(roleId).length, 1);
 
   assert.equal(game.store.inspect(db => db.prepare('SELECT count(*) AS n FROM trimatch_lineup').get().n), 0);
   assert.equal(game.store.inspect(db => db.prepare('SELECT count(*) AS n FROM trimatch_playing_lineup WHERE lineup_type=1').get().n), 1);

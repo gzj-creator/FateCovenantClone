@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
 import { EffectExecutor } from '../game/effects/effect-executor.mjs';
+import { FIGHT_ENERGY_MAX, simulateBattle } from '../game/battle-engine.mjs';
 
 const HERO_ID = 3010201;
 
@@ -72,17 +73,22 @@ test('气定神闲 (331020174) grants 100 energy on attack/skill with 0.3 chance
   }
 });
 
-test('星爆陨灭 (331020175) grants self crit-rate 0.10 and crit-damage 0.15', () => {
+test('伟大创造 (331020175) grants only the allied back row 12% critical damage for two rounds', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '331020175');
-  assert.equal(skill.implementation.triggers.length, 2);
-  const byStat = Object.fromEntries(skill.implementation.triggers.map(trig =>
-    [trig.effect.effect.statType, trig.effect.effect.magnitude]));
-  assert.deepEqual(byStat, { 'crit-rate': 0.1, 'crit-damage': 0.15 });
-  assert.ok(skill.implementation.triggers.every(trig =>
-    trig.triggerType === 'on-ultimate-use' && trig.effect.target.targetType === 'self'));
-  assert.equal(skill.implementation.requiresInvestigation, true);
+  const skill = skills.find(entry => entry.id === '331020175');
+  const battle = simulateBattle({
+    attackers: [{ id: 101, loc: 1, maxHp: 10000, attack: 100, speed: 100, initialEnergy: FIGHT_ENERGY_MAX,
+      abilityId: 1301020101, activeAbilityId: 2301020113, skills: [skill] },
+    ...[4, 6].map(loc => ({ id: 102 + loc, loc, maxHp: 10000, attack: 1, speed: 2, skills: [] }))],
+    defenders: [{ id: 201, loc: 6, maxHp: 100000, speed: 1, attack: 1, skills: [] }],
+    maxRounds: 1,
+  });
+  const changes = battle.events.filter(event => event.type === 'stat-modifier' && event.actor === 101)
+    .map(({ target, statType, magnitude, duration }) => ({ target, statType, magnitude, rounds: duration.rounds }));
+  assert.deepEqual(changes, [106, 108].map(target => ({ target, statType: 'crit-damage', magnitude: 0.12, rounds: 2 })));
+  assert.equal(skill.name, '伟大创造');
+  assert.equal(skill.implementation.abilityDes.text, 604400195);
 });
 
 test('突破6 (120001028) grants 50 energy on attack/skill', () => {

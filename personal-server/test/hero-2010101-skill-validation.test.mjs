@@ -9,7 +9,9 @@ test('hero 2010101 skills are loaded from skill database', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 鼠鼠埃文');
+  assert.equal(skills.length, 17, '14 legacy rows plus the three exact ordinary action tiers');
+  assert.deepEqual(skills.filter(skill => skill.implementation.ability?.type === 2).map(skill => Number(skill.id)),
+    [2201010111, 2201010112, 2201010113]);
 });
 
 test('passive triggers count is at least 10', () => {
@@ -161,10 +163,11 @@ test('双重攻击 (120001001) registers on-attack and on-skill-use extra attack
   assert.equal(skill.implementation.requiresInvestigation, true);
 });
 
-test('6910001027 ultimate has a damage effect', () => {
+test('6910001027 retains its separate, unverified catalog entry', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '6910001027');
+  assert.equal(skill.implementation.ability.type, 3);
   assert.ok(skill.implementation.effects.length > 0);
   assert.equal(skill.implementation.effects[0].effect.type, 'damage');
   assert.equal(skill.implementation.requiresInvestigation, true);

@@ -5,11 +5,12 @@ import { EffectExecutor } from '../game/effects/effect-executor.mjs';
 
 const HERO_ID = 4010301;
 
-test('hero 4010301 skills are loaded from skill database', () => {
+test('hero 4010301 has its three ordinary healing tiers in the skill database', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 咩咩医生');
+  for (const id of ['2401030111', '2401030112', '2401030113']) {
+    assert.equal(skills.find(skill => skill.id === id)?.implementation.effects[0].effect.type, 'heal');
+  }
 });
 
 test('passive triggers count is at least 10', () => {

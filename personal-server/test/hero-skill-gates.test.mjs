@@ -4,7 +4,8 @@ import { GameError } from '../game/hero-progression.mjs';
 import {
   abilityLevelRow,
   breakthroughPassiveIds,
-  buildHeroSkillLoadout
+  buildHeroSkillLoadout,
+  selectFightActionIds
 } from '../game/hero-skill-loadout.mjs';
 import { simulateBattle } from '../game/battle-engine.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
@@ -57,7 +58,7 @@ test('breakthrough passives are selected only through the reached milestone', ()
   assert.ok(!opened.includes(120000006));
 });
 
-test('same hero exposes different raw slots as growth advances without losing catalog passives', () => {
+test('same hero unlocks new slots and reaches only the earned catalog passives', () => {
   const early = buildHeroSkillLoadout({
     hero: hero(2010101), heroTables
   });
@@ -65,9 +66,9 @@ test('same hero exposes different raw slots as growth advances without losing ca
     hero: hero(2010101, { star: 6, breakthrough_level: 5 }),
     heroTables
   });
-  assert.deepEqual(early.abilityIds, [1201010101, 2201010111, 3201010111]);
+  assert.deepEqual(early.abilityIds, [1201010101, 2201010111, 3201010111, ...heroTables.Profession.get(1).ability]);
   assert.ok(developed.abilityIds.length > early.abilityIds.length);
-  assert.ok(early.catalogSkillIds.includes('120001001'));
+  assert.ok(!early.catalogSkillIds.includes('120001001'));
   assert.ok(developed.catalogSkillIds.includes('120001001'));
   assert.ok(developed.catalogSkillIds.includes('120000009'));
 });
@@ -89,32 +90,26 @@ test('mastery uses only the configured ability id and reports its star unlock se
     'only the configured mastery must be active, not all five catalog candidates');
 });
 
-test('rare soul ability replaces the ordinary active definition without duplication', () => {
-  const ordinary = buildHeroSkillLoadout({
-    hero: hero(1040301, { star: 5, quality: 60 }), heroTables
-  });
-  const rare = buildHeroSkillLoadout({
-    hero: hero(1040301, { star: 5, quality: 60, rare: true }), heroTables
-  });
-  assert.ok(!ordinary.catalogSkillIds.includes('2104030123'));
-  assert.ok(rare.catalogSkillIds.includes('2104030123'));
-  assert.equal(rare.skills.filter(skill => skill.type === 'Ultimate').length, 1);
-  assert.deepEqual(rare.replacement, { to: 2104030123 });
-  assert.equal(rare.abilityIds[1], 2104030123);
+test('base UR soul ability is independent of rare and keeps the ordinary action ID', () => {
+  for (const rare of [false, true]) {
+    const loadout = buildHeroSkillLoadout({ hero: hero(1040301, { star: 5, quality: 60, rare }), heroTables });
+    assert.equal(loadout.catalogSkillIds.filter(id => id === '2104030123').length, 1);
+    const actions = selectFightActionIds(loadout.abilityIds);
+    assert.equal(actions.activeAbilityId, 2104030113);
+    assert.equal(actions.tianjiAbilityId, 2104030123);
+  }
 });
 
-test('ordinary 1040201 never substitutes a metadata fallback for its locked soul skill', () => {
+test('ordinary 1040201 never substitutes a metadata fallback or Tianji for its ordinary effect', () => {
   const skillDatabase = loadSkillDatabase();
   const ordinary = buildHeroSkillLoadout({
     hero: hero(1040201, { star: 5 }), heroTables, skillDatabase
   });
-  const rare = buildHeroSkillLoadout({
-    hero: hero(1040201, { star: 5, rare: true }), heroTables, skillDatabase
-  });
+  const actions = selectFightActionIds(ordinary.abilityIds);
   assert.ok(!ordinary.catalogSkillIds.includes('6910001063'));
-  assert.ok(!ordinary.catalogSkillIds.includes('2104020123'));
-  assert.equal(resolveActionSkill({ role: 1040201, skills: ordinary.skills }, true, skillDatabase), null);
-  assert.equal(resolveActionSkill({ role: 1040201, skills: rare.skills }, true, skillDatabase)?.id, '2104020123');
+  assert.ok(ordinary.catalogSkillIds.includes('2104020123'));
+  assert.equal(resolveActionSkill({ role: 1040201, ...actions, skills: ordinary.skills }, true, skillDatabase), null);
+  assert.equal(resolveActionSkill({ role: 1040201, activeAbilityId: 2104020123, skills: ordinary.skills }, true, skillDatabase), null);
 
   const fallback = skillDatabase.heroes.find(row => String(row.id) === '1040201')
     .skills.find(skill => skill.id === '6910001063');
@@ -124,7 +119,7 @@ test('ordinary 1040201 never substitutes a metadata fallback for its locked soul
 });
 
 test('battle simulation honors a caller-supplied filtered skill list', () => {
-  const full = buildHeroSkillLoadout({ hero: hero(2010101), heroTables });
+  const full = buildHeroSkillLoadout({ hero: hero(2010101, { breakthrough_level: 1 }), heroTables });
   const withoutDoubleAttack = {
     ...full,
     skills: full.skills.filter(skill => skill.id !== '120001001')

@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import {
   commonSkillEffects,
   commonSkillTriggerType,
@@ -13,35 +14,87 @@ import {
   proprietaryTriggerAllowed,
 } from '../personal-server/game/effects/proprietary-rules.mjs';
 import { provenBuffTid } from '../personal-server/game/effects/report-codes.mjs';
+import { readAttributeTables } from '../personal-server/config/attribute-tables.mjs';
+import { readFightAbilityTypes, isTianjiAbility } from '../personal-server/config/fight-ability-types.mjs';
+import { readGuideTables } from '../personal-server/config/guide-tables.mjs';
+import { readGeneratedDump, readHeroTables } from '../personal-server/config/hero-tables.mjs';
+import { readJourneyFightTables } from '../personal-server/config/journey-fight-tables.mjs';
+import { readMissionTables } from '../personal-server/config/mission-tables.mjs';
+import { readTriMatchTables } from '../personal-server/config/trimatch-tables.mjs';
+import { resolveFightTeam } from '../personal-server/game/fight-team-resolver.mjs';
+import { buildHeroSkillLoadout, selectFightActionIds } from '../personal-server/game/hero-skill-loadout.mjs';
+import { selectTriMatchActionIds } from '../personal-server/game/trimatch-fight-service.mjs';
+import { parseLuaJit } from './luajit-bytecode-parse.mjs';
+import { readFightShard } from './read-fight-shard.mjs';
 
 // Compare localized AbilityDes text with every executable server effect. This is
 // deliberately conservative: named mechanics that the current engine cannot
 // express stay evidence gaps, while clear contradictions become errors.
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const databasePath = path.join(projectRoot, 'personal-server/config/skill-database.json');
-const languageIndex = process.argv.indexOf('--language');
-const languageArgument = languageIndex >= 0 ? process.argv[languageIndex + 1] : null;
-const languageCandidates = [
-  languageArgument,
+function option(name) {
+  const index = process.argv.indexOf(name);
+  if (index === -1) return null;
+  const value = process.argv[index + 1];
+  if (!value || value.startsWith('--')) throw new Error('Missing value for ' + name);
+  return path.resolve(value);
+}
+
+const languageArgument = option('--language');
+const shardDirectory = option('--fight-shards');
+const languageCandidates = languageArgument ? [languageArgument] : [
   process.env.FATE_COVENANT_LANGUAGE_TEXT,
   path.join(projectRoot, '.tmp-language-sub/candidate/decoded/language-core.bundle/textassets/2430823284743666700-text_zh_cn.bin'),
   path.join(projectRoot, 'analysis/reports/private-client-16448/lua-bundles/candidate/decoded/language-core.bundle/textassets/2430823284743666700-text_zh_cn.bin'),
 ].filter(Boolean).map(file => path.resolve(file));
 const languagePath = languageCandidates.find(file => fs.existsSync(file));
-const outputIndex = process.argv.indexOf('--output');
-const outputPath = outputIndex >= 0
-  ? path.resolve(process.argv[outputIndex + 1])
-  : path.join(projectRoot, 'analysis/reports/skill-description-audit.json');
+const outputPath = option('--output') ?? path.join(projectRoot, 'analysis/reports/skill-description-audit.json');
 
 if (!fs.existsSync(databasePath)) throw new Error('Missing skill database: ' + databasePath);
 if (languageArgument && !languagePath) throw new Error('Language file not found: ' + languageArgument);
+if (shardDirectory && !languagePath) throw new Error('--fight-shards requires the corresponding --language TextAsset');
+
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const originalDescriptions = new Map();
+const shardFiles = [];
+let featureRows = new Map();
+let featureSource;
+if (shardDirectory) {
+  const directoryFiles = fs.readdirSync(shardDirectory).sort();
+  const files = directoryFiles.filter(name => /-FightTable\.AbilityDes\.\d+\.data\.lua\.bin$/.test(name));
+  if (!files.length) throw new Error('No original AbilityDes shards in ' + shardDirectory);
+  for (const name of files) {
+    const bytes = fs.readFileSync(path.join(shardDirectory, name));
+    const rows = readFightShard(parseLuaJit(bytes));
+    for (const [id, row] of rows) {
+      if (originalDescriptions.has(id)) throw new Error('Duplicate original AbilityDes row ' + id);
+      originalDescriptions.set(id, { row, file: name });
+    }
+    shardFiles.push({ name, sha256: digest(bytes), rows: rows.size });
+  }
+  const roots = directoryFiles.filter(name => /(?:^|-)FightTable\.data\.lua\.bin$/.test(name));
+  featureSource = { status: roots.length ? 'ambiguous' : 'missing', files: roots };
+  if (roots.length === 1) {
+    const [name] = roots;
+    const bytes = fs.readFileSync(path.join(shardDirectory, name));
+    ({ AbilityBuffDes: featureRows } = readGeneratedDump(parseLuaJit(bytes), ['AbilityBuffDes']));
+    featureSource = { status: 'observed', name, sha256: digest(bytes), rows: featureRows.size };
+  }
+}
 
 const language = new Map();
+let languageSha256 = null;
 if (languagePath) {
-  const text = fs.readFileSync(languagePath, 'utf8').replace(/^\uFEFF/, '');
+  const bytes = fs.readFileSync(languagePath);
+  languageSha256 = digest(bytes);
+  const text = bytes.toString('utf8').replace(/^\uFEFF/, '');
   for (const line of text.split(/\r\n|\r|\n/)) {
     const separator = line.indexOf('=');
-    if (separator > 0) language.set(line.slice(0, separator), line.slice(separator + 1));
+    if (separator <= 0) continue;
+    const key = line.slice(0, separator);
+    const value = line.slice(separator + 1);
+    if (shardDirectory && language.has(key) && language.get(key) !== value) throw new Error('Conflicting language key ' + key);
+    language.set(key, value);
   }
 }
 
@@ -52,17 +105,34 @@ const normalizeText = value => String(value ?? '')
   .replace(/\s+/g, ' ')
   .trim();
 const database = JSON.parse(fs.readFileSync(databasePath, 'utf8'));
+const abilityDesFor = skill => shardDirectory
+  ? originalDescriptions.get(Number(skill.id))?.row
+  : skill.implementation?.abilityDes;
+const featuresFor = row => (row?.feature ?? []).map(featureId => {
+  const feature = featureRows.get(featureId);
+  return {
+    featureId,
+    name: normalizeText(language.get(String(feature?.show_name))) || null,
+    textId: feature?.text ?? null,
+    text: normalizeText(language.get(String(feature?.text))) || null,
+  };
+});
 const descriptionFor = skill => {
-  const textId = skill.implementation?.abilityDes?.text;
+  const row = abilityDesFor(skill);
+  const textId = row?.text;
   const localized = textId && language.has(String(textId));
   return {
-    text: normalizeText(localized ? language.get(String(textId)) : skill.description),
+    text: normalizeText(localized ? language.get(String(textId)) : (shardDirectory ? null : skill.description)),
     storedText: normalizeText(skill.description),
-    source: localized ? 'abilityDes.text' : 'skill.description',
+    source: localized ? (shardDirectory ? 'original.AbilityDes.text' : 'abilityDes.text')
+      : shardDirectory ? 'unresolved-original' : 'skill.description',
+    localized,
+    textId,
+    ...(shardDirectory && row?.feature?.length ? { features: featuresFor(row) } : {}),
   };
 };
 const nameFor = skill => {
-  const nameId = skill.implementation?.abilityDes?.show_name;
+  const nameId = abilityDesFor(skill)?.show_name;
   return nameId && language.has(String(nameId))
     ? normalizeText(language.get(String(nameId))) : null;
 };
@@ -176,7 +246,7 @@ const fractionEqual = (left, right) => Number.isFinite(left) && Number.isFinite(
 function firstPercentAfter(text, pattern) {
   const match = text.match(pattern);
   if (!match) return null;
-  const value = match[1].match(/\d+(?:\.\d+)?/)?.[0];
+  const value = match[1].match(/(\d+(?:\.\d+)?)\s*%/)?.[1];
   return value === undefined ? null : Number(value) / 100;
 }
 
@@ -201,6 +271,7 @@ const gaps = [];
 const matrixSkills = new Map();
 const ambiguousDescriptionEntries = [];
 const nameSourceMismatchEntries = [];
+const catalogMetadataDifferences = [];
 const summary = {
   heroes: database.heroes.length,
   skillReferences: 0,
@@ -224,7 +295,7 @@ const uniqueIds = new Set();
 // slots in one hero. That row can be valid evidence for one slot but cannot
 // establish which visible description belongs to each of the others.
 const localDescriptionGroups = new Map();
-for (const hero of database.heroes) {
+for (const hero of shardDirectory ? [] : database.heroes) {
   const groups = new Map();
   for (const skill of hero.skills ?? []) {
     const textId = skill.implementation?.abilityDes?.text;
@@ -252,9 +323,9 @@ for (const hero of database.heroes) {
 
 function descriptionConflictCode(hero, skill, description) {
   if (!description.storedText || !description.text) return null;
-  if (description.source !== 'abilityDes.text') return null;
+  if (!description.localized) return null;
   const group = localDescriptionGroups.get(String(hero.id))?.get(
-    String(skill.implementation.abilityDes.text)
+    String(description.textId)
   );
   // Shared template rows are an extraction ambiguity, not proof that the
   // curated catalog description is wrong.
@@ -307,9 +378,25 @@ for (const hero of database.heroes) {
     const description = descriptionFor(skill);
     const runtime = runtimeEffectsFor(skill);
     const effects = runtime.all;
-    if (description.source === 'abilityDes.text') summary.localizedDescriptions += 1;
+    if (description.localized) summary.localizedDescriptions += 1;
     else if (description.text) summary.storedDescriptions += 1;
     if (!effects.length) summary.noExecutableEffects += 1;
+
+    if (shardDirectory) {
+      const original = originalDescriptions.get(Number(skill.id));
+      if (!description.localized) {
+        gaps.push({ code: 'ORIGINAL_DESCRIPTION_UNRESOLVED', heroId: String(hero.id), heroName: hero.name,
+          skillId: String(skill.id), skillName: skill.name,
+          reason: original ? 'language key not present in the supplied TextAsset' : 'no same-ID row in the supplied shards' });
+      }
+      if (original) {
+        const stored = skill.implementation?.abilityDes;
+        const fields = ['tid', 'text', 'detail_text', 'show_name', 'skill_icon', 'type_des']
+          .filter(field => stored?.[field] !== original.row[field])
+          .map(field => ({ field, catalog: stored?.[field] ?? null, original: original.row[field] ?? null }));
+        if (fields.length) catalogMetadataDifferences.push({ heroId: String(hero.id), skillId: String(skill.id), file: original.file, fields });
+      }
+    }
 
     const descriptionConflict = descriptionConflictCode(hero, skill, description);
     if (descriptionConflict === 'DESCRIPTION_SOURCE_MISMATCH') {
@@ -331,19 +418,20 @@ for (const hero of database.heroes) {
     const localizedName = nameFor(skill);
     // Without a resolved AbilityDes text, show_name can be a cloned template
     // field and cannot independently prove the visible skill name wrong.
-    if (description.source === 'abilityDes.text'
+    if ((description.localized || shardDirectory)
       && localizedName && localizedName !== skill.name) {
       const group = localDescriptionGroups.get(String(hero.id))?.get(
-        String(skill.implementation.abilityDes.text)
+        String(description.textId)
       );
       if (!group || group.length <= 1) {
         summary.nameSourceMismatches += 1;
         const mismatch = {
-          code: 'NAME_MAPPING_UNVERIFIED',
+          code: shardDirectory ? 'NAME_SOURCE_MISMATCH' : 'NAME_MAPPING_UNVERIFIED',
           heroId: String(hero.id), heroName: hero.name,
           skillId: String(skill.id), skillName: skill.name,
           localizedName,
-          reason: `AbilityDes.show_name resolves to ${localizedName}, while the localized description matches the stored catalog text; name mapping remains unverified`,
+          reason: shardDirectory ? `same-ID original show_name resolves to ${localizedName}`
+            : `catalog AbilityDes.show_name resolves to ${localizedName}; name mapping remains unverified`,
         };
         gaps.push(mismatch);
         nameSourceMismatchEntries.push(mismatch);
@@ -487,7 +575,9 @@ for (const hero of database.heroes) {
       descriptions: [],
       descriptionSources: [],
       ability: skill.implementation?.ability ?? null,
-      abilityDes: skill.implementation?.abilityDes ?? null,
+      abilityDes: abilityDesFor(skill) ?? null,
+      ...(shardDirectory ? { abilityDesShard: originalDescriptions.get(Number(skill.id))?.file ?? null } : {}),
+      ...(description.features ? { abilityDesFeatures: description.features } : {}),
       catalogEffectTypes: [],
       runtimeEffectTypes: [],
       runtimeTriggerTypes: [],
@@ -701,22 +791,142 @@ summary.crossHeroUltimateDescriptionReuses = crossHeroUltimateDescriptionReuses.
 summary.issueCodes = Object.fromEntries([...new Set(issues.map(item => item.code))].sort().map(code =>
   [code, issues.filter(item => item.code === code).length]));
 
+function auditNpcEncounters(heroTables, types) {
+  const sections = readMissionTables().sections;
+  const { Fight, Team, Fighter } = readJourneyFightTables();
+  const attributeTables = readAttributeTables();
+  function inspectSide(fightTid, side) {
+    const resolved = resolveFightTeam({
+      fight: Fight.get(fightTid), side, teams: Team, fighters: Fighter, npcTable: heroTables.Npc,
+      npcAttrs: attributeTables.NpcAttr, ratios: attributeTables.NpcAttrRatio, attributeTables,
+    });
+    return {
+      resolved: resolved.resolved, reason: resolved.reason,
+      teams: resolved.teams.map(team => ({ teamTid: team.teamTid, slots: team.entries.map(entry => {
+        const raw = heroTables.Npc_Ability.get(entry.npcTid)?.ability ?? [];
+        const addAb = entry.fighter?.add_ab ?? [];
+        const ability = [...raw, ...addAb];
+        return {
+          npcTid: entry.npcTid, fighterTid: entry.fighterTid, loc: entry.loc, raw, addAb,
+          normal: ability.find(id => types.get(id)?.type === 1) ?? null,
+          ordinary: ability.find(id => types.get(id)?.type === 2 && !isTianjiAbility(id)) ?? null,
+          missingNpc: !heroTables.Npc.has(entry.npcTid), unknownTypes: ability.filter(id => !types.has(id)),
+        };
+      }) })),
+    };
+  }
+  const singleTeam = { sections: 0, slots: 0, slotsWithoutNormal: 0, slotsWithoutOrdinary: 0, gaps: [] };
+  const journey = { sections: sections.size, noFight: [], unresolved: [], multiTeam: [], singleTeam };
+  for (const [sectionTid, section] of sections) {
+    const fightTid = Number(section.fight);
+    if (fightTid === 0) {
+      journey.noFight.push(sectionTid);
+      continue;
+    }
+    const { resolved, reason, teams } = inspectSide(fightTid, 'def');
+    if (!resolved) {
+      journey.unresolved.push({ sectionTid, fightTid, reason });
+    } else if (teams.length !== 1) {
+      journey.multiTeam.push({ sectionTid, fightTid, teamTids: teams.map(team => team.teamTid) });
+    } else {
+      singleTeam.sections++;
+      for (const slot of teams[0].slots) {
+        singleTeam.slots++;
+        if (slot.normal === null) singleTeam.slotsWithoutNormal++;
+        if (slot.ordinary === null) singleTeam.slotsWithoutOrdinary++;
+        if (slot.normal === null || slot.ordinary === null || slot.missingNpc || slot.unknownTypes.length) {
+          singleTeam.gaps.push({ sectionTid, fightTid, ...slot });
+        }
+      }
+    }
+  }
+  const guideFightTids = new Set([...readGuideTables().Step.values()]
+    .filter(step => ['GuideDemoFightStep', 'GuideIblisTimelineStep'].includes(step?.step_module?.reference))
+    .map(step => Number(step.ref_int_param)));
+  const guide = [...guideFightTids].sort((left, right) => left - right)
+    .map(fightTid => ({ fightTid, attackers: inspectSide(fightTid, 'atk'), defenders: inspectSide(fightTid, 'def') }));
+  return { scope: 'static normal Journey defender and referenced guide-demo teams; dynamic encounters and effects not covered', journey, guide };
+}
+
+function auditProductionSlots() {
+  const heroTables = readHeroTables();
+  const describe = (id, skills) => {
+    if (id == null) return { id: null, status: 'no-original-action' };
+    const definition = skills.find(skill => Number(skill.id) === id && skill.status !== 'MetadataOnly');
+    const original = originalDescriptions.get(id);
+    return {
+      id, status: definition ? 'same-id-definition' : 'compatibility-only',
+      original: original ? { shard: original.file, name: nameFor({ id }), ...descriptionFor({ id }) } : null,
+    };
+  };
+  const players = [...heroTables.Ability.keys()].map(tid => {
+    const { quality, nick_name: nicknameKey, title_name: titleKey } = heroTables.Hero.get(tid);
+    const loadout = buildHeroSkillLoadout({ hero: { tid, quality, star: 0 }, heroTables, skillDatabase: database });
+    const ids = selectFightActionIds(loadout.abilityIds);
+    return {
+      tid, name: database.heroes.find(hero => Number(hero.id) === tid)?.name
+        ?? language.get(String(nicknameKey)) ?? language.get(String(titleKey)) ?? null,
+      normal: describe(ids.abilityId, loadout.skills), ordinary: describe(ids.activeAbilityId, loadout.skills),
+      warnings: loadout.warnings,
+    };
+  });
+  const countByStatus = slot => Object.fromEntries(['same-id-definition', 'compatibility-only', 'no-original-action']
+    .map(status => [status, players.filter(player => player[slot].status === status).length]));
+  const types = readFightAbilityTypes();
+  const npcRows = [...heroTables.Npc_Ability].map(([tid, { ability }]) => ({
+    tid, ability, normal: ability.find(id => types.get(id)?.type === 1) ?? null,
+    ordinary: ability.find(id => types.get(id)?.type === 2 && !isTianjiAbility(id)) ?? null,
+    unknownTypes: ability.filter(id => !types.has(id)),
+  }));
+  const tri = readTriMatchTables();
+  const triPlayers = [...tri.heroStarByHero.values()].flat()
+    .map(row => ({ tid: row.tid, hero: row.hero, star: row.star, ...selectTriMatchActionIds(tri, row.ability) }));
+  const triNpcs = [...tri.fightNpcAbilities.values()].map(row => ({ tid: row.tid, ...selectTriMatchActionIds(tri, row.ability) }));
+  const triActionIds = new Set([...triPlayers, ...triNpcs].flatMap(row => [row.abilityId, row.activeAbilityId]));
+  const triActions = [...triActionIds].sort((left, right) => left - right).map(id => {
+    const row = tri.fightAbilities.get(id);
+    return { id, type: row.type, textId: row.text, description: normalizeText(language.get(String(row.text))) || null };
+  });
+  return {
+    scope: 'base quality and star 0; definitions are not proof of complete runtime effects',
+    summary: { heroes: players.length, normal: countByStatus('normal'), ordinary: countByStatus('ordinary') },
+    players,
+    npc: {
+      scope: 'raw Npc_Ability references before Fighter.add_ab and encounter selection; no player effects inferred',
+      withoutNormal: npcRows.filter(row => row.normal === null).length, rows: npcRows,
+      encounters: auditNpcEncounters(heroTables, types),
+    },
+    triMatch: { scope: 'independent action IDs and localized text only, not damage or passive effects', players: triPlayers, npcs: triNpcs, actions: triActions },
+  };
+}
+
+const productionSlots = shardDirectory ? auditProductionSlots() : null;
 const report = {
   generatedAt: new Date().toISOString(),
   inputs: {
     database: path.relative(projectRoot, databasePath),
     language: languagePath ? path.relative(projectRoot, languagePath) : null,
+    languageSha256,
+    descriptionAuthority: shardDirectory ? 'same-ID original shards' : 'catalog metadata (not independently verified)',
+    ...(shardDirectory ? {
+      originalAbilityDescriptions: {
+        directory: path.relative(projectRoot, shardDirectory), rows: originalDescriptions.size, files: shardFiles,
+      },
+      originalAbilityBuffDescriptions: featureSource,
+    } : {}),
   },
   summary,
   issues,
   ambiguousAbilityDescriptions: ambiguousDescriptionEntries,
   nameSourceMismatches: nameSourceMismatchEntries,
+  ...(shardDirectory ? { catalogMetadataDifferences } : {}),
   crossHeroUltimateDescriptionReuses,
   evidenceGaps: gaps,
   skillMatrix,
+  ...(productionSlots ? { productionSlots } : {}),
 };
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, JSON.stringify(report, null, 2) + '\n', 'utf8');
-console.log(JSON.stringify({ output: outputPath, summary }, null, 2));
+console.log(JSON.stringify({ output: outputPath, summary, ...(productionSlots ? { productionSlots: productionSlots.summary } : {}) }, null, 2));
 
 if (process.argv.includes('--fail-on-errors') && issues.length) process.exitCode = 1;

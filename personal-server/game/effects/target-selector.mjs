@@ -3,6 +3,7 @@
  */
 
 import { TARGET_TYPES } from './effect-types.mjs';
+import { effectiveAttack } from './effect-executor.mjs';
 
 export class TargetSelector {
   constructor(state = {}) {
@@ -40,6 +41,17 @@ export class TargetSelector {
       case TARGET_TYPES.BACK_ROW:
         return this.selectBackRow(actor, allUnits);
 
+      case TARGET_TYPES.BACK_ROW_ALLIES:
+        return this.getAllies(actor, allUnits).filter(unit => unit.loc >= 4 && unit.loc <= 6)
+          .sort((left, right) => left.loc - right.loc);
+
+      case TARGET_TYPES.ACTION_ENEMIES: {
+        const action = state?.actionContext;
+        if (action?.actorId !== actor.id || !Array.isArray(action.targetIds)) return [];
+        const targets = new Set(action.targetIds);
+        return this.getEnemies(actor, allUnits).filter(unit => targets.has(unit.id));
+      }
+
       case TARGET_TYPES.ALL_ENEMIES:
         return this.selectAllEnemies(actor, allUnits);
 
@@ -63,6 +75,11 @@ export class TargetSelector {
 
       case TARGET_TYPES.HIGHEST_HP_ALLY:
         return this.selectHighestHPAlly(actor, allUnits);
+
+      case TARGET_TYPES.HIGHEST_ATTACK_ALLY:
+        return this.getAllies(actor, allUnits)
+          .sort((left, right) => effectiveAttack(right) - effectiveAttack(left) || left.loc - right.loc || left.id - right.id)
+          .slice(0, 1);
 
       case TARGET_TYPES.RANDOM:
         return this.selectRandomEnemy(actor, allUnits);

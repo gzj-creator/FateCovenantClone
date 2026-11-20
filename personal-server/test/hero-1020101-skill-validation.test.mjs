@@ -7,10 +7,14 @@ import { TARGET_TYPES, TRIGGER_TYPES } from '../game/effects/effect-types.mjs';
 
 const HERO_ID = 1020101;
 
-test('hero 1020101 has 14 catalog skills', () => {
+test('hero 1020101 exposes its two ordinary healing tiers separately from mastery', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  assert.equal(skills.length, 14);
+  for (const [id, multiplier] of [['2102010112', 1.5], ['2102010113', 1.66]]) {
+    const skill = skills.find(skill => skill.id === id);
+    assert.equal(skill?.type, 'Ultimate');
+    assert.equal(skillToEffects(skill, db)[0].effect.multiplier, multiplier);
+  }
 });
 
 test('all 1020101 skills have implementation with effects or triggers', () => {
@@ -152,7 +156,7 @@ test('heal/shield/energy magnitudes are reasonable (non-zero, not extreme)', () 
   for (const s of skills) {
     const effects = skillToEffects(s, db);
     for (const e of effects) {
-      if (e.effect.type === 'heal' && e.effect.multiplier != null) {
+      if (s.type !== 'Ultimate' && e.effect.type === 'heal' && e.effect.multiplier != null) {
         assert.ok(e.effect.multiplier > 0 && e.effect.multiplier <= 1, `heal multiplier out of range: ${s.id}`);
       }
       if (e.effect.type === 'shield' && e.effect.multiplier != null) {

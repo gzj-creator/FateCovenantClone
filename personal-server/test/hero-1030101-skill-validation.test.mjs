@@ -7,7 +7,7 @@ const HERO_ID = 1030101;
 const EXPECTED_IDS = [
   'normal-profession-4', '313010171', '313010172', '313010173', '313010174', '313010175',
   '120001027', '120000051', '120000054', '120000055', '120000059', '120001003', '120001019',
-  '6103010109', '6910001003',
+  '2103010113', '6103010109', '6910001003',
 ].sort();
 
 const db = loadSkillDatabase();
@@ -16,8 +16,8 @@ const skill = skillFinder(skills);
 const hero = (over = {}) => makeUnit({ id: HERO_ID, hp: 720, maxHp: 720, attack: 85, defense: 70, ...over });
 const enemy = (over = {}) => makeUnit({ id: 900, team: 2, hp: 1000, maxHp: 1000, attack: 100, defense: 50, ...over });
 
-test('1030101 露奈尔 加载全部 15 个技能', () => {
-  assert.equal(skills.length, 15);
+test('1030101 露奈尔 加载 16 个目录技能', () => {
+  assert.equal(skills.length, 16);
   assert.deepEqual(skills.map((s) => s.id).sort(), EXPECTED_IDS);
   assertAllSkillsExecutable(skills);
 });

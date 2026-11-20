@@ -5,6 +5,7 @@
 import { DAMAGE_TYPES, HEAL_TYPES, SHIELD_TYPES, STAT_TYPES, ENERGY_TYPES, STATUS_TYPES } from './effect-types.mjs';
 import {
   absorbDamage,
+  addShield,
   capDamage,
   destroyShield,
   drainTianji,
@@ -17,6 +18,7 @@ const BUFF_STAT_TYPES = new Set([
   STAT_TYPES.ATTACK_PERCENT,
   STAT_TYPES.DEFENSE_FLAT,
   STAT_TYPES.DEFENSE_PERCENT,
+  STAT_TYPES.DEFENSE_TRANSFER,
   STAT_TYPES.SPEED_FLAT,
   STAT_TYPES.SPEED_PERCENT,
   STAT_TYPES.CRIT_RATE,
@@ -136,7 +138,8 @@ export function effectiveAttack(unit) {
 export function effectiveDefense(unit) {
   const flat = statTotal(unit, STAT_TYPES.DEFENSE_FLAT);
   const percent = Math.max(-1, statTotal(unit, STAT_TYPES.DEFENSE_PERCENT));
-  return Math.max(0, (finiteNumber(unit?.defense) + flat) * (1 + percent));
+  const transferred = statTotal(unit, STAT_TYPES.DEFENSE_TRANSFER);
+  return Math.max(0, (finiteNumber(unit?.defense) + flat) * (1 + percent) + transferred);
 }
 
 export function effectiveSpeed(unit) {
@@ -150,19 +153,21 @@ export function effectiveMaxHp(unit) {
   return Math.max(1, finiteNumber(unit?.maxHp, 1) * (1 + percent));
 }
 
-export function effectiveCritChance(attacker, defender = null, actionType = null) {
+export function effectiveCritChance(attacker, defender = null, actionType = null, hitBonus = 0) {
   const resistance = defender
     ? statTotal(defender, STAT_TYPES.ANTI_CRIT)
       + statTotal(defender, STAT_TYPES.CRIT_RESIST)
       + statTotal(defender, STAT_TYPES.CRIT_RESISTANCE)
     : 0;
-  const chance = finiteNumber(attacker?.critChance) + statTotal(attacker, STAT_TYPES.CRIT_RATE, actionType) - resistance;
+  const chance = finiteNumber(attacker?.critChance) + statTotal(attacker, STAT_TYPES.CRIT_RATE, actionType)
+    + finiteNumber(hitBonus) - resistance;
   return Math.max(0, Math.min(1, chance));
 }
 
-export function effectiveCritMultiplier(attacker, defender = null) {
+export function effectiveCritMultiplier(attacker, defender = null, actionType = null) {
   const reduction = defender ? statTotal(defender, STAT_TYPES.CRIT_DAMAGE_REDUCTION) : 0;
-  return Math.max(1, finiteNumber(attacker?.critMultiplier, 1.5) + statTotal(attacker, STAT_TYPES.CRIT_DAMAGE) - reduction);
+  return Math.max(1, finiteNumber(attacker?.critMultiplier, 1.5)
+    + statTotal(attacker, STAT_TYPES.CRIT_DAMAGE, actionType) - reduction);
 }
 
 export function effectiveDamageBonus(unit, actionType = null) {
@@ -325,7 +330,7 @@ export class EffectExecutor {
 
     // Calculate base damage
     let baseDamage = effect.magnitude || 0;
-    if (effect.damageType === 'percent-max-hp') {
+    if (effect.damageType === 'percent-max-hp' || effect.damageBasis === 'target-max-hp') {
       baseDamage = effectiveMaxHp(target) * (effect.magnitude || 0);
     } else if (effect.damageType === 'percent-current-hp') {
       baseDamage = (target.hp || 0) * (effect.magnitude || 0);
@@ -336,6 +341,9 @@ export class EffectExecutor {
       baseDamage = effectiveMaxHp(actor) * (effect.magnitude || 0);
     } else if (effect.damageBasis === 'actor-current-hp') {
       baseDamage = (actor.hp || 0) * (effect.magnitude || 0);
+    } else if (effect.damageBasis === 'actor-defense') {
+      baseDamage = effectiveDefense(actor) * (effect.magnitude || 0);
+      if (!(baseDamage > 0)) return null;
     } else if (effect.multiplier) {
       baseDamage = effectiveAttack(actor) * effect.multiplier;
     }
@@ -366,13 +374,13 @@ export class EffectExecutor {
     // Check crit
     const canCrit = effect.canCrit !== false && !isTrueDamage;
     const actionType = actionScopedType(this.state);
-    const critChance = effectiveCritChance(actor, target, actionType);
+    const critChance = effectiveCritChance(actor, target, actionType, effect.critRateBonus);
     const isCrit = canCrit && this.random() < critChance;
-    const critMultiplier = isCrit ? (effect.critMultiplier || effectiveCritMultiplier(actor, target)) : 1.0;
+    const critMultiplier = isCrit ? (effect.critMultiplier || effectiveCritMultiplier(actor, target, actionType)) : 1.0;
 
     let finalDamage = Math.max(1, Math.floor(
       baseDamage
-      * (1 + effectiveDamageBonus(actor, actionType))
+      * (1 + effectiveDamageBonus(actor, actionType) + finiteNumber(effect.finalDamageBonus))
       * critMultiplier
     ));
     const damageReduction = effectiveDamageReduction(target);
@@ -467,12 +475,17 @@ export class EffectExecutor {
     } else if (effect.healType === HEAL_TYPES.PERCENT_MISSING_HP) {
       baseHeal = (target.maxHp - target.hp) * (effect.multiplier || 1);
     } else if (effect.healType === HEAL_TYPES.PERCENT_DAMAGE_DEALT) {
-      baseHeal = (this.state.actionContext?.damage?.get(actor.id)?.hpDamage ?? 0) * (effect.multiplier ?? 1);
+      const damage = effect.scopedHpDamage ?? this.state.actionContext?.damage?.get(actor.id)?.hpDamage ?? 0;
+      baseHeal = damage * (effect.multiplier ?? 1);
     }
 
     // Apply conditional bonus
     if (effect.conditionalHeal) {
       baseHeal += effect.conditionalHeal(actor, target, this.state);
+    }
+    const lowHpBonus = effect.lowHpBonus;
+    if (lowHpBonus && target.hp < effectiveMaxHp(target) * finiteNumber(lowHpBonus.threshold)) {
+      baseHeal *= 1 + finiteNumber(lowHpBonus.magnitude);
     }
 
     const campMultiplier = targetCampMultiplier(effect, target);
@@ -534,7 +547,11 @@ export class EffectExecutor {
 
     // Apply to target
     const oldShield = target.shield || 0;
-    target.shield = oldShield + shieldAmount;
+    const duration = normalizeDuration(effect);
+    const round = currentRound(this.state);
+    const expiresAfterRound = effect.expiresWithDuration && duration.durationType === 'timed' && round !== null
+      ? round + duration.remainingRounds : null;
+    addShield(target, shieldAmount, expiresAfterRound);
 
     return {
       type: 'shield',
@@ -620,6 +637,23 @@ export class EffectExecutor {
         && (!effect.sourceSkill || !item.sourceSkill || item.sourceSkill === effect.sourceSkill))?.stacks,
       appliedRound: currentRound(this.state),
     };
+  }
+
+  executeDefenseTransfer(effect, actor, targets) {
+    if (!actor.alive) return [];
+    const cap = effectiveDefense(actor) * effect.casterCap;
+    const modifier = { ...effect, statType: STAT_TYPES.DEFENSE_TRANSFER };
+    const results = [];
+    let total = 0;
+    for (const target of targets) {
+      if (!target.alive) continue;
+      const amount = Math.min(cap, effectiveDefense(target) * effect.multiplier);
+      if (!(amount > 0)) continue;
+      results.push(this.executeStatModifier({ ...modifier, magnitude: -amount }, actor, target));
+      total += amount;
+    }
+    if (total > 0) results.push(this.executeStatModifier({ ...modifier, magnitude: total }, actor, actor));
+    return results;
   }
 
   /**

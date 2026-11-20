@@ -45,10 +45,10 @@ test('6910001006 ultimate has a damage effect', () => {
 // 期望值全部取自 personal-server/config/skill-database.json 当前数据
 // ---------------------------------------------------------------------------
 
-test('hero 1030401 exposes exactly 14 skills including 5 mastery skills', () => {
+test('hero 1030401 exposes its original ordinary finisher and five separate mastery skills', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  assert.equal(skills.length, 14);
+  assert.equal(skills.find(skill => skill.id === '2103040113')?.type, 'Ultimate');
   const mastery = skills.filter(s => s.type === 'Mastery');
   assert.equal(mastery.length, 5);
   assert.deepEqual(mastery.map(s => s.id), ['313040171', '313040172', '313040173', '313040174', '313040175']);

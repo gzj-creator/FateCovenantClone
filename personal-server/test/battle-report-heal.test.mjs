@@ -107,6 +107,7 @@ test('the production report now carries the life-steal recover prompt', t => {
     const lineupHeroes = new Set([2010101, 2010201]);
     for (const hero of model.heroInfo.hero_list) {
       if (lineupHeroes.has(Number(hero.tid))) hero.star = 10;
+      if (Number(hero.tid) === 2010201) hero.breakthrough_level = 1;
     }
   });
   const service = createMissionFightService({ store: fixture.store, codec, playbackEnabled: true, now: () => 1700000000 * 1000 });

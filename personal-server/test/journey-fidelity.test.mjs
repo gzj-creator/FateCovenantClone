@@ -4,7 +4,9 @@ import { createGameCodec, rawBinary } from '../protocol/game-codec.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { readGameTables } from '../config/game-tables.mjs';
 import { readGuideAwards } from '../config/guide-awards.mjs';
+import { readHeroTables } from '../config/hero-tables.mjs';
 import { createGuideService, saveGuideProcesses } from '../game/guide-service.mjs';
+import { createHeroProgression } from '../game/hero-progression.mjs';
 import { createLineupService } from '../game/lineup-service.mjs';
 import { createMissionFightService, reportBattle } from '../game/mission-fight-service.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
@@ -50,7 +52,7 @@ test('Michelle and 2-1 use original NPC identities and fixed templates across pl
   assert.notEqual(other.atk_power, original.atk_power);
 });
 
-test('fresh save grants the first hero, clears Michelle, survives a 2-1 loss, then earns the second hero after 2-1', async t => {
+test('fresh save clears Michelle, survives a 2-1 loss, then earns the second hero after normal progression', async t => {
   const fixture = createGameFixture(t, codec, {
     prefix: 'fc-journey-fidelity-', now,
     seed: { freshAccount: true, createdAt: now() / 1000 }
@@ -122,6 +124,15 @@ test('fresh save grants the first hero, clears Michelle, survives a 2-1 loss, th
   assert.equal(mission(store).mission_id, '10206');
   assert.equal(claimCount('guide_award'), 1);
   assert.equal(store.read().playLineups.find(row => row.type === 1).team_list[0].fighter_list.length, 3);
+  assert.deepEqual(store.read().heroInfo.hero_list.map(hero => Number(hero.level)), [1, 1, 1]);
+  const experienceBefore = BigInt(store.read().resources.get('101800').num);
+  const progression = createHeroProgression({ store, codec, tables: readHeroTables() });
+  const upgrade = progression.execute(636, { hero_uid: '1020601', cell_index: 3, up_lv_count: 2 });
+  const upgraded = codec.unpack('pb_hero_up_lv_ret', upgrade.data);
+  assert.equal(Number(upgraded.new_lv), 3);
+  assert.equal(BigInt(store.read().resources.get('101800').num), experienceBefore - 260n);
+  reopen();
+  assert.equal(Number(store.read().heroInfo.hero_list.find(hero => String(hero.tid) === '1020601').level), 3);
   const win = start(20201);
   assert.equal(win.tid, '201');
   assert.equal(win.final_result, 1);
@@ -132,7 +143,7 @@ test('fresh save grants the first hero, clears Michelle, survives a 2-1 loss, th
   assign(2020601, 4, 5);
   reopen();
   assert.deepEqual(store.read().heroInfo.hero_list.map(hero => [Number(hero.tid), Number(hero.level), Number(hero.count)]), [
-    [2010101, 1, 1], [2010201, 1, 1], [1020601, 1, 1], [2020601, 1, 1]
+    [2010101, 1, 1], [2010201, 1, 1], [1020601, 3, 1], [2020601, 1, 1]
   ]);
   assert.equal(Buffer.from(guide(store).award, 'base64')[0], 0x60);
   assert.equal(claimCount('guide_award'), 2);

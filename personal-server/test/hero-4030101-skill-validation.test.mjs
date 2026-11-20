@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
 import { EffectExecutor } from '../game/effects/effect-executor.mjs';
+import { FIGHT_ENERGY_MAX, simulateBattle } from '../game/battle-engine.mjs';
 
 const HERO_ID = 4030101;
 
@@ -9,7 +10,9 @@ test('hero 4030101 skills are loaded from skill database', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   assert.ok(Array.isArray(skills) && skills.length > 0, 'skills should load');
-  assert.equal(skills.length, 14, 'expected 14 skills for 梦语');
+  assert.equal(skills.length, 15, '14 existing catalog rows and the original ordinary action');
+  assert.deepEqual(skills.filter(skill => skill.implementation.ability?.type === 2).map(skill => Number(skill.id)),
+    [2403010113]);
 });
 
 test('passive triggers count is at least 10', () => {
@@ -74,16 +77,23 @@ test('扶危定乱 (343010174) registers on-attack/on-skill-use dispel debuff', 
   }
 });
 
-test('星爆陨灭 (343010175) grants self crit-rate 0.10 and crit-damage 0.15', () => {
+test('预言梦境 (343010175) grants all allies 10% critical damage reduction for two rounds', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '343010175');
-  assert.equal(skill.implementation.triggers.length, 2);
-  const byStat = Object.fromEntries(skill.implementation.triggers.map(trig =>
-    [trig.effect.effect.statType, trig.effect.effect.magnitude]));
-  assert.deepEqual(byStat, { 'crit-rate': 0.1, 'crit-damage': 0.15 });
-  assert.ok(skill.implementation.triggers.every(trig =>
-    trig.triggerType === 'on-ultimate-use' && trig.effect.target.targetType === 'self'));
+  const skill = skills.find(entry => entry.id === '343010175');
+  const battle = simulateBattle({
+    attackers: [{ id: 101, loc: 1, maxHp: 10000, attack: 100, speed: 100, initialEnergy: FIGHT_ENERGY_MAX,
+      abilityId: 1403010101, activeAbilityId: 2403010113, skills: [skill] },
+    { id: 102, loc: 2, maxHp: 10000, attack: 1, speed: 2, skills: [] },
+    { id: 103, loc: 6, maxHp: 10000, attack: 1, speed: 2, skills: [] }],
+    defenders: [{ id: 201, loc: 6, maxHp: 100000, attack: 1, speed: 1, skills: [] }],
+    maxRounds: 1,
+  });
+  const changes = battle.events.filter(event => event.type === 'stat-modifier' && event.actor === 101)
+    .map(({ target, statType, magnitude, duration }) => ({ target, statType, magnitude, rounds: duration.rounds }));
+  assert.deepEqual(changes, [101, 102, 103].map(target => ({ target, statType: 'crit-damage-reduction', magnitude: 0.1, rounds: 2 })));
+  assert.equal(skill.name, '预言梦境');
+  assert.equal(skill.implementation.abilityDes.text, 604400205);
 });
 
 test('突破6 (120001028) grants 50 energy on attack/skill', () => {
@@ -206,7 +216,7 @@ test('stat modifier effect is executable', () => {
   assert.equal(result.type, 'stat-modifier');
 });
 const EXPECTED_SKILL_IDS = [
-  'normal-profession-3', '343010171', '343010172', '343010173', '343010174', '343010175',
+  '2403010113', 'normal-profession-3', '343010171', '343010172', '343010173', '343010174', '343010175',
   '120001028', '120000032', '120000034', '120000037', '120000042', '120000044', '120001003', '6910001043'
 ];
 

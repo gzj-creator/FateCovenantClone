@@ -540,7 +540,7 @@ export function buildLineupAttrInfo({
 function heroStateKey(hero) {
   return [
     hero?.uid, hero?.tid, hero?.level, hero?.star, hero?.star_progress, hero?.breakthrough_level,
-    hero?.quality, hero?.rare, hero?.mastery_level, hero?.mastery_break
+    hero?.quality, hero?.rare, hero?.diff, hero?.mutant, hero?.mastery_level, hero?.mastery_break
   ].map(value => value ?? '').join(':');
 }
 

@@ -1,6 +1,6 @@
 import { GameError } from './hero-progression.mjs';
 import { assembleLineup, combatCriticalStats, powerFromStats } from './attribute-service.mjs';
-import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
+import { buildHeroSkillLoadout, selectFightActionIds } from './hero-skill-loadout.mjs';
 import { readAttributeTables } from '../config/attribute-tables.mjs';
 import { readHeroTables } from '../config/hero-tables.mjs';
 import { BATTLE_RESULT, FIGHT_ATTR, FIGHT_ENERGY_MAX, FIGHT_INITIAL_ENERGY, simulateBattle } from './battle-engine.mjs';
@@ -59,11 +59,6 @@ function defenseChannel(stats) {
   return Math.max(0, Math.round((Number(stats.physicalDefense ?? 0) + Number(stats.magicDefense ?? 0)) / 2));
 }
 
-function activeAbilityId(abilities) {
-  const values = abilities.map(Number);
-  return values.find(id => String(id).startsWith('2')) ?? values[0] ?? 1;
-}
-
 function initialFightAttributes(initialEnergy) {
   return [
     { type: FIGHT_ATTR.ANGER, value: initialEnergy },
@@ -73,7 +68,8 @@ function initialFightAttributes(initialEnergy) {
 
 function fightersOf(entries, { team, teamIndex, idBase, heroTables }) {
   return entries.map((entry, index) => {
-    const abilities = buildHeroSkillLoadout({ hero: entry.hero, heroTables })?.abilityIds ?? [];
+    const loadout = buildHeroSkillLoadout({ hero: entry.hero, heroTables });
+    const abilities = loadout.abilityIds;
     const maxHp = Math.max(1, Math.round(Number(entry.stats.hp ?? 1)));
     const combat = {
       attack: Math.max(1, Math.round(Number(entry.stats.attack ?? 1))),
@@ -93,6 +89,8 @@ function fightersOf(entries, { team, teamIndex, idBase, heroTables }) {
       star: Number(entry.star ?? 0),
       level: Number(entry.level ?? 1),
       quality: Number(entry.quality ?? 1),
+      is_mutant: loadout.isMutant,
+      hero_diff: String(entry.hero.diff ?? 0),
       hp: maxHp,
       max_hp: maxHp,
       enable: true,
@@ -107,9 +105,8 @@ function fightersOf(entries, { team, teamIndex, idBase, heroTables }) {
       speed: combat.speed,
       ...combatCriticalStats(entry.stats),
       initialEnergy: FIGHT_INITIAL_ENERGY,
-      abilityId: abilities[0] ?? 1,
-      activeAbilityId: activeAbilityId(abilities),
-      skills: buildHeroSkillLoadout({ hero: entry.hero, heroTables })?.skills ?? []
+      ...selectFightActionIds(abilities),
+      skills: loadout.skills
     };
   });
 }
@@ -153,6 +150,7 @@ const combatUnit = unit => ({
   loc: unit.loc,
   abilityId: unit.abilityId,
   activeAbilityId: unit.activeAbilityId,
+  tianjiAbilityId: unit.tianjiAbilityId,
   maxHp: unit.max_hp,
   attack: unit.attack,
   defense: unit.defense,
@@ -182,7 +180,7 @@ export function simulatePvpBattle({ codec, attacker, defender, seedText, heroTab
   const brief = (team, members) => ({
     team_list: [{
       team_index: team,
-      fighter_list: members.map(unit => ({ tid: unit.role, is_mutant: false }))
+      fighter_list: members.map(unit => ({ tid: unit.role, is_mutant: Boolean(unit.is_mutant) }))
     }]
   });
   const rosterPower = roster => roster.entries.reduce((sum, entry) =>

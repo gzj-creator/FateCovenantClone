@@ -14,6 +14,66 @@
       },
       "skills": [
         {
+          "id": "2101010111",
+          "name": "无弦咏叹调",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体目标造成71%魔法伤害，并有50%概率降低目标150点能量值",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2101010111, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2101010111, "type_des": 3, "show_name": 602500652, "skill_icon": "Icon_Skill_LuKa_n1.png", "text": 601501020, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.71 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "energy", "energyType": "loss", "magnitude": 150 }, "chance": 0.5 }
+            ]
+          }
+        },
+        {
+          "id": "2101010112",
+          "name": "无弦咏叹调",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体目标造成75%魔法伤害，并有50%概率降低目标150点能量值",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2101010112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2101010112, "type_des": 3, "show_name": 602500653, "skill_icon": "Icon_Skill_LuKa_n1.png", "text": 601501021, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.75 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "energy", "energyType": "loss", "magnitude": 150 }, "chance": 0.5 }
+            ]
+          }
+        },
+        {
+          "id": "2101010113",
+          "name": "无弦咏叹调",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体目标造成83%魔法伤害，并有50%概率降低目标150点能量值",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2101010113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2101010113, "type_des": 3, "show_name": 602500654, "skill_icon": "Icon_Skill_LuKa_n1.png", "text": 601501022, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.83 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "energy", "energyType": "loss", "magnitude": 150 }, "chance": 0.5 }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
           "type": "Normal",
@@ -2395,6 +2455,44 @@
       },
       "skills": [
         {
+          "id": "2102010112",
+          "name": "生命之歌",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "治疗我方生命最低的目标，为其恢复施法者150%攻击力的生命值（不超过自身最大生命值的100%）；若目标生命值低于25%，则回复量提升25%",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102010112, "type": 2, "dmg_type": 2, "effect_type": 3, "run_type": 3 },
+            "abilityDes": { "tid": 2102010112, "type_des": 3, "show_name": 602500639, "skill_icon": "Icon_Skill_paer_n1.png", "text": 601501005, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "lowest-hp-ally" }, "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 1.5, "maxHealPercentActorMaxHp": 1, "lowHpBonus": { "threshold": 0.25, "magnitude": 0.25 } } }
+            ]
+          }
+        },
+        {
+          "id": "2102010113",
+          "name": "生命之歌",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "治疗我方生命最低的目标，为其恢复施法者166%攻击力的生命值（不超过自身最大生命值的110%）；若目标生命值低于25%，则回复量提升25%",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102010113, "type": 2, "dmg_type": 2, "effect_type": 3, "run_type": 3 },
+            "abilityDes": { "tid": 2102010113, "type_des": 3, "show_name": 602500640, "skill_icon": "Icon_Skill_paer_n1.png", "text": 601501006, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "lowest-hp-ally" }, "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 1.66, "maxHealPercentActorMaxHp": 1.1, "lowHpBonus": { "threshold": 0.25, "magnitude": 0.25 } } }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
           "type": "Normal",
@@ -3459,6 +3557,46 @@
       },
       "skills": [
         {
+          "id": "2102020112",
+          "name": "暗黑榴弹炮",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方后排目标造成114%物理伤害，并有75%概率降低目标250点能量",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102020112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102020112, "type_des": 3, "show_name": 602500643, "skill_icon": "Icon_Skill_YeGe_n1.png", "text": 601501009, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.14 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "energy", "energyType": "loss", "magnitude": 250 }, "chance": 0.75 }
+            ]
+          }
+        },
+        {
+          "id": "2102020113",
+          "name": "暗黑榴弹炮",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方后排目标造成127%物理伤害，并有75%概率降低目标250点能量",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102020113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102020113, "type_des": 3, "show_name": 602500644, "skill_icon": "Icon_Skill_YeGe_n1.png", "text": 601501010, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.27 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "energy", "energyType": "loss", "magnitude": 250 }, "chance": 0.75 }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-1",
           "name": "Warrior Basic Attack (攻击)",
           "type": "Normal",
@@ -3893,7 +4031,15 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 312020175,
+              "type_des": 9,
+              "show_name": 6503140,
+              "skill_icon": "mastery_skill_purple_03.png",
+              "text": 604400040,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "damage",
             "targetType": "single",
@@ -4665,9 +4811,9 @@
             "abilityDes": {
               "tid": 312030171,
               "type_des": 9,
-              "show_name": 6503136,
+              "show_name": 6503141,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400036,
+              "text": 604400041,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -4745,9 +4891,9 @@
             "abilityDes": {
               "tid": 312030172,
               "type_des": 9,
-              "show_name": 6503137,
+              "show_name": 6503142,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400037,
+              "text": 604400042,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -4825,9 +4971,9 @@
             "abilityDes": {
               "tid": 312030173,
               "type_des": 9,
-              "show_name": 6503138,
+              "show_name": 6503143,
               "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400038,
+              "text": 604400043,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -4929,11 +5075,11 @@
         },
         {
           "id": "312030174",
-          "name": "伺机待发",
+          "name": "恶性疗法",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
-          "description": "普攻/绝招后，自身下一次终结技伤害提升15%",
+          "description": "普攻/绝招后，30%概率给目标额外附加1层【中毒】，持续2回合",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
             "resolvedAbility": true,
@@ -4948,9 +5094,101 @@
             "abilityDes": {
               "tid": 312030174,
               "type_des": 9,
-              "show_name": 6503139,
+              "show_name": 6503144,
               "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400039,
+              "text": 604400044,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": true,
+            "effectType": "status",
+            "targetType": "action-enemies",
+            "energyCost": 0,
+            "effects": [
+              {
+                "target": {
+                  "targetType": "action-enemies"
+                },
+                "effect": {
+                  "type": "status",
+                  "statusType": "poison",
+                  "stacks": 1,
+                  "maxStacks": 2
+                },
+                "duration": {
+                  "durationType": "timed",
+                  "rounds": 2
+                },
+                "chance": 0.3
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "on-attack",
+                "chance": 0.3,
+                "effect": {
+                  "target": {
+                    "targetType": "action-enemies"
+                  },
+                  "effect": {
+                    "type": "status",
+                    "statusType": "poison",
+                    "stacks": 1,
+                    "maxStacks": 2
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 2
+                  }
+                }
+              },
+              {
+                "triggerType": "on-ultimate-use",
+                "chance": 0.3,
+                "effect": {
+                  "target": {
+                    "targetType": "action-enemies"
+                  },
+                  "effect": {
+                    "type": "status",
+                    "statusType": "poison",
+                    "stacks": 1,
+                    "maxStacks": 2
+                  },
+                  "duration": {
+                    "durationType": "timed",
+                    "rounds": 2
+                  }
+                }
+              }
+            ],
+            "notes": "Original text 604400044 and Buff 11003: apply one poison layer to the action targets, up to two for this source. Poison tick damage and cross-source stack merging are unresolved.",
+            "requiresInvestigation": true
+          }
+        },
+        {
+          "id": "312030175",
+          "name": "恶意蔓延",
+          "type": "Mastery",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "释放终结技时，额外附加10%暴击率和15%暴击伤害",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": {
+              "tid": 312030175,
+              "type": 3,
+              "dmg_type": 9,
+              "effect_type": 0,
+              "run_type": 1
+            },
+            "abilityDes": {
+              "tid": 312030175,
+              "type_des": 9,
+              "show_name": 6503145,
+              "skill_icon": "mastery_skill_purple_03.png",
+              "text": 604400045,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -4964,155 +5202,86 @@
                 },
                 "effect": {
                   "type": "stat-modifier",
-                  "statType": "damage-bonus",
-                  "magnitude": 0.15,
-                  "isPercentage": true
+                  "statType": "crit-rate",
+                  "magnitude": 0.1,
+                  "isPercentage": true,
+                  "actionType": "ultimate"
                 },
                 "duration": {
-                  "durationType": "timed",
-                  "rounds": 1
+                  "durationType": "trigger-count",
+                  "triggers": 1,
+                  "trigger": "ultimate"
                 },
-                "chance": 1
-              }
-            ],
-            "triggers": [
-              {
-                "triggerType": "on-attack",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
-                "effect": {
-                  "target": {
-                    "targetType": "self"
-                  },
-                  "effect": {
-                    "type": "stat-modifier",
-                    "statType": "damage-bonus",
-                    "magnitude": 0.15,
-                    "isPercentage": true
-                  },
-                  "duration": {
-                    "durationType": "timed",
-                    "rounds": 1
-                  },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
+                "chance": 1,
+                "unique": true
               },
               {
-                "triggerType": "on-skill-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-damage",
+                  "magnitude": 0.15,
+                  "isPercentage": true,
+                  "actionType": "ultimate"
+                },
+                "duration": {
+                  "durationType": "trigger-count",
+                  "triggers": 1,
+                  "trigger": "ultimate"
+                },
+                "chance": 1,
+                "unique": true
+              }
+            ],
+            "triggers": [
+              {
+                "triggerType": "before-ultimate-use",
                 "effect": {
                   "target": {
                     "targetType": "self"
                   },
                   "effect": {
                     "type": "stat-modifier",
-                    "statType": "damage-bonus",
-                    "magnitude": 0.15,
-                    "isPercentage": true
+                    "statType": "crit-rate",
+                    "magnitude": 0.1,
+                    "isPercentage": true,
+                    "actionType": "ultimate"
                   },
                   "duration": {
-                    "durationType": "timed",
-                    "rounds": 1
+                    "durationType": "trigger-count",
+                    "triggers": 1,
+                    "trigger": "ultimate"
                   },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
-              }
-            ],
-            "notes": "Mastery: after normal/skill, next ultimate damage +15% (timed 1 round). Exact one-use consumption is not modelled; requires investigation.",
-            "requiresInvestigation": true
-          }
-        },
-        {
-          "id": "312030175",
-          "name": "蚀骨之痛",
-          "type": "Mastery",
-          "status": "Executable",
-          "category": "description-inferred",
-          "description": "释放终结技时，额外造成目标3%最大生命的伤害",
-          "implementation": {
-            "source": "FightTable.Ability + FightTable.AbilityDes",
-            "resolvedAbility": true,
-            "resolvedDescription": true,
-            "ability": {
-              "tid": 312030175,
-              "type": 3,
-              "dmg_type": 9,
-              "effect_type": 0,
-              "run_type": 1
-            },
-            "abilityDes": {
-              "tid": 312030175,
-              "type_des": 9,
-              "show_name": 6503140,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400040,
-              "detail_text": 0
-            },
-            "catalogTypeMatch": true,
-            "effectType": "damage",
-            "targetType": "single",
-            "energyCost": 0,
-            "effects": [
+                  "chance": 1,
+                  "unique": true
+                }
+              },
               {
-                "target": {
-                  "targetType": "single"
-                },
-                "effect": {
-                  "type": "damage",
-                  "damageType": "percent-max-hp",
-                  "magnitude": 0.03,
-                  "canCrit": false
-                },
-                "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
-                },
-                "chance": 1
-              }
-            ],
-            "triggers": [
-              {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
+                "triggerType": "before-ultimate-use",
                 "effect": {
                   "target": {
-                    "targetType": "single"
+                    "targetType": "self"
                   },
                   "effect": {
-                    "type": "damage",
-                    "damageType": "percent-max-hp",
-                    "magnitude": 0.03,
-                    "canCrit": false
+                    "type": "stat-modifier",
+                    "statType": "crit-damage",
+                    "magnitude": 0.15,
+                    "isPercentage": true,
+                    "actionType": "ultimate"
                   },
                   "duration": {
-                    "durationType": "instant",
-                    "rounds": 0
+                    "durationType": "trigger-count",
+                    "triggers": 1,
+                    "trigger": "ultimate"
                   },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
+                  "chance": 1,
+                  "unique": true
+                }
               }
             ],
-            "notes": "Mastery: on ultimate use, deal additional damage equal to 3% of the target maximum HP."
+            "notes": "Apply the same-ID critical modifiers to the current ordinary ultimate only."
           }
         },
         {
@@ -6965,6 +7134,48 @@
       },
       "skills": [
         {
+          "id": "2102050112",
+          "name": "怒火冲锋",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成114%的物理伤害，降低其3%的防御力（最大不超过自身防御力的6%），同时自身提升等额防御力，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102050112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102050112, "type_des": 3, "show_name": 602500647, "skill_icon": "Icon_Skill_KaXiuSi_n1.png", "text": 601501013, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effectType": "damage",
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "front-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.14 }, "duration": { "durationType": "instant", "rounds": 0 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "front-row" }, "effect": { "type": "defense-transfer", "multiplier": 0.03, "casterCap": 0.06 }, "duration": { "durationType": "timed", "rounds": 2 } }
+            ]
+          }
+        },
+        {
+          "id": "2102050113",
+          "name": "怒火冲锋",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成127%的物理伤害，降低其3%的防御力（最大不超过自身防御力的6%），同时自身提升等额防御力，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102050113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102050113, "type_des": 3, "show_name": 602500648, "skill_icon": "Icon_Skill_KaXiuSi_n1.png", "text": 601501014, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effectType": "damage",
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "front-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.27 }, "duration": { "durationType": "instant", "rounds": 0 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "front-row" }, "effect": { "type": "defense-transfer", "multiplier": 0.03, "casterCap": 0.06 }, "duration": { "durationType": "timed", "rounds": 2 } }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-4",
           "name": "Knight Basic Attack (防御)",
           "type": "Normal",
@@ -8117,6 +8328,52 @@
         "spd": 111
       },
       "skills": [
+        {
+          "id": "2102060112",
+          "name": "饮茶先啦",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成114%的物理伤害，并提升自身8%的伤害减免，持续2回合 【女仆特性】：进入战斗时，获取自身5%最大生命值的护盾，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102060112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102060112, "type_des": 3, "show_name": 602500658, "skill_icon": "Icon_Skill_GeLeiSi_n1.png", "text": 601501015, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "front-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.14, "canCrit": true, "variance": 1 } },
+              { "target": { "targetType": "self" }, "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": 0.08, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true, "includeInActionTargets": false }
+            ],
+            "triggers": [
+              { "triggerType": "on-battle-start", "oncePerBattle": true, "effect": { "target": { "targetType": "self" }, "effect": { "type": "shield", "shieldType": "percent-max-hp", "multiplier": 0.05, "expiresWithDuration": true }, "duration": { "durationType": "timed", "rounds": 2 } } }
+            ]
+          }
+        },
+        {
+          "id": "2102060113",
+          "name": "饮茶先啦",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成127%的物理伤害，并提升自身8%的伤害减免，持续2回合 【女仆特性】：进入战斗时，获取自身5%最大生命值的护盾，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2102060113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2102060113, "type_des": 3, "show_name": 602500659, "skill_icon": "Icon_Skill_GeLeiSi_n1.png", "text": 601501016, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "front-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.27, "canCrit": true, "variance": 1 } },
+              { "target": { "targetType": "self" }, "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": 0.08, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true, "includeInActionTargets": false }
+            ],
+            "triggers": [
+              { "triggerType": "on-battle-start", "oncePerBattle": true, "effect": { "target": { "targetType": "self" }, "effect": { "type": "shield", "shieldType": "percent-max-hp", "multiplier": 0.05, "expiresWithDuration": true }, "duration": { "durationType": "timed", "rounds": 2 } } }
+            ]
+          }
+        },
         {
           "id": "normal-profession-4",
           "name": "Knight Basic Attack (防御)",
@@ -10465,6 +10722,62 @@
           }
         },
         {
+          "id": "2103010113",
+          "name": "猩红领域",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成127%的魔法伤害，并额外造成防御力100%的真实伤害（不超过施法者最大生命值的15%）",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": {
+              "tid": 2103010113,
+              "type": 2,
+              "dmg_type": 2,
+              "effect_type": 1,
+              "run_type": 3
+            },
+            "abilityDes": {
+              "tid": 2103010113,
+              "type_des": 3,
+              "show_name": 602500664,
+              "skill_icon": "Icon_Skill_lunaier_n1.png",
+              "text": 601501000,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": true,
+            "effectType": "damage",
+            "targetType": "front-row",
+            "effects": [
+              {
+                "target": { "targetType": "front-row" },
+                "effect": { "type": "damage", "damageType": "magical", "multiplier": 1.27 },
+                "duration": { "durationType": "instant", "rounds": 0 },
+                "chance": 1
+              },
+              {
+                "target": { "targetType": "front-row" },
+                "effect": {
+                  "type": "damage",
+                  "damageType": "true",
+                  "damageBasis": "actor-defense",
+                  "magnitude": 1,
+                  "variance": 1,
+                  "canCrit": false,
+                  "damageCap": { "basis": "max-hp", "ratio": 0.15 }
+                },
+                "duration": { "durationType": "instant", "rounds": 0 },
+                "chance": 1
+              }
+            ],
+            "triggers": [],
+            "requiresInvestigation": true,
+            "notes": "Same-ID text 601501000 supports the front row, defense basis, and true-hit cap. Original empty-front targeting and full damage resolution remain unverified."
+          }
+        },
+        {
           "id": "6103010109",
           "name": "露奈尔_稀有技能",
           "type": "Ultimate",
@@ -10665,9 +10978,9 @@
             "abilityDes": {
               "tid": 313020171,
               "type_des": 9,
-              "show_name": 6503161,
+              "show_name": 6503111,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "text": 604400011,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -10744,9 +11057,9 @@
             "abilityDes": {
               "tid": 313020172,
               "type_des": 9,
-              "show_name": 6503162,
+              "show_name": 6503112,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400062,
+              "text": 604400012,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -10823,9 +11136,9 @@
             "abilityDes": {
               "tid": 313020173,
               "type_des": 9,
-              "show_name": 6503163,
-              "skill_icon": "mastery_skill_green_01.png",
-              "text": 604400063,
+              "show_name": 6503113,
+              "skill_icon": "mastery_skill_blue_01.png",
+              "text": 604400013,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -10944,9 +11257,9 @@
             "abilityDes": {
               "tid": 313020174,
               "type_des": 9,
-              "show_name": 0,
+              "show_name": 6503114,
               "skill_icon": "mastery_skill_blue_02.png",
-              "text": 0,
+              "text": 604400014,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -11055,9 +11368,9 @@
             "abilityDes": {
               "tid": 313020175,
               "type_des": 9,
-              "show_name": 0,
-              "skill_icon": "mastery_skill_blue_02.png",
-              "text": 0,
+              "show_name": 6503115,
+              "skill_icon": "mastery_skill_blue_03.png",
+              "text": 604400015,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -12959,6 +13272,27 @@
         "spd": 107
       },
       "skills": [
+        {
+          "id": "2103040113",
+          "name": "群鸦风暴",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体目标造成83%的法术伤害，并降低敌方5%攻击力，5%最终增伤，最多叠加3次，持续到战斗结束",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2103040113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2103040113, "type_des": 3, "show_name": 602500638, "skill_icon": "Icon_Skill_GeWen_n1.png", "text": 601501003, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "impact", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.83 } },
+              { "targetGroup": "impact", "target": { "targetType": "all-enemies" }, "effect": { "type": "stat-modifier", "statType": "attack-percent", "magnitude": -0.05, "isPercentage": true }, "duration": { "durationType": "permanent" }, "maxStacks": 3 },
+              { "targetGroup": "impact", "target": { "targetType": "all-enemies" }, "effect": { "type": "stat-modifier", "statType": "damage-bonus", "magnitude": -0.05, "isPercentage": true }, "duration": { "durationType": "permanent" }, "maxStacks": 3 }
+            ]
+          }
+        },
         {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
@@ -16564,9 +16898,9 @@
             "abilityDes": {
               "tid": 313070171,
               "type_des": 9,
-              "show_name": 6503126,
+              "show_name": 6503832,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400026,
+              "text": 604400296,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -16643,9 +16977,9 @@
             "abilityDes": {
               "tid": 313070172,
               "type_des": 9,
-              "show_name": 6503127,
+              "show_name": 6503833,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400027,
+              "text": 604400297,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -16722,9 +17056,9 @@
             "abilityDes": {
               "tid": 313070173,
               "type_des": 9,
-              "show_name": 6503128,
+              "show_name": 6503834,
               "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400028,
+              "text": 604400298,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -16843,9 +17177,9 @@
             "abilityDes": {
               "tid": 313070174,
               "type_des": 9,
-              "show_name": 6503129,
+              "show_name": 6503835,
               "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400029,
+              "text": 604400299,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -16947,9 +17281,9 @@
             "abilityDes": {
               "tid": 313070175,
               "type_des": 9,
-              "show_name": 6503130,
+              "show_name": 6503836,
               "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400030,
+              "text": 604400300,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -20176,62 +20510,15 @@
             "effectType": "stat-modifier",
             "targetType": "self",
             "energyCost": 0,
-            "effects": [
-              {
-                "target": {
-                  "targetType": "self"
-                },
-                "effect": {
-                  "type": "stat-modifier",
-                  "statType": "damage-reduction",
-                  "magnitude": 0.08,
-                  "isPercentage": true
-                },
-                "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
-                },
-                "chance": 1
-              },
-              {
-                "target": {
-                  "targetType": "all-enemies"
-                },
-                "effect": {
-                  "type": "damage",
-                  "damageType": "true",
-                  "magnitude": 240
-                },
-                "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
-                },
-                "chance": 1
-              },
-              {
-                "target": {
-                  "targetType": "self"
-                },
-                "effect": {
-                  "type": "heal",
-                  "healType": "percent-max-hp",
-                  "multiplier": 0.05
-                },
-                "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
-                },
-                "chance": 1
-              }
-            ],
+            "effects": [],
             "triggers": [
               {
                 "triggerType": "on-round-start",
                 "condition": null,
-                "conditionKey": null,
+                "conditionKey": "round-1",
                 "cooldown": 0,
-                "maxTriggers": 3,
-                "oncePerBattle": false,
+                "maxTriggers": 0,
+                "oncePerBattle": true,
                 "oncePerRound": false,
                 "effect": {
                   "target": {
@@ -20244,34 +20531,8 @@
                     "isPercentage": true
                   },
                   "duration": {
-                    "durationType": "permanent",
-                    "rounds": 0
-                  },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
-              },
-              {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
-                "effect": {
-                  "target": {
-                    "targetType": "all-enemies"
-                  },
-                  "effect": {
-                    "type": "damage",
-                    "damageType": "true",
-                    "magnitude": 240
-                  },
-                  "duration": {
-                    "durationType": "instant",
-                    "rounds": 0
+                    "durationType": "timed",
+                    "rounds": 2
                   },
                   "chance": 1
                 },
@@ -20306,7 +20567,7 @@
               }
             ],
             "requiresInvestigation": true,
-            "notes": "Mastery: battle start & each action apply rose (red) + 红·余香 to all enemies (requires investigation); ultimate/deity deals extra true damage = 80% defense * rose types (approx 240 base); first 3 rounds damage taken -8%; round 3 end heal self 5% max HP. Rose scaling requires investigation."
+            "notes": "First three rounds: 8% final damage reduction, applied once on round 1 (the application round does not decrement the two remaining rounds). Round 3 end: heal 5% max HP. Rose application and extra true damage (80% of caster defense per rose type on each target) require evidence of the original rose states."
           }
         },
         {
@@ -21394,7 +21655,15 @@
             "resolvedAbility": false,
             "resolvedDescription": true,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 314030175,
+              "type_des": 9,
+              "show_name": 6505140,
+              "skill_icon": "mastery_skill_purple_03.png",
+              "text": 604400349,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "status",
             "targetType": "single",
@@ -22290,6 +22559,66 @@
         "spd": 95
       },
       "skills": [
+        {
+          "id": "2201010111",
+          "name": "一锤定音",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方后排目标造成108%的物理伤害，附加10%最终伤害提升",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2201010111, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2201010111, "type_des": 3, "show_name": 602500677, "skill_icon": "Icon_Skill_aiwen_n2.png", "text": 601501042, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{
+              "target": { "targetType": "back-row" },
+              "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.08, "finalDamageBonus": 0.1 }
+            }]
+          }
+        },
+        {
+          "id": "2201010112",
+          "name": "一锤定音",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方后排目标造成114%的物理伤害，附加10%最终伤害提升",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2201010112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2201010112, "type_des": 3, "show_name": 602500678, "skill_icon": "Icon_Skill_aiwen_n2.png", "text": 601501043, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{
+              "target": { "targetType": "back-row" },
+              "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.14, "finalDamageBonus": 0.1 }
+            }]
+          }
+        },
+        {
+          "id": "2201010113",
+          "name": "一锤定音",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方后排目标造成127%的物理伤害，附加10%最终伤害提升",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2201010113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2201010113, "type_des": 3, "show_name": 602500679, "skill_icon": "Icon_Skill_aiwen_n2.png", "text": 601501044, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{
+              "target": { "targetType": "back-row" },
+              "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.27, "finalDamageBonus": 0.1 }
+            }]
+          }
+        },
         {
           "id": "normal-profession-1",
           "name": "Warrior Basic Attack (攻击)",
@@ -23539,6 +23868,87 @@
       },
       "skills": [
         {
+          "id": "2201020111",
+          "name": "萝卜强袭",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成211%的物理伤害，并降低敌方10%的伤害减免，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2201020111, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2201020111, "type_des": 3, "show_name": 602500680, "skill_icon": "Icon_Skill_ruibeik_n1.png", "text": 601501045, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{
+              "target": { "targetType": "single" },
+              "targetGroup": "impact",
+              "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.11 }
+            }, {
+              "target": { "targetType": "single" },
+              "targetGroup": "impact",
+              "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": -0.1, "isPercentage": true },
+              "duration": { "durationType": "timed", "rounds": 2 },
+              "unique": true
+            }]
+          }
+        },
+        {
+          "id": "2201020112",
+          "name": "萝卜强袭",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成224%的物理伤害，并降低敌方10%的伤害减免，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2201020112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2201020112, "type_des": 3, "show_name": 602500681, "skill_icon": "Icon_Skill_ruibeik_n1.png", "text": 601501046, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{
+              "target": { "targetType": "single" },
+              "targetGroup": "impact",
+              "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.24 }
+            }, {
+              "target": { "targetType": "single" },
+              "targetGroup": "impact",
+              "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": -0.1, "isPercentage": true },
+              "duration": { "durationType": "timed", "rounds": 2 },
+              "unique": true
+            }]
+          }
+        },
+        {
+          "id": "2201020113",
+          "name": "萝卜强袭",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成248%的物理伤害，并降低敌方10%的伤害减免，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2201020113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2201020113, "type_des": 3, "show_name": 602500682, "skill_icon": "Icon_Skill_ruibeik_n1.png", "text": 601501047, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{
+              "target": { "targetType": "single" },
+              "targetGroup": "impact",
+              "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.48 }
+            }, {
+              "target": { "targetType": "single" },
+              "targetGroup": "impact",
+              "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": -0.1, "isPercentage": true },
+              "duration": { "durationType": "timed", "rounds": 2 },
+              "unique": true
+            }]
+          }
+        },
+        {
           "id": "normal-profession-1",
           "name": "Warrior Basic Attack (攻击)",
           "type": "Normal",
@@ -24759,6 +25169,48 @@
         "spd": 111
       },
       "skills": [
+        {
+          "id": "2202010112",
+          "name": "聚沙成塔",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成224%的物理伤害，附加目标最大生命值3%的真实伤害（最多不超过施法者10%的最大生命值），并且为自身恢复等额生命",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2202010112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2202010112, "type_des": 3, "show_name": 602500667, "skill_icon": "Icon_Skill_faxier_n1.png", "text": 601501030, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "single" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.24 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "single" }, "damageGroup": "extra-true-damage", "effect": { "type": "damage", "damageType": "true", "damageBasis": "target-max-hp", "magnitude": 0.03, "variance": 1, "damageCap": { "basis": "max-hp", "ratio": 0.1 } } },
+              { "target": { "targetType": "self" }, "includeInActionTargets": false, "healFromDamageGroup": "extra-true-damage", "effect": { "type": "heal", "healType": "percent-damage-dealt", "multiplier": 1 } }
+            ]
+          }
+        },
+        {
+          "id": "2202010113",
+          "name": "聚沙成塔",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成248%的物理伤害，附加目标最大生命值3%的真实伤害（最多不超过施法者10%的最大生命值），并且为自身恢复等额生命",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2202010113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2202010113, "type_des": 3, "show_name": 602500668, "skill_icon": "Icon_Skill_faxier_n1.png", "text": 601501031, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "single" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.48 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "single" }, "damageGroup": "extra-true-damage", "effect": { "type": "damage", "damageType": "true", "damageBasis": "target-max-hp", "magnitude": 0.03, "variance": 1, "damageCap": { "basis": "max-hp", "ratio": 0.1 } } },
+              { "target": { "targetType": "self" }, "includeInActionTargets": false, "healFromDamageGroup": "extra-true-damage", "effect": { "type": "heal", "healType": "percent-damage-dealt", "multiplier": 1 } }
+            ]
+          }
+        },
         {
           "id": "normal-profession-4",
           "name": "Knight Basic Attack (防御)",
@@ -27686,7 +28138,15 @@
             "resolvedAbility": false,
             "resolvedDescription": true,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 322030175,
+              "type_des": 9,
+              "show_name": 6503210,
+              "skill_icon": "mastery_skill_blue_03.png",
+              "text": 604400110,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "status",
             "targetType": "self",
@@ -29925,7 +30385,15 @@
             "resolvedAbility": false,
             "resolvedDescription": true,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 322050174,
+              "type_des": 9,
+              "show_name": 6503219,
+              "skill_icon": "mastery_skill_gold_02.png",
+              "text": 604400119,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "status",
             "targetType": "single",
@@ -30785,6 +31253,44 @@
         "spd": 101
       },
       "skills": [
+        {
+          "id": "2202060112",
+          "name": "杀意暴走",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成224%的物理伤害，若造成击杀则对下一目标再次释放终结技，造成150%的物理伤害（最多连续释放2次）",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2202060112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2202060112, "type_des": 3, "show_name": 602500661, "skill_icon": "Icon_Skill_ChangPu_n1.png", "text": 601501040, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "single" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.24, "canCrit": true, "variance": 1 } }
+            ]
+          }
+        },
+        {
+          "id": "2202060113",
+          "name": "杀意暴走",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成248%的物理伤害，若造成击杀则对下一目标再次释放终结技，造成150%的物理伤害（最多连续释放2次）",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2202060113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2202060113, "type_des": 3, "show_name": 602500662, "skill_icon": "Icon_Skill_ChangPu_n1.png", "text": 601501041, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "single" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.48, "canCrit": true, "variance": 1 } }
+            ]
+          }
+        },
         {
           "id": "normal-profession-2",
           "name": "Assassin Basic Attack (冲锋)",
@@ -32022,66 +32528,26 @@
           "name": "无限瞬杀",
           "type": "Passive",
           "status": "Executable",
-          "category": "Metadata only",
+          "category": "description-inferred",
           "description": "终结技追击次数从2次调整为无限",
           "implementation": {
-            "source": "CharacterSkillCatalog",
-            "resolvedAbility": false,
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
             "resolvedDescription": true,
-            "ability": null,
-            "abilityDes": null,
-            "catalogTypeMatch": null,
-            "effectType": "damage",
-            "targetType": "single",
+            "ability": { "tid": 6202060112, "type": 3, "dmg_type": 9, "effect_type": 0, "run_type": 1 },
+            "abilityDes": {
+              "tid": 6202060112,
+              "type_des": 2,
+              "show_name": 602501209,
+              "skill_icon": "Icon_Skill_LiuLi_b2.png",
+              "text": 601600018,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": true,
             "energyCost": 0,
-            "effects": [
-              {
-                "target": {
-                  "targetType": "single"
-                },
-                "effect": {
-                  "type": "damage",
-                  "damageType": "physical",
-                  "multiplier": 0.5,
-                  "canCrit": true
-                },
-                "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
-                },
-                "chance": 1
-              }
-            ],
-            "triggers": [
-              {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
-                "effect": {
-                  "target": {
-                    "targetType": "single"
-                  },
-                  "effect": {
-                    "type": "damage",
-                    "damageType": "physical",
-                    "multiplier": 0.5,
-                    "canCrit": true
-                  },
-                  "duration": {
-                    "durationType": "instant",
-                    "rounds": 0
-                  },
-                  "chance": 1
-                },
-                "priority": 0
-              }
-            ],
-            "requiresInvestigation": true,
-            "notes": "Approximation: unlimited ultimate follow-ups are not modelled; one extra 50% ATK physical follow-up is applied on ultimate use as a conservative stand-in. requiresInvestigation."
+            "effects": [],
+            "triggers": [],
+            "notes": "Removes the equipped finisher's follow-up limit; does not add independent damage."
           }
         }
       ]
@@ -34644,9 +35110,9 @@
             "abilityDes": {
               "tid": 323030171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503181,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400081,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -34722,9 +35188,9 @@
             "abilityDes": {
               "tid": 323030172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503182,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400082,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -34800,9 +35266,9 @@
             "abilityDes": {
               "tid": 323030173,
               "type_des": 9,
-              "show_name": 6503168,
-              "skill_icon": "mastery_skill_sea_01.png",
-              "text": 604400068,
+              "show_name": 6503183,
+              "skill_icon": "mastery_skill_purple_01.png",
+              "text": 604400083,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -34919,9 +35385,9 @@
             "abilityDes": {
               "tid": 323030174,
               "type_des": 9,
-              "show_name": 6503169,
-              "skill_icon": "mastery_skill_sea_02.png",
-              "text": 604400069,
+              "show_name": 6503184,
+              "skill_icon": "mastery_skill_purple_02.png",
+              "text": 604400084,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -36111,9 +36577,9 @@
             "abilityDes": {
               "tid": 323040171,
               "type_des": 9,
-              "show_name": 6503221,
+              "show_name": 6503186,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400121,
+              "text": 604400086,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -36191,9 +36657,9 @@
             "abilityDes": {
               "tid": 323040172,
               "type_des": 9,
-              "show_name": 6503222,
+              "show_name": 6503187,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400122,
+              "text": 604400087,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -36271,9 +36737,9 @@
             "abilityDes": {
               "tid": 323040173,
               "type_des": 9,
-              "show_name": 6503223,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400123,
+              "show_name": 6503188,
+              "skill_icon": "mastery_skill_blue_01.png",
+              "text": 604400088,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -36394,9 +36860,9 @@
             "abilityDes": {
               "tid": 323040174,
               "type_des": 9,
-              "show_name": 6503224,
-              "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400124,
+              "show_name": 6503189,
+              "skill_icon": "mastery_skill_blue_02.png",
+              "text": 604400089,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -36552,7 +37018,7 @@
         },
         {
           "id": "323040175",
-          "name": "割魂厄鬼",
+          "name": "修罗之拳",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
@@ -36571,9 +37037,9 @@
             "abilityDes": {
               "tid": 323040175,
               "type_des": 9,
-              "show_name": 6503225,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400125,
+              "show_name": 6503190,
+              "skill_icon": "mastery_skill_blue_03.png",
+              "text": 604400090,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -37661,7 +38127,15 @@
             "resolvedAbility": false,
             "resolvedDescription": true,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 323050174,
+              "type_des": 9,
+              "show_name": 6503194,
+              "skill_icon": "mastery_skill_gold_02.png",
+              "text": 604400094,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "status",
             "targetType": "single",
@@ -43991,6 +44465,69 @@
       },
       "skills": [
         {
+          "id": "2301010111",
+          "name": "爱之抱抱",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成211%的物理伤害，并降低目标25点能量和45%回能速度，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2301010111, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2301010111, "type_des": 3, "show_name": 602500696, "skill_icon": "Icon_Skill_QinQiLa_n1.png", "text": 601501064, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.11, "canCrit": true } },
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "energy", "energyType": "loss", "magnitude": 25 } },
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "stat-modifier", "statType": "energy-bonus", "magnitude": -0.45, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true }
+            ]
+          }
+        },
+        {
+          "id": "2301010112",
+          "name": "爱之抱抱",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成224%的物理伤害，并降低目标25点能量和45%回能速度，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2301010112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2301010112, "type_des": 3, "show_name": 602500697, "skill_icon": "Icon_Skill_QinQiLa_n1.png", "text": 601501065, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.24, "canCrit": true } },
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "energy", "energyType": "loss", "magnitude": 25 } },
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "stat-modifier", "statType": "energy-bonus", "magnitude": -0.45, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true }
+            ]
+          }
+        },
+        {
+          "id": "2301010113",
+          "name": "爱之抱抱",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对前方单体目标造成248%的物理伤害，并降低目标25点能量和45%回能速度，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2301010113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2301010113, "type_des": 3, "show_name": 602500698, "skill_icon": "Icon_Skill_QinQiLa_n1.png", "text": 601501066, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "damage", "damageType": "physical", "multiplier": 2.48, "canCrit": true } },
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "energy", "energyType": "loss", "magnitude": 25 } },
+              { "target": { "targetType": "single" }, "targetGroup": "hit", "effect": { "type": "stat-modifier", "statType": "energy-bonus", "magnitude": -0.45, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-2",
           "name": "Assassin Basic Attack (冲锋)",
           "type": "Normal",
@@ -44050,9 +44587,9 @@
             "abilityDes": {
               "tid": 331010171,
               "type_des": 9,
-              "show_name": 6503221,
+              "show_name": 6503286,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400121,
+              "text": 604400186,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -44130,9 +44667,9 @@
             "abilityDes": {
               "tid": 331010172,
               "type_des": 9,
-              "show_name": 6503222,
+              "show_name": 6503287,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400122,
+              "text": 604400187,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -44210,9 +44747,9 @@
             "abilityDes": {
               "tid": 331010173,
               "type_des": 9,
-              "show_name": 6503223,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400123,
+              "show_name": 6503288,
+              "skill_icon": "mastery_skill_green_01.png",
+              "text": 604400188,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -44333,9 +44870,9 @@
             "abilityDes": {
               "tid": 331010174,
               "type_des": 9,
-              "show_name": 6503224,
-              "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400124,
+              "show_name": 6503289,
+              "skill_icon": "mastery_skill_green_02.png",
+              "text": 604400189,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -44491,7 +45028,7 @@
         },
         {
           "id": "331010175",
-          "name": "割魂厄鬼",
+          "name": "势不可挡",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
@@ -44510,9 +45047,9 @@
             "abilityDes": {
               "tid": 331010175,
               "type_des": 9,
-              "show_name": 6503225,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400125,
+              "show_name": 6503290,
+              "skill_icon": "mastery_skill_green_03.png",
+              "text": 604400190,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -45338,9 +45875,9 @@
             "abilityDes": {
               "tid": 331020171,
               "type_des": 9,
-              "show_name": 6503161,
+              "show_name": 6503291,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "text": 604400191,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -45417,9 +45954,9 @@
             "abilityDes": {
               "tid": 331020172,
               "type_des": 9,
-              "show_name": 6503162,
+              "show_name": 6503292,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400062,
+              "text": 604400192,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -45496,9 +46033,9 @@
             "abilityDes": {
               "tid": 331020173,
               "type_des": 9,
-              "show_name": 6503163,
+              "show_name": 6503293,
               "skill_icon": "mastery_skill_green_01.png",
-              "text": 604400063,
+              "text": 604400193,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -45617,9 +46154,9 @@
             "abilityDes": {
               "tid": 331020174,
               "type_des": 9,
-              "show_name": 6503124,
-              "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400024,
+              "show_name": 6503294,
+              "skill_icon": "mastery_skill_green_02.png",
+              "text": 604400194,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -45702,11 +46239,11 @@
         },
         {
           "id": "331020175",
-          "name": "星爆陨灭",
+          "name": "伟大创造",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
-          "description": "释放终结技时，额外附加10%暴击率和15%暴击伤害",
+          "description": "释放终结技时，额外提升后排12%暴击伤害，持续2回合",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
             "resolvedAbility": true,
@@ -45721,107 +46258,57 @@
             "abilityDes": {
               "tid": 331020175,
               "type_des": 9,
-              "show_name": 6503120,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400020,
+              "show_name": 6503295,
+              "skill_icon": "mastery_skill_green_03.png",
+              "text": 604400195,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
             "effectType": "stat-modifier",
-            "targetType": "self",
+            "targetType": "back-row-allies",
             "energyCost": 0,
             "effects": [
               {
                 "target": {
-                  "targetType": "self"
-                },
-                "effect": {
-                  "type": "stat-modifier",
-                  "statType": "crit-rate",
-                  "magnitude": 0.1,
-                  "isPercentage": true
-                },
-                "duration": {
-                  "durationType": "timed",
-                  "rounds": 2
-                },
-                "chance": 1
-              },
-              {
-                "target": {
-                  "targetType": "self"
+                  "targetType": "back-row-allies"
                 },
                 "effect": {
                   "type": "stat-modifier",
                   "statType": "crit-damage",
-                  "magnitude": 0.15,
+                  "magnitude": 0.12,
                   "isPercentage": true
                 },
                 "duration": {
                   "durationType": "timed",
                   "rounds": 2
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true
               }
             ],
             "triggers": [
               {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
+                "triggerType": "before-ultimate-use",
                 "effect": {
                   "target": {
-                    "targetType": "self"
-                  },
-                  "effect": {
-                    "type": "stat-modifier",
-                    "statType": "crit-rate",
-                    "magnitude": 0.1,
-                    "isPercentage": true
-                  },
-                  "duration": {
-                    "durationType": "timed",
-                    "rounds": 2
-                  },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
-              },
-              {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
-                "effect": {
-                  "target": {
-                    "targetType": "self"
+                    "targetType": "back-row-allies"
                   },
                   "effect": {
                     "type": "stat-modifier",
                     "statType": "crit-damage",
-                    "magnitude": 0.15,
+                    "magnitude": 0.12,
                     "isPercentage": true
                   },
                   "duration": {
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
+                  "chance": 1,
+                  "unique": true
+                }
               }
             ],
-            "notes": "Mastery: on ultimate use, self crit rate +10% and crit damage +15% for 2 rounds.",
-            "requiresInvestigation": true
+            "notes": "Original text 604400195: on ordinary ultimate, boost the allied back row critical damage for two rounds."
           }
         },
         {
@@ -46465,6 +46952,57 @@
         "spd": 100
       },
       "skills": [
+        {
+          "id": "2301030111",
+          "name": "致命子弹",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成108%的物理伤害，附加15%无视防御和10%暴击率",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2301030111, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2301030111, "type_des": 3, "show_name": 602500705, "skill_icon": "Icon_Skill_BuLin_n1.png", "text": 601501070, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{ "target": { "targetType": "front-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.08, "ignoreDefense": 0.15, "critRateBonus": 0.1 } }]
+          }
+        },
+        {
+          "id": "2301030112",
+          "name": "致命子弹",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成114%的物理伤害，附加15%无视防御和10%暴击率",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2301030112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2301030112, "type_des": 3, "show_name": 602500706, "skill_icon": "Icon_Skill_BuLin_n1.png", "text": 601501071, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{ "target": { "targetType": "front-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.14, "ignoreDefense": 0.15, "critRateBonus": 0.1 } }]
+          }
+        },
+        {
+          "id": "2301030113",
+          "name": "致命子弹",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方前排目标造成127%的物理伤害，附加15%无视防御和10%暴击率",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2301030113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2301030113, "type_des": 3, "show_name": 602500707, "skill_icon": "Icon_Skill_BuLin_n1.png", "text": 601501072, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [{ "target": { "targetType": "front-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 1.27, "ignoreDefense": 0.15, "critRateBonus": 0.1 } }]
+          }
+        },
         {
           "id": "normal-profession-2",
           "name": "Assassin Basic Attack (冲锋)",
@@ -48917,6 +49455,46 @@
         "spd": 106
       },
       "skills": [
+        {
+          "id": "2302020112",
+          "name": "治愈泡泡",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "为我方生命最低队友恢复攻击力150%的生命值（不超过自身最大生命值的110%），并驱散1个减益状态",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2302020112, "type": 2, "dmg_type": 2, "effect_type": 3, "run_type": 3 },
+            "abilityDes": { "tid": 2302020112, "type_des": 3, "show_name": 602500692, "skill_icon": "Icon_Skill_mumu_n1.png", "text": 601501056, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "lowest-hp-ally" }, "targetGroup": "healed", "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 1.5, "maxHealPercentActorMaxHp": 1.1 } },
+              { "target": { "targetType": "lowest-hp-ally" }, "targetGroup": "healed", "effect": { "type": "dispel", "removeType": "debuff", "count": 1 } }
+            ]
+          }
+        },
+        {
+          "id": "2302020113",
+          "name": "治愈泡泡",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "为我方生命最低目标恢复攻击力166%的生命值（不超过自身最大生命值的110%），并驱散1个减益状态",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2302020113, "type": 2, "dmg_type": 2, "effect_type": 3, "run_type": 3 },
+            "abilityDes": { "tid": 2302020113, "type_des": 3, "show_name": 602500693, "skill_icon": "Icon_Skill_mumu_n1.png", "text": 601501057, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "lowest-hp-ally" }, "targetGroup": "healed", "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 1.66, "maxHealPercentActorMaxHp": 1.1 } },
+              { "target": { "targetType": "lowest-hp-ally" }, "targetGroup": "healed", "effect": { "type": "dispel", "removeType": "debuff", "count": 1 } }
+            ]
+          }
+        },
         {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
@@ -52352,6 +52930,46 @@
       },
       "skills": [
         {
+          "id": "2302050112",
+          "name": "锋刃之舞",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方后排目标造成2段57%的物理伤害，附加30%的最终暴击",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2302050112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2302050112, "type_des": 3, "show_name": 602500688, "skill_icon": "Icon_Skill_ailikesi_n2.png", "text": 601501062, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.57, "critRateBonus": 0.3 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.57, "critRateBonus": 0.3 } }
+            ]
+          }
+        },
+        {
+          "id": "2302050113",
+          "name": "锋刃之舞",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方后排目标造成2段63%的物理伤害，附加30%的最终暴击",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2302050113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2302050113, "type_des": 3, "show_name": 602500689, "skill_icon": "Icon_Skill_ailikesi_n2.png", "text": 601501063, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.63, "critRateBonus": 0.3 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "back-row" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.63, "critRateBonus": 0.3 } }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-2",
           "name": "Assassin Basic Attack (冲锋)",
           "type": "Normal",
@@ -52412,9 +53030,9 @@
             "abilityDes": {
               "tid": 332050171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503281,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400181,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -52489,9 +53107,9 @@
             "abilityDes": {
               "tid": 332050172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503282,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400182,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -52566,9 +53184,9 @@
             "abilityDes": {
               "tid": 332050173,
               "type_des": 9,
-              "show_name": 6503168,
-              "skill_icon": "mastery_skill_sea_01.png",
-              "text": 604400068,
+              "show_name": 6503283,
+              "skill_icon": "mastery_skill_blue_01.png",
+              "text": 604400183,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -52684,9 +53302,9 @@
             "abilityDes": {
               "tid": 332050174,
               "type_des": 9,
-              "show_name": 6503169,
-              "skill_icon": "mastery_skill_sea_02.png",
-              "text": 604400069,
+              "show_name": 6503284,
+              "skill_icon": "mastery_skill_blue_02.png",
+              "text": 604400184,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -52833,7 +53451,7 @@
         },
         {
           "id": "332050175",
-          "name": "索命钩链",
+          "name": "涌灵刺刃",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
@@ -52852,9 +53470,9 @@
             "abilityDes": {
               "tid": 332050175,
               "type_des": 9,
-              "show_name": 6503170,
-              "skill_icon": "mastery_skill_sea_03.png",
-              "text": 604400070,
+              "show_name": 6503285,
+              "skill_icon": "mastery_skill_blue_03.png",
+              "text": 604400185,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -53659,11 +54277,11 @@
               "run_type": 1
             },
             "abilityDes": {
-              "tid": 333040171,
+              "tid": 333020171,
               "type_des": 9,
-              "show_name": 6503161,
+              "show_name": 6503236,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "text": 604400136,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -53738,11 +54356,11 @@
               "run_type": 1
             },
             "abilityDes": {
-              "tid": 333040172,
+              "tid": 333020172,
               "type_des": 9,
-              "show_name": 6503162,
+              "show_name": 6503237,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400062,
+              "text": 604400137,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -53819,11 +54437,11 @@
               "run_type": 1
             },
             "abilityDes": {
-              "tid": 333040173,
+              "tid": 333020173,
               "type_des": 9,
-              "show_name": 6503128,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400028,
+              "show_name": 6503238,
+              "skill_icon": "mastery_skill_blue_01.png",
+              "text": 604400138,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -53943,11 +54561,11 @@
               "run_type": 1
             },
             "abilityDes": {
-              "tid": 333040174,
+              "tid": 333020174,
               "type_des": 9,
-              "show_name": 6503199,
-              "skill_icon": "mastery_skill_yellow_02.png",
-              "text": 604400099,
+              "show_name": 6503239,
+              "skill_icon": "mastery_skill_blue_02.png",
+              "text": 604400139,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -54033,7 +54651,7 @@
         },
         {
           "id": "333020175",
-          "name": "偶像特权",
+          "name": "彻骨寒气",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
@@ -54050,11 +54668,11 @@
               "run_type": 1
             },
             "abilityDes": {
-              "tid": 332030175,
+              "tid": 333020175,
               "type_des": 9,
-              "show_name": 6503275,
-              "skill_icon": "mastery_skill_pink_03.png",
-              "text": 604400175,
+              "show_name": 6503240,
+              "skill_icon": "mastery_skill_blue_03.png",
+              "text": 604400140,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -54943,9 +55561,9 @@
             "abilityDes": {
               "tid": 333030171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503241,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400141,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -55020,9 +55638,9 @@
             "abilityDes": {
               "tid": 333030172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503242,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400142,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -55097,9 +55715,9 @@
             "abilityDes": {
               "tid": 333030173,
               "type_des": 9,
-              "show_name": 6503138,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400038,
+              "show_name": 6503243,
+              "skill_icon": "mastery_skill_red_01.png",
+              "text": 604400143,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -55199,11 +55817,11 @@
         },
         {
           "id": "333030175",
-          "name": "蚀骨之痛",
+          "name": "燃魔咒刃",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
-          "description": "释放终结技时，额外造成目标3%最大生命的伤害",
+          "description": "释放终结技时，额外附加10%暴击率和15%暴击伤害",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
             "resolvedAbility": true,
@@ -55218,63 +55836,102 @@
             "abilityDes": {
               "tid": 333030175,
               "type_des": 9,
-              "show_name": 6503140,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400040,
+              "show_name": 6503245,
+              "skill_icon": "mastery_skill_red_03.png",
+              "text": 604400145,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
-            "effectType": "damage",
-            "targetType": "single",
+            "effectType": "stat-modifier",
+            "targetType": "self",
             "energyCost": 0,
             "effects": [
               {
                 "target": {
-                  "targetType": "single"
+                  "targetType": "self"
                 },
                 "effect": {
-                  "type": "damage",
-                  "damageType": "percent-max-hp",
-                  "magnitude": 0.03,
-                  "canCrit": false
+                  "type": "stat-modifier",
+                  "statType": "crit-rate",
+                  "magnitude": 0.1,
+                  "isPercentage": true,
+                  "actionType": "ultimate"
                 },
                 "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
+                  "durationType": "trigger-count",
+                  "triggers": 1,
+                  "trigger": "ultimate"
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-damage",
+                  "magnitude": 0.15,
+                  "isPercentage": true,
+                  "actionType": "ultimate"
+                },
+                "duration": {
+                  "durationType": "trigger-count",
+                  "triggers": 1,
+                  "trigger": "ultimate"
+                },
+                "chance": 1,
+                "unique": true
               }
             ],
             "triggers": [
               {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
+                "triggerType": "before-ultimate-use",
                 "effect": {
                   "target": {
-                    "targetType": "single"
+                    "targetType": "self"
                   },
                   "effect": {
-                    "type": "damage",
-                    "damageType": "percent-max-hp",
-                    "magnitude": 0.03,
-                    "canCrit": false
+                    "type": "stat-modifier",
+                    "statType": "crit-rate",
+                    "magnitude": 0.1,
+                    "isPercentage": true,
+                    "actionType": "ultimate"
                   },
                   "duration": {
-                    "durationType": "instant",
-                    "rounds": 0
+                    "durationType": "trigger-count",
+                    "triggers": 1,
+                    "trigger": "ultimate"
                   },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
+                  "chance": 1,
+                  "unique": true
+                }
+              },
+              {
+                "triggerType": "before-ultimate-use",
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-damage",
+                    "magnitude": 0.15,
+                    "isPercentage": true,
+                    "actionType": "ultimate"
+                  },
+                  "duration": {
+                    "durationType": "trigger-count",
+                    "triggers": 1,
+                    "trigger": "ultimate"
+                  },
+                  "chance": 1,
+                  "unique": true
+                }
               }
             ],
-            "notes": "Mastery: on ultimate use, deal additional damage equal to 3% of the target maximum HP."
+            "notes": "Apply the same-ID critical modifiers to the current ordinary ultimate only."
           }
         },
         {
@@ -55935,7 +56592,15 @@
             "resolvedAbility": false,
             "resolvedDescription": true,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 333030174,
+              "type_des": 9,
+              "show_name": 6503244,
+              "skill_icon": "mastery_skill_red_02.png",
+              "text": 604400144,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "status",
             "targetType": "single",
@@ -56095,9 +56760,9 @@
             "abilityDes": {
               "tid": 333040171,
               "type_des": 9,
-              "show_name": 6503161,
+              "show_name": 6503246,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "text": 604400146,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -56174,9 +56839,9 @@
             "abilityDes": {
               "tid": 333040172,
               "type_des": 9,
-              "show_name": 6503162,
+              "show_name": 6503247,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400062,
+              "text": 604400147,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -56253,9 +56918,9 @@
             "abilityDes": {
               "tid": 333040173,
               "type_des": 9,
-              "show_name": 6503128,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400028,
+              "show_name": 6503248,
+              "skill_icon": "mastery_skill_pink_01.png",
+              "text": 604400148,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -56374,9 +57039,9 @@
             "abilityDes": {
               "tid": 333040174,
               "type_des": 9,
-              "show_name": 6503199,
-              "skill_icon": "mastery_skill_yellow_02.png",
-              "text": 604400099,
+              "show_name": 6503249,
+              "skill_icon": "mastery_skill_pink_02.png",
+              "text": 604400149,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -57153,9 +57818,9 @@
             "abilityDes": {
               "tid": 333050171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503251,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400151,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -57230,9 +57895,9 @@
             "abilityDes": {
               "tid": 333050172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503252,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400152,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -57307,9 +57972,9 @@
             "abilityDes": {
               "tid": 333050173,
               "type_des": 9,
-              "show_name": 6503168,
-              "skill_icon": "mastery_skill_sea_01.png",
-              "text": 604400068,
+              "show_name": 6503253,
+              "skill_icon": "mastery_skill_whiteblue_01.png",
+              "text": 604400153,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -59622,9 +60287,9 @@
             "abilityDes": {
               "tid": 333070171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503518,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400281,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -59699,9 +60364,9 @@
             "abilityDes": {
               "tid": 333070172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503519,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400282,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -59757,7 +60422,7 @@
         },
         {
           "id": "333070173",
-          "name": "直击要害",
+          "name": "流火天降",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
@@ -59776,9 +60441,9 @@
             "abilityDes": {
               "tid": 333070173,
               "type_des": 9,
-              "show_name": 6503138,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400038,
+              "show_name": 6503520,
+              "skill_icon": "mastery_skill_gold_01.png",
+              "text": 604400283,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -59983,11 +60648,11 @@
         },
         {
           "id": "333070175",
-          "name": "蚀骨之痛",
+          "name": "毁灭业火",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
-          "description": "释放终结技时，额外造成目标3%最大生命的伤害",
+          "description": "释放终结技时，额外附加10%暴击率和15%暴击伤害",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
             "resolvedAbility": true,
@@ -60002,63 +60667,102 @@
             "abilityDes": {
               "tid": 333070175,
               "type_des": 9,
-              "show_name": 6503140,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400040,
+              "show_name": 6503522,
+              "skill_icon": "mastery_skill_gold_03.png",
+              "text": 604400285,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
-            "effectType": "damage",
-            "targetType": "single",
+            "effectType": "stat-modifier",
+            "targetType": "self",
             "energyCost": 0,
             "effects": [
               {
                 "target": {
-                  "targetType": "single"
+                  "targetType": "self"
                 },
                 "effect": {
-                  "type": "damage",
-                  "damageType": "percent-max-hp",
-                  "magnitude": 0.03,
-                  "canCrit": false
+                  "type": "stat-modifier",
+                  "statType": "crit-rate",
+                  "magnitude": 0.1,
+                  "isPercentage": true,
+                  "actionType": "ultimate"
                 },
                 "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
+                  "durationType": "trigger-count",
+                  "triggers": 1,
+                  "trigger": "ultimate"
                 },
-                "chance": 1
+                "chance": 1,
+                "unique": true
+              },
+              {
+                "target": {
+                  "targetType": "self"
+                },
+                "effect": {
+                  "type": "stat-modifier",
+                  "statType": "crit-damage",
+                  "magnitude": 0.15,
+                  "isPercentage": true,
+                  "actionType": "ultimate"
+                },
+                "duration": {
+                  "durationType": "trigger-count",
+                  "triggers": 1,
+                  "trigger": "ultimate"
+                },
+                "chance": 1,
+                "unique": true
               }
             ],
             "triggers": [
               {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
+                "triggerType": "before-ultimate-use",
                 "effect": {
                   "target": {
-                    "targetType": "single"
+                    "targetType": "self"
                   },
                   "effect": {
-                    "type": "damage",
-                    "damageType": "percent-max-hp",
-                    "magnitude": 0.03,
-                    "canCrit": false
+                    "type": "stat-modifier",
+                    "statType": "crit-rate",
+                    "magnitude": 0.1,
+                    "isPercentage": true,
+                    "actionType": "ultimate"
                   },
                   "duration": {
-                    "durationType": "instant",
-                    "rounds": 0
+                    "durationType": "trigger-count",
+                    "triggers": 1,
+                    "trigger": "ultimate"
                   },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
+                  "chance": 1,
+                  "unique": true
+                }
+              },
+              {
+                "triggerType": "before-ultimate-use",
+                "effect": {
+                  "target": {
+                    "targetType": "self"
+                  },
+                  "effect": {
+                    "type": "stat-modifier",
+                    "statType": "crit-damage",
+                    "magnitude": 0.15,
+                    "isPercentage": true,
+                    "actionType": "ultimate"
+                  },
+                  "duration": {
+                    "durationType": "trigger-count",
+                    "triggers": 1,
+                    "trigger": "ultimate"
+                  },
+                  "chance": 1,
+                  "unique": true
+                }
               }
             ],
-            "notes": "Mastery: on ultimate use, deal additional damage equal to 3% of the target maximum HP."
+            "notes": "Apply the same-ID critical modifiers to the current ordinary ultimate only."
           }
         },
         {
@@ -62186,7 +62890,15 @@
               "effect_type": 0,
               "run_type": 1
             },
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 2304020123,
+              "type_des": 3,
+              "show_name": 602501305,
+              "skill_icon": "Icon_Skill_aniesi_l1.png",
+              "text": 601501118,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "damage",
             "targetType": "all-enemies",
@@ -62266,9 +62978,9 @@
             "abilityDes": {
               "tid": 334020171,
               "type_des": 9,
-              "show_name": 6503161,
-              "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "show_name": 6504412,
+              "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
+              "text": 604400321,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -62347,9 +63059,9 @@
             "abilityDes": {
               "tid": 334020172,
               "type_des": 9,
-              "show_name": 6503161,
-              "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "show_name": 6504413,
+              "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
+              "text": 604400322,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -62428,9 +63140,9 @@
             "abilityDes": {
               "tid": 334020173,
               "type_des": 9,
-              "show_name": 6503161,
-              "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "show_name": 6504414,
+              "skill_icon": "mastery_skill_gold_01.png",
+              "text": 604400323,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -62552,9 +63264,9 @@
             "abilityDes": {
               "tid": 334020174,
               "type_des": 9,
-              "show_name": 6503161,
-              "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "show_name": 6504415,
+              "skill_icon": "mastery_skill_gold_02.png",
+              "text": 604400324,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -62703,9 +63415,9 @@
             "abilityDes": {
               "tid": 334020175,
               "type_des": 9,
-              "show_name": 6503161,
-              "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "show_name": 6504416,
+              "skill_icon": "mastery_skill_gold_03.png",
+              "text": 604400325,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -65828,6 +66540,66 @@
       },
       "skills": [
         {
+          "id": "2401030111",
+          "name": "煦日之怜",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "为我方全体恢复攻击力30%的生命值（不超过自身最大生命值的20%），并提升攻击最高的单位10%的最终伤害，持续2回合，最多叠加3次",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2401030111, "type": 2, "dmg_type": 2, "effect_type": 3, "run_type": 3 },
+            "abilityDes": { "tid": 2401030111, "type_des": 3, "show_name": 602500731, "skill_icon": "Icon_Skill_duoduoli_n1.png", "text": 601501096, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "all-allies" }, "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 0.3, "maxHealPercentActorMaxHp": 0.2 } },
+              { "target": { "targetType": "highest-attack-ally" }, "effect": { "type": "stat-modifier", "statType": "damage-bonus", "magnitude": 0.1, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "maxStacks": 3 }
+            ]
+          }
+        },
+        {
+          "id": "2401030112",
+          "name": "煦日之怜",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "为我方全体恢复攻击力33%的生命值（不超过施法者最大生命值的23%），并提升攻击最高的单位10%的最终伤害，持续2回合，最多叠加3次",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2401030112, "type": 2, "dmg_type": 2, "effect_type": 3, "run_type": 3 },
+            "abilityDes": { "tid": 2401030112, "type_des": 3, "show_name": 602500732, "skill_icon": "Icon_Skill_duoduoli_n1.png", "text": 601501097, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "all-allies" }, "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 0.33, "maxHealPercentActorMaxHp": 0.23 } },
+              { "target": { "targetType": "highest-attack-ally" }, "effect": { "type": "stat-modifier", "statType": "damage-bonus", "magnitude": 0.1, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "maxStacks": 3 }
+            ]
+          }
+        },
+        {
+          "id": "2401030113",
+          "name": "煦日之怜",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "为我方全体恢复攻击力37%的生命值（不超过施法者最大生命值的26%），并提升攻击最高的单位10%的最终伤害，持续2回合，最多叠加3次",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2401030113, "type": 2, "dmg_type": 2, "effect_type": 3, "run_type": 3 },
+            "abilityDes": { "tid": 2401030113, "type_des": 3, "show_name": 602500733, "skill_icon": "Icon_Skill_duoduoli_n1.png", "text": 601501098, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "all-allies" }, "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 0.37, "maxHealPercentActorMaxHp": 0.26 } },
+              { "target": { "targetType": "highest-attack-ally" }, "effect": { "type": "stat-modifier", "statType": "damage-bonus", "magnitude": 0.1, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "maxStacks": 3 }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
           "type": "Normal",
@@ -66975,6 +67747,46 @@
       },
       "skills": [
         {
+          "id": "2402010112",
+          "name": "教宗圣礼",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体造成75%的魔法伤害，并附加{0}效果",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2402010112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2402010112, "type_des": 3, "show_name": 602500715, "skill_icon": "Icon_Skill_xise_n1.png", "text": 601501080, "detail_text": 0, "feature": [19] },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.75 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "stat-modifier", "statType": "damage-bonus", "magnitude": -0.15, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true }
+            ]
+          }
+        },
+        {
+          "id": "2402010113",
+          "name": "教宗圣礼",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体造成83%的魔法伤害，并附加{0}效果",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes + FightTable.AbilityBuffDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2402010113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2402010113, "type_des": 3, "show_name": 602500716, "skill_icon": "Icon_Skill_xise_n1.png", "text": 601501081, "detail_text": 0, "feature": [19] },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "magical", "multiplier": 0.83 } },
+              { "targetGroup": "hit-enemies", "target": { "targetType": "all-enemies" }, "effect": { "type": "stat-modifier", "statType": "damage-bonus", "magnitude": -0.15, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
           "type": "Normal",
@@ -67034,9 +67846,9 @@
             "abilityDes": {
               "tid": 342010171,
               "type_des": 9,
-              "show_name": 6503161,
+              "show_name": 6503331,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "text": 604400231,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -67113,9 +67925,9 @@
             "abilityDes": {
               "tid": 342010172,
               "type_des": 9,
-              "show_name": 6503162,
+              "show_name": 6503332,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400062,
+              "text": 604400232,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -67192,9 +68004,9 @@
             "abilityDes": {
               "tid": 342010173,
               "type_des": 9,
-              "show_name": 6503163,
-              "skill_icon": "mastery_skill_green_01.png",
-              "text": 604400063,
+              "show_name": 6503333,
+              "skill_icon": "mastery_skill_gold_01.png",
+              "text": 604400233,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -67313,9 +68125,9 @@
             "abilityDes": {
               "tid": 342010174,
               "type_des": 9,
-              "show_name": 6503124,
-              "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400024,
+              "show_name": 6503334,
+              "skill_icon": "mastery_skill_gold_02.png",
+              "text": 604400234,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -67405,6 +68217,14 @@
           "description": "首回合结束，我方全体回复100点能量",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
+            "abilityDes": {
+              "tid": 342010175,
+              "type_des": 9,
+              "show_name": 6503335,
+              "skill_icon": "mastery_skill_gold_03.png",
+              "text": 604400235,
+              "detail_text": 0
+            },
             "resolvedAbility": true,
             "resolvedDescription": true,
             "catalogTypeMatch": true,
@@ -68100,6 +68920,44 @@
         "spd": 101
       },
       "skills": [
+        {
+          "id": "2402020112",
+          "name": "爱心箭雨",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体造成75%的物理伤害，附加30%最终暴击率",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2402020112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2402020112, "type_des": 3, "show_name": 602500717, "skill_icon": "Icon_Skill_eluosi_n1.png", "text": 601501082, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.75, "critRateBonus": 0.3, "canCrit": true, "variance": 1 } }
+            ]
+          }
+        },
+        {
+          "id": "2402020113",
+          "name": "爱心箭雨",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体造成83%的物理伤害，附加30%最终暴击率",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2402020113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2402020113, "type_des": 3, "show_name": 602500718, "skill_icon": "Icon_Skill_eluosi_n1.png", "text": 601501083, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.83, "critRateBonus": 0.3, "canCrit": true, "variance": 1 } }
+            ]
+          }
+        },
         {
           "id": "normal-profession-2",
           "name": "Assassin Basic Attack (冲锋)",
@@ -69461,9 +70319,9 @@
             "abilityDes": {
               "tid": 342030171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503341,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400241,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -69538,9 +70396,9 @@
             "abilityDes": {
               "tid": 342030172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503342,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400242,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -69615,9 +70473,9 @@
             "abilityDes": {
               "tid": 342030173,
               "type_des": 9,
-              "show_name": 6503168,
-              "skill_icon": "mastery_skill_sea_01.png",
-              "text": 604400068,
+              "show_name": 6503343,
+              "skill_icon": "mastery_skill_purple_01.png",
+              "text": 604400243,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -69733,9 +70591,9 @@
             "abilityDes": {
               "tid": 342030174,
               "type_des": 9,
-              "show_name": 6503169,
-              "skill_icon": "mastery_skill_sea_02.png",
-              "text": 604400069,
+              "show_name": 6503344,
+              "skill_icon": "mastery_skill_purple_02.png",
+              "text": 604400244,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -69882,7 +70740,7 @@
         },
         {
           "id": "342030175",
-          "name": "索命钩链",
+          "name": "凌厉光刃",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
@@ -69901,9 +70759,9 @@
             "abilityDes": {
               "tid": 342030175,
               "type_des": 9,
-              "show_name": 6503170,
-              "skill_icon": "mastery_skill_sea_03.png",
-              "text": 604400070,
+              "show_name": 6503345,
+              "skill_icon": "mastery_skill_purple_03.png",
+              "text": 604400245,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -70642,6 +71500,46 @@
       },
       "skills": [
         {
+          "id": "2402040112",
+          "name": "撼地重拳",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体造成75%的物理伤害， 并有70%概率降低目标12%最终减伤，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2402040112, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2402040112, "type_des": 3, "show_name": 602500721, "skill_icon": "Icon_Skill_molin_n1.png", "text": 601501086, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "impact", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.75 } },
+              { "targetGroup": "impact", "target": { "targetType": "all-enemies" }, "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": -0.12, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "chance": 0.7, "unique": true }
+            ]
+          }
+        },
+        {
+          "id": "2402040113",
+          "name": "撼地重拳",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "对敌方全体造成83%的物理伤害， 并有70%概率降低目标12%最终减伤，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2402040113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2402040113, "type_des": 3, "show_name": 602500722, "skill_icon": "Icon_Skill_molin_n1.png", "text": 601501087, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effects": [
+              { "targetGroup": "impact", "target": { "targetType": "all-enemies" }, "effect": { "type": "damage", "damageType": "physical", "multiplier": 0.83 } },
+              { "targetGroup": "impact", "target": { "targetType": "all-enemies" }, "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": -0.12, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "chance": 0.7, "unique": true }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
           "type": "Normal",
@@ -70701,9 +71599,9 @@
             "abilityDes": {
               "tid": 342040171,
               "type_des": 9,
-              "show_name": 6503161,
+              "show_name": 6503346,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400061,
+              "text": 604400246,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -70780,9 +71678,9 @@
             "abilityDes": {
               "tid": 342040172,
               "type_des": 9,
-              "show_name": 6503162,
+              "show_name": 6503347,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400062,
+              "text": 604400247,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -70859,9 +71757,9 @@
             "abilityDes": {
               "tid": 342040173,
               "type_des": 9,
-              "show_name": 6503163,
-              "skill_icon": "mastery_skill_green_01.png",
-              "text": 604400063,
+              "show_name": 6503348,
+              "skill_icon": "mastery_skill_yellow_01.png",
+              "text": 604400248,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -70980,9 +71878,9 @@
             "abilityDes": {
               "tid": 342040174,
               "type_des": 9,
-              "show_name": 6503124,
-              "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400024,
+              "show_name": 6503349,
+              "skill_icon": "mastery_skill_yellow_02.png",
+              "text": 604400249,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -71072,6 +71970,14 @@
           "description": "进入战斗时，降低敌方异常状态抗性和减能抗性系数提升5%",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
+            "abilityDes": {
+              "tid": 342040175,
+              "type_des": 9,
+              "show_name": 6503350,
+              "skill_icon": "mastery_skill_yellow_03.png",
+              "text": 604400250,
+              "detail_text": 0
+            },
             "resolvedAbility": true,
             "resolvedDescription": true,
             "catalogTypeMatch": true,
@@ -71830,9 +72736,9 @@
             "abilityDes": {
               "tid": 342050171,
               "type_des": 9,
-              "show_name": 6503221,
+              "show_name": 6503351,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400121,
+              "text": 604400251,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -71910,9 +72816,9 @@
             "abilityDes": {
               "tid": 342050172,
               "type_des": 9,
-              "show_name": 6503222,
+              "show_name": 6503352,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400122,
+              "text": 604400252,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -71990,9 +72896,9 @@
             "abilityDes": {
               "tid": 342050173,
               "type_des": 9,
-              "show_name": 6503223,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400123,
+              "show_name": 6503353,
+              "skill_icon": "mastery_skill_pink_01.png",
+              "text": 604400253,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -72113,9 +73019,9 @@
             "abilityDes": {
               "tid": 342050174,
               "type_des": 9,
-              "show_name": 6503224,
-              "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400124,
+              "show_name": 6503354,
+              "skill_icon": "mastery_skill_pink_02.png",
+              "text": 604400254,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -72271,7 +73177,7 @@
         },
         {
           "id": "342050175",
-          "name": "割魂厄鬼",
+          "name": "蔷薇绞杀",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
@@ -72290,9 +73196,9 @@
             "abilityDes": {
               "tid": 342050175,
               "type_des": 9,
-              "show_name": 6503225,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400125,
+              "show_name": 6503355,
+              "skill_icon": "mastery_skill_pink_03.png",
+              "text": 604400255,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -73058,6 +73964,28 @@
       },
       "skills": [
         {
+          "id": "2403010113",
+          "name": "睡饱饱喽",
+          "type": "Ultimate",
+          "status": "Executable",
+          "category": "description-inferred",
+          "description": "为我方全体恢复攻击力42%的生命值（不超过自身最大生命值的30%），并提供12%的最终免伤和8%的最终抗暴率，持续2回合",
+          "implementation": {
+            "source": "FightTable.Ability + FightTable.AbilityDes",
+            "resolvedAbility": true,
+            "resolvedDescription": true,
+            "ability": { "tid": 2403010113, "type": 2, "dmg_type": 2, "effect_type": 1, "run_type": 3 },
+            "abilityDes": { "tid": 2403010113, "type_des": 3, "show_name": 602500709, "skill_icon": "Icon_Skill_yu_n1.png", "text": 601501073, "detail_text": 0 },
+            "catalogTypeMatch": true,
+            "effectType": "heal",
+            "effects": [
+              { "target": { "targetType": "all-allies" }, "effect": { "type": "heal", "healType": "percent-attack", "multiplier": 0.42, "maxHealPercentActorMaxHp": 0.3 } },
+              { "target": { "targetType": "all-allies" }, "effect": { "type": "stat-modifier", "statType": "damage-reduction", "magnitude": 0.12, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true },
+              { "target": { "targetType": "all-allies" }, "effect": { "type": "stat-modifier", "statType": "anti-crit", "magnitude": 0.08, "isPercentage": true }, "duration": { "durationType": "timed", "rounds": 2 }, "unique": true }
+            ]
+          }
+        },
+        {
           "id": "normal-profession-3",
           "name": "Ranger Basic Attack (辅助)",
           "type": "Normal",
@@ -73117,9 +74045,9 @@
             "abilityDes": {
               "tid": 343010171,
               "type_des": 9,
-              "show_name": 6503306,
+              "show_name": 6503301,
               "skill_icon": "Icon_Skill_huizhangquantimianshang.png",
-              "text": 604400206,
+              "text": 604400201,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -73198,9 +74126,9 @@
             "abilityDes": {
               "tid": 343010172,
               "type_des": 9,
-              "show_name": 6503307,
+              "show_name": 6503302,
               "skill_icon": "Icon_Skill_huizhangzuizhongjianshang.png",
-              "text": 604400207,
+              "text": 604400202,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -73279,9 +74207,9 @@
             "abilityDes": {
               "tid": 343010173,
               "type_des": 9,
-              "show_name": 6503308,
-              "skill_icon": "mastery_skill_gold_01.png",
-              "text": 604400208,
+              "show_name": 6503303,
+              "skill_icon": "mastery_skill_yellow_01.png",
+              "text": 604400203,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -73403,9 +74331,9 @@
             "abilityDes": {
               "tid": 343010174,
               "type_des": 9,
-              "show_name": 6503269,
-              "skill_icon": "mastery_skill_sea_02.png",
-              "text": 604400169,
+              "show_name": 6503304,
+              "skill_icon": "mastery_skill_yellow_02.png",
+              "text": 604400204,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -73487,11 +74415,11 @@
         },
         {
           "id": "343010175",
-          "name": "星爆陨灭",
+          "name": "预言梦境",
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
-          "description": "释放终结技时，额外附加10%暴击率和15%暴击伤害",
+          "description": "释放终结技时，额外提高我方全体有10%暴伤减免，持续2回合",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
             "resolvedAbility": true,
@@ -73506,23 +74434,23 @@
             "abilityDes": {
               "tid": 343010175,
               "type_des": 9,
-              "show_name": 6503120,
-              "skill_icon": "mastery_skill_purple_03.png",
-              "text": 604400020,
+              "show_name": 6503305,
+              "skill_icon": "mastery_skill_yellow_03.png",
+              "text": 604400205,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
             "effectType": "stat-modifier",
-            "targetType": "self",
+            "targetType": "all-allies",
             "energyCost": 0,
             "effects": [
               {
                 "target": {
-                  "targetType": "self"
+                  "targetType": "all-allies"
                 },
                 "effect": {
                   "type": "stat-modifier",
-                  "statType": "crit-rate",
+                  "statType": "crit-damage-reduction",
                   "magnitude": 0.1,
                   "isPercentage": true
                 },
@@ -73530,41 +74458,20 @@
                   "durationType": "timed",
                   "rounds": 2
                 },
-                "chance": 1
-              },
-              {
-                "target": {
-                  "targetType": "self"
-                },
-                "effect": {
-                  "type": "stat-modifier",
-                  "statType": "crit-damage",
-                  "magnitude": 0.15,
-                  "isPercentage": true
-                },
-                "duration": {
-                  "durationType": "timed",
-                  "rounds": 2
-                },
-                "chance": 1
+                "chance": 1,
+                "unique": true
               }
             ],
             "triggers": [
               {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
+                "triggerType": "before-ultimate-use",
                 "effect": {
                   "target": {
-                    "targetType": "self"
+                    "targetType": "all-allies"
                   },
                   "effect": {
                     "type": "stat-modifier",
-                    "statType": "crit-rate",
+                    "statType": "crit-damage-reduction",
                     "magnitude": 0.1,
                     "isPercentage": true
                   },
@@ -73572,41 +74479,12 @@
                     "durationType": "timed",
                     "rounds": 2
                   },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
-              },
-              {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 0,
-                "oncePerBattle": false,
-                "oncePerRound": false,
-                "effect": {
-                  "target": {
-                    "targetType": "self"
-                  },
-                  "effect": {
-                    "type": "stat-modifier",
-                    "statType": "crit-damage",
-                    "magnitude": 0.15,
-                    "isPercentage": true
-                  },
-                  "duration": {
-                    "durationType": "timed",
-                    "rounds": 2
-                  },
-                  "chance": 1
-                },
-                "priority": 0,
-                "chance": 1
+                  "chance": 1,
+                  "unique": true
+                }
               }
             ],
-            "notes": "Mastery: on ultimate use, self crit rate +10% and crit damage +15% for 2 rounds.",
-            "requiresInvestigation": true
+            "notes": "Original text 604400205: on ordinary ultimate, reduce critical damage taken by all allies for two rounds."
           }
         },
         {
@@ -75464,9 +76342,9 @@
             "abilityDes": {
               "tid": 343030171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503311,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400211,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -75541,9 +76419,9 @@
             "abilityDes": {
               "tid": 343030172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503312,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400212,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -75618,9 +76496,9 @@
             "abilityDes": {
               "tid": 343030173,
               "type_des": 9,
-              "show_name": 6503138,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400038,
+              "show_name": 6503313,
+              "skill_icon": "mastery_skill_red_01.png",
+              "text": 604400213,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -75739,9 +76617,9 @@
             "abilityDes": {
               "tid": 343030174,
               "type_des": 9,
-              "show_name": 6503139,
-              "skill_icon": "mastery_skill_purple_02.png",
-              "text": 604400039,
+              "show_name": 6503314,
+              "skill_icon": "mastery_skill_red_02.png",
+              "text": 604400214,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -77887,9 +78765,9 @@
             "abilityDes": {
               "tid": 343050171,
               "type_des": 9,
-              "show_name": 6503166,
+              "show_name": 6503321,
               "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
-              "text": 604400066,
+              "text": 604400221,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -77964,9 +78842,9 @@
             "abilityDes": {
               "tid": 343050172,
               "type_des": 9,
-              "show_name": 6503167,
+              "show_name": 6503322,
               "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
-              "text": 604400067,
+              "text": 604400222,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -78041,9 +78919,9 @@
             "abilityDes": {
               "tid": 343050173,
               "type_des": 9,
-              "show_name": 6503138,
-              "skill_icon": "mastery_skill_purple_01.png",
-              "text": 604400038,
+              "show_name": 6503323,
+              "skill_icon": "mastery_skill_gold_01.png",
+              "text": 604400223,
               "detail_text": 0
             },
             "catalogTypeMatch": true,
@@ -84370,8 +85248,8 @@
           "id": "2404040123",
           "name": "绛丝乱舞",
           "type": "Ultimate",
-          "status": "Executable",
-          "category": "description-inferred",
+          "status": "MetadataOnly",
+          "category": "metadata fallback",
           "description": "摧毁敌方全体50%当前护盾，并造成130%物理伤害\\n汐夜释放天极技时，将基于当前【月光】层数附加以下效果，且释放结束后移除所有【月光】\\n20层：最终暴击率提升20%\\n40层：且最终增伤提升20%\\n60层：且暴击伤害提升20%\\n80层：且天极技结束时回复240点能量值\\n100层：且天极技造成的伤害将额外无视目标50%的防御\\n\\n【月光】：至多叠加100层，每层提升0.5%最终伤害加成及0.5%无视防御；首次叠加至100层时，若选择【圣光之翼】作为助阵羁绊，则汐夜提升20%最终伤害减免，终结技获得强化：基于造成总伤害的10%治疗己方全体；若选择【天启之子】作为助阵羁绊，则汐夜提升20%最终伤害增加，普攻获得强化：对敌方默认单体及其相邻单位造成80%物理伤害，本次攻击附加25%最终暴击",
           "implementation": {
             "source": "FightTable.Ability + FightTable.AbilityDes",
@@ -84393,30 +85271,8 @@
               "detail_text": 0
             },
             "catalogTypeMatch": true,
-            "effectType": "damage",
-            "targetType": "all-enemies",
-            "energyCost": 0,
-            "effects": [
-              {
-                "target": {
-                  "targetType": "all-enemies"
-                },
-                "effect": {
-                  "type": "damage",
-                  "damageType": "physical",
-                  "multiplier": 1.3,
-                  "canCrit": true
-                },
-                "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
-                },
-                "chance": 1
-              }
-            ],
-            "triggers": [],
             "requiresInvestigation": true,
-            "notes": "Ultimate: destroy 50% current shields on all enemies + 130% physical damage; moonlight-layer based bonuses (20/40/60/80/100) and first-100-layer bond choice (requires investigation)."
+            "notes": "Source text 601501120 repeats 601501119 and names 汐夜. Keep the original reference and literal text, but do not execute it or borrow the other 千千结 form (2504030123)."
           }
         },
         {
@@ -92695,7 +93551,15 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 354070171,
+              "type_des": 9,
+              "show_name": 6505245,
+              "skill_icon": "Icon_Skill_huizhangquantishanghai.png",
+              "text": 604401000,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "heal",
             "targetType": "self",
@@ -92782,60 +93646,26 @@
           "type": "Mastery",
           "status": "Executable",
           "category": "description-inferred",
-          "description": "每回合首次释放终结技后，降低敌方随机1人1点天极值；受到的非强效控制效果有50%概率免疫",
+          "description": "每回合首次释放终结技后降低敌方随机1人1点天极值\n蜜雪儿受到的非强效控制效果，将有50%概率免疫",
           "implementation": {
             "source": "description-inferred (no FightTable row for 3540701xx in repository)",
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 354070172,
+              "type_des": 9,
+              "show_name": 6505246,
+              "skill_icon": "Icon_Skill_huizhangshuxingjiacheng.png",
+              "text": 604401001,
+              "detail_text": 0
+            },
             "catalogTypeMatch": null,
-            "effectType": "energy",
-            "targetType": "single",
+            "effectType": "stat-modifier",
+            "targetType": "self",
             "energyCost": 0,
-            "effects": [
-              {
-                "target": {
-                  "targetType": "single"
-                },
-                "effect": {
-                  "type": "energy",
-                  "energyType": "loss",
-                  "magnitude": 1
-                },
-                "duration": {
-                  "durationType": "instant",
-                  "rounds": 0
-                },
-                "chance": 1
-              }
-            ],
+            "effects": [],
             "triggers": [
-              {
-                "triggerType": "on-ultimate-use",
-                "condition": null,
-                "conditionKey": null,
-                "cooldown": 0,
-                "maxTriggers": 1,
-                "oncePerBattle": false,
-                "oncePerRound": true,
-                "effect": {
-                  "target": {
-                    "targetType": "single"
-                  },
-                  "effect": {
-                    "type": "energy",
-                    "energyType": "loss",
-                    "magnitude": 1
-                  },
-                  "duration": {
-                    "durationType": "instant",
-                    "rounds": 0
-                  },
-                  "chance": 1
-                },
-                "priority": 0
-              },
               {
                 "triggerType": "on-round-start",
                 "condition": null,
@@ -92864,7 +93694,7 @@
               }
             ],
             "requiresInvestigation": true,
-            "notes": "Mastery (skill row reconstructed): first ultimate each round drains 1 天极值 from a random enemy (approximated as 1 point of enemy energy loss because 天极值 is not modelled); 50% immunity to non-strong control is approximated as +50% status resistance."
+            "notes": "The first ordinary ultimate each round drains 1 Tianji point from a random living enemy via the Tianji hook. The original non-strong control classification and immunity remain unverified; the old status-resistance placeholder is not evidence of that clause."
           }
         },
         {
@@ -92879,7 +93709,15 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 354070173,
+              "type_des": 9,
+              "show_name": 6505247,
+              "skill_icon": "mastery_skill_red_01.png",
+              "text": 604401002,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "stat-modifier",
             "targetType": "self",
@@ -92974,7 +93812,15 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 354070174,
+              "type_des": 9,
+              "show_name": 6505248,
+              "skill_icon": "mastery_skill_red_02.png",
+              "text": 604401003,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "energy",
             "targetType": "self",
@@ -93064,7 +93910,15 @@
             "resolvedAbility": false,
             "resolvedDescription": false,
             "ability": null,
-            "abilityDes": null,
+            "abilityDes": {
+              "tid": 354070175,
+              "type_des": 9,
+              "show_name": 6505249,
+              "skill_icon": "mastery_skill_red_03.png",
+              "text": 604401004,
+              "detail_text": 0
+            },
+            "catalogTypeMatch": null,
             "catalogTypeMatch": null,
             "effectType": "stat-modifier",
             "targetType": "single",

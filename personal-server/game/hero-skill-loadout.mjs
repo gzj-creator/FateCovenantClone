@@ -1,6 +1,8 @@
 import { GameError } from './hero-progression.mjs';
 import { heroMasteryView } from './hero-mastery-service.mjs';
 import { loadSkillDatabase } from './effects/skill-integration.mjs';
+import { isTianjiAbility, readFightAbilityTypes, readHeroNormalSkills } from '../config/fight-ability-types.mjs';
+import { readHeroMutantSkills } from '../config/hero-tables.mjs';
 
 const fail = (code, message) => { throw new GameError(code, message); };
 
@@ -18,21 +20,28 @@ function cloneWithGate(skill, { level, source, levelKnown = true }) {
   return { ...skill, level, levelKnown, skillSource: source };
 }
 
-function evidenceBackedUltimate(skills, excludedId = 0) {
-  return skills.find(skill => {
-    if (skill.type !== 'Ultimate') return false;
-    if (String(skill.id) === String(excludedId)) return false;
-    const implementation = skill.implementation;
-    if (!implementation) return false;
-    const metadataFallback = skill.category === 'metadata fallback'
-      || implementation.category === 'metadata fallback'
-      || (implementation.requiresInvestigation === true
-        && implementation.resolvedDescription === false
-        && implementation.catalogTypeMatch !== true);
-    return !metadataFallback && (implementation.category === 'description-inferred'
-      || implementation.resolvedDescription === true
-      || implementation.catalogTypeMatch === true);
-  }) ?? null;
+function sourcedNormal(id, compatibility) {
+  const row = readHeroNormalSkills().get(id);
+  if (!row) return null;
+  const variance = compatibility?.implementation?.effects?.[0]?.effect?.variance;
+  return {
+    id: String(id), name: row.name, type: 'Normal', status: 'Executable', category: 'description-inferred',
+    implementation: {
+      source: 'FightTable.AbilityDes', abilityDes: { tid: id, text: row.textKey }, tianjiGain: row.tianjiGain,
+      effects: [{ target: { targetType: 'single' }, effect: {
+        type: 'damage', damageType: row.damageType, multiplier: row.multiplier, variance,
+      } }],
+    },
+  };
+}
+
+export function selectFightActionIds(abilityIds) {
+  const types = readFightAbilityTypes();
+  const abilityId = abilityIds.find(id => types.get(id)?.type === 1);
+  const activeAbilityId = abilityIds.find(id => types.get(id)?.type === 2 && !isTianjiAbility(id)) ?? null;
+  const tianjiAbilityId = abilityIds.find(isTianjiAbility) ?? null;
+  if (!abilityId) fail(5, 'Battle normal action configuration missing');
+  return { abilityId, activeAbilityId, tianjiAbilityId };
 }
 
 // HeroTable.AbilityLevel.level is indexed over Ability.ability. HeroDevelopMgr
@@ -59,20 +68,16 @@ export function abilityLevelRow(hero, heroTables) {
 // for the generic Passive entries in the skill catalog.
 export function breakthroughPassiveIds(hero, heroTables) {
   const tid = Number(hero?.tid ?? 0);
-  const breakthrough = Math.max(0, Number(hero?.breakthrough_level ?? 0));
-  const result = [];
-  const table = heroTables?.UpStageTalent;
-  if (!table) return result;
-  for (const [key, row] of table) {
-    const numericKey = Number(key);
-    const stage = numericKey % 100;
-    if (Math.floor(numericKey / 100) !== tid || stage > breakthrough) continue;
-    for (const id of [row?.potential_skill, row?.skill]) {
+  const breakthrough = Math.min(99, nonNegativeInteger(hero?.breakthrough_level, 0));
+  const result = new Set();
+  for (let stage = 1; stage <= breakthrough; stage++) {
+    const row = heroTables?.UpStageTalent?.get(tid * 100 + stage);
+    for (const id of [row?.skill, row?.potential_skill]) {
       const numeric = Number(id ?? 0);
-      if (Number.isSafeInteger(numeric) && numeric > 0 && !result.includes(numeric)) result.push(numeric);
+      if (Number.isSafeInteger(numeric) && numeric > 0) result.add(numeric);
     }
   }
-  return result;
+  return [...result];
 }
 
 // Build the authoritative battle loadout from persisted hero progression. The
@@ -87,7 +92,9 @@ export function buildHeroSkillLoadout({ hero, heroTables, skillDatabase = loadSk
   const levels = abilityLevelRow(hero, heroTables);
   const catalog = skillDatabase?.heroes?.find(row => String(row.id) === String(tid))?.skills ?? [];
   const byId = new Map(catalog.map(skill => [String(skill.id), skill]));
+  const types = readFightAbilityTypes();
   const selected = new Map();
+  const abilityIds = new Set();
   const warnings = [];
 
   const add = (skill, descriptor, priority) => {
@@ -98,44 +105,77 @@ export function buildHeroSkillLoadout({ hero, heroTables, skillDatabase = loadSk
     selected.set(key, { priority, skill: cloneWithGate(skill, descriptor) });
   };
 
-  const rawAbilityIds = ability.ability.map(Number);
-  const unlockedRawIds = rawAbilityIds.filter((_, index) => Number(levels.levels[index] ?? 0) > 0);
-  const soulId = Number(ability.soul_ability ?? 0);
-  const soul = soulId > 0 ? byId.get(String(soulId)) ?? null : null;
+  const addPassiveReference = (id, source, level = 1) => {
+    if (!(id > 0) || abilityIds.has(id)) return;
+    abilityIds.add(id);
+    if (types.get(id)?.type !== 3) return;
+    const skill = byId.get(String(id));
+    if (skill && skill.category !== 'metadata fallback' && skill.implementation?.category !== 'metadata fallback') {
+      add({ ...skill, type: 'Passive' }, { level, source }, 30);
+    }
+    else warnings.push('passive-effect-unresolved:' + id);
+  };
+
+  const slotIds = ability.ability.map((id, index) => {
+    const level = levels.levels[index] ?? 0;
+    return id > 0 && level > 0 ? Math.floor(id / 10) * 10 + level : 0;
+  });
+  const activeSlot = slotIds.findIndex(id => types.get(id)?.type === 2 && !isTianjiAbility(id));
+  const tianjiId = Number(ability.soul_ability ?? 0);
   const rare = Boolean(hero?.rare);
-  if (rare && soulId > 0 && unlockedRawIds.length > 1) unlockedRawIds[1] = soulId;
-  const normal = catalog.find(skill => skill.type === 'Normal') ?? null;
-  add(normal, { level: levels.levels[0] ?? 0, source: 'ability-level:normal' }, 10);
-  if (rare && soul) {
-    add(soul, { level: levels.levels[1] || 1, source: 'soul-replacement' }, 50);
-  } else {
-    const ultimate = evidenceBackedUltimate(catalog, soulId);
-    if (ultimate) add(ultimate, { level: levels.levels[1] || 1, source: 'ability-level:active' }, 20);
-    if (rare && !soul) warnings.push('rare-soul-skill-missing:' + tid);
+  if ((config.quality === 60 || config.quality === 70) && tianjiId > 0 && isTianjiAbility(tianjiId)) {
+    abilityIds.add(tianjiId);
+    const tianji = byId.get(String(tianjiId));
+    if (tianji && tianji.category !== 'metadata fallback' && tianji.implementation?.category !== 'metadata fallback') {
+      add(tianji, { level: 1, source: 'hero-tianji' }, 50);
+    } else {
+      warnings.push('tianji-effect-unresolved:' + tianjiId);
+    }
+  }
+  addPassiveReference(Number(ability.hide_ability ?? 0), 'hero-hidden');
+  for (const [index, id] of slotIds.entries()) {
+    addPassiveReference(id, 'ability-level:slot', levels.levels[index]);
+  }
+  if (slotIds[0]) {
+    const fallback = catalog.find(skill => skill.type === 'Normal' && skill.implementation?.fallback === true);
+    const normal = byId.get(String(slotIds[0])) ?? sourcedNormal(slotIds[0], fallback);
+    if (!normal) warnings.push('normal-effect-unresolved:' + slotIds[0]);
+    add(normal ?? fallback, { level: levels.levels[0], source: 'ability-level:normal' }, 10);
+  }
+  const ultimate = byId.get(String(slotIds[activeSlot]));
+  if (activeSlot >= 0 && ultimate?.type === 'Ultimate' && ultimate.category !== 'metadata fallback') {
+    add(ultimate, { level: levels.levels[activeSlot], source: 'ability-level:active' }, 20);
+  } else if (activeSlot >= 0) {
+    warnings.push('ordinary-active-effect-unresolved:' + slotIds[activeSlot]);
   }
 
-  // UpStageTalent exposes breakthrough milestones, but the shipped catalog has
-  // not yet supplied the raw Ability-to-catalog join. Keep its ids as evidence
-  // metadata and retain catalog passives until that join is recovered.
   const breakthroughIds = breakthroughPassiveIds(hero, heroTables);
-  for (const skill of catalog) {
-    if (skill.type !== 'Passive') continue;
-    add(skill, { level: 1, source: 'catalog-passive-unmapped', levelKnown: false }, 30);
+  for (const id of breakthroughIds) addPassiveReference(id, 'breakthrough');
+  for (const id of heroTables?.Profession?.get(Number(config.profession))?.ability ?? []) {
+    addPassiveReference(Number(id), 'profession');
   }
-  if (breakthroughIds.length) warnings.push('breakthrough-passive-join-unresolved');
 
+  const mutantId = positiveInteger(hero?.mutant, 0);
+  const mutant = mutantId > 0 ? readHeroMutantSkills().get(mutantId) : null;
+  const isMutant = mutant?.belong_hero === tid;
+  if (isMutant) addPassiveReference(mutant.extra_skill, 'hero-mutant');
   const mastery = heroMasteryView(hero, heroTables);
-  const masteryId = Number(ability.mastery_ability ?? 0);
-  const masteryLevel = Math.max(0, Number(hero?.mastery_level ?? 0));
-  if (mastery.unlocked && masteryLevel > 0 && masteryId > 0) {
+  const masteryBase = positiveInteger(ability.mastery_ability, 0);
+  const masteryLevel = nonNegativeInteger(mastery.level, 0);
+  const masteryBreak = nonNegativeInteger(mastery.break, 0);
+  const masteryId = mastery.unlocked && masteryBase && masteryBreak > 0 && masteryBreak <= mastery.max_break
+    ? masteryBase + masteryBreak - 1 : null;
+  if (masteryId && types.has(masteryId)) {
+    abilityIds.add(masteryId);
     const skill = byId.get(String(masteryId));
     if (skill) {
       add(skill, { level: masteryLevel, source: 'mastery-selection' }, 40);
-      if (!unlockedRawIds.includes(masteryId)) unlockedRawIds.push(masteryId);
     } else {
       warnings.push('mastery-skill-not-in-catalog:' + masteryId);
     }
   }
+  if (Number(hero?.diff ?? 0) > 0) addPassiveReference(Number(heroTables?.Diff?.get(tid)?.skill ?? 0), 'hero-diff');
+  if (rare) addPassiveReference(Number(heroTables?.Rare?.get(tid)?.skill ?? 0), 'hero-rare');
 
   const skills = [...selected.values()].map(entry => entry.skill);
   return {
@@ -144,19 +184,17 @@ export function buildHeroSkillLoadout({ hero, heroTables, skillDatabase = loadSk
     star: levels.star,
     abilityLevelKey: levels.key,
     abilityLevels: levels.levels,
-    // Raw ids remain the client/replay contract; catalog ids are only available
-    // where HeroTable carries an exact reference (soul and mastery rows).
-    abilityIds: unlockedRawIds,
+    isMutant,
+    abilityIds: [...abilityIds],
     catalogSkillIds: skills.map(skill => skill.id),
     skills,
     mastery: {
-      selected: masteryId > 0 ? masteryId : null,
+      selected: masteryId,
       unlocked: mastery.unlocked,
       level: masteryLevel,
-      break: Math.max(0, Number(hero?.mastery_break ?? 0))
+      break: masteryBreak
     },
     breakthroughPassiveIds: breakthroughIds,
-    replacement: rare && soul ? { to: soulId } : null,
     warnings
   };
 }

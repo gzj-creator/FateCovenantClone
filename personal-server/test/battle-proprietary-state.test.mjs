@@ -9,11 +9,14 @@ import {
   absorbDamage,
   activeSummon,
   addLayer,
+  addShield,
   addSuperHp,
   capDamage,
+  clearShield,
   createProprietaryState,
   destroyShield,
   drainTianji,
+  expireTimedShields,
   gainTianji,
   layerValue,
   registerHook,
@@ -81,6 +84,24 @@ test('damage is taken by shield, then 超凡生命, then HP', () => {
   const third = absorbDamage(target, 500, { events });
   assert.equal(third.newHp, 0);
   assert.equal(target.alive, false);
+});
+
+test('timed shields expire only their unspent balance', () => {
+  const target = unit({ shield: 100 });
+  addShield(target, 50, 2);
+  addShield(target, 200, 3);
+  assert.equal(absorbDamage(target, 25).absorbed, 25);
+  assert.equal(expireTimedShields(target, 1), 0);
+  assert.equal(expireTimedShields(target, 2), 25);
+  assert.equal(target.shield, 300);
+  assert.equal(destroyShield(target, 0.5), 150);
+  assert.equal(expireTimedShields(target, 3), 50);
+  assert.equal(target.shield, 100);
+  addShield(target, 75, 4);
+  clearShield(target);
+  addShield(target, 100);
+  assert.equal(expireTimedShields(target, 4), 0);
+  assert.equal(target.shield, 100);
 });
 
 test('a guarded summon absorbs the fatal hit and leaves at its described limit', () => {

@@ -346,6 +346,42 @@ export function runHooks(state, hookName, payload = {}, events = null, filter = 
   return results;
 }
 
+export function addShield(unit, amount, expiresAfterRound = null) {
+  amount = nonNegative(amount);
+  unit.shield = nonNegative(unit.shield) + amount;
+  if (amount > 0 && Number.isSafeInteger(expiresAfterRound)) {
+    unit.timedShields ??= [];
+    unit.timedShields.push({ amount, expiresAfterRound });
+    unit.timedShields.sort((left, right) => left.expiresAfterRound - right.expiresAfterRound);
+  }
+}
+
+export function clearShield(unit) {
+  unit.shield = 0;
+  if (unit.timedShields) unit.timedShields.length = 0;
+}
+
+function removeShieldAmount(unit, amount) {
+  unit.shield = nonNegative(unit.shield) - amount;
+  if (!amount || !unit.timedShields?.length) return;
+  let remaining = amount;
+  for (const layer of unit.timedShields) {
+    const used = Math.min(layer.amount, remaining);
+    layer.amount -= used;
+    remaining -= used;
+    if (!remaining) break;
+  }
+  unit.timedShields = unit.timedShields.filter(layer => layer.amount > 0);
+}
+
+export function expireTimedShields(unit, round) {
+  if (!unit.timedShields?.length) return 0;
+  const expired = unit.timedShields.filter(layer => layer.expiresAfterRound <= round)
+    .reduce((total, layer) => total + layer.amount, 0);
+  if (expired > 0) removeShieldAmount(unit, expired);
+  return expired;
+}
+
 /**
  * Apply one incoming hit: shield first, then 超凡生命, then HP.
  * A unit protected by an active summon does not lose HP to a hit that would be
@@ -356,7 +392,7 @@ export function absorbDamage(unit, rawDamage, { events = null, sourceId = null }
   const state = proprietaryOf(unit);
   const oldShield = nonNegative(unit.shield);
   const absorbed = Math.min(oldShield, amount);
-  unit.shield = oldShield - absorbed;
+  removeShieldAmount(unit, absorbed);
   let remaining = amount - absorbed;
 
   let superAbsorbed = 0;
@@ -409,7 +445,7 @@ export function destroyShield(unit, ratio, { events = null, sourceId = null, act
   const fraction = Math.min(1, Math.max(0, finite(ratio)));
   const removed = Math.min(current, Math.floor(current * fraction));
   if (removed > 0) {
-    unit.shield = current - removed;
+    removeShieldAmount(unit, removed);
     emit(events, PROPRIETARY_EVENT_KINDS.SHIELD_DESTROYED, {
       id: actionId, aimId: unit.id, srcId: sourceId,
       ratio: fraction, removed, shield: unit.shield

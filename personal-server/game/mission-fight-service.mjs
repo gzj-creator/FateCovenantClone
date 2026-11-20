@@ -15,7 +15,7 @@ import { consumeResources, grantResources } from './resources.mjs';
 import { decodeBitBlock, encodeBitBlock, hasBit, setBit } from './bit-block.mjs';
 import { missionPosition } from './mission-progress.mjs';
 import { energyMaxForRole, refreshEnergyResources } from './energy.mjs';
-import { buildHeroSkillLoadout } from './hero-skill-loadout.mjs';
+import { buildHeroSkillLoadout, selectFightActionIds } from './hero-skill-loadout.mjs';
 import { FAT_ACTION, PROMPT } from './effects/report-codes.mjs';
 import { addRoleExp } from './role-level.mjs';
 import { emitRoleLevelUp } from './event-bus.mjs';
@@ -250,15 +250,6 @@ function initialFightAttributes(initialEnergy) {
   ];
 }
 
-function activeAbilityId(abilities) {
-  const values = abilities.map(Number);
-  // FightActionBeforeStep dispatches on FightTable.Ability(ab_tid).type. The
-  // shipped skill ids encode the same type in their leading digit: 1 common,
-  // 2 active, 3 passive and 4 attribute. Returning a passive id here makes the
-  // client take its normal-attack path even when the action packet says type 2.
-  return values.find(id => String(id).startsWith('2')) ?? values[0] ?? 1;
-}
-
 // FightCaptainRoleInfoNode loads FighterMgr:GetCaptain(LOC_ASSAULT) and indexes
 // captainFighter without a nil guard. A captain fighter is a VirtualFighter used
 // by the artifact HUD; it is not one of the player's HeroFighter rows.
@@ -327,7 +318,7 @@ function configuredNpcTeam(config, side, attributeTables) {
       ability_list: abilities, init_attr: initialFightAttributes(FIGHT_INITIAL_ENERGY), water_gun: 0,
       attack, defense, speed: compatibilitySpeed(cfg.hero), initialEnergy: FIGHT_INITIAL_ENERGY,
       ...combatCriticalStats({ critRate: values.get(ACTOR_ATTR.CRIT), critHarm: values.get(ACTOR_ATTR.CRIT_HARM) }),
-      abilityId: abilities[0], activeAbilityId: activeAbilityId(abilities),
+      ...selectFightActionIds(abilities),
       // Do not load a hero's entire catalog (including unrelated late passives)
       // just because this NPC shares that hero's appearance.
       skills: [], power: entry.calculatedPower
@@ -390,19 +381,19 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
       initialEnergy: FIGHT_INITIAL_ENERGY
     };
     const skillLoadout = buildHeroSkillLoadout({ hero, heroTables: config.tables.heroes });
-    const abilities = skillLoadout.abilityIds.length
-      ? skillLoadout.abilityIds
-      : cfg.abilities.slice(0, 8).map(Number);
+    const abilities = skillLoadout.abilityIds;
     return {
       id: 101 + index, tid: role, role_type: FIGHTER_ROLE_HERO, uid: String(hero.uid), role,
       team: 1, team_index: selected.teamIndex, camp: assembled.camp, loc: entry.loc,
       star: assembled.star, level, quality, hp: maxHp, max_hp: maxHp,
+      is_mutant: skillLoadout.isMutant,
+      hero_diff: String(hero.diff ?? 0),
       enable: true, final_hp: maxHp, style: Number(cfg.hero.style ?? role),
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
       ...combatCriticalStats(assembled.stats),
-      speed: combat.speed, initialEnergy: combat.initialEnergy, abilityId: abilities[0] ?? 1,
-      activeAbilityId: activeAbilityId(abilities),
+      speed: combat.speed, initialEnergy: combat.initialEnergy,
+      ...selectFightActionIds(abilities),
       skills: skillLoadout.skills,
       power: assembled.power
     };
@@ -439,8 +430,9 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
       ability_list: abilities, init_attr: initialFightAttributes(combat.initialEnergy), water_gun: 0,
       profession: combat.profession, attack: combat.attack, defense: combat.defense,
       ...combatCriticalStats(stats),
-      speed: combat.speed, initialEnergy: combat.initialEnergy, abilityId: abilities[0] ?? 1,
-      activeAbilityId: activeAbilityId(abilities)
+      speed: combat.speed, initialEnergy: combat.initialEnergy,
+      ...selectFightActionIds(abilities),
+      skills: []
     };
   });
   const fightTid = Number(config.mission.fight ?? 0);
@@ -453,6 +445,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
     loc: unit.loc,
     abilityId: unit.abilityId,
     activeAbilityId: unit.activeAbilityId,
+    tianjiAbilityId: unit.tianjiAbilityId,
     maxHp: unit.max_hp,
     attack: unit.attack,
     defense: unit.defense,
@@ -469,7 +462,7 @@ export function reportBattle(codec, model, mission, request, attributeTables, en
   const fighters = [captainFighter(attackers, selected), ...attackers, ...defenders];
   const brief = (team, members) => ({ team_list: [{
     team_index: team,
-    fighter_list: members.map(unit => ({ tid: unit.role, is_mutant: false }))
+    fighter_list: members.map(unit => ({ tid: unit.role, is_mutant: Boolean(unit.is_mutant) }))
   }] });
   return {
     simulation,
@@ -504,7 +497,8 @@ export function reportGuideDemoBattle(codec, model, fightTid, attributeTables, f
   const seed = battleSeed(0, fightTid, model.state.roleId);
   const combatUnit = unit => ({
     id: unit.id, role: unit.role, profession: unit.profession, camp: unit.camp, loc: unit.loc,
-    abilityId: unit.abilityId, activeAbilityId: unit.activeAbilityId, maxHp: unit.max_hp,
+    abilityId: unit.abilityId, activeAbilityId: unit.activeAbilityId, tianjiAbilityId: unit.tianjiAbilityId,
+    maxHp: unit.max_hp,
     attack: unit.attack, defense: unit.defense, speed: unit.speed,
     critChance: unit.critChance, critMultiplier: unit.critMultiplier,
     initialEnergy: unit.initialEnergy, skills: unit.skills

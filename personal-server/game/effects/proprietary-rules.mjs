@@ -19,6 +19,7 @@ import {
   addLayer,
   activeDomains,
   addSuperHp,
+  clearShield,
   consumeLayers,
   destroyShield,
   drainTianji,
@@ -29,10 +30,10 @@ import {
   runHooks,
   setLayer,
   summonGuard,
-  tianjiValue,
 } from './proprietary-state.mjs';
 import { EffectExecutor } from './effect-executor.mjs';
 import { BUFF_CHANGE_REASON, BUFF_SIGN, provenBuffTid } from './report-codes.mjs';
+import { isTianjiAbility } from '../../config/fight-ability-types.mjs';
 
 const ENEMY_TARGET = { targetType: 'all-enemies' };
 const CONTROL_STATUS_TYPES = new Set(['freeze', 'stun', 'silence', 'frightened']);
@@ -111,12 +112,6 @@ export let PROPRIETARY_SKILL_RULES = [
     config: { mode: 'skill', scope: 'all-enemies', ratio: 0.5 }
   },
   {
-    skillId: '2404040123', kind: 'shield-destroy',
-    requires: ['摧毁敌方全体50%当前护盾'],
-    evidence: '摧毁敌方全体50%当前护盾，并造成130%物理伤害',
-    config: { mode: 'skill', scope: 'all-enemies', ratio: 0.5 }
-  },
-  {
     skillId: '2504040123', kind: 'shield-destroy',
     requires: ['削减敌方全体35%的护盾'],
     evidence: '削减敌方全体35%的护盾，对敌方全体造成零生命上限20%的魔法伤害',
@@ -166,7 +161,7 @@ export let PROPRIETARY_SKILL_RULES = [
   // 天极值 drain: "每回合首次释放终结技后降低敌方随机一人1点天极值".
   {
     kind: 'tianji-drain',
-    requires: [/首次释放终结技后[，,]?降低敌方随机一?人?1点天极值/],
+    requires: [/每回合首次释放终结技后[，,]?降低敌方随机[一1]人1点天极值/],
     evidence: '每回合首次释放终结技后降低敌方随机一人1点天极值',
     config: { amount: 1 }
   },
@@ -370,18 +365,6 @@ export let PROPRIETARY_SKILL_RULES = [
       ],
     }
   },
-  {
-    skillId: '2404040123', kind: 'layer',
-    requires: ['【月光】：至多叠加100层，每层提升0.5%最终伤害加成及0.5%无视防御'],
-    evidence: '【月光】：至多叠加100层，每层提升0.5%最终伤害加成及0.5%无视防御',
-    config: {
-      name: '月光', cap: 100,
-      perLayer: [
-        { statType: 'damage-bonus', magnitude: 0.005 },
-        { statType: 'ignore-defense', magnitude: 0.005 },
-      ],
-    }
-  },
 
   // 额外行动 / 追击 / 反击.
   {
@@ -407,7 +390,13 @@ export let PROPRIETARY_SKILL_RULES = [
     requires: ['自身行动回合结束后额外释放1次终结技', '摧毁敌方全体20%护盾'],
     evidence: '自身行动回合结束后额外释放1次终结技，且本次终结技释放前额外摧毁敌方全体20%护盾',
     config: { trigger: 'action-end', action: 'ultimate', maxPerRound: 1, destroyShieldRatio: 0.2, replaceTriggers: true }
-  }
+  },
+  ...['2202060112', '2202060113'].map(skillId => ({
+    skillId, kind: 'kill-follow-up',
+    requires: ['若造成击杀则对下一目标再次释放终结技', '造成150%的物理伤害', '最多连续释放2次'],
+    evidence: '若造成击杀则对下一目标再次释放终结技，造成150%的物理伤害（最多连续释放2次）',
+    config: { multiplier: 1.5, limit: 2 }
+  }))
 ];
 
 export function setProprietarySkillRules(rules) {
@@ -424,15 +413,8 @@ export function matchesDescription(skill, fragments) {
   return fragments.every(fragment => (fragment instanceof RegExp ? fragment.test(text) : text.includes(fragment)));
 }
 
-/**
- * FightTable.Ability rows for 天极技 carry type 2 with run_type 5; every
- * ordinary ultimate/active row in the same catalog uses run_type 1. The ten
- * rows whose description starts with "消耗3点天极值" are exactly this set, so
- * run_type 5 is the configuration evidence for the action kind.
- */
 export function isDeitySkill(skill) {
-  const ability = skill?.implementation?.ability;
-  return Boolean(ability) && Number(ability.type) === 2 && Number(ability.run_type) === 5;
+  return isTianjiAbility(skill?.id);
 }
 
 /** Described 天极值 price of a 天极技, or null when the row does not state one. */
@@ -446,6 +428,7 @@ export function tianjiCostFor(skill) {
 export function proprietaryRulesFor(skills = []) {
   const active = [];
   for (const skill of skills) {
+    if (skill?.status === 'MetadataOnly') continue;
     const id = String(skill?.id);
     for (const rule of PROPRIETARY_SKILL_RULES) {
       // Rules with a skillId bind one catalog row; rules without one express a
@@ -641,6 +624,40 @@ function applyTimedStat(unit, { statType, magnitude, rounds, sourceSkill = null,
 }
 
 const HANDLERS = Object.freeze({
+  'kill-follow-up': ({ unit, skill, rule }) => {
+    if (unit.activeAbilityId !== Number(skill.id)) return null;
+    const { multiplier, limit } = rule.config;
+    const unlimited = unit.skills.some(candidate => String(candidate.id) === '6202060112'
+      && matchesDescription(candidate, ['终结技追击次数从2次调整为无限']));
+    registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (owner, payload, state) => {
+      const used = payload?.skill;
+      if (payload?.actor?.id !== owner.id || payload.actionType !== 'ultimate' || used?.id !== skill.id) return false;
+      const remaining = used.killFollowUp?.remaining ?? (unlimited ? Infinity : limit);
+      if (remaining <= 0) return false;
+      const defeated = (state.actionContext?.primaryResults ?? []).filter(result => result.type === 'damage'
+        && result.actor === owner.id && result.oldHp > 0 && result.newHp === 0).map(result => result.target);
+      if (!defeated.length) return false;
+      const excluded = new Set([...(used.killFollowUp?.excluded ?? []), ...defeated]);
+      if (!livingEnemiesOf(owner, state).some(target => !excluded.has(target.id))) return false;
+      return {
+        kind: 'extra-action', action: 'ultimate', actorId: owner.id, reason: 'kill-follow-up',
+        skill: {
+          ...skill,
+          killFollowUp: { remaining: remaining - 1, excluded },
+          implementation: {
+            ...skill.implementation,
+            effects: skill.implementation.effects.map(definition => ({
+              ...definition,
+              target: { ...definition.target, filter: target => !excluded.has(target.id) },
+              effect: { ...definition.effect, multiplier }
+            }))
+          }
+        }
+      };
+    });
+    return { limit: unlimited ? null : limit, multiplier };
+  },
+
   'super-hp': ({ unit, rule, events }) => {
     const amount = Math.max(1, Math.floor(unit.maxHp * Number(rule.config.ratio)));
     addSuperHp(unit, amount, { events, reason: 'super-life' });
@@ -735,9 +752,9 @@ const HANDLERS = Object.freeze({
   'tianji-drain': ({ unit, rule }) => {
     const amount = Number(rule.config.amount) || 1;
     registerHook(unit, PROPRIETARY_HOOKS.ACTION_END, (actor, payload, state) => {
-      if (payload?.extra || !payload?.useSkill) return false;
+      if (payload?.actionType !== 'ultimate') return false;
       if (payload?.actor?.id !== unit.id) return false;
-      const enemies = livingEnemiesOf(actor, state).filter(enemy => tianjiValue(enemy) >= amount);
+      const enemies = livingEnemiesOf(actor, state);
       if (!enemies.length) return false;
       const random = typeof state.random === 'function' ? state.random() : 0.5;
       const index = Math.min(enemies.length - 1, Math.floor(random * enemies.length));
@@ -883,7 +900,7 @@ const HANDLERS = Object.freeze({
       owner.alive = true;
       owner.hp = Math.max(1, Math.floor(owner.maxHp * Number(config.hpRatio)));
       owner.energy = Math.min(1000, Number(config.energy) || 0);
-      owner.shield = 0;
+      clearShield(owner);
       owner.deadThisAction = false;
       const actionId = payload?.actionId ?? state?.currentActionId ?? 0;
       emitProprietary(state?.events, {
@@ -1137,7 +1154,7 @@ const HANDLERS = Object.freeze({
     const request = (actor, payload) => ({
       kind: 'extra-action',
       actorId: actor.id,
-      action: config.sameAction ? (payload?.useSkill ? 'ultimate' : 'attack') : (config.action ?? 'attack'),
+      action: config.sameAction ? (payload?.actionType ?? 'attack') : (config.action ?? 'attack'),
       reason: String(skill.id),
       before: config.destroyShieldRatio
         ? (owner, state, events) => {

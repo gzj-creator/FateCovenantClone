@@ -74,16 +74,17 @@ test('喷薄焰火 (333070174) registers on-attack/on-skill-use attack-percent 0
   }
 });
 
-test('蚀骨之痛 (333070175) registers on-ultimate-use 3% target-max-HP damage', () => {
+test('毁灭业火 (333070175) amplifies only the current ordinary ultimate', () => {
   const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '333070175');
-  assert.equal(skill.implementation.triggers.length, 1);
-  const trigger = skill.implementation.triggers[0];
-  assert.equal(trigger.triggerType, 'on-ultimate-use');
-  assert.equal(trigger.effect.effect.type, 'damage');
-  assert.equal(trigger.effect.effect.damageType, 'percent-max-hp');
-  assert.equal(trigger.effect.effect.magnitude, 0.03);
+  const skill = getHeroSkills(HERO_ID, db).find(entry => entry.id === '333070175');
+  assert.equal(skill.name, '毁灭业火');
+  assert.equal(skill.implementation.abilityDes.text, 604400285);
+  const triggers = skill.implementation.triggers;
+  assert.equal(triggers.length, 2);
+  assert.ok(triggers.every(trigger => trigger.triggerType === 'before-ultimate-use'
+    && trigger.effect.effect.actionType === 'ultimate' && trigger.effect.duration.triggers === 1));
+  assert.deepEqual(Object.fromEntries(triggers.map(({ effect }) => [effect.effect.statType, effect.effect.magnitude])),
+    { 'crit-rate': 0.1, 'crit-damage': 0.15 });
 });
 
 test('突破9 (120001031) grants 200 energy on normal/skill', () => {

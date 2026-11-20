@@ -15,9 +15,10 @@ const skill = skillFinder(skills);
 const hero = (over = {}) => makeUnit({ id: HERO_ID, hp: 700, maxHp: 700, attack: 80, defense: 60, ...over });
 const enemy = (over = {}) => makeUnit({ id: 900, team: 2, hp: 1000, maxHp: 1000, attack: 100, defense: 50, ...over });
 
-test('1020501 影盾骑士 加载全部 14 个技能', () => {
-  assert.equal(skills.length, 14);
-  assert.deepEqual(skills.map((s) => s.id).sort(), EXPECTED_IDS);
+test('1020501 影盾骑士 保留原终结技档位及独立目录条目', () => {
+  const isActive = entry => entry.implementation?.ability?.type === 2;
+  assert.deepEqual(skills.filter(isActive).map(entry => entry.id), ['2102050112', '2102050113']);
+  assert.deepEqual(skills.filter(entry => !isActive(entry)).map(entry => entry.id).sort(), EXPECTED_IDS);
   assertAllSkillsExecutable(skills);
 });
 

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectFiles, extractGroups, getTableName, parseLuaJit } from './extract-battle-tables.mjs';
 
 const toolRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +20,7 @@ const languageCandidates = configuredLanguage ? [configuredLanguage] : [
 const defaults = {
   source: path.join(sourceRoot, 'analysis/reports/private-client-16448/lua-bundles/candidate/decoded'),
   language: languageCandidates.find(candidate => fs.existsSync(candidate)) ?? languageCandidates[0],
-  output: path.join(projectRoot, 'unity/FateCovenantClone/Assets/Resources/CharacterSkillCatalog.json')
+  output: path.join(projectRoot, 'analysis/reports/character-skill-catalog.json')
 };
 
 const tableTypes = [
@@ -55,7 +55,7 @@ function parseArguments(argv) {
   return options;
 }
 
-function loadTables(sourceRoot) {
+export function loadTables(sourceRoot) {
   const rowsByType = new Map();
   const filesByType = new Map();
   const files = collectFiles(sourceRoot).filter(file => {
@@ -70,7 +70,7 @@ function loadTables(sourceRoot) {
     const name = getTableName(file);
     const fileBase = name.replace(/\.\d+$/, '');
     const family = fileBase.split('.')[0];
-    for (const group of extractGroups(parseLuaJit(fs.readFileSync(file)))) {
+    for (const group of extractGroups(parseLuaJit(fs.readFileSync(file), { allowMultipleRoots: name === 'HeroTable' }), name)) {
       const type = group.rootName ? `${family}.${group.rootName}` : fileBase;
       if (!desiredTypes.has(type)) continue;
       if (!rowsByType.has(type)) { rowsByType.set(type, []); filesByType.set(type, new Set()); }
@@ -349,11 +349,11 @@ function buildSkill(ref, maps, language) {
   const raw = maps.ability.get(ref.id) ?? null;
   const detail = maps.detail.get(ref.id) ?? null;
   const description = localized(language, detail?.text ?? detail?.detail_text ?? ref.descriptionId);
-  const typeCode = detail?.type_des ?? raw?.type ?? (ref.source.some(value => value.includes('soul')) ? 3 : 2);
+  const typeCode = detail?.type_des ?? ({ 1: 1, 2: 3, 3: 2, 4: 8 })[raw?.type] ?? null;
   const category = skillType(typeCode, ref.source.join(','));
   const name = localized(language, detail?.show_name ?? ref.nameId) || `Skill ${ref.id}`;
-  const active = isActiveCategory(category);
-  const actions = inferActions(description, category, ref.preferredTarget);
+  const active = raw?.type === 1 || raw?.type === 2;
+  const actions = raw && description ? inferActions(description, category, ref.preferredTarget) : [];
   for (let index = 0; index < actions.length; index++) {
     const action = actions[index];
     if (action.type === 'ApplyStatus') action.status = inferStatusKind(description, action.target);
@@ -365,9 +365,6 @@ function buildSkill(ref, maps, language) {
     }
   }
   const triggers = triggerNames.map(trigger => ({ trigger, once: description.includes(WORDS.first), actions }));
-  if (active && actions.length === 0) {
-    actions.push({ type: 'Damage', target: 'LowestHpEnemy', power: 1 });
-  }
   const resolved = Boolean(raw);
   const implementedActionCount = active ? actions.length : triggers.reduce((sum, trigger) => sum + trigger.actions.length, 0);
   const implementationStatus = !resolved ? 'Unresolved'
@@ -379,6 +376,8 @@ function buildSkill(ref, maps, language) {
     description,
     icon: detail?.skill_icon ?? '',
     typeCode,
+    dispatchType: raw?.type ?? null,
+    runType: raw?.run_type ?? null,
     category,
     active,
     implemented: implementedActionCount > 0,
@@ -405,7 +404,7 @@ function fallbackNormal(profession, role, language) {
   return {
     id: `normal-profession-${profession}`,
     displayName: `${definition.name} (${suffix})`,
-    description: 'Project-defined fallback basic attack. The catalog client has no HeroTable.Ability.ability value for this hero.',
+    description: 'Project compatibility basic attack for a template with no resolved type-1 action.',
     icon: '', typeCode: 1, category: 'Normal', active: true, implemented: true, hasCutIn: false,
     energyCost: 0, rawEffectType: null, rawDamageType: 1,
     source: ['project-fallback'], implementationStatus: 'ProjectFallback',
@@ -413,13 +412,16 @@ function fallbackNormal(profession, role, language) {
   };
 }
 
-function addReference(map, id, source, preferredTarget = null) {
-  if (id == null || id === 0 || id === '0') return;
-  const key = String(id);
-  if (!map.has(key)) map.set(key, { id: key, source: [], preferredTarget, nameId: null, descriptionId: null });
-  const record = map.get(key);
-  record.source.push(source);
-  if (preferredTarget) record.preferredTarget = preferredTarget;
+export function addReference(map, id, source, preferredTarget = null) {
+  for (const value of Array.isArray(id) ? id : [id]) {
+    if (value == null || value === 0 || value === '0') continue;
+    if (!Number.isSafeInteger(Number(value)) || Number(value) < 1) throw new Error(`Invalid skill reference ${source}: ${value}`);
+    const key = String(value);
+    if (!map.has(key)) map.set(key, { id: key, source: [], preferredTarget, nameId: null, descriptionId: null });
+    const record = map.get(key);
+    if (!record.source.includes(source)) record.source.push(source);
+    if (preferredTarget) record.preferredTarget = preferredTarget;
+  }
 }
 
 function buildCharacter(hero, maps, language) {
@@ -453,22 +455,23 @@ function buildCharacter(hero, maps, language) {
   for (const row of maps.rareByHero.get(String(hero.tid)) ?? []) addReference(references, row.skill, 'hero.rare');
 
   const roleName = profession?.show_name_pinyin || 'UNKNOWN';
-  const skills = [fallbackNormal(hero.profession, { name: roleName, nameId: profession?.show_name }, language)];
+  const skills = [];
   const sortedRefs = [...references.values()].sort((left, right) => {
     const priority = value => value.source.some(item => item.includes('soul')) ? 0
       : value.source.some(item => item.includes('mastery')) ? 1
         : value.source.some(item => item.includes('profession')) ? 2 : 3;
     return priority(left) - priority(right) || Number(left.id) - Number(right.id);
   });
-  const seen = new Set(['normal-profession-' + hero.profession]);
   for (const reference of sortedRefs) {
-    if (seen.has(reference.id)) continue;
-    seen.add(reference.id);
     skills.push(buildSkill(reference, maps, language));
   }
-  const ultimateIndex = skills.findIndex(skill => skill.category === 'Ultimate' || skill.category === 'UltimateTechnique');
-  const ultimateId = ultimateIndex >= 0 ? skills[ultimateIndex].id : null;
-  const normalId = skills.find(skill => skill.category === 'Normal')?.id ?? skills[0].id;
+  const baseIds = heroAbility?.ability ?? npcAbility?.ability ?? [];
+  const definedAction = type => baseIds.find(id => maps.ability.get(String(id))?.type === type);
+  const normalAction = definedAction(1);
+  const ultimateAction = definedAction(2);
+  if (!normalAction) skills.unshift(fallbackNormal(hero.profession, { name: roleName, nameId: profession?.show_name }, language));
+  const normalId = normalAction ? String(normalAction) : skills[0].id;
+  const ultimateId = ultimateAction ? String(ultimateAction) : null;
   const base = maps.baseAttr.get(String(Number(hero.tid) * 100 + 50))
     ?? maps.baseAttr.get(String(Number(hero.tid) * 100 + 60)) ?? {};
   return {
@@ -596,7 +599,7 @@ function main() {
       tables: sourceTables
     },
     assumptions: [
-      'Normal attacks are project fallbacks because HeroTable.Ability.ability is empty for catalog heroes.',
+      'Raw ability arrays are decoded from their table constructors. Action dispatch and display categories are separate fields.',
       'Speed is a deterministic project fallback; other base stats come from HeroTable.BaseAttrNew.',
       'Base damage remains max(1, round(ATK*2.6)-floor(DEF*0.5)); exact original combat formulas were not recovered.',
       'Targets, durations, percentages and trigger timing inferred from localized descriptions are marked DescriptionHeuristic.',
@@ -621,4 +624,4 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main();

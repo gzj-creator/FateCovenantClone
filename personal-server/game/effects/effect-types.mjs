@@ -35,6 +35,7 @@ export const STAT_TYPES = Object.freeze({
   ATTACK_PERCENT: 'attack-percent',
   DEFENSE_FLAT: 'defense-flat',
   DEFENSE_PERCENT: 'defense-percent',
+  DEFENSE_TRANSFER: 'defense-transfer-flat',
   SPEED_FLAT: 'speed-flat',
   SPEED_PERCENT: 'speed-percent',
   CRIT_RATE: 'crit-rate',          // Percentage (0-1)
@@ -97,6 +98,8 @@ export const TARGET_TYPES = Object.freeze({
   FRONT_ROW_ALLIES: 'front-row-allies', // All allies in front row (loc 1-3)
   FRONT_ROW_HIGHEST_ATTACK: 'front-row-highest-attack', // Enemy in front row with highest attack
   BACK_ROW: 'back-row',          // All enemies in back row (loc 4-6)
+  BACK_ROW_ALLIES: 'back-row-allies',
+  ACTION_ENEMIES: 'action-enemies',
   ALL_ENEMIES: 'all-enemies',
   ALL_ALLIES: 'all-allies',
   LOWEST_HP: 'lowest-hp',        // Ally or enemy with lowest HP%
@@ -105,6 +108,7 @@ export const TARGET_TYPES = Object.freeze({
   HIGHEST_HP_ENEMY: 'highest-hp-enemy',
   LOWEST_HP_ALLY: 'lowest-hp-ally',
   HIGHEST_HP_ALLY: 'highest-hp-ally',
+  HIGHEST_ATTACK_ALLY: 'highest-attack-ally',
   RANDOM: 'random',              // Random enemy
   RANDOM_ALLY: 'random-ally',    // Random ally
   RANDOM_COUNT: 'random-count',  // N random targets

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
 import { EffectExecutor } from '../game/effects/effect-executor.mjs';
+import { FIGHT_ENERGY_MAX, simulateBattle } from '../game/battle-engine.mjs';
 
 const HERO_ID = 1040201;
 
@@ -82,17 +83,30 @@ test('偷心 (314020174) registers on-attack, on-skill-use and on-being-hit trig
   assert.equal(shieldTrig.maxTriggers, 5);
 });
 
-test('迷情 (314020175) registers on-round-start, on-ultimate-use and round-end triggers', () => {
+test('迷情 (314020175) reduces damage only in rounds one through three and never invents rose damage', () => {
   const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '314020175');
-  const types = skill.implementation.triggers.map(t => t.triggerType);
-  assert.ok(types.includes('on-round-start'));
-  assert.ok(types.includes('on-ultimate-use'));
-  assert.ok(types.includes('on-round-end'));
-  const dmgTrig = skill.implementation.triggers.find(t => t.triggerType === 'on-ultimate-use');
-  assert.equal(dmgTrig.effect.effect.type, 'damage');
-  assert.equal(dmgTrig.effect.effect.damageType, 'true');
+  const skill = getHeroSkills(HERO_ID, db).find(entry => entry.id === '314020175');
+  const normal = { id: '1201010101', type: 'Normal', implementation: { effects: [{
+    target: { targetType: 'single' }, effect: { type: 'damage', damageType: 'physical', multiplier: 1, variance: 1, canCrit: false },
+  }] } };
+  const simulation = simulateBattle({
+    attackers: [{ id: 101, maxHp: 1000, attack: 100, defense: 0, speed: 100, critChance: 0,
+      initialEnergy: FIGHT_ENERGY_MAX, abilityId: 1104020101, activeAbilityId: 2104020113, skills: [skill] }],
+    defenders: [{ id: 201, maxHp: 100000, attack: 100, defense: 0, speed: 1,
+      abilityId: Number(normal.id), activeAbilityId: null, skills: [normal] }],
+    maxRounds: 4,
+  });
+  const harms = simulation.events.filter(event => event.kind === 'damage').flatMap(event => event.harms);
+  assert.deepEqual(harms.filter(harm => harm.srcId === 201).map(harm => harm.value), [92, 92, 92, 100]);
+  assert.ok(!simulation.events.some(event => event.kind === 'damage' && event.trigger?.startsWith('314020175_')));
+  let round = 0;
+  const heals = [];
+  for (const event of simulation.events) {
+    if (event.kind === 'round-start') round = event.round;
+    if (event.kind === 'heal' && event.actor === 101) heals.push([round, event.actualHeal]);
+  }
+  assert.deepEqual(heals, [[3, 50]]);
+  assert.equal(skill.implementation.abilityDes.text, 604400315);
 });
 
 test('突破6 (120001028) grants 50 energy', () => {

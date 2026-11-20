@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createGameCodec, decodeEtf, encodeEtf, rawBinary, serializedBinary } from '../protocol/game-codec.mjs';
 import { createMissionFightService, lineupReferenceStats, reportGuideDemoBattle } from '../game/mission-fight-service.mjs';
 import { MISSION_ENERGY_SLOT } from '../game/energy.mjs';
+import { readFightAbilityTypes } from '../config/fight-ability-types.mjs';
 import { createGameFixture } from './helpers/game-fixture.mjs';
 
 const codec = createGameCodec();
@@ -242,11 +243,13 @@ test('ordinary mission fight previews at start and commits once at 207', async t
   assert.ok(battle.over_round >= 1);
   assert.ok(battle.action_list.length > 3);
   const actionMessages = actions(response.report);
-  // A visible round-start passive gets its own complete action window before
-  // the first character action.
-  assert.deepEqual(actionMessages.slice(0, 6).map(value => value.proto), [107, 101, 109, 102, 101, 106]);
+  assert.deepEqual(actionMessages.slice(0, 4).map(value => value.proto), [107, 109, 101, 106]);
   assert.equal(actionMessages.at(-1).proto, 104);
   const decodeAction = (index, schema) => codec.unpack(schema, Buffer.from(actionMessages[index].bin, 'base64'));
+  const openingShield = decodeAction(1, 'pb_fat_shield');
+  assert.equal(openingShield.id ?? 0, 0);
+  assert.equal(openingShield.aim_id, 103);
+  assert.ok(Number(openingShield.shield) > 0);
   const angerSyncIds = new Set(actionMessages
     .filter(value => value.proto === 116)
     .map(value => Number(codec.unpack('pb_fat_attr_sync', Buffer.from(value.bin, 'base64')).id)));
@@ -268,8 +271,8 @@ test('ordinary mission fight previews at start and commits once at 207', async t
   assert.ok(beforeActions.every(value => value.ab_tid !== '0'));
   assert.ok(beforeActions.every(value => value.type === 1 || value.type === 2));
   assert.ok(beforeActions.some(value => value.type === 2));
-  assert.ok(beforeActions.filter(value => value.type === 1).every(value => String(value.ab_tid).startsWith('1')));
-  assert.ok(beforeActions.filter(value => value.type === 2).every(value => String(value.ab_tid).startsWith('2')));
+  const dispatch = readFightAbilityTypes();
+  assert.ok(beforeActions.every(value => dispatch.get(Number(value.ab_tid))?.type === value.type));
   assert.ok(beforeActions.filter(value => value.type === 2).every(value => {
     const unit = battle.fighter_list.find(candidate => Number(candidate.id) === value.src_id);
     return unit && unit.ability_list.map(Number).includes(Number(value.ab_tid));
@@ -278,12 +281,20 @@ test('ordinary mission fight previews at start and commits once at 207', async t
   assert.ok(graceActions.length > 0, 'TID_GRACE must act in the encounter');
   const graceActive = graceActions.find(value => value.type === 2);
   if (graceActive) {
-    assert.deepEqual([...graceActive.aim_list], defenders.map(unit => Number(unit.id)));
+    const actionIndex = actionMessages.findIndex((value, index) => value.proto === 101
+      && decodeAction(index, 'pb_fat_action_before').id === graceActive.id);
+    const alreadyDead = new Set(actionMessages.slice(0, actionIndex)
+      .flatMap((value, index) => value.proto === 105 ? [Number(decodeAction(index, 'pb_fat_fighter_die').aim_id)] : []));
+    const livingDefenders = defenders.filter(unit => !alreadyDead.has(Number(unit.id)));
+    const frontRow = livingDefenders.filter(unit => Number(unit.loc) <= 3);
+    const targets = frontRow.map(unit => Number(unit.id));
+    assert.deepEqual([...graceActive.aim_list], targets);
     const graceDamage = actionMessages
       .map((value, index) => value.proto === 106 ? decodeAction(index, 'pb_fat_harm') : null)
       .filter(Boolean)
-      .find(value => value.id === graceActive.id);
-    assert.deepEqual(graceDamage.harm_list.map(value => Number(value.aim_id)), defenders.map(unit => Number(unit.id)));
+      .filter(value => value.id === graceActive.id)
+      .flatMap(value => value.harm_list);
+    assert.deepEqual(graceDamage.map(value => Number(value.aim_id)), targets);
   }
   assert.ok(beforeActions.every(value => Array.isArray(value.assist_list)));
   const angerSyncs = actionMessages.map((value, index) => value.proto === 116 ? decodeAction(index, 'pb_fat_attr_sync') : null).filter(Boolean);

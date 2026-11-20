@@ -49,6 +49,7 @@ function assertRepeatAction(report) {
   const hero = report.fighter_list.find(candidate => candidate.team === 1
     && Number(candidate.role) === HERO_ROLE);
   assert.ok(hero, 'the task battle must include role 2010101');
+  assert.ok(hero.ability_list.map(Number).includes(120001001));
   const actions = decodeActions(report);
   assert.equal(actions[0].proto, 107);
   const ownActions = actions.filter(action => action.proto === 101
@@ -94,6 +95,12 @@ function promoteRepeatHero(store) {
     const lineupHeroes = new Set(LINEUP.map(entry => Number(entry.hero_id)));
     for (const hero of model.heroInfo.hero_list) {
       if (lineupHeroes.has(Number(hero.tid))) hero.star = 10;
+      if (Number(hero.tid) !== HERO_ROLE) continue;
+      const preset = model.lineups.pre_lineups.find(row => row.index === model.lineups.cur_pre_index);
+      const index = preset.lineup.fighter_list.find(fighter => String(fighter.hero_id) === String(hero.uid)).index;
+      const cell = model.heroInfo.cell_list.find(row => row.index === index);
+      cell.break_level = 1;
+      hero.breakthrough_level = cell.break_level;
     }
   });
 }

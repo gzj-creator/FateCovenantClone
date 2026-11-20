@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers } from '../game/effects/skill-integration.mjs';
+import { loadSkillDatabase, getHeroSkills, registerPassiveTriggers, processTriggers, processBuffTicks } from '../game/effects/skill-integration.mjs';
 import { EffectExecutor } from '../game/effects/effect-executor.mjs';
+import { FIGHT_ENERGY_MAX, simulateBattle } from '../game/battle-engine.mjs';
 
 const HERO_ID = 1020301;
 
@@ -45,32 +46,70 @@ test('直击要害 (312030173) registers crit-rate and crit-damage on battle sta
   assert.deepEqual(statTypes, ['crit-damage', 'crit-rate']);
 });
 
-test('伺机待发 (312030174) registers next-ultimate damage bonus after normal/skill', () => {
+test('恶性疗法 (312030174) registers a poison proc after normal attack or ordinary special', () => {
   const db = loadSkillDatabase();
   const unit = { id: HERO_ID, team: 1, loc: 1, hp: 600, maxHp: 600, attack: 110, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [] };
   registerPassiveTriggers(unit, db, { seed: 1 });
   const trigs = unit.triggers.filter(t => t.sourceSkill === '312030174');
   assert.equal(trigs.length, 2, 'expected normal and skill triggers');
   const types = trigs.map(t => t.triggerType).sort();
-  assert.deepEqual(types, ['on-attack', 'on-skill-use']);
+  assert.deepEqual(types, ['on-attack', 'on-ultimate-use']);
   for (const t of trigs) {
-    assert.equal(t.effect.effect.type, 'stat-modifier');
-    assert.equal(t.effect.effect.statType, 'damage-bonus');
-    assert.equal(t.effect.effect.magnitude, 0.15);
-    assert.equal(t.effect.duration.rounds, 1);
+    assert.equal(t.effect.effect.type, 'status');
+    assert.equal(t.effect.effect.statusType, 'poison');
+    assert.equal(t.effect.duration.rounds, 2);
   }
 });
 
-test('伺机待发 (312030174) exposes the same damage bonus in effects[]', () => {
+test('恶性疗法 gives only its actual action target one poison layer at the 30% chance boundary', () => {
   const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '312030174');
-  const effect = skill.implementation.effects[0];
-  assert.equal(effect.target.targetType, 'self');
-  assert.equal(effect.effect.type, 'stat-modifier');
-  assert.equal(effect.effect.statType, 'damage-bonus');
-  assert.equal(effect.effect.magnitude, 0.15);
-  assert.equal(effect.duration.rounds, 1);
+  const skill = getHeroSkills(HERO_ID, db).find(entry => entry.id === '312030174');
+  const actor = { id: HERO_ID, team: 1, loc: 1, alive: true, buffs: [], debuffs: [], skills: [skill] };
+  const decoy = { id: 1, loc: 1, team: 2, alive: true, debuffs: [] };
+  const target = { id: 2, loc: 5, team: 2, alive: true, debuffs: [] };
+  const units = [actor, decoy, target];
+  const state = { round: 1, random: () => 0.3, actionContext: { actorId: actor.id, targetIds: [target.id] } };
+  registerPassiveTriggers(actor, db, state);
+  const events = [];
+  processTriggers(actor, 'on-attack', units, state, events);
+  assert.deepEqual(events, []);
+  const rolls = [0.299, 0.9];
+  state.random = () => rolls.shift();
+  processTriggers(actor, 'on-tianji-use', units, state, events);
+  assert.deepEqual(events, []);
+  processTriggers(actor, 'on-attack', units, state, events);
+  assert.deepEqual(events.map(({ statusType, target, stacks }) => ({ statusType, target, stacks })),
+    [{ statusType: 'poison', target: 2, stacks: 1 }]);
+  assert.deepEqual(rolls, [0.9], 'roll the 30% chance only once per proc');
+  assert.deepEqual(actor.buffs, []);
+  assert.deepEqual(decoy.debuffs, []);
+  assert.equal(target.debuffs[0].remainingRounds, 2);
+  state.random = () => 0.1;
+  processTriggers(actor, 'on-ultimate-use', units, state, events);
+  processTriggers(actor, 'on-ultimate-use', units, state, events);
+  assert.deepEqual(events.map(event => event.stacksDelta), [1, 1, 0]);
+  assert.deepEqual(target.debuffs.map(status => status.stacks), [2]);
+  processBuffTicks(target, { round: 2 }, []);
+  assert.equal(target.debuffs[0].remainingRounds, 1);
+  processBuffTicks(target, { round: 3 }, []);
+  assert.deepEqual(target.debuffs, []);
+});
+
+test('恶性疗法 publishes one verified poison overlay on normal and ordinary skill actions', () => {
+  const skill = getHeroSkills(HERO_ID, loadSkillDatabase()).find(entry => entry.id === '312030174');
+  for (const [initialEnergy, expectedAbility] of [[0, 1102030101], [FIGHT_ENERGY_MAX, 2102030113]]) {
+    const battle = simulateBattle({
+      attackers: [{ id: 101, role: HERO_ID, maxHp: 10000, attack: 100, speed: 100, skills: [skill],
+        initialEnergy, abilityId: 1102030101, activeAbilityId: 2102030113 }],
+      defenders: [1, 4].map((loc, index) => ({ id: 201 + index, loc, maxHp: 900000, attack: 1, skills: [] })),
+      seed: 2, maxRounds: 1,
+    });
+    const action = battle.events.find(event => event.kind === 'action-start' && event.srcId === 101);
+    assert.equal(action.abilityId, expectedAbility);
+    const changes = battle.events.filter(event => event.kind === 'buff-change' && event.id === action.id)
+      .flatMap(event => event.buffs).map(({ aimId, tid, overlay }) => ({ aimId, tid, overlay }));
+    assert.deepEqual(changes, [{ aimId: action.aimList[0], tid: 11003, overlay: 1 }]);
+  }
 });
 
 test('poison status applies to target debuffs via EffectExecutor', () => {
@@ -101,17 +140,17 @@ test('poison DoT tick deals percent-max-hp damage to target', () => {
   assert.equal(result.value, 100);
 });
 
-test('蚀骨之痛 (312030175) registers 3% target-max-HP damage on ultimate use', () => {
+test('恶意蔓延 (312030175) amplifies only the current ordinary ultimate', () => {
   const db = loadSkillDatabase();
-  const skills = getHeroSkills(HERO_ID, db);
-  const skill = skills.find(s => s.id === '312030175');
-  const trigs = skill.implementation.triggers;
-  assert.equal(trigs.length, 1);
-  assert.equal(trigs[0].triggerType, 'on-ultimate-use');
-  assert.equal(trigs[0].effect.effect.type, 'damage');
-  assert.equal(trigs[0].effect.effect.damageType, 'percent-max-hp');
-  assert.equal(trigs[0].effect.effect.magnitude, 0.03);
-  assert.equal(trigs[0].effect.effect.canCrit, false);
+  const skill = getHeroSkills(HERO_ID, db).find(entry => entry.id === '312030175');
+  assert.equal(skill.name, '恶意蔓延');
+  assert.equal(skill.implementation.abilityDes.text, 604400045);
+  const triggers = skill.implementation.triggers;
+  assert.equal(triggers.length, 2);
+  assert.ok(triggers.every(trigger => trigger.triggerType === 'before-ultimate-use'
+    && trigger.effect.effect.actionType === 'ultimate' && trigger.effect.duration.triggers === 1));
+  assert.deepEqual(Object.fromEntries(triggers.map(({ effect }) => [effect.effect.statType, effect.effect.magnitude])),
+    { 'crit-rate': 0.1, 'crit-damage': 0.15 });
 });
 
 test('突破9 (120001031) grants 200 energy on normal/skill', () => {
@@ -214,13 +253,13 @@ test('all trigger effects are non-null and have a type', () => {
   }
 });
 
-test('伺机待发 damage bonus is bounded and lasts one round', () => {
+test('恶性疗法 has the same-ID original language keys', () => {
   const db = loadSkillDatabase();
   const skills = getHeroSkills(HERO_ID, db);
   const skill = skills.find(s => s.id === '312030174');
-  const trig = skill.implementation.triggers[0];
-  assert.ok(trig.effect.effect.magnitude > 0 && trig.effect.effect.magnitude <= 1);
-  assert.equal(trig.effect.duration.rounds, 1);
+  assert.equal(skill.name, '恶性疗法');
+  assert.equal(skill.implementation.abilityDes.show_name, 6503144);
+  assert.equal(skill.implementation.abilityDes.text, 604400044);
 });
 
 // ---------------------------------------------------------------------------
@@ -269,66 +308,37 @@ test('直击要害 (312030173) registers crit-rate 0.05 and crit-damage 0.10', (
   }
 });
 
-test('伺机待发 (312030174) grants 15% damage bonus after normal/skill', () => {
+test('恶性疗法 (312030174) describes one poison layer on actual action targets', () => {
   const db = loadSkillDatabase();
   const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '312030174');
   const eff = skill.implementation.effects[0];
-  assert.equal(eff.target.targetType, 'self');
-  assert.equal(eff.effect.type, 'stat-modifier');
-  assert.equal(eff.effect.statType, 'damage-bonus');
-  assert.equal(eff.effect.magnitude, 0.15);
-  assert.equal(eff.duration.rounds, 1);
-  assert.equal(eff.chance, 1);
-  assert.deepEqual(skill.implementation.triggers.map(t => t.triggerType), ['on-attack', 'on-skill-use']);
+  assert.equal(eff.target.targetType, 'action-enemies');
+  assert.equal(eff.effect.type, 'status');
+  assert.equal(eff.effect.statusType, 'poison');
+  assert.equal(eff.duration.rounds, 2);
+  assert.equal(eff.chance, 0.3);
+  assert.deepEqual(skill.implementation.triggers.map(t => t.triggerType), ['on-attack', 'on-ultimate-use']);
   for (const t of skill.implementation.triggers) {
-    assert.equal(t.chance, 1);
-    assert.equal(t.effect.effect.statType, 'damage-bonus');
+    assert.equal(t.chance, 0.3);
+    assert.equal(t.effect.effect.statusType, 'poison');
   }
 });
 
-test('蚀骨之痛 (312030175) registers on-ultimate-use target-max-HP damage 0.03', () => {
-  const db = loadSkillDatabase();
-  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '312030175');
-  assert.equal(skill.implementation.triggers.length, 1);
-  for (const t of skill.implementation.triggers) {
-    assert.equal(t.triggerType, 'on-ultimate-use');
-    assert.equal(t.effect.target.targetType, 'single');
-    assert.equal(t.effect.duration.durationType, 'instant');
-    assert.equal(t.effect.effect.damageType, 'percent-max-hp');
-    assert.equal(t.effect.effect.magnitude, 0.03);
-  }
-});
-
-test('mastery skills contribute 7 of the 16 registered triggers for hero 1020301', () => {
+test('mastery skills contribute 8 of the 17 registered triggers for hero 1020301', () => {
   const db = loadSkillDatabase();
   const unit = { id: HERO_ID, team: 1, loc: 1, hp: 600, maxHp: 600, attack: 110, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0 };
   registerPassiveTriggers(unit, db, { seed: 1 });
-  assert.equal(unit.triggers.length, 16);
+  assert.equal(unit.triggers.length, 17);
   const mastery = unit.triggers.filter(t => t.sourceSkill.startsWith('312'));
-  assert.equal(mastery.length, 7);
+  assert.equal(mastery.length, 8);
   assert.deepEqual(
     [...new Set(mastery.map(t => t.sourceSkill))].sort(),
     ['312030171', '312030172', '312030173', '312030174', '312030175']
   );
   assert.deepEqual(
     [...new Set(mastery.map(t => t.triggerType))].sort(),
-    ['on-attack', 'on-round-start', 'on-skill-use', 'on-ultimate-use']
+    ['before-ultimate-use', 'on-attack', 'on-round-start', 'on-ultimate-use']
   );
-});
-
-test('extra 蚀骨之痛 hit deals 3% of target max HP and ignores defense', () => {
-  const db = loadSkillDatabase();
-  const skill = getHeroSkills(HERO_ID, db).find(s => s.id === '312030175');
-  const hit = skill.implementation.effects[0].effect;
-  assert.equal(hit.type, 'damage');
-  assert.equal(hit.damageType, 'percent-max-hp');
-  assert.equal(hit.magnitude, 0.03);
-  const executor = new EffectExecutor({ random: () => 0.5 });
-  const actor = { id: HERO_ID, team: 1, loc: 1, hp: 600, maxHp: 600, attack: 110, defense: 55, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0, critChance: 0 };
-  const target = { id: 9001, team: 2, loc: 1, hp: 1000, maxHp: 1000, attack: 100, defense: 500, alive: true, buffs: [], debuffs: [], triggers: [], shield: 0, energy: 0 };
-  const result = executor.executeDamage(hit, actor, target);
-  assert.equal(result.value, 30, '3% of 1000 max HP with defense bypassed');
-  assert.equal(result.newHp, 970);
 });
 
 test('ultimate 6910001011 deals 2x attack damage through EffectExecutor', () => {

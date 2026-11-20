@@ -22,9 +22,7 @@ const missionTables = readMissionTables();
 const attributeTables = readAttributeTables();
 const FIXED_NOW = 1794000000000;
 // Real HeroTable.Npc ids. The shared attribute service scales combat NPCs from
-// the balanced player-lineup reference, so 9000100 is beatable. Six quality-70
-// 5040401 opponents win against the fixture line-up; both results come from the real
-// simulateBattle run rather than an injected result.
+// the balanced player-lineup reference, so 9000100 is beatable.
 const WINNING_ENEMIES = () => [9000100];
 const LOSING_ENEMIES = () => Array(6).fill(5040401);
 const STAMINA = '100012900';
@@ -41,7 +39,7 @@ function eliteRequest(payload, extra = {}) {
     fight_tid: extra.fight_tid ?? 0,
     stm_type: 1,
     req: codec.pack('pb_elite_mission_req', payload),
-    loc: [{ team_id: 1, loc: heroes }]
+    loc: [{ team_id: 1, loc: extra.lineup ?? heroes }]
   }));
 }
 
@@ -163,7 +161,7 @@ test('replaying a cleared elite stage never grants the first-clear reward twice'
 test('a lost elite stage consumes stamina without progress or rewards', async t => {
   const env = setup(t, { enemyProvider: LOSING_ENEMIES });
   const before = staminaOf(env.store);
-  const { report, settled } = await startAndSettle(env, stage(101));
+  const { report, settled } = await startAndSettle(env, stage(101, { lineup: [heroes[0]] }));
   assert.equal(report.final_result, 2);
   const back = codec.unpack('pb_elite_mission_back', Buffer.from(settled.value.stm.stm_data, 'base64'));
   assert.equal(String(back.mission_info.mission_id ?? '0'), '0');

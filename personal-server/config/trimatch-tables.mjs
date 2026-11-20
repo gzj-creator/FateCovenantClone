@@ -128,6 +128,7 @@ export function readTriMatchTables(file = defaultPath, paths = {}) {
     fightTiles: byTid(rowsOf(fight, 'Tile')),
     fightTilesByLib: groupByLib(rowsOf(fight, 'Tile')),
     fightNpcAbilities: byTid(rowsOf(fight, 'NpcAbility')),
+    fightAbilities: byTid(rowsOf(fight, 'Ability')),
     fightActionTypes: byTid(rowsOf(fight, 'ActionType')),
     fightSpeeds: byTid(rowsOf(fight, 'Speed')),
     fightScenes: byTid(rowsOf(fight, 'Scene')),
